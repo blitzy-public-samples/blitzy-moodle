@@ -32,6 +32,9 @@ module.exports = {
     ecmaFeatures: {
       jsx: true,
     },
+    // Required for @typescript-eslint/recommended-requiring-type-checking
+    project: ['./tsconfig.json', './tsconfig.node.json'],
+    tsconfigRootDir: __dirname,
   },
 
   // Plugins
