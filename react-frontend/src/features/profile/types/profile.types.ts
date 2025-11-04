@@ -1,391 +1,420 @@
 /**
- * Profile Feature Type Definitions
+ * TypeScript type definitions for user profile feature
  * 
- * Comprehensive type definitions for user profiles, preferences, and related operations
- * in the Moodle React frontend. These types ensure type safety across profile management.
+ * Based on Moodle user profile data structures from:
+ * - public/user/externallib.php (user_description, create_users, update_users)
+ * - public/user/lib.php (user_create_user, user_update_user)
+ * - public/user/edit.php (profile edit form)
+ * - public/user/profile.php (profile view)
  * 
- * @module features/profile/types
+ * @package react-frontend
+ * @subpackage features/profile
  */
 
 /**
- * Core User entity representing a Moodle user profile
- * Contains all essential user information displayed and managed in the profile feature
+ * Mail display options enum
+ * Controls email address visibility in user profile
  */
-export interface User {
-  /** Unique user identifier */
-  id: number;
-  
-  /** Username for authentication */
-  username: string;
-  
-  /** User's first name */
-  firstname: string;
-  
-  /** User's last name */
-  lastname: string;
-  
-  /** Full name (computed from firstname + lastname) */
-  fullname: string;
-  
-  /** Primary email address */
-  email: string;
-  
-  /** URL to user's profile picture/avatar */
-  profileimageurl: string;
-  
-  /** Alternative URL for small avatar */
-  profileimageurlsmall: string;
-  
-  /** User's city */
-  city?: string;
-  
-  /** User's country code (ISO 3166-1 alpha-2) */
-  country?: string;
-  
-  /** User's timezone */
-  timezone?: string;
-  
-  /** User's preferred language */
-  lang?: string;
-  
-  /** User's phone number */
-  phone1?: string;
-  
-  /** Alternative phone number */
-  phone2?: string;
-  
-  /** User's institution/organization */
-  institution?: string;
-  
-  /** User's department */
-  department?: string;
-  
-  /** User's description/bio */
-  description?: string;
-  
-  /** Description format (1=HTML, 0=MOODLE, 2=PLAIN, 4=MARKDOWN) */
-  descriptionformat?: number;
-  
-  /** User's interests (comma-separated tags) */
-  interests?: string;
-  
-  /** User's website URL */
-  url?: string;
-  
-  /** Instant messaging ID (AIM) */
-  aim?: string;
-  
-  /** Instant messaging ID (ICQ) */
-  icq?: string;
-  
-  /** Instant messaging ID (MSN) */
-  msn?: string;
-  
-  /** Instant messaging ID (Yahoo) */
-  yahoo?: string;
-  
-  /** Instant messaging ID (Skype) */
-  skype?: string;
-  
-  /** First access timestamp */
-  firstaccess?: number;
-  
-  /** Last access timestamp */
-  lastaccess?: number;
-  
-  /** Last login timestamp */
-  lastlogin?: number;
-  
-  /** Current login timestamp */
-  currentlogin?: number;
-  
-  /** User roles across the system */
-  roles?: UserRole[];
-  
-  /** User preferences */
-  preferences?: UserPreferences;
-  
-  /** Whether user email is confirmed */
-  emailconfirmed?: boolean;
-  
-  /** Whether user account is suspended */
-  suspended?: boolean;
-  
-  /** Authentication method */
-  auth?: string;
-  
-  /** Custom profile fields */
-  customfields?: CustomField[];
+export enum MailDisplay {
+  /** Hide email address from everyone */
+  HIDE = 0,
+  /** Show email to course members only */
+  COURSE_MEMBERS = 1,
+  /** Show email to everyone */
+  EVERYONE = 2,
 }
 
 /**
- * User role information
+ * Mail format options enum
+ * Controls email format preference for system emails
  */
-export interface UserRole {
-  /** Role ID */
-  roleid: number;
-  
-  /** Role short name */
-  shortname: string;
-  
-  /** Role display name */
-  name: string;
-  
-  /** Context ID where role is assigned */
-  contextid: number;
-  
-  /** Context level (10=system, 50=course, etc.) */
-  contextlevel: number;
+export enum MailFormat {
+  /** Plain text email format */
+  PLAIN_TEXT = 0,
+  /** HTML email format */
+  HTML = 1,
 }
 
 /**
- * Custom profile field
+ * Mail digest options enum
+ * Controls forum email digest settings
+ */
+export enum MailDigest {
+  /** No digest, send individual emails */
+  NO_DIGEST = 0,
+  /** Complete digest (full posts) */
+  COMPLETE = 1,
+  /** Subjects only digest */
+  SUBJECTS = 2,
+}
+
+/**
+ * Calendar type options
+ * Common calendar systems supported by Moodle
+ */
+export type CalendarType = 'gregorian' | 'hijri' | 'hebrew' | 'persian' | 'buddhist' | 'chinese';
+
+/**
+ * Description format enum
+ * Text format for user profile description field
+ */
+export enum DescriptionFormat {
+  /** Moodle auto-format */
+  MOODLE = 0,
+  /** HTML format */
+  HTML = 1,
+  /** Plain text */
+  PLAIN = 2,
+  /** Markdown format */
+  MARKDOWN = 4,
+}
+
+/**
+ * Custom profile field interface
+ * Represents a custom user profile field (user_info_field)
  */
 export interface CustomField {
-  /** Field short name */
-  shortname: string;
-  
-  /** Field display name */
-  name: string;
-  
-  /** Field data type */
+  /** Field type (e.g., 'text', 'checkbox', 'menu', 'textarea', 'datetime') */
   type: string;
   
-  /** Field value */
-  value: string | number | boolean;
+  /** Raw field value as stored in database */
+  value: string;
+  
+  /** Formatted display value (optional) */
+  displayvalue?: string;
+  
+  /** Display name of the field */
+  name: string;
+  
+  /** Short name used as field identifier in code */
+  shortname: string;
 }
 
 /**
- * User preferences and settings
- * Stores configurable user preferences for UI and behavior customization
+ * User preference interface
+ * Represents a key-value user preference setting
+ */
+export interface UserPreference {
+  /** Preference name/key */
+  name: string;
+  
+  /** Preference value */
+  value: string;
+}
+
+/**
+ * User preferences collection interface
+ * Structured user preferences for common settings
  */
 export interface UserPreferences {
+  /** Key-value map of all user preferences */
+  [key: string]: string | number | boolean | undefined;
+  
+  /** Email display preference */
+  maildisplay?: MailDisplay;
+  
+  /** Email format preference */
+  mailformat?: MailFormat;
+  
+  /** Email digest preference */
+  maildigest?: MailDigest;
+  
+  /** Auto-subscribe to forum discussions */
+  autosubscribe?: boolean;
+  
+  /** Track forum read/unread status */
+  trackforums?: boolean;
+  
+  /** User interface language preference */
+  lang?: string;
+  
+  /** Calendar type preference */
+  calendartype?: CalendarType;
+  
   /** Theme preference */
   theme?: string;
   
-  /** Email display setting (0=hidden, 1=visible to course members, 2=visible to all) */
-  maildisplay?: number;
-  
-  /** Email digest type (0=no digest, 1=complete, 2=subjects) */
-  maildigest?: number;
-  
-  /** Email format (0=plain text, 1=HTML) */
-  mailformat?: number;
-  
-  /** Whether to auto-subscribe to forum discussions */
-  autosubscribe?: boolean;
-  
-  /** Whether to track forum read/unread status */
-  trackforums?: boolean;
-  
-  /** Calendar type preference */
-  calendartype?: string;
-  
-  /** Number of courses to display on dashboard */
-  coursesperpage?: number;
-  
-  /** Editor preference */
-  htmleditor?: boolean;
-  
-  /** Notification preferences */
-  notifications?: {
-    /** Email notifications enabled */
-    email?: boolean;
-    
-    /** Web notifications enabled */
-    web?: boolean;
-    
-    /** Mobile push notifications enabled */
-    mobile?: boolean;
-  };
-  
-  /** Accessibility features */
-  accessibility?: {
-    /** Screen reader optimization */
-    screenreader?: boolean;
-    
-    /** Keyboard navigation hints */
-    keyboardnav?: boolean;
-    
-    /** High contrast mode */
-    highcontrast?: boolean;
-  };
-  
-  /** Additional custom preferences */
-  [key: string]: unknown;
+  /** Timezone preference (e.g., 'America/New_York', '99' for server default) */
+  timezone?: string;
 }
 
 /**
- * Payload for updating user profile
- * Contains only the fields that can be updated via the profile edit form
+ * Complete user profile interface
+ * Based on user_description() from public/user/externallib.php
+ * Represents the complete user profile data structure
  */
-export interface UpdateProfilePayload {
-  /** User ID (required for identifying which profile to update) */
-  userid: number;
+export interface User {
+  /** User ID (primary key) */
+  id: number;
   
-  /** Updated first name */
+  /** Username (unique login identifier) */
+  username?: string;
+  
+  /** User's first name */
   firstname?: string;
   
-  /** Updated last name */
+  /** User's last name */
   lastname?: string;
   
-  /** Updated email address */
+  /** Full name (formatted firstname + lastname) */
+  fullname: string;
+  
+  /** Email address */
   email?: string;
   
-  /** Updated city */
-  city?: string;
+  /** Postal address */
+  address?: string;
   
-  /** Updated country code */
-  country?: string;
-  
-  /** Updated timezone */
-  timezone?: string;
-  
-  /** Updated preferred language */
-  lang?: string;
-  
-  /** Updated phone number */
+  /** Phone number 1 */
   phone1?: string;
   
-  /** Updated alternative phone number */
+  /** Phone number 2 (mobile) */
   phone2?: string;
   
-  /** Updated institution */
-  institution?: string;
-  
-  /** Updated department */
+  /** Department */
   department?: string;
   
-  /** Updated description/bio */
-  description?: string;
+  /** Institution */
+  institution?: string;
   
-  /** Updated description format */
-  descriptionformat?: number;
+  /** ID number (arbitrary institution identifier) */
+  idnumber?: string;
   
-  /** Updated interests */
+  /** User interests (comma-separated tags) */
   interests?: string;
   
-  /** Updated website URL */
-  url?: string;
+  /** Timestamp of first site access (0 if never) */
+  firstaccess?: number;
   
-  /** Updated AIM ID */
-  aim?: string;
+  /** Timestamp of last site access (0 if never) */
+  lastaccess?: number;
   
-  /** Updated ICQ ID */
-  icq?: string;
+  /** Authentication plugin (e.g., 'manual', 'ldap', 'oauth2') */
+  auth?: string;
   
-  /** Updated MSN ID */
-  msn?: string;
+  /** Account suspended status */
+  suspended?: boolean;
   
-  /** Updated Yahoo ID */
-  yahoo?: string;
+  /** Account confirmed status (1 = confirmed, 0 = pending) */
+  confirmed?: boolean;
   
-  /** Updated Skype ID */
-  skype?: string;
+  /** Language code (e.g., 'en', 'es', 'fr') */
+  lang?: string;
   
-  /** Updated custom fields */
-  customfields?: Array<{
-    shortname: string;
-    value: string | number | boolean;
-  }>;
+  /** Calendar type (e.g., 'gregorian') */
+  calendartype?: CalendarType;
+  
+  /** Theme name */
+  theme?: string;
+  
+  /** Timezone code or '99' for server default */
+  timezone?: string;
+  
+  /** Mail format preference (0 = plain text, 1 = HTML) */
+  mailformat?: MailFormat;
+  
+  /** Mail display preference (0 = hide, 1 = course members, 2 = everyone) */
+  maildisplay?: MailDisplay;
+  
+  /** Mail digest preference (0 = no digest, 1 = complete, 2 = subjects) */
+  maildigest?: MailDigest;
+  
+  /** Track forums preference */
+  trackforums?: boolean;
+  
+  /** Auto-subscribe to forums preference */
+  autosubscribe?: boolean;
+  
+  /** Profile description (bio) */
+  description?: string;
+  
+  /** Description format (0 = moodle, 1 = HTML, 2 = plain, 4 = markdown) */
+  descriptionformat?: DescriptionFormat;
+  
+  /** Home city */
+  city?: string;
+  
+  /** Home country code (ISO 3166-1 alpha-2, e.g., 'US', 'GB') */
+  country?: string;
+  
+  /** Small profile image URL */
+  profileimageurlsmall: string;
+  
+  /** Full-size profile image URL */
+  profileimageurl: string;
+  
+  /** Custom profile fields */
+  customfields?: CustomField[];
+  
+  /** User preferences */
+  preferences?: UserPreference[];
+  
+  /** Additional name fields for international users */
+  firstnamephonetic?: string;
+  lastnamephonetic?: string;
+  middlename?: string;
+  alternatename?: string;
+  
+  /** Image alt text for profile picture */
+  imagealt?: string;
+  
+  /** Timestamp of account creation */
+  timecreated?: number;
+  
+  /** Timestamp of last profile modification */
+  timemodified?: number;
 }
 
 /**
- * Response from avatar upload operation
- * Contains the new avatar URLs after successful upload
+ * Update profile payload interface
+ * Based on user_update_user() parameters from public/user/lib.php
+ * Contains fields that can be updated via profile edit form
+ */
+export interface UpdateProfilePayload {
+  /** User's first name */
+  firstname?: string;
+  
+  /** User's last name */
+  lastname?: string;
+  
+  /** Email address */
+  email?: string;
+  
+  /** Profile description (bio) */
+  description?: string;
+  
+  /** Home city */
+  city?: string;
+  
+  /** Home country code (ISO 3166-1 alpha-2) */
+  country?: string;
+  
+  /** Timezone code or '99' for server default */
+  timezone?: string;
+  
+  /** Phone number 1 */
+  phone1?: string;
+  
+  /** Phone number 2 (mobile) */
+  phone2?: string;
+  
+  /** Institution */
+  institution?: string;
+  
+  /** Department */
+  department?: string;
+  
+  /** Postal address */
+  address?: string;
+  
+  /** Language code */
+  lang?: string;
+  
+  /** Calendar type */
+  calendartype?: CalendarType;
+  
+  /** Theme name */
+  theme?: string;
+  
+  /** Image alt text for profile picture */
+  imagealt?: string;
+  
+  /** Additional name fields */
+  firstnamephonetic?: string;
+  lastnamephonetic?: string;
+  middlename?: string;
+  alternatename?: string;
+  
+  /** Mail format preference */
+  mailformat?: MailFormat;
+  
+  /** Mail display preference */
+  maildisplay?: MailDisplay;
+  
+  /** Mail digest preference */
+  maildigest?: MailDigest;
+  
+  /** Auto-subscribe to forums */
+  autosubscribe?: boolean;
+  
+  /** Track forums */
+  trackforums?: boolean;
+}
+
+/**
+ * Avatar upload response interface
+ * Based on core_user::update_picture() response from public/user/lib.php
+ * Contains updated profile image URLs after successful upload
  */
 export interface AvatarUploadResponse {
-  /** Whether upload was successful */
-  success: boolean;
-  
-  /** New profile image URL (full size) */
+  /** Full-size profile image URL */
   profileimageurl: string;
   
-  /** New profile image URL (small size) */
+  /** Small profile image URL */
   profileimageurlsmall: string;
+}
+
+/**
+ * Profile API response wrapper
+ * Standard API response structure for profile endpoints
+ */
+export interface ProfileAPIResponse<T> {
+  /** Success status */
+  success: boolean;
   
-  /** Timestamp of when avatar was updated */
-  updated: number;
+  /** Response data */
+  data?: T;
   
-  /** Optional message */
-  message?: string;
-  
-  /** Optional error details if success is false */
+  /** Error information if success is false */
   error?: {
     code: string;
     message: string;
-    details?: string;
+    details?: Record<string, unknown>;
   };
 }
 
 /**
- * Profile update response
- * Response structure when updating profile information
+ * User profile update API response
  */
-export interface ProfileUpdateResponse {
-  /** Whether update was successful */
-  success: boolean;
+export type UpdateProfileResponse = ProfileAPIResponse<User>;
+
+/**
+ * Avatar upload API response
+ */
+export type AvatarUploadAPIResponse = ProfileAPIResponse<AvatarUploadResponse>;
+
+/**
+ * User profile fetch API response
+ */
+export type UserProfileResponse = ProfileAPIResponse<User>;
+
+/**
+ * User preferences update API response
+ */
+export type UserPreferencesResponse = ProfileAPIResponse<UserPreferences>;
+
+/**
+ * Profile validation error interface
+ * Represents field-level validation errors
+ */
+export interface ProfileValidationError {
+  /** Field name with error */
+  field: string;
   
-  /** Updated user data */
-  user?: User;
+  /** Error message */
+  message: string;
   
-  /** Success message */
-  message?: string;
-  
-  /** Validation errors if any */
-  errors?: Record<string, string[]>;
-  
-  /** Warnings (non-blocking issues) */
-  warnings?: string[];
+  /** Error code for i18n */
+  code?: string;
 }
 
 /**
- * Profile picture/avatar file constraints
+ * Profile validation result
  */
-export interface AvatarConstraints {
-  /** Maximum file size in bytes (default: 5MB) */
-  maxSize: number;
+export interface ProfileValidationResult {
+  /** Validation success status */
+  valid: boolean;
   
-  /** Allowed MIME types */
-  allowedTypes: string[];
-  
-  /** Minimum dimensions */
-  minWidth: number;
-  minHeight: number;
-  
-  /** Maximum dimensions */
-  maxWidth: number;
-  maxHeight: number;
-  
-  /** Aspect ratio requirements */
-  aspectRatio?: {
-    min: number;
-    max: number;
-  };
+  /** Array of validation errors */
+  errors: ProfileValidationError[];
 }
-
-/**
- * Type guard to check if a user has required profile fields
- */
-export function isCompleteProfile(user: Partial<User>): user is User {
-  return !!(
-    user.id &&
-    user.username &&
-    user.firstname &&
-    user.lastname &&
-    user.email
-  );
-}
-
-/**
- * Type for profile field names (for form validation)
- */
-export type ProfileField = keyof UpdateProfilePayload;
-
-/**
- * Type for profile edit form state
- */
-export type ProfileFormState = Partial<UpdateProfilePayload> & {
-  isSubmitting?: boolean;
-  errors?: Record<string, string>;
-};
