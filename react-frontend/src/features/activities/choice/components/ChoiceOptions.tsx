@@ -1,11 +1,11 @@
 /**
  * ChoiceOptions Component
- * 
+ *
  * Renders selectable choice activity options with Material-UI Radio/Checkbox inputs.
  * Supports both single-choice (radio buttons) and multiple-choice (checkboxes) selection modes.
  * Enforces maximum answer limits per option and displays availability status when enabled.
  * Integrates with React Hook Form for form state management and validation.
- * 
+ *
  * @package   react-frontend
  * @copyright 2024 Moodle React Frontend
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -68,7 +68,7 @@ interface ChoiceOptionsProps {
 
 /**
  * ChoiceOptions Component
- * 
+ *
  * Renders choice activity options with single or multiple selection support.
  * Includes validation, loading states, and availability information display.
  * References PHP renderer logic from public/mod/choice/renderer.php lines 34-110.
@@ -145,8 +145,7 @@ function ChoiceOptions({
 
     // Check if option is full (disabled or at max capacity)
     const isFull =
-      (option.disabled ?? false) ||
-      (limitAnswers && option.countanswers >= option.maxanswers);
+      (option.disabled ?? false) || (limitAnswers && option.countanswers >= option.maxanswers);
 
     if (isFull) {
       labelText += ' (Full)';
@@ -158,19 +157,11 @@ function ChoiceOptions({
         <Box component="span">
           {labelText}
           <br />
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            component="span"
-          >
+          <Typography variant="caption" color="text.secondary" component="span">
             Responses: {option.countanswers}
           </Typography>
           <br />
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            component="span"
-          >
+          <Typography variant="caption" color="text.secondary" component="span">
             Limit: {option.maxanswers}
           </Typography>
         </Box>
@@ -216,8 +207,9 @@ function ChoiceOptions({
                   'You must select at least one option'
                 );
               }
-              return (typeof value === 'number' && value > 0) ||
-                'You must select at least one option';
+              return (
+                (typeof value === 'number' && value > 0) || 'You must select at least one option'
+              );
             },
           }}
           render={({ field }) => {
@@ -240,9 +232,7 @@ function ChoiceOptions({
                     }}
                   >
                     {options.map((option, index) => {
-                      const currentValue = Array.isArray(field.value)
-                        ? field.value
-                        : [];
+                      const currentValue = Array.isArray(field.value) ? field.value : [];
                       const isChecked = currentValue.includes(option.id);
 
                       return (
@@ -254,14 +244,10 @@ function ChoiceOptions({
                               onChange={(e) => {
                                 const newValue = e.target.checked
                                   ? [...currentValue, option.id]
-                                  : currentValue.filter(
-                                      (id) => id !== option.id
-                                    );
+                                  : currentValue.filter((id) => id !== option.id);
                                 field.onChange(newValue);
                               }}
-                              disabled={
-                                isOptionDisabled(option) || isSubmitting
-                              }
+                              disabled={isOptionDisabled(option) || isSubmitting}
                               value={option.id}
                               name="answer[]"
                               sx={{ mx: 1 }}
@@ -278,52 +264,46 @@ function ChoiceOptions({
                   </FormGroup>
                 </FormControl>
               );
-            } 
-              // Single choice mode: render radio buttons in RadioGroup
-              return (
-                <FormControl
-                  component="fieldset"
-                  error={!!errors.answer}
-                  disabled={isSubmitting}
+            }
+            // Single choice mode: render radio buttons in RadioGroup
+            return (
+              <FormControl
+                component="fieldset"
+                error={!!errors.answer}
+                disabled={isSubmitting}
+                sx={{
+                  display: 'flex',
+                  flexDirection: displayLayout === 'horizontal' ? 'row' : 'column',
+                }}
+              >
+                <RadioGroup
+                  name="answer"
+                  value={field.value || ''}
+                  onChange={(e) => {
+                    field.onChange(Number(e.target.value));
+                  }}
                   sx={{
-                    display: 'flex',
                     flexDirection: displayLayout === 'horizontal' ? 'row' : 'column',
+                    gap: displayLayout === 'horizontal' ? 2 : 1,
                   }}
                 >
-                  <RadioGroup
-                    name="answer"
-                    value={field.value || ''}
-                    onChange={(e) => {
-                      field.onChange(Number(e.target.value));
-                    }}
-                    sx={{
-                      flexDirection: displayLayout === 'horizontal' ? 'row' : 'column',
-                      gap: displayLayout === 'horizontal' ? 2 : 1,
-                    }}
-                  >
-                    {options.map((option, index) => (
-                      <FormControlLabel
-                        key={`choice_${index + 1}`}
-                        value={option.id}
-                        control={
-                          <Radio
-                            disabled={
-                              isOptionDisabled(option) || isSubmitting
-                            }
-                            sx={{ mx: 1 }}
-                          />
-                        }
-                        label={renderOptionLabel(option)}
-                        sx={{
-                          alignItems: 'flex-start',
-                          mr: displayLayout === 'horizontal' ? 3 : 0,
-                        }}
-                      />
-                    ))}
-                  </RadioGroup>
-                </FormControl>
-              );
-            
+                  {options.map((option, index) => (
+                    <FormControlLabel
+                      key={`choice_${index + 1}`}
+                      value={option.id}
+                      control={
+                        <Radio disabled={isOptionDisabled(option) || isSubmitting} sx={{ mx: 1 }} />
+                      }
+                      label={renderOptionLabel(option)}
+                      sx={{
+                        alignItems: 'flex-start',
+                        mr: displayLayout === 'horizontal' ? 3 : 0,
+                      }}
+                    />
+                  ))}
+                </RadioGroup>
+              </FormControl>
+            );
           }}
         />
 
@@ -351,13 +331,7 @@ function ChoiceOptions({
                 variant="contained"
                 color="primary"
                 disabled={isSubmitting}
-                startIcon={
-                  isSubmitting ? (
-                    <CircularProgress size={20} color="inherit" />
-                  ) : (
-                    <Save />
-                  )
-                }
+                startIcon={isSubmitting ? <CircularProgress size={20} color="inherit" /> : <Save />}
               >
                 {isSubmitting ? 'Saving...' : 'Save my choice'}
               </Button>
@@ -384,9 +358,7 @@ function ChoiceOptions({
 
         {/* Display message for users without capability */}
         {!previewOnly && !hascapability && (
-          <Alert severity="info">
-            You must be enrolled to make a choice
-          </Alert>
+          <Alert severity="info">You must be enrolled to make a choice</Alert>
         )}
       </Stack>
     </Box>

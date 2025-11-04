@@ -1,14 +1,14 @@
 /**
  * Forum Activity Module Type Definitions
- * 
+ *
  * Comprehensive TypeScript type definitions for the forum activity module.
  * These types map directly to Moodle's mod_forum PHP entity classes and constants.
- * 
+ *
  * @package    react-frontend
  * @subpackage features/activities/forums
  * @copyright  2024 Moodle React Frontend
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * 
+ *
  * Source References:
  * - public/mod/forum/classes/local/entities/author.php
  * - public/mod/forum/classes/local/entities/forum.php

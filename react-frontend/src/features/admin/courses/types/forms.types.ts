@@ -1,9 +1,9 @@
 /**
  * TypeScript type definitions for course and category administration forms.
- * 
+ *
  * These interfaces map to Moodle's course edit form (public/course/edit_form.php)
  * and category edit form (public/course/classes/editcategory_form.php).
- * 
+ *
  * @module features/admin/courses/types
  */
 
@@ -56,16 +56,16 @@ export enum DownloadContent {
 
 /**
  * Form data structure for course creation and editing.
- * 
+ *
  * This interface represents the complete set of fields available in the
  * Moodle course edit form. When creating a new course, the 'id' field
  * should be undefined. When editing, 'id' should contain the course ID.
- * 
+ *
  * Required fields for course creation:
  * - fullname: The full name of the course
  * - shortname: The short name/code for the course
  * - category: The category ID where the course belongs
- * 
+ *
  * @see public/course/edit_form.php
  */
 export interface CourseFormData {
@@ -176,15 +176,15 @@ export interface CourseFormData {
 
 /**
  * Form data structure for category creation and editing.
- * 
+ *
  * This interface represents the fields available in the Moodle
  * course category edit form. Categories organize courses into
  * a hierarchical structure.
- * 
+ *
  * Required fields for category creation:
  * - name: The name of the category
  * - parent: The parent category ID (0 for top-level)
- * 
+ *
  * @see public/course/classes/editcategory_form.php
  */
 export interface CategoryFormData {

@@ -1,22 +1,22 @@
 /**
  * API Client Configuration
- * 
+ *
  * Provides a configured Axios instance for making HTTP requests to the Moodle API.
  * Includes request/response interceptors for:
  * - JWT token injection
  * - Token refresh on expiration
  * - Error handling and transformation
  * - Request/response logging (development only)
- * 
+ *
  * All API endpoints use this client to ensure consistent authentication,
  * error handling, and request/response processing.
- * 
+ *
  * Based on Agent Action Plan requirements:
  * - JWT tokens in Authorization header
  * - Automatic token refresh on 401 responses
  * - Standard error response transformation
  * - CORS support for cross-origin requests
- * 
+ *
  * @package react-frontend
  * @subpackage services/api
  */
@@ -63,7 +63,10 @@ const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?
  * Request timeout in milliseconds
  * Can be overridden via VITE_API_TIMEOUT environment variable
  */
-const API_TIMEOUT = parseInt((import.meta.env.VITE_API_TIMEOUT as string | undefined) ?? '30000', 10);
+const API_TIMEOUT = parseInt(
+  (import.meta.env.VITE_API_TIMEOUT as string | undefined) ?? '30000',
+  10
+);
 
 /**
  * Whether to include credentials (cookies) in requests
@@ -83,7 +86,7 @@ export const apiClient: AxiosInstance = axios.create({
   withCredentials: WITH_CREDENTIALS,
   headers: {
     'Content-Type': 'application/json',
-    'Accept': 'application/json',
+    Accept: 'application/json',
   },
 });
 
@@ -160,11 +163,11 @@ export function clearTokens(): void {
 apiClient.interceptors.request.use(
   (config) => {
     const token = getAccessToken();
-    
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    
+
     // Log request in development
     if (import.meta.env.DEV) {
       // eslint-disable-next-line no-console
@@ -173,7 +176,7 @@ apiClient.interceptors.request.use(
         data: config.data as unknown,
       });
     }
-    
+
     return config;
   },
   (error) => {
@@ -217,34 +220,34 @@ function onTokenRefreshed(token: string): void {
 async function refreshAccessToken(): Promise<string | null> {
   try {
     const refreshToken = getRefreshToken();
-    
+
     if (!refreshToken) {
       throw new Error('No refresh token available');
     }
-    
+
     // Call refresh endpoint without interceptors to avoid infinite loop
     const response = await axios.post<ApiResponse<TokenRefreshResponse>>(
       `${API_BASE_URL}/auth/refresh`,
       { refreshToken },
       { withCredentials: WITH_CREDENTIALS }
     );
-    
+
     const tokenData = response.data;
-    const { accessToken, refreshToken: newRefreshToken } = 
+    const { accessToken, refreshToken: newRefreshToken } =
       'data' in tokenData ? tokenData.data : { accessToken: '', refreshToken: '' };
-    
+
     setTokens(accessToken, newRefreshToken);
-    
+
     return accessToken;
   } catch (error) {
     console.error('[Token Refresh Error]', error);
     clearTokens();
-    
+
     // Redirect to login page
     if (typeof window !== 'undefined') {
       window.location.href = '/login';
     }
-    
+
     return null;
   }
 }
@@ -257,17 +260,20 @@ apiClient.interceptors.response.use(
     // Log response in development
     if (import.meta.env.DEV) {
       // eslint-disable-next-line no-console
-      console.log(`[API Response] ${response.config.method?.toUpperCase()} ${response.config.url}`, {
-        status: response.status,
-        data: response.data as unknown,
-      });
+      console.log(
+        `[API Response] ${response.config.method?.toUpperCase()} ${response.config.url}`,
+        {
+          status: response.status,
+          data: response.data as unknown,
+        }
+      );
     }
-    
+
     return response;
   },
   async (error: AxiosError) => {
     const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
-    
+
     // Log error in development
     if (import.meta.env.DEV) {
       console.error('[API Response Error]', {
@@ -276,7 +282,7 @@ apiClient.interceptors.response.use(
         data: error.response?.data,
       });
     }
-    
+
     // Handle 401 Unauthorized - attempt token refresh
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
@@ -290,25 +296,25 @@ apiClient.interceptors.response.use(
           });
         });
       }
-      
+
       originalRequest._retry = true;
       isRefreshing = true;
-      
+
       const newToken = await refreshAccessToken();
-      
+
       isRefreshing = false;
-      
+
       if (newToken) {
         onTokenRefreshed(newToken);
-        
+
         if (originalRequest.headers) {
           originalRequest.headers.Authorization = `Bearer ${newToken}`;
         }
-        
+
         return apiClient(originalRequest);
       }
     }
-    
+
     // Transform error response
     const errorData = error.response?.data as ApiErrorData | undefined;
     const apiError: ApiErrorResponse = {
@@ -320,7 +326,7 @@ apiClient.interceptors.response.use(
         details: errorData?.error?.details,
       },
     };
-    
+
     return Promise.reject(apiError);
   }
 );
@@ -337,7 +343,7 @@ export function extractData<T>(response: AxiosResponse<ApiResponse<T>>): T {
   if (response.data && 'success' in response.data && response.data.success) {
     return response.data.data;
   }
-  
+
   // Fallback for non-standard responses
   return response.data as unknown as T;
 }
@@ -362,15 +368,15 @@ export function getErrorMessage(error: unknown): string {
   if (isApiError(error)) {
     return error.error.message;
   }
-  
+
   if (error instanceof Error) {
     return error.message;
   }
-  
+
   if (typeof error === 'string') {
     return error;
   }
-  
+
   return 'An unexpected error occurred';
 }
 

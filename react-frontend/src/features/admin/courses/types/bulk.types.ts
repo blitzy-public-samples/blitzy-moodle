@@ -1,10 +1,10 @@
 /**
  * Bulk Course Operations Type Definitions
- * 
+ *
  * This file contains TypeScript interface definitions for bulk course operations
  * in the admin course management system. It provides type safety for mass course
  * modifications including delete, move, visibility changes, backup, and reset operations.
- * 
+ *
  * @module features/admin/courses/types/bulk.types
  */
 
@@ -15,16 +15,16 @@
 export enum BulkActionType {
   /** Delete selected courses permanently */
   DELETE = 'delete',
-  
+
   /** Move courses to a different category */
   MOVE_TO_CATEGORY = 'move_to_category',
-  
+
   /** Change visibility status (hide/show) of courses */
   CHANGE_VISIBILITY = 'change_visibility',
-  
+
   /** Create backup files for selected courses */
   BACKUP = 'backup',
-  
+
   /** Reset courses to initial state (remove user data) */
   RESET = 'reset',
 }
@@ -39,7 +39,7 @@ export interface BulkActionParameters {
    * Required when action is MOVE_TO_CATEGORY.
    */
   categoryId?: number;
-  
+
   /**
    * Visibility status for change_visibility operations.
    * - true: Make courses visible
@@ -47,7 +47,7 @@ export interface BulkActionParameters {
    * Required when action is CHANGE_VISIBILITY.
    */
   visible?: boolean;
-  
+
   /**
    * Backup configuration for backup operations.
    * Specifies what to include in the backup.
@@ -62,7 +62,7 @@ export interface BulkActionParameters {
     /** Include grade history in backup */
     includeGradeHistory?: boolean;
   };
-  
+
   /**
    * Reset configuration for reset operations.
    * Specifies what to reset in the courses.
@@ -92,17 +92,17 @@ export interface BulkActionError {
    * ID of the course that encountered an error.
    */
   courseId: number;
-  
+
   /**
    * Name of the course for user-friendly error reporting.
    */
   courseName: string;
-  
+
   /**
    * Human-readable error message describing what went wrong.
    */
   message: string;
-  
+
   /**
    * Error code for programmatic error handling.
    * Common codes include:
@@ -125,18 +125,18 @@ export interface BulkActionResult {
    * Number of courses successfully processed.
    */
   successCount: number;
-  
+
   /**
    * Number of courses that failed to process.
    */
   failedCount: number;
-  
+
   /**
    * Total number of courses targeted by the operation.
    * Should equal successCount + failedCount.
    */
   totalCount: number;
-  
+
   /**
    * Array of detailed error information for failed courses.
    * Empty array if all courses processed successfully.
@@ -153,13 +153,13 @@ export interface BulkCourseAction {
    * Type of bulk action to perform on the selected courses.
    */
   action: BulkActionType;
-  
+
   /**
    * Array of course IDs to be affected by the bulk action.
    * Must contain at least one course ID.
    */
   courseIds: number[];
-  
+
   /**
    * Optional parameters specific to the action type.
    * Required fields depend on the action:
@@ -170,7 +170,7 @@ export interface BulkCourseAction {
    * - DELETE: no parameters needed
    */
   parameters?: BulkActionParameters;
-  
+
   /**
    * Result of the bulk operation after execution.
    * Undefined before the operation is performed.

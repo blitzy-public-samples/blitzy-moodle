@@ -1,9 +1,9 @@
 /**
  * AvatarUpload Component
- * 
+ *
  * Component for uploading and managing user profile avatars.
  * Supports drag-and-drop, file validation, preview, and deletion.
- * 
+ *
  * @module features/profile/components
  */
 
@@ -98,10 +98,10 @@ const AVATAR_SIZES = {
 
 /**
  * AvatarUpload Component
- * 
+ *
  * Interactive component for managing user avatars with drag-and-drop support,
  * validation, preview, and deletion capabilities.
- * 
+ *
  * @example
  * ```tsx
  * <AvatarUpload
@@ -127,7 +127,7 @@ export function AvatarUpload({
   const [preview, setPreview] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
-  
+
   // Refs
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -163,10 +163,7 @@ export function AvatarUpload({
     },
   });
 
-  const {
-    mutate: deleteAvatar,
-    isPending: isDeleting,
-  } = useDeleteAvatar(userId, {
+  const { mutate: deleteAvatar, isPending: isDeleting } = useDeleteAvatar(userId, {
     onSuccess: () => {
       setPreview(null);
       setValidationError(null);
@@ -299,7 +296,7 @@ export function AvatarUpload({
   const handleDrag = useCallback((event: React.DragEvent) => {
     event.preventDefault();
     event.stopPropagation();
-    
+
     if (event.type === 'dragenter' || event.type === 'dragover') {
       setDragActive(true);
     } else if (event.type === 'dragleave') {
@@ -443,12 +440,7 @@ export function AvatarUpload({
 
         {allowDelete && currentAvatarUrl && (
           <Tooltip title="Remove avatar">
-            <IconButton
-              color="error"
-              onClick={handleDelete}
-              disabled={isProcessing}
-              size="small"
-            >
+            <IconButton color="error" onClick={handleDelete} disabled={isProcessing} size="small">
               <DeleteIcon />
             </IconButton>
           </Tooltip>

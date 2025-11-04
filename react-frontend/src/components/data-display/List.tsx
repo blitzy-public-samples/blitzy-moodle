@@ -1,10 +1,10 @@
 /**
  * List Component
- * 
+ *
  * A flexible list component extending MUI List for displaying collections of items
  * with avatars, actions, and customizable rendering. Used throughout the application
  * for users, courses, assignments, messages, and forum discussions.
- * 
+ *
  * Features:
  * - Optional avatars (user photos, course icons)
  * - Primary and secondary text content
@@ -19,7 +19,7 @@
  * - Light and dark mode support via MUI theme
  */
 
-import type { ReactNode, MouseEvent} from 'react';
+import type { ReactNode, MouseEvent } from 'react';
 import React, { useMemo, useCallback } from 'react';
 import {
   List as MuiList,
@@ -95,7 +95,7 @@ export interface ListProps {
 /**
  * List component for displaying collections of items with consistent styling
  * and interaction patterns throughout the Moodle React frontend.
- * 
+ *
  * @example
  * // Basic usage with users
  * <List
@@ -117,7 +117,7 @@ export interface ListProps {
  *   showDividers
  *   ariaLabel="Users list"
  * />
- * 
+ *
  * @example
  * // Custom rendering
  * <List
@@ -289,26 +289,22 @@ function List({
       // Use custom renderer if provided
       if (renderItem) {
         const customItem = renderItem(item, index);
-        
+
         // If custom renderer returns a ListItem or ListItemButton, use it directly
         if (React.isValidElement(customItem)) {
           return (
             <React.Fragment key={item.id}>
               {customItem}
-              {showDividers && index < items.length - 1 && (
-                <Divider component="li" />
-              )}
+              {showDividers && index < items.length - 1 && <Divider component="li" />}
             </React.Fragment>
           );
         }
-        
+
         // Otherwise wrap in ListItem
         return (
           <React.Fragment key={item.id}>
             <ListItem>{customItem}</ListItem>
-            {showDividers && index < items.length - 1 && (
-              <Divider component="li" />
-            )}
+            {showDividers && index < items.length - 1 && <Divider component="li" />}
           </React.Fragment>
         );
       }
@@ -317,21 +313,14 @@ function List({
       return (
         <React.Fragment key={item.id}>
           {renderDefaultItem(item)}
-          {showDividers && index < items.length - 1 && (
-            <Divider component="li" />
-          )}
+          {showDividers && index < items.length - 1 && <Divider component="li" />}
         </React.Fragment>
       );
     });
   }, [items, renderItem, showDividers, renderDefaultItem]);
 
   return (
-    <MuiList
-      dense={dense}
-      aria-label={ariaLabel}
-      className={className}
-      sx={sx}
-    >
+    <MuiList dense={dense} aria-label={ariaLabel} className={className} sx={sx}>
       {listItems}
     </MuiList>
   );

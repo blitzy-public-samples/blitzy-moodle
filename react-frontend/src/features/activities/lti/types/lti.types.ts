@@ -1,11 +1,11 @@
 /**
  * TypeScript type definitions for the LTI (Learning Tools Interoperability) activity module
- * 
+ *
  * These types are based on:
  * - Database schema from public/mod/lti/db/install.xml
  * - External API structures from public/mod/lti/classes/external.php
  * - Constants from public/mod/lti/locallib.php
- * 
+ *
  * @package react-frontend
  * @subpackage features/activities/lti
  */

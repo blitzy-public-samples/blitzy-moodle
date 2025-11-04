@@ -1,19 +1,19 @@
 /**
  * Profile Feature - Barrel Export
- * 
+ *
  * This file serves as the public API for the profile feature module.
  * It re-exports all public components, pages, hooks, and types for convenient
  * importing throughout the application.
- * 
+ *
  * Usage:
  * ```typescript
  * // Instead of:
  * import { ProfileView } from '@/features/profile/components/ProfileView';
- * 
+ *
  * // Use:
  * import { ProfileView } from '@/features/profile';
  * ```
- * 
+ *
  * @module features/profile
  */
 

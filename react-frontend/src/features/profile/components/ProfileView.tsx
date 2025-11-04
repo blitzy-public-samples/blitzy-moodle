@@ -1,9 +1,9 @@
 /**
  * ProfileView Component
- * 
+ *
  * Displays user profile information in a read-only format.
  * Shows avatar, personal details, contact information, and custom fields.
- * 
+ *
  * @module features/profile/components
  */
 
@@ -62,13 +62,13 @@ export interface ProfileViewProps {
 
 /**
  * ProfileView Component
- * 
+ *
  * Renders a comprehensive view of user profile information with avatar,
  * personal details, contact information, and metadata.
- * 
+ *
  * @example
  * ```tsx
- * <ProfileView 
+ * <ProfileView
  *   user={userProfile}
  *   showEditButton={canEdit}
  *   onEdit={() => navigate('/profile/edit')}
@@ -103,7 +103,10 @@ export function ProfileView({
     if (!user.interests) {
       return [];
     }
-    return user.interests.split(',').map((i) => i.trim()).filter(Boolean);
+    return user.interests
+      .split(',')
+      .map((i) => i.trim())
+      .filter(Boolean);
   };
 
   if (compact) {
@@ -131,11 +134,7 @@ export function ProfileView({
       <CardContent>
         {/* Header Section with Avatar and Basic Info */}
         <Box display="flex" alignItems="flex-start" gap={3} mb={3}>
-          <Avatar
-            src={user.profileimageurl}
-            alt={user.fullname}
-            sx={{ width: 120, height: 120 }}
-          />
+          <Avatar src={user.profileimageurl} alt={user.fullname} sx={{ width: 120, height: 120 }} />
           <Box flex={1}>
             <Typography variant="h4" gutterBottom>
               {user.fullname}
@@ -143,7 +142,7 @@ export function ProfileView({
             <Typography variant="subtitle1" color="text.secondary" gutterBottom>
               @{user.username}
             </Typography>
-            
+
             {user.description && (
               <Typography
                 variant="body2"
@@ -157,12 +156,7 @@ export function ProfileView({
             {getInterests().length > 0 && (
               <Stack direction="row" spacing={1} mt={2} flexWrap="wrap" useFlexGap>
                 {getInterests().map((interest) => (
-                  <Chip
-                    key={interest}
-                    label={interest}
-                    size="small"
-                    variant="outlined"
-                  />
+                  <Chip key={interest} label={interest} size="small" variant="outlined" />
                 ))}
               </Stack>
             )}

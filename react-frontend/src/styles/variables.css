@@ -1,206 +1,236 @@
 /**
  * CSS Custom Properties (Variables)
  * 
- * Centralized design tokens for consistent theming across the application.
- * These variables are used throughout global.css and can be overridden
- * by MUI theme or dark mode preferences.
+ * Centralized design tokens for the Moodle React frontend application.
+ * Based on Bootstrap 5 and Moodle Boost theme variables with Material-UI
+ * compatibility for consistent theming and runtime theme switching.
+ * 
+ * Sources:
+ * - Bootstrap 5 variables (_variables.scss)
+ * - Moodle Boost theme variables (moodle/variables.scss)
+ * - Material-UI v5 design system (8px spacing base)
  * 
  * @file variables.css
- * @description Design system tokens for Moodle React frontend
+ * @description Design system tokens with light/dark mode support
  */
 
 /* ============================================================================
-   Color Palette - Material Design Inspired
+   ROOT VARIABLES - Light Mode (Default)
    ============================================================================ */
 
 :root {
-  /* Primary Colors - Blue */
-  --primary-main: #1976d2;
-  --primary-light: #42a5f5;
-  --primary-dark: #1565c0;
-  --primary-contrast-text: #ffffff;
+  /* ===== COLOR SYSTEM - Grays ===== */
+  --color-white: #ffffff;
+  --color-black: #000000;
+  
+  --color-gray-100: #f8f9fa;
+  --color-gray-200: #e9ecef;
+  --color-gray-300: #dee2e6;
+  --color-gray-400: #ced4da;
+  --color-gray-500: #adb5bd;
+  --color-gray-600: #6c757d;
+  --color-gray-700: #495057;
+  --color-gray-800: #343a40;
+  --color-gray-900: #212529;
 
-  /* Secondary Colors - Purple */
-  --secondary-main: #9c27b0;
-  --secondary-light: #ba68c8;
-  --secondary-dark: #7b1fa2;
-  --secondary-contrast-text: #ffffff;
+  /* ===== BRAND COLORS - Bootstrap Theme Colors ===== */
+  --color-primary: #0d6efd;
+  --color-primary-light: #6ea8fe;
+  --color-primary-dark: #0a58ca;
+  
+  --color-secondary: #6c757d;
+  --color-secondary-light: #adb5bd;
+  --color-secondary-dark: #495057;
+  
+  --color-success: #198754;
+  --color-success-light: #75b798;
+  --color-success-dark: #146c43;
+  
+  --color-info: #0dcaf0;
+  --color-info-light: #6edff6;
+  --color-info-dark: #087990;
+  
+  --color-warning: #ffc107;
+  --color-warning-light: #ffda6a;
+  --color-warning-dark: #cc9a06;
+  
+  --color-danger: #dc3545;
+  --color-danger-light: #ea868f;
+  --color-danger-dark: #b02a37;
+  
+  --color-light: #f8f9fa;
+  --color-dark: #212529;
 
-  /* Error Colors - Red */
-  --error-main: #d32f2f;
-  --error-light: #ef5350;
-  --error-dark: #c62828;
-  --error-contrast-text: #ffffff;
+  /* ===== SEMANTIC COLORS - Text Emphasis ===== */
+  --color-primary-text: #052c65;
+  --color-secondary-text: #2b2f32;
+  --color-success-text: #0a3622;
+  --color-info-text: #055160;
+  --color-warning-text: #664d03;
+  --color-danger-text: #58151c;
 
-  /* Warning Colors - Orange */
-  --warning-main: #ed6c02;
-  --warning-light: #ff9800;
-  --warning-dark: #e65100;
-  --warning-contrast-text: #ffffff;
+  /* ===== SEMANTIC COLORS - Background Subtle ===== */
+  --color-primary-bg-subtle: #cfe2ff;
+  --color-secondary-bg-subtle: #e2e3e5;
+  --color-success-bg-subtle: #d1e7dd;
+  --color-info-bg-subtle: #cff4fc;
+  --color-warning-bg-subtle: #fff3cd;
+  --color-danger-bg-subtle: #f8d7da;
+  --color-light-bg-subtle: #fcfcfd;
+  --color-dark-bg-subtle: #ced4da;
 
-  /* Info Colors - Light Blue */
-  --info-main: #0288d1;
-  --info-light: #03a9f4;
-  --info-dark: #01579b;
-  --info-contrast-text: #ffffff;
+  /* ===== SEMANTIC COLORS - Border Subtle ===== */
+  --color-primary-border-subtle: #9ec5fe;
+  --color-secondary-border-subtle: #c4c8cb;
+  --color-success-border-subtle: #a3cfbb;
+  --color-info-border-subtle: #9eeaf9;
+  --color-warning-border-subtle: #ffe69c;
+  --color-danger-border-subtle: #f1aeb5;
+  --color-light-border-subtle: #e9ecef;
+  --color-dark-border-subtle: #adb5bd;
 
-  /* Success Colors - Green */
-  --success-main: #2e7d32;
-  --success-light: #4caf50;
-  --success-dark: #1b5e20;
-  --success-contrast-text: #ffffff;
+  /* ===== BODY & TEXT COLORS ===== */
+  --body-bg: #ffffff;
+  --body-color: #212529;
+  --body-color-secondary: rgba(33, 37, 41, 0.75);
+  --body-color-tertiary: rgba(33, 37, 41, 0.5);
+  --body-emphasis-color: #000000;
+  
+  --text-primary: #212529;
+  --text-secondary: rgba(33, 37, 41, 0.75);
+  --text-disabled: rgba(33, 37, 41, 0.5);
+  --text-muted: #6c757d;
 
-  /* Grey Palette */
-  --grey-50: #fafafa;
-  --grey-100: #f5f5f5;
-  --grey-200: #eeeeee;
-  --grey-300: #e0e0e0;
-  --grey-400: #bdbdbd;
-  --grey-500: #9e9e9e;
-  --grey-600: #757575;
-  --grey-700: #616161;
-  --grey-800: #424242;
-  --grey-900: #212121;
+  /* ===== LINK COLORS ===== */
+  --link-color: #0d6efd;
+  --link-hover-color: #0a58ca;
+  --link-decoration: underline;
 
-  /* Text Colors */
-  --text-primary: #212121;
-  --text-secondary: #666666;
-  --text-disabled: #9e9e9e;
-  --text-hint: #9e9e9e;
+  /* ===== BORDER & DIVIDER ===== */
+  --border-color: #dee2e6;
+  --border-color-translucent: rgba(0, 0, 0, 0.175);
+  --divider-color: #dee2e6;
 
-  /* Background Colors */
-  --background-default: #fafafa;
-  --background-paper: #ffffff;
-  --background-overlay: rgba(0, 0, 0, 0.5);
+  /* ===== MOODLE-SPECIFIC COLORS ===== */
+  --state-success-bg: #d1f2eb;
+  --state-success-border: #7edcc7;
+  
+  --state-info-bg: #d1ecf1;
+  --state-info-border: #7dd3e5;
+  
+  --state-warning-bg: #fff3cd;
+  --state-warning-border: #fff3cd;
+  
+  --state-danger-bg: #f8d7da;
+  --state-danger-border: #f1aeb5;
 
-  /* Divider and Border Colors */
-  --divider: #e0e0e0;
-  --border-color: #e0e0e0;
-  --outline-color: #bdbdbd;
+  /* ===== ACTIVITY ICON COLORS ===== */
+  --activity-icon-administration: #da58ef;
+  --activity-icon-assessment: #f90086;
+  --activity-icon-collaboration: #5b40ff;
+  --activity-icon-communication: #eb6200;
+  --activity-icon-content: #0099ad;
+  --activity-icon-interactivecontent: #8d3d1b;
 
-  /* Link Colors */
-  --link-color: #1976d2;
-  --link-hover-color: #1565c0;
-  --link-active-color: #0d47a1;
-  --link-visited-color: #7b1fa2;
+  /* ===== SPACING - Material-UI 8px base unit aligned with Bootstrap ===== */
+  --spacing-0: 0;
+  --spacing-1: 0.25rem;  /* 4px - equivalent to Bootstrap spacer * 0.25 */
+  --spacing-2: 0.5rem;   /* 8px - MUI base unit, Bootstrap spacer * 0.5 */
+  --spacing-3: 1rem;     /* 16px - Bootstrap base spacer */
+  --spacing-4: 1.5rem;   /* 24px - Bootstrap spacer * 1.5 */
+  --spacing-5: 3rem;     /* 48px - Bootstrap spacer * 3 */
+  --spacing-6: 4rem;     /* 64px - additional for large gaps */
+  --spacing-7: 6rem;     /* 96px - additional for extra-large gaps */
+  --spacing-8: 8rem;     /* 128px - additional for maximum gaps */
 
-  /* ============================================================================
-     Typography
-     ============================================================================ */
+  /* ===== TYPOGRAPHY - Font Families ===== */
+  --font-family-sans-serif: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", "Liberation Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-family-monospace: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-family-base: var(--font-family-sans-serif);
+  --font-family-code: var(--font-family-monospace);
 
-  /* Font Families */
-  --font-family-base:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell',
-    'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-  --font-family-monospace: 'Courier New', Courier, monospace;
-  --font-family-heading: inherit;
+  /* ===== TYPOGRAPHY - Font Sizes ===== */
+  --font-size-root: 16px;
+  --font-size-base: 1rem;      /* 16px */
+  --font-size-sm: 0.875rem;    /* 14px */
+  --font-size-lg: 1.25rem;     /* 20px */
+  --font-size-xs: 0.75rem;     /* 12px - additional for small text */
+  --font-size-xl: 1.5rem;      /* 24px - additional for large text */
 
-  /* Font Sizes */
-  --font-size-xs: 0.75rem; /* 12px */
-  --font-size-sm: 0.875rem; /* 14px */
-  --font-size-base: 1rem; /* 16px */
-  --font-size-md: 1.125rem; /* 18px */
-  --font-size-lg: 1.25rem; /* 20px */
-  --font-size-xl: 1.5rem; /* 24px */
-  --font-size-2xl: 1.875rem; /* 30px */
-  --font-size-3xl: 2.25rem; /* 36px */
+  /* ===== TYPOGRAPHY - Heading Sizes ===== */
+  --font-size-h1: 2.5rem;      /* 40px */
+  --font-size-h2: 2rem;        /* 32px */
+  --font-size-h3: 1.75rem;     /* 28px */
+  --font-size-h4: 1.5rem;      /* 24px */
+  --font-size-h5: 1.25rem;     /* 20px */
+  --font-size-h6: 1rem;        /* 16px */
 
-  /* Heading Font Sizes */
-  --font-size-h1: 2.5rem; /* 40px */
-  --font-size-h2: 2rem; /* 32px */
-  --font-size-h3: 1.75rem; /* 28px */
-  --font-size-h4: 1.5rem; /* 24px */
-  --font-size-h5: 1.25rem; /* 20px */
-  --font-size-h6: 1rem; /* 16px */
-
-  /* Font Weights */
+  /* ===== TYPOGRAPHY - Font Weights ===== */
+  --font-weight-lighter: lighter;
   --font-weight-light: 300;
   --font-weight-normal: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
-  --font-weight-extrabold: 800;
+  --font-weight-bolder: bolder;
+  --font-weight-base: 400;
 
-  /* Line Heights */
-  --line-height-tight: 1.2;
+  /* ===== TYPOGRAPHY - Line Heights ===== */
   --line-height-base: 1.5;
-  --line-height-relaxed: 1.75;
-  --line-height-loose: 2;
+  --line-height-sm: 1.25;
+  --line-height-lg: 2;
   --line-height-heading: 1.2;
 
-  /* Letter Spacing */
-  --letter-spacing-tight: -0.05em;
-  --letter-spacing-normal: 0;
-  --letter-spacing-wide: 0.05em;
-  --letter-spacing-wider: 0.1em;
-
-  /* ============================================================================
-     Spacing System - 8px Base Grid
-     ============================================================================ */
-
-  --spacing-0: 0;
-  --spacing-1: 0.25rem; /* 4px */
-  --spacing-2: 0.5rem; /* 8px */
-  --spacing-3: 1rem; /* 16px */
-  --spacing-4: 1.5rem; /* 24px */
-  --spacing-5: 2rem; /* 32px */
-  --spacing-6: 2.5rem; /* 40px */
-  --spacing-7: 3rem; /* 48px */
-  --spacing-8: 4rem; /* 64px */
-  --spacing-9: 5rem; /* 80px */
-  --spacing-10: 6rem; /* 96px */
-
-  /* ============================================================================
-     Border Radius
-     ============================================================================ */
-
+  /* ===== BORDER RADIUS ===== */
   --border-radius-none: 0;
-  --border-radius-sm: 4px;
-  --border-radius-base: 8px;
-  --border-radius-md: 12px;
-  --border-radius-lg: 16px;
-  --border-radius-xl: 24px;
-  --border-radius-full: 9999px;
+  --border-radius-sm: 0.25rem;    /* 4px */
+  --border-radius: 0.375rem;      /* 6px - default */
+  --border-radius-lg: 0.5rem;     /* 8px */
+  --border-radius-xl: 1rem;       /* 16px */
+  --border-radius-xxl: 2rem;      /* 32px */
+  --border-radius-pill: 50rem;    /* fully rounded */
+  --border-radius-circle: 50%;    /* circular */
 
-  /* ============================================================================
-     Shadows
-     ============================================================================ */
+  /* ===== BORDER WIDTH ===== */
+  --border-width: 1px;
+  --border-width-thick: 2px;
 
-  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-  --shadow-base: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  --shadow-2xl: 0 50px 100px -20px rgba(0, 0, 0, 0.25);
+  /* ===== SHADOWS - Bootstrap box-shadow system ===== */
+  --shadow-none: none;
+  --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  --shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+  --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.175);
+  --shadow-inset: inset 0 1px 2px rgba(0, 0, 0, 0.075);
+  
+  /* ===== SHADOWS - Material-UI elevation system ===== */
+  --shadow-elevation-0: none;
+  --shadow-elevation-1: 0px 2px 1px -1px rgba(0,0,0,0.2), 0px 1px 1px 0px rgba(0,0,0,0.14), 0px 1px 3px 0px rgba(0,0,0,0.12);
+  --shadow-elevation-2: 0px 3px 1px -2px rgba(0,0,0,0.2), 0px 2px 2px 0px rgba(0,0,0,0.14), 0px 1px 5px 0px rgba(0,0,0,0.12);
+  --shadow-elevation-3: 0px 3px 3px -2px rgba(0,0,0,0.2), 0px 3px 4px 0px rgba(0,0,0,0.14), 0px 1px 8px 0px rgba(0,0,0,0.12);
+  --shadow-elevation-4: 0px 2px 4px -1px rgba(0,0,0,0.2), 0px 4px 5px 0px rgba(0,0,0,0.14), 0px 1px 10px 0px rgba(0,0,0,0.12);
+  --shadow-elevation-6: 0px 3px 5px -1px rgba(0,0,0,0.2), 0px 6px 10px 0px rgba(0,0,0,0.14), 0px 1px 18px 0px rgba(0,0,0,0.12);
+  --shadow-elevation-8: 0px 5px 5px -3px rgba(0,0,0,0.2), 0px 8px 10px 1px rgba(0,0,0,0.14), 0px 3px 14px 2px rgba(0,0,0,0.12);
+  --shadow-elevation-12: 0px 7px 8px -4px rgba(0,0,0,0.2), 0px 12px 17px 2px rgba(0,0,0,0.14), 0px 5px 22px 4px rgba(0,0,0,0.12);
+  --shadow-elevation-16: 0px 8px 10px -5px rgba(0,0,0,0.2), 0px 16px 24px 2px rgba(0,0,0,0.14), 0px 6px 30px 5px rgba(0,0,0,0.12);
+  --shadow-elevation-24: 0px 11px 15px -7px rgba(0,0,0,0.2), 0px 24px 38px 3px rgba(0,0,0,0.14), 0px 9px 46px 8px rgba(0,0,0,0.12);
 
-  /* ============================================================================
-     Z-Index Scale
-     ============================================================================ */
+  /* ===== SHADOWS - Moodle-specific ===== */
+  --shadow-drawer-left: -0.25rem 0.25rem 0.8rem rgba(0, 0, 0, 0.025);
+  --shadow-drawer-right: 0 0.25rem 0.8rem rgba(0, 0, 0, 0.025);
 
-  --z-index-dropdown: 1000;
-  --z-index-sticky: 1020;
-  --z-index-fixed: 1030;
-  --z-index-modal-backdrop: 1040;
-  --z-index-modal: 1050;
-  --z-index-popover: 1060;
-  --z-index-tooltip: 1070;
-  --z-index-notification: 1080;
+  /* ===== FOCUS RING ===== */
+  --focus-ring-width: 0.25rem;
+  --focus-ring-opacity: 0.25;
+  --focus-ring-color: rgba(13, 110, 253, 0.25);
+  --focus-ring-blur: 0;
 
-  /* ============================================================================
-     Breakpoints
-     ============================================================================ */
-
-  --breakpoint-xs: 0px;
-  --breakpoint-sm: 600px;
-  --breakpoint-md: 960px;
-  --breakpoint-lg: 1280px;
-  --breakpoint-xl: 1920px;
-
-  /* ============================================================================
-     Transitions
-     ============================================================================ */
-
+  /* ===== TRANSITIONS & ANIMATIONS ===== */
+  --transition-base: all 0.2s ease-in-out;
+  --transition-fade: opacity 0.15s linear;
+  --transition-collapse: height 0.35s ease;
+  --transition-collapse-width: width 0.35s ease;
+  
+  /* ===== TRANSITIONS - Durations ===== */
   --transition-duration-shortest: 150ms;
   --transition-duration-shorter: 200ms;
   --transition-duration-short: 250ms;
@@ -209,126 +239,278 @@
   --transition-duration-entering: 225ms;
   --transition-duration-leaving: 195ms;
 
-  --transition-easing-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-easing-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  /* ===== TRANSITIONS - Easing ===== */
   --transition-easing-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --transition-easing-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --transition-easing-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
   --transition-easing-sharp: cubic-bezier(0.4, 0, 0.6, 1);
 
-  /* ============================================================================
-     Component-Specific Variables
-     ============================================================================ */
+  /* ===== Z-INDEX LAYERS ===== */
+  --z-index-dropdown: 1000;
+  --z-index-sticky: 1020;
+  --z-index-fixed: 1030;
+  --z-index-modal-backdrop: 1040;
+  --z-index-modal: 1050;
+  --z-index-popover: 1060;
+  --z-index-tooltip: 1070;
+  --z-index-snackbar: 1400;
+  --z-index-drawer: 1200;
+  --z-index-app-bar: 1100;
+  --z-index-speed-dial: 1050;
 
-  /* Buttons */
-  --button-height-small: 32px;
-  --button-height-medium: 40px;
-  --button-height-large: 48px;
-  --button-padding-small: 0.5rem 1rem;
-  --button-padding-medium: 0.75rem 1.5rem;
-  --button-padding-large: 1rem 2rem;
+  /* ===== BREAKPOINTS (reference only, use in media queries) ===== */
+  --breakpoint-xs: 0px;
+  --breakpoint-sm: 576px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 992px;
+  --breakpoint-xl: 1200px;
+  --breakpoint-xxl: 1400px;
 
-  /* Input Fields */
-  --input-height-small: 32px;
-  --input-height-medium: 40px;
-  --input-height-large: 48px;
-  --input-padding-small: 0.5rem;
-  --input-padding-medium: 0.75rem;
-  --input-padding-large: 1rem;
+  /* ===== CONTAINER & LAYOUT ===== */
+  --container-max-width-sm: 540px;
+  --container-max-width-md: 720px;
+  --container-max-width-lg: 960px;
+  --container-max-width-xl: 1140px;
+  --container-max-width-xxl: 1320px;
 
-  /* Cards */
-  --card-padding: 1.5rem;
-  --card-border-radius: 8px;
-  --card-shadow: var(--shadow-sm);
+  /* ===== MOODLE-SPECIFIC DIMENSIONS ===== */
+  --navbar-height: 60px;
+  --sticky-footer-height: 80px;
+  --course-content-max-width: 830px;
+  --h5p-content-max-width: 960px;
+  --more-menu-height: 60px;
+  --activity-icon-container-height: 52px;
+  --activity-icon-container-width: 52px;
 
-  /* Navbar */
-  --navbar-height: 64px;
-  --navbar-background: #ffffff;
-  --navbar-shadow: var(--shadow-sm);
-
-  /* Sidebar */
-  --sidebar-width: 240px;
-  --sidebar-width-collapsed: 64px;
-  --sidebar-background: #ffffff;
-  --sidebar-shadow: var(--shadow-md);
-
-  /* Footer */
-  --footer-height: 64px;
-  --footer-background: #f5f5f5;
-
-  /* ============================================================================
-     Opacity Levels
-     ============================================================================ */
-
+  /* ===== OPACITY LEVELS ===== */
   --opacity-disabled: 0.38;
   --opacity-hover: 0.04;
   --opacity-selected: 0.08;
   --opacity-focus: 0.12;
   --opacity-activated: 0.12;
-
-  /* ============================================================================
-     Container Max Widths
-     ============================================================================ */
-
-  --container-xs: 444px;
-  --container-sm: 600px;
-  --container-md: 960px;
-  --container-lg: 1280px;
-  --container-xl: 1920px;
-
-  /* ============================================================================
-     Grid System
-     ============================================================================ */
-
-  --grid-columns: 12;
-  --grid-gutter: 24px;
-  --grid-margin: 24px;
 }
 
 /* ============================================================================
-   Dark Mode Variables
+   DARK MODE VARIABLES - Overrides for prefers-color-scheme: dark
    ============================================================================ */
 
-/**
- * Dark mode color overrides
- * Applied when dark mode is active via MUI theme or system preference
- */
 @media (prefers-color-scheme: dark) {
   :root {
-    /* Text Colors - Dark Mode */
+    /* ===== BRAND COLORS - Adjusted for dark mode ===== */
+    --color-primary: #6ea8fe;
+    --color-primary-light: #9ec5fe;
+    --color-primary-dark: #3d8bfd;
+    
+    --color-secondary: #adb5bd;
+    --color-secondary-light: #ced4da;
+    --color-secondary-dark: #6c757d;
+    
+    --color-success: #75b798;
+    --color-success-light: #a3cfbb;
+    --color-success-dark: #51a06f;
+    
+    --color-info: #6edff6;
+    --color-info-light: #9eeaf9;
+    --color-info-dark: #3dd5f3;
+    
+    --color-warning: #ffda6a;
+    --color-warning-light: #ffe69c;
+    --color-warning-dark: #ffc720;
+    
+    --color-danger: #ea868f;
+    --color-danger-light: #f1aeb5;
+    --color-danger-dark: #e35d6a;
+
+    /* ===== SEMANTIC COLORS - Dark mode backgrounds ===== */
+    --color-primary-bg-subtle: #031633;
+    --color-secondary-bg-subtle: #161719;
+    --color-success-bg-subtle: #051b11;
+    --color-info-bg-subtle: #032830;
+    --color-warning-bg-subtle: #332701;
+    --color-danger-bg-subtle: #2c0b0e;
+
+    /* ===== SEMANTIC COLORS - Dark mode borders ===== */
+    --color-primary-border-subtle: #084298;
+    --color-secondary-border-subtle: #41464b;
+    --color-success-border-subtle: #0f5132;
+    --color-info-border-subtle: #055160;
+    --color-warning-border-subtle: #997404;
+    --color-danger-border-subtle: #842029;
+
+    /* ===== BODY & TEXT COLORS - Dark mode ===== */
+    --body-bg: #212529;
+    --body-color: #dee2e6;
+    --body-color-secondary: rgba(222, 226, 230, 0.75);
+    --body-color-tertiary: rgba(222, 226, 230, 0.5);
+    --body-emphasis-color: #ffffff;
+    
     --text-primary: #ffffff;
-    --text-secondary: #b3b3b3;
-    --text-disabled: #666666;
-    --text-hint: #808080;
+    --text-secondary: rgba(255, 255, 255, 0.7);
+    --text-disabled: rgba(255, 255, 255, 0.5);
+    --text-muted: #adb5bd;
 
-    /* Background Colors - Dark Mode */
-    --background-default: #121212;
-    --background-paper: #1e1e1e;
-    --background-overlay: rgba(255, 255, 255, 0.1);
+    /* ===== LINK COLORS - Dark mode ===== */
+    --link-color: #6ea8fe;
+    --link-hover-color: #9ec5fe;
 
-    /* Divider and Border Colors - Dark Mode */
-    --divider: #424242;
-    --border-color: #424242;
-    --outline-color: #616161;
+    /* ===== BORDER & DIVIDER - Dark mode ===== */
+    --border-color: #495057;
+    --border-color-translucent: rgba(255, 255, 255, 0.15);
+    --divider-color: #495057;
 
-    /* Link Colors - Dark Mode */
-    --link-color: #90caf9;
-    --link-hover-color: #64b5f6;
-    --link-active-color: #42a5f5;
-    --link-visited-color: #ce93d8;
+    /* ===== MOODLE-SPECIFIC - Dark mode state colors ===== */
+    --state-success-bg: #0f5132;
+    --state-success-border: #146c43;
+    
+    --state-info-bg: #055160;
+    --state-info-border: #087990;
+    
+    --state-warning-bg: #664d03;
+    --state-warning-border: #997404;
+    
+    --state-danger-bg: #842029;
+    --state-danger-border: #a52834;
 
-    /* Grey Palette - Dark Mode (inverted) */
-    --grey-50: #212121;
-    --grey-100: #424242;
-    --grey-200: #616161;
-    --grey-300: #757575;
-    --grey-400: #9e9e9e;
-    --grey-500: #bdbdbd;
-    --grey-600: #e0e0e0;
-    --grey-700: #eeeeee;
-    --grey-800: #f5f5f5;
-    --grey-900: #fafafa;
+    /* ===== FOCUS RING - Dark mode ===== */
+    --focus-ring-color: rgba(110, 168, 254, 0.25);
+
+    /* ===== SHADOWS - Adjusted for dark mode ===== */
+    --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.5);
+    --shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.6);
+    --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.7);
+    
+    /* Material-UI elevations adjusted for dark mode */
+    --shadow-elevation-1: 0px 2px 1px -1px rgba(0,0,0,0.5), 0px 1px 1px 0px rgba(0,0,0,0.35), 0px 1px 3px 0px rgba(0,0,0,0.3);
+    --shadow-elevation-2: 0px 3px 1px -2px rgba(0,0,0,0.5), 0px 2px 2px 0px rgba(0,0,0,0.35), 0px 1px 5px 0px rgba(0,0,0,0.3);
+    --shadow-elevation-3: 0px 3px 3px -2px rgba(0,0,0,0.5), 0px 3px 4px 0px rgba(0,0,0,0.35), 0px 1px 8px 0px rgba(0,0,0,0.3);
+    --shadow-elevation-4: 0px 2px 4px -1px rgba(0,0,0,0.5), 0px 4px 5px 0px rgba(0,0,0,0.35), 0px 1px 10px 0px rgba(0,0,0,0.3);
+    --shadow-elevation-6: 0px 3px 5px -1px rgba(0,0,0,0.5), 0px 6px 10px 0px rgba(0,0,0,0.35), 0px 1px 18px 0px rgba(0,0,0,0.3);
+    --shadow-elevation-8: 0px 5px 5px -3px rgba(0,0,0,0.5), 0px 8px 10px 1px rgba(0,0,0,0.35), 0px 3px 14px 2px rgba(0,0,0,0.3);
+    --shadow-elevation-12: 0px 7px 8px -4px rgba(0,0,0,0.5), 0px 12px 17px 2px rgba(0,0,0,0.35), 0px 5px 22px 4px rgba(0,0,0,0.3);
+    --shadow-elevation-16: 0px 8px 10px -5px rgba(0,0,0,0.5), 0px 16px 24px 2px rgba(0,0,0,0.35), 0px 6px 30px 5px rgba(0,0,0,0.3);
+    --shadow-elevation-24: 0px 11px 15px -7px rgba(0,0,0,0.5), 0px 24px 38px 3px rgba(0,0,0,0.35), 0px 9px 46px 8px rgba(0,0,0,0.3);
   }
 }
 
 /* ============================================================================
-   End of Variables
+   EXPLICIT DARK MODE CLASS - For manual theme switching
+   ============================================================================ */
+
+[data-theme="dark"] {
+  /* Apply same dark mode variables when theme is explicitly set to dark */
+  --color-primary: #6ea8fe;
+  --color-primary-light: #9ec5fe;
+  --color-primary-dark: #3d8bfd;
+  
+  --color-secondary: #adb5bd;
+  --color-secondary-light: #ced4da;
+  --color-secondary-dark: #6c757d;
+  
+  --color-success: #75b798;
+  --color-success-light: #a3cfbb;
+  --color-success-dark: #51a06f;
+  
+  --color-info: #6edff6;
+  --color-info-light: #9eeaf9;
+  --color-info-dark: #3dd5f3;
+  
+  --color-warning: #ffda6a;
+  --color-warning-light: #ffe69c;
+  --color-warning-dark: #ffc720;
+  
+  --color-danger: #ea868f;
+  --color-danger-light: #f1aeb5;
+  --color-danger-dark: #e35d6a;
+
+  --color-primary-bg-subtle: #031633;
+  --color-secondary-bg-subtle: #161719;
+  --color-success-bg-subtle: #051b11;
+  --color-info-bg-subtle: #032830;
+  --color-warning-bg-subtle: #332701;
+  --color-danger-bg-subtle: #2c0b0e;
+
+  --color-primary-border-subtle: #084298;
+  --color-secondary-border-subtle: #41464b;
+  --color-success-border-subtle: #0f5132;
+  --color-info-border-subtle: #055160;
+  --color-warning-border-subtle: #997404;
+  --color-danger-border-subtle: #842029;
+
+  --body-bg: #212529;
+  --body-color: #dee2e6;
+  --body-color-secondary: rgba(222, 226, 230, 0.75);
+  --body-color-tertiary: rgba(222, 226, 230, 0.5);
+  --body-emphasis-color: #ffffff;
+  
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.7);
+  --text-disabled: rgba(255, 255, 255, 0.5);
+  --text-muted: #adb5bd;
+
+  --link-color: #6ea8fe;
+  --link-hover-color: #9ec5fe;
+
+  --border-color: #495057;
+  --border-color-translucent: rgba(255, 255, 255, 0.15);
+  --divider-color: #495057;
+
+  --state-success-bg: #0f5132;
+  --state-success-border: #146c43;
+  --state-info-bg: #055160;
+  --state-info-border: #087990;
+  --state-warning-bg: #664d03;
+  --state-warning-border: #997404;
+  --state-danger-bg: #842029;
+  --state-danger-border: #a52834;
+
+  --focus-ring-color: rgba(110, 168, 254, 0.25);
+
+  --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.5);
+  --shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.7);
+  
+  --shadow-elevation-1: 0px 2px 1px -1px rgba(0,0,0,0.5), 0px 1px 1px 0px rgba(0,0,0,0.35), 0px 1px 3px 0px rgba(0,0,0,0.3);
+  --shadow-elevation-2: 0px 3px 1px -2px rgba(0,0,0,0.5), 0px 2px 2px 0px rgba(0,0,0,0.35), 0px 1px 5px 0px rgba(0,0,0,0.3);
+  --shadow-elevation-3: 0px 3px 3px -2px rgba(0,0,0,0.5), 0px 3px 4px 0px rgba(0,0,0,0.35), 0px 1px 8px 0px rgba(0,0,0,0.3);
+  --shadow-elevation-4: 0px 2px 4px -1px rgba(0,0,0,0.5), 0px 4px 5px 0px rgba(0,0,0,0.35), 0px 1px 10px 0px rgba(0,0,0,0.3);
+  --shadow-elevation-6: 0px 3px 5px -1px rgba(0,0,0,0.5), 0px 6px 10px 0px rgba(0,0,0,0.35), 0px 1px 18px 0px rgba(0,0,0,0.3);
+  --shadow-elevation-8: 0px 5px 5px -3px rgba(0,0,0,0.5), 0px 8px 10px 1px rgba(0,0,0,0.35), 0px 3px 14px 2px rgba(0,0,0,0.3);
+  --shadow-elevation-12: 0px 7px 8px -4px rgba(0,0,0,0.5), 0px 12px 17px 2px rgba(0,0,0,0.35), 0px 5px 22px 4px rgba(0,0,0,0.3);
+  --shadow-elevation-16: 0px 8px 10px -5px rgba(0,0,0,0.5), 0px 16px 24px 2px rgba(0,0,0,0.35), 0px 6px 30px 5px rgba(0,0,0,0.3);
+  --shadow-elevation-24: 0px 11px 15px -7px rgba(0,0,0,0.5), 0px 24px 38px 3px rgba(0,0,0,0.35), 0px 9px 46px 8px rgba(0,0,0,0.3);
+}
+
+/* ============================================================================
+   USAGE EXAMPLES & NOTES
+   ============================================================================
+   
+   These CSS custom properties can be used throughout your application:
+   
+   1. Colors:
+      color: var(--color-primary);
+      background-color: var(--color-gray-100);
+   
+   2. Spacing:
+      padding: var(--spacing-3);
+      margin-bottom: var(--spacing-2);
+   
+   3. Typography:
+      font-family: var(--font-family-base);
+      font-size: var(--font-size-lg);
+      font-weight: var(--font-weight-semibold);
+   
+   4. Shadows:
+      box-shadow: var(--shadow-elevation-2);
+   
+   5. Transitions:
+      transition: var(--transition-base);
+   
+   6. Border Radius:
+      border-radius: var(--border-radius-lg);
+   
+   7. Z-Index:
+      z-index: var(--z-index-modal);
+   
+   These variables integrate seamlessly with Material-UI's theme system
+   and can be overridden at runtime for dynamic theming.
    ============================================================================ */

@@ -1,9 +1,9 @@
 /**
  * ProfilePage Component
- * 
+ *
  * Main page for displaying user profile information.
  * Handles loading, error states, and permissions for viewing profiles.
- * 
+ *
  * @module features/profile/pages
  */
 
@@ -20,24 +20,20 @@ import {
   Link,
   Typography,
 } from '@mui/material';
-import {
-  Edit as EditIcon,
-  Home as HomeIcon,
-  Person as PersonIcon,
-} from '@mui/icons-material';
+import { Edit as EditIcon, Home as HomeIcon, Person as PersonIcon } from '@mui/icons-material';
 import { useProfile, useCurrentUser } from '../hooks/useProfile';
 import { ProfileView } from '../components/ProfileView';
 
 /**
  * ProfilePage Component
- * 
+ *
  * Displays user profile information with support for viewing own profile
  * or other users' profiles based on URL parameters.
- * 
+ *
  * Routes:
  * - /profile - View current user's profile
  * - /profile/:userId - View specific user's profile
- * 
+ *
  * @example
  * ```tsx
  * // Router configuration
@@ -53,19 +49,10 @@ export function ProfilePage() {
   const userId = userIdParam ? parseInt(userIdParam, 10) : undefined;
 
   // Fetch profile data
-  const {
-    data: user,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useProfile(userId);
+  const { data: user, isLoading, isError, error, refetch } = useProfile(userId);
 
   // Fetch current user to determine edit permissions
-  const {
-    data: currentUser,
-    isLoading: isLoadingCurrentUser,
-  } = useCurrentUser();
+  const { data: currentUser, isLoading: isLoadingCurrentUser } = useCurrentUser();
 
   /**
    * Check if current user can edit this profile
@@ -74,18 +61,18 @@ export function ProfilePage() {
     if (!user || !currentUser) {
       return false;
     }
-    
+
     // User can edit their own profile
     if (user.id === currentUser.id) {
       return true;
     }
-    
+
     // Admin users can edit any profile
     // Check if current user has admin role
     const isAdmin = currentUser.roles?.some(
       (role) => role.shortname === 'admin' || role.shortname === 'manager'
     );
-    
+
     return isAdmin ?? false;
   }, [user, currentUser]);
 
@@ -214,21 +201,12 @@ export function ProfilePage() {
       </Breadcrumbs>
 
       {/* Profile View */}
-      <ProfileView
-        user={user}
-        showEditButton={canEdit}
-        onEdit={handleEdit}
-      />
+      <ProfileView user={user} showEditButton={canEdit} onEdit={handleEdit} />
 
       {/* Additional Actions (if needed) */}
       {canEdit && (
         <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
-          <Button
-            variant="contained"
-            startIcon={<EditIcon />}
-            onClick={handleEdit}
-            size="large"
-          >
+          <Button variant="contained" startIcon={<EditIcon />} onClick={handleEdit} size="large">
             Edit Profile
           </Button>
         </Box>

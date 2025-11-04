@@ -1,10 +1,10 @@
 /**
  * Profile API Client
- * 
+ *
  * API client for profile-related operations including fetching user profiles,
  * updating profile information, and managing avatar uploads.
  * All API calls delegate to existing Moodle PHP backend functions.
- * 
+ *
  * @module features/profile/api
  */
 
@@ -49,7 +49,7 @@ const API_BASE_URL = '/api/v1';
 
 /**
  * Fetch user profile by ID
- * 
+ *
  * @param userId - The ID of the user whose profile to fetch
  * @returns Promise resolving to User object
  * @throws Error if API request fails or user not found
@@ -65,17 +65,19 @@ export async function fetchUserProfile(userId: number): Promise<User> {
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Failed to fetch profile' })) as APIErrorResponse;
+    const error = (await response
+      .json()
+      .catch(() => ({ message: 'Failed to fetch profile' }))) as APIErrorResponse;
     throw new Error(error.message ?? `HTTP ${response.status}: Failed to fetch user profile`);
   }
 
-  const data = await response.json() as APIDataResponse<User>;
+  const data = (await response.json()) as APIDataResponse<User>;
   return (data.data ?? data) as User;
 }
 
 /**
  * Fetch current authenticated user's profile
- * 
+ *
  * @returns Promise resolving to current User object
  * @throws Error if not authenticated or API request fails
  */
@@ -89,20 +91,22 @@ export async function fetchCurrentUserProfile(): Promise<User> {
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Not authenticated' })) as APIErrorResponse;
+    const error = (await response
+      .json()
+      .catch(() => ({ message: 'Not authenticated' }))) as APIErrorResponse;
     throw new Error(error.message ?? 'Failed to fetch current user profile');
   }
 
-  const data = await response.json() as APIDataResponse<User>;
+  const data = (await response.json()) as APIDataResponse<User>;
   return (data.data ?? data) as User;
 }
 
 /**
  * Update user profile information
- * 
+ *
  * Calls Moodle's user_update_user() function via API endpoint.
  * Validates and sanitizes input on the backend.
- * 
+ *
  * @param payload - Profile update data
  * @returns Promise resolving to updated profile and status
  * @throws Error if validation fails or update not permitted
@@ -119,7 +123,7 @@ export async function updateUserProfile(
     body: JSON.stringify(payload),
   });
 
-  const data = await response.json() as APIDataResponse<User> & APIErrorResponse;
+  const data = (await response.json()) as APIDataResponse<User> & APIErrorResponse;
 
   if (!response.ok) {
     return {
@@ -140,19 +144,16 @@ export async function updateUserProfile(
 
 /**
  * Upload user avatar/profile picture
- * 
+ *
  * Handles file upload with validation on both client and server.
  * Calls Moodle's file upload and user picture update functions.
- * 
+ *
  * @param userId - User ID whose avatar to update
  * @param file - Image file to upload
  * @returns Promise resolving to new avatar URLs
  * @throws Error if file validation fails or upload not permitted
  */
-export async function uploadAvatar(
-  userId: number,
-  file: File
-): Promise<AvatarUploadResponse> {
+export async function uploadAvatar(userId: number, file: File): Promise<AvatarUploadResponse> {
   // Client-side validation
   const maxSize = 5 * 1024 * 1024; // 5MB
   const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -195,7 +196,11 @@ export async function uploadAvatar(
     // Don't set Content-Type header - browser will set it with boundary
   });
 
-  const data = await response.json() as APIDataResponse<{ profileimageurl: string; profileimageurlsmall: string }> & APIErrorResponse;
+  const data = (await response.json()) as APIDataResponse<{
+    profileimageurl: string;
+    profileimageurlsmall: string;
+  }> &
+    APIErrorResponse;
 
   if (!response.ok) {
     return {
@@ -219,7 +224,7 @@ export async function uploadAvatar(
 
 /**
  * Delete user avatar (revert to default)
- * 
+ *
  * @param userId - User ID whose avatar to delete
  * @returns Promise resolving to success status
  * @throws Error if deletion not permitted
@@ -234,11 +239,13 @@ export async function deleteAvatar(userId: number): Promise<{ success: boolean; 
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Failed to delete avatar' })) as APIErrorResponse;
+    const error = (await response
+      .json()
+      .catch(() => ({ message: 'Failed to delete avatar' }))) as APIErrorResponse;
     throw new Error(error.message ?? 'Failed to delete avatar');
   }
 
-  const data = await response.json() as APIDataResponse<never>;
+  const data = (await response.json()) as APIDataResponse<never>;
   return {
     success: true,
     message: data.message ?? 'Avatar deleted successfully',
@@ -247,7 +254,7 @@ export async function deleteAvatar(userId: number): Promise<{ success: boolean; 
 
 /**
  * Update user preferences
- * 
+ *
  * @param userId - User ID whose preferences to update
  * @param preferences - Preferences to update (partial)
  * @returns Promise resolving to updated preferences
@@ -267,17 +274,19 @@ export async function updateUserPreferences(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Failed to update preferences' })) as APIErrorResponse;
+    const error = (await response
+      .json()
+      .catch(() => ({ message: 'Failed to update preferences' }))) as APIErrorResponse;
     throw new Error(error.message ?? 'Failed to update preferences');
   }
 
-  const data = await response.json() as APIDataResponse<UserPreferences>;
+  const data = (await response.json()) as APIDataResponse<UserPreferences>;
   return data.data ?? data.preferences ?? preferences;
 }
 
 /**
  * Fetch user preferences
- * 
+ *
  * @param userId - User ID whose preferences to fetch
  * @returns Promise resolving to user preferences
  * @throws Error if fetch fails
@@ -292,20 +301,22 @@ export async function fetchUserPreferences(userId: number): Promise<UserPreferen
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Failed to fetch preferences' })) as APIErrorResponse;
+    const error = (await response
+      .json()
+      .catch(() => ({ message: 'Failed to fetch preferences' }))) as APIErrorResponse;
     throw new Error(error.message ?? 'Failed to fetch preferences');
   }
 
-  const data = await response.json() as APIDataResponse<UserPreferences>;
-  return data.data ?? data.preferences ?? {} as UserPreferences;
+  const data = (await response.json()) as APIDataResponse<UserPreferences>;
+  return data.data ?? data.preferences ?? ({} as UserPreferences);
 }
 
 /**
  * Validate profile field value
- * 
+ *
  * Performs server-side validation for a specific field before form submission
  * Useful for real-time validation feedback
- * 
+ *
  * @param field - Field name to validate
  * @param value - Field value to validate
  * @returns Promise resolving to validation result
@@ -330,7 +341,7 @@ export async function validateProfileField(
     };
   }
 
-  const data = await response.json() as APIDataResponse<never>;
+  const data = (await response.json()) as APIDataResponse<never>;
   return {
     valid: data.valid !== false,
     message: data.message,

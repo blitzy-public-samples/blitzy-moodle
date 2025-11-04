@@ -1,15 +1,15 @@
 /**
  * Common API Type Definitions
- * 
+ *
  * Provides standard interfaces for API requests and responses across all modules.
  * All API endpoints follow a consistent response envelope structure for error handling
  * and data transmission.
- * 
+ *
  * Based on API response standards defined in Agent Action Plan section 0.2:
  * - Success responses include data payload and optional metadata
  * - Error responses include error code, message, and details
  * - Paginated responses include pagination metadata
- * 
+ *
  * @package react-frontend
  * @subpackage types
  */
@@ -25,10 +25,10 @@
 export interface ApiSuccessResponse<T = unknown> {
   /** Indicates successful response */
   success: true;
-  
+
   /** Response payload data */
   data: T;
-  
+
   /** Optional metadata (pagination, etc.) */
   meta?: ResponseMetadata;
 }
@@ -40,7 +40,7 @@ export interface ApiSuccessResponse<T = unknown> {
 export interface ApiErrorResponse {
   /** Indicates error response */
   success: false;
-  
+
   /** Error details */
   error: ApiError;
 }
@@ -60,16 +60,16 @@ export type ApiResponse<T = unknown> = ApiSuccessResponse<T> | ApiErrorResponse;
 export interface ApiError {
   /** Error code identifier (e.g., "PERMISSION_DENIED", "NOT_FOUND") */
   code: string;
-  
+
   /** Human-readable error message */
   message: string;
-  
+
   /** Optional additional error details */
   details?: Record<string, unknown>;
-  
+
   /** HTTP status code */
   status?: number;
-  
+
   /** Stack trace (development only) */
   stack?: string;
 }
@@ -82,29 +82,29 @@ export enum ApiErrorCode {
   UNAUTHORIZED = 'UNAUTHORIZED',
   TOKEN_EXPIRED = 'TOKEN_EXPIRED',
   TOKEN_INVALID = 'TOKEN_INVALID',
-  
+
   // Authorization errors
   PERMISSION_DENIED = 'PERMISSION_DENIED',
   FORBIDDEN = 'FORBIDDEN',
-  
+
   // Resource errors
   NOT_FOUND = 'NOT_FOUND',
   ALREADY_EXISTS = 'ALREADY_EXISTS',
   CONFLICT = 'CONFLICT',
-  
+
   // Validation errors
   VALIDATION_ERROR = 'VALIDATION_ERROR',
   INVALID_INPUT = 'INVALID_INPUT',
   MISSING_PARAMETER = 'MISSING_PARAMETER',
-  
+
   // Server errors
   INTERNAL_ERROR = 'INTERNAL_ERROR',
   SERVICE_UNAVAILABLE = 'SERVICE_UNAVAILABLE',
   TIMEOUT = 'TIMEOUT',
-  
+
   // Rate limiting
   RATE_LIMIT_EXCEEDED = 'RATE_LIMIT_EXCEEDED',
-  
+
   // Business logic errors
   BUSINESS_RULE_VIOLATION = 'BUSINESS_RULE_VIOLATION',
   OPERATION_NOT_ALLOWED = 'OPERATION_NOT_ALLOWED',
@@ -120,19 +120,19 @@ export enum ApiErrorCode {
 export interface PaginationMetadata {
   /** Current page number (1-based) */
   page: number;
-  
+
   /** Number of items per page */
   perPage: number;
-  
+
   /** Total number of items across all pages */
   total: number;
-  
+
   /** Total number of pages */
   totalPages: number;
-  
+
   /** Whether there is a next page */
   hasNext?: boolean;
-  
+
   /** Whether there is a previous page */
   hasPrevious?: boolean;
 }
@@ -143,13 +143,13 @@ export interface PaginationMetadata {
 export interface ResponseMetadata {
   /** Pagination information */
   pagination?: PaginationMetadata;
-  
+
   /** Sorting information */
   sort?: SortMetadata;
-  
+
   /** Applied filters */
   filters?: Record<string, unknown>;
-  
+
   /** Timestamp when response was generated */
   timestamp?: number;
 }
@@ -160,7 +160,7 @@ export interface ResponseMetadata {
 export interface SortMetadata {
   /** Field being sorted */
   field: string;
-  
+
   /** Sort direction */
   order: 'asc' | 'desc';
 }
@@ -171,10 +171,10 @@ export interface SortMetadata {
 export interface PaginatedResponse<T = unknown> {
   /** Indicates successful response */
   success: true;
-  
+
   /** Array of items for current page */
   data: T[];
-  
+
   /** Pagination and other metadata */
   meta: ResponseMetadata & {
     pagination: PaginationMetadata;
@@ -191,13 +191,13 @@ export interface PaginatedResponse<T = unknown> {
 export interface PaginationParams {
   /** Page number (1-based) */
   page?: number;
-  
+
   /** Number of items per page */
   perPage?: number;
-  
+
   /** Alternative parameter name for page size */
   limit?: number;
-  
+
   /** Offset for cursor-based pagination */
   offset?: number;
 }
@@ -208,7 +208,7 @@ export interface PaginationParams {
 export interface SortParams {
   /** Field to sort by */
   sortBy?: string;
-  
+
   /** Sort direction */
   sortOrder?: 'asc' | 'desc';
 }
@@ -219,7 +219,7 @@ export interface SortParams {
 export interface FilterParams {
   /** Search query string */
   search?: string;
-  
+
   /** Additional filters as key-value pairs */
   filters?: Record<string, unknown>;
 }
@@ -230,7 +230,7 @@ export interface FilterParams {
 export interface ListRequestParams extends PaginationParams, SortParams, FilterParams {
   /** Include soft-deleted items */
   includeDeleted?: boolean;
-  
+
   /** Include related entities */
   include?: string[];
 }
@@ -255,22 +255,22 @@ export type HttpHeaders = Record<string, string>;
 export interface ApiRequestConfig {
   /** Request method */
   method: HttpMethod;
-  
+
   /** Request URL (relative or absolute) */
   url: string;
-  
+
   /** Request headers */
   headers?: HttpHeaders;
-  
+
   /** Request body data */
   data?: unknown;
-  
+
   /** URL query parameters */
   params?: Record<string, unknown>;
-  
+
   /** Request timeout in milliseconds */
   timeout?: number;
-  
+
   /** Whether to include credentials (cookies) */
   withCredentials?: boolean;
 }
@@ -285,13 +285,13 @@ export interface ApiRequestConfig {
 export interface FieldError {
   /** Field name */
   field: string;
-  
+
   /** Error message */
   message: string;
-  
+
   /** Validation rule that failed */
   rule?: string;
-  
+
   /** Additional context */
   context?: Record<string, unknown>;
 }

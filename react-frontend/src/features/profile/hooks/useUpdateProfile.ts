@@ -1,18 +1,18 @@
 /**
  * useUpdateProfile Hook
- * 
+ *
  * React Query mutation hook for updating user profile information.
  * Provides optimistic updates, automatic cache invalidation, and error handling.
- * 
+ *
  * @module features/profile/hooks
  */
 
 import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query';
-import { 
-  updateUserProfile, 
-  uploadAvatar, 
+import {
+  updateUserProfile,
+  uploadAvatar,
   deleteAvatar,
-  updateUserPreferences 
+  updateUserPreferences,
 } from '../api/profileApi';
 import type {
   UpdateProfilePayload,
@@ -58,14 +58,14 @@ export interface UseUpdateProfileOptions<TData = ProfileUpdateResponse> {
 
 /**
  * Hook for updating user profile information
- * 
+ *
  * Uses React Query mutations to handle profile updates with automatic
  * cache invalidation and optimistic UI updates for better UX.
  * Delegates to existing Moodle user_update_user() function via API.
- * 
+ *
  * @param options - Mutation options
  * @returns Mutation result with mutate function and status
- * 
+ *
  * @example
  * ```tsx
  * function ProfileEditForm() {
@@ -73,11 +73,11 @@ export interface UseUpdateProfileOptions<TData = ProfileUpdateResponse> {
  *     onSuccess: () => toast.success('Profile updated!'),
  *     onError: (error) => toast.error(error.message),
  *   });
- *   
+ *
  *   const handleSubmit = (data: UpdateProfilePayload) => {
  *     updateProfile(data);
  *   };
- *   
+ *
  *   return <form onSubmit={handleSubmit}>...</form>;
  * }
  * ```
@@ -91,11 +91,7 @@ export function useUpdateProfile(
   { previousProfile?: User; queryKey: readonly unknown[] } | undefined
 > {
   const queryClient = useQueryClient();
-  const {
-    onSuccess,
-    onError,
-    optimisticUpdate = true,
-  } = options;
+  const { onSuccess, onError, optimisticUpdate = true } = options;
 
   return useMutation<
     ProfileUpdateResponse,
@@ -104,7 +100,7 @@ export function useUpdateProfile(
     { previousProfile?: User; queryKey: readonly unknown[] } | undefined
   >({
     mutationFn: updateUserProfile,
-    
+
     // Optimistic update - immediately update cache before API call
     onMutate: async (updatedProfile) => {
       if (!optimisticUpdate) {
@@ -124,13 +120,14 @@ export function useUpdateProfile(
       if (previousProfile) {
         // Exclude customfields from the optimistic update to avoid type mismatch
         const { customfields: _customfields, ...profileUpdates } = updatedProfile;
-        
+
         queryClient.setQueryData<User>(queryKey, {
           ...previousProfile,
           ...profileUpdates,
-          fullname: updatedProfile.firstname && updatedProfile.lastname
-            ? `${updatedProfile.firstname} ${updatedProfile.lastname}`
-            : previousProfile.fullname,
+          fullname:
+            updatedProfile.firstname && updatedProfile.lastname
+              ? `${updatedProfile.firstname} ${updatedProfile.lastname}`
+              : previousProfile.fullname,
         });
       }
 
@@ -149,13 +146,13 @@ export function useUpdateProfile(
     // On success, invalidate and refetch to get server truth
     onSuccess: (data, variables) => {
       const userId = variables.userid;
-      
+
       // Invalidate profile cache to trigger refetch
       void queryClient.invalidateQueries({ queryKey: profileKeys.detail(userId) });
-      
+
       // Also invalidate current user cache if updating own profile
       void queryClient.invalidateQueries({ queryKey: profileKeys.current() });
-      
+
       onSuccess?.(data);
     },
   });
@@ -163,25 +160,25 @@ export function useUpdateProfile(
 
 /**
  * Hook for uploading user avatar
- * 
+ *
  * Handles avatar file upload with validation and progress tracking.
  * Calls Moodle's file upload and user picture update functions via API.
- * 
+ *
  * @param userId - ID of user whose avatar to update
  * @param options - Mutation options
  * @returns Mutation result for avatar upload
- * 
+ *
  * @example
  * ```tsx
  * function AvatarUpload({ userId }: { userId: number }) {
  *   const { mutate: uploadAvatar, isPending } = useUploadAvatar(userId, {
  *     onSuccess: () => toast.success('Avatar updated!'),
  *   });
- *   
+ *
  *   const handleFileChange = (file: File) => {
  *     uploadAvatar(file);
  *   };
- *   
+ *
  *   return <FileInput onChange={handleFileChange} disabled={isPending} />;
  * }
  * ```
@@ -214,7 +211,7 @@ export function useUploadAvatar(
         void queryClient.invalidateQueries({ queryKey: profileKeys.detail(userId) });
         void queryClient.invalidateQueries({ queryKey: profileKeys.current() });
       }
-      
+
       onSuccess?.(data);
     },
 
@@ -224,18 +221,18 @@ export function useUploadAvatar(
 
 /**
  * Hook for deleting user avatar
- * 
+ *
  * Reverts user avatar to default system avatar.
- * 
+ *
  * @param userId - ID of user whose avatar to delete
  * @param options - Mutation options
  * @returns Mutation result for avatar deletion
- * 
+ *
  * @example
  * ```tsx
  * function AvatarActions({ userId }: { userId: number }) {
  *   const { mutate: deleteAvatar } = useDeleteAvatar(userId);
- *   
+ *
  *   return (
  *     <Button onClick={() => deleteAvatar()}>
  *       Remove Avatar
@@ -246,7 +243,10 @@ export function useUploadAvatar(
  */
 export function useDeleteAvatar(
   userId: number,
-  options: Omit<UseUpdateProfileOptions<{ success: boolean; message: string }>, 'optimisticUpdate'> = {}
+  options: Omit<
+    UseUpdateProfileOptions<{ success: boolean; message: string }>,
+    'optimisticUpdate'
+  > = {}
 ): UseMutationResult<{ success: boolean; message: string }, Error, void, unknown> {
   const queryClient = useQueryClient();
   const { onSuccess, onError } = options;
@@ -258,7 +258,7 @@ export function useDeleteAvatar(
       // Invalidate profile cache to refetch with default avatar
       void queryClient.invalidateQueries({ queryKey: profileKeys.detail(userId) });
       void queryClient.invalidateQueries({ queryKey: profileKeys.current() });
-      
+
       onSuccess?.(data);
     },
 
@@ -268,23 +268,23 @@ export function useDeleteAvatar(
 
 /**
  * Hook for updating user preferences
- * 
+ *
  * Updates user preferences such as theme, notifications, accessibility settings, etc.
  * Calls Moodle's set_user_preference() function via API.
- * 
+ *
  * @param userId - ID of user whose preferences to update
  * @param options - Mutation options
  * @returns Mutation result for preference updates
- * 
+ *
  * @example
  * ```tsx
  * function PreferencesForm({ userId }: { userId: number }) {
  *   const { mutate: updatePreferences } = useUpdatePreferences(userId);
- *   
+ *
  *   const handleThemeChange = (theme: string) => {
  *     updatePreferences({ theme });
  *   };
- *   
+ *
  *   return <ThemeSelector onChange={handleThemeChange} />;
  * }
  * ```
@@ -342,7 +342,7 @@ export function useUpdatePreferences(
     onSuccess: (data, _variables) => {
       void queryClient.invalidateQueries({ queryKey: profileKeys.detail(userId) });
       void queryClient.invalidateQueries({ queryKey: profileKeys.current() });
-      
+
       onSuccess?.(data);
     },
   });
@@ -360,10 +360,10 @@ export interface BatchProfileUpdate {
 
 /**
  * Hook for batch updating profile (profile + avatar + preferences)
- * 
+ *
  * Efficiently handles updating multiple profile aspects in sequence
  * with proper error handling and rollback.
- * 
+ *
  * @param userId - ID of user to update
  * @param options - Mutation options
  * @returns Mutation result for batch update
@@ -416,7 +416,7 @@ export function useBatchUpdateProfile(
       // Invalidate all profile-related queries
       void queryClient.invalidateQueries({ queryKey: profileKeys.detail(userId) });
       void queryClient.invalidateQueries({ queryKey: profileKeys.current() });
-      
+
       onSuccess?.(data);
     },
 

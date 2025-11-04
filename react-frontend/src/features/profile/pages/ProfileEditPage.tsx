@@ -1,9 +1,9 @@
 /**
  * ProfileEditPage Component
- * 
+ *
  * Page for editing user profile information with form validation,
  * avatar upload, and permission checks.
- * 
+ *
  * @module features/profile/pages
  */
 
@@ -59,18 +59,18 @@ function TabPanel({ children, value, index }: TabPanelProps) {
 
 /**
  * ProfileEditPage Component
- * 
+ *
  * Comprehensive profile editing page with tabbed interface for:
  * - Profile information editing
  * - Avatar management
- * 
+ *
  * Features permission checks to ensure users can only edit their own profiles
  * (or admins can edit any profile).
- * 
+ *
  * Routes:
  * - /profile/edit - Edit current user's profile
  * - /profile/:userId/edit - Edit specific user's profile (admin only)
- * 
+ *
  * @example
  * ```tsx
  * // Router configuration
@@ -89,19 +89,10 @@ export function ProfileEditPage() {
   const userId = userIdParam ? parseInt(userIdParam, 10) : undefined;
 
   // Fetch profile data
-  const {
-    data: user,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useProfile(userId);
+  const { data: user, isLoading, isError, error, refetch } = useProfile(userId);
 
   // Fetch current user to determine edit permissions
-  const {
-    data: currentUser,
-    isLoading: isLoadingCurrentUser,
-  } = useCurrentUser();
+  const { data: currentUser, isLoading: isLoadingCurrentUser } = useCurrentUser();
 
   /**
    * Check if current user can edit this profile
@@ -110,17 +101,17 @@ export function ProfileEditPage() {
     if (!user || !currentUser) {
       return false;
     }
-    
+
     // User can edit their own profile
     if (user.id === currentUser.id) {
       return true;
     }
-    
+
     // Admin users can edit any profile
     const isAdmin = currentUser.roles?.some(
       (role) => role.shortname === 'admin' || role.shortname === 'manager'
     );
-    
+
     return isAdmin ?? false;
   }, [user, currentUser]);
 
@@ -219,14 +210,7 @@ export function ProfileEditPage() {
           <Typography color="text.primary">Profile</Typography>
         </Breadcrumbs>
 
-        <Alert
-          severity="error"
-          action={
-            <button onClick={() => refetch()}>
-              Retry
-            </button>
-          }
-        >
+        <Alert severity="error" action={<button onClick={() => refetch()}>Retry</button>}>
           {error?.message || 'Failed to load profile. Please try again.'}
         </Alert>
       </Container>
@@ -250,9 +234,7 @@ export function ProfileEditPage() {
   if (!canEdit) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Alert severity="error">
-          You do not have permission to edit this profile.
-        </Alert>
+        <Alert severity="error">You do not have permission to edit this profile.</Alert>
       </Container>
     );
   }
@@ -289,10 +271,7 @@ export function ProfileEditPage() {
         >
           {user.fullname}
         </Link>
-        <Typography
-          color="text.primary"
-          sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
-        >
+        <Typography color="text.primary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
           <EditIcon fontSize="small" />
           Edit
         </Typography>
@@ -351,7 +330,8 @@ export function ProfileEditPage() {
               Profile Picture
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }} textAlign="center">
-              Upload a profile picture that represents you. This image will be visible to other users.
+              Upload a profile picture that represents you. This image will be visible to other
+              users.
             </Typography>
 
             <Divider sx={{ width: '100%', mb: 3 }} />
@@ -388,7 +368,8 @@ export function ProfileEditPage() {
       {/* Help Text */}
       <Alert severity="info" sx={{ mt: 3 }}>
         <Typography variant="body2">
-          <strong>Note:</strong> Changes to your profile information may take a few moments to appear across the system.
+          <strong>Note:</strong> Changes to your profile information may take a few moments to
+          appear across the system.
           {user.id === currentUser?.id && (
             <> Your profile is visible to other users in courses you are enrolled in.</>
           )}

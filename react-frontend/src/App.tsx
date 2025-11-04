@@ -22,7 +22,7 @@ function App() {
         <Typography variant="body1" paragraph>
           React application infrastructure in development.
         </Typography>
-        
+
         {/* Demo of CourseProgress component */}
         <Box sx={{ mt: 4, maxWidth: 600 }}>
           <Typography variant="h6" gutterBottom>

@@ -1,10 +1,10 @@
 /**
  * ProfileEditForm Component
- * 
+ *
  * Form component for editing user profile information.
  * Uses react-hook-form for form management and validation.
  * Integrates with useUpdateProfile hook for API mutations.
- * 
+ *
  * @module features/profile/components
  */
 
@@ -107,10 +107,10 @@ const TIMEZONES = [
 
 /**
  * ProfileEditForm Component
- * 
+ *
  * Comprehensive form for editing user profile with validation,
  * error handling, and optimistic updates.
- * 
+ *
  * @example
  * ```tsx
  * <ProfileEditForm
@@ -388,9 +388,7 @@ export function ProfileEditForm({
                     </MenuItem>
                   ))}
                 </Select>
-                {errors.country && (
-                  <FormHelperText>{errors.country.message}</FormHelperText>
-                )}
+                {errors.country && <FormHelperText>{errors.country.message}</FormHelperText>}
               </FormControl>
             )}
           />
@@ -413,9 +411,7 @@ export function ProfileEditForm({
                     </MenuItem>
                   ))}
                 </Select>
-                {errors.timezone && (
-                  <FormHelperText>{errors.timezone.message}</FormHelperText>
-                )}
+                {errors.timezone && <FormHelperText>{errors.timezone.message}</FormHelperText>}
               </FormControl>
             )}
           />

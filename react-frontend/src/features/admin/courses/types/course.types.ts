@@ -1,10 +1,10 @@
 /**
  * TypeScript type definitions for Course entity in admin course management.
- * 
+ *
  * This file contains comprehensive interface definitions for the Course entity,
  * mapping Moodle's course database schema to TypeScript types for use in the
  * React admin interface.
- * 
+ *
  * @module features/admin/courses/types
  */
 
@@ -27,9 +27,9 @@ export enum CourseVisibility {
  * Group mode options for courses
  */
 export enum GroupMode {
-  NO_GROUPS = 0,      // No groups
+  NO_GROUPS = 0, // No groups
   SEPARATE_GROUPS = 1, // Separate groups
-  VISIBLE_GROUPS = 2,  // Visible groups
+  VISIBLE_GROUPS = 2, // Visible groups
 }
 
 /**
@@ -45,9 +45,9 @@ export enum DownloadContentOption {
  * Text format options for course summary and other text fields
  */
 export enum TextFormat {
-  MOODLE = 0,   // Moodle auto-format
-  HTML = 1,     // HTML format
-  PLAIN = 2,    // Plain text format
+  MOODLE = 0, // Moodle auto-format
+  HTML = 1, // HTML format
+  PLAIN = 2, // Plain text format
   MARKDOWN = 4, // Markdown format
 }
 
@@ -88,11 +88,11 @@ export interface CourseTag {
 
 /**
  * Complete Course entity interface representing a Moodle course.
- * 
+ *
  * This interface maps all essential fields from the Moodle course table
  * and related data structures, providing type safety for course CRUD
  * operations in the admin interface.
- * 
+ *
  * @interface Course
  */
 export interface Course {

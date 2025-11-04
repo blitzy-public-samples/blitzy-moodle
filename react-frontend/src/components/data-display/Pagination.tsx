@@ -80,11 +80,7 @@ export interface PaginationProps {
    * Function to customize the displayed rows label (only for table variant)
    * @default ({ from, to, count }) => `${from}-${to} of ${count}`
    */
-  labelDisplayedRows?: (paginationInfo: {
-    from: number;
-    to: number;
-    count: number;
-  }) => string;
+  labelDisplayedRows?: (paginationInfo: { from: number; to: number; count: number }) => string;
 
   /**
    * If true, the component is disabled
@@ -100,18 +96,18 @@ export interface PaginationProps {
 
 /**
  * Pagination component for consistent page navigation across the application.
- * 
+ *
  * Supports two variants:
  * - Simple: Page numbers with first/last/previous/next buttons
  * - Table: Rows per page selector with page info display
- * 
+ *
  * Features:
  * - Full keyboard navigation support (Tab, Arrow keys, Enter, Space)
  * - WCAG 2.1 AA compliant with proper ARIA labels
  * - Theme-aware (works with light and dark modes)
  * - Customizable page sizes and options
  * - Responsive design for mobile and desktop
- * 
+ *
  * Used across:
  * - Course catalogs and listings
  * - User management tables
@@ -119,7 +115,7 @@ export interface PaginationProps {
  * - Grade tables and reports
  * - Search results
  * - Forum discussions
- * 
+ *
  * @example
  * // Simple pagination for course catalog
  * <Pagination
@@ -130,7 +126,7 @@ export interface PaginationProps {
  *   showFirstButton={true}
  *   showLastButton={true}
  * />
- * 
+ *
  * @example
  * // Table pagination for user list with rows per page
  * <Pagination

@@ -92,45 +92,45 @@ export interface UsePaginationReturn extends PaginationState {
 
 /**
  * Custom hook for managing pagination state and logic
- * 
+ *
  * Provides comprehensive pagination functionality including:
  * - Current page tracking
  * - Navigation functions (next, previous, first, last, goToPage)
  * - Array slice indices for client-side pagination
  * - Page number generation for UI
  * - Validation for page bounds
- * 
+ *
  * Supports both client-side pagination (using startIndex/endIndex for array slicing)
  * and server-side pagination (using currentPage for API calls).
- * 
+ *
  * @param options - Configuration options for pagination
  * @returns Pagination state and navigation functions
- * 
+ *
  * @example
  * // Client-side pagination example
  * const allItems = [...]; // Full array of items
- * const { 
- *   currentPage, 
- *   startIndex, 
- *   endIndex, 
- *   nextPage, 
+ * const {
+ *   currentPage,
+ *   startIndex,
+ *   endIndex,
+ *   nextPage,
  *   previousPage,
- *   pageNumbers 
+ *   pageNumbers
  * } = usePagination({
  *   totalItems: allItems.length,
  *   itemsPerPage: 20
  * });
  * const visibleItems = allItems.slice(startIndex, endIndex);
- * 
+ *
  * @example
  * // Server-side pagination example
- * const { data } = useQuery(['courses', currentPage], () => 
+ * const { data } = useQuery(['courses', currentPage], () =>
  *   fetchCourses(currentPage, itemsPerPage)
  * );
- * const { 
- *   currentPage, 
+ * const {
+ *   currentPage,
  *   totalPages,
- *   nextPage, 
+ *   nextPage,
  *   previousPage,
  *   hasNextPage,
  *   hasPreviousPage
@@ -140,11 +140,7 @@ export interface UsePaginationReturn extends PaginationState {
  * });
  */
 export default function usePagination(options: PaginationOptions): UsePaginationReturn {
-  const { 
-    initialPage = 1, 
-    itemsPerPage = 20, 
-    totalItems 
-  } = options;
+  const { initialPage = 1, itemsPerPage = 20, totalItems } = options;
 
   // Current page state (1-indexed)
   const [currentPage, setCurrentPage] = useState<number>(initialPage);
@@ -175,18 +171,24 @@ export default function usePagination(options: PaginationOptions): UsePagination
   /**
    * Validate if a page number is within valid bounds
    */
-  const canGoToPage = useCallback((page: number): boolean => {
-    return page >= 1 && page <= totalPages;
-  }, [totalPages]);
+  const canGoToPage = useCallback(
+    (page: number): boolean => {
+      return page >= 1 && page <= totalPages;
+    },
+    [totalPages]
+  );
 
   /**
    * Navigate to a specific page number with validation
    */
-  const goToPage = useCallback((page: number): void => {
-    if (canGoToPage(page)) {
-      setCurrentPage(page);
-    }
-  }, [canGoToPage]);
+  const goToPage = useCallback(
+    (page: number): void => {
+      if (canGoToPage(page)) {
+        setCurrentPage(page);
+      }
+    },
+    [canGoToPage]
+  );
 
   /**
    * Navigate to the next page
@@ -220,7 +222,7 @@ export default function usePagination(options: PaginationOptions): UsePagination
    * Generate array of page numbers for pagination UI with ellipsis logic
    * Shows first page, last page, current page, and surrounding pages
    * Uses -1 to represent ellipsis (...) for gaps
-   * 
+   *
    * Examples:
    * - Total 5 pages, current 3: [1, 2, 3, 4, 5]
    * - Total 10 pages, current 5: [1, -1, 4, 5, 6, -1, 10]
@@ -229,7 +231,7 @@ export default function usePagination(options: PaginationOptions): UsePagination
   const pageNumbers = useMemo((): number[] => {
     const pages: number[] = [];
     const maxVisiblePages = 7; // Max pages to show including ellipsis
-    
+
     if (totalPages <= maxVisiblePages) {
       // Show all pages if total is small
       for (let i = 1; i <= totalPages; i++) {
@@ -238,30 +240,30 @@ export default function usePagination(options: PaginationOptions): UsePagination
     } else {
       // Always show first page
       pages.push(1);
-      
+
       // Calculate range around current page
       const startPage = Math.max(2, currentPage - 1);
       const endPage = Math.min(totalPages - 1, currentPage + 1);
-      
+
       // Add ellipsis after first page if needed
       if (startPage > 2) {
         pages.push(-1); // -1 represents ellipsis
       }
-      
+
       // Add pages around current page
       for (let i = startPage; i <= endPage; i++) {
         pages.push(i);
       }
-      
+
       // Add ellipsis before last page if needed
       if (endPage < totalPages - 1) {
         pages.push(-1); // -1 represents ellipsis
       }
-      
+
       // Always show last page
       pages.push(totalPages);
     }
-    
+
     return pages;
   }, [currentPage, totalPages]);
 

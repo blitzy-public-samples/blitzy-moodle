@@ -1,10 +1,10 @@
 /**
  * Comprehensive TypeScript type definitions for workshop activity module
- * 
+ *
  * This file contains all type definitions for Moodle's workshop activity, which implements
  * a multi-phase peer review workflow system. The workshop progresses through distinct phases:
  * setup, submission, assessment, evaluation, and closed.
- * 
+ *
  * Based on Moodle's workshop module structure from:
  * - public/mod/workshop/lib.php
  * - public/mod/workshop/locallib.php
@@ -16,11 +16,11 @@
  * These numeric values match Moodle's workshop phase constants
  */
 export enum WorkshopPhase {
-  SETUP = 10,        // Initial configuration phase
-  SUBMISSION = 20,   // Students submit their work
-  ASSESSMENT = 30,   // Peer review phase
-  EVALUATION = 40,   // Grade calculation and aggregation
-  CLOSED = 50        // Workshop completed
+  SETUP = 10, // Initial configuration phase
+  SUBMISSION = 20, // Students submit their work
+  ASSESSMENT = 30, // Peer review phase
+  EVALUATION = 40, // Grade calculation and aggregation
+  CLOSED = 50, // Workshop completed
 }
 
 /**
@@ -28,29 +28,29 @@ export enum WorkshopPhase {
  * Determines when students must assess example submissions
  */
 export enum ExamplesMode {
-  VOLUNTARY = 0,           // Optional examples
-  BEFORE_SUBMISSION = 1,   // Required before submission
-  BEFORE_ASSESSMENT = 2    // Required before assessment
+  VOLUNTARY = 0, // Optional examples
+  BEFORE_SUBMISSION = 1, // Required before submission
+  BEFORE_ASSESSMENT = 2, // Required before assessment
 }
 
 /**
  * Grading strategy types
  * Defines how assessments are structured and graded
  */
-export type GradingStrategy = 
-  | 'accumulative'  // Weighted sum of criteria
-  | 'rubric'        // Rubric-based assessment
-  | 'comments'      // Comments only, no grades
-  | 'numerrors';    // Number of errors counting
+export type GradingStrategy =
+  | 'accumulative' // Weighted sum of criteria
+  | 'rubric' // Rubric-based assessment
+  | 'comments' // Comments only, no grades
+  | 'numerrors'; // Number of errors counting
 
 /**
  * Allocation method types
  * Determines how peer reviewers are assigned to submissions
  */
 export type AllocationMethod =
-  | 'manual'      // Teacher assigns reviewers
-  | 'random'      // Random allocation
-  | 'scheduled';  // Scheduled automatic allocation
+  | 'manual' // Teacher assigns reviewers
+  | 'random' // Random allocation
+  | 'scheduled'; // Scheduled automatic allocation
 
 /**
  * Evaluation method types

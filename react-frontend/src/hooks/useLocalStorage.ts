@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 
 /**
  * Return type for the useLocalStorage hook
- * 
+ *
  * @template T - The type of the stored value
  */
 export type UseLocalStorageReturn<T> = [
@@ -11,16 +11,16 @@ export type UseLocalStorageReturn<T> = [
   /** Function to update the stored value */
   setValue: (value: T | ((prev: T) => T)) => void,
   /** Function to remove the value from localStorage */
-  removeValue: () => void
+  removeValue: () => void,
 ];
 
 /**
  * Custom React hook for persisting state to browser localStorage with automatic synchronization.
- * 
+ *
  * This hook provides a stateful value that is automatically synchronized with localStorage,
  * enabling state persistence across page refreshes and browser sessions. It handles JSON
  * serialization/deserialization, error recovery, and multi-tab synchronization via storage events.
- * 
+ *
  * **Key Features:**
  * - Type-safe storage with TypeScript generics
  * - Automatic JSON serialization/deserialization
@@ -29,50 +29,50 @@ export type UseLocalStorageReturn<T> = [
  * - Comprehensive error handling for quota exceeded and invalid JSON
  * - Supports complex objects and arrays
  * - Lazy initialization for optimal performance
- * 
+ *
  * **Usage Examples:**
- * 
+ *
  * ```typescript
  * // Simple string value
  * const [name, setName, removeName] = useLocalStorage('username', 'Guest');
- * 
+ *
  * // Complex object
  * const [user, setUser, removeUser] = useLocalStorage('user', {
  *   id: 0,
  *   email: '',
  *   preferences: {}
  * });
- * 
+ *
  * // Array of items
  * const [items, setItems, removeItems] = useLocalStorage<string[]>('cart', []);
- * 
+ *
  * // Using updater function (like useState)
  * setItems(prev => [...prev, 'new-item']);
- * 
+ *
  * // Removing value
  * removeItems(); // Resets to initial value and removes from localStorage
  * ```
- * 
+ *
  * **Multi-tab Synchronization:**
  * When a value is updated in one browser tab, all other tabs with the same hook
  * will automatically synchronize to the new value via the storage event listener.
- * 
+ *
  * **Error Handling:**
  * - Returns initial value if localStorage is unavailable (private browsing)
  * - Handles QuotaExceededError gracefully when storage is full
  * - Recovers from invalid JSON by falling back to initial value
  * - Logs errors to console for debugging without breaking the application
- * 
+ *
  * @template T - The type of the value to store (must be JSON-serializable)
  * @param key - The localStorage key to use for storage
  * @param initialValue - The default value to use if no stored value exists
  * @returns A tuple containing [value, setValue, removeValue]
- * 
+ *
  * @example
  * ```typescript
  * function ThemeSelector() {
  *   const [theme, setTheme] = useLocalStorage('theme', 'light');
- *   
+ *
  *   return (
  *     <button onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
  *       Current theme: {theme}
@@ -81,14 +81,11 @@ export type UseLocalStorageReturn<T> = [
  * }
  * ```
  */
-export default function useLocalStorage<T>(
-  key: string,
-  initialValue: T
-): UseLocalStorageReturn<T> {
+export default function useLocalStorage<T>(key: string, initialValue: T): UseLocalStorageReturn<T> {
   /**
    * Read value from localStorage with error handling
    * This function is called lazily during state initialization
-   * 
+   *
    * @returns The stored value or initialValue if not found/invalid
    */
   const readValue = (): T => {
@@ -101,29 +98,23 @@ export default function useLocalStorage<T>(
     try {
       // Attempt to read from localStorage
       const item = window.localStorage.getItem(key);
-      
+
       // If value exists, parse it from JSON
       if (item !== null) {
         try {
           return JSON.parse(item) as T;
         } catch (parseError) {
           // Invalid JSON in localStorage - log error and return initial value
-          console.error(
-            `useLocalStorage: Error parsing JSON for key "${key}":`,
-            parseError
-          );
+          console.error(`useLocalStorage: Error parsing JSON for key "${key}":`, parseError);
           return initialValue;
         }
       }
-      
+
       // No stored value found - return initial value
       return initialValue;
     } catch (error) {
       // localStorage is unavailable (e.g., private browsing mode, permissions)
-      console.warn(
-        `useLocalStorage: Error reading from localStorage for key "${key}":`,
-        error
-      );
+      console.warn(`useLocalStorage: Error reading from localStorage for key "${key}":`, error);
       return initialValue;
     }
   };
@@ -134,7 +125,7 @@ export default function useLocalStorage<T>(
   /**
    * Update the stored value in both state and localStorage
    * Supports both direct values and updater functions (like useState)
-   * 
+   *
    * @param value - New value or updater function
    */
   const setValue = useCallback(
@@ -142,10 +133,10 @@ export default function useLocalStorage<T>(
       try {
         // Calculate new value - support updater function pattern
         const newValue = value instanceof Function ? value(storedValue) : value;
-        
+
         // Update React state
         setStoredValue(newValue);
-        
+
         // Check if window is available (browser environment)
         if (typeof window !== 'undefined') {
           try {
@@ -157,7 +148,7 @@ export default function useLocalStorage<T>(
               if (storageError.name === 'QuotaExceededError') {
                 console.error(
                   `useLocalStorage: Storage quota exceeded for key "${key}". ` +
-                  'Consider clearing old data or reducing storage usage.'
+                    'Consider clearing old data or reducing storage usage.'
                 );
               } else {
                 console.error(
@@ -170,10 +161,7 @@ export default function useLocalStorage<T>(
         }
       } catch (error) {
         // Catch any unexpected errors during the update process
-        console.error(
-          `useLocalStorage: Unexpected error in setValue for key "${key}":`,
-          error
-        );
+        console.error(`useLocalStorage: Unexpected error in setValue for key "${key}":`, error);
       }
     },
     [key, storedValue]
@@ -187,7 +175,7 @@ export default function useLocalStorage<T>(
     try {
       // Reset state to initial value
       setStoredValue(initialValue);
-      
+
       // Check if window is available (browser environment)
       if (typeof window !== 'undefined') {
         try {
@@ -201,10 +189,7 @@ export default function useLocalStorage<T>(
         }
       }
     } catch (error) {
-      console.error(
-        `useLocalStorage: Unexpected error in removeValue for key "${key}":`,
-        error
-      );
+      console.error(`useLocalStorage: Unexpected error in removeValue for key "${key}":`, error);
     }
   }, [key, initialValue]);
 
@@ -220,7 +205,7 @@ export default function useLocalStorage<T>(
 
     /**
      * Handle storage events from other browser tabs
-     * 
+     *
      * @param event - StorageEvent containing key, newValue, and oldValue
      */
     const handleStorageChange = (event: StorageEvent): void => {

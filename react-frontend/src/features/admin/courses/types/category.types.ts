@@ -1,10 +1,10 @@
 /**
  * TypeScript type definitions for Course Category entity
- * 
+ *
  * This file provides type definitions for course categories in the Moodle admin interface.
  * These types are derived from Moodle's core_course_category class and the course_categories
  * database table structure.
- * 
+ *
  * @package react-frontend
  * @subpackage features/admin/courses
  * @see public/course/classes/category.php - Source of category structure
@@ -13,10 +13,10 @@
 
 /**
  * Course Category Interface
- * 
+ *
  * Represents a course category in Moodle's hierarchical category structure.
  * Categories can be nested to create a tree structure for organizing courses.
- * 
+ *
  * @interface CourseCategory
  */
 export interface CourseCategory {
@@ -130,10 +130,10 @@ export interface CourseCategory {
 
 /**
  * Partial Course Category Interface
- * 
+ *
  * Used for category updates where only some fields are provided.
  * All fields are optional to allow partial updates.
- * 
+ *
  * @interface PartialCourseCategory
  */
 export interface PartialCourseCategory {
@@ -155,10 +155,10 @@ export interface PartialCourseCategory {
 
 /**
  * Course Category Create Input Interface
- * 
+ *
  * Used when creating a new category.
  * Only includes fields that can be set during creation.
- * 
+ *
  * @interface CourseCategoryCreateInput
  */
 export interface CourseCategoryCreateInput {
@@ -195,10 +195,10 @@ export interface CourseCategoryCreateInput {
 
 /**
  * Course Category Update Input Interface
- * 
+ *
  * Used when updating an existing category.
  * All fields except id are optional.
- * 
+ *
  * @interface CourseCategoryUpdateInput
  */
 export interface CourseCategoryUpdateInput {
@@ -245,10 +245,10 @@ export interface CourseCategoryUpdateInput {
 
 /**
  * Course Category Tree Node Interface
- * 
+ *
  * Extends CourseCategory to include children for tree rendering.
  * Used in hierarchical category displays and management interfaces.
- * 
+ *
  * @interface CourseCategoryTreeNode
  */
 export interface CourseCategoryTreeNode extends CourseCategory {
@@ -274,10 +274,10 @@ export interface CourseCategoryTreeNode extends CourseCategory {
 
 /**
  * Course Category List Response Interface
- * 
+ *
  * Standard API response format for category list endpoints.
  * Includes pagination metadata.
- * 
+ *
  * @interface CourseCategoryListResponse
  */
 export interface CourseCategoryListResponse {
@@ -304,25 +304,30 @@ export interface CourseCategoryListResponse {
 
 /**
  * Course Category Sort Options
- * 
+ *
  * Defines available sorting options for category lists.
- * 
+ *
  * @type CourseCategorySortField
  */
-export type CourseCategorySortField = 'name' | 'idnumber' | 'sortorder' | 'coursecount' | 'timemodified';
+export type CourseCategorySortField =
+  | 'name'
+  | 'idnumber'
+  | 'sortorder'
+  | 'coursecount'
+  | 'timemodified';
 
 /**
  * Course Category Sort Direction
- * 
+ *
  * @type CourseCategorySortDirection
  */
 export type CourseCategorySortDirection = 'asc' | 'desc';
 
 /**
  * Course Category Filter Options
- * 
+ *
  * Used for filtering category lists in admin interfaces.
- * 
+ *
  * @interface CourseCategoryFilterOptions
  */
 export interface CourseCategoryFilterOptions {

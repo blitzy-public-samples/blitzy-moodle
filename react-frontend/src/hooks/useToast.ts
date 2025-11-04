@@ -1,15 +1,15 @@
 /**
  * Custom React hook for managing toast notifications
- * 
+ *
  * Provides a flexible toast notification system with queue management,
  * auto-dismissal, and support for different notification types.
  * Integrates with Material-UI Snackbar components for consistent styling.
- * 
+ *
  * @example
  * ```tsx
  * function MyComponent() {
  *   const { success, error, warning, info, toasts, dismiss } = useToast();
- * 
+ *
  *   const handleSave = async () => {
  *     try {
  *       await saveData();
@@ -18,7 +18,7 @@
  *       error('Failed to save data. Please try again.');
  *     }
  *   };
- * 
+ *
  *   const handleUndo = () => {
  *     info('Action undone', {
  *       duration: 3000,
@@ -28,7 +28,7 @@
  *       }
  *     });
  *   };
- * 
+ *
  *   return (
  *     <>
  *       <button onClick={handleSave}>Save</button>
@@ -37,7 +37,7 @@
  *   );
  * }
  * ```
- * 
+ *
  * @module hooks/useToast
  */
 
@@ -108,29 +108,29 @@ export interface UseToastReturn {
 
 /**
  * Custom hook for managing toast notifications
- * 
+ *
  * Provides a complete toast notification system with:
  * - Multiple notification types (success, error, warning, info)
  * - Auto-dismissal with configurable duration (default 5000ms)
  * - Manual dismissal of individual toasts
  * - Queue management for multiple simultaneous toasts
  * - Optional action buttons for interactive toasts
- * 
+ *
  * Note: This hook manages state only. Rendering is handled by a separate
  * ToastContainer component that should consume the toasts array and dismiss function.
- * 
+ *
  * @returns {UseToastReturn} Toast management functions and current toasts
- * 
+ *
  * @example
  * ```tsx
  * const { success, error, toasts, dismiss } = useToast();
- * 
+ *
  * // Show success notification
  * success('Operation completed successfully!');
- * 
+ *
  * // Show error with custom duration
  * error('Something went wrong', { duration: 10000 });
- * 
+ *
  * // Show info with action button
  * info('File uploaded', {
  *   action: {
@@ -138,7 +138,7 @@ export interface UseToastReturn {
  *     onClick: () => navigate('/files')
  *   }
  * });
- * 
+ *
  * // Manual dismissal
  * const toastId = warning('Please review');
  * setTimeout(() => dismiss(toastId), 2000);
@@ -149,126 +149,137 @@ export function useToast(): UseToastReturn {
 
   /**
    * Show a toast notification with specified type
-   * 
+   *
    * Creates a new toast with a unique ID and adds it to the queue.
    * Sets up auto-dismissal after the specified duration.
-   * 
+   *
    * @param message - The message to display in the toast
    * @param type - The type of toast (success, error, warning, info)
    * @param options - Optional configuration for duration and action button
    * @returns The unique ID of the created toast
    */
-  const showToast = useCallback((
-    message: string,
-    type: ToastType,
-    options?: ToastOptions
-  ): string => {
-    // Generate unique ID using timestamp and random number
-    const id = `toast-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-    
-    // Default duration is 5000ms (5 seconds)
-    const duration = options?.duration ?? 5000;
+  const showToast = useCallback(
+    (message: string, type: ToastType, options?: ToastOptions): string => {
+      // Generate unique ID using timestamp and random number
+      const id = `toast-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
-    // Create toast object
-    const newToast: Toast = {
-      id,
-      message,
-      type,
-      duration,
-      action: options?.action,
-    };
+      // Default duration is 5000ms (5 seconds)
+      const duration = options?.duration ?? 5000;
 
-    // Add toast to the queue
-    setToasts((prev) => [...prev, newToast]);
+      // Create toast object
+      const newToast: Toast = {
+        id,
+        message,
+        type,
+        duration,
+        action: options?.action,
+      };
 
-    // Set up auto-dismissal
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((toast) => toast.id !== id));
-    }, duration);
+      // Add toast to the queue
+      setToasts((prev) => [...prev, newToast]);
 
-    return id;
-  }, []);
+      // Set up auto-dismissal
+      setTimeout(() => {
+        setToasts((prev) => prev.filter((toast) => toast.id !== id));
+      }, duration);
+
+      return id;
+    },
+    []
+  );
 
   /**
    * Show a success toast notification
-   * 
+   *
    * Convenience method for showing success messages with green styling.
    * Typically used for successful operations like save, delete, or update.
-   * 
+   *
    * @param message - The success message to display
    * @param options - Optional configuration for duration and action button
    * @returns The unique ID of the created toast
-   * 
+   *
    * @example
    * success('Course saved successfully!');
    * success('File uploaded', { duration: 3000 });
    */
-  const success = useCallback((message: string, options?: ToastOptions): string => {
-    return showToast(message, 'success', options);
-  }, [showToast]);
+  const success = useCallback(
+    (message: string, options?: ToastOptions): string => {
+      return showToast(message, 'success', options);
+    },
+    [showToast]
+  );
 
   /**
    * Show an error toast notification
-   * 
+   *
    * Convenience method for showing error messages with red styling.
    * Typically used for failed operations, validation errors, or exceptions.
-   * 
+   *
    * @param message - The error message to display
    * @param options - Optional configuration for duration and action button
    * @returns The unique ID of the created toast
-   * 
+   *
    * @example
    * error('Failed to save course. Please try again.');
    * error('Network error', { duration: 8000 });
    */
-  const error = useCallback((message: string, options?: ToastOptions): string => {
-    return showToast(message, 'error', options);
-  }, [showToast]);
+  const error = useCallback(
+    (message: string, options?: ToastOptions): string => {
+      return showToast(message, 'error', options);
+    },
+    [showToast]
+  );
 
   /**
    * Show a warning toast notification
-   * 
+   *
    * Convenience method for showing warning messages with orange/yellow styling.
    * Typically used for non-critical issues or important notices.
-   * 
+   *
    * @param message - The warning message to display
    * @param options - Optional configuration for duration and action button
    * @returns The unique ID of the created toast
-   * 
+   *
    * @example
    * warning('Your session will expire in 5 minutes');
    * warning('Unsaved changes', { duration: 6000 });
    */
-  const warning = useCallback((message: string, options?: ToastOptions): string => {
-    return showToast(message, 'warning', options);
-  }, [showToast]);
+  const warning = useCallback(
+    (message: string, options?: ToastOptions): string => {
+      return showToast(message, 'warning', options);
+    },
+    [showToast]
+  );
 
   /**
    * Show an info toast notification
-   * 
+   *
    * Convenience method for showing informational messages with blue styling.
    * Typically used for general information, tips, or status updates.
-   * 
+   *
    * @param message - The info message to display
    * @param options - Optional configuration for duration and action button
    * @returns The unique ID of the created toast
-   * 
+   *
    * @example
    * info('New features available!');
    * info('Processing your request...', { duration: 2000 });
    */
-  const info = useCallback((message: string, options?: ToastOptions): string => {
-    return showToast(message, 'info', options);
-  }, [showToast]);
+  const info = useCallback(
+    (message: string, options?: ToastOptions): string => {
+      return showToast(message, 'info', options);
+    },
+    [showToast]
+  );
 
   /**
    * Dismiss a specific toast notification by ID
-   * 
+   *
    * Removes the toast with the specified ID from the queue immediately.
    * Can be used to manually dismiss a toast before its auto-dismiss timeout.
-   * 
+   *
    * @param id - The unique ID of the toast to dismiss
-   * 
+   *
    * @example
    * const toastId = info('Processing...');
    * // Later, when done:
@@ -280,10 +291,10 @@ export function useToast(): UseToastReturn {
 
   /**
    * Clear all toast notifications
-   * 
+   *
    * Removes all toasts from the queue immediately.
    * Useful for cleanup on component unmount or route changes.
-   * 
+   *
    * @example
    * // Clear all toasts when navigating away
    * useEffect(() => {

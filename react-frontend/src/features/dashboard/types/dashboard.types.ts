@@ -1,10 +1,10 @@
 /**
  * TypeScript Type Definitions for Dashboard Feature
- * 
+ *
  * This file contains comprehensive type definitions for the Moodle dashboard feature,
  * including dashboard page configurations, widget/block types, user roles, calendar events,
  * timeline items, activity records, and API response shapes.
- * 
+ *
  * Based on Moodle's dashboard structure:
  * - public/my/index.php (dashboard page structure)
  * - public/my/lib.php (page constants and functions)
@@ -12,7 +12,7 @@
  * - public/blocks/calendar_month (calendar widget)
  * - public/blocks/online_users (online users widget)
  * - public/blocks/recent_activity (activity feed)
- * 
+ *
  * @package    react-frontend
  * @subpackage dashboard
  * @copyright  2024 Moodle React Frontend
@@ -366,7 +366,14 @@ export interface OnlineUser {
 /**
  * Course overview grouping options
  */
-export type CourseGrouping = 'all' | 'inprogress' | 'future' | 'past' | 'favourites' | 'hidden' | 'custom';
+export type CourseGrouping =
+  | 'all'
+  | 'inprogress'
+  | 'future'
+  | 'past'
+  | 'favourites'
+  | 'hidden'
+  | 'custom';
 
 /**
  * Course overview sort options
@@ -690,6 +697,8 @@ export function isCourseOverviewBlock(block: BlockData): block is CourseOverview
 /**
  * Type guard to check if a response is an error response
  */
-export function isErrorResponse(response: APIResponse<unknown> | ErrorResponse): response is ErrorResponse {
+export function isErrorResponse(
+  response: APIResponse<unknown> | ErrorResponse
+): response is ErrorResponse {
   return response.success === false;
 }

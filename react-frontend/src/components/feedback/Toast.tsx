@@ -1,13 +1,8 @@
 /* eslint-disable react-refresh/only-export-components */
 import type { ReactNode, SyntheticEvent } from 'react';
 import { useState, useEffect } from 'react';
-import type {
-  SlideProps} from '@mui/material';
-import {
-  Snackbar,
-  Alert,
-  Slide
-} from '@mui/material';
+import type { SlideProps } from '@mui/material';
+import { Snackbar, Alert, Slide } from '@mui/material';
 
 /**
  * Toast notification severity levels matching Moodle notification types
@@ -73,11 +68,11 @@ export interface UseToastReturn {
 
 /**
  * Toast notification component for displaying temporary, auto-dismissing messages.
- * 
+ *
  * Uses Material-UI Snackbar with Alert for consistent styling and accessibility.
- * Supports Moodle's four severity levels (success, info, warning, error), 
+ * Supports Moodle's four severity levels (success, info, warning, error),
  * custom duration, screen positioning, and optional action buttons.
- * 
+ *
  * Features:
  * - Auto-dismissing after configurable duration (default 6 seconds)
  * - Slide animation based on position (top slides down, bottom slides up)
@@ -86,11 +81,11 @@ export interface UseToastReturn {
  * - Integrated close button
  * - Optional action buttons for user interactions (Undo, Retry, etc.)
  * - Full TypeScript type safety in strict mode
- * 
+ *
  * @example Basic usage
  * ```tsx
  * const [open, setOpen] = useState(false);
- * 
+ *
  * <Toast
  *   open={open}
  *   message="Course saved successfully"
@@ -98,7 +93,7 @@ export interface UseToastReturn {
  *   onClose={() => setOpen(false)}
  * />
  * ```
- * 
+ *
  * @example With custom position and duration
  * ```tsx
  * <Toast
@@ -110,7 +105,7 @@ export interface UseToastReturn {
  *   onClose={handleClose}
  * />
  * ```
- * 
+ *
  * @example With action button
  * ```tsx
  * <Toast
@@ -125,7 +120,7 @@ export interface UseToastReturn {
  *   }
  * />
  * ```
- * 
+ *
  * @example With React Query mutation
  * ```tsx
  * const mutation = useMutation({
@@ -158,7 +153,7 @@ export function Toast({
    * Prevents closing on clickaway to avoid accidental dismissal during operations.
    * This is critical during complex workflows (quiz attempts, grade editing, etc.)
    * where users might click outside the toast unintentionally.
-   * 
+   *
    * @param _event - The event that triggered the close (unused but required by Snackbar API)
    * @param reason - The reason for closing (timeout, clickaway, escapeKeyDown)
    */
@@ -210,24 +205,24 @@ export function Toast({
 
 /**
  * Custom hook for managing toast notification state.
- * 
+ *
  * Provides state management for a single toast instance with show/hide functions.
  * Handles message cleanup after toast closes to prevent stale content during animations.
- * 
+ *
  * For multiple simultaneous toasts or global toast management across the application,
  * consider wrapping this in a ToastProvider context with queueing logic.
- * 
+ *
  * Integration with React Query:
  * - Use in onSuccess/onError callbacks for automatic user feedback
  * - Pairs with mutation hooks for seamless operation notifications
  * - Provides consistent UX for all async operations
- * 
+ *
  * @returns Object containing toast state and control functions
- * 
+ *
  * @example Basic usage
  * ```tsx
  * const { open, message, severity, showToast, hideToast } = useToast();
- * 
+ *
  * const handleSave = async () => {
  *   try {
  *     await saveCourse();
@@ -236,7 +231,7 @@ export function Toast({
  *     showToast('Failed to save course', 'error');
  *   }
  * };
- * 
+ *
  * return (
  *   <>
  *     <Button onClick={handleSave}>Save</Button>
@@ -249,11 +244,11 @@ export function Toast({
  *   </>
  * );
  * ```
- * 
+ *
  * @example With React Query mutation
  * ```tsx
  * const { open, message, severity, showToast, hideToast } = useToast();
- * 
+ *
  * const mutation = useMutation({
  *   mutationFn: createCourse,
  *   onSuccess: () => {
@@ -264,10 +259,10 @@ export function Toast({
  *     showToast(`Failed to create course: ${error.message}`, 'error');
  *   },
  * });
- * 
+ *
  * return (
  *   <>
- *     <Button 
+ *     <Button
  *       onClick={() => mutation.mutate(courseData)}
  *       disabled={mutation.isLoading}
  *     >
@@ -282,25 +277,25 @@ export function Toast({
  *   </>
  * );
  * ```
- * 
+ *
  * @example With custom action button
  * ```tsx
  * const { open, message, severity, showToast, hideToast } = useToast();
  * const [deletedId, setDeletedId] = useState<number | null>(null);
- * 
+ *
  * const handleDelete = (id: number) => {
  *   setDeletedId(id);
  *   deleteCourse(id);
  *   showToast('Course deleted', 'info');
  * };
- * 
+ *
  * const handleUndo = () => {
  *   if (deletedId) {
  *     restoreCourse(deletedId);
  *     hideToast();
  *   }
  * };
- * 
+ *
  * return (
  *   <Toast
  *     open={open}
@@ -323,7 +318,7 @@ export const useToast = (): UseToastReturn => {
 
   /**
    * Display a toast notification with specified message and severity
-   * 
+   *
    * @param msg - Message content (string or React element for rich formatting)
    * @param sev - Severity level (default: 'info')
    */
@@ -343,7 +338,7 @@ export const useToast = (): UseToastReturn => {
 
   /**
    * Cleanup effect to reset message state after toast closes
-   * 
+   *
    * Waits 300ms after closing to allow exit animation to complete before clearing message.
    * This prevents the message content from disappearing mid-animation, which would cause
    * a jarring visual experience. The delay matches Material-UI's standard exit duration.

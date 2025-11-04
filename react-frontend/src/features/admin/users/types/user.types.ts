@@ -1,18 +1,18 @@
 /**
  * User Type Definitions
- * 
+ *
  * Comprehensive TypeScript type definitions for User entity based on Moodle user table schema.
  * These types ensure type-safe user data handling across all admin features.
- * 
+ *
  * Schema source: public/lib/db/install.xml (user table, lines 869-940)
- * 
+ *
  * @package react-frontend
  * @subpackage features/admin/users/types
  */
 
 /**
  * Authentication methods supported by Moodle
- * 
+ *
  * Corresponds to auth plugins available in the system.
  * These are the primary authentication methods used across Moodle installations.
  */
@@ -31,7 +31,7 @@ export enum UserAuthMethod {
 
 /**
  * User account status enumeration
- * 
+ *
  * Represents the current state of a user account in the system.
  */
 export enum UserStatus {
@@ -45,13 +45,13 @@ export enum UserStatus {
 
 /**
  * Complete User entity interface
- * 
+ *
  * Represents a full user record from the Moodle user table.
  * This interface includes all 48 fields from the database schema.
- * 
+ *
  * Note: password and secret fields are intentionally excluded from client-side types
  * for security reasons. These sensitive fields should never be transmitted to the frontend.
- * 
+ *
  * @interface User
  */
 export interface User {
@@ -196,20 +196,20 @@ export interface User {
 
 /**
  * Basic user information subset
- * 
+ *
  * Contains only the most essential user identification fields.
  * Useful for user lists, dropdowns, and references where full details aren't needed.
- * 
+ *
  * @type UserBasicInfo
  */
 export type UserBasicInfo = Pick<User, 'id' | 'username' | 'firstname' | 'lastname' | 'email'>;
 
 /**
  * User profile information
- * 
+ *
  * Contains fields relevant to displaying user profiles and contact information.
  * Includes personal details but excludes system/admin fields.
- * 
+ *
  * @type UserProfile
  */
 export type UserProfile = Pick<
@@ -234,10 +234,10 @@ export type UserProfile = Pick<
 
 /**
  * User preferences subset
- * 
+ *
  * Contains fields related to user preferences and settings.
  * Used for preference management interfaces.
- * 
+ *
  * @type UserPreferences
  */
 export type UserPreferences = Pick<
@@ -255,9 +255,9 @@ export type UserPreferences = Pick<
 
 /**
  * User creation data
- * 
+ *
  * Defines the required and optional fields for creating a new user account.
- * 
+ *
  * Required fields (per Moodle user_create_user function):
  * - auth: authentication method
  * - username: unique username
@@ -267,9 +267,9 @@ export type UserPreferences = Pick<
  * - password: initial password (hashed server-side, not stored in User type)
  * - city: city name
  * - country: country code
- * 
+ *
  * Optional fields: all other user properties
- * 
+ *
  * @type UserCreateData
  */
 export type UserCreateData = {
@@ -339,14 +339,14 @@ export type UserCreateData = {
 
 /**
  * User update data
- * 
+ *
  * Defines fields that can be updated for an existing user account.
  * The id field is required to identify which user to update.
  * All other fields are optional - only provided fields will be updated.
- * 
+ *
  * Note: Some fields like username, deleted, confirmed cannot be updated
  * through normal update operations and require special admin functions.
- * 
+ *
  * @type UserUpdateData
  */
 export type UserUpdateData = {
@@ -412,10 +412,10 @@ export type UserUpdateData = {
 
 /**
  * User deletion data
- * 
+ *
  * Defines the minimal data needed to perform a soft delete of a user account.
  * Moodle uses soft deletes - the user record is marked as deleted but not removed from database.
- * 
+ *
  * @type UserDeleteData
  */
 export type UserDeleteData = {

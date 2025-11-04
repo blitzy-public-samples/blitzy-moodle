@@ -1,13 +1,13 @@
 /**
  * TypeScript Type Definitions for Assignment Module
- * 
+ *
  * This file contains comprehensive type definitions for the Moodle assignment module,
  * based on the database schema (assign, assign_submission, assign_grades tables)
  * and the external API structures defined in mod/assign/externallib.php.
- * 
+ *
  * These types ensure type safety across all assignment components and API interactions
  * by matching the data structures returned by Moodle's REST API.
- * 
+ *
  * @package react-frontend
  * @module features/activities/assignments/types
  */
@@ -168,7 +168,7 @@ export interface AssignmentPlugin {
  * Assignment Interface
  * Represents a complete assignment activity with all its properties.
  * Based on the assign table schema and get_assignments_assignment_structure() in externallib.php.
- * 
+ *
  * This interface matches the data structure returned by the GET /api/v1/assignments/{id} endpoint
  * and encompasses all assignment configuration, dates, and settings.
  */
@@ -195,7 +195,7 @@ export interface Assignment {
   activityformat?: number;
   /** Files attached to the activity field */
   activityattachments?: AssignmentFile[];
-  
+
   /** Whether to always show description (0=no, 1=yes) */
   alwaysshowdescription?: number;
   /** Cache flag indicating if any submission plugin is enabled */
@@ -208,7 +208,7 @@ export interface Assignment {
   sendlatenotifications: number;
   /** Default value for send student notifications checkbox when grading */
   sendstudentnotifications: number;
-  
+
   /** Due date timestamp (0 if no due date) */
   duedate: number;
   /** Date from which submissions are accepted (0 if always) */
@@ -217,14 +217,14 @@ export interface Assignment {
   cutoffdate: number;
   /** Expected date for marking/grading completion (0 if none) */
   gradingduedate: number;
-  
+
   /** Maximum grade for this assignment (negative values indicate scale usage) */
   grade: number;
   /** If enabled, penalty will be applied to late submissions (0=no, 1=yes) */
   gradepenalty: number;
   /** Timestamp of last modification to assignment settings */
   timemodified: number;
-  
+
   /** Whether student must accept submission statement (0=no, 1=yes) */
   requiresubmissionstatement: number;
   /** Submission statement text formatted for display */
@@ -233,40 +233,40 @@ export interface Assignment {
   submissionstatementformat?: number;
   /** Set activity as complete when submission made (0=no, 1=yes) */
   completionsubmit: number;
-  
+
   /** Whether students submit as teams (0=no, 1=yes) */
   teamsubmission: number;
   /** Whether all team members must submit (0=no, 1=yes) */
   requireallteammemberssubmit: number;
   /** Grouping ID for team submission groups (0 if none) */
   teamsubmissiongroupingid: number;
-  
+
   /** Hide student/grader identities until revealed (0=no, 1=yes) */
   blindmarking: number;
   /** Hide grader identity from students (0=no, 1=yes) */
   hidegrader: number;
   /** Whether identities have been revealed for blind marking (0=no, 1=yes) */
   revealidentities: number;
-  
+
   /** Method for reopening attempts (manual, automatic, untilpass) */
   attemptreopenmethod: string;
   /** Maximum number of attempts allowed (-1 for unlimited) */
   maxattempts: number;
-  
+
   /** Enable marking workflow features (0=no, 1=yes) */
   markingworkflow: number;
   /** Enable marking allocation features (0=no, 1=yes) */
   markingallocation: number;
   /** Enable marking anonymous features (0=no, 1=yes) */
   markinganonymous: number;
-  
+
   /** Prevent submission unless student is in a group (0=no, 1=yes) */
   preventsubmissionnotingroup?: number;
   /** Time limit to complete assignment in seconds (0 if none) */
   timelimit?: number;
   /** Flag to only show files during submission (0=no, 1=yes) */
   submissionattachments?: number;
-  
+
   /** Array of plugin configurations for this assignment */
   configs?: PluginConfig[];
 }
@@ -275,7 +275,7 @@ export interface Assignment {
  * Submission Interface
  * Represents a student's submission for an assignment.
  * Based on the assign_submission table and get_submission_structure() in externallib.php.
- * 
+ *
  * This interface matches the data returned by submission-related API endpoints
  * and includes all submission metadata and plugin data.
  */
@@ -310,7 +310,7 @@ export interface Submission {
  * Grade Interface
  * Represents grading information for an assignment submission.
  * Based on the assign_grades table and get_grade_structure() in externallib.php.
- * 
+ *
  * This interface matches the grade data returned by grading API endpoints
  * and includes all grade information and feedback.
  */
@@ -461,4 +461,3 @@ export interface SubmissionListResponse {
   /** Total count of submissions */
   total: number;
 }
-

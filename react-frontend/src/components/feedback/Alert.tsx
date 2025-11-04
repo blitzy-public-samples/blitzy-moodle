@@ -1,9 +1,9 @@
 /**
  * Alert Component
- * 
+ *
  * Displays informational, success, warning, and error messages to users.
  * Maps directly to Moodle's notification system levels (SUCCESS, WARNING, INFO, ERROR).
- * 
+ *
  * Features:
  * - Severity-based styling and icons (success, info, warning, error)
  * - Optional title and close button
@@ -11,15 +11,15 @@
  * - Fade-out animation on close
  * - Full accessibility with ARIA attributes
  * - Material-UI v5 theming support (light/dark modes)
- * 
+ *
  * Usage:
  * ```tsx
- * <Alert 
- *   severity="success" 
+ * <Alert
+ *   severity="success"
  *   message="Operation completed successfully"
  *   closeable
  * />
- * 
+ *
  * <Alert
  *   severity="error"
  *   title="Submission Failed"
@@ -114,7 +114,7 @@ export interface AlertComponentProps {
 
 /**
  * Alert Component
- * 
+ *
  * Reusable notification component that displays user feedback messages
  * with support for different severity levels, custom actions, and dismissal.
  */
@@ -228,11 +228,7 @@ export function Alert({
         }}
       >
         {title && <AlertTitle>{title}</AlertTitle>}
-        {typeof message === 'string' ? (
-          <Box component="span">{message}</Box>
-        ) : (
-          message
-        )}
+        {typeof message === 'string' ? <Box component="span">{message}</Box> : message}
       </MuiAlert>
     </Collapse>
   );

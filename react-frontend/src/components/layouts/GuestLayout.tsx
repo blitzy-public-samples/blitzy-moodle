@@ -1,12 +1,12 @@
 /**
  * GuestLayout Component
- * 
+ *
  * Layout component for unauthenticated/public pages (login, password reset, registration)
  * providing a centered, minimal interface without navigation elements.
- * 
+ *
  * References Moodle's login.mustache template structure from public/theme/boost/templates/login.mustache
  * Implements a simple centered layout without navigation, using Material-UI components.
- * 
+ *
  * Features:
  * - Full-height flex container with vertical centering
  * - Responsive design with Container maxWidth='sm' (600px)
@@ -16,7 +16,7 @@
  * - Minimal footer with copyright text
  * - Support for both light and dark mode via MUI theme
  * - WCAG 2.1 AA compliant focus indicators
- * 
+ *
  * @module components/layouts/GuestLayout
  */
 
@@ -25,7 +25,7 @@ import { Box, Container, Paper, Typography, useTheme } from '@mui/material';
 
 /**
  * Props interface for GuestLayout component
- * 
+ *
  * @interface GuestLayoutProps
  * @property {ReactNode} children - Child components to render in the content area (LoginForm, PasswordResetForm, etc.)
  * @property {string} [title] - Optional page title displayed above the content (e.g., 'Login to Moodle')
@@ -39,11 +39,11 @@ export interface GuestLayoutProps {
 
 /**
  * GuestLayout Component
- * 
+ *
  * Provides a centered, minimal layout for unauthenticated pages with no navigation elements.
  * Uses Material-UI components to create a full-height flex container with vertically centered
  * content card. Includes minimal header with site branding and footer with copyright text.
- * 
+ *
  * Layout Structure:
  * - Outer Box: Full-height (100vh) flex container with theme background color
  * - Header Box: Minimal AppBar-like header with site name, no navigation
@@ -52,28 +52,28 @@ export interface GuestLayoutProps {
  * - Optional Typography: Page title (h4 variant)
  * - Children: Rendered form or content components
  * - Footer Typography: Copyright text (caption variant)
- * 
+ *
  * Accessibility:
  * - Semantic HTML structure with proper heading hierarchy
  * - Focus indicators meeting WCAG 2.1 AA standards (provided by MUI)
  * - Keyboard navigation support (provided by MUI Paper component)
  * - Screen reader compatible with proper ARIA labels
- * 
+ *
  * Theme Support:
  * - Automatically adapts to light and dark mode via MUI theme
  * - Uses theme.palette.background.default for page background
  * - Paper component inherits theme elevation and background
- * 
+ *
  * @param {GuestLayoutProps} props - Component props
  * @returns {JSX.Element} Rendered GuestLayout component
- * 
+ *
  * @example
  * ```tsx
  * <GuestLayout title="Login to Moodle">
  *   <LoginForm />
  * </GuestLayout>
  * ```
- * 
+ *
  * @example
  * ```tsx
  * <GuestLayout title="Reset Password">

@@ -1,11 +1,11 @@
 /**
  * Admin API Constants
- * 
+ *
  * Constant definitions for admin API operations including base paths,
  * endpoint mappings, pagination defaults, bulk operation types, sort orders,
  * and permission identifiers. Centralizes all admin API configuration values
  * to ensure consistency across the admin feature subdomains.
- * 
+ *
  * @module features/admin/api/constants
  */
 
@@ -47,7 +47,7 @@ export const ADMIN_ENDPOINTS = {
     /** Perform bulk operations on multiple users */
     bulk: '/users/bulk',
   },
-  
+
   /**
    * Course management endpoints
    */
@@ -59,7 +59,7 @@ export const ADMIN_ENDPOINTS = {
     /** Perform bulk operations on multiple courses */
     bulk: '/courses/bulk',
   },
-  
+
   /**
    * Role management endpoints
    */
@@ -71,7 +71,7 @@ export const ADMIN_ENDPOINTS = {
     /** Get capabilities for a specific role */
     capabilities: '/roles/capabilities',
   },
-  
+
   /**
    * System settings endpoints
    */
@@ -81,7 +81,7 @@ export const ADMIN_ENDPOINTS = {
     /** Update system settings */
     update: '/settings',
   },
-  
+
   /**
    * Plugin management endpoints
    */
@@ -172,13 +172,14 @@ export const ADMIN_PERMISSION_TYPES = {
  */
 
 /** Type for bulk action values */
-export type BulkActionType = typeof BULK_ACTIONS[keyof typeof BULK_ACTIONS];
+export type BulkActionType = (typeof BULK_ACTIONS)[keyof typeof BULK_ACTIONS];
 
 /** Type for sort order values */
-export type SortOrderType = typeof SORT_ORDERS[keyof typeof SORT_ORDERS];
+export type SortOrderType = (typeof SORT_ORDERS)[keyof typeof SORT_ORDERS];
 
 /** Type for admin permission identifiers */
-export type AdminPermissionType = typeof ADMIN_PERMISSION_TYPES[keyof typeof ADMIN_PERMISSION_TYPES];
+export type AdminPermissionType =
+  (typeof ADMIN_PERMISSION_TYPES)[keyof typeof ADMIN_PERMISSION_TYPES];
 
 /** Type for default filter keys */
 export type DefaultFilterKey = keyof typeof DEFAULT_FILTERS;

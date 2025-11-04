@@ -1,10 +1,10 @@
 /**
  * Custom React hooks for resource activity module state management using React Query.
- * 
+ *
  * Provides hooks for fetching resource data (files, pages, URLs, folders) with automatic
  * caching, refetching, error handling, and optimistic updates for download tracking
  * and view counting.
- * 
+ *
  * @module features/activities/resources/hooks/useResource
  */
 
@@ -117,13 +117,13 @@ const resourceKeys = {
 
 /**
  * Hook for fetching individual resource data by ID.
- * 
+ *
  * Calls GET /api/v1/resources/{id} which wraps existing Moodle resource functions.
  * Implements automatic caching with 5-minute stale time.
- * 
+ *
  * @param id - The resource ID to fetch (optional - query is disabled if undefined)
  * @returns React Query result with resource data, loading state, error state, and refetch function
- * 
+ *
  * @example
  * ```tsx
  * const { data, isLoading, isError, error, refetch } = useResource(resourceId);
@@ -150,13 +150,13 @@ export function useResource(id?: number): UseQueryResult<Resource, Error> {
 
 /**
  * Hook for fetching files associated with a resource (mod_resource).
- * 
+ *
  * Calls GET /api/v1/resources/{id}/files which wraps existing Moodle file functions.
  * Returns file metadata including URLs, sizes, and MIME types.
- * 
+ *
  * @param id - The resource ID to fetch files for (optional - query is disabled if undefined)
  * @returns React Query result with resource file data
- * 
+ *
  * @example
  * ```tsx
  * const { data, isLoading } = useResourceFiles(resourceId);
@@ -167,7 +167,9 @@ export function useResourceFiles(id?: number): UseQueryResult<ResourceFile, Erro
   return useQuery<ResourceFile, Error>({
     queryKey: resourceKeys.files(id ?? 0),
     queryFn: async () => {
-      const response = await apiClient.get<ApiResponse<ResourceFile>>(`/api/v1/resources/${id}/files`);
+      const response = await apiClient.get<ApiResponse<ResourceFile>>(
+        `/api/v1/resources/${id}/files`
+      );
       return response.data.data;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -181,13 +183,13 @@ export function useResourceFiles(id?: number): UseQueryResult<ResourceFile, Erro
 
 /**
  * Hook for fetching page content (mod_page).
- * 
+ *
  * Calls GET /api/v1/resources/pages/{id} which wraps existing Moodle page functions.
  * Returns page content with HTML formatting and metadata.
- * 
+ *
  * @param id - The page resource ID to fetch (optional - query is disabled if undefined)
  * @returns React Query result with page resource data
- * 
+ *
  * @example
  * ```tsx
  * const { data, isLoading } = useResourcePage(pageId);
@@ -198,7 +200,9 @@ export function useResourcePage(id?: number): UseQueryResult<ResourcePage, Error
   return useQuery<ResourcePage, Error>({
     queryKey: resourceKeys.page(id ?? 0),
     queryFn: async () => {
-      const response = await apiClient.get<ApiResponse<ResourcePage>>(`/api/v1/resources/pages/${id}`);
+      const response = await apiClient.get<ApiResponse<ResourcePage>>(
+        `/api/v1/resources/pages/${id}`
+      );
       return response.data.data;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -212,13 +216,13 @@ export function useResourcePage(id?: number): UseQueryResult<ResourcePage, Error
 
 /**
  * Hook for fetching URL data (mod_url).
- * 
+ *
  * Calls GET /api/v1/resources/urls/{id} which wraps existing Moodle URL functions.
  * Returns URL resource data including external URL and display options.
- * 
+ *
  * @param id - The URL resource ID to fetch (optional - query is disabled if undefined)
  * @returns React Query result with URL resource data
- * 
+ *
  * @example
  * ```tsx
  * const { data, isLoading } = useResourceUrl(urlId);
@@ -229,7 +233,9 @@ export function useResourceUrl(id?: number): UseQueryResult<ResourceUrl, Error> 
   return useQuery<ResourceUrl, Error>({
     queryKey: resourceKeys.url(id ?? 0),
     queryFn: async () => {
-      const response = await apiClient.get<ApiResponse<ResourceUrl>>(`/api/v1/resources/urls/${id}`);
+      const response = await apiClient.get<ApiResponse<ResourceUrl>>(
+        `/api/v1/resources/urls/${id}`
+      );
       return response.data.data;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -243,13 +249,13 @@ export function useResourceUrl(id?: number): UseQueryResult<ResourceUrl, Error> 
 
 /**
  * Hook for fetching folder contents (mod_folder).
- * 
+ *
  * Calls GET /api/v1/resources/folders/{id} which wraps existing Moodle folder functions.
  * Returns folder resource data including file list and display options.
- * 
+ *
  * @param id - The folder resource ID to fetch (optional - query is disabled if undefined)
  * @returns React Query result with folder resource data
- * 
+ *
  * @example
  * ```tsx
  * const { data, isLoading } = useResourceFolder(folderId);
@@ -260,7 +266,9 @@ export function useResourceFolder(id?: number): UseQueryResult<ResourceFolder, E
   return useQuery<ResourceFolder, Error>({
     queryKey: resourceKeys.folder(id ?? 0),
     queryFn: async () => {
-      const response = await apiClient.get<ApiResponse<ResourceFolder>>(`/api/v1/resources/folders/${id}`);
+      const response = await apiClient.get<ApiResponse<ResourceFolder>>(
+        `/api/v1/resources/folders/${id}`
+      );
       return response.data.data;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -274,22 +282,27 @@ export function useResourceFolder(id?: number): UseQueryResult<ResourceFolder, E
 
 /**
  * Mutation hook for tracking resource views.
- * 
+ *
  * Calls POST /api/v1/resources/{id}/view which wraps existing Moodle view tracking functions.
  * Implements optimistic updates by invalidating the resource cache after successful tracking.
- * 
+ *
  * @returns React Query mutation result for tracking views
- * 
+ *
  * @example
  * ```tsx
  * const trackView = useTrackResourceView();
- * 
+ *
  * useEffect(() => {
  *   trackView.mutate(resourceId);
  * }, [resourceId]);
  * ```
  */
-export function useTrackResourceView(): UseMutationResult<TrackingResponse, Error, number, unknown> {
+export function useTrackResourceView(): UseMutationResult<
+  TrackingResponse,
+  Error,
+  number,
+  unknown
+> {
   const queryClient = useQueryClient();
 
   return useMutation<TrackingResponse, Error, number>({
@@ -302,7 +315,7 @@ export function useTrackResourceView(): UseMutationResult<TrackingResponse, Erro
     onSuccess: (data, resourceId) => {
       // Invalidate resource cache to refetch updated view count
       void queryClient.invalidateQueries({ queryKey: resourceKeys.detail(resourceId) });
-      
+
       // Optionally update cache optimistically without refetching
       queryClient.setQueryData<Resource>(resourceKeys.detail(resourceId), (oldData) => {
         if (oldData && data.viewcount !== undefined) {
@@ -323,16 +336,16 @@ export function useTrackResourceView(): UseMutationResult<TrackingResponse, Erro
 
 /**
  * Mutation hook for tracking resource downloads.
- * 
+ *
  * Calls POST /api/v1/resources/{id}/download which wraps existing Moodle download tracking functions.
  * Implements optimistic updates by invalidating the resource cache after successful tracking.
- * 
+ *
  * @returns React Query mutation result for tracking downloads
- * 
+ *
  * @example
  * ```tsx
  * const trackDownload = useTrackResourceDownload();
- * 
+ *
  * const handleDownload = (resourceId: number) => {
  *   trackDownload.mutate(resourceId, {
  *     onSuccess: () => {
@@ -343,7 +356,12 @@ export function useTrackResourceView(): UseMutationResult<TrackingResponse, Erro
  * };
  * ```
  */
-export function useTrackResourceDownload(): UseMutationResult<TrackingResponse, Error, number, unknown> {
+export function useTrackResourceDownload(): UseMutationResult<
+  TrackingResponse,
+  Error,
+  number,
+  unknown
+> {
   const queryClient = useQueryClient();
 
   return useMutation<TrackingResponse, Error, number>({
@@ -357,7 +375,7 @@ export function useTrackResourceDownload(): UseMutationResult<TrackingResponse, 
       // Invalidate resource cache to refetch updated download count
       void queryClient.invalidateQueries({ queryKey: resourceKeys.detail(resourceId) });
       void queryClient.invalidateQueries({ queryKey: resourceKeys.files(resourceId) });
-      
+
       // Optionally update cache optimistically without refetching
       queryClient.setQueryData<Resource>(resourceKeys.detail(resourceId), (oldData) => {
         if (oldData && data.downloadcount !== undefined) {

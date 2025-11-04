@@ -1,13 +1,13 @@
 /**
  * Type-safe storage service providing wrappers around browser localStorage and sessionStorage APIs.
- * 
+ *
  * This service implements utility functions for JSON serialization/deserialization, error handling
  * for storage quota exceeded and unavailable storage scenarios, storage availability checking,
  * cross-tab synchronization via storage events, and consistent error handling.
- * 
+ *
  * Used throughout the application for client-side data caching and by authService for token persistence.
  * This is a foundational service with no dependencies on other application services.
- * 
+ *
  * @module services/storage/storageService
  */
 
@@ -40,7 +40,7 @@ const storageAvailabilityCache = {
 
 /**
  * Get the appropriate browser storage object based on type
- * 
+ *
  * @param storageType - Type of storage to retrieve ('local' or 'session')
  * @returns Storage object or null if unavailable
  */
@@ -55,7 +55,7 @@ function getStorageObject(storageType: StorageType): Storage | null {
 
 /**
  * Get the in-memory fallback map for a specific storage type
- * 
+ *
  * @param storageType - Type of storage
  * @returns In-memory map for the storage type
  */
@@ -65,17 +65,17 @@ function getInMemoryMap(storageType: StorageType): Map<string, string> {
 
 /**
  * Check if browser storage is available and usable.
- * 
+ *
  * This function tests actual storage operations to detect scenarios like:
  * - Private browsing mode where storage exists but throws errors
  * - Browser restrictions or security policies
  * - Storage disabled by user settings
- * 
+ *
  * Results are cached to avoid repeated checks.
- * 
+ *
  * @param storageType - Type of storage to check ('local' or 'session')
  * @returns True if storage is available and usable, false otherwise
- * 
+ *
  * @example
  * ```typescript
  * if (isStorageAvailable('local')) {
@@ -91,7 +91,7 @@ export function isStorageAvailable(storageType: StorageType = 'local'): boolean 
   }
 
   const storage = getStorageObject(storageType);
-  
+
   if (!storage) {
     storageAvailabilityCache[storageType] = false;
     return false;
@@ -113,23 +113,23 @@ export function isStorageAvailable(storageType: StorageType = 'local'): boolean 
 
 /**
  * Get an item from storage with automatic JSON parsing and type safety.
- * 
+ *
  * Automatically deserializes JSON strings back to their original types.
  * Falls back to in-memory storage if browser storage is unavailable.
  * Returns null if the key doesn't exist or parsing fails.
- * 
+ *
  * @template T - Expected type of the stored value
  * @param key - Storage key to retrieve
  * @param storageType - Type of storage to use ('local' or 'session')
  * @returns Parsed value of type T, or null if not found or error occurs
- * 
+ *
  * @example
  * ```typescript
  * interface User {
  *   id: number;
  *   name: string;
  * }
- * 
+ *
  * const user = getItem<User>('currentUser', 'local');
  * if (user) {
  *   console.log(user.name);
@@ -170,17 +170,17 @@ export function getItem<T>(key: string, storageType: StorageType = 'local'): T |
 
 /**
  * Set an item in storage with automatic JSON stringification.
- * 
+ *
  * Automatically serializes values to JSON before storing.
  * Handles quota exceeded errors gracefully.
  * Falls back to in-memory storage if browser storage is unavailable.
- * 
+ *
  * @template T - Type of value to store
  * @param key - Storage key to set
  * @param value - Value to store
  * @param storageType - Type of storage to use ('local' or 'session')
  * @returns True if successfully stored, false otherwise
- * 
+ *
  * @example
  * ```typescript
  * const user = { id: 1, name: 'John' };
@@ -194,7 +194,7 @@ export function setItem<T>(key: string, value: T, storageType: StorageType = 'lo
   try {
     // Handle undefined by treating it as null (since undefined doesn't serialize properly)
     const valueToStore = value ?? null;
-    
+
     // Serialize value to JSON
     const serializedValue = JSON.stringify(valueToStore);
 
@@ -216,7 +216,7 @@ export function setItem<T>(key: string, value: T, storageType: StorageType = 'lo
         ) {
           console.warn(
             `Storage quota exceeded for ${storageType}Storage. Key: "${key}". ` +
-            'Consider clearing old data or reducing storage usage.'
+              'Consider clearing old data or reducing storage usage.'
           );
         } else {
           console.error(`Error setting item "${key}" in ${storageType}Storage:`, storageError);
@@ -238,14 +238,14 @@ export function setItem<T>(key: string, value: T, storageType: StorageType = 'lo
 
 /**
  * Remove an item from storage.
- * 
+ *
  * Removes the specified key from browser storage or in-memory fallback.
  * Silently handles errors and missing keys.
- * 
+ *
  * @param key - Storage key to remove
  * @param storageType - Type of storage to use ('local' or 'session')
  * @returns True if successfully removed, false otherwise
- * 
+ *
  * @example
  * ```typescript
  * removeItem('currentUser', 'local');
@@ -270,13 +270,13 @@ export function removeItem(key: string, storageType: StorageType = 'local'): boo
 
 /**
  * Clear all items from storage.
- * 
+ *
  * Removes all keys from the specified storage type.
  * Use with caution as this affects all stored data.
- * 
+ *
  * @param storageType - Type of storage to clear ('local' or 'session')
  * @returns True if successfully cleared, false otherwise
- * 
+ *
  * @example
  * ```typescript
  * // Clear all localStorage data
@@ -302,13 +302,13 @@ export function clear(storageType: StorageType = 'local'): boolean {
 
 /**
  * Get all keys currently stored in storage.
- * 
+ *
  * Returns an array of all keys present in the specified storage type.
  * Useful for debugging or bulk operations.
- * 
+ *
  * @param storageType - Type of storage to query ('local' or 'session')
  * @returns Array of storage keys
- * 
+ *
  * @example
  * ```typescript
  * const keys = getKeys('local');
@@ -343,15 +343,15 @@ export function getKeys(storageType: StorageType = 'local'): string[] {
 
 /**
  * Add a storage event listener for cross-tab synchronization.
- * 
+ *
  * Storage events are fired when storage is modified in another tab/window.
  * This enables cross-tab synchronization and real-time updates.
- * 
+ *
  * Note: Storage events only fire in OTHER tabs, not the one making the change.
- * 
+ *
  * @param callback - Function to call when storage changes in another tab
  * @returns Cleanup function to remove the event listener
- * 
+ *
  * @example
  * ```typescript
  * const removeListener = addStorageListener((event) => {
@@ -360,7 +360,7 @@ export function getKeys(storageType: StorageType = 'local'): string[] {
  *     // Update local state accordingly
  *   }
  * });
- * 
+ *
  * // Later, when component unmounts:
  * removeListener();
  * ```
@@ -389,20 +389,20 @@ export function addStorageListener(callback: StorageEventCallback): () => void {
 
 /**
  * Remove a storage event listener.
- * 
+ *
  * Removes a previously added storage event listener.
  * Should be called when the listener is no longer needed (e.g., component unmount).
- * 
+ *
  * @param callback - The callback function to remove
- * 
+ *
  * @example
  * ```typescript
  * const handleStorageChange = (event: StorageEvent) => {
  *   // Handle storage change
  * };
- * 
+ *
  * addStorageListener(handleStorageChange);
- * 
+ *
  * // Later:
  * removeStorageListener(handleStorageChange);
  * ```

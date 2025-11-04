@@ -12,7 +12,7 @@ interface ProgressBarProps {
    * If omitted, shows indeterminate progress
    */
   value?: number;
-  
+
   /**
    * Progress variant
    * 'determinate' - shows specific percentage (requires value)
@@ -20,47 +20,47 @@ interface ProgressBarProps {
    * 'buffer' - shows buffering progress with two bars
    */
   variant?: 'determinate' | 'indeterminate' | 'buffer';
-  
+
   /**
    * Color variant matching operation status
    * Maps to MUI theme colors
    */
   color?: 'primary' | 'secondary' | 'success' | 'error' | 'warning' | 'info' | 'inherit';
-  
+
   /**
    * Whether to show the label (percentage or custom text)
    */
   showLabel?: boolean;
-  
+
   /**
    * Custom label text (optional)
    * If not provided and showLabel is true, shows percentage
    */
   label?: string | ReactNode;
-  
+
   /**
    * Buffer value for buffer variant (0-100)
    * Used for multi-stage operations
    */
   buffer?: number;
-  
+
   /**
    * Height of the progress bar in pixels
    * Default: 4
    */
   height?: number;
-  
+
   /**
    * Label position: 'overlay' (on top of bar) or 'below' (underneath bar)
    * Default: 'below'
    */
   labelPosition?: 'overlay' | 'below';
-  
+
   /**
    * Additional className for styling
    */
   className?: string;
-  
+
   /**
    * Accessible label for screen readers
    */
@@ -69,11 +69,11 @@ interface ProgressBarProps {
 
 /**
  * ProgressBar Component
- * 
+ *
  * Displays determinate and indeterminate progress for long-running operations.
  * Uses MUI LinearProgress with support for percentage display, color variants,
  * and buffer mode.
- * 
+ *
  * Essential for:
  * - File uploads and downloads
  * - Quiz timers and time limits
@@ -82,7 +82,7 @@ interface ProgressBarProps {
  * - Assignment submission processing
  * - Video processing and encoding
  * - Database backup and restore operations
- * 
+ *
  * Features:
  * - Determinate progress (0-100%)
  * - Indeterminate progress (unknown duration)
@@ -92,51 +92,51 @@ interface ProgressBarProps {
  * - Label positioning (overlay or below)
  * - Customizable height
  * - Full accessibility support (WCAG 2.1 AA)
- * 
+ *
  * @example
  * // Determinate progress with label
  * <ProgressBar value={75} showLabel color="primary" />
- * 
+ *
  * @example
  * // Indeterminate progress for unknown duration
  * <ProgressBar color="secondary" ariaLabel="Loading content" />
- * 
+ *
  * @example
  * // Buffer mode for multi-stage file upload
- * <ProgressBar 
- *   value={40} 
- *   buffer={70} 
- *   variant="buffer" 
- *   showLabel 
+ * <ProgressBar
+ *   value={40}
+ *   buffer={70}
+ *   variant="buffer"
+ *   showLabel
  *   label="Uploading and processing..."
  * />
- * 
+ *
  * @example
  * // Quiz timer with overlay label
- * <ProgressBar 
- *   value={60} 
- *   showLabel 
+ * <ProgressBar
+ *   value={60}
+ *   showLabel
  *   labelPosition="overlay"
- *   label="12:30 remaining" 
- *   color="warning" 
+ *   label="12:30 remaining"
+ *   color="warning"
  *   height={8}
  * />
- * 
+ *
  * @example
  * // Course completion tracking
- * <ProgressBar 
- *   value={85} 
- *   showLabel 
+ * <ProgressBar
+ *   value={85}
+ *   showLabel
  *   label="Course 85% complete"
  *   color="success"
  * />
- * 
+ *
  * @example
  * // Error state during operation
- * <ProgressBar 
- *   value={45} 
- *   showLabel 
- *   label="Upload failed" 
+ * <ProgressBar
+ *   value={45}
+ *   showLabel
+ *   label="Upload failed"
  *   color="error"
  * />
  */
@@ -153,42 +153,42 @@ export function ProgressBar({
   ariaLabel,
 }: ProgressBarProps) {
   // Determine variant automatically based on value and buffer
-  const effectiveVariant: LinearProgressProps['variant'] = 
-    variant ?? 
-    (buffer !== undefined ? 'buffer' : 
-     value !== undefined ? 'determinate' : 
-     'indeterminate');
-  
+  const effectiveVariant: LinearProgressProps['variant'] =
+    variant ??
+    (buffer !== undefined ? 'buffer' : value !== undefined ? 'determinate' : 'indeterminate');
+
   // Clamp value between 0 and 100
   const clampedValue = value !== undefined ? Math.max(0, Math.min(100, value)) : undefined;
-  
+
   // Clamp buffer between 0 and 100
   const clampedBuffer = buffer !== undefined ? Math.max(0, Math.min(100, buffer)) : undefined;
-  
+
   // Determine label text
-  const labelText = label !== undefined 
-    ? label 
-    : clampedValue !== undefined 
-      ? `${Math.round(clampedValue)}%` 
-      : undefined;
-  
+  const labelText =
+    label !== undefined
+      ? label
+      : clampedValue !== undefined
+        ? `${Math.round(clampedValue)}%`
+        : undefined;
+
   // Map color to MUI theme colors
   // MUI LinearProgress supports: primary, secondary, error, info, success, warning, inherit
-  const progressColor = color === 'primary' || 
-                        color === 'secondary' || 
-                        color === 'error' || 
-                        color === 'info' || 
-                        color === 'success' || 
-                        color === 'warning' || 
-                        color === 'inherit'
-    ? color
-    : 'primary';
-  
+  const progressColor =
+    color === 'primary' ||
+    color === 'secondary' ||
+    color === 'error' ||
+    color === 'info' ||
+    color === 'success' ||
+    color === 'warning' ||
+    color === 'inherit'
+      ? color
+      : 'primary';
+
   return (
-    <Box 
+    <Box
       className={className}
-      sx={{ 
-        position: 'relative', 
+      sx={{
+        position: 'relative',
         width: '100%',
         display: 'flex',
         flexDirection: 'column',
@@ -212,7 +212,7 @@ export function ProgressBar({
           aria-valuemax={100}
           role="progressbar"
         />
-        
+
         {/* Overlay Label - positioned on top of progress bar */}
         {showLabel && labelText && labelPosition === 'overlay' && (
           <Box
@@ -242,7 +242,7 @@ export function ProgressBar({
           </Box>
         )}
       </Box>
-      
+
       {/* Below Label - positioned underneath progress bar */}
       {showLabel && labelText && labelPosition === 'below' && (
         <Box

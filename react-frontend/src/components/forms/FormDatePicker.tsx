@@ -1,10 +1,10 @@
 /**
  * FormDatePicker Component
- * 
+ *
  * React form component for date and time selection using Material-UI DatePicker
  * with React Hook Form integration. Provides accessible date/time input with
  * validation, error handling, and flexible configuration options.
- * 
+ *
  * Features:
  * - Supports date-only, time-only, and datetime modes
  * - Integrates with React Hook Form for validation and state management
@@ -13,7 +13,7 @@
  * - Accessible labels and error messages (WCAG 2.1 AA compliant)
  * - Material-UI v5 theming and styling
  * - Date-fns for date manipulation and formatting
- * 
+ *
  * Usage:
  * ```tsx
  * <FormDatePicker
@@ -28,40 +28,17 @@
  */
 
 import type React from 'react';
-import type {
-  Control,
-  FieldError,
-  FieldValues,
-  Path} from 'react-hook-form';
-import {
-  Controller
-} from 'react-hook-form';
-import {
-  DatePicker,
-  TimePicker,
-  DateTimePicker,
-  LocalizationProvider,
-} from '@mui/x-date-pickers';
+import type { Control, FieldError, FieldValues, Path } from 'react-hook-form';
+import { Controller } from 'react-hook-form';
+import { DatePicker, TimePicker, DateTimePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import type {
-  TextFieldProps} from '@mui/material';
-import {
-  FormControl,
-  FormHelperText
-} from '@mui/material';
-import {
-  format,
-  parse,
-  isValid,
-  isBefore,
-  isAfter,
-  startOfDay,
-  endOfDay,
-} from 'date-fns';
+import type { TextFieldProps } from '@mui/material';
+import { FormControl, FormHelperText } from '@mui/material';
+import { format, parse, isValid, isBefore, isAfter, startOfDay, endOfDay } from 'date-fns';
 
 /**
  * Props interface for FormDatePicker component
- * 
+ *
  * @template TFieldValues - Type of form values from React Hook Form
  */
 export interface FormDatePickerProps<TFieldValues extends FieldValues = FieldValues> {
@@ -140,11 +117,11 @@ export interface FormDatePickerProps<TFieldValues extends FieldValues = FieldVal
 
 /**
  * FormDatePicker Component
- * 
+ *
  * Material-UI date picker integrated with React Hook Form for seamless
  * form state management, validation, and error handling. Supports multiple
  * modes (date, time, datetime) and accessibility features.
- * 
+ *
  * @template TFieldValues - Type of form values from React Hook Form
  */
 export function FormDatePicker<TFieldValues extends FieldValues = FieldValues>({
@@ -163,7 +140,7 @@ export function FormDatePicker<TFieldValues extends FieldValues = FieldValues>({
 }: FormDatePickerProps<TFieldValues>): React.ReactElement {
   /**
    * Validates that a date is within the allowed range
-   * 
+   *
    * @param date - Date to validate
    * @returns True if date is valid and within range
    */
@@ -197,7 +174,7 @@ export function FormDatePicker<TFieldValues extends FieldValues = FieldValues>({
 
   /**
    * Determines if a specific date should be disabled in the calendar
-   * 
+   *
    * @param date - Date to check
    * @returns True if the date should be disabled
    */
@@ -207,7 +184,7 @@ export function FormDatePicker<TFieldValues extends FieldValues = FieldValues>({
 
   /**
    * Formats error message from React Hook Form field error
-   * 
+   *
    * @param error - Field error object from React Hook Form
    * @returns Formatted error message string
    */
@@ -226,13 +203,9 @@ export function FormDatePicker<TFieldValues extends FieldValues = FieldValues>({
       case 'required':
         return `${label} is required`;
       case 'min':
-        return minDate
-          ? `Date must be on or after ${format(minDate, 'PP')}`
-          : 'Date is too early';
+        return minDate ? `Date must be on or after ${format(minDate, 'PP')}` : 'Date is too early';
       case 'max':
-        return maxDate
-          ? `Date must be on or before ${format(maxDate, 'PP')}`
-          : 'Date is too late';
+        return maxDate ? `Date must be on or before ${format(maxDate, 'PP')}` : 'Date is too late';
       case 'validate':
         return 'Invalid date selected';
       default:
@@ -272,11 +245,7 @@ export function FormDatePicker<TFieldValues extends FieldValues = FieldValues>({
           'aria-label': label,
           'aria-required': required,
           'aria-invalid': Boolean(error),
-          'aria-describedby': error
-            ? `${name}-error`
-            : helperText
-            ? `${name}-helper`
-            : undefined,
+          'aria-describedby': error ? `${name}-error` : helperText ? `${name}-helper` : undefined,
         } as TextFieldProps,
       },
     };
@@ -285,30 +254,20 @@ export function FormDatePicker<TFieldValues extends FieldValues = FieldValues>({
     switch (mode) {
       case 'time':
         return (
-          <TimePicker
-            {...commonProps}
-            views={views as Array<'hours' | 'minutes' | 'seconds'>}
-          />
+          <TimePicker {...commonProps} views={views as Array<'hours' | 'minutes' | 'seconds'>} />
         );
 
       case 'datetime':
         return (
           <DateTimePicker
             {...commonProps}
-            views={
-              views as Array<'year' | 'month' | 'day' | 'hours' | 'minutes'>
-            }
+            views={views as Array<'year' | 'month' | 'day' | 'hours' | 'minutes'>}
           />
         );
 
       case 'date':
       default:
-        return (
-          <DatePicker
-            {...commonProps}
-            views={views as Array<'year' | 'month' | 'day'>}
-          />
-        );
+        return <DatePicker {...commonProps} views={views as Array<'year' | 'month' | 'day'>} />;
     }
   };
 
@@ -364,16 +323,16 @@ export function FormDatePicker<TFieldValues extends FieldValues = FieldValues>({
               rawValue instanceof Date
                 ? rawValue
                 : rawValue
-                ? parse(
-                    String(rawValue),
-                    mode === 'time'
-                      ? 'HH:mm:ss'
-                      : mode === 'datetime'
-                      ? "yyyy-MM-dd'T'HH:mm:ss"
-                      : 'yyyy-MM-dd',
-                    new Date()
-                  )
-                : null;
+                  ? parse(
+                      String(rawValue),
+                      mode === 'time'
+                        ? 'HH:mm:ss'
+                        : mode === 'datetime'
+                          ? "yyyy-MM-dd'T'HH:mm:ss"
+                          : 'yyyy-MM-dd',
+                      new Date()
+                    )
+                  : null;
 
             // Handler to convert Date back to appropriate format for form
             const handleChange = (date: Date | null): void => {

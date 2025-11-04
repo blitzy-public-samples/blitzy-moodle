@@ -1,17 +1,17 @@
 /**
  * TypeScript type definitions for Admin API operations
- * 
+ *
  * This module provides comprehensive type safety for all administrative API interactions
  * including user management, course management, role management, and settings management.
  * These types extend standard API response structures with admin-specific features like
  * bulk operations, permission checks, and advanced filtering capabilities.
- * 
+ *
  * @module features/admin/api/types
  */
 
 /**
  * Pagination parameters for admin list endpoints
- * 
+ *
  * Used to control pagination, sorting, and ordering of list results
  * across all admin endpoints that return paginated data.
  */
@@ -44,10 +44,10 @@ export interface AdminPaginationParams {
 
 /**
  * Generic paginated response wrapper for admin endpoints
- * 
+ *
  * Wraps list results with pagination metadata to enable
  * client-side pagination controls and navigation.
- * 
+ *
  * @template T - The type of items in the response
  */
 export interface AdminPaginatedResponse<T> {
@@ -79,7 +79,7 @@ export interface AdminPaginatedResponse<T> {
 
 /**
  * Request payload for bulk operations on multiple entities
- * 
+ *
  * Supports operations like bulk delete, bulk suspend, bulk enroll, etc.
  * across users, courses, or other administrative entities.
  */
@@ -105,7 +105,7 @@ export interface AdminBulkOperationRequest {
 
 /**
  * Response payload for bulk operations
- * 
+ *
  * Provides detailed feedback on the success and failure of
  * individual operations within a bulk request.
  */
@@ -128,12 +128,12 @@ export interface AdminBulkOperationResponse {
      * ID of the entity that failed
      */
     id: number;
-    
+
     /**
      * Error message describing the failure
      */
     message: string;
-    
+
     /**
      * Error code for programmatic handling
      */
@@ -148,12 +148,12 @@ export interface AdminBulkOperationResponse {
      * ID of the entity
      */
     id: number;
-    
+
     /**
      * Whether the operation succeeded
      */
     success: boolean;
-    
+
     /**
      * Optional message or error description
      */
@@ -163,7 +163,7 @@ export interface AdminBulkOperationResponse {
 
 /**
  * Common filter parameters for admin list endpoints
- * 
+ *
  * Enables advanced filtering of administrative lists by various criteria
  * including text search, role filtering, status filtering, and date ranges.
  */
@@ -195,7 +195,7 @@ export interface AdminFilterParams {
      * Start date in ISO 8601 format
      */
     start: string;
-    
+
     /**
      * End date in ISO 8601 format
      */
@@ -217,7 +217,7 @@ export interface AdminFilterParams {
 
 /**
  * Sorting configuration for admin endpoints
- * 
+ *
  * Specifies the field and direction for sorting list results.
  */
 export interface AdminSortParams {
@@ -236,7 +236,7 @@ export interface AdminSortParams {
 
 /**
  * Standardized error response structure for admin operations
- * 
+ *
  * Provides consistent error handling across all admin API endpoints
  * with detailed error information for debugging and user feedback.
  */
@@ -256,13 +256,13 @@ export interface AdminErrorResponse {
      * @example "PERMISSION_DENIED", "VALIDATION_ERROR", "NOT_FOUND"
      */
     code: string;
-    
+
     /**
      * Human-readable error message
      * @example "You do not have permission to perform this action"
      */
     message: string;
-    
+
     /**
      * Optional additional error details
      */
@@ -289,10 +289,10 @@ export interface AdminErrorResponse {
 
 /**
  * Generic success response wrapper for admin operations
- * 
+ *
  * Provides a consistent structure for successful API responses
  * with optional metadata and success messages.
- * 
+ *
  * @template T - The type of data in the response
  */
 export interface AdminSuccessResponse<T> {
@@ -315,12 +315,12 @@ export interface AdminSuccessResponse<T> {
      * Timestamp when the response was generated
      */
     timestamp?: string;
-    
+
     /**
      * API version that generated the response
      */
     version?: string;
-    
+
     /**
      * Pagination information for list responses
      */
@@ -330,7 +330,7 @@ export interface AdminSuccessResponse<T> {
       total: number;
       totalPages: number;
     };
-    
+
     /**
      * Additional metadata fields
      */
@@ -346,7 +346,7 @@ export interface AdminSuccessResponse<T> {
 
 /**
  * Permission check result for admin operations
- * 
+ *
  * Used to verify whether the current user has the required capability
  * to perform an administrative action in a given context.
  */
@@ -377,7 +377,7 @@ export interface AdminPermissionCheck {
 
 /**
  * Type guard to check if a response is an error response
- * 
+ *
  * @param response - The response to check
  * @returns True if the response is an AdminErrorResponse
  */
@@ -389,7 +389,7 @@ export function isAdminErrorResponse(
 
 /**
  * Type guard to check if a response is a success response
- * 
+ *
  * @param response - The response to check
  * @returns True if the response is an AdminSuccessResponse
  */

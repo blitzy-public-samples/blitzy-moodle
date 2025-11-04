@@ -1,10 +1,10 @@
 /**
  * FormSelect Component
- * 
+ *
  * A reusable form select component that integrates Material-UI Select with React Hook Form.
  * Supports single and multiple selection modes, option groups, search functionality,
  * and comprehensive validation with accessibility features.
- * 
+ *
  * Features:
  * - Single and multiple selection modes
  * - Option grouping with ListSubheader
@@ -14,7 +14,7 @@
  * - WCAG 2.1 AA compliant with proper ARIA attributes
  * - Error state display with helper text
  * - Placeholder support for empty state
- * 
+ *
  * @module components/forms/FormSelect
  */
 
@@ -46,13 +46,13 @@ import {
 export interface SelectOption {
   /** The value to be submitted with the form */
   value: string | number;
-  
+
   /** The display label shown to the user */
   label: string;
-  
+
   /** Whether this option is disabled and cannot be selected */
   disabled?: boolean;
-  
+
   /** Optional group name for organizing options into categories */
   group?: string;
 }
@@ -63,44 +63,44 @@ export interface SelectOption {
 export interface FormSelectProps<TFieldValues extends FieldValues = FieldValues> {
   /** The name of the field in the form state */
   name: Path<TFieldValues>;
-  
+
   /** The label text displayed above the select */
   label: string;
-  
+
   /** Array of options to display in the dropdown */
   options: SelectOption[];
-  
+
   /** Whether the field is required for form submission */
   required?: boolean;
-  
+
   /** Whether the select is disabled */
   disabled?: boolean;
-  
+
   /** Whether multiple options can be selected */
   multiple?: boolean;
-  
+
   /** Placeholder text shown when no value is selected */
   placeholder?: string;
-  
+
   /** Helper text displayed below the select field */
   helperText?: string;
-  
+
   /** React Hook Form control object */
   control: Control<TFieldValues>;
-  
+
   /** Whether to enable search/filter functionality for large option lists */
   searchable?: boolean;
-  
+
   /** Optional function to group options (alternative to group property) */
   groupBy?: (option: SelectOption) => string;
 }
 
 /**
  * FormSelect Component
- * 
+ *
  * A wrapper around Material-UI Select that integrates with React Hook Form
  * for form state management and validation.
- * 
+ *
  * @example
  * ```tsx
  * <FormSelect
@@ -115,7 +115,7 @@ export interface FormSelectProps<TFieldValues extends FieldValues = FieldValues>
  *   required
  * />
  * ```
- * 
+ *
  * @example With option groups
  * ```tsx
  * <FormSelect
@@ -129,7 +129,7 @@ export interface FormSelectProps<TFieldValues extends FieldValues = FieldValues>
  *   ]}
  * />
  * ```
- * 
+ *
  * @example With search functionality
  * ```tsx
  * <FormSelect
@@ -158,34 +158,35 @@ export function FormSelect<TFieldValues extends FieldValues = FieldValues>({
   // Generate unique IDs for accessibility
   const labelId = `${name}-label`;
   const helperId = `${name}-helper`;
-  
+
   /**
    * Groups options by their group property or groupBy function
    */
   const groupedOptions = React.useMemo(() => {
-    if (!groupBy && !options.some(opt => opt.group)) {
+    if (!groupBy && !options.some((opt) => opt.group)) {
       return { ungrouped: options };
     }
-    
+
     const grouped: Record<string, SelectOption[]> = {};
-    
-    options.forEach(option => {
+
+    options.forEach((option) => {
       const groupName = groupBy ? groupBy(option) : (option.group ?? 'Other');
       if (!grouped[groupName]) {
         grouped[groupName] = [];
       }
       grouped[groupName].push(option);
     });
-    
+
     return grouped;
   }, [options, groupBy]);
-  
+
   /**
    * Determines if options should be grouped
    */
-  const hasGroups = Object.keys(groupedOptions).length > 1 || 
-                    (Object.keys(groupedOptions).length === 1 && !groupedOptions.ungrouped);
-  
+  const hasGroups =
+    Object.keys(groupedOptions).length > 1 ||
+    (Object.keys(groupedOptions).length === 1 && !groupedOptions.ungrouped);
+
   /**
    * Renders the select component with standard Material-UI Select
    */
@@ -195,17 +196,10 @@ export function FormSelect<TFieldValues extends FieldValues = FieldValues>({
   ) => {
     const hasError = !!fieldState.error;
     const errorMessage = fieldState.error?.message;
-    
+
     return (
-      <FormControl
-        fullWidth
-        required={required}
-        disabled={disabled}
-        error={hasError}
-      >
-        <InputLabel id={labelId}>
-          {label}
-        </InputLabel>
+      <FormControl fullWidth required={required} disabled={disabled} error={hasError}>
+        <InputLabel id={labelId}>{label}</InputLabel>
         <Select
           {...field}
           labelId={labelId}
@@ -218,75 +212,65 @@ export function FormSelect<TFieldValues extends FieldValues = FieldValues>({
             'aria-invalid': hasError ? 'true' : 'false',
             'aria-required': required ? 'true' : 'false',
           }}
-          renderValue={multiple ? (selected: unknown) => {
-            if (!selected || (Array.isArray(selected) && selected.length === 0)) {
-              return <em style={{ color: 'text.secondary' }}>{placeholder}</em>;
-            }
-            
-            if (Array.isArray(selected)) {
-              return (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                  {selected.map((value: string | number) => {
-                    const option = options.find(opt => opt.value === value);
+          renderValue={
+            multiple
+              ? (selected: unknown) => {
+                  if (!selected || (Array.isArray(selected) && selected.length === 0)) {
+                    return <em style={{ color: 'text.secondary' }}>{placeholder}</em>;
+                  }
+
+                  if (Array.isArray(selected)) {
                     return (
-                      <Chip
-                        key={String(value)}
-                        label={option?.label ?? String(value)}
-                        size="small"
-                      />
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                        {selected.map((value: string | number) => {
+                          const option = options.find((opt) => opt.value === value);
+                          return (
+                            <Chip
+                              key={String(value)}
+                              label={option?.label ?? String(value)}
+                              size="small"
+                            />
+                          );
+                        })}
+                      </div>
                     );
-                  })}
-                </div>
-              );
-            }
-            
-            const option = options.find(opt => opt.value === selected);
-            return option?.label ?? String(selected);
-          } : undefined}
+                  }
+
+                  const option = options.find((opt) => opt.value === selected);
+                  return option?.label ?? String(selected);
+                }
+              : undefined
+          }
         >
           {placeholder && !multiple && (
             <MenuItem value="" disabled>
               <em>{placeholder}</em>
             </MenuItem>
           )}
-          
-          {hasGroups ? (
-            Object.entries(groupedOptions).map(([groupName, groupOptions]) => [
-              <ListSubheader key={`group-${groupName}`}>
-                {groupName}
-              </ListSubheader>,
-              ...groupOptions.map((option) => (
-                <MenuItem
-                  key={option.value}
-                  value={option.value}
-                  disabled={option.disabled}
-                >
+
+          {hasGroups
+            ? Object.entries(groupedOptions).map(([groupName, groupOptions]) => [
+                <ListSubheader key={`group-${groupName}`}>{groupName}</ListSubheader>,
+                ...groupOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value} disabled={option.disabled}>
+                    {option.label}
+                  </MenuItem>
+                )),
+              ])
+            : options.map((option) => (
+                <MenuItem key={option.value} value={option.value} disabled={option.disabled}>
                   {option.label}
                 </MenuItem>
-              ))
-            ])
-          ) : (
-            options.map((option) => (
-              <MenuItem
-                key={option.value}
-                value={option.value}
-                disabled={option.disabled}
-              >
-                {option.label}
-              </MenuItem>
-            ))
-          )}
+              ))}
         </Select>
-        
+
         {(hasError || helperText) && (
-          <FormHelperText id={helperId}>
-            {errorMessage ?? helperText}
-          </FormHelperText>
+          <FormHelperText id={helperId}>{errorMessage ?? helperText}</FormHelperText>
         )}
       </FormControl>
     );
   };
-  
+
   /**
    * Renders the searchable select component using Autocomplete
    */
@@ -296,15 +280,15 @@ export function FormSelect<TFieldValues extends FieldValues = FieldValues>({
   ) => {
     const hasError = !!fieldState.error;
     const errorMessage = fieldState.error?.message;
-    
+
     // Find the selected option(s)
     const selectedOptions = multiple
-      ? options.filter(opt => {
+      ? options.filter((opt) => {
           const values = field.value as unknown;
           return Array.isArray(values) && values.includes(opt.value);
         })
-      : options.find(opt => opt.value === field.value) ?? null;
-    
+      : (options.find((opt) => opt.value === field.value) ?? null);
+
     return (
       <Autocomplete
         multiple={multiple}
@@ -312,7 +296,7 @@ export function FormSelect<TFieldValues extends FieldValues = FieldValues>({
         value={selectedOptions}
         onChange={(_, newValue: SelectOption | SelectOption[] | null) => {
           if (multiple && Array.isArray(newValue)) {
-            field.onChange(newValue.map(opt => opt.value));
+            field.onChange(newValue.map((opt) => opt.value));
           } else if (!multiple && newValue && !Array.isArray(newValue)) {
             field.onChange(newValue.value);
           } else {
@@ -344,20 +328,13 @@ export function FormSelect<TFieldValues extends FieldValues = FieldValues>({
         renderTags={(value: SelectOption[], getTagProps) =>
           value.map((option, index) => {
             const { key, ...otherTagProps } = getTagProps({ index });
-            return (
-              <Chip
-                key={key}
-                label={option.label}
-                {...otherTagProps}
-                size="small"
-              />
-            );
+            return <Chip key={key} label={option.label} {...otherTagProps} size="small" />;
           })
         }
       />
     );
   };
-  
+
   return (
     <Controller
       name={name}

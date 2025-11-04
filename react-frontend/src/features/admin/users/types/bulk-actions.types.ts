@@ -1,24 +1,24 @@
 /**
  * Type definitions for bulk user actions in admin user management
- * 
+ *
  * This file defines the TypeScript types for bulk operations on multiple users,
  * including action identifiers, request/response structures, and confirmation dialogs.
- * 
+ *
  * Based on Moodle's bulk user action system from:
  * - public/admin/user/user_bulk.php
  * - public/admin/user/user_bulk_forms.php
  * - public/admin/user/user_bulk_confirm.php
  * - public/admin/user/user_bulk_delete.php
- * 
+ *
  * @module features/admin/users/types/bulk-actions
  */
 
 /**
  * Enumeration of all available bulk user actions
- * 
+ *
  * These actions correspond to the bulk operations available in Moodle's
  * admin user management interface. Each action requires specific capabilities.
- * 
+ *
  * @enum {string}
  */
 export enum BulkActionType {
@@ -79,10 +79,10 @@ export enum BulkActionType {
 
 /**
  * Confirmation data for bulk actions that require user confirmation
- * 
+ *
  * This interface represents the data needed to display a confirmation dialog
  * before executing a bulk action on multiple users.
- * 
+ *
  * @interface BulkActionConfirmation
  */
 export interface BulkActionConfirmation {
@@ -115,10 +115,10 @@ export interface BulkActionConfirmation {
 
 /**
  * Result of a bulk action operation on a single user
- * 
+ *
  * This interface represents the outcome of applying a bulk action to one user.
  * Used to provide detailed feedback when operations succeed or fail for individual users.
- * 
+ *
  * @interface BulkUserActionResult
  */
 export interface BulkUserActionResult {
@@ -145,10 +145,10 @@ export interface BulkUserActionResult {
 
 /**
  * Data required for sending bulk messages to users
- * 
+ *
  * This interface defines the structure for the MESSAGE bulk action,
  * allowing administrators to send messages to multiple users simultaneously.
- * 
+ *
  * @interface MessageBulkActionData
  */
 export interface MessageBulkActionData {
@@ -174,10 +174,10 @@ export interface MessageBulkActionData {
 
 /**
  * Data required for adding users to a cohort
- * 
+ *
  * This interface defines the structure for the ADD_TO_COHORT bulk action,
  * allowing administrators to add multiple users to a cohort at once.
- * 
+ *
  * @interface CohortBulkActionData
  */
 export interface CohortBulkActionData {
@@ -194,9 +194,9 @@ export interface CohortBulkActionData {
 
 /**
  * Enumeration of available download formats for user data export
- * 
+ *
  * These formats are supported by Moodle's bulk user download functionality.
- * 
+ *
  * @enum {string}
  */
 export enum DownloadFormat {
@@ -223,10 +223,10 @@ export enum DownloadFormat {
 
 /**
  * Data required for downloading user data
- * 
+ *
  * This interface defines the structure for the DOWNLOAD bulk action,
  * specifying the format and fields to include in the exported data.
- * 
+ *
  * @interface DownloadBulkActionData
  */
 export interface DownloadBulkActionData {
@@ -245,10 +245,10 @@ export interface DownloadBulkActionData {
 
 /**
  * Union type for bulk action-specific data
- * 
+ *
  * This type represents the additional data required for different bulk actions.
  * The specific interface depends on the BulkActionType being performed.
- * 
+ *
  * @type BulkActionData
  */
 export type BulkActionData =
@@ -260,10 +260,10 @@ export type BulkActionData =
 
 /**
  * Request structure for bulk user action API calls
- * 
+ *
  * This interface defines the complete request structure sent to the backend
  * when performing a bulk action on multiple users.
- * 
+ *
  * @interface BulkActionRequest
  */
 export interface BulkActionRequest {
@@ -296,10 +296,10 @@ export interface BulkActionRequest {
 
 /**
  * Response structure for bulk user action API calls
- * 
+ *
  * This interface defines the response structure returned from the backend
  * after executing a bulk action on multiple users.
- * 
+ *
  * @interface BulkActionResponse
  */
 export interface BulkActionResponse {
@@ -347,10 +347,10 @@ export interface BulkActionResponse {
 
 /**
  * Options for configuring bulk action behavior
- * 
+ *
  * This interface defines optional configuration for bulk action execution,
  * such as notification preferences and validation settings.
- * 
+ *
  * @interface BulkActionOptions
  */
 export interface BulkActionOptions {
@@ -384,10 +384,10 @@ export interface BulkActionOptions {
 
 /**
  * Progress information for async bulk operations
- * 
+ *
  * This interface tracks the progress of asynchronous bulk operations,
  * useful for displaying progress bars and status updates.
- * 
+ *
  * @interface BulkActionProgress
  */
 export interface BulkActionProgress {

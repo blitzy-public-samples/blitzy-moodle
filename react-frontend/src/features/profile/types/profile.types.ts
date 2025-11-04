@@ -1,12 +1,12 @@
 /**
  * TypeScript type definitions for user profile feature
- * 
+ *
  * Based on Moodle user profile data structures from:
  * - public/user/externallib.php (user_description, create_users, update_users)
  * - public/user/lib.php (user_create_user, user_update_user)
  * - public/user/edit.php (profile edit form)
  * - public/user/profile.php (profile view)
- * 
+ *
  * @package react-frontend
  * @subpackage features/profile
  */
@@ -76,16 +76,16 @@ export enum DescriptionFormat {
 export interface CustomField {
   /** Field type (e.g., 'text', 'checkbox', 'menu', 'textarea', 'datetime') */
   type: string;
-  
+
   /** Raw field value as stored in database */
   value: string;
-  
+
   /** Formatted display value (optional) */
   displayvalue?: string;
-  
+
   /** Display name of the field */
   name: string;
-  
+
   /** Short name used as field identifier in code */
   shortname: string;
 }
@@ -97,7 +97,7 @@ export interface CustomField {
 export interface UserPreference {
   /** Preference name/key */
   name: string;
-  
+
   /** Preference value */
   value: string;
 }
@@ -109,31 +109,31 @@ export interface UserPreference {
 export interface UserPreferences {
   /** Key-value map of all user preferences */
   [key: string]: string | number | boolean | undefined;
-  
+
   /** Email display preference */
   maildisplay?: MailDisplay;
-  
+
   /** Email format preference */
   mailformat?: MailFormat;
-  
+
   /** Email digest preference */
   maildigest?: MailDigest;
-  
+
   /** Auto-subscribe to forum discussions */
   autosubscribe?: boolean;
-  
+
   /** Track forum read/unread status */
   trackforums?: boolean;
-  
+
   /** User interface language preference */
   lang?: string;
-  
+
   /** Calendar type preference */
   calendartype?: CalendarType;
-  
+
   /** Theme preference */
   theme?: string;
-  
+
   /** Timezone preference (e.g., 'America/New_York', '99' for server default) */
   timezone?: string;
 }
@@ -145,13 +145,13 @@ export interface UserPreferences {
 export interface UserRole {
   /** Role ID */
   roleid: number;
-  
+
   /** Role name */
   name: string;
-  
+
   /** Role short name */
   shortname: string;
-  
+
   /** Sort order */
   sortorder: number;
 }
@@ -164,124 +164,124 @@ export interface UserRole {
 export interface User {
   /** User ID (primary key) */
   id: number;
-  
+
   /** Username (unique login identifier) */
   username?: string;
-  
+
   /** User's first name */
   firstname?: string;
-  
+
   /** User's last name */
   lastname?: string;
-  
+
   /** Full name (formatted firstname + lastname) */
   fullname: string;
-  
+
   /** Email address */
   email?: string;
-  
+
   /** Postal address */
   address?: string;
-  
+
   /** Phone number 1 */
   phone1?: string;
-  
+
   /** Phone number 2 (mobile) */
   phone2?: string;
-  
+
   /** Department */
   department?: string;
-  
+
   /** Institution */
   institution?: string;
-  
+
   /** ID number (arbitrary institution identifier) */
   idnumber?: string;
-  
+
   /** User interests (comma-separated tags) */
   interests?: string;
-  
+
   /** Timestamp of first site access (0 if never) */
   firstaccess?: number;
-  
+
   /** Timestamp of last site access (0 if never) */
   lastaccess?: number;
-  
+
   /** Authentication plugin (e.g., 'manual', 'ldap', 'oauth2') */
   auth?: string;
-  
+
   /** Account suspended status */
   suspended?: boolean;
-  
+
   /** Account confirmed status (1 = confirmed, 0 = pending) */
   confirmed?: boolean;
-  
+
   /** Language code (e.g., 'en', 'es', 'fr') */
   lang?: string;
-  
+
   /** Calendar type (e.g., 'gregorian') */
   calendartype?: CalendarType;
-  
+
   /** Theme name */
   theme?: string;
-  
+
   /** Timezone code or '99' for server default */
   timezone?: string;
-  
+
   /** Mail format preference (0 = plain text, 1 = HTML) */
   mailformat?: MailFormat;
-  
+
   /** Mail display preference (0 = hide, 1 = course members, 2 = everyone) */
   maildisplay?: MailDisplay;
-  
+
   /** Mail digest preference (0 = no digest, 1 = complete, 2 = subjects) */
   maildigest?: MailDigest;
-  
+
   /** Track forums preference */
   trackforums?: boolean;
-  
+
   /** Auto-subscribe to forums preference */
   autosubscribe?: boolean;
-  
+
   /** Profile description (bio) */
   description?: string;
-  
+
   /** Description format (0 = moodle, 1 = HTML, 2 = plain, 4 = markdown) */
   descriptionformat?: DescriptionFormat;
-  
+
   /** Home city */
   city?: string;
-  
+
   /** Home country code (ISO 3166-1 alpha-2, e.g., 'US', 'GB') */
   country?: string;
-  
+
   /** Small profile image URL */
   profileimageurlsmall: string;
-  
+
   /** Full-size profile image URL */
   profileimageurl: string;
-  
+
   /** Custom profile fields */
   customfields?: CustomField[];
-  
+
   /** User preferences */
   preferences?: UserPreference[];
-  
+
   /** User roles */
   roles?: UserRole[];
-  
+
   /** Additional name fields for international users */
   firstnamephonetic?: string;
   lastnamephonetic?: string;
   middlename?: string;
   alternatename?: string;
-  
+
   /** Image alt text for profile picture */
   imagealt?: string;
-  
+
   /** Timestamp of account creation */
   timecreated?: number;
-  
+
   /** Timestamp of last profile modification */
   timemodified?: number;
 }
@@ -294,79 +294,79 @@ export interface User {
 export interface UpdateProfilePayload {
   /** User ID (required to identify which user to update) */
   userid: number;
-  
+
   /** User's first name */
   firstname?: string;
-  
+
   /** User's last name */
   lastname?: string;
-  
+
   /** Email address */
   email?: string;
-  
+
   /** Profile description (bio) */
   description?: string;
-  
+
   /** Home city */
   city?: string;
-  
+
   /** Home country code (ISO 3166-1 alpha-2) */
   country?: string;
-  
+
   /** Timezone code or '99' for server default */
   timezone?: string;
-  
+
   /** Phone number 1 */
   phone1?: string;
-  
+
   /** Phone number 2 (mobile) */
   phone2?: string;
-  
+
   /** Institution */
   institution?: string;
-  
+
   /** Department */
   department?: string;
-  
+
   /** Postal address */
   address?: string;
-  
+
   /** Language code */
   lang?: string;
-  
+
   /** Calendar type */
   calendartype?: CalendarType;
-  
+
   /** Theme name */
   theme?: string;
-  
+
   /** User interests (comma-separated tags) */
   interests?: string;
-  
+
   /** Image alt text for profile picture */
   imagealt?: string;
-  
+
   /** Additional name fields */
   firstnamephonetic?: string;
   lastnamephonetic?: string;
   middlename?: string;
   alternatename?: string;
-  
+
   /** Mail format preference */
   mailformat?: MailFormat;
-  
+
   /** Mail display preference */
   maildisplay?: MailDisplay;
-  
+
   /** Mail digest preference */
   maildigest?: MailDigest;
-  
+
   /** Auto-subscribe to forums */
   autosubscribe?: boolean;
-  
+
   /** Track forums */
   trackforums?: boolean;
-  
+
   /** Custom profile fields to update */
   customfields?: CustomField[];
 }
@@ -378,19 +378,19 @@ export interface UpdateProfilePayload {
 export interface AvatarConstraints {
   /** Maximum file size in bytes */
   maxSize: number;
-  
+
   /** Allowed file types (MIME types) */
   allowedTypes: string[];
-  
+
   /** Minimum width in pixels */
   minWidth?: number;
-  
+
   /** Minimum height in pixels */
   minHeight?: number;
-  
+
   /** Maximum width in pixels */
   maxWidth?: number;
-  
+
   /** Maximum height in pixels */
   maxHeight?: number;
 }
@@ -403,13 +403,13 @@ export interface AvatarConstraints {
 export interface AvatarUploadResponse {
   /** Success status */
   success: boolean;
-  
+
   /** Full-size profile image URL */
   profileimageurl: string;
-  
+
   /** Small profile image URL */
   profileimageurlsmall: string;
-  
+
   /** Error information if success is false */
   error?: {
     code: string;
@@ -425,10 +425,10 @@ export interface AvatarUploadResponse {
 export interface ProfileAPIResponse<T> {
   /** Success status */
   success: boolean;
-  
+
   /** Response data */
   data?: T;
-  
+
   /** Error information if success is false */
   error?: {
     code: string;
@@ -469,10 +469,10 @@ export type UserPreferencesResponse = ProfileAPIResponse<UserPreferences>;
 export interface ProfileValidationError {
   /** Field name with error */
   field: string;
-  
+
   /** Error message */
   message: string;
-  
+
   /** Error code for i18n */
   code?: string;
 }
@@ -483,7 +483,7 @@ export interface ProfileValidationError {
 export interface ProfileValidationResult {
   /** Validation success status */
   valid: boolean;
-  
+
   /** Array of validation errors */
   errors: ProfileValidationError[];
 }

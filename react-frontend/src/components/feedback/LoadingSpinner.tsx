@@ -1,10 +1,10 @@
 /**
  * LoadingSpinner Component
- * 
+ *
  * A reusable loading spinner component that displays an animated circular progress
  * indicator during async operations. Supports both inline and overlay display modes
  * with configurable size and color variants.
- * 
+ *
  * Features:
  * - Material-UI CircularProgress with configurable size (small/medium/large)
  * - Overlay mode with backdrop for full-page blocking operations
@@ -12,13 +12,13 @@
  * - Optional loading message display
  * - Full accessibility support (WCAG 2.1 AA compliant)
  * - TypeScript strict mode with explicit prop interfaces
- * 
+ *
  * Usage:
  * - React Query loading states: <LoadingSpinner size="medium" />
  * - React Suspense fallback: <LoadingSpinner message="Loading content..." />
  * - Form submissions: <LoadingSpinner overlay message="Submitting..." />
  * - Full page loading: <LoadingSpinner overlay fullPage />
- * 
+ *
  * @package    react-frontend
  * @copyright  2024 Moodle React Frontend
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -122,26 +122,26 @@ const SIZE_MAP: Record<LoadingSpinnerSize, number> = {
 
 /**
  * LoadingSpinner Component
- * 
+ *
  * Displays an animated circular progress indicator with optional message.
  * Supports both inline and overlay modes for different use cases.
- * 
+ *
  * Inline Mode (overlay=false):
  * - Renders as a flex container with centered spinner
  * - Suitable for component-level loading states
  * - Does not block user interaction with other elements
- * 
+ *
  * Overlay Mode (overlay=true):
  * - Uses MUI Backdrop component for semi-transparent overlay
  * - Blocks user interaction with underlying content
  * - Can be scoped to container or cover full viewport (fullPage=true)
- * 
+ *
  * Accessibility:
  * - role="progressbar" for screen reader identification
  * - aria-label describes loading state
  * - Keyboard navigation not intercepted in inline mode
  * - Focus trap in overlay mode prevents interaction with covered content
- * 
+ *
  * @param props - Component props
  * @returns Rendered loading spinner component
  */
@@ -215,11 +215,7 @@ export function LoadingSpinner({
       className,
     };
 
-    return (
-      <Backdrop {...backdropProps}>
-        {renderSpinnerContent()}
-      </Backdrop>
-    );
+    return <Backdrop {...backdropProps}>{renderSpinnerContent()}</Backdrop>;
   }
 
   // Inline mode: Use Box container for component-level loading states

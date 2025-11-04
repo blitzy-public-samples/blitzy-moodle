@@ -1,15 +1,15 @@
 /**
  * TypeScript Type Definitions for SCORM Module
- * 
+ *
  * Comprehensive type definitions for SCORM (Sharable Content Object Reference Model) module
  * supporting both SCORM 1.2 and SCORM 2004 standards.
- * 
+ *
  * Based on Moodle SCORM database schema and business logic from:
  * - public/mod/scorm/db/install.xml
  * - public/mod/scorm/lib.php
  * - public/mod/scorm/locallib.php
  * - public/mod/scorm/datamodel.php
- * 
+ *
  * @package react-frontend
  * @subpackage features/activities/scorm
  */
@@ -60,20 +60,20 @@ export enum ScormSkipView {
  * Grade calculation method
  */
 export enum ScormGradeMethod {
-  SCOES = 0,      // Average of all SCOs
-  HIGHEST = 1,    // Highest score across all SCOs
-  AVERAGE = 2,    // Average score
-  SUM = 3,        // Sum of all scores
+  SCOES = 0, // Average of all SCOs
+  HIGHEST = 1, // Highest score across all SCOs
+  AVERAGE = 2, // Average score
+  SUM = 3, // Sum of all scores
 }
 
 /**
  * Which attempt to use for grading
  */
 export enum ScormWhatGrade {
-  HIGHEST = 0,    // Highest attempt score
-  AVERAGE = 1,    // Average of all attempts
-  FIRST = 2,      // First attempt
-  LAST = 3,       // Last attempt
+  HIGHEST = 0, // Highest attempt score
+  AVERAGE = 1, // Average of all attempts
+  FIRST = 2, // First attempt
+  LAST = 3, // Last attempt
 }
 
 /**
@@ -160,124 +160,124 @@ export enum ScormDisplayAttemptStatus {
 export interface Scorm {
   /** SCORM activity ID */
   id: number;
-  
+
   /** Course ID */
   course: number;
-  
+
   /** Activity name */
   name: string;
-  
+
   /** SCORM package type (local, external, repository, etc.) */
   scormtype: ScormType;
-  
+
   /** Reference to package file or external URL */
   reference: string;
-  
+
   /** Activity introduction/description */
   intro: string;
-  
+
   /** Format of intro field */
   introformat: number;
-  
+
   /** SCORM version string (e.g., "SCORM_1.2", "SCORM_2004") */
   version: string;
-  
+
   /** Maximum grade for this activity */
   maxgrade: number;
-  
+
   /** Grading method */
   grademethod: ScormGradeMethod;
-  
+
   /** Which attempt to use for grading */
   whatgrade: ScormWhatGrade;
-  
+
   /** Maximum number of attempts allowed (0 = unlimited) */
   maxattempt: number;
-  
+
   /** Force completed status */
   forcecompleted: boolean;
-  
+
   /** Force new attempt after completion */
   forcenewattempt: ScormForceAttempt;
-  
+
   /** Lock final attempt */
   lastattemptlock: boolean;
-  
+
   /** Allow mastery override */
   masteryoverride: boolean;
-  
+
   /** Display attempt status */
   displayattemptstatus: ScormDisplayAttemptStatus;
-  
+
   /** Display course structure */
   displaycoursestructure: boolean;
-  
+
   /** Package update frequency */
   updatefreq: ScormUpdateFrequency;
-  
+
   /** SHA1 hash of package */
   sha1hash: string | null;
-  
+
   /** MD5 hash of package */
   md5hash: string;
-  
+
   /** Package revision number */
   revision: number;
-  
+
   /** Default SCO to launch */
   launch: number;
-  
+
   /** Skip view mode */
   skipview: ScormSkipView;
-  
+
   /** Hide browse button */
   hidebrowse: boolean;
-  
+
   /** Table of contents display mode */
   hidetoc: ScormTocDisplay;
-  
+
   /** Navigation display mode */
   nav: ScormNavDisplay;
-  
+
   /** Navigation panel left position */
   navpositionleft: number;
-  
+
   /** Navigation panel top position */
   navpositiontop: number;
-  
+
   /** Auto-continue to next SCO */
   auto: boolean;
-  
+
   /** Open in popup window */
   popup: boolean;
-  
+
   /** Popup window options string */
   options: string;
-  
+
   /** Player width */
   width: number;
-  
+
   /** Player height */
   height: number;
-  
+
   /** Time when activity opens */
   timeopen: number;
-  
+
   /** Time when activity closes */
   timeclose: number;
-  
+
   /** Last modified timestamp */
   timemodified: number;
-  
+
   /** Completion status required (bitmask) */
   completionstatusrequired: number | null;
-  
+
   /** Completion score required */
   completionscorerequired: number | null;
-  
+
   /** Require completion of all SCOs */
   completionstatusallscos: boolean | null;
-  
+
   /** Auto-commit tracking data */
   autocommit: boolean;
 }
@@ -289,31 +289,31 @@ export interface Scorm {
 export interface ScormSco {
   /** SCO ID */
   id: number;
-  
+
   /** Parent SCORM activity ID */
   scorm: number;
-  
+
   /** Manifest identifier */
   manifest: string;
-  
+
   /** Organization identifier */
   organization: string;
-  
+
   /** Parent SCO identifier */
   parent: string;
-  
+
   /** SCO identifier from manifest */
   identifier: string;
-  
+
   /** Launch URL/path */
   launch: string;
-  
+
   /** SCO type (asset or sco) */
   scormtype: ScoType;
-  
+
   /** SCO title */
   title: string;
-  
+
   /** Sort order within manifest */
   sortorder: number;
 }
@@ -325,19 +325,19 @@ export interface ScormSco {
 export interface ScormAttempt {
   /** Attempt ID */
   id?: number;
-  
+
   /** User ID */
   userid: number;
-  
+
   /** SCORM activity ID */
   scormid: number;
-  
+
   /** Attempt number (1-based) */
   attempt: number;
-  
+
   /** Timestamp when attempt was last modified */
   timemodified?: number;
-  
+
   /** Current status of the attempt */
   status?: ScormStatus;
 }
@@ -348,16 +348,16 @@ export interface ScormAttempt {
 export interface ScormUserData {
   /** SCO ID */
   scoid: number;
-  
+
   /** Attempt number */
   attempt: number;
-  
+
   /** User ID */
   userid: number;
-  
+
   /** Tracking data elements */
   tracks: Record<string, ScormTrackingElement>;
-  
+
   /** Last modification timestamp */
   timemodified: number;
 }
@@ -368,10 +368,10 @@ export interface ScormUserData {
 export interface ScormTrackingData {
   /** SCO ID */
   scoid: number;
-  
+
   /** Attempt number */
   attempt: number;
-  
+
   /** CMI tracking elements (key-value pairs) */
   tracks: Record<string, string | number | boolean>;
 }
@@ -382,10 +382,10 @@ export interface ScormTrackingData {
 export interface ScormTrackingElement {
   /** CMI element name (e.g., "cmi.core.lesson_status") */
   element: string;
-  
+
   /** Element value */
   value: string;
-  
+
   /** Timestamp of last modification */
   timemodified?: number;
 }
@@ -397,13 +397,13 @@ export interface ScormTrackingElement {
 export interface ScormScoData {
   /** Data ID */
   id: number;
-  
+
   /** SCO ID */
   scoid: number;
-  
+
   /** Data element name */
   name: string;
-  
+
   /** Data element value */
   value: string;
 }
@@ -419,43 +419,43 @@ export interface ScormScoData {
 export interface ScormTOCNode {
   /** SCO ID */
   id: number;
-  
+
   /** Display title */
   title: string;
-  
+
   /** SCO identifier from manifest */
   identifier: string;
-  
+
   /** Organization this SCO belongs to */
   organization: string;
-  
+
   /** SCO type (asset or sco) */
   scormtype: ScoType;
-  
+
   /** Parent SCO identifier (empty string for root) */
   parent: string;
-  
+
   /** Whether SCO is visible in TOC */
   isvisible: boolean;
-  
+
   /** Launch URL (empty for organizational nodes) */
   launch: string;
-  
+
   /** Child SCO nodes */
   children: ScormTOCNode[];
-  
+
   /** Completion/attempt status for this SCO */
   status?: ScormStatus;
-  
+
   /** Whether SCO is enabled (prerequisites met) */
   isEnabled: boolean;
-  
+
   /** Prerequisite condition string */
   prerequisite?: string;
-  
+
   /** Sort order */
   sortorder?: number;
-  
+
   /** Current score for this SCO */
   score?: ScormScore;
 }
@@ -466,13 +466,13 @@ export interface ScormTOCNode {
 export interface ScormScore {
   /** Raw score */
   raw?: number;
-  
+
   /** Minimum possible score */
   min?: number;
-  
+
   /** Maximum possible score */
   max?: number;
-  
+
   /** Scaled score (-1 to 1 for SCORM 2004) */
   scaled?: number;
 }
@@ -521,7 +521,17 @@ export interface ScormCMIObjective {
  */
 export interface ScormCMIInteraction {
   id: string;
-  type: 'true-false' | 'choice' | 'fill-in' | 'long-fill-in' | 'matching' | 'performance' | 'sequencing' | 'likert' | 'numeric' | 'other';
+  type:
+    | 'true-false'
+    | 'choice'
+    | 'fill-in'
+    | 'long-fill-in'
+    | 'matching'
+    | 'performance'
+    | 'sequencing'
+    | 'likert'
+    | 'numeric'
+    | 'other';
   objectives?: string[];
   timestamp?: string;
   correct_responses?: string[];
@@ -545,7 +555,11 @@ export interface ScormCMIData12 {
   student_data?: {
     mastery_score?: number;
     max_time_allowed?: string;
-    time_limit_action?: 'exit,message' | 'exit,no message' | 'continue,message' | 'continue,no message';
+    time_limit_action?:
+      | 'exit,message'
+      | 'exit,no message'
+      | 'continue,message'
+      | 'continue,no message';
   };
   interactions?: ScormCMIInteraction[];
 }
@@ -590,7 +604,11 @@ export interface ScormCMIData2004 {
   session_time: string;
   success_status: 'passed' | 'failed' | 'unknown';
   suspend_data?: string;
-  time_limit_action: 'exit,message' | 'exit,no message' | 'continue,message' | 'continue,no message';
+  time_limit_action:
+    | 'exit,message'
+    | 'exit,no message'
+    | 'continue,message'
+    | 'continue,no message';
   total_time: string;
 }
 
@@ -697,40 +715,40 @@ export interface ScormNavRequest {
 export interface ScormReport {
   /** SCORM activity ID */
   scormId: number;
-  
+
   /** User ID */
   userId: number;
-  
+
   /** All attempts made by user */
   attempts: ScormAttemptSummary[];
-  
+
   /** Current/active attempt number */
   currentAttempt: number;
-  
+
   /** Overall score across all attempts */
   overallScore: number;
-  
+
   /** Final calculated grade */
   grade: number;
-  
+
   /** Completion percentage */
   completionPercentage: number;
-  
+
   /** Total time spent across all attempts */
   totalTimeSpent: string;
-  
+
   /** Interaction tracking data */
   interactions: ScormCMIInteraction[];
-  
+
   /** Objectives progress */
   objectives: ScormCMIObjective[];
-  
+
   /** Progress for each SCO */
   scoProgress: ScormScoProgress[];
-  
+
   /** Grading method used */
   gradingMethod: ScormGradeMethod;
-  
+
   /** Overall status */
   status: ScormStatus;
 }
@@ -741,25 +759,25 @@ export interface ScormReport {
 export interface ScormAttemptSummary {
   /** Attempt number */
   attemptNumber: number;
-  
+
   /** Attempt score */
   score: number;
-  
+
   /** Completion status */
   status: ScormStatus;
-  
+
   /** Time started */
   timeStarted: number;
-  
+
   /** Time completed */
   timeCompleted?: number;
-  
+
   /** Time spent in this attempt */
   timeSpent: string;
-  
+
   /** Number of SCOs completed */
   scosCompleted: number;
-  
+
   /** Total number of SCOs */
   scosTotal: number;
 }
@@ -770,22 +788,22 @@ export interface ScormAttemptSummary {
 export interface ScormScoProgress {
   /** SCO ID */
   scoid: number;
-  
+
   /** SCO title */
   title: string;
-  
+
   /** Completion status */
   status: ScormStatus;
-  
+
   /** Score achieved */
   score?: ScormScore;
-  
+
   /** Time spent on this SCO */
   timeSpent: string;
-  
+
   /** Number of attempts on this SCO */
   attempts: number;
-  
+
   /** Last accessed timestamp */
   lastAccessed?: number;
 }

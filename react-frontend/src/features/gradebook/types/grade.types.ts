@@ -1,10 +1,10 @@
 /**
  * Comprehensive TypeScript type definitions for the gradebook domain.
- * 
+ *
  * This file provides complete type safety for all gradebook-related entities,
  * API responses, and UI data structures. Types are derived from Moodle's core
  * grade database schema and external API structures.
- * 
+ *
  * @module features/gradebook/types
  */
 

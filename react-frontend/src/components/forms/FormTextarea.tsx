@@ -10,47 +10,47 @@ import type { TextFieldProps } from '@mui/material';
 export interface FormTextareaProps {
   /** Field name for form registration */
   name: string;
-  
+
   /** Label text displayed above the textarea */
   label?: string;
-  
+
   /** Whether the field is required */
   required?: boolean;
-  
+
   /** Whether the field is disabled */
   disabled?: boolean;
-  
+
   /** Placeholder text shown when empty */
   placeholder?: string;
-  
+
   /** Helper text displayed below the textarea */
   helperText?: string;
-  
+
   /** Fixed number of rows (overrides minRows/maxRows if set) */
   rows?: number;
-  
+
   /** Minimum number of rows when autoResize is true */
   minRows?: number;
-  
+
   /** Maximum number of rows when autoResize is true */
   maxRows?: number;
-  
+
   /** Maximum character length (enables character counter) */
   maxLength?: number;
-  
+
   /** Enable auto-growing height based on content */
   autoResize?: boolean;
-  
+
   /** React Hook Form control object */
   control: Control<FieldValues>;
 }
 
 /**
  * FormTextarea Component
- * 
+ *
  * A multi-line text input component integrated with React Hook Form and Material-UI.
  * Supports character counting, auto-resize, validation, and full accessibility.
- * 
+ *
  * Features:
  * - React Hook Form Controller integration for state management
  * - Character counting when maxLength is specified
@@ -58,7 +58,7 @@ export interface FormTextareaProps {
  * - Validation error display from form state
  * - Full ARIA accessibility attributes
  * - Material-UI theming support
- * 
+ *
  * Usage:
  * ```tsx
  * <FormTextarea
@@ -73,7 +73,7 @@ export interface FormTextareaProps {
  *   placeholder="Enter course description..."
  * />
  * ```
- * 
+ *
  * @param props - FormTextarea component props
  * @returns Controlled multi-line text input component
  */
@@ -97,29 +97,31 @@ export function FormTextarea({
       control={control}
       rules={{
         required: required ? 'This field is required' : false,
-        maxLength: maxLength ? {
-          value: maxLength,
-          message: `Maximum ${maxLength} characters allowed`
-        } : undefined,
+        maxLength: maxLength
+          ? {
+              value: maxLength,
+              message: `Maximum ${maxLength} characters allowed`,
+            }
+          : undefined,
       }}
       render={({ field, fieldState }) => {
         const { error } = fieldState;
         const currentLength = typeof field.value === 'string' ? field.value.length : 0;
-        
+
         // Build helper text with character counter
         let displayHelperText = helperText ?? '';
         if (maxLength) {
           const counterText = `${currentLength}/${maxLength}`;
-          displayHelperText = displayHelperText 
+          displayHelperText = displayHelperText
             ? `${displayHelperText} (${counterText})`
             : counterText;
         }
-        
+
         // Add error message to helper text if present
         if (error) {
           displayHelperText = error.message ?? 'Invalid input';
         }
-        
+
         // Determine row configuration based on autoResize setting
         const rowProps: Pick<TextFieldProps, 'rows' | 'minRows' | 'maxRows'> = {};
         if (rows !== undefined) {
@@ -135,12 +137,10 @@ export function FormTextarea({
           // Default fixed rows
           rowProps.rows = minRows;
         }
-        
+
         // Build ARIA attributes for accessibility
-        const ariaDescribedBy = displayHelperText 
-          ? `${name}-helper-text` 
-          : undefined;
-        
+        const ariaDescribedBy = displayHelperText ? `${name}-helper-text` : undefined;
+
         return (
           <TextField
             {...field}

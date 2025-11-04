@@ -1,9 +1,9 @@
 /**
  * useProfile Hook
- * 
+ *
  * React Query hook for fetching and managing user profile data.
  * Provides automatic caching, background updates, and error handling.
- * 
+ *
  * @module features/profile/hooks
  */
 
@@ -69,26 +69,26 @@ export interface UseProfileOptions {
 
 /**
  * Hook for fetching user profile data
- * 
+ *
  * Uses React Query to manage server state with automatic caching and updates.
  * Delegates to existing Moodle user_get_user_details() function via API.
- * 
+ *
  * @param userId - ID of user to fetch (undefined for current user)
  * @param options - Query options
  * @returns Query result with profile data, loading state, and error state
- * 
+ *
  * @example
  * ```tsx
  * function ProfileView() {
  *   const { data: user, isLoading, error } = useProfile(123);
- *   
+ *
  *   if (isLoading) return <LoadingSpinner />;
  *   if (error) return <ErrorMessage error={error} />;
- *   
+ *
  *   return <div>{user.fullname}</div>;
  * }
  * ```
- * 
+ *
  * @example
  * ```tsx
  * // Fetch current user
@@ -113,9 +113,7 @@ export function useProfile(
 
   // Determine query key and fetch function based on whether userId is provided
   const queryKey = userId !== undefined ? profileKeys.detail(userId) : profileKeys.current();
-  const queryFn = userId !== undefined 
-    ? () => fetchUserProfile(userId) 
-    : fetchCurrentUserProfile;
+  const queryFn = userId !== undefined ? () => fetchUserProfile(userId) : fetchCurrentUserProfile;
 
   return useQuery<User, Error>({
     queryKey,
@@ -133,13 +131,13 @@ export function useProfile(
 
 /**
  * Hook for fetching current authenticated user's profile
- * 
+ *
  * Convenience wrapper around useProfile for common use case
  * of fetching the currently logged-in user.
- * 
+ *
  * @param options - Query options
  * @returns Query result with current user data
- * 
+ *
  * @example
  * ```tsx
  * function UserMenu() {
@@ -158,20 +156,20 @@ export function useCurrentUser(options: UseProfileOptions = {}): UseQueryResult<
 
 /**
  * Hook for pre-fetching user profile
- * 
+ *
  * Useful for prefetching profiles that will likely be needed soon,
  * such as when hovering over user links or navigating to profile pages.
- * 
+ *
  * @param userId - ID of user to prefetch
  * @returns Prefetch function
- * 
+ *
  * @example
  * ```tsx
  * function UserLink({ userId }: { userId: number }) {
  *   const prefetchProfile = usePrefetchProfile(userId);
- *   
+ *
  *   return (
- *     <Link 
+ *     <Link
  *       to={`/profile/${userId}`}
  *       onMouseEnter={prefetchProfile}
  *     >
@@ -198,7 +196,7 @@ export function usePrefetchProfile(userId: number): () => Promise<void> {
 /**
  * Type guard to check if profile data is loaded
  * Useful for TypeScript type narrowing
- * 
+ *
  * @param query - Query result from useProfile
  * @returns True if data is loaded and not undefined
  */
@@ -211,7 +209,7 @@ export function isProfileLoaded(
 /**
  * Helper to get full name from user object
  * Handles cases where fullname might not be set
- * 
+ *
  * @param user - User object
  * @returns Full name string
  */

@@ -1,11 +1,11 @@
 /**
  * Card Component
- * 
+ *
  * Reusable content container component extending MUI Card with elevation, actions, and theming support.
  * Provides consistent styling for displaying courses, users, assignments, and other data entities
  * across the application. Supports interactive and non-interactive variants with customizable
  * headers and action areas.
- * 
+ *
  * Features:
  * - Extends Material-UI Card with consistent elevation and padding
  * - Optional header with title, subtitle, and avatar
@@ -15,13 +15,13 @@
  * - WCAG 2.1 AA compliant with proper ARIA labels
  * - Light and dark mode support through MUI theming
  * - TypeScript strict mode with explicit prop interfaces
- * 
+ *
  * @example
  * // Basic card
  * <Card title="Course Title" subtitle="Instructor Name">
  *   <Typography>Course description content</Typography>
  * </Card>
- * 
+ *
  * @example
  * // Interactive clickable card
  * <Card
@@ -32,7 +32,7 @@
  * >
  *   <Typography>Due: Tomorrow</Typography>
  * </Card>
- * 
+ *
  * @example
  * // Card with avatar and actions
  * <Card
@@ -153,11 +153,11 @@ export interface CardProps extends Omit<MuiCardProps, 'onClick' | 'title'> {
 
 /**
  * Card Component
- * 
+ *
  * Reusable content container extending Material-UI Card with consistent styling,
  * accessibility features, and theme support. Replaces PHP-rendered content containers
  * throughout Moodle's interface with a modern React implementation.
- * 
+ *
  * This component provides:
  * - Consistent elevation and spacing across all card instances
  * - Optional header section with title, subtitle, and avatar
@@ -192,7 +192,7 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
     /**
      * Handles click events on the card when clickable is true
      * Prevents click handling when card is disabled
-     * 
+     *
      * @param event - Mouse event from click interaction
      */
     const handleClick = (event: MouseEvent<HTMLElement>) => {
@@ -275,7 +275,9 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
           <CardActionArea
             onClick={handleClick}
             disabled={disabled}
-            aria-label={ariaLabel ?? (typeof title === 'string' ? `View ${title}` : 'View card details')}
+            aria-label={
+              ariaLabel ?? (typeof title === 'string' ? `View ${title}` : 'View card details')
+            }
             sx={{
               display: 'flex',
               flexDirection: 'column',
@@ -307,19 +309,18 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
           height: '100%',
           opacity: disabled ? 0.6 : 1,
           pointerEvents: disabled ? 'none' : 'auto',
-          transition: theme.transitions.create(
-            ['box-shadow', 'transform', 'opacity'],
-            {
-              duration: theme.transitions.duration.shorter,
-            }
-          ),
-          ...(clickable && !disabled && {
-            cursor: 'pointer',
-            '&:hover': {
-              transform: 'translateY(-2px)',
-              boxShadow: theme.shadows[Math.min((elevation || 1) + 2, 24) as keyof typeof theme.shadows],
-            },
+          transition: theme.transitions.create(['box-shadow', 'transform', 'opacity'], {
+            duration: theme.transitions.duration.shorter,
           }),
+          ...(clickable &&
+            !disabled && {
+              cursor: 'pointer',
+              '&:hover': {
+                transform: 'translateY(-2px)',
+                boxShadow:
+                  theme.shadows[Math.min((elevation || 1) + 2, 24) as keyof typeof theme.shadows],
+              },
+            }),
           ...sx,
         }}
         {...otherProps}

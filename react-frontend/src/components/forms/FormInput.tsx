@@ -1,10 +1,10 @@
 /**
  * FormInput Component
- * 
+ *
  * A reusable form input component that wraps Material-UI TextField and integrates
  * with React Hook Form for validation and state management. Supports multiple input
  * types with built-in accessibility, error handling, and visual feedback.
- * 
+ *
  * Features:
  * - Integration with React Hook Form via Controller
  * - Support for text, email, password, number, url, tel input types
@@ -19,13 +19,8 @@
 import { useState } from 'react';
 import type { Control, FieldValues } from 'react-hook-form';
 import { Controller } from 'react-hook-form';
-import type {
-  TextFieldProps} from '@mui/material';
-import {
-  TextField,
-  InputAdornment,
-  IconButton
-} from '@mui/material';
+import type { TextFieldProps } from '@mui/material';
+import { TextField, InputAdornment, IconButton } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 
 /**
@@ -195,10 +190,10 @@ const getInputModeFromType = (type: FormInputType): InputMode => {
 
 /**
  * FormInput Component
- * 
+ *
  * A controlled form input component that integrates Material-UI TextField
  * with React Hook Form for seamless form state management and validation.
- * 
+ *
  * @example
  * // Basic text input
  * <FormInput
@@ -207,7 +202,7 @@ const getInputModeFromType = (type: FormInputType): InputMode => {
  *   control={control}
  *   required
  * />
- * 
+ *
  * @example
  * // Email input with validation
  * <FormInput
@@ -219,7 +214,7 @@ const getInputModeFromType = (type: FormInputType): InputMode => {
  *   autoComplete="email"
  *   placeholder="user@example.com"
  * />
- * 
+ *
  * @example
  * // Password input with visibility toggle
  * <FormInput
@@ -230,7 +225,7 @@ const getInputModeFromType = (type: FormInputType): InputMode => {
  *   required
  *   autoComplete="current-password"
  * />
- * 
+ *
  * @example
  * // Number input with icon
  * <FormInput
@@ -304,8 +299,8 @@ export function FormInput({
           'aria-describedby': error
             ? `${name}-error`
             : helperText
-            ? `${name}-helper-text`
-            : undefined,
+              ? `${name}-helper-text`
+              : undefined,
           inputMode: actualInputMode,
           ...(maxLength && { maxLength }),
           ...(pattern && { pattern }),
@@ -319,7 +314,7 @@ export function FormInput({
         // Build end adornment
         // For password fields, add visibility toggle icon
         let endAdornmentElement: React.ReactNode = undefined;
-        
+
         if (type === 'password') {
           endAdornmentElement = (
             <InputAdornment position="end">
@@ -336,9 +331,7 @@ export function FormInput({
             </InputAdornment>
           );
         } else if (endAdornment) {
-          endAdornmentElement = (
-            <InputAdornment position="end">{endAdornment}</InputAdornment>
-          );
+          endAdornmentElement = <InputAdornment position="end">{endAdornment}</InputAdornment>;
         }
 
         return (

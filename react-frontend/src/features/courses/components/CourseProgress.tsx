@@ -1,11 +1,4 @@
-import {
-  Box,
-  LinearProgress,
-  Typography,
-  Chip,
-  Stack,
-  Tooltip,
-} from '@mui/material';
+import { Box, LinearProgress, Typography, Chip, Stack, Tooltip } from '@mui/material';
 
 /**
  * Interface for individual activity type breakdown
@@ -62,23 +55,23 @@ const formatActivityType = (type: string): string => {
     .replace(/_/g, ' ')
     .trim()
     .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(' ');
 };
 
 /**
  * CourseProgress Component
- * 
+ *
  * Displays course completion progress with visual indicators including percentage,
  * progress bars, and completion statistics. Shows a color-coded linear progress bar
  * with percentage label, completed/total activities count, and optional detailed
  * breakdown by activity type.
- * 
+ *
  * Color coding:
  * - Red (error): 0-30% completion
  * - Orange (warning): 31-70% completion
  * - Green (success): 71-100% completion
- * 
+ *
  * @example
  * ```tsx
  * <CourseProgress
@@ -110,9 +103,7 @@ function CourseProgress({
       <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
         Course Completion Details
       </Typography>
-      <Typography variant="body2">
-        Progress: {clampedPercentage.toFixed(1)}%
-      </Typography>
+      <Typography variant="body2">Progress: {clampedPercentage.toFixed(1)}%</Typography>
       <Typography variant="body2">
         Activities: {completedActivities} of {totalActivities} completed
       </Typography>
@@ -132,12 +123,7 @@ function CourseProgress({
   );
 
   return (
-    <Tooltip
-      title={tooltipContent}
-      arrow
-      enterDelay={300}
-      leaveDelay={200}
-    >
+    <Tooltip title={tooltipContent} arrow enterDelay={300} leaveDelay={200}>
       <Box
         data-testid="course-progress"
         sx={{
@@ -231,15 +217,11 @@ function CourseProgress({
 
               <Stack spacing={1.5}>
                 {activityBreakdown.map((item) => {
-                  const itemPercentage =
-                    item.total > 0 ? (item.completed / item.total) * 100 : 0;
+                  const itemPercentage = item.total > 0 ? (item.completed / item.total) * 100 : 0;
                   const itemColor = getProgressColor(itemPercentage);
 
                   return (
-                    <Box
-                      key={item.type}
-                      data-testid={`activity-breakdown-${item.type}`}
-                    >
+                    <Box key={item.type} data-testid={`activity-breakdown-${item.type}`}>
                       {/* Activity type header */}
                       <Stack
                         direction="row"
