@@ -17,48 +17,15 @@
  * @module theme
  */
 
-import { createTheme, ThemeOptions, alpha, darken, lighten } from '@mui/material/styles';
+import { createTheme, ThemeOptions, alpha } from '@mui/material/styles';
 import type { PaletteMode } from '@mui/material';
-
-/**
- * Color utilities for generating palette variations
- * These ensure WCAG 2.1 AA contrast compliance
- */
-const COLOR_SHADES = {
-  light: 0.2,
-  main: 0,
-  dark: 0.3,
-  contrastText: 1,
-};
-
-/**
- * Generate light variant of a color
- */
-const getLightVariant = (color: string, amount: number = 0.2): string => {
-  return lighten(color, amount);
-};
-
-/**
- * Generate dark variant of a color
- */
-const getDarkVariant = (color: string, amount: number = 0.3): string => {
-  return darken(color, amount);
-};
-
-/**
- * Determine appropriate contrast text color for background
- */
-const getContrastText = (backgroundColor: string): string => {
-  // For light backgrounds, use dark text; for dark backgrounds, use light text
-  // This is a simplified version - MUI's getContrastText is more sophisticated
-  const isDark = backgroundColor.startsWith('#') && 
-    parseInt(backgroundColor.slice(1, 3), 16) < 128;
-  return isDark ? '#ffffff' : 'rgba(0, 0, 0, 0.87)';
-};
 
 /**
  * Base color palette derived from Moodle/Bootstrap 5 theme
  * Colors are from public/theme/boost/scss/bootstrap/_variables.scss
+ * 
+ * Note: Color variations (light/dark) are pre-calculated using MUI's lighten/darken utilities
+ * to ensure WCAG 2.1 AA contrast compliance. The lighten amount is 20% and darken amount is 30%.
  */
 const COLORS = {
   // Primary colors (Moodle blue)
