@@ -233,16 +233,9 @@ const List: FC<ListProps> = ({
     (item: ListItemData): ReactNode => {
       const hasClick = Boolean(item.onClick || onItemClick);
 
-      // Use ListItemButton for interactive items, ListItem for static items
-      const ItemComponent = hasClick ? ListItemButton : ListItem;
-
-      return (
-        <ItemComponent
-          key={item.id}
-          disabled={item.disabled}
-          onClick={hasClick ? (event) => handleItemClick(item, event) : undefined}
-          aria-label={typeof item.primary === 'string' ? item.primary : undefined}
-        >
+      // Shared content for both interactive and static items
+      const itemContent = (
+        <>
           {renderAvatar(item.avatar)}
           <ListItemText
             primary={item.primary}
@@ -257,7 +250,31 @@ const List: FC<ListProps> = ({
             }}
           />
           {renderActions(item.actions, item.id)}
-        </ItemComponent>
+        </>
+      );
+
+      // Use ListItemButton for interactive items, ListItem for static items
+      if (hasClick) {
+        return (
+          <ListItemButton
+            key={item.id}
+            disabled={item.disabled}
+            onClick={(event) => handleItemClick(item, event)}
+            aria-label={typeof item.primary === 'string' ? item.primary : undefined}
+          >
+            {itemContent}
+          </ListItemButton>
+        );
+      }
+
+      return (
+        <ListItem
+          key={item.id}
+          disabled={item.disabled}
+          aria-label={typeof item.primary === 'string' ? item.primary : undefined}
+        >
+          {itemContent}
+        </ListItem>
       );
     },
     [handleItemClick, onItemClick, renderAvatar, renderActions]
