@@ -40,6 +40,15 @@
     "types": ["vite/client", "vitest/globals", "@testing-library/jest-dom"]
   },
   "include": ["src"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "**/blitzy_adhoc_test_*"
+  ],
   "references": [
     {
       "path": "./tsconfig.node.json"
