@@ -48,17 +48,17 @@
  * </Card>
  */
 
-import { ReactNode, MouseEvent, forwardRef } from 'react';
+import { forwardRef, Children } from 'react';
+import type { ReactNode, MouseEvent } from 'react';
 import {
   Card as MuiCard,
   CardHeader,
   CardContent,
   CardActions,
   CardActionArea,
-  CardProps as MuiCardProps,
-  Box,
   useTheme,
 } from '@mui/material';
+import type { CardProps as MuiCardProps } from '@mui/material';
 
 /**
  * Props interface for the Card component
@@ -205,7 +205,7 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
      * Determines if the card should render a header section
      * Header is shown when any of title, subtitle, or avatar props are provided
      */
-    const hasHeader = Boolean(title || subtitle || avatar);
+    const hasHeader = Boolean(title ?? subtitle ?? avatar);
 
     /**
      * Determines if the card should render an actions section
@@ -275,7 +275,7 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
           <CardActionArea
             onClick={handleClick}
             disabled={disabled}
-            aria-label={ariaLabel || (typeof title === 'string' ? `View ${title}` : 'View card details')}
+            aria-label={ariaLabel ?? (typeof title === 'string' ? `View ${title}` : 'View card details')}
             sx={{
               display: 'flex',
               flexDirection: 'column',
@@ -325,7 +325,7 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
         {...otherProps}
       >
         {renderBody()}
-        {hasActions && (
+        {hasActions && actions && (
           <CardActions
             sx={{
               marginTop: 'auto',
@@ -335,9 +335,7 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
               flexWrap: 'wrap',
             }}
           >
-            {actions!.map((action, index) => (
-              <Box key={index}>{action}</Box>
-            ))}
+            {Children.toArray(actions)}
           </CardActions>
         )}
       </MuiCard>
