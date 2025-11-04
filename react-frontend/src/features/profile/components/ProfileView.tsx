@@ -23,7 +23,6 @@ import {
 import {
   Email as EmailIcon,
   Phone as PhoneIcon,
-  Language as LanguageIcon,
   LocationOn as LocationIcon,
   Business as BusinessIcon,
   CalendarMonth as CalendarIcon,
@@ -223,17 +222,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               </Grid>
             )}
 
-            {user.url && (
-              <Grid item xs={12} sm={6}>
-                <Box display="flex" alignItems="center" gap={1}>
-                  <LanguageIcon color="action" />
-                  <Link href={user.url} target="_blank" rel="noopener noreferrer" underline="hover">
-                    {user.url}
-                  </Link>
-                </Box>
-              </Grid>
-            )}
-
             {(user.city || user.country) && (
               <Grid item xs={12} sm={6}>
                 <Box display="flex" alignItems="center" gap={1}>
@@ -272,55 +260,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                       <BusinessIcon color="action" />
                       <Typography variant="body2">{user.department}</Typography>
                     </Box>
-                  </Grid>
-                )}
-              </Grid>
-            </Box>
-            <Divider sx={{ my: 3 }} />
-          </>
-        )}
-
-        {/* Instant Messaging */}
-        {(user.skype || user.aim || user.yahoo || user.msn || user.icq) && (
-          <>
-            <Box mb={3}>
-              <Typography variant="h6" gutterBottom>
-                Instant Messaging
-              </Typography>
-              <Grid container spacing={2}>
-                {user.skype && (
-                  <Grid item xs={12} sm={6}>
-                    <Typography variant="body2" color="text.secondary">
-                      <strong>Skype:</strong> {user.skype}
-                    </Typography>
-                  </Grid>
-                )}
-                {user.aim && (
-                  <Grid item xs={12} sm={6}>
-                    <Typography variant="body2" color="text.secondary">
-                      <strong>AIM:</strong> {user.aim}
-                    </Typography>
-                  </Grid>
-                )}
-                {user.yahoo && (
-                  <Grid item xs={12} sm={6}>
-                    <Typography variant="body2" color="text.secondary">
-                      <strong>Yahoo:</strong> {user.yahoo}
-                    </Typography>
-                  </Grid>
-                )}
-                {user.msn && (
-                  <Grid item xs={12} sm={6}>
-                    <Typography variant="body2" color="text.secondary">
-                      <strong>MSN:</strong> {user.msn}
-                    </Typography>
-                  </Grid>
-                )}
-                {user.icq && (
-                  <Grid item xs={12} sm={6}>
-                    <Typography variant="body2" color="text.secondary">
-                      <strong>ICQ:</strong> {user.icq}
-                    </Typography>
                   </Grid>
                 )}
               </Grid>
