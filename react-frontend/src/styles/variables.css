@@ -1,0 +1,334 @@
+/**
+ * CSS Custom Properties (Variables)
+ * 
+ * Centralized design tokens for consistent theming across the application.
+ * These variables are used throughout global.css and can be overridden
+ * by MUI theme or dark mode preferences.
+ * 
+ * @file variables.css
+ * @description Design system tokens for Moodle React frontend
+ */
+
+/* ============================================================================
+   Color Palette - Material Design Inspired
+   ============================================================================ */
+
+:root {
+  /* Primary Colors - Blue */
+  --primary-main: #1976d2;
+  --primary-light: #42a5f5;
+  --primary-dark: #1565c0;
+  --primary-contrast-text: #ffffff;
+
+  /* Secondary Colors - Purple */
+  --secondary-main: #9c27b0;
+  --secondary-light: #ba68c8;
+  --secondary-dark: #7b1fa2;
+  --secondary-contrast-text: #ffffff;
+
+  /* Error Colors - Red */
+  --error-main: #d32f2f;
+  --error-light: #ef5350;
+  --error-dark: #c62828;
+  --error-contrast-text: #ffffff;
+
+  /* Warning Colors - Orange */
+  --warning-main: #ed6c02;
+  --warning-light: #ff9800;
+  --warning-dark: #e65100;
+  --warning-contrast-text: #ffffff;
+
+  /* Info Colors - Light Blue */
+  --info-main: #0288d1;
+  --info-light: #03a9f4;
+  --info-dark: #01579b;
+  --info-contrast-text: #ffffff;
+
+  /* Success Colors - Green */
+  --success-main: #2e7d32;
+  --success-light: #4caf50;
+  --success-dark: #1b5e20;
+  --success-contrast-text: #ffffff;
+
+  /* Grey Palette */
+  --grey-50: #fafafa;
+  --grey-100: #f5f5f5;
+  --grey-200: #eeeeee;
+  --grey-300: #e0e0e0;
+  --grey-400: #bdbdbd;
+  --grey-500: #9e9e9e;
+  --grey-600: #757575;
+  --grey-700: #616161;
+  --grey-800: #424242;
+  --grey-900: #212121;
+
+  /* Text Colors */
+  --text-primary: #212121;
+  --text-secondary: #666666;
+  --text-disabled: #9e9e9e;
+  --text-hint: #9e9e9e;
+
+  /* Background Colors */
+  --background-default: #fafafa;
+  --background-paper: #ffffff;
+  --background-overlay: rgba(0, 0, 0, 0.5);
+
+  /* Divider and Border Colors */
+  --divider: #e0e0e0;
+  --border-color: #e0e0e0;
+  --outline-color: #bdbdbd;
+
+  /* Link Colors */
+  --link-color: #1976d2;
+  --link-hover-color: #1565c0;
+  --link-active-color: #0d47a1;
+  --link-visited-color: #7b1fa2;
+
+  /* ============================================================================
+     Typography
+     ============================================================================ */
+
+  /* Font Families */
+  --font-family-base:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell',
+    'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  --font-family-monospace: 'Courier New', Courier, monospace;
+  --font-family-heading: inherit;
+
+  /* Font Sizes */
+  --font-size-xs: 0.75rem; /* 12px */
+  --font-size-sm: 0.875rem; /* 14px */
+  --font-size-base: 1rem; /* 16px */
+  --font-size-md: 1.125rem; /* 18px */
+  --font-size-lg: 1.25rem; /* 20px */
+  --font-size-xl: 1.5rem; /* 24px */
+  --font-size-2xl: 1.875rem; /* 30px */
+  --font-size-3xl: 2.25rem; /* 36px */
+
+  /* Heading Font Sizes */
+  --font-size-h1: 2.5rem; /* 40px */
+  --font-size-h2: 2rem; /* 32px */
+  --font-size-h3: 1.75rem; /* 28px */
+  --font-size-h4: 1.5rem; /* 24px */
+  --font-size-h5: 1.25rem; /* 20px */
+  --font-size-h6: 1rem; /* 16px */
+
+  /* Font Weights */
+  --font-weight-light: 300;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+
+  /* Line Heights */
+  --line-height-tight: 1.2;
+  --line-height-base: 1.5;
+  --line-height-relaxed: 1.75;
+  --line-height-loose: 2;
+  --line-height-heading: 1.2;
+
+  /* Letter Spacing */
+  --letter-spacing-tight: -0.05em;
+  --letter-spacing-normal: 0;
+  --letter-spacing-wide: 0.05em;
+  --letter-spacing-wider: 0.1em;
+
+  /* ============================================================================
+     Spacing System - 8px Base Grid
+     ============================================================================ */
+
+  --spacing-0: 0;
+  --spacing-1: 0.25rem; /* 4px */
+  --spacing-2: 0.5rem; /* 8px */
+  --spacing-3: 1rem; /* 16px */
+  --spacing-4: 1.5rem; /* 24px */
+  --spacing-5: 2rem; /* 32px */
+  --spacing-6: 2.5rem; /* 40px */
+  --spacing-7: 3rem; /* 48px */
+  --spacing-8: 4rem; /* 64px */
+  --spacing-9: 5rem; /* 80px */
+  --spacing-10: 6rem; /* 96px */
+
+  /* ============================================================================
+     Border Radius
+     ============================================================================ */
+
+  --border-radius-none: 0;
+  --border-radius-sm: 4px;
+  --border-radius-base: 8px;
+  --border-radius-md: 12px;
+  --border-radius-lg: 16px;
+  --border-radius-xl: 24px;
+  --border-radius-full: 9999px;
+
+  /* ============================================================================
+     Shadows
+     ============================================================================ */
+
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --shadow-base: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  --shadow-2xl: 0 50px 100px -20px rgba(0, 0, 0, 0.25);
+
+  /* ============================================================================
+     Z-Index Scale
+     ============================================================================ */
+
+  --z-index-dropdown: 1000;
+  --z-index-sticky: 1020;
+  --z-index-fixed: 1030;
+  --z-index-modal-backdrop: 1040;
+  --z-index-modal: 1050;
+  --z-index-popover: 1060;
+  --z-index-tooltip: 1070;
+  --z-index-notification: 1080;
+
+  /* ============================================================================
+     Breakpoints
+     ============================================================================ */
+
+  --breakpoint-xs: 0px;
+  --breakpoint-sm: 600px;
+  --breakpoint-md: 960px;
+  --breakpoint-lg: 1280px;
+  --breakpoint-xl: 1920px;
+
+  /* ============================================================================
+     Transitions
+     ============================================================================ */
+
+  --transition-duration-shortest: 150ms;
+  --transition-duration-shorter: 200ms;
+  --transition-duration-short: 250ms;
+  --transition-duration-standard: 300ms;
+  --transition-duration-complex: 375ms;
+  --transition-duration-entering: 225ms;
+  --transition-duration-leaving: 195ms;
+
+  --transition-easing-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-easing-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --transition-easing-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --transition-easing-sharp: cubic-bezier(0.4, 0, 0.6, 1);
+
+  /* ============================================================================
+     Component-Specific Variables
+     ============================================================================ */
+
+  /* Buttons */
+  --button-height-small: 32px;
+  --button-height-medium: 40px;
+  --button-height-large: 48px;
+  --button-padding-small: 0.5rem 1rem;
+  --button-padding-medium: 0.75rem 1.5rem;
+  --button-padding-large: 1rem 2rem;
+
+  /* Input Fields */
+  --input-height-small: 32px;
+  --input-height-medium: 40px;
+  --input-height-large: 48px;
+  --input-padding-small: 0.5rem;
+  --input-padding-medium: 0.75rem;
+  --input-padding-large: 1rem;
+
+  /* Cards */
+  --card-padding: 1.5rem;
+  --card-border-radius: 8px;
+  --card-shadow: var(--shadow-sm);
+
+  /* Navbar */
+  --navbar-height: 64px;
+  --navbar-background: #ffffff;
+  --navbar-shadow: var(--shadow-sm);
+
+  /* Sidebar */
+  --sidebar-width: 240px;
+  --sidebar-width-collapsed: 64px;
+  --sidebar-background: #ffffff;
+  --sidebar-shadow: var(--shadow-md);
+
+  /* Footer */
+  --footer-height: 64px;
+  --footer-background: #f5f5f5;
+
+  /* ============================================================================
+     Opacity Levels
+     ============================================================================ */
+
+  --opacity-disabled: 0.38;
+  --opacity-hover: 0.04;
+  --opacity-selected: 0.08;
+  --opacity-focus: 0.12;
+  --opacity-activated: 0.12;
+
+  /* ============================================================================
+     Container Max Widths
+     ============================================================================ */
+
+  --container-xs: 444px;
+  --container-sm: 600px;
+  --container-md: 960px;
+  --container-lg: 1280px;
+  --container-xl: 1920px;
+
+  /* ============================================================================
+     Grid System
+     ============================================================================ */
+
+  --grid-columns: 12;
+  --grid-gutter: 24px;
+  --grid-margin: 24px;
+}
+
+/* ============================================================================
+   Dark Mode Variables
+   ============================================================================ */
+
+/**
+ * Dark mode color overrides
+ * Applied when dark mode is active via MUI theme or system preference
+ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Text Colors - Dark Mode */
+    --text-primary: #ffffff;
+    --text-secondary: #b3b3b3;
+    --text-disabled: #666666;
+    --text-hint: #808080;
+
+    /* Background Colors - Dark Mode */
+    --background-default: #121212;
+    --background-paper: #1e1e1e;
+    --background-overlay: rgba(255, 255, 255, 0.1);
+
+    /* Divider and Border Colors - Dark Mode */
+    --divider: #424242;
+    --border-color: #424242;
+    --outline-color: #616161;
+
+    /* Link Colors - Dark Mode */
+    --link-color: #90caf9;
+    --link-hover-color: #64b5f6;
+    --link-active-color: #42a5f5;
+    --link-visited-color: #ce93d8;
+
+    /* Grey Palette - Dark Mode (inverted) */
+    --grey-50: #212121;
+    --grey-100: #424242;
+    --grey-200: #616161;
+    --grey-300: #757575;
+    --grey-400: #9e9e9e;
+    --grey-500: #bdbdbd;
+    --grey-600: #e0e0e0;
+    --grey-700: #eeeeee;
+    --grey-800: #f5f5f5;
+    --grey-900: #fafafa;
+  }
+}
+
+/* ============================================================================
+   End of Variables
+   ============================================================================ */
