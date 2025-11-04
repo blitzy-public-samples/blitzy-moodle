@@ -29,26 +29,7 @@ import {
   Alert,
 } from '@mui/material';
 import { Save } from '@mui/icons-material';
-
-/**
- * Interface for individual choice option attributes
- */
-interface ChoiceOptionAttributes {
-  disabled: boolean;
-  checked: boolean;
-  value: number;
-}
-
-/**
- * Interface for individual choice option
- */
-interface ChoiceOption {
-  optionid: number;
-  text: string;
-  attributes: ChoiceOptionAttributes;
-  countanswers: number;
-  maxanswers: number;
-}
+import { ChoiceOptionForDisplay } from '../types/choice.types';
 
 /**
  * Interface for form data structure
@@ -62,7 +43,7 @@ interface ChoiceFormData {
  */
 interface ChoiceOptionsProps {
   /** Array of available choice options */
-  options: ChoiceOption[];
+  options: ChoiceOptionForDisplay[];
   /** Whether multiple selections are allowed */
   allowMultiple: boolean;
   /** Whether answer limits are enforced per option */
@@ -142,7 +123,7 @@ const ChoiceOptions: React.FC<ChoiceOptionsProps> = ({
    */
   const availableOptionCount = options.filter((option) => {
     // Option is unavailable if it's disabled or if it's at max capacity
-    if (option.attributes.disabled) {
+    if (option.disabled) {
       return false;
     }
     if (limitAnswers && option.countanswers >= option.maxanswers) {
@@ -157,12 +138,12 @@ const ChoiceOptions: React.FC<ChoiceOptionsProps> = ({
    * - Append " (Full)" when option is disabled
    * - Show "Responses: X" and "Limit: Y" when limitAnswers and showAvailable are true
    */
-  const renderOptionLabel = (option: ChoiceOption): React.ReactNode => {
+  const renderOptionLabel = (option: ChoiceOptionForDisplay): React.ReactNode => {
     let labelText = option.text;
 
     // Check if option is full (disabled or at max capacity)
     const isFull =
-      option.attributes.disabled ||
+      option.disabled ||
       (limitAnswers && option.countanswers >= option.maxanswers);
 
     if (isFull) {
@@ -201,14 +182,14 @@ const ChoiceOptions: React.FC<ChoiceOptionsProps> = ({
    * Determine if an option should be disabled
    * Disabled when:
    * - previewOnly mode is active
-   * - Option's attributes.disabled is true
+   * - Option's disabled flag is true
    * - Option is at max capacity (limitAnswers enabled)
    */
-  const isOptionDisabled = (option: ChoiceOption): boolean => {
+  const isOptionDisabled = (option: ChoiceOptionForDisplay): boolean => {
     if (previewOnly) {
       return true;
     }
-    if (option.attributes.disabled) {
+    if (option.disabled) {
       return true;
     }
     if (limitAnswers && option.countanswers >= option.maxanswers) {
@@ -260,7 +241,7 @@ const ChoiceOptions: React.FC<ChoiceOptionsProps> = ({
                       const currentValue = Array.isArray(field.value)
                         ? field.value
                         : [];
-                      const isChecked = currentValue.includes(option.optionid);
+                      const isChecked = currentValue.includes(option.id);
 
                       return (
                         <FormControlLabel
@@ -270,16 +251,16 @@ const ChoiceOptions: React.FC<ChoiceOptionsProps> = ({
                               checked={isChecked}
                               onChange={(e) => {
                                 const newValue = e.target.checked
-                                  ? [...currentValue, option.optionid]
+                                  ? [...currentValue, option.id]
                                   : currentValue.filter(
-                                      (id) => id !== option.optionid
+                                      (id) => id !== option.id
                                     );
                                 field.onChange(newValue);
                               }}
                               disabled={
                                 isOptionDisabled(option) || isSubmitting
                               }
-                              value={option.optionid}
+                              value={option.id}
                               name="answer[]"
                               sx={{ mx: 1 }}
                             />
@@ -321,7 +302,7 @@ const ChoiceOptions: React.FC<ChoiceOptionsProps> = ({
                     {options.map((option, index) => (
                       <FormControlLabel
                         key={`choice_${index + 1}`}
-                        value={option.optionid}
+                        value={option.id}
                         control={
                           <Radio
                             disabled={
