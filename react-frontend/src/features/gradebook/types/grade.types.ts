@@ -8,6 +8,8 @@
  * @module features/gradebook/types
  */
 
+import type { ReactNode } from 'react';
+
 // ============================================================================
 // ENUMS - Grade Constants
 // ============================================================================
@@ -479,7 +481,7 @@ export interface GradeTableColumn {
   /** Data type for proper formatting */
   type: 'string' | 'number' | 'date' | 'boolean';
   /** Custom render function for cell content */
-  renderCell?: (value: unknown, row: GradeTableRow) => React.ReactNode;
+  renderCell?: (value: unknown, row: GradeTableRow) => ReactNode;
 }
 
 /**
