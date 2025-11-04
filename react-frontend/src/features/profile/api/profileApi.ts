@@ -66,11 +66,11 @@ export async function fetchUserProfile(userId: number): Promise<User> {
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: 'Failed to fetch profile' })) as APIErrorResponse;
-    throw new Error(error.message || `HTTP ${response.status}: Failed to fetch user profile`);
+    throw new Error(error.message ?? `HTTP ${response.status}: Failed to fetch user profile`);
   }
 
   const data = await response.json() as APIDataResponse<User>;
-  return (data.data || data) as User;
+  return (data.data ?? data) as User;
 }
 
 /**
@@ -90,11 +90,11 @@ export async function fetchCurrentUserProfile(): Promise<User> {
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: 'Not authenticated' })) as APIErrorResponse;
-    throw new Error(error.message || 'Failed to fetch current user profile');
+    throw new Error(error.message ?? 'Failed to fetch current user profile');
   }
 
   const data = await response.json() as APIDataResponse<User>;
-  return (data.data || data) as User;
+  return (data.data ?? data) as User;
 }
 
 /**
@@ -125,16 +125,16 @@ export async function updateUserProfile(
     return {
       success: false,
       error: {
-        code: data.error?.code || data.code || 'UPDATE_FAILED',
-        message: data.error?.message || data.message || 'Update failed',
-        details: data.error?.details || data.details,
+        code: data.error?.code ?? data.code ?? 'UPDATE_FAILED',
+        message: data.error?.message ?? data.message ?? 'Update failed',
+        details: data.error?.details ?? data.details,
       },
     };
   }
 
   return {
     success: true,
-    data: (data.data || data.user) as User,
+    data: (data.data ?? data.user) as User,
   };
 }
 
@@ -203,8 +203,8 @@ export async function uploadAvatar(
       profileimageurl: '',
       profileimageurlsmall: '',
       error: {
-        code: data.code || 'UPLOAD_FAILED',
-        message: data.message || 'Failed to upload avatar',
+        code: data.code ?? 'UPLOAD_FAILED',
+        message: data.message ?? 'Failed to upload avatar',
         details: data.details,
       },
     };
@@ -212,8 +212,8 @@ export async function uploadAvatar(
 
   return {
     success: true,
-    profileimageurl: data.profileimageurl || data.data?.profileimageurl || '',
-    profileimageurlsmall: data.profileimageurlsmall || data.data?.profileimageurlsmall || '',
+    profileimageurl: data.profileimageurl ?? data.data?.profileimageurl ?? '',
+    profileimageurlsmall: data.profileimageurlsmall ?? data.data?.profileimageurlsmall ?? '',
   };
 }
 
@@ -235,13 +235,13 @@ export async function deleteAvatar(userId: number): Promise<{ success: boolean; 
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: 'Failed to delete avatar' })) as APIErrorResponse;
-    throw new Error(error.message || 'Failed to delete avatar');
+    throw new Error(error.message ?? 'Failed to delete avatar');
   }
 
   const data = await response.json() as APIDataResponse<never>;
   return {
     success: true,
-    message: data.message || 'Avatar deleted successfully',
+    message: data.message ?? 'Avatar deleted successfully',
   };
 }
 
@@ -268,11 +268,11 @@ export async function updateUserPreferences(
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: 'Failed to update preferences' })) as APIErrorResponse;
-    throw new Error(error.message || 'Failed to update preferences');
+    throw new Error(error.message ?? 'Failed to update preferences');
   }
 
   const data = await response.json() as APIDataResponse<UserPreferences>;
-  return data.data || data.preferences || preferences;
+  return data.data ?? data.preferences ?? preferences;
 }
 
 /**
@@ -293,11 +293,11 @@ export async function fetchUserPreferences(userId: number): Promise<UserPreferen
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: 'Failed to fetch preferences' })) as APIErrorResponse;
-    throw new Error(error.message || 'Failed to fetch preferences');
+    throw new Error(error.message ?? 'Failed to fetch preferences');
   }
 
   const data = await response.json() as APIDataResponse<UserPreferences>;
-  return data.data || data.preferences || {} as UserPreferences;
+  return data.data ?? data.preferences ?? {} as UserPreferences;
 }
 
 /**

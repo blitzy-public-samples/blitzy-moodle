@@ -74,6 +74,8 @@ module.exports = {
     'vitest.config.ts',
     'playwright.config.ts',
     'tests/setup.ts',
+    'tests/**/*',
+    '**/blitzy_adhoc_test_*',
   ],
 
   // Custom rules

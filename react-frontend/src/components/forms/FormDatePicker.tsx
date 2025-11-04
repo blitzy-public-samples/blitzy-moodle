@@ -27,13 +27,14 @@
  * ```
  */
 
-import React from 'react';
-import {
-  Controller,
+import type React from 'react';
+import type {
   Control,
   FieldError,
   FieldValues,
-  Path,
+  Path} from 'react-hook-form';
+import {
+  Controller
 } from 'react-hook-form';
 import {
   DatePicker,
@@ -42,10 +43,11 @@ import {
   LocalizationProvider,
 } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import type {
+  TextFieldProps} from '@mui/material';
 import {
   FormControl,
-  FormHelperText,
-  TextFieldProps,
+  FormHelperText
 } from '@mui/material';
 import {
   format,

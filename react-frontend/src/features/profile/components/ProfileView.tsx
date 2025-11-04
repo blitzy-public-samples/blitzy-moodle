@@ -7,7 +7,6 @@
  * @module features/profile/components
  */
 
-import React from 'react';
 import {
   Box,
   Card,
@@ -76,13 +75,13 @@ export interface ProfileViewProps {
  * />
  * ```
  */
-export const ProfileView: React.FC<ProfileViewProps> = ({
+export function ProfileView({
   user,
   compact = false,
   showEditButton = false,
   onEdit,
   className,
-}) => {
+}: ProfileViewProps) {
   /**
    * Format timestamp to readable date
    */
@@ -157,9 +156,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             {/* Interests Tags */}
             {getInterests().length > 0 && (
               <Stack direction="row" spacing={1} mt={2} flexWrap="wrap" useFlexGap>
-                {getInterests().map((interest, index) => (
+                {getInterests().map((interest) => (
                   <Chip
-                    key={index}
+                    key={interest}
                     label={interest}
                     size="small"
                     variant="outlined"
@@ -226,7 +225,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               </Grid>
             )}
 
-            {(user.city || user.country) && (
+            {(Boolean(user.city) || Boolean(user.country)) && (
               <Grid item xs={12} sm={6}>
                 <Box display="flex" alignItems="center" gap={1}>
                   <LocationIcon color="action" />
@@ -242,7 +241,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         <Divider sx={{ my: 3 }} />
 
         {/* Professional Information */}
-        {(user.institution || user.department) && (
+        {(Boolean(user.institution) || Boolean(user.department)) && (
           <>
             <Box mb={3}>
               <Typography variant="h6" gutterBottom>
@@ -311,8 +310,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 Additional Information
               </Typography>
               <Grid container spacing={2}>
-                {user.customfields.map((field, index) => (
-                  <Grid item xs={12} sm={6} key={index}>
+                {user.customfields.map((field) => (
+                  <Grid item xs={12} sm={6} key={field.shortname}>
                     <Typography variant="body2" color="text.secondary">
                       <strong>{field.name}:</strong> {String(field.value)}
                     </Typography>
@@ -348,6 +347,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       </CardContent>
     </Card>
   );
-};
+}
 
 export default ProfileView;

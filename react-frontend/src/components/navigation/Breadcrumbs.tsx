@@ -19,7 +19,7 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import { useMatches, useLocation, Link as RouterLink } from 'react-router-dom';
 import {
   Breadcrumbs as MuiBreadcrumbs,
@@ -101,9 +101,9 @@ export default function Breadcrumbs({ className, maxItems }: BreadcrumbsProps): 
    * Get course name from React Query cache by course ID
    * Avoids additional API requests by reusing cached data
    */
-  const getCourseNameFromCache = (courseId: string): string | null => {
+  const getCourseNameFromCache = useCallback((courseId: string): string | null => {
     try {
-      const coursesCache = queryClient.getQueryData(['courses']) as Array<{ id: number; fullname: string }> | undefined;
+      const coursesCache = queryClient.getQueryData(['courses']) as Array<{ id: number; fullname: string }>;
       
       if (coursesCache) {
         const course = coursesCache.find((c) => c.id === parseInt(courseId, 10));
@@ -113,7 +113,7 @@ export default function Breadcrumbs({ className, maxItems }: BreadcrumbsProps): 
       }
       
       // Try to get from individual course cache
-      const courseCache = queryClient.getQueryData(['courses', parseInt(courseId, 10)]) as { fullname: string } | undefined;
+      const courseCache = queryClient.getQueryData(['courses', parseInt(courseId, 10)]) as { fullname: string };
       if (courseCache) {
         return courseCache.fullname;
       }
@@ -122,14 +122,14 @@ export default function Breadcrumbs({ className, maxItems }: BreadcrumbsProps): 
     }
     
     return null;
-  };
+  }, [queryClient]);
   
   /**
    * Get activity name from React Query cache by activity type and ID
    */
-  const getActivityNameFromCache = (activityType: string, activityId: string): string | null => {
+  const getActivityNameFromCache = useCallback((activityType: string, activityId: string): string | null => {
     try {
-      const activityCache = queryClient.getQueryData([activityType, parseInt(activityId, 10)]) as { name: string } | undefined;
+      const activityCache = queryClient.getQueryData([activityType, parseInt(activityId, 10)]) as { name: string };
       if (activityCache) {
         return activityCache.name;
       }
@@ -138,7 +138,7 @@ export default function Breadcrumbs({ className, maxItems }: BreadcrumbsProps): 
     }
     
     return null;
-  };
+  }, [queryClient]);
   
   /**
    * Generate breadcrumb items from current route matches
@@ -209,7 +209,7 @@ export default function Breadcrumbs({ className, maxItems }: BreadcrumbsProps): 
       
       pathSegments.forEach((segment, index) => {
         const isLast = index === pathSegments.length - 1;
-        const path = '/' + pathSegments.slice(0, index + 1).join('/');
+        const path = `/${  pathSegments.slice(0, index + 1).join('/')}`;
         
         // Convert URL segments to readable labels
         const label = segment
@@ -234,7 +234,7 @@ export default function Breadcrumbs({ className, maxItems }: BreadcrumbsProps): 
     }
     
     return items;
-  }, [matches, location.pathname, queryClient]);
+  }, [matches, location.pathname, getCourseNameFromCache, getActivityNameFromCache]);
   
   /**
    * Determine max items based on screen size and prop
@@ -262,7 +262,7 @@ export default function Breadcrumbs({ className, maxItems }: BreadcrumbsProps): 
     >
       {breadcrumbItems.map((item, index) => {
         const isHome = index === 0;
-        const isLast = item.isLast;
+        const {isLast} = item;
         
         if (isLast) {
           // Last item is non-clickable Typography with current page color

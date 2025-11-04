@@ -20,7 +20,7 @@
  * @module components/layouts/GuestLayout
  */
 
-import React, { FC, ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { Box, Container, Paper, Typography, useTheme } from '@mui/material';
 
 /**
@@ -81,7 +81,7 @@ export interface GuestLayoutProps {
  * </GuestLayout>
  * ```
  */
-const GuestLayout: FC<GuestLayoutProps> = ({ children, title }) => {
+function GuestLayout({ children, title }: GuestLayoutProps): JSX.Element {
   // Access MUI theme for background color and responsive design
   const theme = useTheme();
 
@@ -211,6 +211,6 @@ const GuestLayout: FC<GuestLayoutProps> = ({ children, title }) => {
       </Box>
     </Box>
   );
-};
+}
 
 export default GuestLayout;

@@ -7,7 +7,8 @@
  * @module features/profile/components
  */
 
-import React, { useState, useRef, useCallback } from 'react';
+import type React from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import {
   Box,
   Avatar,
@@ -112,7 +113,7 @@ const AVATAR_SIZES = {
  * />
  * ```
  */
-export const AvatarUpload: React.FC<AvatarUploadProps> = ({
+export function AvatarUpload({
   userId,
   currentAvatarUrl,
   onUploadSuccess,
@@ -121,7 +122,7 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
   constraints = {},
   size = 'medium',
   className,
-}) => {
+}: AvatarUploadProps) {
   // State
   const [preview, setPreview] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
@@ -131,10 +132,13 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Merge constraints with defaults
-  const finalConstraints: AvatarConstraints = {
-    ...DEFAULT_CONSTRAINTS,
-    ...constraints,
-  };
+  const finalConstraints: AvatarConstraints = useMemo(
+    () => ({
+      ...DEFAULT_CONSTRAINTS,
+      ...constraints,
+    }),
+    [constraints]
+  );
 
   // Get size configuration
   const sizeConfig = AVATAR_SIZES[size];
@@ -183,7 +187,7 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
       // Check file type
       if (!finalConstraints.allowedTypes.includes(file.type)) {
         return `Invalid file type. Allowed types: ${finalConstraints.allowedTypes
-          .map((t) => t.split('/')[1]?.toUpperCase() || t)
+          .map((t) => t.split('/')[1]?.toUpperCase() ?? t)
           .join(', ')}`;
       }
 
@@ -339,7 +343,7 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
   /**
    * Get display URL (preview or current avatar)
    */
-  const displayUrl = preview || currentAvatarUrl;
+  const displayUrl = preview ?? currentAvatarUrl;
 
   const isProcessing = isUploading || isDeleting;
 
@@ -473,6 +477,6 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
       )}
     </Box>
   );
-};
+}
 
 export default AvatarUpload;

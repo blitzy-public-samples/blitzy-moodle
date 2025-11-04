@@ -19,7 +19,8 @@
  * - Light and dark mode support via MUI theme
  */
 
-import React, { FC, ReactNode, MouseEvent, useMemo, useCallback } from 'react';
+import type { ReactNode, MouseEvent} from 'react';
+import React, { useMemo, useCallback } from 'react';
 import {
   List as MuiList,
   ListItem,
@@ -127,7 +128,7 @@ export interface ListProps {
  *   ariaLabel="Courses list"
  * />
  */
-const List: FC<ListProps> = ({
+function List({
   items,
   dense = false,
   renderItem,
@@ -136,7 +137,7 @@ const List: FC<ListProps> = ({
   ariaLabel,
   className,
   sx,
-}) => {
+}: ListProps): JSX.Element {
   /**
    * Handles click events for list items
    * Calls item-specific onClick if provided, otherwise falls back to global onItemClick
@@ -231,7 +232,7 @@ const List: FC<ListProps> = ({
    */
   const renderDefaultItem = useCallback(
     (item: ListItemData): ReactNode => {
-      const hasClick = Boolean(item.onClick || onItemClick);
+      const hasClick = Boolean(item.onClick ?? onItemClick);
 
       // Shared content for both interactive and static items
       const itemContent = (
@@ -334,6 +335,6 @@ const List: FC<ListProps> = ({
       {listItems}
     </MuiList>
   );
-};
+}
 
 export default List;

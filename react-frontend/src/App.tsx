@@ -32,7 +32,7 @@ function App() {
             completionPercentage={65}
             completedActivities={13}
             totalActivities={20}
-            showDetails={true}
+            showDetails
             activityBreakdown={[
               { type: 'Assignment', completed: 5, total: 7 },
               { type: 'Quiz', completed: 4, total: 6 },

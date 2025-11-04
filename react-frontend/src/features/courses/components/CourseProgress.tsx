@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   Box,
   LinearProgress,
@@ -94,13 +93,13 @@ const formatActivityType = (type: string): string => {
  * />
  * ```
  */
-const CourseProgress: React.FC<CourseProgressProps> = ({
+function CourseProgress({
   completionPercentage,
   completedActivities,
   totalActivities,
   showDetails = false,
   activityBreakdown = [],
-}) => {
+}: CourseProgressProps) {
   // Ensure percentage is within valid range
   const clampedPercentage = Math.max(0, Math.min(100, completionPercentage));
   const progressColor = getProgressColor(clampedPercentage);
@@ -294,6 +293,6 @@ const CourseProgress: React.FC<CourseProgressProps> = ({
       </Box>
     </Tooltip>
   );
-};
+}
 
 export default CourseProgress;

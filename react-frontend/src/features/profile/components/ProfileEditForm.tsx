@@ -8,7 +8,7 @@
  * @module features/profile/components
  */
 
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import {
   Box,
   Button,
@@ -123,13 +123,13 @@ const TIMEZONES = [
  * />
  * ```
  */
-export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
+export function ProfileEditForm({
   user,
   onSuccess,
   onCancel,
   showCancelButton = true,
   className,
-}) => {
+}: ProfileEditFormProps) {
   // Form management with react-hook-form
   const {
     control,
@@ -139,19 +139,19 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
     setError,
   } = useForm<ProfileFormData>({
     defaultValues: {
-      firstname: user.firstname || '',
-      lastname: user.lastname || '',
-      email: user.email || '',
-      city: user.city || '',
-      country: user.country || '',
-      timezone: user.timezone || '',
-      lang: user.lang || '',
-      phone1: user.phone1 || '',
-      phone2: user.phone2 || '',
-      institution: user.institution || '',
-      department: user.department || '',
-      description: user.description || '',
-      interests: user.interests || '',
+      firstname: user.firstname ?? '',
+      lastname: user.lastname ?? '',
+      email: user.email ?? '',
+      city: user.city ?? '',
+      country: user.country ?? '',
+      timezone: user.timezone ?? '',
+      lang: user.lang ?? '',
+      phone1: user.phone1 ?? '',
+      phone2: user.phone2 ?? '',
+      institution: user.institution ?? '',
+      department: user.department ?? '',
+      description: user.description ?? '',
+      interests: user.interests ?? '',
     },
   });
 
@@ -166,20 +166,18 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
     onSuccess: (response) => {
       if (response.success) {
         onSuccess?.();
-      } else {
+      } else if (response.error) {
         // Handle validation errors
-        if (response.error) {
-          // If error has field-specific details, set them
-          if (response.error.details && typeof response.error.details === 'object') {
-            Object.entries(response.error.details).forEach(([field, message]) => {
-              if (typeof message === 'string') {
-                setError(field as keyof ProfileFormData, {
-                  type: 'server',
-                  message: message,
-                });
-              }
-            });
-          }
+        // If error has field-specific details, set them
+        if (response.error.details && typeof response.error.details === 'object') {
+          Object.entries(response.error.details).forEach(([field, message]) => {
+            if (typeof message === 'string') {
+              setError(field as keyof ProfileFormData, {
+                type: 'server',
+                message,
+              });
+            }
+          });
         }
       }
     },
@@ -188,19 +186,19 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
   // Reset form when user changes
   useEffect(() => {
     reset({
-      firstname: user.firstname || '',
-      lastname: user.lastname || '',
-      email: user.email || '',
-      city: user.city || '',
-      country: user.country || '',
-      timezone: user.timezone || '',
-      lang: user.lang || '',
-      phone1: user.phone1 || '',
-      phone2: user.phone2 || '',
-      institution: user.institution || '',
-      department: user.department || '',
-      description: user.description || '',
-      interests: user.interests || '',
+      firstname: user.firstname ?? '',
+      lastname: user.lastname ?? '',
+      email: user.email ?? '',
+      city: user.city ?? '',
+      country: user.country ?? '',
+      timezone: user.timezone ?? '',
+      lang: user.lang ?? '',
+      phone1: user.phone1 ?? '',
+      phone2: user.phone2 ?? '',
+      institution: user.institution ?? '',
+      department: user.department ?? '',
+      description: user.description ?? '',
+      interests: user.interests ?? '',
     });
   }, [user, reset]);
 
@@ -342,7 +340,7 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
                 fullWidth
                 placeholder="e.g., programming, teaching, mathematics"
                 error={!!errors.interests}
-                helperText={errors.interests?.message || 'Separate interests with commas'}
+                helperText={errors.interests?.message ?? 'Separate interests with commas'}
                 disabled={isPending}
               />
             )}
@@ -547,6 +545,6 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
       </Box>
     </Box>
   );
-};
+}
 
 export default ProfileEditForm;

@@ -1,9 +1,12 @@
-import { useState, useEffect, ReactNode, FC, SyntheticEvent } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import type { ReactNode, SyntheticEvent } from 'react';
+import { useState, useEffect } from 'react';
+import type {
+  SlideProps} from '@mui/material';
 import {
   Snackbar,
   Alert,
-  Slide,
-  SlideProps,
+  Slide
 } from '@mui/material';
 
 /**
@@ -140,7 +143,7 @@ export interface UseToastReturn {
  * });
  * ```
  */
-export const Toast: FC<ToastProps> = ({
+export function Toast({
   open,
   message,
   severity,
@@ -149,7 +152,7 @@ export const Toast: FC<ToastProps> = ({
   position = { horizontal: 'right', vertical: 'top' },
   action,
   variant = 'filled',
-}) => {
+}: ToastProps): JSX.Element {
   /**
    * Handle Snackbar close event
    * Prevents closing on clickaway to avoid accidental dismissal during operations.
@@ -203,7 +206,7 @@ export const Toast: FC<ToastProps> = ({
       </Alert>
     </Snackbar>
   );
-};
+}
 
 /**
  * Custom hook for managing toast notification state.

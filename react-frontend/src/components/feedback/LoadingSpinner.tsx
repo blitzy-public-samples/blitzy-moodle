@@ -24,7 +24,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import { FC, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import {
   CircularProgress,
   Box,
@@ -145,7 +145,7 @@ const SIZE_MAP: Record<LoadingSpinnerSize, number> = {
  * @param props - Component props
  * @returns Rendered loading spinner component
  */
-export const LoadingSpinner: FC<LoadingSpinnerProps> = ({
+export function LoadingSpinner({
   size = 'medium',
   overlay = false,
   color = 'primary',
@@ -154,14 +154,14 @@ export const LoadingSpinner: FC<LoadingSpinnerProps> = ({
   ariaLabel = 'Loading',
   className,
   zIndex = 1300,
-}) => {
+}: LoadingSpinnerProps): JSX.Element {
   // Calculate spinner size in pixels from size variant
   const spinnerSize = SIZE_MAP[size];
 
   // Build CircularProgress props
   const circularProgressProps: CircularProgressProps = {
     size: spinnerSize,
-    color: color,
+    color,
     role: 'progressbar',
     'aria-label': ariaLabel,
     'aria-busy': 'true',
@@ -203,7 +203,7 @@ export const LoadingSpinner: FC<LoadingSpinnerProps> = ({
       open: true,
       sx: {
         color: '#fff',
-        zIndex: zIndex,
+        zIndex,
         // Full page mode uses fixed positioning to cover entire viewport
         // Container mode uses absolute positioning to cover parent container
         position: fullPage ? 'fixed' : 'absolute',
@@ -212,7 +212,7 @@ export const LoadingSpinner: FC<LoadingSpinnerProps> = ({
         right: 0,
         bottom: 0,
       },
-      className: className,
+      className,
     };
 
     return (
@@ -238,7 +238,7 @@ export const LoadingSpinner: FC<LoadingSpinnerProps> = ({
       {renderSpinnerContent()}
     </Box>
   );
-};
+}
 
 // Named export (default export not used per schema specification)
 export default LoadingSpinner;

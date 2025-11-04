@@ -44,7 +44,7 @@ interface TabPanelProps {
 /**
  * Tab Panel Component
  */
-const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => {
+function TabPanel({ children, value, index }: TabPanelProps) {
   return (
     <div
       role="tabpanel"
@@ -55,7 +55,7 @@ const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => {
       {value === index && <Box sx={{ py: 3 }}>{children}</Box>}
     </div>
   );
-};
+}
 
 /**
  * ProfileEditPage Component
@@ -78,7 +78,7 @@ const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => {
  * <Route path="/profile/:userId/edit" element={<ProfileEditPage />} />
  * ```
  */
-export const ProfileEditPage: React.FC = () => {
+export function ProfileEditPage() {
   const navigate = useNavigate();
   const { userId: userIdParam } = useParams<{ userId: string }>();
 
@@ -121,7 +121,7 @@ export const ProfileEditPage: React.FC = () => {
       (role) => role.shortname === 'admin' || role.shortname === 'manager'
     );
     
-    return isAdmin || false;
+    return isAdmin ?? false;
   }, [user, currentUser]);
 
   /**
@@ -339,7 +339,7 @@ export const ProfileEditPage: React.FC = () => {
               user={user}
               onSuccess={handleUpdateSuccess}
               onCancel={handleCancel}
-              showCancelButton={true}
+              showCancelButton
             />
           </Box>
         </TabPanel>
@@ -361,7 +361,7 @@ export const ProfileEditPage: React.FC = () => {
               currentAvatarUrl={user.profileimageurl}
               onUploadSuccess={handleAvatarUploadSuccess}
               onDeleteSuccess={handleAvatarUploadSuccess}
-              allowDelete={true}
+              allowDelete
               size="large"
             />
 
@@ -396,6 +396,6 @@ export const ProfileEditPage: React.FC = () => {
       </Alert>
     </Container>
   );
-};
+}
 
 export default ProfileEditPage;

@@ -189,6 +189,7 @@ export function usePrefetchProfile(userId: number): () => Promise<void> {
       await fetchUserProfile(userId);
     } catch (error) {
       // Silently fail for prefetch
+      // eslint-disable-next-line no-console
       console.debug('Failed to prefetch profile:', error);
     }
   };
@@ -224,5 +225,5 @@ export function getFullName(user: Partial<User> | undefined): string {
   if (user.firstname && user.lastname) {
     return `${user.firstname} ${user.lastname}`.trim();
   }
-  return user.username || '';
+  return user.username ?? '';
 }

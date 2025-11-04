@@ -1,4 +1,3 @@
-import React from 'react';
 import { Controller } from 'react-hook-form';
 import type { Control, FieldValues } from 'react-hook-form';
 import { TextField } from '@mui/material';
@@ -78,7 +77,7 @@ export interface FormTextareaProps {
  * @param props - FormTextarea component props
  * @returns Controlled multi-line text input component
  */
-export const FormTextarea: React.FC<FormTextareaProps> = ({
+export function FormTextarea({
   name,
   label,
   required = false,
@@ -91,7 +90,7 @@ export const FormTextarea: React.FC<FormTextareaProps> = ({
   maxLength,
   autoResize = false,
   control,
-}) => {
+}: FormTextareaProps): JSX.Element {
   return (
     <Controller
       name={name}
@@ -178,4 +177,4 @@ export const FormTextarea: React.FC<FormTextareaProps> = ({
       }}
     />
   );
-};
+}

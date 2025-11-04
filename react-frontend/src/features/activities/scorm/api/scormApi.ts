@@ -16,7 +16,7 @@
  */
 
 import { apiClient } from '@/services/api/client';
-import { AxiosError } from 'axios';
+import type { AxiosError } from 'axios';
 import type {
   Scorm,
   ScormSco,

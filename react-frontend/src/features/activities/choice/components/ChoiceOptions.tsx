@@ -11,8 +11,10 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import React, { useState, useCallback } from 'react';
-import { useForm, Controller, SubmitHandler } from 'react-hook-form';
+import type React from 'react';
+import { useState, useCallback } from 'react';
+import type { SubmitHandler } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import {
   FormControl,
   RadioGroup,
@@ -29,7 +31,7 @@ import {
   Alert,
 } from '@mui/material';
 import { Save } from '@mui/icons-material';
-import { ChoiceOptionForDisplay } from '../types/choice.types';
+import type { ChoiceOptionForDisplay } from '../types/choice.types';
 
 /**
  * Interface for form data structure
@@ -71,7 +73,7 @@ interface ChoiceOptionsProps {
  * Includes validation, loading states, and availability information display.
  * References PHP renderer logic from public/mod/choice/renderer.php lines 34-110.
  */
-const ChoiceOptions: React.FC<ChoiceOptionsProps> = ({
+function ChoiceOptions({
   options,
   allowMultiple,
   limitAnswers,
@@ -82,7 +84,7 @@ const ChoiceOptions: React.FC<ChoiceOptionsProps> = ({
   initialSelection,
   onSubmit,
   displayLayout = 'vertical',
-}) => {
+}: ChoiceOptionsProps) {
   // Local state for loading indicator during submission
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
@@ -143,7 +145,7 @@ const ChoiceOptions: React.FC<ChoiceOptionsProps> = ({
 
     // Check if option is full (disabled or at max capacity)
     const isFull =
-      option.disabled ||
+      (option.disabled ?? false) ||
       (limitAnswers && option.countanswers >= option.maxanswers);
 
     if (isFull) {
@@ -276,7 +278,7 @@ const ChoiceOptions: React.FC<ChoiceOptionsProps> = ({
                   </FormGroup>
                 </FormControl>
               );
-            } else {
+            } 
               // Single choice mode: render radio buttons in RadioGroup
               return (
                 <FormControl
@@ -321,7 +323,7 @@ const ChoiceOptions: React.FC<ChoiceOptionsProps> = ({
                   </RadioGroup>
                 </FormControl>
               );
-            }
+            
           }}
         />
 
@@ -370,7 +372,6 @@ const ChoiceOptions: React.FC<ChoiceOptionsProps> = ({
                   e.preventDefault();
                   // The actual remove action would be handled by parent component
                   // This would typically call a different callback prop like onRemove
-                  console.log('Remove choice clicked');
                 }}
                 underline="hover"
                 sx={{ ml: 1 }}
@@ -390,6 +391,6 @@ const ChoiceOptions: React.FC<ChoiceOptionsProps> = ({
       </Stack>
     </Box>
   );
-};
+}
 
 export default ChoiceOptions;

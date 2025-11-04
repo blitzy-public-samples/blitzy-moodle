@@ -21,7 +21,8 @@
  * @subpackage services/api
  */
 
-import axios, { AxiosInstance, AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
+import type { AxiosInstance, AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
+import axios from 'axios';
 import type { ApiResponse, ApiErrorResponse } from '@/types/api';
 
 // ============================================================================
@@ -56,13 +57,13 @@ interface ApiErrorData {
  * Defaults to /api/v1 for same-origin requests
  * Can be overridden via VITE_API_BASE_URL environment variable
  */
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) || '/api/v1';
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '/api/v1';
 
 /**
  * Request timeout in milliseconds
  * Can be overridden via VITE_API_TIMEOUT environment variable
  */
-const API_TIMEOUT = parseInt((import.meta.env.VITE_API_TIMEOUT as string | undefined) || '30000', 10);
+const API_TIMEOUT = parseInt((import.meta.env.VITE_API_TIMEOUT as string | undefined) ?? '30000', 10);
 
 /**
  * Whether to include credentials (cookies) in requests
@@ -166,6 +167,7 @@ apiClient.interceptors.request.use(
     
     // Log request in development
     if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
       console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`, {
         params: config.params as Record<string, unknown> | undefined,
         data: config.data as unknown,
@@ -254,6 +256,7 @@ apiClient.interceptors.response.use(
   (response: AxiosResponse) => {
     // Log response in development
     if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
       console.log(`[API Response] ${response.config.method?.toUpperCase()} ${response.config.url}`, {
         status: response.status,
         data: response.data as unknown,
@@ -311,8 +314,8 @@ apiClient.interceptors.response.use(
     const apiError: ApiErrorResponse = {
       success: false,
       error: {
-        code: errorData?.error?.code || 'UNKNOWN_ERROR',
-        message: errorData?.error?.message || error.message || 'An unexpected error occurred',
+        code: errorData?.error?.code ?? 'UNKNOWN_ERROR',
+        message: errorData?.error?.message ?? error.message ?? 'An unexpected error occurred',
         status: error.response?.status,
         details: errorData?.error?.details,
       },

@@ -16,7 +16,6 @@
  * - Material Design styling via MUI
  */
 
-import type React from 'react';
 import { useState } from 'react';
 import type { Control, FieldValues } from 'react-hook-form';
 import { Controller } from 'react-hook-form';
@@ -243,7 +242,7 @@ const getInputModeFromType = (type: FormInputType): InputMode => {
  *   helperText="Enter your age in years"
  * />
  */
-export const FormInput: React.FC<FormInputProps> = ({
+export function FormInput({
   name,
   label,
   type = 'text',
@@ -267,7 +266,7 @@ export const FormInput: React.FC<FormInputProps> = ({
   multiline = false,
   minRows,
   maxRows,
-}) => {
+}: FormInputProps): JSX.Element {
   // State for password visibility toggle
   const [showPassword, setShowPassword] = useState(false);
 
@@ -355,7 +354,7 @@ export const FormInput: React.FC<FormInputProps> = ({
             disabled={disabled}
             placeholder={placeholder}
             autoComplete={autoComplete}
-            autoFocus={autoFocus}
+            autoFocus={autoFocus} // eslint-disable-line jsx-a11y/no-autofocus
             multiline={multiline}
             rows={rows}
             minRows={minRows}
@@ -380,6 +379,6 @@ export const FormInput: React.FC<FormInputProps> = ({
       }}
     />
   );
-};
+}
 
 export default FormInput;

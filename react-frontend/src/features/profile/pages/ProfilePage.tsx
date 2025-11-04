@@ -45,7 +45,7 @@ import { ProfileView } from '../components/ProfileView';
  * <Route path="/profile/:userId" element={<ProfilePage />} />
  * ```
  */
-export const ProfilePage: React.FC = () => {
+export function ProfilePage() {
   const navigate = useNavigate();
   const { userId: userIdParam } = useParams<{ userId: string }>();
 
@@ -86,7 +86,7 @@ export const ProfilePage: React.FC = () => {
       (role) => role.shortname === 'admin' || role.shortname === 'manager'
     );
     
-    return isAdmin || false;
+    return isAdmin ?? false;
   }, [user, currentUser]);
 
   /**
@@ -235,6 +235,6 @@ export const ProfilePage: React.FC = () => {
       )}
     </Container>
   );
-};
+}
 
 export default ProfilePage;
