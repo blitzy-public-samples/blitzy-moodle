@@ -233,7 +233,7 @@ const ChoiceOptions: React.FC<ChoiceOptionsProps> = ({
                   'You must select at least one option'
                 );
               }
-              return value !== null && value !== undefined && value !== '' ||
+              return (typeof value === 'number' && value > 0) ||
                 'You must select at least one option';
             },
           }}
