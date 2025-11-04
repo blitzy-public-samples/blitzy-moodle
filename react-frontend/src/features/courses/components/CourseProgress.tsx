@@ -138,7 +138,6 @@ const CourseProgress: React.FC<CourseProgressProps> = ({
       arrow
       enterDelay={300}
       leaveDelay={200}
-      data-testid="course-progress-tooltip"
     >
       <Box
         data-testid="course-progress"
