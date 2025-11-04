@@ -43,7 +43,6 @@ import {
 } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import {
-  TextField,
   FormControl,
   FormHelperText,
   TextFieldProps,
@@ -54,8 +53,6 @@ import {
   isValid,
   isBefore,
   isAfter,
-  addDays,
-  subDays,
   startOfDay,
   endOfDay,
 } from 'date-fns';
@@ -359,12 +356,14 @@ export function FormDatePicker<TFieldValues extends FieldValues = FieldValues>({
           }}
           render={({ field, fieldState: { error } }) => {
             // Convert field value to Date object if it's a string
+            // Use type casting to handle generic field value type
+            const rawValue = field.value as Date | string | null | undefined;
             const dateValue =
-              field.value instanceof Date
-                ? field.value
-                : field.value
+              rawValue instanceof Date
+                ? rawValue
+                : rawValue
                 ? parse(
-                    String(field.value),
+                    String(rawValue),
                     mode === 'time'
                       ? 'HH:mm:ss'
                       : mode === 'datetime'

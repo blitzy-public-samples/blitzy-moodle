@@ -18,6 +18,16 @@ export default defineConfig({
     react()
   ],
   
+  // SSR configuration to handle ESM modules properly
+  ssr: {
+    noExternal: [
+      // Force bundling of date-fns and MUI date pickers
+      // This fixes ESM compatibility issues with date-fns v3 internal paths
+      'date-fns',
+      /@mui\/x-date-pickers/
+    ]
+  },
+  
   test: {
     // Enable global test APIs (describe, it, expect, etc.) without imports
     globals: true,
@@ -28,6 +38,18 @@ export default defineConfig({
     // Setup file to run before each test file
     // Contains React Testing Library configuration and custom matchers
     setupFiles: './tests/setup.ts',
+    
+    // Server configuration for handling dependencies
+    server: {
+      deps: {
+        // Inline dependencies that need to be transformed by Vite
+        // This fixes ESM module issues with date-fns and MUI date pickers
+        inline: [
+          'date-fns',
+          /@mui\/x-date-pickers/
+        ]
+      }
+    },
     
     // Test file patterns to include
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
@@ -136,6 +158,8 @@ export default defineConfig({
       '@utils': path.resolve(__dirname, './src/utils'),
       '@styles': path.resolve(__dirname, './src/styles'),
       '@config': path.resolve(__dirname, './src/config')
-    }
+    },
+    // Module resolution conditions for handling ESM/CJS compatibility
+    conditions: ['import', 'module', 'browser', 'default']
   }
 });
