@@ -206,18 +206,24 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
 
           const { width, height } = img;
 
-          if (width < finalConstraints.minWidth || height < finalConstraints.minHeight) {
-            resolve(
-              `Image dimensions too small. Minimum: ${finalConstraints.minWidth}x${finalConstraints.minHeight}px`
-            );
-            return;
+          // Check minimum dimensions if specified
+          if (finalConstraints.minWidth !== undefined && finalConstraints.minHeight !== undefined) {
+            if (width < finalConstraints.minWidth || height < finalConstraints.minHeight) {
+              resolve(
+                `Image dimensions too small. Minimum: ${finalConstraints.minWidth}x${finalConstraints.minHeight}px`
+              );
+              return;
+            }
           }
 
-          if (width > finalConstraints.maxWidth || height > finalConstraints.maxHeight) {
-            resolve(
-              `Image dimensions too large. Maximum: ${finalConstraints.maxWidth}x${finalConstraints.maxHeight}px`
-            );
-            return;
+          // Check maximum dimensions if specified
+          if (finalConstraints.maxWidth !== undefined && finalConstraints.maxHeight !== undefined) {
+            if (width > finalConstraints.maxWidth || height > finalConstraints.maxHeight) {
+              resolve(
+                `Image dimensions too large. Maximum: ${finalConstraints.maxWidth}x${finalConstraints.maxHeight}px`
+              );
+              return;
+            }
           }
 
           resolve(null);
