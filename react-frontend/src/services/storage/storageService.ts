@@ -193,7 +193,7 @@ export function getItem<T>(key: string, storageType: StorageType = 'local'): T |
 export function setItem<T>(key: string, value: T, storageType: StorageType = 'local'): boolean {
   try {
     // Handle undefined by treating it as null (since undefined doesn't serialize properly)
-    const valueToStore = value === undefined ? null : value;
+    const valueToStore = value ?? null;
     
     // Serialize value to JSON
     const serializedValue = JSON.stringify(valueToStore);
@@ -257,12 +257,11 @@ export function removeItem(key: string, storageType: StorageType = 'local'): boo
       const storage = getStorageObject(storageType);
       storage?.removeItem(key);
       return true;
-    } else {
-      // Fall back to in-memory storage
-      const memoryMap = getInMemoryMap(storageType);
-      memoryMap.delete(key);
-      return true;
     }
+    // Fall back to in-memory storage
+    const memoryMap = getInMemoryMap(storageType);
+    memoryMap.delete(key);
+    return true;
   } catch (error) {
     console.error(`Error removing item "${key}" from ${storageType}Storage:`, error);
     return false;
@@ -290,12 +289,11 @@ export function clear(storageType: StorageType = 'local'): boolean {
       const storage = getStorageObject(storageType);
       storage?.clear();
       return true;
-    } else {
-      // Fall back to in-memory storage
-      const memoryMap = getInMemoryMap(storageType);
-      memoryMap.clear();
-      return true;
     }
+    // Fall back to in-memory storage
+    const memoryMap = getInMemoryMap(storageType);
+    memoryMap.clear();
+    return true;
   } catch (error) {
     console.error(`Error clearing ${storageType}Storage:`, error);
     return false;
@@ -333,11 +331,10 @@ export function getKeys(storageType: StorageType = 'local'): string[] {
         }
       }
       return keys;
-    } else {
-      // Fall back to in-memory storage
-      const memoryMap = getInMemoryMap(storageType);
-      return Array.from(memoryMap.keys());
     }
+    // Fall back to in-memory storage
+    const memoryMap = getInMemoryMap(storageType);
+    return Array.from(memoryMap.keys());
   } catch (error) {
     console.error(`Error getting keys from ${storageType}Storage:`, error);
     return [];

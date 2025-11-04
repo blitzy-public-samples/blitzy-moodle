@@ -26,7 +26,7 @@
  * Base URL for all API endpoints
  * Reads from environment variable VITE_API_BASE_URL with fallback to '/api/v1'
  */
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '/api/v1';
 
 /**
  * Current API version
