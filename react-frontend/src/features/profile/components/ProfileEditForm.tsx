@@ -151,12 +151,6 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
       institution: user.institution || '',
       department: user.department || '',
       description: user.description || '',
-      url: user.url || '',
-      skype: user.skype || '',
-      aim: user.aim || '',
-      yahoo: user.yahoo || '',
-      msn: user.msn || '',
-      icq: user.icq || '',
       interests: user.interests || '',
     },
   });
@@ -174,13 +168,18 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
         onSuccess?.();
       } else {
         // Handle validation errors
-        if (response.errors) {
-          Object.entries(response.errors).forEach(([field, messages]) => {
-            setError(field as keyof ProfileFormData, {
-              type: 'server',
-              message: messages.join(', '),
+        if (response.error) {
+          // If error has field-specific details, set them
+          if (response.error.details && typeof response.error.details === 'object') {
+            Object.entries(response.error.details).forEach(([field, message]) => {
+              if (typeof message === 'string') {
+                setError(field as keyof ProfileFormData, {
+                  type: 'server',
+                  message: message,
+                });
+              }
             });
-          });
+          }
         }
       }
     },
@@ -201,12 +200,6 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
       institution: user.institution || '',
       department: user.department || '',
       description: user.description || '',
-      url: user.url || '',
-      skype: user.skype || '',
-      aim: user.aim || '',
-      yahoo: user.yahoo || '',
-      msn: user.msn || '',
-      icq: user.icq || '',
       interests: user.interests || '',
     });
   }, [user, reset]);
@@ -488,30 +481,6 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
             )}
           />
         </Grid>
-
-        <Grid item xs={12}>
-          <Controller
-            name="url"
-            control={control}
-            rules={{
-              pattern: {
-                value: /^https?:\/\/.+/,
-                message: 'Must be a valid URL starting with http:// or https://',
-              },
-            }}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Website"
-                fullWidth
-                placeholder="https://example.com"
-                error={!!errors.url}
-                helperText={errors.url?.message}
-                disabled={isPending}
-              />
-            )}
-          />
-        </Grid>
       </Grid>
 
       {/* Professional Information Section */}
@@ -548,98 +517,6 @@ export const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
                 fullWidth
                 error={!!errors.department}
                 helperText={errors.department?.message}
-                disabled={isPending}
-              />
-            )}
-          />
-        </Grid>
-      </Grid>
-
-      {/* Instant Messaging Section */}
-      <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
-        Instant Messaging
-      </Typography>
-
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6}>
-          <Controller
-            name="skype"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Skype"
-                fullWidth
-                error={!!errors.skype}
-                helperText={errors.skype?.message}
-                disabled={isPending}
-              />
-            )}
-          />
-        </Grid>
-
-        <Grid item xs={12} sm={6}>
-          <Controller
-            name="aim"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="AIM"
-                fullWidth
-                error={!!errors.aim}
-                helperText={errors.aim?.message}
-                disabled={isPending}
-              />
-            )}
-          />
-        </Grid>
-
-        <Grid item xs={12} sm={6}>
-          <Controller
-            name="yahoo"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Yahoo"
-                fullWidth
-                error={!!errors.yahoo}
-                helperText={errors.yahoo?.message}
-                disabled={isPending}
-              />
-            )}
-          />
-        </Grid>
-
-        <Grid item xs={12} sm={6}>
-          <Controller
-            name="msn"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="MSN"
-                fullWidth
-                error={!!errors.msn}
-                helperText={errors.msn?.message}
-                disabled={isPending}
-              />
-            )}
-          />
-        </Grid>
-
-        <Grid item xs={12} sm={6}>
-          <Controller
-            name="icq"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="ICQ"
-                fullWidth
-                error={!!errors.icq}
-                helperText={errors.icq?.message}
                 disabled={isPending}
               />
             )}
