@@ -16,13 +16,16 @@
  * - Material Design styling via MUI
  */
 
-import React, { useState } from 'react';
-import { Controller, Control, FieldValues } from 'react-hook-form';
+import type React from 'react';
+import { useState } from 'react';
+import type { Control, FieldValues } from 'react-hook-form';
+import { Controller } from 'react-hook-form';
+import type {
+  TextFieldProps} from '@mui/material';
 import {
   TextField,
   InputAdornment,
-  IconButton,
-  TextFieldProps,
+  IconButton
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 
