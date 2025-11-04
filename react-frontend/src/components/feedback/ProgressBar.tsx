@@ -1,5 +1,6 @@
-import React, { FC, ReactNode } from 'react';
-import { LinearProgress, Box, Typography, LinearProgressProps } from '@mui/material';
+import type { ReactNode } from 'react';
+import { LinearProgress, Box, Typography } from '@mui/material';
+import type { LinearProgressProps } from '@mui/material';
 
 /**
  * Props for the ProgressBar component
@@ -139,7 +140,7 @@ interface ProgressBarProps {
  *   color="error"
  * />
  */
-export const ProgressBar: FC<ProgressBarProps> = ({
+export function ProgressBar({
   value,
   variant,
   color = 'primary',
@@ -150,10 +151,10 @@ export const ProgressBar: FC<ProgressBarProps> = ({
   labelPosition = 'below',
   className,
   ariaLabel,
-}) => {
+}: ProgressBarProps) {
   // Determine variant automatically based on value and buffer
   const effectiveVariant: LinearProgressProps['variant'] = 
-    variant || 
+    variant ?? 
     (buffer !== undefined ? 'buffer' : 
      value !== undefined ? 'determinate' : 
      'indeterminate');
@@ -202,7 +203,7 @@ export const ProgressBar: FC<ProgressBarProps> = ({
           valueBuffer={clampedBuffer}
           color={progressColor}
           sx={{
-            height: height,
+            height,
             borderRadius: height / 2,
           }}
           aria-label={ariaLabel}
@@ -266,4 +267,4 @@ export const ProgressBar: FC<ProgressBarProps> = ({
       )}
     </Box>
   );
-};
+}
