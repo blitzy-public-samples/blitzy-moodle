@@ -366,7 +366,11 @@ export interface BatchProfileUpdate {
  */
 export function useBatchUpdateProfile(
   userId: number,
-  options: UseUpdateProfileOptions = {}
+  options: UseUpdateProfileOptions<{
+    profile?: ProfileUpdateResponse;
+    avatar?: AvatarUploadResponse;
+    preferences?: UserPreferences;
+  }> = {}
 ): UseMutationResult<
   {
     profile?: ProfileUpdateResponse;
@@ -409,7 +413,7 @@ export function useBatchUpdateProfile(
       queryClient.invalidateQueries({ queryKey: profileKeys.detail(userId) });
       queryClient.invalidateQueries({ queryKey: profileKeys.current() });
       
-      onSuccess?.(data.profile || { success: true, message: 'Updated successfully' });
+      onSuccess?.(data);
     },
 
     onError,
