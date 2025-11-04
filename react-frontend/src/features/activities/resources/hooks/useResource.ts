@@ -8,7 +8,8 @@
  * @module features/activities/resources/hooks/useResource
  */
 
-import { useQuery, useMutation, useQueryClient, UseQueryResult, UseMutationResult } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import type { UseQueryResult, UseMutationResult } from '@tanstack/react-query';
 import { apiClient } from '@/services/api/client';
 
 /**
@@ -120,7 +121,7 @@ const resourceKeys = {
  * Calls GET /api/v1/resources/{id} which wraps existing Moodle resource functions.
  * Implements automatic caching with 5-minute stale time.
  * 
- * @param id - The resource ID to fetch
+ * @param id - The resource ID to fetch (optional - query is disabled if undefined)
  * @returns React Query result with resource data, loading state, error state, and refetch function
  * 
  * @example
@@ -131,9 +132,9 @@ const resourceKeys = {
  * return <ResourceDisplay resource={data} />;
  * ```
  */
-export function useResource(id: number): UseQueryResult<Resource, Error> {
+export function useResource(id?: number): UseQueryResult<Resource, Error> {
   return useQuery<Resource, Error>({
-    queryKey: resourceKeys.detail(id),
+    queryKey: resourceKeys.detail(id ?? 0),
     queryFn: async () => {
       const response = await apiClient.get<ApiResponse<Resource>>(`/api/v1/resources/${id}`);
       return response.data.data;
@@ -153,7 +154,7 @@ export function useResource(id: number): UseQueryResult<Resource, Error> {
  * Calls GET /api/v1/resources/{id}/files which wraps existing Moodle file functions.
  * Returns file metadata including URLs, sizes, and MIME types.
  * 
- * @param id - The resource ID to fetch files for
+ * @param id - The resource ID to fetch files for (optional - query is disabled if undefined)
  * @returns React Query result with resource file data
  * 
  * @example
@@ -162,9 +163,9 @@ export function useResource(id: number): UseQueryResult<Resource, Error> {
  * return data?.files.map(file => <FileCard key={file.filename} file={file} />);
  * ```
  */
-export function useResourceFiles(id: number): UseQueryResult<ResourceFile, Error> {
+export function useResourceFiles(id?: number): UseQueryResult<ResourceFile, Error> {
   return useQuery<ResourceFile, Error>({
-    queryKey: resourceKeys.files(id),
+    queryKey: resourceKeys.files(id ?? 0),
     queryFn: async () => {
       const response = await apiClient.get<ApiResponse<ResourceFile>>(`/api/v1/resources/${id}/files`);
       return response.data.data;
@@ -184,7 +185,7 @@ export function useResourceFiles(id: number): UseQueryResult<ResourceFile, Error
  * Calls GET /api/v1/resources/pages/{id} which wraps existing Moodle page functions.
  * Returns page content with HTML formatting and metadata.
  * 
- * @param id - The page resource ID to fetch
+ * @param id - The page resource ID to fetch (optional - query is disabled if undefined)
  * @returns React Query result with page resource data
  * 
  * @example
@@ -193,9 +194,9 @@ export function useResourceFiles(id: number): UseQueryResult<ResourceFile, Error
  * return <div dangerouslySetInnerHTML={{ __html: data?.content }} />;
  * ```
  */
-export function useResourcePage(id: number): UseQueryResult<ResourcePage, Error> {
+export function useResourcePage(id?: number): UseQueryResult<ResourcePage, Error> {
   return useQuery<ResourcePage, Error>({
-    queryKey: resourceKeys.page(id),
+    queryKey: resourceKeys.page(id ?? 0),
     queryFn: async () => {
       const response = await apiClient.get<ApiResponse<ResourcePage>>(`/api/v1/resources/pages/${id}`);
       return response.data.data;
@@ -215,7 +216,7 @@ export function useResourcePage(id: number): UseQueryResult<ResourcePage, Error>
  * Calls GET /api/v1/resources/urls/{id} which wraps existing Moodle URL functions.
  * Returns URL resource data including external URL and display options.
  * 
- * @param id - The URL resource ID to fetch
+ * @param id - The URL resource ID to fetch (optional - query is disabled if undefined)
  * @returns React Query result with URL resource data
  * 
  * @example
@@ -224,9 +225,9 @@ export function useResourcePage(id: number): UseQueryResult<ResourcePage, Error>
  * return <ExternalLink href={data?.externalurl} target="_blank" />;
  * ```
  */
-export function useResourceUrl(id: number): UseQueryResult<ResourceUrl, Error> {
+export function useResourceUrl(id?: number): UseQueryResult<ResourceUrl, Error> {
   return useQuery<ResourceUrl, Error>({
-    queryKey: resourceKeys.url(id),
+    queryKey: resourceKeys.url(id ?? 0),
     queryFn: async () => {
       const response = await apiClient.get<ApiResponse<ResourceUrl>>(`/api/v1/resources/urls/${id}`);
       return response.data.data;
@@ -246,7 +247,7 @@ export function useResourceUrl(id: number): UseQueryResult<ResourceUrl, Error> {
  * Calls GET /api/v1/resources/folders/{id} which wraps existing Moodle folder functions.
  * Returns folder resource data including file list and display options.
  * 
- * @param id - The folder resource ID to fetch
+ * @param id - The folder resource ID to fetch (optional - query is disabled if undefined)
  * @returns React Query result with folder resource data
  * 
  * @example
@@ -255,9 +256,9 @@ export function useResourceUrl(id: number): UseQueryResult<ResourceUrl, Error> {
  * return <FolderBrowser files={data?.files} expanded={data?.showexpanded} />;
  * ```
  */
-export function useResourceFolder(id: number): UseQueryResult<ResourceFolder, Error> {
+export function useResourceFolder(id?: number): UseQueryResult<ResourceFolder, Error> {
   return useQuery<ResourceFolder, Error>({
-    queryKey: resourceKeys.folder(id),
+    queryKey: resourceKeys.folder(id ?? 0),
     queryFn: async () => {
       const response = await apiClient.get<ApiResponse<ResourceFolder>>(`/api/v1/resources/folders/${id}`);
       return response.data.data;
@@ -300,7 +301,7 @@ export function useTrackResourceView(): UseMutationResult<TrackingResponse, Erro
     },
     onSuccess: (data, resourceId) => {
       // Invalidate resource cache to refetch updated view count
-      queryClient.invalidateQueries({ queryKey: resourceKeys.detail(resourceId) });
+      void queryClient.invalidateQueries({ queryKey: resourceKeys.detail(resourceId) });
       
       // Optionally update cache optimistically without refetching
       queryClient.setQueryData<Resource>(resourceKeys.detail(resourceId), (oldData) => {
@@ -354,8 +355,8 @@ export function useTrackResourceDownload(): UseMutationResult<TrackingResponse, 
     },
     onSuccess: (data, resourceId) => {
       // Invalidate resource cache to refetch updated download count
-      queryClient.invalidateQueries({ queryKey: resourceKeys.detail(resourceId) });
-      queryClient.invalidateQueries({ queryKey: resourceKeys.files(resourceId) });
+      void queryClient.invalidateQueries({ queryKey: resourceKeys.detail(resourceId) });
+      void queryClient.invalidateQueries({ queryKey: resourceKeys.files(resourceId) });
       
       // Optionally update cache optimistically without refetching
       queryClient.setQueryData<Resource>(resourceKeys.detail(resourceId), (oldData) => {
