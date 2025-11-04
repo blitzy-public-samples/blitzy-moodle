@@ -24,6 +24,7 @@ import {
   Control,
   FieldError,
   FieldValues,
+  Path,
 } from 'react-hook-form';
 import {
   Select,
@@ -32,7 +33,6 @@ import {
   InputLabel,
   FormHelperText,
   ListSubheader,
-  SelectProps,
   Autocomplete,
   Chip,
   TextField,
@@ -60,7 +60,7 @@ export interface SelectOption {
  */
 export interface FormSelectProps<TFieldValues extends FieldValues = FieldValues> {
   /** The name of the field in the form state */
-  name: string;
+  name: Path<TFieldValues>;
   
   /** The label text displayed above the select */
   label: string;
@@ -211,6 +211,11 @@ export function FormSelect<TFieldValues extends FieldValues = FieldValues>({
           label={label}
           multiple={multiple}
           displayEmpty={!!placeholder}
+          SelectDisplayProps={{
+            'aria-describedby': hasError || helperText ? helperId : undefined,
+            'aria-invalid': hasError ? 'true' : 'false',
+            'aria-required': required ? 'true' : 'false',
+          }}
           renderValue={multiple ? (selected) => {
             if (!selected || (Array.isArray(selected) && selected.length === 0)) {
               return <em style={{ color: 'text.secondary' }}>{placeholder}</em>;
@@ -236,10 +241,6 @@ export function FormSelect<TFieldValues extends FieldValues = FieldValues>({
             const option = options.find(opt => opt.value === selected);
             return option?.label || selected;
           } : undefined}
-          aria-label={label}
-          aria-describedby={hasError || helperText ? helperId : undefined}
-          aria-invalid={hasError}
-          aria-required={required}
         >
           {placeholder && !multiple && (
             <MenuItem value="" disabled>
