@@ -139,6 +139,24 @@ export interface UserPreferences {
 }
 
 /**
+ * User role interface
+ * Represents a role assigned to a user in a context
+ */
+export interface UserRole {
+  /** Role ID */
+  roleid: number;
+  
+  /** Role name */
+  name: string;
+  
+  /** Role short name */
+  shortname: string;
+  
+  /** Sort order */
+  sortorder: number;
+}
+
+/**
  * Complete user profile interface
  * Based on user_description() from public/user/externallib.php
  * Represents the complete user profile data structure
@@ -249,6 +267,9 @@ export interface User {
   /** User preferences */
   preferences?: UserPreference[];
   
+  /** User roles */
+  roles?: UserRole[];
+  
   /** Additional name fields for international users */
   firstnamephonetic?: string;
   lastnamephonetic?: string;
@@ -271,6 +292,9 @@ export interface User {
  * Contains fields that can be updated via profile edit form
  */
 export interface UpdateProfilePayload {
+  /** User ID (required to identify which user to update) */
+  userid: number;
+  
   /** User's first name */
   firstname?: string;
   
@@ -316,6 +340,9 @@ export interface UpdateProfilePayload {
   /** Theme name */
   theme?: string;
   
+  /** User interests (comma-separated tags) */
+  interests?: string;
+  
   /** Image alt text for profile picture */
   imagealt?: string;
   
@@ -339,6 +366,33 @@ export interface UpdateProfilePayload {
   
   /** Track forums */
   trackforums?: boolean;
+  
+  /** Custom profile fields to update */
+  customfields?: CustomField[];
+}
+
+/**
+ * Avatar constraints interface
+ * Defines the constraints for avatar uploads
+ */
+export interface AvatarConstraints {
+  /** Maximum file size in bytes */
+  maxSize: number;
+  
+  /** Allowed file types (MIME types) */
+  allowedTypes: string[];
+  
+  /** Minimum width in pixels */
+  minWidth?: number;
+  
+  /** Minimum height in pixels */
+  minHeight?: number;
+  
+  /** Maximum width in pixels */
+  maxWidth?: number;
+  
+  /** Maximum height in pixels */
+  maxHeight?: number;
 }
 
 /**
@@ -347,11 +401,21 @@ export interface UpdateProfilePayload {
  * Contains updated profile image URLs after successful upload
  */
 export interface AvatarUploadResponse {
+  /** Success status */
+  success: boolean;
+  
   /** Full-size profile image URL */
   profileimageurl: string;
   
   /** Small profile image URL */
   profileimageurlsmall: string;
+  
+  /** Error information if success is false */
+  error?: {
+    code: string;
+    message: string;
+    details?: Record<string, unknown>;
+  };
 }
 
 /**
@@ -377,6 +441,11 @@ export interface ProfileAPIResponse<T> {
  * User profile update API response
  */
 export type UpdateProfileResponse = ProfileAPIResponse<User>;
+
+/**
+ * Alias for UpdateProfileResponse (backwards compatibility)
+ */
+export type ProfileUpdateResponse = UpdateProfileResponse;
 
 /**
  * Avatar upload API response
