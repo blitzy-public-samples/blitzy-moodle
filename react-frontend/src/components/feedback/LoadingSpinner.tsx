@@ -24,7 +24,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import React, { FC, ReactNode } from 'react';
+import { FC, ReactNode } from 'react';
 import {
   CircularProgress,
   Box,
@@ -199,7 +199,7 @@ export const LoadingSpinner: FC<LoadingSpinnerProps> = ({
 
   // Overlay mode: Use Backdrop component for full-page or container-scoped blocking
   if (overlay) {
-    const backdropProps: Partial<BackdropProps> = {
+    const backdropProps: BackdropProps = {
       open: true,
       sx: {
         color: '#fff',
