@@ -48,7 +48,7 @@
  * </Card>
  */
 
-import React, { FC, ReactNode, MouseEvent, forwardRef } from 'react';
+import { ReactNode, MouseEvent, forwardRef } from 'react';
 import {
   Card as MuiCard,
   CardHeader,
@@ -64,7 +64,7 @@ import {
  * Props interface for the Card component
  * Extends Material-UI CardProps for full compatibility with MUI theming system
  */
-export interface CardProps extends Omit<MuiCardProps, 'onClick'> {
+export interface CardProps extends Omit<MuiCardProps, 'onClick' | 'title'> {
   /**
    * Optional title text displayed in the card header
    * If provided, CardHeader will be rendered with consistent typography
@@ -122,7 +122,7 @@ export interface CardProps extends Omit<MuiCardProps, 'onClick'> {
    * Only applies when clickable is true
    * Receives the mouse event as parameter
    */
-  onClick?: (event: MouseEvent<HTMLDivElement>) => void;
+  onClick?: (event: MouseEvent<HTMLElement>) => void;
 
   /**
    * Disables interaction with the card
@@ -195,7 +195,7 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
      * 
      * @param event - Mouse event from click interaction
      */
-    const handleClick = (event: MouseEvent<HTMLDivElement>) => {
+    const handleClick = (event: MouseEvent<HTMLElement>) => {
       if (!disabled && onClick) {
         onClick(event);
       }
