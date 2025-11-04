@@ -192,8 +192,11 @@ export function getItem<T>(key: string, storageType: StorageType = 'local'): T |
  */
 export function setItem<T>(key: string, value: T, storageType: StorageType = 'local'): boolean {
   try {
+    // Handle undefined by treating it as null (since undefined doesn't serialize properly)
+    const valueToStore = value === undefined ? null : value;
+    
     // Serialize value to JSON
-    const serializedValue = JSON.stringify(value);
+    const serializedValue = JSON.stringify(valueToStore);
 
     if (isStorageAvailable(storageType)) {
       const storage = getStorageObject(storageType);
