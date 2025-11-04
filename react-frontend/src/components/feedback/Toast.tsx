@@ -1,4 +1,4 @@
-import React, { useState, useEffect, ReactNode, FC, SyntheticEvent } from 'react';
+import { useState, useEffect, ReactNode, FC, SyntheticEvent } from 'react';
 import {
   Snackbar,
   Alert,
@@ -156,10 +156,10 @@ export const Toast: FC<ToastProps> = ({
    * This is critical during complex workflows (quiz attempts, grade editing, etc.)
    * where users might click outside the toast unintentionally.
    * 
-   * @param event - The event that triggered the close
+   * @param _event - The event that triggered the close (unused but required by Snackbar API)
    * @param reason - The reason for closing (timeout, clickaway, escapeKeyDown)
    */
-  const handleClose = (event?: SyntheticEvent | Event, reason?: string) => {
+  const handleClose = (_event?: SyntheticEvent | Event, reason?: string) => {
     if (reason === 'clickaway') {
       return;
     }
@@ -352,6 +352,7 @@ export const useToast = (): UseToastReturn => {
       }, 300);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [open]);
 
   return {
