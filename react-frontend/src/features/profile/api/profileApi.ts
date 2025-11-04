@@ -99,15 +99,17 @@ export async function updateUserProfile(
   if (!response.ok) {
     return {
       success: false,
-      errors: data.errors || { general: [data.message || 'Update failed'] },
-      warnings: data.warnings,
+      error: data.error || {
+        code: 'UPDATE_FAILED',
+        message: data.message || 'Update failed',
+        details: data.details,
+      },
     };
   }
 
   return {
     success: true,
-    user: data.data || data.user,
-    message: data.message || 'Profile updated successfully',
+    data: data.data || data.user,
   };
 }
 
@@ -135,11 +137,10 @@ export async function uploadAvatar(
       success: false,
       profileimageurl: '',
       profileimageurlsmall: '',
-      updated: 0,
       error: {
         code: 'FILE_TOO_LARGE',
         message: 'File size exceeds 5MB limit',
-        details: `File size: ${(file.size / 1024 / 1024).toFixed(2)}MB`,
+        details: { fileSize: `${(file.size / 1024 / 1024).toFixed(2)}MB` },
       },
     };
   }
@@ -149,11 +150,10 @@ export async function uploadAvatar(
       success: false,
       profileimageurl: '',
       profileimageurlsmall: '',
-      updated: 0,
       error: {
         code: 'INVALID_FILE_TYPE',
         message: 'Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed',
-        details: `Received: ${file.type}`,
+        details: { receivedType: file.type },
       },
     };
   }
@@ -177,7 +177,6 @@ export async function uploadAvatar(
       success: false,
       profileimageurl: '',
       profileimageurlsmall: '',
-      updated: 0,
       error: {
         code: data.code || 'UPLOAD_FAILED',
         message: data.message || 'Failed to upload avatar',
@@ -190,8 +189,6 @@ export async function uploadAvatar(
     success: true,
     profileimageurl: data.profileimageurl || data.data?.profileimageurl || '',
     profileimageurlsmall: data.profileimageurlsmall || data.data?.profileimageurlsmall || '',
-    updated: Date.now(),
-    message: data.message || 'Avatar uploaded successfully',
   };
 }
 
