@@ -30,7 +30,7 @@ import type {
   FetchScormTocParams,
   FetchAttemptReportParams,
 } from '../types/scorm.types';
-import type { ApiResponse, PaginatedResponse } from '@/types/api';
+import type { ApiResponse } from '@/types/api';
 
 /**
  * Fetch SCORM package details
@@ -49,7 +49,7 @@ import type { ApiResponse, PaginatedResponse } from '@/types/api';
 export async function fetchScorm(id: number): Promise<Scorm> {
   try {
     const response = await apiClient.get<ApiResponse<Scorm>>(
-      `/api/v1/scorm/${id}`
+      `/scorm/${id}`
     );
     
     if (!response.data.success) {
@@ -59,12 +59,12 @@ export async function fetchScorm(id: number): Promise<Scorm> {
     return response.data.data;
   } catch (error: any) {
     // Transform backend errors into user-friendly messages
-    if (error.response?.status === 404) {
+    if (error.error?.status === 404) {
       throw new Error('SCORM package not found');
-    } else if (error.response?.status === 403) {
+    } else if (error.error?.status === 403) {
       throw new Error('You do not have permission to access this SCORM package');
-    } else if (error.response?.data?.error?.message) {
-      throw new Error(error.response.data.error.message);
+    } else if (error.error?.message) {
+      throw new Error(error.error.message);
     } else {
       throw new Error('Failed to fetch SCORM package. Please try again.');
     }
@@ -87,7 +87,7 @@ export async function fetchScorm(id: number): Promise<Scorm> {
 export async function fetchScormScos(id: number): Promise<ScormSco[]> {
   try {
     const response = await apiClient.get<ApiResponse<ScormSco[]>>(
-      `/api/v1/scorm/${id}/scos`
+      `/scorm/${id}/scos`
     );
     
     if (!response.data.success) {
@@ -96,10 +96,10 @@ export async function fetchScormScos(id: number): Promise<ScormSco[]> {
     
     return response.data.data;
   } catch (error: any) {
-    if (error.response?.status === 404) {
+    if (error.error?.status === 404) {
       throw new Error('SCORM package or SCOs not found');
-    } else if (error.response?.data?.error?.message) {
-      throw new Error(error.response.data.error.message);
+    } else if (error.error?.message) {
+      throw new Error(error.error.message);
     } else {
       throw new Error('Failed to fetch SCORM content objects. Please try again.');
     }
@@ -130,7 +130,7 @@ export async function fetchScormToc(
 ): Promise<ScormToc> {
   try {
     const response = await apiClient.get<ApiResponse<ScormToc>>(
-      `/api/v1/scorm/${id}/toc`,
+      `/scorm/${id}/toc`,
       { params }
     );
     
@@ -140,10 +140,10 @@ export async function fetchScormToc(
     
     return response.data.data;
   } catch (error: any) {
-    if (error.response?.status === 404) {
+    if (error.error?.status === 404) {
       throw new Error('SCORM package not found');
-    } else if (error.response?.data?.error?.message) {
-      throw new Error(error.response.data.error.message);
+    } else if (error.error?.message) {
+      throw new Error(error.error.message);
     } else {
       throw new Error('Failed to fetch SCORM navigation. Please try again.');
     }
@@ -167,7 +167,7 @@ export async function fetchScormToc(
 export async function fetchPlayerConfig(id: number): Promise<ScormPlayerConfig> {
   try {
     const response = await apiClient.get<ApiResponse<ScormPlayerConfig>>(
-      `/api/v1/scorm/${id}/player`
+      `/scorm/${id}/player`
     );
     
     if (!response.data.success) {
@@ -176,10 +176,10 @@ export async function fetchPlayerConfig(id: number): Promise<ScormPlayerConfig> 
     
     return response.data.data;
   } catch (error: any) {
-    if (error.response?.status === 404) {
+    if (error.error?.status === 404) {
       throw new Error('SCORM package not found');
-    } else if (error.response?.data?.error?.message) {
-      throw new Error(error.response.data.error.message);
+    } else if (error.error?.message) {
+      throw new Error(error.error.message);
     } else {
       throw new Error('Failed to fetch player configuration. Please try again.');
     }
@@ -212,7 +212,7 @@ export async function launchSco(
   try {
     const response = await apiClient.post<
       ApiResponse<{ launchUrl: string; attemptId: number; scoId: number }>
-    >(`/api/v1/scorm/${id}/launch`, params);
+    >(`/scorm/${id}/launch`, params);
     
     if (!response.data.success) {
       throw new Error(response.data.error?.message || 'Failed to launch SCO');
@@ -220,20 +220,20 @@ export async function launchSco(
     
     return response.data.data;
   } catch (error: any) {
-    if (error.response?.status === 403) {
-      const errorMsg = error.response.data?.error?.message;
+    if (error.error?.status === 403) {
+      const errorMsg = error.error?.message;
       if (errorMsg?.includes('prerequisite')) {
         throw new Error('Prerequisites not met. Please complete required content first.');
       }
       throw new Error('You do not have permission to launch this content');
-    } else if (error.response?.status === 404) {
+    } else if (error.error?.status === 404) {
       throw new Error('SCORM content not found');
-    } else if (error.response?.data?.error?.code === 'PACKAGE_NOT_AVAILABLE') {
+    } else if (error.error?.code === 'PACKAGE_NOT_AVAILABLE') {
       throw new Error('SCORM package is not currently available');
-    } else if (error.response?.data?.error?.code === 'INVALID_SCO') {
+    } else if (error.error?.code === 'INVALID_SCO') {
       throw new Error('Invalid content object specified');
-    } else if (error.response?.data?.error?.message) {
-      throw new Error(error.response.data.error.message);
+    } else if (error.error?.message) {
+      throw new Error(error.error.message);
     } else {
       throw new Error('Failed to launch SCORM content. Please try again.');
     }
@@ -266,7 +266,7 @@ export async function submitTracking(
   try {
     const response = await apiClient.post<
       ApiResponse<{ success: boolean; message: string }>
-    >(`/api/v1/scorm/${id}/track`, params);
+    >(`/scorm/${id}/track`, params);
     
     if (!response.data.success) {
       throw new Error(response.data.error?.message || 'Failed to save tracking data');
@@ -274,12 +274,12 @@ export async function submitTracking(
     
     return response.data.data;
   } catch (error: any) {
-    if (error.response?.status === 403) {
+    if (error.error?.status === 403) {
       throw new Error('You do not have permission to submit tracking data');
-    } else if (error.response?.status === 404) {
+    } else if (error.error?.status === 404) {
       throw new Error('SCORM attempt not found');
-    } else if (error.response?.data?.error?.message) {
-      throw new Error(error.response.data.error.message);
+    } else if (error.error?.message) {
+      throw new Error(error.error.message);
     } else {
       throw new Error('Failed to save progress. Please try again.');
     }
@@ -303,7 +303,7 @@ export async function submitTracking(
 export async function fetchAttempts(id: number): Promise<ScormAttempt[]> {
   try {
     const response = await apiClient.get<ApiResponse<ScormAttempt[]>>(
-      `/api/v1/scorm/${id}/attempts`
+      `/scorm/${id}/attempts`
     );
     
     if (!response.data.success) {
@@ -312,10 +312,10 @@ export async function fetchAttempts(id: number): Promise<ScormAttempt[]> {
     
     return response.data.data;
   } catch (error: any) {
-    if (error.response?.status === 404) {
+    if (error.error?.status === 404) {
       throw new Error('SCORM package not found');
-    } else if (error.response?.data?.error?.message) {
-      throw new Error(error.response.data.error.message);
+    } else if (error.error?.message) {
+      throw new Error(error.error.message);
     } else {
       throw new Error('Failed to fetch attempt history. Please try again.');
     }
@@ -340,7 +340,7 @@ export async function fetchAttempts(id: number): Promise<ScormAttempt[]> {
 export async function createAttempt(id: number): Promise<ScormAttempt> {
   try {
     const response = await apiClient.post<ApiResponse<ScormAttempt>>(
-      `/api/v1/scorm/${id}/attempt`
+      `/scorm/${id}/attempt`
     );
     
     if (!response.data.success) {
@@ -349,16 +349,16 @@ export async function createAttempt(id: number): Promise<ScormAttempt> {
     
     return response.data.data;
   } catch (error: any) {
-    if (error.response?.status === 403) {
-      const errorMsg = error.response.data?.error?.message;
+    if (error.error?.status === 403) {
+      const errorMsg = error.error?.message;
       if (errorMsg?.includes('maximum')) {
         throw new Error('Maximum number of attempts reached');
       }
       throw new Error('You do not have permission to create a new attempt');
-    } else if (error.response?.status === 404) {
+    } else if (error.error?.status === 404) {
       throw new Error('SCORM package not found');
-    } else if (error.response?.data?.error?.message) {
-      throw new Error(error.response.data.error.message);
+    } else if (error.error?.message) {
+      throw new Error(error.error.message);
     } else {
       throw new Error('Failed to create new attempt. Please try again.');
     }
@@ -381,7 +381,7 @@ export async function createAttempt(id: number): Promise<ScormAttempt> {
 export async function fetchAttemptTracking(attemptId: number): Promise<ScormTrackingData[]> {
   try {
     const response = await apiClient.get<ApiResponse<ScormTrackingData[]>>(
-      `/api/v1/scorm/attempts/${attemptId}/tracking`
+      `/scorm/attempts/${attemptId}/tracking`
     );
     
     if (!response.data.success) {
@@ -390,12 +390,12 @@ export async function fetchAttemptTracking(attemptId: number): Promise<ScormTrac
     
     return response.data.data;
   } catch (error: any) {
-    if (error.response?.status === 404) {
+    if (error.error?.status === 404) {
       throw new Error('Attempt not found');
-    } else if (error.response?.status === 403) {
+    } else if (error.error?.status === 403) {
       throw new Error('You do not have permission to view this attempt');
-    } else if (error.response?.data?.error?.message) {
-      throw new Error(error.response.data.error.message);
+    } else if (error.error?.message) {
+      throw new Error(error.error.message);
     } else {
       throw new Error('Failed to fetch tracking data. Please try again.');
     }
@@ -425,7 +425,7 @@ export async function fetchAttemptReport(
 ): Promise<ScormAttemptReport> {
   try {
     const response = await apiClient.get<ApiResponse<ScormAttemptReport>>(
-      `/api/v1/scorm/${id}/report`,
+      `/scorm/${id}/report`,
       { params }
     );
     
@@ -435,12 +435,12 @@ export async function fetchAttemptReport(
     
     return response.data.data;
   } catch (error: any) {
-    if (error.response?.status === 404) {
+    if (error.error?.status === 404) {
       throw new Error('SCORM package or attempts not found');
-    } else if (error.response?.status === 403) {
+    } else if (error.error?.status === 403) {
       throw new Error('You do not have permission to view reports');
-    } else if (error.response?.data?.error?.message) {
-      throw new Error(error.response.data.error.message);
+    } else if (error.error?.message) {
+      throw new Error(error.error.message);
     } else {
       throw new Error('Failed to generate report. Please try again.');
     }
@@ -468,7 +468,7 @@ export async function deleteAttempt(
   try {
     const response = await apiClient.delete<
       ApiResponse<{ success: boolean; message: string }>
-    >(`/api/v1/scorm/${id}/attempts/${attemptId}`);
+    >(`/scorm/${id}/attempts/${attemptId}`);
     
     if (!response.data.success) {
       throw new Error(response.data.error?.message || 'Failed to delete attempt');
@@ -476,12 +476,12 @@ export async function deleteAttempt(
     
     return response.data.data;
   } catch (error: any) {
-    if (error.response?.status === 403) {
+    if (error.error?.status === 403) {
       throw new Error('You do not have permission to delete attempts');
-    } else if (error.response?.status === 404) {
+    } else if (error.error?.status === 404) {
       throw new Error('Attempt not found');
-    } else if (error.response?.data?.error?.message) {
-      throw new Error(error.response.data.error.message);
+    } else if (error.error?.message) {
+      throw new Error(error.error.message);
     } else {
       throw new Error('Failed to delete attempt. Please try again.');
     }
@@ -511,7 +511,7 @@ export async function evaluatePrerequisites(
   try {
     const response = await apiClient.post<
       ApiResponse<{ canAccess: boolean; reason?: string }>
-    >(`/api/v1/scorm/${id}/prerequisites`, params);
+    >(`/scorm/${id}/prerequisites`, params);
     
     if (!response.data.success) {
       throw new Error(response.data.error?.message || 'Failed to evaluate prerequisites');
@@ -519,10 +519,10 @@ export async function evaluatePrerequisites(
     
     return response.data.data;
   } catch (error: any) {
-    if (error.response?.status === 404) {
+    if (error.error?.status === 404) {
       throw new Error('SCORM package or SCO not found');
-    } else if (error.response?.data?.error?.message) {
-      throw new Error(error.response.data.error.message);
+    } else if (error.error?.message) {
+      throw new Error(error.error.message);
     } else {
       throw new Error('Failed to evaluate prerequisites. Please try again.');
     }

@@ -965,3 +965,47 @@ export interface ScormListResponse<T> {
   page: number;
   pageSize: number;
 }
+
+// ============================================================================
+// TYPE ALIASES FOR API LAYER COMPATIBILITY
+// ============================================================================
+
+/**
+ * Type alias for table of contents node (API compatibility)
+ */
+export type ScormToc = ScormTOCNode;
+
+/**
+ * Type alias for SCORM report (API compatibility)
+ */
+export type ScormAttemptReport = ScormReport;
+
+/**
+ * Type alias for launch SCO parameters (API compatibility)
+ */
+export type LaunchScoParams = LaunchScoRequest;
+
+/**
+ * Type alias for submit tracking parameters (API compatibility)
+ */
+export type SubmitTrackingParams = SaveTrackingRequest;
+
+/**
+ * Type alias for fetch TOC parameters (API compatibility)
+ */
+export type FetchScormTocParams = GetTOCRequest;
+
+/**
+ * Type alias for fetch report parameters (API compatibility)
+ */
+export type FetchAttemptReportParams = GetReportRequest;
+
+/**
+ * Parameters for evaluating SCORM prerequisites
+ */
+export interface EvaluatePrerequisitesParams {
+  scormId: number;
+  scoId: number;
+  attempt: number;
+  currentSco?: number;
+}
