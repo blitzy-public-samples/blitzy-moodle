@@ -29,14 +29,14 @@
  * ```
  */
 
-import React, { useState, ReactNode, FC, SyntheticEvent } from 'react';
+import { useState, type ReactNode, type SyntheticEvent } from 'react';
 import {
   Alert as MuiAlert,
   AlertTitle,
   IconButton,
   Collapse,
   Box,
-  AlertProps as MuiAlertProps,
+  type AlertProps as MuiAlertProps,
 } from '@mui/material';
 import { Close } from '@mui/icons-material';
 
@@ -118,7 +118,7 @@ export interface AlertComponentProps {
  * Reusable notification component that displays user feedback messages
  * with support for different severity levels, custom actions, and dismissal.
  */
-export const Alert: FC<AlertComponentProps> = ({
+export function Alert({
   severity = 'info',
   title,
   message,
@@ -129,7 +129,7 @@ export const Alert: FC<AlertComponentProps> = ({
   icon,
   sx,
   className,
-}) => {
+}: AlertComponentProps): JSX.Element {
   // State to control alert visibility when closeable
   const [open, setOpen] = useState<boolean>(true);
 
@@ -207,7 +207,7 @@ export const Alert: FC<AlertComponentProps> = ({
     }
 
     // If only custom action, return it
-    return action || null;
+    return action ?? null;
   };
 
   return (
@@ -236,7 +236,7 @@ export const Alert: FC<AlertComponentProps> = ({
       </MuiAlert>
     </Collapse>
   );
-};
+}
 
 // Set display name for better debugging in React DevTools
 Alert.displayName = 'Alert';
