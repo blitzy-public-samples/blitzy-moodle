@@ -73,6 +73,7 @@ module.exports = {
     'vite.config.ts',
     'vitest.config.ts',
     'playwright.config.ts',
+    'tests/setup.ts',
   ],
 
   // Custom rules

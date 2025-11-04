@@ -17,6 +17,31 @@ import type {
 } from '../types/profile.types';
 
 /**
+ * API response type definitions
+ * These interfaces define the structure of raw API responses
+ */
+interface APIErrorResponse {
+  message?: string;
+  error?: {
+    code?: string;
+    message?: string;
+    details?: Record<string, unknown>;
+  };
+  code?: string;
+  details?: Record<string, unknown>;
+}
+
+interface APIDataResponse<T> {
+  data?: T;
+  user?: User;
+  preferences?: UserPreferences;
+  profileimageurl?: string;
+  profileimageurlsmall?: string;
+  message?: string;
+  valid?: boolean;
+}
+
+/**
  * Base API configuration
  * In a real implementation, these would come from environment config
  */
@@ -40,12 +65,12 @@ export async function fetchUserProfile(userId: number): Promise<User> {
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Failed to fetch profile' }));
+    const error = await response.json().catch(() => ({ message: 'Failed to fetch profile' })) as APIErrorResponse;
     throw new Error(error.message || `HTTP ${response.status}: Failed to fetch user profile`);
   }
 
-  const data = await response.json();
-  return data.data || data;
+  const data = await response.json() as APIDataResponse<User>;
+  return (data.data || data) as User;
 }
 
 /**
@@ -64,12 +89,12 @@ export async function fetchCurrentUserProfile(): Promise<User> {
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Not authenticated' }));
+    const error = await response.json().catch(() => ({ message: 'Not authenticated' })) as APIErrorResponse;
     throw new Error(error.message || 'Failed to fetch current user profile');
   }
 
-  const data = await response.json();
-  return data.data || data;
+  const data = await response.json() as APIDataResponse<User>;
+  return (data.data || data) as User;
 }
 
 /**
@@ -94,22 +119,22 @@ export async function updateUserProfile(
     body: JSON.stringify(payload),
   });
 
-  const data = await response.json();
+  const data = await response.json() as APIDataResponse<User> & APIErrorResponse;
 
   if (!response.ok) {
     return {
       success: false,
-      error: data.error || {
-        code: 'UPDATE_FAILED',
-        message: data.message || 'Update failed',
-        details: data.details,
+      error: {
+        code: data.error?.code || data.code || 'UPDATE_FAILED',
+        message: data.error?.message || data.message || 'Update failed',
+        details: data.error?.details || data.details,
       },
     };
   }
 
   return {
     success: true,
-    data: data.data || data.user,
+    data: (data.data || data.user) as User,
   };
 }
 
@@ -170,7 +195,7 @@ export async function uploadAvatar(
     // Don't set Content-Type header - browser will set it with boundary
   });
 
-  const data = await response.json();
+  const data = await response.json() as APIDataResponse<{ profileimageurl: string; profileimageurlsmall: string }> & APIErrorResponse;
 
   if (!response.ok) {
     return {
@@ -209,11 +234,11 @@ export async function deleteAvatar(userId: number): Promise<{ success: boolean; 
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Failed to delete avatar' }));
+    const error = await response.json().catch(() => ({ message: 'Failed to delete avatar' })) as APIErrorResponse;
     throw new Error(error.message || 'Failed to delete avatar');
   }
 
-  const data = await response.json();
+  const data = await response.json() as APIDataResponse<never>;
   return {
     success: true,
     message: data.message || 'Avatar deleted successfully',
@@ -242,11 +267,11 @@ export async function updateUserPreferences(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Failed to update preferences' }));
+    const error = await response.json().catch(() => ({ message: 'Failed to update preferences' })) as APIErrorResponse;
     throw new Error(error.message || 'Failed to update preferences');
   }
 
-  const data = await response.json();
+  const data = await response.json() as APIDataResponse<UserPreferences>;
   return data.data || data.preferences || preferences;
 }
 
@@ -267,12 +292,12 @@ export async function fetchUserPreferences(userId: number): Promise<UserPreferen
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Failed to fetch preferences' }));
+    const error = await response.json().catch(() => ({ message: 'Failed to fetch preferences' })) as APIErrorResponse;
     throw new Error(error.message || 'Failed to fetch preferences');
   }
 
-  const data = await response.json();
-  return data.data || data.preferences || {};
+  const data = await response.json() as APIDataResponse<UserPreferences>;
+  return data.data || data.preferences || {} as UserPreferences;
 }
 
 /**
@@ -305,7 +330,7 @@ export async function validateProfileField(
     };
   }
 
-  const data = await response.json();
+  const data = await response.json() as APIDataResponse<never>;
   return {
     valid: data.valid !== false,
     message: data.message,

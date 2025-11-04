@@ -107,7 +107,9 @@ export function useUpdateProfile(
     
     // Optimistic update - immediately update cache before API call
     onMutate: async (updatedProfile) => {
-      if (!optimisticUpdate) return undefined;
+      if (!optimisticUpdate) {
+        return undefined;
+      }
 
       const userId = updatedProfile.userid;
       const queryKey = profileKeys.detail(userId);
@@ -149,10 +151,10 @@ export function useUpdateProfile(
       const userId = variables.userid;
       
       // Invalidate profile cache to trigger refetch
-      queryClient.invalidateQueries({ queryKey: profileKeys.detail(userId) });
+      void queryClient.invalidateQueries({ queryKey: profileKeys.detail(userId) });
       
       // Also invalidate current user cache if updating own profile
-      queryClient.invalidateQueries({ queryKey: profileKeys.current() });
+      void queryClient.invalidateQueries({ queryKey: profileKeys.current() });
       
       onSuccess?.(data);
     },
@@ -209,8 +211,8 @@ export function useUploadAvatar(
         }
 
         // Invalidate to ensure fresh data
-        queryClient.invalidateQueries({ queryKey: profileKeys.detail(userId) });
-        queryClient.invalidateQueries({ queryKey: profileKeys.current() });
+        void queryClient.invalidateQueries({ queryKey: profileKeys.detail(userId) });
+        void queryClient.invalidateQueries({ queryKey: profileKeys.current() });
       }
       
       onSuccess?.(data);
@@ -254,8 +256,8 @@ export function useDeleteAvatar(
 
     onSuccess: (data) => {
       // Invalidate profile cache to refetch with default avatar
-      queryClient.invalidateQueries({ queryKey: profileKeys.detail(userId) });
-      queryClient.invalidateQueries({ queryKey: profileKeys.current() });
+      void queryClient.invalidateQueries({ queryKey: profileKeys.detail(userId) });
+      void queryClient.invalidateQueries({ queryKey: profileKeys.current() });
       
       onSuccess?.(data);
     },
@@ -308,7 +310,9 @@ export function useUpdatePreferences(
     mutationFn: (preferences) => updateUserPreferences(userId, preferences),
 
     onMutate: async (updatedPreferences) => {
-      if (!optimisticUpdate) return undefined;
+      if (!optimisticUpdate) {
+        return undefined;
+      }
 
       const queryKey = profileKeys.detail(userId);
       await queryClient.cancelQueries({ queryKey });
@@ -336,8 +340,8 @@ export function useUpdatePreferences(
     },
 
     onSuccess: (data, _variables) => {
-      queryClient.invalidateQueries({ queryKey: profileKeys.detail(userId) });
-      queryClient.invalidateQueries({ queryKey: profileKeys.current() });
+      void queryClient.invalidateQueries({ queryKey: profileKeys.detail(userId) });
+      void queryClient.invalidateQueries({ queryKey: profileKeys.current() });
       
       onSuccess?.(data);
     },
@@ -410,8 +414,8 @@ export function useBatchUpdateProfile(
 
     onSuccess: (data) => {
       // Invalidate all profile-related queries
-      queryClient.invalidateQueries({ queryKey: profileKeys.detail(userId) });
-      queryClient.invalidateQueries({ queryKey: profileKeys.current() });
+      void queryClient.invalidateQueries({ queryKey: profileKeys.detail(userId) });
+      void queryClient.invalidateQueries({ queryKey: profileKeys.current() });
       
       onSuccess?.(data);
     },

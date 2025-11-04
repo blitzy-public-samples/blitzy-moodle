@@ -107,10 +107,14 @@ export const ProfileEditPage: React.FC = () => {
    * Check if current user can edit this profile
    */
   const canEdit = React.useMemo(() => {
-    if (!user || !currentUser) return false;
+    if (!user || !currentUser) {
+      return false;
+    }
     
     // User can edit their own profile
-    if (user.id === currentUser.id) return true;
+    if (user.id === currentUser.id) {
+      return true;
+    }
     
     // Admin users can edit any profile
     const isAdmin = currentUser.roles?.some(
@@ -171,7 +175,7 @@ export const ProfileEditPage: React.FC = () => {
    */
   const handleAvatarUploadSuccess = () => {
     // Refetch profile to get updated avatar URLs
-    refetch();
+    void refetch();
   };
 
   /**

@@ -1,6 +1,8 @@
 import React from 'react';
-import { Controller, Control, FieldValues } from 'react-hook-form';
-import { TextField, TextFieldProps } from '@mui/material';
+import { Controller } from 'react-hook-form';
+import type { Control, FieldValues } from 'react-hook-form';
+import { TextField } from '@mui/material';
+import type { TextFieldProps } from '@mui/material';
 
 /**
  * Props for the FormTextarea component
@@ -103,10 +105,10 @@ export const FormTextarea: React.FC<FormTextareaProps> = ({
       }}
       render={({ field, fieldState }) => {
         const { error } = fieldState;
-        const currentLength = field.value?.length || 0;
+        const currentLength = typeof field.value === 'string' ? field.value.length : 0;
         
         // Build helper text with character counter
-        let displayHelperText = helperText || '';
+        let displayHelperText = helperText ?? '';
         if (maxLength) {
           const counterText = `${currentLength}/${maxLength}`;
           displayHelperText = displayHelperText 
@@ -116,7 +118,7 @@ export const FormTextarea: React.FC<FormTextareaProps> = ({
         
         // Add error message to helper text if present
         if (error) {
-          displayHelperText = error.message || 'Invalid input';
+          displayHelperText = error.message ?? 'Invalid input';
         }
         
         // Determine row configuration based on autoResize setting
@@ -153,8 +155,8 @@ export const FormTextarea: React.FC<FormTextareaProps> = ({
             error={Boolean(error)}
             helperText={displayHelperText}
             inputProps={{
-              maxLength: maxLength,
-              'aria-label': label || name,
+              maxLength,
+              'aria-label': label ?? name,
               'aria-describedby': ariaDescribedBy,
               'aria-invalid': Boolean(error),
               'aria-required': required,

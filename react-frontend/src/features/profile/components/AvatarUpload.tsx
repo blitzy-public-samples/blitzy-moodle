@@ -279,7 +279,7 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
     (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
       if (file) {
-        handleFileSelect(file);
+        void handleFileSelect(file);
       }
       // Reset input value to allow selecting the same file again
       if (fileInputRef.current) {
@@ -314,7 +314,7 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
 
       const file = event.dataTransfer.files?.[0];
       if (file) {
-        handleFileSelect(file);
+        void handleFileSelect(file);
       }
     },
     [handleFileSelect]

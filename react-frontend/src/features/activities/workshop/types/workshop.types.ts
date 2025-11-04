@@ -55,10 +55,10 @@ export type AllocationMethod =
 /**
  * Evaluation method types
  * Determines how final grades are calculated from multiple assessments
+ * Common method: 'best' (best assessment used)
+ * Supports other evaluation methods as string values
  */
-export type EvaluationMethod =
-  | 'best'  // Best assessment used
-  | string; // Other methods as supported
+export type EvaluationMethod = string;
 
 /**
  * Main workshop configuration interface

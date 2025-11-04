@@ -87,7 +87,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
    * Format timestamp to readable date
    */
   const formatDate = (timestamp?: number): string => {
-    if (!timestamp) return 'Never';
+    if (!timestamp) {
+      return 'Never';
+    }
     return new Date(timestamp * 1000).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
@@ -99,7 +101,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
    * Format interests string to array of tags
    */
   const getInterests = (): string[] => {
-    if (!user.interests) return [];
+    if (!user.interests) {
+      return [];
+    }
     return user.interests.split(',').map((i) => i.trim()).filter(Boolean);
   };
 

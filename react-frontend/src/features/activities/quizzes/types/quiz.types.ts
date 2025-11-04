@@ -525,7 +525,7 @@ export interface Question {
  */
 export interface QuestionOptions {
   /** Question-specific configuration */
-  [key: string]: any;
+  [key: string]: unknown;
   
   /** Answers for this question (for multiple choice, etc.) */
   answers?: QuestionAnswer[];

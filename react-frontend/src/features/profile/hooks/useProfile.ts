@@ -215,8 +215,12 @@ export function isProfileLoaded(
  * @returns Full name string
  */
 export function getFullName(user: Partial<User> | undefined): string {
-  if (!user) return '';
-  if (user.fullname) return user.fullname;
+  if (!user) {
+    return '';
+  }
+  if (user.fullname) {
+    return user.fullname;
+  }
   if (user.firstname && user.lastname) {
     return `${user.firstname} ${user.lastname}`.trim();
   }

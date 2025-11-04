@@ -16,6 +16,7 @@
  */
 
 import { apiClient } from '@/services/api/client';
+import { AxiosError } from 'axios';
 import type {
   Scorm,
   ScormSco,
@@ -31,6 +32,13 @@ import type {
   FetchAttemptReportParams,
 } from '../types/scorm.types';
 import type { ApiResponse } from '@/types/api';
+
+/**
+ * Type guard to check if error is an AxiosError
+ */
+function isAxiosError(error: unknown): error is AxiosError<{ error?: { status?: number; message?: string } }> {
+  return (error as AxiosError).isAxiosError === true;
+}
 
 /**
  * Fetch SCORM package details
@@ -57,17 +65,19 @@ export async function fetchScorm(id: number): Promise<Scorm> {
     }
     
     return response.data.data;
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Transform backend errors into user-friendly messages
-    if (error.error?.status === 404) {
-      throw new Error('SCORM package not found');
-    } else if (error.error?.status === 403) {
-      throw new Error('You do not have permission to access this SCORM package');
-    } else if (error.error?.message) {
-      throw new Error(error.error.message);
-    } else {
-      throw new Error('Failed to fetch SCORM package. Please try again.');
+    if (isAxiosError(error) && error.response?.data?.error) {
+      const errorData = error.response.data.error;
+      if (errorData.status === 404) {
+        throw new Error('SCORM package not found');
+      } else if (errorData.status === 403) {
+        throw new Error('You do not have permission to access this SCORM package');
+      } else if (errorData.message) {
+        throw new Error(errorData.message);
+      }
     }
+    throw new Error('Failed to fetch SCORM package. Please try again.');
   }
 }
 
@@ -95,14 +105,16 @@ export async function fetchScormScos(id: number): Promise<ScormSco[]> {
     }
     
     return response.data.data;
-  } catch (error: any) {
-    if (error.error?.status === 404) {
-      throw new Error('SCORM package or SCOs not found');
-    } else if (error.error?.message) {
-      throw new Error(error.error.message);
-    } else {
-      throw new Error('Failed to fetch SCORM content objects. Please try again.');
+  } catch (error: unknown) {
+    if (isAxiosError(error) && error.response?.data?.error) {
+      const errorData = error.response.data.error;
+      if (errorData.status === 404) {
+        throw new Error('SCORM package or SCOs not found');
+      } else if (errorData.message) {
+        throw new Error(errorData.message);
+      }
     }
+    throw new Error('Failed to fetch SCORM content objects. Please try again.');
   }
 }
 
@@ -139,14 +151,16 @@ export async function fetchScormToc(
     }
     
     return response.data.data;
-  } catch (error: any) {
-    if (error.error?.status === 404) {
-      throw new Error('SCORM package not found');
-    } else if (error.error?.message) {
-      throw new Error(error.error.message);
-    } else {
-      throw new Error('Failed to fetch SCORM navigation. Please try again.');
+  } catch (error: unknown) {
+    if (isAxiosError(error) && error.response?.data?.error) {
+      const errorData = error.response.data.error;
+      if (errorData.status === 404) {
+        throw new Error('SCORM package not found');
+      } else if (errorData.message) {
+        throw new Error(errorData.message);
+      }
     }
+    throw new Error('Failed to fetch SCORM navigation. Please try again.');
   }
 }
 
@@ -175,14 +189,16 @@ export async function fetchPlayerConfig(id: number): Promise<ScormPlayerConfig> 
     }
     
     return response.data.data;
-  } catch (error: any) {
-    if (error.error?.status === 404) {
-      throw new Error('SCORM package not found');
-    } else if (error.error?.message) {
-      throw new Error(error.error.message);
-    } else {
-      throw new Error('Failed to fetch player configuration. Please try again.');
+  } catch (error: unknown) {
+    if (isAxiosError(error) && error.response?.data?.error) {
+      const errorData = error.response.data.error;
+      if (errorData.status === 404) {
+        throw new Error('SCORM package not found');
+      } else if (errorData.message) {
+        throw new Error(errorData.message);
+      }
     }
+    throw new Error('Failed to fetch player configuration. Please try again.');
   }
 }
 
@@ -219,24 +235,26 @@ export async function launchSco(
     }
     
     return response.data.data;
-  } catch (error: any) {
-    if (error.error?.status === 403) {
-      const errorMsg = error.error?.message;
-      if (errorMsg?.includes('prerequisite')) {
-        throw new Error('Prerequisites not met. Please complete required content first.');
+  } catch (error: unknown) {
+    if (isAxiosError(error) && error.response?.data?.error) {
+      const errorData = error.response.data.error;
+      const errorMsg = errorData.message;
+      if (errorData.status === 403) {
+        if (errorMsg?.includes('prerequisite')) {
+          throw new Error('Prerequisites not met. Please complete required content first.');
+        }
+        throw new Error('You do not have permission to launch this content');
+      } else if (errorData.status === 404) {
+        throw new Error('SCORM content not found');
+      } else if (errorMsg === 'PACKAGE_NOT_AVAILABLE') {
+        throw new Error('SCORM package is not currently available');
+      } else if (errorMsg === 'INVALID_SCO') {
+        throw new Error('Invalid content object specified');
+      } else if (errorMsg) {
+        throw new Error(errorMsg);
       }
-      throw new Error('You do not have permission to launch this content');
-    } else if (error.error?.status === 404) {
-      throw new Error('SCORM content not found');
-    } else if (error.error?.code === 'PACKAGE_NOT_AVAILABLE') {
-      throw new Error('SCORM package is not currently available');
-    } else if (error.error?.code === 'INVALID_SCO') {
-      throw new Error('Invalid content object specified');
-    } else if (error.error?.message) {
-      throw new Error(error.error.message);
-    } else {
-      throw new Error('Failed to launch SCORM content. Please try again.');
     }
+    throw new Error('Failed to launch SCORM content. Please try again.');
   }
 }
 
@@ -273,16 +291,18 @@ export async function submitTracking(
     }
     
     return response.data.data;
-  } catch (error: any) {
-    if (error.error?.status === 403) {
-      throw new Error('You do not have permission to submit tracking data');
-    } else if (error.error?.status === 404) {
-      throw new Error('SCORM attempt not found');
-    } else if (error.error?.message) {
-      throw new Error(error.error.message);
-    } else {
-      throw new Error('Failed to save progress. Please try again.');
+  } catch (error: unknown) {
+    if (isAxiosError(error) && error.response?.data?.error) {
+      const errorData = error.response.data.error;
+      if (errorData.status === 403) {
+        throw new Error('You do not have permission to submit tracking data');
+      } else if (errorData.status === 404) {
+        throw new Error('SCORM attempt not found');
+      } else if (errorData.message) {
+        throw new Error(errorData.message);
+      }
     }
+    throw new Error('Failed to save progress. Please try again.');
   }
 }
 
@@ -311,14 +331,16 @@ export async function fetchAttempts(id: number): Promise<ScormAttempt[]> {
     }
     
     return response.data.data;
-  } catch (error: any) {
-    if (error.error?.status === 404) {
-      throw new Error('SCORM package not found');
-    } else if (error.error?.message) {
-      throw new Error(error.error.message);
-    } else {
-      throw new Error('Failed to fetch attempt history. Please try again.');
+  } catch (error: unknown) {
+    if (isAxiosError(error) && error.response?.data?.error) {
+      const errorData = error.response.data.error;
+      if (errorData.status === 404) {
+        throw new Error('SCORM package not found');
+      } else if (errorData.message) {
+        throw new Error(errorData.message);
+      }
     }
+    throw new Error('Failed to fetch attempt history. Please try again.');
   }
 }
 
@@ -348,20 +370,22 @@ export async function createAttempt(id: number): Promise<ScormAttempt> {
     }
     
     return response.data.data;
-  } catch (error: any) {
-    if (error.error?.status === 403) {
-      const errorMsg = error.error?.message;
-      if (errorMsg?.includes('maximum')) {
-        throw new Error('Maximum number of attempts reached');
+  } catch (error: unknown) {
+    if (isAxiosError(error) && error.response?.data?.error) {
+      const errorData = error.response.data.error;
+      const errorMsg = errorData.message;
+      if (errorData.status === 403) {
+        if (errorMsg?.includes('maximum')) {
+          throw new Error('Maximum number of attempts reached');
+        }
+        throw new Error('You do not have permission to create a new attempt');
+      } else if (errorData.status === 404) {
+        throw new Error('SCORM package not found');
+      } else if (errorMsg) {
+        throw new Error(errorMsg);
       }
-      throw new Error('You do not have permission to create a new attempt');
-    } else if (error.error?.status === 404) {
-      throw new Error('SCORM package not found');
-    } else if (error.error?.message) {
-      throw new Error(error.error.message);
-    } else {
-      throw new Error('Failed to create new attempt. Please try again.');
     }
+    throw new Error('Failed to create new attempt. Please try again.');
   }
 }
 
@@ -389,16 +413,18 @@ export async function fetchAttemptTracking(attemptId: number): Promise<ScormTrac
     }
     
     return response.data.data;
-  } catch (error: any) {
-    if (error.error?.status === 404) {
-      throw new Error('Attempt not found');
-    } else if (error.error?.status === 403) {
-      throw new Error('You do not have permission to view this attempt');
-    } else if (error.error?.message) {
-      throw new Error(error.error.message);
-    } else {
-      throw new Error('Failed to fetch tracking data. Please try again.');
+  } catch (error: unknown) {
+    if (isAxiosError(error) && error.response?.data?.error) {
+      const errorData = error.response.data.error;
+      if (errorData.status === 404) {
+        throw new Error('Attempt not found');
+      } else if (errorData.status === 403) {
+        throw new Error('You do not have permission to view this attempt');
+      } else if (errorData.message) {
+        throw new Error(errorData.message);
+      }
     }
+    throw new Error('Failed to fetch tracking data. Please try again.');
   }
 }
 
@@ -434,16 +460,18 @@ export async function fetchAttemptReport(
     }
     
     return response.data.data;
-  } catch (error: any) {
-    if (error.error?.status === 404) {
-      throw new Error('SCORM package or attempts not found');
-    } else if (error.error?.status === 403) {
-      throw new Error('You do not have permission to view reports');
-    } else if (error.error?.message) {
-      throw new Error(error.error.message);
-    } else {
-      throw new Error('Failed to generate report. Please try again.');
+  } catch (error: unknown) {
+    if (isAxiosError(error) && error.response?.data?.error) {
+      const errorData = error.response.data.error;
+      if (errorData.status === 404) {
+        throw new Error('SCORM package or attempts not found');
+      } else if (errorData.status === 403) {
+        throw new Error('You do not have permission to view reports');
+      } else if (errorData.message) {
+        throw new Error(errorData.message);
+      }
     }
+    throw new Error('Failed to generate report. Please try again.');
   }
 }
 
@@ -475,16 +503,18 @@ export async function deleteAttempt(
     }
     
     return response.data.data;
-  } catch (error: any) {
-    if (error.error?.status === 403) {
-      throw new Error('You do not have permission to delete attempts');
-    } else if (error.error?.status === 404) {
-      throw new Error('Attempt not found');
-    } else if (error.error?.message) {
-      throw new Error(error.error.message);
-    } else {
-      throw new Error('Failed to delete attempt. Please try again.');
+  } catch (error: unknown) {
+    if (isAxiosError(error) && error.response?.data?.error) {
+      const errorData = error.response.data.error;
+      if (errorData.status === 403) {
+        throw new Error('You do not have permission to delete attempts');
+      } else if (errorData.status === 404) {
+        throw new Error('Attempt not found');
+      } else if (errorData.message) {
+        throw new Error(errorData.message);
+      }
     }
+    throw new Error('Failed to delete attempt. Please try again.');
   }
 }
 
@@ -518,13 +548,15 @@ export async function evaluatePrerequisites(
     }
     
     return response.data.data;
-  } catch (error: any) {
-    if (error.error?.status === 404) {
-      throw new Error('SCORM package or SCO not found');
-    } else if (error.error?.message) {
-      throw new Error(error.error.message);
-    } else {
-      throw new Error('Failed to evaluate prerequisites. Please try again.');
+  } catch (error: unknown) {
+    if (isAxiosError(error) && error.response?.data?.error) {
+      const errorData = error.response.data.error;
+      if (errorData.status === 404) {
+        throw new Error('SCORM package or SCO not found');
+      } else if (errorData.message) {
+        throw new Error(errorData.message);
+      }
     }
+    throw new Error('Failed to evaluate prerequisites. Please try again.');
   }
 }

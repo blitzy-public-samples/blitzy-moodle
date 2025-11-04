@@ -34,7 +34,7 @@ export enum ScormType {
 export enum ScormVersion {
   SCORM_12 = 1,
   SCORM_13 = 2,
-  SCORM_2004 = 2, // Alias for SCORM_13
+  SCORM_2004 = SCORM_13, // Alias for SCORM_13
   SCORM_AICC = 3,
 }
 

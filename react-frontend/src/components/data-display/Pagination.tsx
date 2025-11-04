@@ -1,10 +1,10 @@
-import React, { FC, ChangeEvent, useCallback, useMemo } from 'react';
+import type React from 'react';
+import { useCallback, useMemo } from 'react';
+import type { ChangeEvent } from 'react';
 import {
   Pagination as MuiPagination,
   TablePagination as MuiTablePagination,
   Box,
-  PaginationProps as MuiPaginationProps,
-  TablePaginationProps as MuiTablePaginationProps,
 } from '@mui/material';
 
 /**
@@ -144,7 +144,7 @@ export interface PaginationProps {
  *   labelRowsPerPage="Items per page:"
  * />
  */
-const Pagination: FC<PaginationProps> = ({
+function Pagination({
   variant = 'simple',
   count,
   page,
@@ -159,7 +159,7 @@ const Pagination: FC<PaginationProps> = ({
   labelDisplayedRows,
   disabled = false,
   className,
-}) => {
+}: PaginationProps) {
   // Calculate total pages for simple variant
   const totalPages = useMemo(() => {
     if (variant === 'simple') {
@@ -262,7 +262,7 @@ const Pagination: FC<PaginationProps> = ({
         rowsPerPageOptions={rowsPerPageOptions}
         onRowsPerPageChange={handleRowsPerPageChange}
         labelRowsPerPage={labelRowsPerPage}
-        labelDisplayedRows={labelDisplayedRows || defaultLabelDisplayedRows}
+        labelDisplayedRows={labelDisplayedRows ?? defaultLabelDisplayedRows}
         disabled={disabled}
         showFirstButton={showFirstButton}
         showLastButton={showLastButton}
@@ -295,6 +295,6 @@ const Pagination: FC<PaginationProps> = ({
       />
     </Box>
   );
-};
+}
 
 export default Pagination;

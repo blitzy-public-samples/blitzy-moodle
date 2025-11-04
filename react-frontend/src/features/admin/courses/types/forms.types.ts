@@ -36,14 +36,10 @@ export interface EditorContent {
 
 /**
  * Course format types supported by Moodle.
- * Common formats include 'topics', 'weeks', 'social', and custom formats.
+ * Common formats: 'topics', 'weeks', 'social', 'singleactivity'
+ * Also supports custom format plugins as any string value
  */
-export type CourseFormat = 
-  | 'topics'
-  | 'weeks'
-  | 'social'
-  | 'singleactivity'
-  | string; // Allow custom course formats
+export type CourseFormat = string;
 
 /**
  * Download course content options.

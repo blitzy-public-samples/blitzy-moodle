@@ -25,6 +25,29 @@ import axios, { AxiosInstance, AxiosError, AxiosRequestConfig, AxiosResponse } f
 import type { ApiResponse, ApiErrorResponse } from '@/types/api';
 
 // ============================================================================
+// TYPE DEFINITIONS
+// ============================================================================
+
+/**
+ * Authentication token refresh response
+ */
+interface TokenRefreshResponse {
+  accessToken: string;
+  refreshToken: string;
+}
+
+/**
+ * Error response structure from API
+ */
+interface ApiErrorData {
+  error?: {
+    code?: string;
+    message?: string;
+    details?: Record<string, unknown>;
+  };
+}
+
+// ============================================================================
 // CONFIGURATION
 // ============================================================================
 
@@ -33,13 +56,13 @@ import type { ApiResponse, ApiErrorResponse } from '@/types/api';
  * Defaults to /api/v1 for same-origin requests
  * Can be overridden via VITE_API_BASE_URL environment variable
  */
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) || '/api/v1';
 
 /**
  * Request timeout in milliseconds
  * Can be overridden via VITE_API_TIMEOUT environment variable
  */
-const API_TIMEOUT = parseInt(import.meta.env.VITE_API_TIMEOUT || '30000', 10);
+const API_TIMEOUT = parseInt((import.meta.env.VITE_API_TIMEOUT as string | undefined) || '30000', 10);
 
 /**
  * Whether to include credentials (cookies) in requests
@@ -144,8 +167,8 @@ apiClient.interceptors.request.use(
     // Log request in development
     if (import.meta.env.DEV) {
       console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`, {
-        params: config.params,
-        data: config.data,
+        params: config.params as Record<string, unknown> | undefined,
+        data: config.data as unknown,
       });
     }
     
@@ -198,13 +221,15 @@ async function refreshAccessToken(): Promise<string | null> {
     }
     
     // Call refresh endpoint without interceptors to avoid infinite loop
-    const response = await axios.post(
+    const response = await axios.post<ApiResponse<TokenRefreshResponse>>(
       `${API_BASE_URL}/auth/refresh`,
       { refreshToken },
       { withCredentials: WITH_CREDENTIALS }
     );
     
-    const { accessToken, refreshToken: newRefreshToken } = response.data.data;
+    const tokenData = response.data;
+    const { accessToken, refreshToken: newRefreshToken } = 
+      'data' in tokenData ? tokenData.data : { accessToken: '', refreshToken: '' };
     
     setTokens(accessToken, newRefreshToken);
     
@@ -231,7 +256,7 @@ apiClient.interceptors.response.use(
     if (import.meta.env.DEV) {
       console.log(`[API Response] ${response.config.method?.toUpperCase()} ${response.config.url}`, {
         status: response.status,
-        data: response.data,
+        data: response.data as unknown,
       });
     }
     
@@ -282,13 +307,14 @@ apiClient.interceptors.response.use(
     }
     
     // Transform error response
+    const errorData = error.response?.data as ApiErrorData | undefined;
     const apiError: ApiErrorResponse = {
       success: false,
       error: {
-        code: (error.response?.data as any)?.error?.code || 'UNKNOWN_ERROR',
-        message: (error.response?.data as any)?.error?.message || error.message || 'An unexpected error occurred',
+        code: errorData?.error?.code || 'UNKNOWN_ERROR',
+        message: errorData?.error?.message || error.message || 'An unexpected error occurred',
         status: error.response?.status,
-        details: (error.response?.data as any)?.error?.details,
+        details: errorData?.error?.details,
       },
     };
     

@@ -10,13 +10,10 @@
 
 /**
  * Course format types supported by Moodle
+ * Common formats: 'topics', 'weeks', 'social', 'singleactivity'
+ * Also supports custom format plugins as any string value
  */
-export type CourseFormat = 
-  | 'topics'        // Topic-based format
-  | 'weeks'         // Weekly format
-  | 'social'        // Social format
-  | 'singleactivity' // Single activity format
-  | string;         // Allow custom format plugins
+export type CourseFormat = string;
 
 /**
  * Course visibility options

@@ -19,12 +19,14 @@
  */
 
 import React from 'react';
-import {
-  Controller,
+import { Controller } from 'react-hook-form';
+import type {
   Control,
   FieldError,
   FieldValues,
   Path,
+  PathValue,
+  ControllerRenderProps,
 } from 'react-hook-form';
 import {
   Select,
@@ -168,7 +170,7 @@ export function FormSelect<TFieldValues extends FieldValues = FieldValues>({
     const grouped: Record<string, SelectOption[]> = {};
     
     options.forEach(option => {
-      const groupName = groupBy ? groupBy(option) : (option.group || 'Other');
+      const groupName = groupBy ? groupBy(option) : (option.group ?? 'Other');
       if (!grouped[groupName]) {
         grouped[groupName] = [];
       }
@@ -188,7 +190,7 @@ export function FormSelect<TFieldValues extends FieldValues = FieldValues>({
    * Renders the select component with standard Material-UI Select
    */
   const renderStandardSelect = (
-    field: any,
+    field: ControllerRenderProps<TFieldValues, Path<TFieldValues>>,
     fieldState: { error?: FieldError }
   ) => {
     const hasError = !!fieldState.error;
@@ -216,7 +218,7 @@ export function FormSelect<TFieldValues extends FieldValues = FieldValues>({
             'aria-invalid': hasError ? 'true' : 'false',
             'aria-required': required ? 'true' : 'false',
           }}
-          renderValue={multiple ? (selected) => {
+          renderValue={multiple ? (selected: unknown) => {
             if (!selected || (Array.isArray(selected) && selected.length === 0)) {
               return <em style={{ color: 'text.secondary' }}>{placeholder}</em>;
             }
@@ -224,12 +226,12 @@ export function FormSelect<TFieldValues extends FieldValues = FieldValues>({
             if (Array.isArray(selected)) {
               return (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                  {selected.map((value) => {
+                  {selected.map((value: string | number) => {
                     const option = options.find(opt => opt.value === value);
                     return (
                       <Chip
-                        key={value}
-                        label={option?.label || value}
+                        key={String(value)}
+                        label={option?.label ?? String(value)}
                         size="small"
                       />
                     );
@@ -239,7 +241,7 @@ export function FormSelect<TFieldValues extends FieldValues = FieldValues>({
             }
             
             const option = options.find(opt => opt.value === selected);
-            return option?.label || selected;
+            return option?.label ?? String(selected);
           } : undefined}
         >
           {placeholder && !multiple && (
@@ -278,7 +280,7 @@ export function FormSelect<TFieldValues extends FieldValues = FieldValues>({
         
         {(hasError || helperText) && (
           <FormHelperText id={helperId}>
-            {errorMessage || helperText}
+            {errorMessage ?? helperText}
           </FormHelperText>
         )}
       </FormControl>
@@ -289,7 +291,7 @@ export function FormSelect<TFieldValues extends FieldValues = FieldValues>({
    * Renders the searchable select component using Autocomplete
    */
   const renderSearchableSelect = (
-    field: any,
+    field: ControllerRenderProps<TFieldValues, Path<TFieldValues>>,
     fieldState: { error?: FieldError }
   ) => {
     const hasError = !!fieldState.error;
@@ -297,24 +299,29 @@ export function FormSelect<TFieldValues extends FieldValues = FieldValues>({
     
     // Find the selected option(s)
     const selectedOptions = multiple
-      ? options.filter(opt => Array.isArray(field.value) && field.value.includes(opt.value))
-      : options.find(opt => opt.value === field.value) || null;
+      ? options.filter(opt => {
+          const values = field.value as unknown;
+          return Array.isArray(values) && values.includes(opt.value);
+        })
+      : options.find(opt => opt.value === field.value) ?? null;
     
     return (
       <Autocomplete
         multiple={multiple}
         options={options}
         value={selectedOptions}
-        onChange={(_, newValue) => {
-          if (multiple) {
-            field.onChange(Array.isArray(newValue) ? newValue.map(opt => opt.value) : []);
+        onChange={(_, newValue: SelectOption | SelectOption[] | null) => {
+          if (multiple && Array.isArray(newValue)) {
+            field.onChange(newValue.map(opt => opt.value));
+          } else if (!multiple && newValue && !Array.isArray(newValue)) {
+            field.onChange(newValue.value);
           } else {
-            field.onChange(newValue ? (newValue as SelectOption).value : '');
+            field.onChange(multiple ? [] : '');
           }
         }}
-        getOptionLabel={(option) => option.label}
-        getOptionDisabled={(option) => option.disabled || false}
-        groupBy={groupBy || ((option) => option.group || '')}
+        getOptionLabel={(option: SelectOption) => option.label}
+        getOptionDisabled={(option: SelectOption) => option.disabled ?? false}
+        groupBy={groupBy ?? ((option: SelectOption) => option.group ?? '')}
         isOptionEqualToValue={(option, value) => option.value === value.value}
         disabled={disabled}
         renderInput={(params) => (
@@ -323,7 +330,7 @@ export function FormSelect<TFieldValues extends FieldValues = FieldValues>({
             label={label}
             required={required}
             error={hasError}
-            helperText={errorMessage || helperText}
+            helperText={errorMessage ?? helperText}
             placeholder={placeholder}
             inputProps={{
               ...params.inputProps,
@@ -334,14 +341,18 @@ export function FormSelect<TFieldValues extends FieldValues = FieldValues>({
             }}
           />
         )}
-        renderTags={(value, getTagProps) =>
-          value.map((option, index) => (
-            <Chip
-              label={option.label}
-              {...getTagProps({ index })}
-              size="small"
-            />
-          ))
+        renderTags={(value: SelectOption[], getTagProps) =>
+          value.map((option, index) => {
+            const { key, ...otherTagProps } = getTagProps({ index });
+            return (
+              <Chip
+                key={key}
+                label={option.label}
+                {...otherTagProps}
+                size="small"
+              />
+            );
+          })
         }
       />
     );
@@ -351,7 +362,7 @@ export function FormSelect<TFieldValues extends FieldValues = FieldValues>({
     <Controller
       name={name}
       control={control}
-      defaultValue={multiple ? ([] as any) : ('' as any)}
+      defaultValue={(multiple ? [] : '') as PathValue<TFieldValues, Path<TFieldValues>>}
       rules={{
         required: required ? `${label} is required` : false,
       }}
