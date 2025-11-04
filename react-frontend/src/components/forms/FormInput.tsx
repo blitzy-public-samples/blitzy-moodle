@@ -290,7 +290,7 @@ export const FormInput: React.FC<FormInputProps> = ({
   const actualInputType = type === 'password' ? (showPassword ? 'text' : 'password') : type;
 
   // Determine the input mode for virtual keyboards
-  const actualInputMode = inputMode || getInputModeFromType(type);
+  const actualInputMode = inputMode ?? getInputModeFromType(type);
 
   return (
     <Controller
