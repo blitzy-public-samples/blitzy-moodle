@@ -19,7 +19,7 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useMatches, useLocation, Link as RouterLink } from 'react-router-dom';
 import {
   Breadcrumbs as MuiBreadcrumbs,
@@ -27,7 +27,6 @@ import {
   Typography,
   useTheme,
   useMediaQuery,
-  Box,
 } from '@mui/material';
 import { Home, NavigateNext } from '@mui/icons-material';
 import { useQueryClient } from '@tanstack/react-query';
@@ -228,7 +227,10 @@ export default function Breadcrumbs({ className, maxItems }: BreadcrumbsProps): 
     
     // Mark the last item
     if (items.length > 0) {
-      items[items.length - 1].isLast = true;
+      const lastItem = items[items.length - 1];
+      if (lastItem) {
+        lastItem.isLast = true;
+      }
     }
     
     return items;
