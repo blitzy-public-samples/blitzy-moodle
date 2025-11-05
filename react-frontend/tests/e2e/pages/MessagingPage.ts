@@ -262,7 +262,15 @@ export class MessagingPage {
    */
   async sendMessage(): Promise<void> {
     await this.sendButton.waitFor({ state: 'visible' });
-    await this.sendButton.waitFor({ state: 'enabled' });
+    // Wait for button to be enabled (not disabled)
+    await this.page.waitForFunction(
+      (selector) => {
+        const button = document.querySelector(selector);
+        return button && !button.hasAttribute('disabled');
+      },
+      '[data-testid="send-message-button"]',
+      { timeout: 5000 }
+    );
     await this.sendButton.click();
     
     // Wait for send to complete
@@ -462,7 +470,14 @@ export class MessagingPage {
    */
   async waitForMessageSent(): Promise<void> {
     // Wait for send button to return to enabled state (indicates completion)
-    await this.sendButton.waitFor({ state: 'enabled', timeout: 10000 });
+    await this.page.waitForFunction(
+      (selector) => {
+        const button = document.querySelector(selector);
+        return button && !button.hasAttribute('disabled');
+      },
+      '[data-testid="send-message-button"]',
+      { timeout: 10000 }
+    );
     
     // Look for success indicator
     const successIndicator = this.page.locator('[data-testid="message-sent-success"]');
