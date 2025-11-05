@@ -409,7 +409,9 @@ export function simulateStorageEvent(
     newValue,
     oldValue,
     url: window.location.href,
-    storageArea: localStorage,
+    // storageArea must be null in testing environment to avoid TypeError
+    // The mocked storage is not a true Storage instance
+    storageArea: null,
   });
 
   window.dispatchEvent(event);
@@ -469,28 +471,28 @@ export function restoreStorageQuota(): void {
  * ```
  */
 export function createStorageSnapshot(): {
-  localStorage: Record<string, string>;
-  sessionStorage: Record<string, string>;
+  localStorage: Record<string, unknown>;
+  sessionStorage: Record<string, unknown>;
 } {
-  const localStorageSnapshot: Record<string, string> = {};
-  const sessionStorageSnapshot: Record<string, string> = {};
+  const localStorageSnapshot: Record<string, unknown> = {};
+  const sessionStorageSnapshot: Record<string, unknown> = {};
 
-  // Capture localStorage
+  // Capture localStorage with parsed values
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
     if (key !== null) {
-      const value = localStorage.getItem(key);
+      const value = getLocalStorageItem(key);
       if (value !== null) {
         localStorageSnapshot[key] = value;
       }
     }
   }
 
-  // Capture sessionStorage
+  // Capture sessionStorage with parsed values
   for (let i = 0; i < sessionStorage.length; i++) {
     const key = sessionStorage.key(i);
     if (key !== null) {
-      const value = sessionStorage.getItem(key);
+      const value = getSessionStorageItem(key);
       if (value !== null) {
         sessionStorageSnapshot[key] = value;
       }
@@ -517,20 +519,20 @@ export function createStorageSnapshot(): {
  * ```
  */
 export function restoreStorageSnapshot(snapshot: {
-  localStorage: Record<string, string>;
-  sessionStorage: Record<string, string>;
+  localStorage: Record<string, unknown>;
+  sessionStorage: Record<string, unknown>;
 }): void {
   // Clear current storage
   localStorage.clear();
   sessionStorage.clear();
 
-  // Restore localStorage
+  // Restore localStorage with proper JSON serialization
   Object.entries(snapshot.localStorage).forEach(([key, value]) => {
-    localStorage.setItem(key, value);
+    setLocalStorageItem(key, value);
   });
 
-  // Restore sessionStorage
+  // Restore sessionStorage with proper JSON serialization
   Object.entries(snapshot.sessionStorage).forEach(([key, value]) => {
-    sessionStorage.setItem(key, value);
+    setSessionStorageItem(key, value);
   });
 }
