@@ -162,7 +162,7 @@ export class LoginPage {
    * ```
    */
   async loginWithSSO(provider: string): Promise<void> {
-    const ssoButton = this.page.locator(`[data-testid="login-sso-button-${provider}"]`);
+    const ssoButton = this.ssoButtons.locator(`[data-testid="login-sso-button-${provider}"]`);
     await ssoButton.waitFor({ state: 'visible' });
     await ssoButton.click();
     
