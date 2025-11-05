@@ -15,7 +15,7 @@
  * - Page load synchronization
  */
 
-import { Page } from '@playwright/test';
+import { Page, Response } from '@playwright/test';
 
 // ============================================================================
 // Type Definitions
