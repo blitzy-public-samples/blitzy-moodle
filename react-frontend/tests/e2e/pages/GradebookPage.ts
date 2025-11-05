@@ -74,14 +74,8 @@ export class GradebookPage {
   private readonly gradeDetailModal: Locator;
   private readonly gradeHistory: Locator;
 
-  // Input elements (teacher view)
-  private readonly gradeInput: Locator;
-  private readonly feedbackInput: Locator;
-
   // Filter and control elements
-  private readonly gradeFilters: Locator;
   private readonly exportButton: Locator;
-  private readonly sortControls: Locator;
   private readonly studentSelector: Locator;
   private readonly groupFilter: Locator;
 
@@ -102,14 +96,8 @@ export class GradebookPage {
     this.gradeDetailModal = page.locator('[data-testid="grade-detail-modal"]');
     this.gradeHistory = page.locator('[data-testid="grade-history"]');
 
-    // Initialize input element locators (teacher view)
-    this.gradeInput = page.locator('input[data-testid="grade-input"]');
-    this.feedbackInput = page.locator('textarea[data-testid="feedback-input"]');
-
     // Initialize filter and control locators
-    this.gradeFilters = page.locator('[data-testid="grade-filters"]');
     this.exportButton = page.locator('button[data-testid="export-gradebook"]');
-    this.sortControls = page.locator('[data-testid="sort-control"]');
     this.studentSelector = page.locator('[data-testid="student-selector"]');
     this.groupFilter = page.locator('[data-testid="group-filter"]');
   }
@@ -221,7 +209,7 @@ export class GradebookPage {
     const percentageText = await this.courseTotal.locator('[data-testid="total-percentage"]').textContent() || '0%';
 
     return {
-      grade: this.parseGrade(totalText),
+      grade: this.parseGrade(totalText) ?? 0,
       maxGrade: parseFloat(maxTotalText),
       percentage: parseFloat(percentageText.replace('%', ''))
     };
@@ -267,7 +255,7 @@ export class GradebookPage {
         id,
         name: name.trim(),
         weight: weightText ? parseFloat(weightText.replace('%', '')) : undefined,
-        total: this.parseGrade(totalText),
+        total: this.parseGrade(totalText) ?? 0,
         maxTotal: parseFloat(maxTotalText),
         items
       });
@@ -338,7 +326,7 @@ export class GradebookPage {
 
       history.push({
         date: date.trim(),
-        grade: this.parseGrade(grade),
+        grade: this.parseGrade(grade) ?? 0,
         modifiedBy: modifiedBy.trim(),
         action: action.trim()
       });
@@ -542,7 +530,6 @@ export class GradebookPage {
     await this.waitForGradebook();
 
     const categories = await this.getGradeCategories();
-    const courseTotal = await this.getCourseTotal();
 
     // Verify each category total
     for (const category of categories) {

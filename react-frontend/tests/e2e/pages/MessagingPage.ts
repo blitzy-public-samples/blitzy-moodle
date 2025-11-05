@@ -69,8 +69,6 @@ export class MessagingPage {
   private readonly searchInput: Locator;
   private readonly unreadBadge: Locator;
   private readonly notificationCenter: Locator;
-  private readonly messageTimestamp: Locator;
-  private readonly deleteButton: Locator;
   private readonly conversationItem: Locator;
   
   /**
@@ -91,8 +89,6 @@ export class MessagingPage {
     this.searchInput = page.locator('[data-testid="message-search-input"]');
     this.unreadBadge = page.locator('[data-testid="unread-badge"]');
     this.notificationCenter = page.locator('[data-testid="notification-center"]');
-    this.messageTimestamp = page.locator('[data-testid="message-timestamp"]');
-    this.deleteButton = page.locator('[data-testid="delete-conversation-button"]');
     this.conversationItem = page.locator('[data-testid="conversation-item"]');
   }
   
@@ -447,16 +443,14 @@ export class MessagingPage {
    */
   async verifyRealTimeUpdate(): Promise<boolean> {
     // Get initial message count
-    const initialMessages = await this.getMessages();
-    const initialCount = initialMessages.length;
+    await this.getMessages();
     
     // Wait for potential new message (simulating another user sending)
     // In a real test, this would be triggered by another browser context
     await this.page.waitForTimeout(1000);
     
     // Check for new messages without refreshing
-    const updatedMessages = await this.getMessages();
-    const updatedCount = updatedMessages.length;
+    await this.getMessages();
     
     // Verify that we can detect changes
     // The actual verification would depend on the test scenario

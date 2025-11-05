@@ -81,11 +81,7 @@ export class ProfilePage {
   private readonly bioEditor: Locator;
 
   // Avatar upload locators
-  private readonly avatarUploadButton: Locator;
   private readonly avatarCropper: Locator;
-
-  // Custom fields locator
-  private readonly customFields: Locator;
 
   // Password change locators
   private readonly changePasswordButton: Locator;
@@ -97,7 +93,6 @@ export class ProfilePage {
   private readonly preferencesForm: Locator;
   private readonly languageSelect: Locator;
   private readonly timezoneSelect: Locator;
-  private readonly emailNotificationToggles: Locator;
   private readonly privacySelect: Locator;
 
   // Form action locators
@@ -128,11 +123,7 @@ export class ProfilePage {
     this.bioEditor = page.locator('[data-testid="bio-editor"]');
 
     // Initialize avatar upload locators
-    this.avatarUploadButton = page.locator('[data-testid="avatar-upload-button"]');
     this.avatarCropper = page.locator('[data-testid="avatar-cropper"]');
-
-    // Initialize custom fields locator
-    this.customFields = page.locator('[data-testid^="custom-field-"]');
 
     // Initialize password change locators
     this.changePasswordButton = page.locator('[data-testid="change-password-button"]');
@@ -144,7 +135,6 @@ export class ProfilePage {
     this.preferencesForm = page.locator('[data-testid="preferences-form"]');
     this.languageSelect = page.locator('[data-testid="language-select"]');
     this.timezoneSelect = page.locator('[data-testid="timezone-select"]');
-    this.emailNotificationToggles = page.locator('[data-testid^="email-notification-toggle-"]');
     this.privacySelect = page.locator('[data-testid="privacy-select"]');
 
     // Initialize form action locators
