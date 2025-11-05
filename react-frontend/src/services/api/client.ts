@@ -347,6 +347,11 @@ apiClient.interceptors.response.use(
  * Handles both standard ApiResponse and direct data responses
  */
 export function extractData<T>(response: AxiosResponse<ApiResponse<T>>): T {
+  // Handle 204 No Content responses
+  if (response.status === 204 || response.data === null || response.data === '') {
+    return undefined as unknown as T;
+  }
+
   if (response.data && 'success' in response.data && response.data.success) {
     return response.data.data;
   }

@@ -115,6 +115,20 @@ export interface ReportResponse {
   message: string;
 }
 
+/**
+ * Response data for getting discussion with posts
+ */
+export interface DiscussionWithPosts {
+  /** Discussion metadata */
+  discussion: Discussion;
+  /** All posts in the discussion (flat array) */
+  posts: Post[];
+  /** Whether there are more posts to load */
+  hasMore?: boolean;
+  /** Cursor for next page of posts */
+  nextCursor?: string;
+}
+
 // ============================================================================
 // API FUNCTIONS - FORUM OPERATIONS
 // ============================================================================
@@ -167,19 +181,63 @@ export async function getDiscussions(
  *
  * Retrieves complete discussion thread with all posts including nested replies.
  * Posts are returned with parent-child relationships and read status indicators.
+ * Also includes the discussion metadata.
  *
  * Maps to PHP endpoint: GET /api/v1/forums/discussions/{id}/posts
  * Wraps: forum_get_all_discussion_posts() from lib.php
  *
  * @param discussionId - Discussion ID
- * @returns Promise resolving to API response with Post array
+ * @returns Promise resolving to API response with Discussion and Post array
  * @throws Error if discussion not found or access denied
  */
 export async function getDiscussionPosts(
   discussionId: number
-): Promise<Post[]> {
-  const response = await apiClient.get<ApiResponse<Post[]>>(
+): Promise<DiscussionWithPosts> {
+  const response = await apiClient.get<ApiResponse<DiscussionWithPosts>>(
     `/forums/discussions/${discussionId}/posts`
+  );
+  return extractData(response);
+}
+
+/**
+ * Fetch more posts for pagination in a discussion
+ *
+ * Retrieves the next page of posts using cursor-based pagination.
+ * Used for loading additional posts in long discussion threads.
+ *
+ * Maps to PHP endpoint: GET /api/v1/forums/discussions/{id}/posts?cursor={cursor}
+ *
+ * @param discussionId - Discussion ID to fetch posts for
+ * @param cursor - Pagination cursor from previous response
+ * @returns Promise resolving to paginated posts with next cursor
+ */
+export async function fetchMorePosts(
+  discussionId: number,
+  cursor: string
+): Promise<{ posts: Post[]; hasMore: boolean; nextCursor?: string }> {
+  const response = await apiClient.get<ApiResponse<{ posts: Post[]; hasMore: boolean; nextCursor?: string }>>(
+    `/forums/discussions/${discussionId}/posts`,
+    { params: { cursor } }
+  );
+  return extractData(response);
+}
+
+/**
+ * Fetch replies for a specific post (incremental loading of nested replies)
+ *
+ * Retrieves nested replies for a parent post. Used for incrementally
+ * loading deeply nested conversation threads.
+ *
+ * Maps to PHP endpoint: GET /api/v1/forums/posts/{parentPostId}/replies
+ *
+ * @param parentPostId - Parent post ID to fetch replies for
+ * @returns Promise resolving to replies with pagination info
+ */
+export async function fetchPostReplies(
+  parentPostId: number
+): Promise<{ replies: Post[]; hasMore: boolean }> {
+  const response = await apiClient.get<ApiResponse<{ replies: Post[]; hasMore: boolean }>>(
+    `/forums/posts/${parentPostId}/replies`
   );
   return extractData(response);
 }
@@ -332,11 +390,16 @@ export async function updatePost(
  * Wraps: forum_delete_post() from lib.php
  *
  * @param postId - Post ID to delete
- * @returns Promise resolving when deletion is complete
+ * @returns Promise resolving with deletion details (soft/hard delete status)
  * @throws Error if unauthorized or post not found
  */
-export async function deletePost(postId: number): Promise<void> {
-  await apiClient.delete(`/forums/posts/${postId}`);
+export async function deletePost(
+  postId: number
+): Promise<{ softDeleted?: boolean; hardDeleted?: boolean; message?: string }> {
+  const response = await apiClient.delete<
+    ApiResponse<{ softDeleted?: boolean; hardDeleted?: boolean; message?: string }>
+  >(`/forums/posts/${postId}`);
+  return extractData(response);
 }
 
 // ============================================================================
@@ -570,6 +633,56 @@ export async function reportPost(
   const response = await apiClient.post<ApiResponse<ReportResponse>>(
     `/forums/posts/${postId}/report`,
     { reason }
+  );
+  return extractData(response);
+}
+
+/**
+ * Move discussion to another forum (Moderator action)
+ *
+ * Moves an entire discussion thread including all posts to a different forum.
+ * Requires moderator permissions in both source and target forums.
+ *
+ * Maps to PHP endpoint: POST /api/v1/forums/discussions/{id}/move
+ * Wraps: forum_move_discussion() from lib.php
+ *
+ * @param discussionId - Discussion ID to move
+ * @param targetForumId - Target forum ID
+ * @returns Promise resolving to API response with updated discussion
+ * @throws Error if missing permissions or target forum invalid
+ */
+export async function moveDiscussion(
+  discussionId: number,
+  targetForumId: number
+): Promise<ModerationResponse> {
+  const response = await apiClient.post<ApiResponse<ModerationResponse>>(
+    `/forums/discussions/${discussionId}/move`,
+    { targetForumId }
+  );
+  return extractData(response);
+}
+
+/**
+ * Split discussion into separate thread (Moderator action)
+ *
+ * Creates a new discussion from a specific post onwards, moving that post
+ * and all its replies to a new discussion thread.
+ *
+ * Maps to PHP endpoint: POST /api/v1/forums/discussions/{id}/split
+ * Wraps: forum_split_discussion() from lib.php
+ *
+ * @param discussionId - Source discussion ID
+ * @param postId - Post ID to split from (becomes first post of new discussion)
+ * @returns Promise resolving to API response with new discussion details
+ * @throws Error if missing permissions or invalid post reference
+ */
+export async function splitDiscussion(
+  discussionId: number,
+  postId: number
+): Promise<ModerationResponse> {
+  const response = await apiClient.post<ApiResponse<ModerationResponse>>(
+    `/forums/discussions/${discussionId}/split`,
+    { postId }
   );
   return extractData(response);
 }

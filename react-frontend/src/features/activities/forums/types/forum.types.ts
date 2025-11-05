@@ -337,6 +337,56 @@ export interface DiscussionSubscription {
 }
 
 /**
+ * Enhanced post representation for discussion threads
+ * Includes author information, permissions, and nested reply structure
+ * Used by useDiscussion hook for rich UI display
+ */
+export interface DiscussionPost {
+  /** Post ID */
+  id: number;
+  /** Discussion ID this post belongs to */
+  discussionId: number;
+  /** Parent post ID (null if top-level post) */
+  parentId: number | null;
+  /** Post subject/title */
+  subject: string;
+  /** Post message content */
+  message: string;
+  /** User ID of the post author */
+  userId: number;
+  /** Full name of the post author */
+  userName: string;
+  /** Profile picture URL of the author */
+  userPictureUrl: string;
+  /** Timestamp when post was created */
+  created: number;
+  /** Timestamp when post was last modified */
+  modified: number;
+  /** Version number for concurrent edit detection */
+  version: number;
+  /** Whether the post is deleted (soft delete) */
+  deleted: boolean;
+  /** Whether this post has file attachments */
+  hasAttachments: boolean;
+  /** Array of attachment file information */
+  attachments: Array<{
+    id: number;
+    filename: string;
+    filesize: number;
+    mimetype: string;
+    url: string;
+  }>;
+  /** Whether current user can edit this post */
+  canEdit: boolean;
+  /** Whether current user can delete this post */
+  canDelete: boolean;
+  /** Whether current user can reply to this post */
+  canReply: boolean;
+  /** Nested array of reply posts */
+  replies: DiscussionPost[];
+}
+
+/**
  * Rating entity
  * Represents a rating given to a forum post
  */
