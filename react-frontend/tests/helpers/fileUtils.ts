@@ -211,10 +211,14 @@ export function createMockFileList(files: File[]): FileList {
   });
 
   // Add iterator support
-  fileList[Symbol.iterator] = function* () {
+  fileList[Symbol.iterator] = function* (): Generator<File, undefined, unknown> {
     for (let i = 0; i < files.length; i++) {
-      yield files[i];
+      const file = files[i];
+      if (file) {
+        yield file;
+      }
     }
+    return undefined;
   };
 
   return fileList as FileList;
@@ -595,7 +599,7 @@ export function createMultipleSubmissionFiles(count: number): File[] {
   ];
 
   return Array.from({ length: count }, (_, i) => {
-    const type = fileTypes[i % fileTypes.length];
+    const type = fileTypes[i % fileTypes.length]!;
     return type.creator();
   });
 }

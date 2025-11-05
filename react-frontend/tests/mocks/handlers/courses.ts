@@ -860,7 +860,7 @@ const updateCourseHandler = http.put('http://*/api/v1/courses/:id', async ({ par
     }, { status: 404 });
   }
 
-  const course = mockCourses[courseIndex];
+  const course = mockCourses[courseIndex]!;
 
   // Check permission
   if (!course.canupdate) {
@@ -911,6 +911,8 @@ const updateCourseHandler = http.put('http://*/api/v1/courses/:id', async ({ par
     numsections: body.numsections ?? course.numsections,
     showgrades: body.showgrades ?? course.showgrades,
     enablecompletion: body.enablecompletion ?? course.enablecompletion,
+    maxbytes: course.maxbytes ?? 0,
+    showreports: course.showreports ?? 0,
   };
 
   mockCourses[courseIndex] = updatedCourse;
@@ -942,7 +944,7 @@ const deleteCourseHandler = http.delete('http://*/api/v1/courses/:id', async ({ 
     }, { status: 404 });
   }
 
-  const course = mockCourses[courseIndex];
+  const course = mockCourses[courseIndex]!;
 
   // Check permission
   if (!course.canupdate) {
@@ -984,7 +986,7 @@ const deleteCourseHandler = http.delete('http://*/api/v1/courses/:id', async ({ 
  * POST /api/v1/courses/:id/enroll
  * Enroll current user in a course
  */
-const enrollCourseHandler = http.post('http://*/api/v1/courses/:id/enroll', async ({ params, request }) => {
+const enrollCourseHandler = http.post('http://*/api/v1/courses/:id/enroll', async ({ params, request: _request }) => {
   await simulateLatency();
 
   const courseId = parseInt(params.id as string, 10);

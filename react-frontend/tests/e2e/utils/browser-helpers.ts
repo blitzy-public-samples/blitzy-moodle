@@ -489,7 +489,7 @@ export async function setStorageState(
     if (state.origins && state.origins.length > 0) {
       const pages = context.pages();
       if (pages.length > 0) {
-        const page = pages[0];
+        const page = pages[0]!;
         for (const origin of state.origins) {
           if (origin.localStorage && origin.localStorage.length > 0) {
             await page.goto(origin.origin);
@@ -577,7 +577,7 @@ export async function switchToTab(
       if (selector < 0 || selector >= pages.length) {
         throw new Error(`Tab index ${selector} out of range (0-${pages.length - 1})`);
       }
-      targetPage = pages[selector];
+      targetPage = pages[selector]!;
     } else {
       targetPage = pages.find(page => selector.test(page.url()));
       if (!targetPage) {
@@ -585,8 +585,8 @@ export async function switchToTab(
       }
     }
 
-    await targetPage.bringToFront();
-    return targetPage;
+    await targetPage!.bringToFront();
+    return targetPage!
   } catch (error) {
     throw new Error(
       `Failed to switch to tab: ${error instanceof Error ? error.message : String(error)}`

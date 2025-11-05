@@ -13,7 +13,6 @@ import {
   waitForElementToBeRemoved as rtlWaitForElementToBeRemoved,
   screen,
 } from '@testing-library/react';
-import { useQueryClient } from '@tanstack/react-query';
 import { expect } from 'vitest';
 
 // ============================================================================
@@ -682,7 +681,7 @@ export const captureInitialState = <T>(selector: () => T): T => {
  * @param options - Timeout and interval options
  */
 export const expectOptimisticUpdate = async <T>(
-  initialState: T,
+  _initialState: T,
   expectedState: T,
   options?: WaitOptions
 ): Promise<void> => {

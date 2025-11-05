@@ -77,27 +77,6 @@ interface RefreshRequest {
   refresh_token: string;
 }
 
-/**
- * Standard Moodle API success response envelope
- */
-interface ApiSuccessResponse<T> {
-  success: true;
-  data: T;
-  meta?: Record<string, unknown>;
-}
-
-/**
- * Standard Moodle API error response envelope
- */
-interface ApiErrorResponse {
-  success: false;
-  error: {
-    code: string;
-    message: string;
-    details?: Record<string, unknown>;
-  };
-}
-
 // ============================================================================
 // Mock User Data
 // ============================================================================
@@ -247,7 +226,7 @@ function generateMockToken(userId: number, type: 'access' | 'refresh'): string {
 function extractUserIdFromToken(token: string): number | null {
   try {
     const parts = token.split('.');
-    if (parts.length !== 3) return null;
+    if (parts.length !== 3 || !parts[1]) return null;
     const payload = JSON.parse(atob(parts[1]));
     return payload.userId || null;
   } catch {

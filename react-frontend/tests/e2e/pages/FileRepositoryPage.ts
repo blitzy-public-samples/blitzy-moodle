@@ -365,9 +365,6 @@ export class FileRepositoryPage {
     const fileItem = this.fileList.locator(`[data-file-id="${fileId}"]`);
     await fileItem.waitFor({ state: 'visible' });
     
-    // Get file name for verification
-    const fileName = await fileItem.getAttribute('data-file-name') || '';
-    
     // Open file actions menu
     const actionsButton = fileItem.getByRole('button', { name: /actions|more/i });
     await actionsButton.click();

@@ -138,7 +138,7 @@ export class AdminRolePage {
       const roleLink = row.locator('a').first();
       const href = await roleLink.getAttribute('href') || '';
       const idMatch = href.match(/roleid=(\d+)/);
-      const id = idMatch ? parseInt(idMatch[1], 10) : i + 1;
+      const id = idMatch?.[1] ? parseInt(idMatch[1], 10) : i + 1;
       
       if (name) {
         roles.push({

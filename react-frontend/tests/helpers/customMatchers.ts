@@ -25,7 +25,7 @@ import { run as axeRun, type AxeResults } from 'axe-core';
  */
 function formatMatcherMessage(
   pass: boolean,
-  matcherName: string,
+  _matcherName: string,
   received: unknown,
   expected: unknown,
   positiveMessage: string,

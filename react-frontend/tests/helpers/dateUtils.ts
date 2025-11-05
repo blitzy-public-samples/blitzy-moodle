@@ -10,7 +10,6 @@
  */
 
 import { expect } from 'vitest';
-import { differenceInMilliseconds } from 'date-fns';
 
 /**
  * Stored system time for restoration

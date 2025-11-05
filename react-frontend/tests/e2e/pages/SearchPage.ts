@@ -182,7 +182,7 @@ export class SearchPage {
     const suggestions = await this.autocompleteSuggestions.locator('[data-testid="suggestion-item"]').all();
     
     if (suggestionIndex >= 0 && suggestionIndex < suggestions.length) {
-      await suggestions[suggestionIndex].click();
+      await suggestions[suggestionIndex]!.click();
       await this.waitForSearchResults();
     } else {
       throw new Error(`Invalid suggestion index: ${suggestionIndex}. Available suggestions: ${suggestions.length}`);

@@ -167,18 +167,6 @@ interface AttemptSummary {
   preview: boolean;
 }
 
-interface AttemptReview {
-  attempt: QuizAttempt;
-  questions: Array<Question & {
-    useranswer: any;
-    correctanswer: any;
-    feedback: string;
-    markobtained: number;
-    maxmark: number;
-  }>;
-  overallfeedback: string;
-}
-
 /**
  * Mock quiz database - realistic quiz data for testing
  */
@@ -692,9 +680,9 @@ const calculateFinalGrade = (attempts: number[], method: string): number => {
     case 'average':
       return attempts.reduce((a, b) => a + b, 0) / attempts.length;
     case 'first':
-      return attempts[0];
+      return attempts[0]!;
     case 'last':
-      return attempts[attempts.length - 1];
+      return attempts[attempts.length - 1]!;
     default:
       return Math.max(...attempts);
   }
@@ -1277,9 +1265,9 @@ export const quizzesHandlers = [
       if (q.type === 'multichoice') {
         const opts = q.options as MultichoiceOptions;
         // Simulate user selecting first answer
-        useranswer = opts.answers[0].id;
+        useranswer = opts.answers[0]?.id;
         correctanswer = opts.answers.find(a => a.fraction === 1.0)?.id || null;
-        markobtained = opts.answers[0].fraction * q.maxmark;
+        markobtained = (opts.answers[0]?.fraction ?? 0) * q.maxmark;
       } else if (q.type === 'truefalse') {
         useranswer = false;
         correctanswer = true;

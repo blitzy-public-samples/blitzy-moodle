@@ -274,7 +274,7 @@ export async function captureOnFailure(
  * });
  */
 export async function startVideoRecording(
-  page: Page,
+  _page: Page,
   testInfo: TestInfo,
   options: Partial<VideoOptions> = {}
 ): Promise<string> {
@@ -314,7 +314,7 @@ export async function startVideoRecording(
  * const videoPath = await stopVideoRecording(page, testInfo, videoId);
  */
 export async function stopVideoRecording(
-  page: Page,
+  _page: Page,
   testInfo: TestInfo,
   videoId?: string
 ): Promise<string> {

@@ -107,7 +107,7 @@ global.IntersectionObserver = class IntersectionObserver {
     return [];
   }
   
-  unobserve(target: Element): void {}
+  unobserve(_target: Element): void {}
 } as any;
 
 // Mock ResizeObserver for component resize handling
@@ -116,7 +116,7 @@ global.ResizeObserver = class ResizeObserver {
   
   disconnect(): void {}
   
-  observe(target: Element, options?: ResizeObserverOptions): void {
+  observe(target: Element, _options?: ResizeObserverOptions): void {
     // Immediately trigger callback with mock entry
     this.callback(
       [
@@ -132,7 +132,7 @@ global.ResizeObserver = class ResizeObserver {
     );
   }
   
-  unobserve(target: Element): void {}
+  unobserve(_target: Element): void {}
 } as any;
 
 // Mock HTMLElement.prototype.scrollIntoView for scroll behavior testing
@@ -296,8 +296,8 @@ export const testUtils = {
    */
   createMockImage: (
     name: string = 'test.jpg',
-    width: number = 100,
-    height: number = 100
+    _width: number = 100,
+    _height: number = 100
   ): File => {
     return new File(['fake-image-content'], name, { type: 'image/jpeg' });
   },

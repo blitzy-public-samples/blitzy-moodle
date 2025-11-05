@@ -191,18 +191,6 @@ interface ApiSuccessResponse<T> {
   };
 }
 
-/**
- * Standard API error response envelope
- */
-interface ApiErrorResponse {
-  success: false;
-  error: {
-    code: string;
-    message: string;
-    details?: Record<string, unknown>;
-  };
-}
-
 // ============================================================================
 // Mock Data
 // ============================================================================
@@ -490,7 +478,7 @@ const getCurrentUserId = (request: Request): number => {
   const authHeader = request.headers.get('Authorization');
   if (authHeader && authHeader.includes('user:')) {
     const match = authHeader.match(/user:(\d+)/);
-    if (match) return parseInt(match[1], 10);
+    if (match && match[1]) return parseInt(match[1], 10);
   }
   return 101; // Default student user
 };
