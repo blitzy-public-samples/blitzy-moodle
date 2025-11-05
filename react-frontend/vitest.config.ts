@@ -67,7 +67,9 @@ export default defineConfig({
       'dist',
       '.idea',
       '.git',
-      '.cache'
+      '.cache',
+      'tests/e2e/**',              // E2E tests run with Playwright
+      'tests/blitzy_adhoc_test_*'  // Ad-hoc test files
     ],
     
     // Coverage configuration
