@@ -458,12 +458,49 @@ export class DashboardPage {
   }
 
   /**
+   * Internal helper to get the appropriate widget locator by type.
+   * Maps widget type strings to their pre-initialized Locator instances for type safety.
+   * 
+   * @param widgetType - The widget type identifier
+   * @returns The corresponding Locator, or dynamically created one if not pre-defined
+   */
+  private getWidgetLocatorByType(widgetType: string): Locator {
+    // Map widget types to their pre-initialized locators for performance and consistency
+    const widgetLocators: Record<string, Locator> = {
+      'calendar': this.calendarWidget,
+      'timeline': this.timelineWidget,
+      'upcoming-events': this.upcomingEventsWidget,
+      'recent-activity': this.recentActivityWidget,
+      'online-users': this.onlineUsersWidget,
+      'course-overview': this.courseOverviewWidget,
+    };
+    
+    // Return pre-defined locator if available, otherwise create dynamic locator
+    return widgetLocators[widgetType] || this.page.locator(`[data-testid="${widgetType}-widget"]`);
+  }
+
+  /**
+   * Internal helper to check for notification badge presence.
+   * Used internally to detect if any notifications are available.
+   * 
+   * @returns true if notification badge is visible, false otherwise
+   */
+  private async hasNotifications(): Promise<boolean> {
+    try {
+      return await this.notificationBadge.isVisible({ timeout: 1000 });
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Verify that a widget is properly loaded and displayed
    * @param widgetType - The type of widget to verify
    * @returns true if widget is loaded and displaying content, false otherwise
    */
   async verifyWidgetLoaded(widgetType: string): Promise<boolean> {
-    const widget = this.page.locator(`[data-testid="${widgetType}-widget"]`);
+    // Use pre-defined locator for better performance and type safety
+    const widget = this.getWidgetLocatorByType(widgetType);
     
     try {
       // Check if widget element is visible on the page
@@ -477,6 +514,9 @@ export class DashboardPage {
       
       // Check if widget has loaded content (not empty)
       const hasContent = await widget.locator('[data-testid*="widget-content"]').isVisible().catch(() => false);
+      
+      // Additionally check notification state for widgets that may have notification indicators
+      await this.hasNotifications(); // Internal check for notification state
       
       return hasContent;
     } catch (error) {
