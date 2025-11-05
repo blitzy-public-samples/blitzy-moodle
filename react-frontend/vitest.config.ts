@@ -24,7 +24,9 @@ export default defineConfig({
       // Force bundling of date-fns and MUI date pickers
       // This fixes ESM compatibility issues with date-fns v3 internal paths
       'date-fns',
-      /@mui\/x-date-pickers/
+      /@mui\/x-date-pickers/,
+      // Force bundling of msw to handle MSW v2 exports properly in Vitest
+      'msw'
     ]
   },
   
@@ -49,6 +51,11 @@ export default defineConfig({
           /@mui\/x-date-pickers/
         ]
       }
+    },
+    
+    // Resolve configuration for test environment
+    resolveOptions: {
+      conditions: ['node', 'import', 'module', 'browser', 'default']
     },
     
     // Test file patterns to include
@@ -157,9 +164,13 @@ export default defineConfig({
       '@types': path.resolve(__dirname, './src/types'),
       '@utils': path.resolve(__dirname, './src/utils'),
       '@styles': path.resolve(__dirname, './src/styles'),
-      '@config': path.resolve(__dirname, './src/config')
+      '@config': path.resolve(__dirname, './src/config'),
+      
+      // Alias msw/node to directly resolve to the file, bypassing export map issues
+      'msw/node': path.resolve(__dirname, './node_modules/msw/lib/node/index.mjs')
     },
     // Module resolution conditions for handling ESM/CJS compatibility
-    conditions: ['import', 'module', 'browser', 'default']
+    // 'node' condition is required for msw/node in MSW v2
+    conditions: ['node', 'import', 'module', 'browser', 'default']
   }
 });
