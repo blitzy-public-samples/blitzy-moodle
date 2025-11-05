@@ -1,3 +1,110 @@
+# Moodle React Frontend - Robots.txt
 # https://www.robotstxt.org/robotstxt.html
+# This file controls search engine crawler access to the React SPA
+
+# Default rule for all crawlers
 User-agent: *
-Disallow:
+
+# Allow indexing of public content
+Allow: /
+Allow: /courses
+Allow: /course/*
+Allow: /catalog
+
+# Restrict API endpoints (backend functionality, not public pages)
+Disallow: /api/
+Disallow: /api/v1/
+
+# Restrict authentication and user-specific routes
+Disallow: /auth/
+Disallow: /login
+Disallow: /logout
+Disallow: /my/
+Disallow: /dashboard/private
+Disallow: /profile/edit
+
+# Restrict administrative interfaces
+Disallow: /admin/
+Disallow: /settings/
+
+# Restrict user-specific and private content
+Disallow: /user/*/private
+Disallow: /messages/
+Disallow: /notifications/
+
+# Restrict file management and upload areas
+Disallow: /files/upload
+Disallow: /repository/
+
+# Restrict grading and assessment interfaces
+Disallow: /grade/
+Disallow: /gradebook/
+
+# Restrict assignment and quiz submission interfaces
+Disallow: /mod/assign/submit
+Disallow: /mod/quiz/attempt
+
+# Restrict search functionality (prevent crawler loops)
+Disallow: /search?
+Disallow: /*?search=
+Disallow: /*?q=
+
+# Restrict pagination and filter parameters to avoid duplicate content
+Disallow: /*?page=
+Disallow: /*?sort=
+Disallow: /*?filter=
+
+# Sitemap location for efficient crawling
+Sitemap: https://example.com/sitemap.xml
+
+# Crawl delay to manage server load (1 second)
+Crawl-delay: 1
+
+# Specific rules for common search engine bots
+
+# Google Bot
+User-agent: Googlebot
+Crawl-delay: 1
+Allow: /
+Disallow: /api/
+Disallow: /auth/
+Disallow: /admin/
+Disallow: /my/
+
+# Bing Bot
+User-agent: Bingbot
+Crawl-delay: 1
+Allow: /
+Disallow: /api/
+Disallow: /auth/
+Disallow: /admin/
+Disallow: /my/
+
+# DuckDuckGo Bot
+User-agent: DuckDuckBot
+Crawl-delay: 2
+Allow: /
+Disallow: /api/
+Disallow: /auth/
+Disallow: /admin/
+Disallow: /my/
+
+# Prevent aggressive crawlers and bad bots
+User-agent: AhrefsBot
+Crawl-delay: 10
+
+User-agent: SemrushBot
+Crawl-delay: 10
+
+User-agent: MJ12bot
+Crawl-delay: 10
+
+# Block known malicious bots
+User-agent: PetalBot
+Disallow: /
+
+User-agent: dotbot
+Disallow: /
+
+User-agent: MauiBot
+Disallow: /
