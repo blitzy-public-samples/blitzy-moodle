@@ -13,42 +13,50 @@
 /**
  * Extended ImportMetaEnv interface to include all custom Vite environment variables.
  * All variables are readonly strings that must be parsed/converted to appropriate types.
+ * 
+ * This extends the Vite-provided ImportMetaEnv interface with our custom environment variables.
  */
-interface ImportMetaEnv {
-  // API Configuration
-  readonly VITE_API_BASE_URL: string;
-  readonly VITE_API_TIMEOUT: string;
-  
-  // JWT Configuration
-  readonly VITE_JWT_ACCESS_TOKEN_EXPIRY: string;
-  readonly VITE_JWT_REFRESH_TOKEN_EXPIRY: string;
-  
-  // Feature Flags
-  readonly VITE_ENABLE_FEATURE_DASHBOARD: string;
-  readonly VITE_ENABLE_FEATURE_COURSES: string;
-  readonly VITE_ENABLE_FEATURE_ASSIGNMENTS: string;
-  readonly VITE_ENABLE_FEATURE_QUIZZES: string;
-  readonly VITE_ENABLE_FEATURE_GRADEBOOK: string;
-  readonly VITE_ENABLE_FEATURE_FORUMS: string;
-  readonly VITE_ENABLE_FEATURE_MESSAGING: string;
-  
-  // Application Configuration
-  readonly VITE_APP_TITLE: string;
-  readonly VITE_LOG_LEVEL: string;
-  
-  // Vite built-in variables
-  readonly MODE: string;
-  readonly DEV: boolean;
-  readonly PROD: boolean;
-  readonly SSR: boolean;
+declare global {
+  interface ImportMetaEnv {
+    // API Configuration
+    readonly VITE_API_BASE_URL: string;
+    readonly VITE_API_TIMEOUT: string;
+    
+    // JWT Configuration
+    readonly VITE_JWT_ACCESS_TOKEN_EXPIRY: string;
+    readonly VITE_JWT_REFRESH_TOKEN_EXPIRY: string;
+    
+    // Feature Flags
+    readonly VITE_ENABLE_FEATURE_DASHBOARD: string;
+    readonly VITE_ENABLE_FEATURE_COURSES: string;
+    readonly VITE_ENABLE_FEATURE_ASSIGNMENTS: string;
+    readonly VITE_ENABLE_FEATURE_QUIZZES: string;
+    readonly VITE_ENABLE_FEATURE_GRADEBOOK: string;
+    readonly VITE_ENABLE_FEATURE_FORUMS: string;
+    readonly VITE_ENABLE_FEATURE_MESSAGING: string;
+    
+    // Application Configuration
+    readonly VITE_APP_TITLE: string;
+    readonly VITE_LOG_LEVEL: string;
+    
+    // Vite built-in variables (already defined by Vite, but documented here)
+    // readonly MODE: string;
+    // readonly DEV: boolean;
+    // readonly PROD: boolean;
+    // readonly SSR: boolean;
+  }
 }
 
 /**
- * Extend ImportMeta interface to include typed env property
+ * Internal helper object for accessing import.meta.env
+ * This is extracted to an object to enable testing with mocks.
+ * Using an object ensures internal calls can be intercepted by test spies.
+ * 
+ * @internal
  */
-interface ImportMeta {
-  readonly env: ImportMetaEnv;
-}
+export const _envGetter = {
+  getEnv: (): ImportMetaEnv => import.meta.env
+};
 
 /**
  * Retrieves an environment variable as a string with a default fallback value.
@@ -63,7 +71,8 @@ interface ImportMeta {
  * ```
  */
 export function getEnvVar(key: string, defaultValue: string): string {
-  const value = import.meta.env[key];
+  const env = _envGetter.getEnv();
+  const value = env[key] as string | undefined;
   
   // Return default if undefined, null, or empty string
   if (value === undefined || value === null || value === '') {
@@ -88,7 +97,8 @@ export function getEnvVar(key: string, defaultValue: string): string {
  * ```
  */
 export function getEnvBoolean(key: string, defaultValue: boolean): boolean {
-  const value = import.meta.env[key];
+  const env = _envGetter.getEnv();
+  const value = env[key] as string | boolean | undefined;
   
   // Return default if undefined or null
   if (value === undefined || value === null) {
@@ -108,7 +118,7 @@ export function getEnvBoolean(key: string, defaultValue: boolean): boolean {
   }
   
   // If unrecognized value, log warning and return default
-  if (import.meta.env.DEV) {
+  if (env.DEV) {
     console.warn(`Invalid boolean value for ${key}: "${value}". Using default: ${defaultValue}`);
   }
   
@@ -129,7 +139,8 @@ export function getEnvBoolean(key: string, defaultValue: boolean): boolean {
  * ```
  */
 export function getEnvNumber(key: string, defaultValue: number): number {
-  const value = import.meta.env[key];
+  const env = _envGetter.getEnv();
+  const value = env[key] as string | number | undefined;
   
   // Return default if undefined or null
   if (value === undefined || value === null) {
@@ -149,7 +160,7 @@ export function getEnvNumber(key: string, defaultValue: number): number {
   
   // Validate that it's a valid number (not NaN or Infinity)
   if (isNaN(parsedValue) || !isFinite(parsedValue)) {
-    if (import.meta.env.DEV) {
+    if (env.DEV) {
       console.warn(`Invalid numeric value for ${key}: "${value}". Using default: ${defaultValue}`);
     }
     return defaultValue;
@@ -228,9 +239,9 @@ export const featureFlags = {
  */
 export const appConfig = {
   title: getEnvVar('VITE_APP_TITLE', 'Moodle LMS'),
-  isDevelopment: import.meta.env.DEV,
-  isProduction: import.meta.env.PROD,
-  mode: import.meta.env.MODE,
+  isDevelopment: _envGetter.getEnv().DEV,
+  isProduction: _envGetter.getEnv().PROD,
+  mode: _envGetter.getEnv().MODE,
   logLevel: getEnvVar('VITE_LOG_LEVEL', 'info')
 } as const;
 
@@ -294,11 +305,12 @@ export function validateEnvironment(): void {
   
   // In production, critical errors should prevent application startup
   if (appConfig.isProduction && errors.length > 0) {
-    const errorMessage = 'Environment validation failed:\n' + errors.map(e => `  - ${e}`).join('\n');
+    const errorMessage = `Environment validation failed:\n${errors.map(e => `  - ${e}`).join('\n')}`;
     throw new Error(errorMessage);
   }
   
   // Log all errors and warnings in development
+  /* eslint-disable no-console */
   if (appConfig.isDevelopment) {
     if (errors.length > 0) {
       console.error('Environment configuration errors:');
@@ -321,4 +333,5 @@ export function validateEnvironment(): void {
       console.info(`  - Enabled Features: ${enabledFeatures.map(([name]) => name).join(', ')}`);
     }
   }
+  /* eslint-enable no-console */
 }

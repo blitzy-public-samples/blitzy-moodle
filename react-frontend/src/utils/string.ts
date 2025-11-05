@@ -152,7 +152,7 @@ export function escapeHtml(str: string): string {
     "'": '&#x27;'
   };
 
-  return str.replace(/[&<>"']/g, (char) => htmlEscapeMap[char] || char);
+  return str.replace(/[&<>"']/g, (char) => htmlEscapeMap[char] ?? char);
 }
 
 /**
@@ -246,7 +246,7 @@ export function sanitizeHtml(str: string): string {
   sanitized = sanitized.replace(/data:text\/html/gi, '');
   
   // Strip tags not in allowed list
-  sanitized = sanitized.replace(/<(\/?)([\w]+)[^>]*>/g, (match, slash, tag) => {
+  sanitized = sanitized.replace(/<(\/?)([\w]+)[^>]*>/g, (match: string, slash: string, tag: string) => {
     if (allowedTags.includes(tag.toLowerCase())) {
       // Keep allowed tags but strip all attributes except href for <a> tags
       if (tag.toLowerCase() === 'a' && !slash) {
