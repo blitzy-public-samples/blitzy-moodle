@@ -3,6 +3,7 @@
  * 
  * This file runs before all test suites and configures:
  * - React Testing Library matchers (@testing-library/jest-dom)
+ * - Custom Moodle-specific matchers (./helpers/customMatchers)
  * - MSW server for API mocking
  * - Browser API mocks for jsdom environment
  * - Global test utilities and cleanup
@@ -13,6 +14,7 @@
  */
 
 import '@testing-library/jest-dom';
+import './helpers/customMatchers';
 import { cleanup } from '@testing-library/react';
 import { beforeAll, afterAll, afterEach, vi } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';

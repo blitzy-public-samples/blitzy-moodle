@@ -18,7 +18,7 @@
  */
 
 import { expect } from 'vitest';
-import { run as axeRun, type Result as AxeResults } from 'axe-core';
+import { run as axeRun, type AxeResults } from 'axe-core';
 
 /**
  * Helper function to create consistent matcher messages
@@ -370,8 +370,9 @@ expect.extend({
    */
   toHaveGradePercentage(received: any, percentage: number) {
     const gradePercentage = received?.percentage ?? 
-      (received?.grade / received?.grademax * 100) ?? 
-      received;
+      (received?.grade != null && received?.grademax != null 
+        ? (received.grade / received.grademax * 100) 
+        : received);
     
     const pass = Math.abs(gradePercentage - percentage) < 0.01;
 
