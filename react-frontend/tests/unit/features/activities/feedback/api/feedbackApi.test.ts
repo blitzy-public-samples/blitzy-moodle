@@ -135,6 +135,7 @@ const mockFeedbackAnalysis: FeedbackAnalysis = {
         max: 5,
         median: 4,
       },
+      percentage: 100,
     },
     {
       itemId: 3,

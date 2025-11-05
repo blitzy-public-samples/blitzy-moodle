@@ -315,9 +315,9 @@ apiClient.interceptors.response.use(
       }
     }
 
-    // Transform error response
+    // Transform error response while preserving axios error structure
     const errorData = error.response?.data as ApiErrorData | undefined;
-    const apiError: ApiErrorResponse = {
+    const apiError: ApiErrorResponse & { response?: typeof error.response } = {
       success: false,
       error: {
         code: errorData?.error?.code ?? 'UNKNOWN_ERROR',
@@ -325,6 +325,7 @@ apiClient.interceptors.response.use(
         status: error.response?.status,
         details: errorData?.error?.details,
       },
+      response: error.response, // Preserve original axios response for compatibility
     };
 
     return Promise.reject(apiError);
