@@ -1,70 +1,334 @@
 /**
- * Vitest Test Setup Configuration
+ * Vitest Global Test Setup Configuration
  * 
- * This file runs before each test file and configures:
- * - React Testing Library matchers
- * - jsdom environment extensions
- * - Global test utilities
- * - Mock configurations
+ * This file runs before all test suites and configures:
+ * - React Testing Library matchers (@testing-library/jest-dom)
+ * - MSW server for API mocking
+ * - Browser API mocks for jsdom environment
+ * - Global test utilities and cleanup
+ * - React Query test client configuration
+ * - Timezone and locale settings for consistent date testing
+ * 
+ * All tests inherit this setup automatically via vitest.config.ts
  */
 
 import '@testing-library/jest-dom';
 import { cleanup } from '@testing-library/react';
-import { afterEach } from 'vitest';
+import { beforeAll, afterAll, afterEach, vi } from 'vitest';
+import { QueryClient } from '@tanstack/react-query';
 
-// Cleanup after each test to prevent memory leaks
+// Import MSW server setup from mocks directory
+// Note: This assumes ./mocks/server.ts exists with server export
+// If not yet created, this import should be added once MSW is configured
+// import { server } from './mocks/server';
+
+/**
+ * MSW Server Lifecycle Management
+ * Setup API mocking server before all tests, reset handlers between tests, and cleanup after all tests
+ */
+// Uncomment when MSW server is created:
+// beforeAll(() => {
+//   // Start MSW server to intercept API requests during tests
+//   server.listen({ onUnhandledRequest: 'warn' });
+// });
+
+// afterEach(() => {
+//   // Reset handlers to ensure test isolation
+//   server.resetHandlers();
+// });
+
+// afterAll(() => {
+//   // Clean up and close the server after all tests complete
+//   server.close();
+// });
+
+/**
+ * React Testing Library Cleanup
+ * Automatically unmount React trees after each test to prevent memory leaks
+ */
 afterEach(() => {
   cleanup();
 });
 
-// Mock window.matchMedia for responsive design tests
+/**
+ * Browser API Mocks for jsdom Environment
+ * jsdom doesn't implement all browser APIs, so we mock them for testing
+ */
+
+// Mock window.matchMedia for responsive design and media query testing
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: (query: string) => ({
+  value: vi.fn().mockImplementation((query: string) => ({
     matches: false,
     media: query,
     onchange: null,
-    addListener: () => {}, // Deprecated
-    removeListener: () => {}, // Deprecated
-    addEventListener: () => {},
-    removeEventListener: () => {},
-    dispatchEvent: () => false,
-  }),
+    addListener: vi.fn(), // Deprecated
+    removeListener: vi.fn(), // Deprecated
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(() => false),
+  })),
 });
 
-// Mock IntersectionObserver for components using visibility detection
+// Mock IntersectionObserver for lazy loading and visibility detection
 global.IntersectionObserver = class IntersectionObserver {
-  constructor() {}
-  disconnect() {}
-  observe() {}
-  takeRecords() {
+  readonly root: Element | null = null;
+  readonly rootMargin: string = '';
+  readonly thresholds: ReadonlyArray<number> = [];
+
+  constructor(
+    public callback: IntersectionObserverCallback,
+    public options?: IntersectionObserverInit
+  ) {}
+
+  disconnect(): void {}
+  
+  observe(target: Element): void {
+    // Immediately trigger callback with mock entry showing element as visible
+    this.callback(
+      [
+        {
+          target,
+          isIntersecting: true,
+          intersectionRatio: 1,
+          boundingClientRect: target.getBoundingClientRect(),
+          intersectionRect: target.getBoundingClientRect(),
+          rootBounds: null,
+          time: Date.now(),
+        } as IntersectionObserverEntry,
+      ],
+      this
+    );
+  }
+  
+  takeRecords(): IntersectionObserverEntry[] {
     return [];
   }
-  unobserve() {}
+  
+  unobserve(target: Element): void {}
 } as any;
 
-// Mock ResizeObserver for components using resize detection
+// Mock ResizeObserver for component resize handling
 global.ResizeObserver = class ResizeObserver {
-  constructor() {}
-  disconnect() {}
-  observe() {}
-  unobserve() {}
+  constructor(public callback: ResizeObserverCallback) {}
+  
+  disconnect(): void {}
+  
+  observe(target: Element, options?: ResizeObserverOptions): void {
+    // Immediately trigger callback with mock entry
+    this.callback(
+      [
+        {
+          target,
+          contentRect: target.getBoundingClientRect(),
+          borderBoxSize: [],
+          contentBoxSize: [],
+          devicePixelContentBoxSize: [],
+        } as ResizeObserverEntry,
+      ],
+      this
+    );
+  }
+  
+  unobserve(target: Element): void {}
 } as any;
 
-// Suppress console errors in tests (optional - comment out if you want to see them)
-// const originalError = console.error;
-// beforeAll(() => {
-//   console.error = (...args: any[]) => {
-//     if (
-//       typeof args[0] === 'string' &&
-//       args[0].includes('Warning: ReactDOM.render')
-//     ) {
-//       return;
-//     }
-//     originalError.call(console, ...args);
-//   };
-// });
+// Mock HTMLElement.prototype.scrollIntoView for scroll behavior testing
+HTMLElement.prototype.scrollIntoView = vi.fn();
 
-// afterAll(() => {
-//   console.error = originalError;
-// });
+/**
+ * Storage API Mocks
+ * Mock localStorage and sessionStorage with proper implementation
+ */
+class StorageMock implements Storage {
+  private store: Record<string, string> = {};
+
+  get length(): number {
+    return Object.keys(this.store).length;
+  }
+
+  clear(): void {
+    this.store = {};
+  }
+
+  getItem(key: string): string | null {
+    return this.store[key] || null;
+  }
+
+  key(index: number): string | null {
+    const keys = Object.keys(this.store);
+    return keys[index] || null;
+  }
+
+  removeItem(key: string): void {
+    delete this.store[key];
+  }
+
+  setItem(key: string, value: string): void {
+    this.store[key] = String(value);
+  }
+}
+
+global.localStorage = new StorageMock();
+global.sessionStorage = new StorageMock();
+
+/**
+ * Console Method Mocks
+ * Suppress expected errors/warnings during tests while keeping important messages
+ */
+const originalConsoleError = console.error;
+const originalConsoleWarn = console.warn;
+
+beforeAll(() => {
+  // Filter out known React warnings and errors that are expected in tests
+  console.error = vi.fn((...args: any[]) => {
+    const message = args[0];
+    if (typeof message === 'string') {
+      // Suppress React 18 act() warnings in tests
+      if (message.includes('act(')) return;
+      // Suppress React DOM render warnings
+      if (message.includes('ReactDOM.render')) return;
+      // Suppress React testing library warnings about updates not wrapped in act()
+      if (message.includes('not wrapped in act')) return;
+    }
+    // Log other errors normally
+    originalConsoleError.call(console, ...args);
+  });
+
+  console.warn = vi.fn((...args: any[]) => {
+    const message = args[0];
+    if (typeof message === 'string') {
+      // Suppress specific warnings if needed
+      if (message.includes('componentWillReceiveProps')) return;
+    }
+    // Log other warnings normally
+    originalConsoleWarn.call(console, ...args);
+  });
+});
+
+afterAll(() => {
+  // Restore original console methods
+  console.error = originalConsoleError;
+  console.warn = originalConsoleWarn;
+});
+
+/**
+ * Global Test Timeout Configuration
+ * Set default timeout for all tests to 5000ms
+ */
+vi.setConfig({ testTimeout: 5000 });
+
+/**
+ * Timezone and Locale Configuration
+ * Set timezone to UTC for consistent date testing across different environments
+ */
+beforeAll(() => {
+  // Mock the system time to use UTC timezone
+  process.env.TZ = 'UTC';
+  
+  // Set default locale for date formatting
+  vi.stubGlobal('Intl', {
+    ...Intl,
+    DateTimeFormat: vi.fn(() => ({
+      format: vi.fn(),
+      formatToParts: vi.fn(),
+      resolvedOptions: vi.fn(() => ({
+        locale: 'en-US',
+        timeZone: 'UTC',
+      })),
+    })),
+  });
+});
+
+/**
+ * React Query Test Client Configuration
+ * Create a test-specific QueryClient with no retries and instant cache expiration
+ * This ensures predictable test behavior and prevents cache pollution between tests
+ */
+export const createTestQueryClient = (): QueryClient => {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false, // Disable retries for faster test execution
+        gcTime: 0, // Garbage collection time - instantly clear cache
+        staleTime: 0, // Consider data stale immediately
+        refetchOnWindowFocus: false, // Disable automatic refetching
+        refetchOnMount: false, // Disable refetch on component mount
+        refetchOnReconnect: false, // Disable refetch on network reconnect
+      },
+      mutations: {
+        retry: false, // Disable mutation retries
+      },
+    },
+    logger: {
+      log: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(), // Suppress error logging in tests
+    },
+  });
+};
+
+/**
+ * Global Test Utilities
+ * Helper functions available to all tests
+ */
+export const testUtils = {
+  /**
+   * Wait for a specified amount of time (useful for testing async behavior)
+   */
+  wait: (ms: number): Promise<void> => {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  },
+
+  /**
+   * Create a mock file object for file upload testing
+   */
+  createMockFile: (
+    name: string = 'test.txt',
+    size: number = 1024,
+    type: string = 'text/plain'
+  ): File => {
+    const content = 'a'.repeat(size);
+    return new File([content], name, { type });
+  },
+
+  /**
+   * Create a mock image file for image upload testing
+   */
+  createMockImage: (
+    name: string = 'test.jpg',
+    width: number = 100,
+    height: number = 100
+  ): File => {
+    return new File(['fake-image-content'], name, { type: 'image/jpeg' });
+  },
+
+  /**
+   * Mock successful API response structure
+   */
+  createMockApiResponse: <T>(data: T) => ({
+    success: true,
+    data,
+    meta: {},
+  }),
+
+  /**
+   * Mock error API response structure
+   */
+  createMockApiError: (
+    code: string = 'ERROR',
+    message: string = 'An error occurred'
+  ) => ({
+    success: false,
+    error: {
+      code,
+      message,
+      details: {},
+    },
+  }),
+};
+
+/**
+ * Export everything that tests might need to import
+ */
+export { vi } from 'vitest';
