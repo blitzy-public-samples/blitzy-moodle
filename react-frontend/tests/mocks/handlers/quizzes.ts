@@ -329,13 +329,13 @@ const mockAttempts: Map<number, QuizAttempt> = new Map([
       layout: '1,2,3,4,5,0,6,7,8,9,10', // 0 indicates page break
       currentpage: 0,
       preview: false,
-      state: 'finished',
-      timestart: Date.now() - 90000000, // Started ~25 hours ago
-      timefinish: Date.now() - 89998200, // Finished 30 minutes after start
-      timemodified: Date.now() - 89998200,
+      state: 'inprogress',
+      timestart: Date.now() - 600000, // Started 10 minutes ago (600 seconds * 1000ms)
+      timefinish: null,
+      timemodified: Date.now() - 600000,
       timecheckstate: null,
-      sumgrades: 75.5,
-      gradednotificationsenttime: Date.now() - 89998000,
+      sumgrades: null,
+      gradednotificationsenttime: null,
     },
   ],
 ]);
@@ -893,6 +893,7 @@ export const quizzesHandlers = [
     return HttpResponse.json({
       success: true,
       data: {
+        id: newAttempt.id,
         attemptid: newAttempt.id,
         timestart: newAttempt.timestart,
         state: newAttempt.state,
@@ -913,7 +914,7 @@ export const quizzesHandlers = [
 
     const quizId = Number(params.id);
     const url = new URL(request.url);
-    const attemptId = Number(url.searchParams.get('attemptId'));
+    const attemptId = Number(url.searchParams.get('attemptid') || url.searchParams.get('attemptId'));
     const page = Number(url.searchParams.get('page') || '0');
 
     const quiz = mockQuizzes.get(quizId);
@@ -943,14 +944,12 @@ export const quizzesHandlers = [
 
     return HttpResponse.json({
       success: true,
-      data: {
-        questions: pageQuestions,
+      data: pageQuestions,
+      meta: {
         currentpage: page,
         totalpages: totalPages,
         navmethod: quiz.navmethod,
         timeremaining: quiz.timelimit ? quiz.timelimit - Math.floor((Date.now() - attempt.timestart) / 1000) : null,
-      },
-      meta: {
         pagination: {
           page: page + 1,
           perPage: questionsPerPage,
@@ -970,13 +969,15 @@ export const quizzesHandlers = [
 
     const quizId = Number(params.id);
     const body = await request.json() as {
-      attemptId: number;
+      attemptId?: number;
+      attemptid?: number;
       answers: Record<number, any>;
       finalize: boolean;
     };
 
+    const attemptId = body.attemptId || body.attemptid;
     const quiz = mockQuizzes.get(quizId);
-    const attempt = mockAttempts.get(body.attemptId);
+    const attempt = mockAttempts.get(attemptId!);
 
     if (!quiz || !attempt) {
       return HttpResponse.json(
@@ -985,7 +986,7 @@ export const quizzesHandlers = [
           error: {
             code: 'INVALID_REQUEST',
             message: 'Quiz or attempt not found',
-            details: { quizId, attemptId: body.attemptId },
+            details: { quizId, attemptId },
           },
         },
         { status: 404 }
@@ -1199,8 +1200,8 @@ export const quizzesHandlers = [
 
     return HttpResponse.json({
       success: true,
-      data: {
-        attempts: userAttempts,
+      data: userAttempts,
+      meta: {
         summary: {
           attemptsmade: userAttempts.length,
           attemptsallowed: quiz.attempts === 0 ? 'unlimited' : quiz.attempts,
@@ -1208,7 +1209,6 @@ export const quizzesHandlers = [
           grademethod: quiz.grademethod,
         },
       },
-      meta: {},
     });
   }),
 
