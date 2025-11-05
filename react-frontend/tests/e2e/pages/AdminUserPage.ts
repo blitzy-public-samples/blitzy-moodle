@@ -56,26 +56,19 @@ export class AdminUserPage {
   private readonly userTable: Locator;
   private readonly createUserButton: Locator;
   private readonly searchInput: Locator;
-  private readonly filterControls: Locator;
 
-  // User row actions
+  // User row actions (scoped per row in methods)
   private readonly userRow: Locator;
-  private readonly editButton: Locator;
-  private readonly deleteButton: Locator;
-  private readonly suspendButton: Locator;
-  private readonly resetPasswordButton: Locator;
 
   // Bulk action controls
   private readonly bulkActionSelect: Locator;
   private readonly bulkActionButton: Locator;
-  private readonly userCheckbox: Locator;
 
   // User form locators
   private readonly userForm: Locator;
   private readonly usernameInput: Locator;
   private readonly emailInput: Locator;
   private readonly passwordInput: Locator;
-  private readonly profileFields: Locator;
   private readonly saveButton: Locator;
 
   // Confirmation dialog
@@ -92,26 +85,19 @@ export class AdminUserPage {
     this.userTable = page.locator('[data-region="report-user-list-wrapper"]');
     this.createUserButton = page.locator('[data-action="add-user"]');
     this.searchInput = page.locator('input[type="search"]');
-    this.filterControls = page.locator('.user-filters');
 
-    // User row action locators
+    // User row action locators (scoped per row in methods)
     this.userRow = page.locator('table tbody tr');
-    this.editButton = page.locator('[data-action="edit"]');
-    this.deleteButton = page.locator('[data-action="delete"]');
-    this.suspendButton = page.locator('[data-action="suspend"]');
-    this.resetPasswordButton = page.locator('[data-action="reset-password"]');
 
     // Bulk action locators
     this.bulkActionSelect = page.locator('#id_action');
     this.bulkActionButton = page.locator('#user-bulk-action-form button[type="submit"]');
-    this.userCheckbox = page.locator('input[type="checkbox"][name^="user"]');
 
     // User form locators
     this.userForm = page.locator('form#mform1');
     this.usernameInput = page.locator('#id_username');
     this.emailInput = page.locator('#id_email');
     this.passwordInput = page.locator('#id_newpassword');
-    this.profileFields = page.locator('.fitem');
     this.saveButton = page.locator('#id_submitbutton');
 
     // Confirmation dialog
