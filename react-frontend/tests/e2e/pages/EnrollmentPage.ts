@@ -325,18 +325,11 @@ export class EnrollmentPage {
    */
   async verifyEnrolled(): Promise<boolean> {
     try {
-      // Check for enrolled status indicator
+      // Check for enrolled status indicator (primary indicator)
       const isStatusVisible = await this.enrolledStatus.isVisible();
       if (isStatusVisible) {
         const statusText = await this.enrolledStatus.textContent();
         return statusText?.toLowerCase().includes('enrolled') || false;
-      }
-      
-      // Alternative check: Enroll button should not be visible if already enrolled
-      const isEnrollButtonVisible = await this.enrollButton.isVisible();
-      if (!isEnrollButtonVisible) {
-        // Button not visible likely means user is already enrolled
-        return true;
       }
       
       // Check for success message as another indicator
@@ -345,6 +338,9 @@ export class EnrollmentPage {
         return true;
       }
       
+      // If no positive enrollment indicators found, return false
+      // Note: We deliberately do NOT check if enroll button is invisible,
+      // as this could be misleading on pages without enrollment elements at all
       return false;
     } catch (error) {
       // If we can't determine enrollment status, return false
