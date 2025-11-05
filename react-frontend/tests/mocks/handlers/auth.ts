@@ -323,7 +323,7 @@ function sanitizeUser(user: User & { password: string; status: string }): User {
  * - 401: Invalid credentials
  * - 403: Account suspended or locked
  */
-const loginHandler = http.post('/api/v1/auth/login', async ({ request }) => {
+const loginHandler = http.post('*/api/v1/auth/login', async ({ request }) => {
   await simulateNetworkDelay();
 
   try {
@@ -332,7 +332,7 @@ const loginHandler = http.post('/api/v1/auth/login', async ({ request }) => {
 
     // Validate required fields
     if (!username || !password) {
-      return HttpResponse.json<ApiErrorResponse>(
+      return HttpResponse.json(
         {
           success: false,
           error: {
@@ -355,7 +355,7 @@ const loginHandler = http.post('/api/v1/auth/login', async ({ request }) => {
 
     // Check if user exists and password matches
     if (!user || user.password !== password) {
-      return HttpResponse.json<ApiErrorResponse>(
+      return HttpResponse.json(
         {
           success: false,
           error: {
@@ -372,7 +372,7 @@ const loginHandler = http.post('/api/v1/auth/login', async ({ request }) => {
 
     // Check account status
     if (user.status === 'suspended') {
-      return HttpResponse.json<ApiErrorResponse>(
+      return HttpResponse.json(
         {
           success: false,
           error: {
@@ -389,7 +389,7 @@ const loginHandler = http.post('/api/v1/auth/login', async ({ request }) => {
     }
 
     if (user.status === 'locked') {
-      return HttpResponse.json<ApiErrorResponse>(
+      return HttpResponse.json(
         {
           success: false,
           error: {
@@ -414,7 +414,7 @@ const loginHandler = http.post('/api/v1/auth/login', async ({ request }) => {
     };
 
     // Return success response
-    return HttpResponse.json<ApiSuccessResponse<{ tokens: AuthTokens; user: User }>>(
+    return HttpResponse.json(
       {
         success: true,
         data: {
@@ -429,7 +429,7 @@ const loginHandler = http.post('/api/v1/auth/login', async ({ request }) => {
       { status: 200 }
     );
   } catch (error) {
-    return HttpResponse.json<ApiErrorResponse>(
+    return HttpResponse.json(
       {
         success: false,
         error: {
@@ -462,7 +462,7 @@ const loginHandler = http.post('/api/v1/auth/login', async ({ request }) => {
  * Error Responses:
  * - 401: Invalid or missing token
  */
-const logoutHandler = http.post('/api/v1/auth/logout', async ({ request }) => {
+const logoutHandler = http.post('*/api/v1/auth/logout', async ({ request }) => {
   await simulateNetworkDelay();
 
   try {
@@ -470,7 +470,7 @@ const logoutHandler = http.post('/api/v1/auth/logout', async ({ request }) => {
     const authHeader = request.headers.get('Authorization');
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return HttpResponse.json<ApiErrorResponse>(
+      return HttpResponse.json(
         {
           success: false,
           error: {
@@ -492,7 +492,7 @@ const logoutHandler = http.post('/api/v1/auth/logout', async ({ request }) => {
     const userId = extractUserIdFromToken(token);
     
     if (!userId) {
-      return HttpResponse.json<ApiErrorResponse>(
+      return HttpResponse.json(
         {
           success: false,
           error: {
@@ -510,7 +510,7 @@ const logoutHandler = http.post('/api/v1/auth/logout', async ({ request }) => {
     // In a real implementation, the token would be added to a blacklist here
     // For mock purposes, we just return success
 
-    return HttpResponse.json<ApiSuccessResponse<{ message: string; redirect_url: string }>>(
+    return HttpResponse.json(
       {
         success: true,
         data: {
@@ -525,7 +525,7 @@ const logoutHandler = http.post('/api/v1/auth/logout', async ({ request }) => {
       { status: 200 }
     );
   } catch (error) {
-    return HttpResponse.json<ApiErrorResponse>(
+    return HttpResponse.json(
       {
         success: false,
         error: {
@@ -561,7 +561,7 @@ const logoutHandler = http.post('/api/v1/auth/logout', async ({ request }) => {
  * - 400: Missing refresh token
  * - 401: Invalid or expired refresh token
  */
-const refreshHandler = http.post('/api/v1/auth/refresh', async ({ request }) => {
+const refreshHandler = http.post('*/api/v1/auth/refresh', async ({ request }) => {
   await simulateNetworkDelay();
 
   try {
@@ -570,7 +570,7 @@ const refreshHandler = http.post('/api/v1/auth/refresh', async ({ request }) => 
 
     // Validate required field
     if (!refresh_token) {
-      return HttpResponse.json<ApiErrorResponse>(
+      return HttpResponse.json(
         {
           success: false,
           error: {
@@ -589,7 +589,7 @@ const refreshHandler = http.post('/api/v1/auth/refresh', async ({ request }) => 
     const userId = extractUserIdFromToken(refresh_token);
     
     if (!userId) {
-      return HttpResponse.json<ApiErrorResponse>(
+      return HttpResponse.json(
         {
           success: false,
           error: {
@@ -608,7 +608,7 @@ const refreshHandler = http.post('/api/v1/auth/refresh', async ({ request }) => 
     const user = findUserById(userId);
     
     if (!user) {
-      return HttpResponse.json<ApiErrorResponse>(
+      return HttpResponse.json(
         {
           success: false,
           error: {
@@ -625,7 +625,7 @@ const refreshHandler = http.post('/api/v1/auth/refresh', async ({ request }) => 
 
     // Check if account is still active
     if (user.status !== 'active') {
-      return HttpResponse.json<ApiErrorResponse>(
+      return HttpResponse.json(
         {
           success: false,
           error: {
@@ -648,7 +648,7 @@ const refreshHandler = http.post('/api/v1/auth/refresh', async ({ request }) => 
       expires_in: 3600, // 1 hour
     };
 
-    return HttpResponse.json<ApiSuccessResponse<AuthTokens>>(
+    return HttpResponse.json(
       {
         success: true,
         data: tokens,
@@ -660,7 +660,7 @@ const refreshHandler = http.post('/api/v1/auth/refresh', async ({ request }) => 
       { status: 200 }
     );
   } catch (error) {
-    return HttpResponse.json<ApiErrorResponse>(
+    return HttpResponse.json(
       {
         success: false,
         error: {
@@ -692,7 +692,7 @@ const refreshHandler = http.post('/api/v1/auth/refresh', async ({ request }) => 
  * Error Responses:
  * - 401: Unauthenticated (missing or invalid token)
  */
-const meHandler = http.get('/api/v1/auth/me', async ({ request }) => {
+const meHandler = http.get('*/api/v1/auth/me', async ({ request }) => {
   await simulateNetworkDelay();
 
   try {
@@ -700,7 +700,7 @@ const meHandler = http.get('/api/v1/auth/me', async ({ request }) => {
     const authHeader = request.headers.get('Authorization');
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return HttpResponse.json<ApiErrorResponse>(
+      return HttpResponse.json(
         {
           success: false,
           error: {
@@ -722,7 +722,7 @@ const meHandler = http.get('/api/v1/auth/me', async ({ request }) => {
     const userId = extractUserIdFromToken(token);
     
     if (!userId) {
-      return HttpResponse.json<ApiErrorResponse>(
+      return HttpResponse.json(
         {
           success: false,
           error: {
@@ -741,7 +741,7 @@ const meHandler = http.get('/api/v1/auth/me', async ({ request }) => {
     const user = findUserById(userId);
     
     if (!user) {
-      return HttpResponse.json<ApiErrorResponse>(
+      return HttpResponse.json(
         {
           success: false,
           error: {
@@ -759,7 +759,7 @@ const meHandler = http.get('/api/v1/auth/me', async ({ request }) => {
 
     // Check account status
     if (user.status !== 'active') {
-      return HttpResponse.json<ApiErrorResponse>(
+      return HttpResponse.json(
         {
           success: false,
           error: {
@@ -776,7 +776,7 @@ const meHandler = http.get('/api/v1/auth/me', async ({ request }) => {
     }
 
     // Return user data
-    return HttpResponse.json<ApiSuccessResponse<User>>(
+    return HttpResponse.json(
       {
         success: true,
         data: sanitizeUser(user),
@@ -788,7 +788,7 @@ const meHandler = http.get('/api/v1/auth/me', async ({ request }) => {
       { status: 200 }
     );
   } catch (error) {
-    return HttpResponse.json<ApiErrorResponse>(
+    return HttpResponse.json(
       {
         success: false,
         error: {
