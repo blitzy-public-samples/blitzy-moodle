@@ -155,7 +155,7 @@ export class CourseCatalogPage {
         const enrollmentCount = parseInt(enrollmentText.match(/\d+/)?.[0] || '0', 10);
         
         // Optional fields
-        const imageUrl = await card.locator('[data-testid="course-image"]').getAttribute('src').catch(() => undefined);
+        const imageUrl = (await card.locator('[data-testid="course-image"]').getAttribute('src').catch(() => null)) ?? undefined;
         const description = await card.locator('[data-testid="course-description"]').textContent().catch(() => undefined);
         const startDate = await card.locator('[data-testid="course-start-date"]').textContent().catch(() => undefined);
         const endDate = await card.locator('[data-testid="course-end-date"]').textContent().catch(() => undefined);
@@ -456,8 +456,9 @@ export class CourseCatalogPage {
       const label = await item.textContent() || '';
       const link = item.locator('a');
       const href = await link.getAttribute('href').catch(() => '');
-      const isActive = await item.getAttribute('aria-current') === 'page' ||
-                       await item.getAttribute('class').then(cls => cls?.includes('active')).catch(() => false);
+      const ariaCurrent = await item.getAttribute('aria-current').catch(() => null);
+      const classAttr = await item.getAttribute('class').catch(() => null);
+      const isActive = ariaCurrent === 'page' || (classAttr?.includes('active') ?? false);
       
       breadcrumbs.push({
         label: label.trim(),

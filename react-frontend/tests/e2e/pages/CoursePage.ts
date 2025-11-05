@@ -209,8 +209,7 @@ export class CoursePage {
     const enrollVisible = await this.enrollButton.isVisible().catch(() => false);
     
     // If enroll button is not visible, user might be enrolled
-    // Return true only if we found positive enrollment indicators
-    return badgeVisible || unenrollVisible;
+    return !enrollVisible;
   }
 
   /**

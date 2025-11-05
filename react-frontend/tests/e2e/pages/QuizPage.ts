@@ -71,19 +71,22 @@ export class QuizPage {
   private readonly attemptButton: Locator;
   private readonly timer: Locator;
   private readonly questionText: Locator;
-  private readonly answerOptions: Locator;
+  // @ts-expect-error - Defined for future use and POM consistency
+  private readonly _answerOptions: Locator;
 
   // Navigation locators
   private readonly nextButton: Locator;
   private readonly previousButton: Locator;
-  private readonly questionSidebar: Locator;
+  // @ts-expect-error - Defined for future use and POM consistency
+  private readonly _questionSidebar: Locator;
 
   // Submission locators
   private readonly submitAllButton: Locator;
   private readonly confirmSubmitButton: Locator;
 
   // Results locators
-  private readonly reviewSection: Locator;
+  // @ts-expect-error - Defined for future use and POM consistency
+  private readonly _reviewSection: Locator;
   private readonly resultsSection: Locator;
   private readonly scoreSummary: Locator;
   private readonly feedbackSection: Locator;
@@ -105,19 +108,19 @@ export class QuizPage {
     this.attemptButton = page.locator('[data-testid="start-attempt-button"], button:has-text("Attempt quiz"), button:has-text("Continue quiz"), button:has-text("Start attempt")').first();
     this.timer = page.locator('[data-testid="quiz-timer"], .quiz-timer, .countdown-timer, #quiz-timer').first();
     this.questionText = page.locator('[data-testid="question-text"], .qtext, .question-text').first();
-    this.answerOptions = page.locator('[data-testid="answer-option"], .answer input[type="radio"], .answer input[type="checkbox"], .answer textarea');
+    this._answerOptions = page.locator('[data-testid="answer-option"], .answer input[type="radio"], .answer input[type="checkbox"], .answer textarea');
 
     // Initialize navigation locators
     this.nextButton = page.locator('[data-testid="next-question-button"], button:has-text("Next"), button[name="next"]').first();
     this.previousButton = page.locator('[data-testid="previous-question-button"], button:has-text("Previous"), button[name="previous"]').first();
-    this.questionSidebar = page.locator('[data-testid="question-sidebar"], .question-navigation, .qn-buttons, nav.quiz-nav').first();
+    this._questionSidebar = page.locator('[data-testid="question-sidebar"], .question-navigation, .qn-buttons, nav.quiz-nav').first();
 
     // Initialize submission locators
     this.submitAllButton = page.locator('[data-testid="submit-all-button"], button:has-text("Submit all and finish"), button:has-text("Finish attempt"), input[name="finishattempt"]').first();
     this.confirmSubmitButton = page.locator('[data-testid="confirm-submit-button"], button:has-text("Submit all"), button:has-text("Confirm"), .confirmation-dialog button:has-text("Yes")').first();
 
     // Initialize results locators
-    this.reviewSection = page.locator('[data-testid="quiz-review"], .quiz-review, .review-container').first();
+    this._reviewSection = page.locator('[data-testid="quiz-review"], .quiz-review, .review-container').first();
     this.resultsSection = page.locator('[data-testid="quiz-results"], .quiz-results, .results-summary').first();
     this.scoreSummary = page.locator('[data-testid="score-summary"], .grade-summary, .score-display').first();
     this.feedbackSection = page.locator('[data-testid="quiz-feedback"], .quiz-feedback, .feedback-section').first();
@@ -202,7 +205,7 @@ export class QuizPage {
     // Determine question number from URL or navigation
     const url = this.page.url();
     const pageMatch = url.match(/page=(\d+)/);
-    const questionNumber = pageMatch ? parseInt(pageMatch[1], 10) + 1 : 1;
+    const questionNumber = pageMatch && pageMatch[1] ? parseInt(pageMatch[1], 10) + 1 : 1;
 
     // Determine question type by inspecting answer options
     const radioInputs = await this.page.locator('.answer input[type="radio"]').count();
@@ -255,7 +258,11 @@ export class QuizPage {
       throw new Error(`Invalid option index: ${optionIndex}. Available options: ${radioInputs.length}`);
     }
 
-    await radioInputs[optionIndex].check();
+    const selectedInput = radioInputs[optionIndex];
+    if (!selectedInput) {
+      throw new Error(`Radio input at index ${optionIndex} not found`);
+    }
+    await selectedInput.check();
     
     // Wait a moment for the answer to be registered
     await this.page.waitForTimeout(500);
@@ -273,7 +280,11 @@ export class QuizPage {
         throw new Error(`Invalid option index: ${index}. Available options: ${checkboxInputs.length}`);
       }
       
-      await checkboxInputs[index].check();
+      const selectedInput = checkboxInputs[index];
+      if (!selectedInput) {
+        throw new Error(`Checkbox input at index ${index} not found`);
+      }
+      await selectedInput.check();
     }
     
     // Wait a moment for the answers to be registered
@@ -417,11 +428,11 @@ export class QuizPage {
     let maxScore = 0;
     let percentage = 0;
     
-    if (scoreMatch) {
+    if (scoreMatch && scoreMatch[1] && scoreMatch[2]) {
       score = parseFloat(scoreMatch[1]);
       maxScore = parseFloat(scoreMatch[2]);
       percentage = maxScore > 0 ? (score / maxScore) * 100 : 0;
-    } else if (percentageMatch) {
+    } else if (percentageMatch && percentageMatch[1]) {
       percentage = parseFloat(percentageMatch[1]);
     }
 
@@ -472,14 +483,14 @@ export class QuizPage {
     
     // Extract attempt number
     const attemptMatch = summaryText.match(/Attempt\s+(\d+)/i);
-    const attemptNumber = attemptMatch ? parseInt(attemptMatch[1], 10) : 1;
+    const attemptNumber = attemptMatch && attemptMatch[1] ? parseInt(attemptMatch[1], 10) : 1;
     
     // Extract time information
     const timeMatch = summaryText.match(/Time taken:?\s*([^,\n]+)/i);
-    const timeTaken = timeMatch ? timeMatch[1].trim() : 'N/A';
+    const timeTaken = timeMatch && timeMatch[1] ? timeMatch[1].trim() : 'N/A';
     
     const startMatch = summaryText.match(/Started:?\s*([^,\n]+)/i);
-    const startTime = startMatch ? startMatch[1].trim() : 'N/A';
+    const startTime = startMatch && startMatch[1] ? startMatch[1].trim() : 'N/A';
     
     // Count questions
     const questionButtons = await this.page.locator('.qnbutton, .question-nav button').count();
