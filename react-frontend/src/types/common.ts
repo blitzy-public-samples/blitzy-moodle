@@ -1,9 +1,9 @@
 /**
  * Common TypeScript Utility Types
- * 
+ *
  * Foundational type definitions used throughout the Moodle React frontend.
  * Based on Moodle database schema and core data structures.
- * 
+ *
  * @module types/common
  */
 
@@ -105,7 +105,7 @@ export interface TimeRange {
    * Start timestamp (Unix timestamp)
    */
   start: Timestamp;
-  
+
   /**
    * End timestamp (Unix timestamp)
    */
@@ -124,12 +124,12 @@ export interface PaginationParams {
    * Current page number (1-indexed)
    */
   page: number;
-  
+
   /**
    * Number of items per page
    */
   perPage: number;
-  
+
   /**
    * Optional offset for cursor-based pagination
    */
@@ -144,17 +144,17 @@ export interface PaginationMeta {
    * Current page number (1-indexed)
    */
   page: number;
-  
+
   /**
    * Number of items per page
    */
   perPage: number;
-  
+
   /**
    * Total number of items across all pages
    */
   total: number;
-  
+
   /**
    * Total number of pages
    */
@@ -172,7 +172,7 @@ export type SortOrder = 'asc' | 'desc';
 
 /**
  * Sorting parameters for lists
- * 
+ *
  * @template T - The type of object being sorted
  */
 export type SortParams<T> = {
@@ -180,7 +180,7 @@ export type SortParams<T> = {
    * Field to sort by (must be a key of T)
    */
   field: keyof T;
-  
+
   /**
    * Sort direction
    */
@@ -255,7 +255,7 @@ export type Timezone = string;
 
 /**
  * Make all properties of T optional
- * 
+ *
  * @template T - The type to make optional
  */
 export type Optional<T> = {
@@ -264,7 +264,7 @@ export type Optional<T> = {
 
 /**
  * Make all properties of T nullable
- * 
+ *
  * @template T - The type to make nullable
  */
 export type Nullable<T> = {
@@ -273,7 +273,7 @@ export type Nullable<T> = {
 
 /**
  * Add an id property to type T
- * 
+ *
  * @template T - The type to add id to
  */
 export type WithId<T> = T & {
@@ -285,7 +285,7 @@ export type WithId<T> = T & {
 
 /**
  * Add createdAt and updatedAt timestamps to type T
- * 
+ *
  * @template T - The type to add timestamps to
  */
 export type WithTimestamps<T> = T & {
@@ -293,7 +293,7 @@ export type WithTimestamps<T> = T & {
    * Creation timestamp (Unix timestamp)
    */
   createdAt: Timestamp;
-  
+
   /**
    * Last update timestamp (Unix timestamp)
    */

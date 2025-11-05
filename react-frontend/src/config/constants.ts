@@ -1,6 +1,6 @@
 /**
  * Application-wide constant definitions for the Moodle React frontend.
- * 
+ *
  * This module contains immutable constants used throughout the application including:
  * - Pagination defaults
  * - File upload limits
@@ -15,9 +15,9 @@
  * - Route paths
  * - Quiz settings
  * - Grade settings
- * 
+ *
  * All constants use TypeScript's 'as const' assertion for type narrowing and immutability.
- * 
+ *
  * @module config/constants
  */
 
@@ -33,7 +33,7 @@ export const PAGINATION = {
   /** Available page size options for user selection */
   PAGE_SIZE_OPTIONS: [10, 20, 50, 100] as const,
   /** Default starting page number (1-indexed) */
-  DEFAULT_PAGE: 1
+  DEFAULT_PAGE: 1,
 } as const;
 
 /**
@@ -48,19 +48,45 @@ export const FILE_UPLOAD = {
   /** Allowed file extensions for uploads */
   ALLOWED_EXTENSIONS: [
     // Documents
-    '.pdf', '.doc', '.docx', '.txt', '.rtf', '.odt',
+    '.pdf',
+    '.doc',
+    '.docx',
+    '.txt',
+    '.rtf',
+    '.odt',
     // Spreadsheets
-    '.xls', '.xlsx', '.ods', '.csv',
+    '.xls',
+    '.xlsx',
+    '.ods',
+    '.csv',
     // Presentations
-    '.ppt', '.pptx', '.odp',
+    '.ppt',
+    '.pptx',
+    '.odp',
     // Images
-    '.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp',
+    '.jpg',
+    '.jpeg',
+    '.png',
+    '.gif',
+    '.svg',
+    '.webp',
     // Archives
-    '.zip', '.tar', '.gz', '.rar', '.7z',
+    '.zip',
+    '.tar',
+    '.gz',
+    '.rar',
+    '.7z',
     // Video
-    '.mp4', '.avi', '.mov', '.wmv', '.webm',
+    '.mp4',
+    '.avi',
+    '.mov',
+    '.wmv',
+    '.webm',
     // Audio
-    '.mp3', '.wav', '.ogg', '.m4a'
+    '.mp3',
+    '.wav',
+    '.ogg',
+    '.m4a',
   ] as const,
   /** Allowed MIME types for file validation */
   ALLOWED_MIME_TYPES: [
@@ -73,10 +99,10 @@ export const FILE_UPLOAD = {
     'image/gif',
     'image/svg+xml',
     'video/mp4',
-    'audio/mpeg'
+    'audio/mpeg',
   ] as const,
   /** Chunk size for large file uploads (5MB chunks) */
-  CHUNK_SIZE: 5 * 1024 * 1024
+  CHUNK_SIZE: 5 * 1024 * 1024,
 } as const;
 
 /**
@@ -111,7 +137,7 @@ export const HTTP_STATUS = {
   /** Service temporarily unavailable */
   SERVICE_UNAVAILABLE: 503,
   /** Gateway timeout waiting for upstream */
-  GATEWAY_TIMEOUT: 504
+  GATEWAY_TIMEOUT: 504,
 } as const;
 
 /**
@@ -132,13 +158,13 @@ export const USER_ROLES = {
   /** Manager with broad administrative permissions */
   MANAGER: 'manager',
   /** System administrator with full access */
-  ADMINISTRATOR: 'admin'
+  ADMINISTRATOR: 'admin',
 } as const;
 
 /**
  * Type alias for user roles derived from USER_ROLES constant.
  */
-export type UserRole = typeof USER_ROLES[keyof typeof USER_ROLES];
+export type UserRole = (typeof USER_ROLES)[keyof typeof USER_ROLES];
 
 /**
  * Capability/permission constants matching Moodle's capability system.
@@ -155,7 +181,7 @@ export const CAPABILITIES = {
   COURSE_DELETE: 'moodle/course:delete',
   /** Enroll users in course */
   COURSE_ENROL: 'moodle/course:enrol',
-  
+
   // Assignment capabilities
   /** Submit assignment work */
   ASSIGN_SUBMIT: 'mod/assign:submit',
@@ -163,7 +189,7 @@ export const CAPABILITIES = {
   ASSIGN_GRADE: 'mod/assign:grade',
   /** View assignment details */
   ASSIGN_VIEW: 'mod/assign:view',
-  
+
   // Quiz capabilities
   /** Attempt a quiz */
   QUIZ_ATTEMPT: 'mod/quiz:attempt',
@@ -171,18 +197,18 @@ export const CAPABILITIES = {
   QUIZ_GRADE: 'mod/quiz:grade',
   /** View quiz content */
   QUIZ_VIEW: 'mod/quiz:view',
-  
+
   // Gradebook capabilities
   /** View grades in gradebook */
   GRADE_VIEW: 'moodle/grade:view',
   /** Edit grades in gradebook */
   GRADE_EDIT: 'moodle/grade:edit',
-  
+
   // User capabilities
   /** View user profile details */
   USER_VIEW: 'moodle/user:viewdetails',
   /** Edit user profile */
-  USER_EDIT: 'moodle/user:update'
+  USER_EDIT: 'moodle/user:update',
 } as const;
 
 /**
@@ -201,7 +227,7 @@ export const DATE_FORMATS = {
   /** ISO date-time format: 2024-01-15T14:30:00 */
   ISO_DATE_TIME: "yyyy-MM-dd'T'HH:mm:ss",
   /** Relative time format (uses date-fns formatDistanceToNow) */
-  RELATIVE: 'relative'
+  RELATIVE: 'relative',
 } as const;
 
 /**
@@ -211,7 +237,7 @@ export const TIME_ZONES = {
   /** Default timezone for the application */
   DEFAULT: 'UTC',
   /** Use user's preferred timezone from profile */
-  USER_PREFERENCE: 'user'
+  USER_PREFERENCE: 'user',
 } as const;
 
 /**
@@ -238,7 +264,7 @@ export const VALIDATION = {
   /** Phone number validation regex */
   PHONE_REGEX: /^\+?[\d\s()-]{10,20}$/,
   /** URL validation regex */
-  URL_REGEX: /^https?:\/\/.+/
+  URL_REGEX: /^https?:\/\/.+/,
 } as const;
 
 /**
@@ -257,9 +283,9 @@ export const UI = {
     /** Large devices (1200px and up) */
     LG: 1200,
     /** Extra large devices (1536px and up) */
-    XL: 1536
+    XL: 1536,
   },
-  
+
   /** Z-index layering system for overlays and modals */
   Z_INDEX: {
     /** Navigation drawer z-index */
@@ -271,9 +297,9 @@ export const UI = {
     /** Snackbar notification z-index */
     SNACKBAR: 1400,
     /** Tooltip z-index */
-    TOOLTIP: 1500
+    TOOLTIP: 1500,
   },
-  
+
   /** Animation duration constants (milliseconds) */
   ANIMATION: {
     /** Fast animations (150ms) */
@@ -281,9 +307,9 @@ export const UI = {
     /** Normal speed animations (300ms) */
     NORMAL: 300,
     /** Slow animations (500ms) */
-    SLOW: 500
+    SLOW: 500,
   },
-  
+
   /** Debounce delay constants (milliseconds) */
   DEBOUNCE: {
     /** Search input debounce delay */
@@ -291,8 +317,8 @@ export const UI = {
     /** Generic input debounce delay */
     INPUT: 500,
     /** Window resize debounce delay */
-    RESIZE: 150
-  }
+    RESIZE: 150,
+  },
 } as const;
 
 /**
@@ -309,7 +335,7 @@ export const CACHE_DURATIONS = {
   /** Very long cache duration: 1 hour */
   VERY_LONG: 60 * 60 * 1000,
   /** Infinite cache (manual invalidation only) */
-  INFINITY: Infinity
+  INFINITY: Infinity,
 } as const;
 
 /**
@@ -324,7 +350,7 @@ export const STALE_TIMES = {
   /** Medium stale time: 5 minutes */
   MEDIUM: 5 * 60 * 1000,
   /** Long stale time: 30 minutes */
-  LONG: 30 * 60 * 1000
+  LONG: 30 * 60 * 1000,
 } as const;
 
 /**
@@ -341,13 +367,13 @@ export const ERROR_CODES = {
   TOKEN_INVALID: 'TOKEN_INVALID',
   /** User is not authenticated */
   UNAUTHORIZED: 'UNAUTHORIZED',
-  
+
   // Permission errors
   /** User lacks required permissions */
   PERMISSION_DENIED: 'PERMISSION_DENIED',
   /** Insufficient privileges for this operation */
   INSUFFICIENT_PRIVILEGES: 'INSUFFICIENT_PRIVILEGES',
-  
+
   // Resource errors
   /** Generic resource not found */
   NOT_FOUND: 'NOT_FOUND',
@@ -355,7 +381,7 @@ export const ERROR_CODES = {
   RESOURCE_NOT_FOUND: 'RESOURCE_NOT_FOUND',
   /** Resource already exists (duplicate) */
   ALREADY_EXISTS: 'ALREADY_EXISTS',
-  
+
   // Validation errors
   /** Generic validation error */
   VALIDATION_ERROR: 'VALIDATION_ERROR',
@@ -363,7 +389,7 @@ export const ERROR_CODES = {
   INVALID_INPUT: 'INVALID_INPUT',
   /** Required field is missing */
   MISSING_REQUIRED_FIELD: 'MISSING_REQUIRED_FIELD',
-  
+
   // Server errors
   /** Internal server error */
   SERVER_ERROR: 'SERVER_ERROR',
@@ -371,22 +397,22 @@ export const ERROR_CODES = {
   NETWORK_ERROR: 'NETWORK_ERROR',
   /** Request timeout */
   TIMEOUT: 'TIMEOUT',
-  
+
   // Quiz-specific errors
   /** Quiz attempt already started */
   QUIZ_ALREADY_STARTED: 'QUIZ_ALREADY_STARTED',
   /** Quiz time limit expired */
   QUIZ_TIME_EXPIRED: 'QUIZ_TIME_EXPIRED',
-  
+
   // File-specific errors
   /** Uploaded file exceeds size limit */
   FILE_TOO_LARGE: 'FILE_TOO_LARGE',
   /** File type not allowed */
   FILE_TYPE_NOT_ALLOWED: 'FILE_TYPE_NOT_ALLOWED',
-  
+
   // Generic fallback
   /** Unknown or unclassified error */
-  UNKNOWN_ERROR: 'UNKNOWN_ERROR'
+  UNKNOWN_ERROR: 'UNKNOWN_ERROR',
 } as const;
 
 /**
@@ -432,7 +458,7 @@ export const ROUTES = {
   /** User settings page */
   SETTINGS: '/settings',
   /** Admin dashboard */
-  ADMIN: '/admin'
+  ADMIN: '/admin',
 } as const;
 
 /**
@@ -457,8 +483,8 @@ export const QUIZ = {
     /** Matching question */
     MATCHING: 'matching',
     /** Calculated question */
-    CALCULATED: 'calculated'
-  }
+    CALCULATED: 'calculated',
+  },
 } as const;
 
 /**
@@ -485,26 +511,26 @@ export const GRADE = {
     /** Highest grade only */
     HIGHEST: 'highest',
     /** Lowest grade only */
-    LOWEST: 'lowest'
-  }
+    LOWEST: 'lowest',
+  },
 } as const;
 
 /**
  * Type alias for HTTP status codes derived from HTTP_STATUS constant.
  */
-export type HttpStatus = typeof HTTP_STATUS[keyof typeof HTTP_STATUS];
+export type HttpStatus = (typeof HTTP_STATUS)[keyof typeof HTTP_STATUS];
 
 /**
  * Type alias for error codes derived from ERROR_CODES constant.
  */
-export type ErrorCode = typeof ERROR_CODES[keyof typeof ERROR_CODES];
+export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];
 
 /**
  * Type alias for route paths derived from ROUTES constant.
  */
-export type Route = typeof ROUTES[keyof typeof ROUTES];
+export type Route = (typeof ROUTES)[keyof typeof ROUTES];
 
 /**
  * Type alias for capability strings derived from CAPABILITIES constant.
  */
-export type Capability = typeof CAPABILITIES[keyof typeof CAPABILITIES];
+export type Capability = (typeof CAPABILITIES)[keyof typeof CAPABILITIES];

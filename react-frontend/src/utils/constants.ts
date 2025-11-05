@@ -1,6 +1,6 @@
 /**
  * Application-wide constants for the Moodle React frontend
- * 
+ *
  * This file centralizes all constant values used throughout the application including:
  * - API configuration (base URLs, timeouts, rate limits)
  * - Pagination defaults
@@ -11,7 +11,7 @@
  * - Grade aggregation methods
  * - User roles
  * - Context levels
- * 
+ *
  * @package    react-frontend
  * @copyright  2024 Moodle React Frontend
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -75,7 +75,8 @@ export const USERNAME_REGEX = /^[a-zA-Z0-9._@-]+$/;
  * URL validation regex pattern
  * Validates URLs with http or https protocol
  */
-export const URL_REGEX = /^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)$/;
+export const URL_REGEX =
+  /^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)$/;
 
 // ============================================================================
 // Validation Rules - Username Constraints
@@ -148,7 +149,7 @@ export const ALLOWED_FILE_TYPES = [
   'text/csv',
   'text/html',
   'application/rtf',
-  
+
   // Images
   'image/jpeg',
   'image/jpg',
@@ -157,14 +158,14 @@ export const ALLOWED_FILE_TYPES = [
   'image/bmp',
   'image/svg+xml',
   'image/webp',
-  
+
   // Audio
   'audio/mpeg',
   'audio/mp3',
   'audio/wav',
   'audio/ogg',
   'audio/webm',
-  
+
   // Video
   'video/mp4',
   'video/mpeg',
@@ -172,7 +173,7 @@ export const ALLOWED_FILE_TYPES = [
   'video/webm',
   'video/ogg',
   'video/x-msvideo',
-  
+
   // Archives
   'application/zip',
   'application/x-zip-compressed',
@@ -180,7 +181,7 @@ export const ALLOWED_FILE_TYPES = [
   'application/x-7z-compressed',
   'application/gzip',
   'application/x-tar',
-  
+
   // Other
   'application/json',
   'application/xml',
@@ -337,55 +338,55 @@ export const CONSTANTS = {
   API_BASE_URL,
   API_TIMEOUT,
   API_RATE_LIMIT,
-  
+
   // Pagination
   DEFAULT_PAGE_SIZE,
   MAX_PAGE_SIZE,
-  
+
   // Validation - Regex
   EMAIL_REGEX,
   USERNAME_REGEX,
   URL_REGEX,
-  
+
   // Validation - Username
   MIN_USERNAME_LENGTH,
   MAX_USERNAME_LENGTH,
-  
+
   // Validation - Password
   MIN_PASSWORD_LENGTH,
   PASSWORD_REQUIRES_UPPERCASE,
   PASSWORD_REQUIRES_LOWERCASE,
   PASSWORD_REQUIRES_DIGIT,
   PASSWORD_REQUIRES_SPECIAL,
-  
+
   // File Upload
   MAX_FILE_SIZE,
   ALLOWED_FILE_TYPES,
-  
+
   // Date Formats
   DATE_FORMAT_SHORT,
   DATE_FORMAT_LONG,
   DATETIME_FORMAT,
   TIME_FORMAT,
-  
+
   // Capabilities
   CAPABILITY_VIEW_COURSE,
   CAPABILITY_EDIT_COURSE,
   CAPABILITY_SUBMIT_ASSIGNMENT,
   CAPABILITY_GRADE_ASSIGNMENT,
   CAPABILITY_MANAGE_USERS,
-  
+
   // Context Levels
   CONTEXT_SYSTEM,
   CONTEXT_USER,
   CONTEXT_COURSE,
   CONTEXT_MODULE,
-  
+
   // Grade Aggregation
   GRADE_AGGREGATE_MEAN,
   GRADE_AGGREGATE_WEIGHTED_MEAN,
   GRADE_AGGREGATE_SUM,
-  
+
   // User Roles
   ROLE_STUDENT,
   ROLE_TEACHER,
