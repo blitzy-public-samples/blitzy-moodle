@@ -337,10 +337,22 @@ export function createDragEvent(
   type: 'dragenter' | 'dragover' | 'drop',
   files: File[]
 ): DragEvent {
-  const event = new DragEvent(type, {
-    bubbles: true,
-    cancelable: true,
-  });
+  // jsdom doesn't implement DragEvent, so we use MouseEvent as a fallback
+  // DragEvent extends MouseEvent in the browser, so this is a reasonable polyfill
+  let event: DragEvent;
+  
+  if (typeof DragEvent !== 'undefined') {
+    event = new DragEvent(type, {
+      bubbles: true,
+      cancelable: true,
+    });
+  } else {
+    // Fallback for jsdom: create MouseEvent and cast it
+    event = new MouseEvent(type, {
+      bubbles: true,
+      cancelable: true,
+    }) as unknown as DragEvent;
+  }
 
   const fileList = createMockFileList(files);
 
