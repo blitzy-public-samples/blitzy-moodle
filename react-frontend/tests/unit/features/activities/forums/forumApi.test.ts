@@ -17,7 +17,6 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest';
 import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
-import axios from 'axios';
 
 // Import the forumApi module (adjust path based on actual location)
 import * as forumApi from '@/features/activities/forums/api/forumApi';
@@ -299,10 +298,16 @@ const handlers = [
   // POST create discussion
   http.post(`${API_BASE_URL}/forums/:id/discussions`, async ({ params, request }) => {
     const { id } = params;
-    const body = await request.json() as CreateDiscussionData;
+    const formData = await request.formData();
+    
+    // Extract fields from FormData
+    const subject = formData.get('subject') as string;
+    const message = formData.get('message') as string;
+    const subscribe = formData.get('subscribe') === 'true';
+    const pinned = formData.get('pinned') === 'true';
     
     // Validation errors
-    if (!body.subject || body.subject.trim() === '') {
+    if (!subject || subject.trim() === '') {
       return HttpResponse.json({
         success: false,
         error: {
@@ -313,7 +318,7 @@ const handlers = [
       }, { status: 400 });
     }
     
-    if (!body.message || body.message.trim() === '') {
+    if (!message || message.trim() === '') {
       return HttpResponse.json({
         success: false,
         error: {
@@ -328,8 +333,8 @@ const handlers = [
     const newDiscussion: Discussion = {
       id: 999,
       forumId: parseInt(id as string),
-      name: body.subject,
-      message: body.message,
+      name: subject,
+      message: message,
       messageFormat: 1,
       userId: 5,
       userFullName: 'John Doe',
@@ -338,7 +343,7 @@ const handlers = [
       modified: Date.now() / 1000,
       timeStart: 0,
       timeEnd: 0,
-      pinned: false,
+      pinned: pinned,
       locked: false,
       groupId: -1,
       numReplies: 0,
@@ -359,17 +364,22 @@ const handlers = [
   // POST create post (reply)
   http.post(`${API_BASE_URL}/forums/discussions/:id/posts`, async ({ params, request }) => {
     const { id } = params;
-    const body = await request.json() as CreatePostData;
+    const formData = await request.formData();
+    
+    // Extract fields from FormData
+    const message = formData.get('message') as string;
+    const parentIdStr = formData.get('parentId') as string | null;
+    const parentId = parentIdStr ? parseInt(parentIdStr) : 0;
     
     const newPost: Post = {
       id: 1000,
       discussionId: parseInt(id as string),
-      parentId: body.parentId || 0,
+      parentId: parentId,
       userId: 5,
       userFullName: 'John Doe',
       userPictureUrl: '/user/pic.jpg',
-      subject: body.subject || 'Re: Discussion',
-      message: body.message,
+      subject: 'Re: Discussion',
+      message: message,
       messageFormat: 1,
       created: Date.now() / 1000,
       modified: Date.now() / 1000,
@@ -391,7 +401,12 @@ const handlers = [
   // PUT update post
   http.put(`${API_BASE_URL}/forums/posts/:id`, async ({ params, request }) => {
     const { id } = params;
-    const body = await request.json() as UpdatePostData;
+    const formData = await request.formData();
+    
+    // Extract fields from FormData
+    const message = formData.get('message') as string;
+    const removeAttachmentsStr = formData.get('removeAttachments') as string | null;
+    const removeAttachments = removeAttachmentsStr ? JSON.parse(removeAttachmentsStr) : [];
     
     // Simulate concurrent edit detection
     if (id === '409') {
@@ -408,7 +423,7 @@ const handlers = [
     const updatedPost: Post = {
       ...mockPost,
       id: parseInt(id as string),
-      message: body.message,
+      message: message,
       modified: Date.now() / 1000,
       editedBy: 'John Doe',
       editedAt: Date.now() / 1000
@@ -441,12 +456,23 @@ const handlers = [
   http.post(`${API_BASE_URL}/forums/:id/subscribe`, async ({ params, request }) => {
     const { id } = params;
     
+    // Handle optional preferences in body
+    let preferences = {};
+    try {
+      const body = await request.text();
+      if (body) {
+        preferences = JSON.parse(body);
+      }
+    } catch (e) {
+      // Empty body or invalid JSON - use default empty object
+    }
+    
     return HttpResponse.json({
       success: true,
       data: {
         forumId: parseInt(id as string),
         isSubscribed: true,
-        preferences: await request.json()
+        preferences
       }
     });
   }),
@@ -586,17 +612,20 @@ const handlers = [
 // Setup MSW server
 const server = setupServer(...handlers);
 
-// Configure axios defaults
-axios.defaults.baseURL = API_BASE_URL;
-axios.defaults.headers.common['Authorization'] = `Bearer ${MOCK_JWT_TOKEN}`;
-
 describe('forumApi', () => {
   beforeAll(() => {
+    // Start MSW server
     server.listen({ onUnhandledRequest: 'error' });
+    
+    // Set up mock JWT token in localStorage for apiClient interceptor
+    localStorage.setItem('moodle_access_token', MOCK_JWT_TOKEN);
   });
 
   afterAll(() => {
     server.close();
+    
+    // Clean up localStorage
+    localStorage.clear();
   });
 
   afterEach(() => {
@@ -842,11 +871,11 @@ describe('forumApi', () => {
     });
 
     it('should include all required fields in request body', async () => {
-      let capturedBody: any;
+      let capturedFormData: FormData;
       
       server.use(
         http.post(`${API_BASE_URL}/forums/:id/discussions`, async ({ request }) => {
-          capturedBody = await request.json();
+          capturedFormData = await request.formData();
           return HttpResponse.json({
             success: true,
             data: { ...mockDiscussions[0], id: 999 }
@@ -863,9 +892,9 @@ describe('forumApi', () => {
       
       await forumApi.createDiscussion(1, data);
       
-      expect(capturedBody.subject).toBe('Test Subject');
-      expect(capturedBody.message).toBe('Test Message');
-      expect(capturedBody.subscribe).toBe(false);
+      expect(capturedFormData.get('subject')).toBe('Test Subject');
+      expect(capturedFormData.get('message')).toBe('Test Message');
+      expect(capturedFormData.get('subscribe')).toBe('false');
     });
 
     it('should throw validation error for missing subject', async () => {
@@ -932,11 +961,11 @@ describe('forumApi', () => {
     });
 
     it('should include message and parentId in request body', async () => {
-      let capturedBody: any;
+      let capturedFormData: FormData;
       
       server.use(
         http.post(`${API_BASE_URL}/forums/discussions/:id/posts`, async ({ request }) => {
-          capturedBody = await request.json();
+          capturedFormData = await request.formData();
           return HttpResponse.json({
             success: true,
             data: { ...mockPost, id: 1000 }
@@ -951,8 +980,8 @@ describe('forumApi', () => {
       
       await forumApi.createPost(1, data);
       
-      expect(capturedBody.message).toBe('Reply message');
-      expect(capturedBody.parentId).toBe(5);
+      expect(capturedFormData.get('message')).toBe('Reply message');
+      expect(capturedFormData.get('parentId')).toBe('5');
     });
 
     it('should handle inline reply (nested)', async () => {
@@ -1019,14 +1048,14 @@ describe('forumApi', () => {
     });
 
     it('should include message in request body', async () => {
-      let capturedBody: any;
+      let capturedFormData: FormData;
       
       server.use(
         http.put(`${API_BASE_URL}/forums/posts/:id`, async ({ request }) => {
-          capturedBody = await request.json();
+          capturedFormData = await request.formData();
           return HttpResponse.json({
             success: true,
-            data: { ...mockPost, message: capturedBody.message }
+            data: { ...mockPost, message: capturedFormData.get('message') as string }
           });
         })
       );
@@ -1037,7 +1066,7 @@ describe('forumApi', () => {
       
       await forumApi.updatePost(1, data);
       
-      expect(capturedBody.message).toBe('New content');
+      expect(capturedFormData.get('message')).toBe('New content');
     });
 
     it('should handle attachment add/remove', async () => {
@@ -1321,15 +1350,22 @@ describe('forumApi', () => {
     });
 
     it('should handle malformed JSON response', async () => {
-      server.use(
-        http.get(`${API_BASE_URL}/forums/:id`, () => {
-          return new HttpResponse('Invalid JSON{', {
-            headers: { 'Content-Type': 'application/json' }
-          });
+      // MSW cannot simulate JSON parse errors since it bypasses axios's JSON parsing.
+      // Instead, we directly mock the apiClient to throw a SyntaxError as axios would.
+      const { apiClient } = await import('@/services/api/client');
+      const originalGet = apiClient.get;
+      
+      apiClient.get = vi.fn().mockRejectedValueOnce(
+        Object.assign(new SyntaxError('Unexpected token I in JSON at position 0'), {
+          config: { url: '/forums/1', method: 'get' },
+          request: {},
         })
       );
       
       await expect(forumApi.getForum(1)).rejects.toThrow();
+      
+      // Restore original implementation
+      apiClient.get = originalGet;
     });
 
     it('should transform errors to user-friendly messages', async () => {

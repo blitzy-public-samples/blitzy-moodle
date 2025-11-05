@@ -315,18 +315,24 @@ apiClient.interceptors.response.use(
       }
     }
 
-    // Transform error response while preserving axios error structure
+    // Transform error response to Error object with additional metadata
     const errorData = error.response?.data as ApiErrorData | undefined;
-    const apiError: ApiErrorResponse & { response?: typeof error.response } = {
-      success: false,
-      error: {
-        code: errorData?.error?.code ?? 'UNKNOWN_ERROR',
-        message: errorData?.error?.message ?? error.message ?? 'An unexpected error occurred',
-        status: error.response?.status,
-        details: errorData?.error?.details,
-      },
-      response: error.response, // Preserve original axios response for compatibility
+    const errorMessage = errorData?.error?.message ?? error.message ?? 'An unexpected error occurred';
+    const errorCode = errorData?.error?.code ?? 'UNKNOWN_ERROR';
+    
+    // Create a proper Error object with message property
+    const apiError = new Error(errorMessage) as Error & {
+      code: string;
+      status?: number;
+      details?: Record<string, unknown>;
+      response?: typeof error.response;
     };
+    
+    // Add metadata to error object
+    apiError.code = errorCode;
+    apiError.status = error.response?.status;
+    apiError.details = errorData?.error?.details;
+    apiError.response = error.response; // Preserve original axios response for compatibility
 
     return Promise.reject(apiError);
   }

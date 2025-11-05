@@ -368,60 +368,47 @@ export interface Rating {
 // ============================================================================
 
 /**
- * Data required to create a new post
+ * Data required to create a new post (reply)
+ * Simplified API interface for post creation
  */
 export interface CreatePostData {
-  /** Discussion ID (required for replies, optional for new discussions) */
-  discussionid?: number;
-  /** Parent post ID (0 for top-level posts) */
-  parentid: number;
-  /** Post subject */
-  subject: string;
   /** Post message content */
   message: string;
-  /** Message format (HTML, plain text, etc.) */
-  messageformat: number;
-  /** Whether to mail immediately */
-  mailnow?: boolean;
-  /** User ID for private reply (optional) */
-  privatereplyto?: number;
+  /** Parent post ID for nested replies (optional) */
+  parentId?: number;
   /** File attachments (optional) */
   attachments?: File[];
 }
 
 /**
  * Data required to update an existing post
+ * Simplified API interface for post updates
  */
 export interface UpdatePostData {
-  /** Post ID being updated */
-  id: number;
-  /** Updated subject */
-  subject?: string;
   /** Updated message content */
-  message?: string;
-  /** Updated message format */
-  messageformat?: number;
-  /** Updated attachments */
+  message: string;
+  /** New file attachments to add (optional) */
   attachments?: File[];
+  /** Array of attachment IDs to remove (optional) */
+  removeAttachments?: number[];
+  /** Version number for concurrent edit detection (optional) */
+  version?: number;
+  /** Timestamp for concurrent edit detection (optional) */
+  timestamp?: number;
 }
 
 /**
  * Data required to create a new discussion
+ * Simplified API interface for discussion creation
  */
 export interface CreateDiscussionData {
-  /** Forum ID where discussion will be created */
-  forumid: number;
-  /** Discussion name/title */
-  name: string;
-  /** First post subject */
+  /** Discussion subject/title */
   subject: string;
-  /** First post message */
+  /** First post message content */
   message: string;
-  /** Message format */
-  messageformat: number;
-  /** Group ID (0 for all participants) */
-  groupid?: number;
-  /** Whether to pin the discussion */
+  /** Whether to subscribe user to the discussion */
+  subscribe?: boolean;
+  /** Whether to pin the discussion (moderator only) */
   pinned?: boolean;
   /** File attachments for first post */
   attachments?: File[];
@@ -621,4 +608,36 @@ export interface ForumSearchCriteria {
   dateFrom?: number;
   /** Date range end */
   dateTo?: number;
+}
+
+/**
+ * Options for fetching discussion lists
+ * Used by getDiscussions API function
+ */
+export interface DiscussionListOptions {
+  /** Page number for pagination (1-based) */
+  page?: number;
+  /** Number of items per page */
+  perPage?: number;
+  /** Sort field (date, replies, author) */
+  sortBy?: 'date' | 'replies' | 'author';
+  /** Sort direction */
+  sortOrder?: 'asc' | 'desc';
+  /** Filter type (all, unread, pinned) */
+  filter?: 'all' | 'unread' | 'pinned';
+  /** Filter by group ID */
+  groupid?: number;
+}
+
+/**
+ * Subscription preferences for forums
+ * Controls email notifications and digest settings
+ */
+export interface SubscriptionPreferences {
+  /** Enable immediate email notification for new posts */
+  emailNotifications?: boolean;
+  /** Enable daily digest of forum posts */
+  emailDigest?: boolean;
+  /** Digest format (plain text or HTML) */
+  digestFormat?: 'plain' | 'html';
 }
