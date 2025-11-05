@@ -54,7 +54,7 @@ export function truncate(
   }
 
   if (maxLength <= 0) {
-    return ellipsis;
+    return ellipsis.substring(0, Math.max(0, maxLength));
   }
 
   // If string is within limit, return as-is
@@ -62,8 +62,19 @@ export function truncate(
     return str;
   }
 
+  // If maxLength is smaller than ellipsis, return truncated ellipsis
+  if (maxLength < ellipsis.length) {
+    return ellipsis.substring(0, maxLength);
+  }
+
   // Calculate space needed for ellipsis
-  const truncateLength = Math.max(0, maxLength - ellipsis.length);
+  let truncateLength = maxLength - ellipsis.length;
+  
+  // If we're truncating at a space, move back one character to avoid
+  // cutting right at a word boundary
+  if (truncateLength < str.length && str[truncateLength] === ' ') {
+    truncateLength--;
+  }
   
   return str.substring(0, truncateLength).trim() + ellipsis;
 }
@@ -108,15 +119,9 @@ export function capitalizeWords(str: string): string {
     return '';
   }
 
-  return str
-    .split(/\s+/)
-    .map(word => {
-      if (word.length === 0) {
-        return word;
-      }
-      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-    })
-    .join(' ');
+  // Use replace with a regex to capitalize first letter of each word
+  // while preserving the rest of the case and all whitespace
+  return str.replace(/\b\w/g, char => char.toUpperCase());
 }
 
 /**
@@ -144,11 +149,10 @@ export function escapeHtml(str: string): string {
     '<': '&lt;',
     '>': '&gt;',
     '"': '&quot;',
-    "'": '&#x27;',
-    '/': '&#x2F;'
+    "'": '&#x27;'
   };
 
-  return str.replace(/[&<>"'/]/g, (char) => htmlEscapeMap[char] || char);
+  return str.replace(/[&<>"']/g, (char) => htmlEscapeMap[char] || char);
 }
 
 /**
@@ -187,11 +191,14 @@ export function stripHtml(str: string): string {
   };
 
   Object.keys(entityMap).forEach(entity => {
-    text = text.replace(new RegExp(entity, 'g'), entityMap[entity]);
+    const replacement = entityMap[entity];
+    if (replacement !== undefined) {
+      text = text.replace(new RegExp(entity, 'g'), replacement);
+    }
   });
 
-  // Clean up extra whitespace
-  return text.replace(/\s+/g, ' ').trim();
+  // Clean up extra whitespace (collapse multiple spaces to single space)
+  return text.replace(/\s+/g, ' ');
 }
 
 /**
@@ -244,8 +251,9 @@ export function sanitizeHtml(str: string): string {
       // Keep allowed tags but strip all attributes except href for <a> tags
       if (tag.toLowerCase() === 'a' && !slash) {
         const hrefMatch = match.match(/href\s*=\s*["']([^"']*)["']/i);
-        if (hrefMatch && !hrefMatch[1].match(/javascript:|data:/i)) {
-          return `<a href="${escapeHtml(hrefMatch[1])}">`;
+        const href = hrefMatch?.[1];
+        if (href && !href.match(/javascript:|data:/i)) {
+          return `<a href="${escapeHtml(href)}">`;
         }
         return '<a>';
       }
@@ -329,6 +337,9 @@ export function slugify(str: string): string {
   }
 
   return str
+    // Normalize Unicode characters and remove diacritics (accents)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .trim()
     // Replace spaces and underscores with hyphens
