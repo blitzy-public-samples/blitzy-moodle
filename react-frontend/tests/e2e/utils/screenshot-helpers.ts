@@ -19,9 +19,9 @@
  */
 
 import type { Page, Locator, TestInfo } from '@playwright/test';
-import fs from 'fs/promises';
-import path from 'path';
-import crypto from 'crypto';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import * as crypto from 'crypto';
 import pixelmatch from 'pixelmatch';
 import { PNG } from 'pngjs';
 
