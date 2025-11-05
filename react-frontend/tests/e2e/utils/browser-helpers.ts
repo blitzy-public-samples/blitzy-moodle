@@ -197,12 +197,23 @@ export async function clearBrowserStorage(context: BrowserContext): Promise<void
     await context.clearCookies();
 
     // Clear localStorage and sessionStorage for all pages in context
+    // Note: Some pages (like about:blank or data: URLs) may not support storage
     const pages = context.pages();
     for (const page of pages) {
-      await page.evaluate(() => {
-        localStorage.clear();
-        sessionStorage.clear();
-      });
+      try {
+        await page.evaluate(() => {
+          localStorage.clear();
+          sessionStorage.clear();
+        });
+      } catch (storageError) {
+        // Ignore storage errors for pages that don't support it (e.g., about:blank, data: URLs)
+        // The important part is that cookies are cleared, which always works
+        console.debug(
+          `Could not clear storage for page ${page.url()}: ${
+            storageError instanceof Error ? storageError.message : String(storageError)
+          }`
+        );
+      }
     }
   } catch (error) {
     throw new Error(
