@@ -327,10 +327,7 @@ export function useTrackResourceView(): UseMutationResult<
         return oldData;
       });
     },
-    onError: (error: Error) => {
-      console.error('Failed to track resource view:', error);
-    },
-    retry: 1,
+    retry: false,
   });
 }
 
@@ -387,10 +384,7 @@ export function useTrackResourceDownload(): UseMutationResult<
         return oldData;
       });
     },
-    onError: (error: Error) => {
-      console.error('Failed to track resource download:', error);
-    },
-    retry: 1,
+    retry: false,
   });
 }
 
