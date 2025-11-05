@@ -59,7 +59,7 @@ export default defineConfig({
     },
     
     // Test file patterns to include
-    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    include: ['src/**/*.{test,spec}.{ts,tsx}', 'tests/**/*.{test,spec}.{ts,tsx}'],
     
     // Patterns to exclude from test discovery
     exclude: [
