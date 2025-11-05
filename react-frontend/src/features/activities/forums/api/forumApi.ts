@@ -520,6 +520,27 @@ export async function markDiscussionRead(
   return extractData(response);
 }
 
+/**
+ * Mark all discussions in a forum as read
+ *
+ * Marks all discussions and their posts in a forum as read for the current user.
+ * Resets the unread count for the forum to zero.
+ *
+ * Maps to PHP endpoint: POST /api/v1/forums/{id}/mark-read
+ * Wraps: forum_mark_all_read() from lib.php
+ *
+ * @param forumId - Forum module ID
+ * @returns Promise resolving to API response with read count and updated unread total
+ */
+export async function markForumRead(
+  forumId: number
+): Promise<MarkReadResponse> {
+  const response = await apiClient.post<ApiResponse<MarkReadResponse>>(
+    `/forums/${forumId}/mark-read`
+  );
+  return extractData(response);
+}
+
 // ============================================================================
 // API FUNCTIONS - MODERATION ACTIONS
 // ============================================================================

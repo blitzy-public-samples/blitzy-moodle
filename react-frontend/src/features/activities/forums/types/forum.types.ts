@@ -210,6 +210,18 @@ export interface Forum {
   duedate: number;
   /** Cut-off date timestamp after which posts are not accepted */
   cutoffdate: number;
+  /** Whether the current user is subscribed to the forum */
+  subscribed: boolean;
+  /** Whether the current user can subscribe/unsubscribe to the forum */
+  canSubscribe: boolean;
+  /** Number of unread discussions for the current user */
+  unreadCount: number;
+  /** Total number of discussions in the forum */
+  discussionCount: number;
+  /** Total number of posts in the forum */
+  postCount: number;
+  /** Number of participants in the forum */
+  participants: number;
 }
 
 /**
