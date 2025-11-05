@@ -36,7 +36,7 @@
  * - public/mod/forum/classes/local/entities/post.php
  */
 
-import { apiClient } from '@/services/api/client';
+import { apiClient, extractData } from '@/services/api/client';
 import type { ApiResponse, PaginatedResponse } from '@/types/api';
 import type {
   Forum,
@@ -134,7 +134,7 @@ export interface ReportResponse {
  */
 export async function getForum(forumId: number): Promise<Forum> {
   const response = await apiClient.get<ApiResponse<Forum>>(`/forums/${forumId}`);
-  return response.data.data;
+  return extractData(response);
 }
 
 /**
@@ -181,7 +181,7 @@ export async function getDiscussionPosts(
   const response = await apiClient.get<ApiResponse<Post[]>>(
     `/forums/discussions/${discussionId}/posts`
   );
-  return response.data.data;
+  return extractData(response);
 }
 
 // ============================================================================
@@ -233,7 +233,7 @@ export async function createDiscussion(
       },
     }
   );
-  return response.data.data;
+  return extractData(response);
 }
 
 /**
@@ -276,7 +276,7 @@ export async function createPost(
       },
     }
   );
-  return response.data.data;
+  return extractData(response);
 }
 
 /**
@@ -319,7 +319,7 @@ export async function updatePost(
       },
     }
   );
-  return response.data.data;
+  return extractData(response);
 }
 
 /**
@@ -365,7 +365,7 @@ export async function subscribeForum(
     `/forums/${forumId}/subscribe`,
     preferences
   );
-  return response.data.data;
+  return extractData(response);
 }
 
 /**
@@ -387,7 +387,7 @@ export async function unsubscribeForum(
   const response = await apiClient.post<ApiResponse<SubscriptionResponse>>(
     `/forums/${forumId}/unsubscribe`
   );
-  return response.data.data;
+  return extractData(response);
 }
 
 /**
@@ -408,7 +408,7 @@ export async function subscribeDiscussion(
   const response = await apiClient.post<ApiResponse<SubscriptionResponse>>(
     `/forums/discussions/${discussionId}/subscribe`
   );
-  return response.data.data;
+  return extractData(response);
 }
 
 /**
@@ -429,7 +429,7 @@ export async function unsubscribeDiscussion(
   const response = await apiClient.post<ApiResponse<SubscriptionResponse>>(
     `/forums/discussions/${discussionId}/unsubscribe`
   );
-  return response.data.data;
+  return extractData(response);
 }
 
 // ============================================================================
@@ -454,7 +454,7 @@ export async function markDiscussionRead(
   const response = await apiClient.post<ApiResponse<MarkReadResponse>>(
     `/forums/discussions/${discussionId}/read`
   );
-  return response.data.data;
+  return extractData(response);
 }
 
 // ============================================================================
@@ -480,7 +480,7 @@ export async function pinDiscussion(
   const response = await apiClient.post<ApiResponse<ModerationResponse>>(
     `/forums/discussions/${discussionId}/pin`
   );
-  return response.data.data;
+  return extractData(response);
 }
 
 /**
@@ -502,7 +502,7 @@ export async function unpinDiscussion(
   const response = await apiClient.post<ApiResponse<ModerationResponse>>(
     `/forums/discussions/${discussionId}/unpin`
   );
-  return response.data.data;
+  return extractData(response);
 }
 
 /**
@@ -524,7 +524,7 @@ export async function lockDiscussion(
   const response = await apiClient.post<ApiResponse<ModerationResponse>>(
     `/forums/discussions/${discussionId}/lock`
   );
-  return response.data.data;
+  return extractData(response);
 }
 
 /**
@@ -546,7 +546,7 @@ export async function unlockDiscussion(
   const response = await apiClient.post<ApiResponse<ModerationResponse>>(
     `/forums/discussions/${discussionId}/unlock`
   );
-  return response.data.data;
+  return extractData(response);
 }
 
 /**
@@ -571,5 +571,5 @@ export async function reportPost(
     `/forums/posts/${postId}/report`,
     { reason }
   );
-  return response.data.data;
+  return extractData(response);
 }
