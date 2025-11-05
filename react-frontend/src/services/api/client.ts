@@ -348,7 +348,7 @@ apiClient.interceptors.response.use(
  */
 export function extractData<T>(response: AxiosResponse<ApiResponse<T>>): T {
   // Handle 204 No Content responses
-  if (response.status === 204 || response.data === null || response.data === '') {
+  if (response.status === 204 || response.data === null) {
     return undefined as unknown as T;
   }
 

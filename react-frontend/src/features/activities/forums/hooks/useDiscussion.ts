@@ -18,7 +18,6 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { 
-  Discussion, 
   Post,
   DiscussionPost,
   CreatePostData,
@@ -151,6 +150,7 @@ export interface UseDiscussionOptions {
   onEditConflict?: (data: { post: Post; conflictData: any }) => void;
   onDeleteSuccess?: (data: { softDeleted?: boolean; hardDeleted?: boolean; message?: string }) => void;
   onDeleteError?: (error: Error) => void;
+  onLoadMoreError?: (error: Error) => void;
   onSubscribeSuccess?: (data: any) => void;
   onSubscribeError?: (error: Error) => void;
   onUnsubscribeSuccess?: (data: any) => void;
@@ -247,7 +247,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
       });
     },
     onError: (err) => {
-      options?.onError?.(err as Error);
+      options?.onLoadMoreError?.(err as Error);
     },
   });
 
@@ -258,7 +258,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
     mutationFn: async (parentPostId: number) => {
       return forumApi.fetchPostReplies(parentPostId);
     },
-    onSuccess: (newData, parentPostId) => {
+    onSuccess: (newData, _parentPostId) => {
       // Append new replies to the flat posts array in the cache
       // The hierarchy will be automatically rebuilt on next render
       queryClient.setQueryData(discussionKeys.detail(discussionId), (old: any) => {
@@ -271,7 +271,8 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
       });
     },
     onError: (err) => {
-      options?.onError?.(err as Error);
+      // Error loading more posts - could notify user via toast
+      console.error('Failed to load more posts:', err);
     },
   });
 
@@ -334,7 +335,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
 
       return { previousData, optimisticId };
     },
-    onError: (err, variables, context) => {
+    onError: (err, _variables, context) => {
       // Rollback optimistic update on error
       if (context?.previousData) {
         queryClient.setQueryData(discussionKeys.detail(discussionId), context.previousData);
@@ -376,39 +377,27 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
       await queryClient.cancelQueries({ queryKey: discussionKeys.detail(discussionId) });
       const previousData = queryClient.getQueryData(discussionKeys.detail(discussionId));
 
-      // Helper function to recursively update a post in the hierarchy
-      const updatePostRecursive = (posts: Post[], targetId: number, data: UpdatePostData): Post[] => {
-        return posts.map(post => {
-          if (post.id === targetId) {
-            return {
-              ...post,
-              message: data.message,
-              timemodified: Math.floor(Date.now() / 1000),
-            };
-          }
-          if (post.replies && post.replies.length > 0) {
-            return {
-              ...post,
-              replies: updatePostRecursive(post.replies, targetId, data),
-            };
-          }
-          return post;
-        });
-      };
-
-      // Optimistically update the post
+      // Optimistically update the post in flat array
       queryClient.setQueryData(discussionKeys.detail(discussionId), (old: any) => {
         if (!old) return old;
 
         return {
           ...old,
-          posts: updatePostRecursive(old.posts, postId, postData),
+          posts: old.posts.map((post: Post) => 
+            post.id === postId
+              ? {
+                  ...post,
+                  message: postData.message,
+                  timemodified: Math.floor(Date.now() / 1000),
+                }
+              : post
+          ),
         };
       });
 
       return { previousData };
     },
-    onError: (err, variables, context) => {
+    onError: (err, _variables, context) => {
       if (context?.previousData) {
         queryClient.setQueryData(discussionKeys.detail(discussionId), context.previousData);
       }
@@ -448,98 +437,61 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
       await queryClient.cancelQueries({ queryKey: discussionKeys.detail(discussionId) });
       const previousData = queryClient.getQueryData(discussionKeys.detail(discussionId));
 
-      // Helper function to recursively mark a post as deleted
-      const markDeletedRecursive = (posts: Post[], targetId: number): Post[] => {
-        return posts.map(post => {
-          if (post.id === targetId) {
-            return {
-              ...post,
-              deleted: true,
-              message: '[deleted]',
-            };
-          }
-          if (post.replies && post.replies.length > 0) {
-            return {
-              ...post,
-              replies: markDeletedRecursive(post.replies, targetId),
-            };
-          }
-          return post;
-        });
-      };
-
-      // Optimistically mark as deleted
+      // Optimistically mark as deleted in flat array
       queryClient.setQueryData(discussionKeys.detail(discussionId), (old: any) => {
         if (!old) return old;
 
         return {
           ...old,
-          posts: markDeletedRecursive(old.posts, postId),
+          posts: old.posts.map((post: Post) =>
+            post.id === postId
+              ? {
+                  ...post,
+                  deleted: true,
+                  message: '[deleted]',
+                }
+              : post
+          ),
         };
       });
 
       return { previousData, postId };
     },
-    onError: (err, variables, context) => {
+    onError: (err, _variables, context) => {
       if (context?.previousData) {
         queryClient.setQueryData(discussionKeys.detail(discussionId), context.previousData);
       }
       // Call user-provided error callback
       options?.onDeleteError?.(err as Error);
     },
-    onSuccess: (data, variables, context) => {
-      // Helper function to recursively mark a post as deleted in the hierarchy
-      const markPostDeletedRecursive = (posts: Post[], postId: number): Post[] => {
-        return posts.map(post => {
-          if (post.id === postId) {
-            return {
-              ...post,
-              deleted: true,
-              message: '[deleted]',
-            };
-          }
-          if (post.replies && post.replies.length > 0) {
-            return {
-              ...post,
-              replies: markPostDeletedRecursive(post.replies, postId),
-            };
-          }
-          return post;
-        });
-      };
-
-      // Helper function to recursively remove a post from the hierarchy
-      const removePostRecursive = (posts: Post[], postId: number): Post[] => {
-        return posts.filter(post => post.id !== postId).map(post => {
-          if (post.replies && post.replies.length > 0) {
-            return {
-              ...post,
-              replies: removePostRecursive(post.replies, postId),
-            };
-          }
-          return post;
-        });
-      };
-
+    onSuccess: (data, _variables, context) => {
       // Update cache based on delete type
       if (data.softDeleted) {
-        // Keep the post in cache but mark as deleted
+        // Keep the post in cache but mark as deleted (flat array)
         queryClient.setQueryData(discussionKeys.detail(discussionId), (old: any) => {
           if (!old) return old;
 
           return {
             ...old,
-            posts: markPostDeletedRecursive(old.posts, context?.postId!),
+            posts: old.posts.map((post: Post) =>
+              post.id === context?.postId
+                ? {
+                    ...post,
+                    deleted: true,
+                    message: '[deleted]',
+                  }
+                : post
+            ),
           };
         });
       } else if (data.hardDeleted) {
-        // Remove the post from cache
+        // Remove the post from cache (flat array)
         queryClient.setQueryData(discussionKeys.detail(discussionId), (old: any) => {
           if (!old) return old;
 
           return {
             ...old,
-            posts: removePostRecursive(old.posts, context?.postId!),
+            posts: old.posts.filter((post: Post) => post.id !== context?.postId),
           };
         });
       }
@@ -654,7 +606,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
     onSuccess: (data) => {
       options?.onMarkAsReadSuccess?.(data);
     },
-    onError: (err, variables, context) => {
+    onError: (err, _variables, context) => {
       if (context?.previousData) {
         queryClient.setQueryData(discussionKeys.detail(discussionId), context.previousData);
       }
