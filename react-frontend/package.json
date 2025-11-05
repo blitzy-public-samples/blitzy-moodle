@@ -121,7 +121,8 @@
     "vite-plugin-checker": "^0.6.2",
     "vite-plugin-compression": "^0.5.1",
     "vite-tsconfig-paths": "^4.2.2",
-    "vitest": "^1.0.4"
+    "vitest": "^1.0.4",
+    "vitest-axe": "^0.1.0"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

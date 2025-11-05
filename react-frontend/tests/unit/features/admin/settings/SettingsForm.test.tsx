@@ -17,16 +17,14 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { axe, toHaveNoViolations } from 'jest-axe';
+import { axe } from 'vitest-axe';
+import 'vitest-axe/extend-expect';
 import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Provider } from 'react-redux';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { configureStore } from '@reduxjs/toolkit';
-
-// Extend Jest matchers
-expect.extend(toHaveNoViolations);
 
 // Mock component import (would be actual import in real scenario)
 // import { SettingsForm } from '@/features/admin/settings/components/SettingsForm';
