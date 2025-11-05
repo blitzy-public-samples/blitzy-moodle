@@ -505,7 +505,7 @@ const getCurrentUserId = (request: Request): number => {
  * grading settings, and current user's submission status
  */
 const getAssignmentHandler = http.get(
-  '/api/v1/assignments/:id',
+  '*/api/v1/assignments/:id',
   async ({ params, request }) => {
     await simulateLatency(100, 300);
 
@@ -513,7 +513,7 @@ const getAssignmentHandler = http.get(
 
     // Check authorization
     if (!isAuthorized(request)) {
-      return HttpResponse.json<ApiErrorResponse>(
+      return HttpResponse.json(
         {
           success: false,
           error: {
@@ -529,7 +529,7 @@ const getAssignmentHandler = http.get(
     // Check if assignment exists
     const assignment = mockAssignments[assignmentId];
     if (!assignment) {
-      return HttpResponse.json<ApiErrorResponse>(
+      return HttpResponse.json(
         {
           success: false,
           error: {
@@ -561,7 +561,7 @@ const getAssignmentHandler = http.get(
       }
     }
 
-    return HttpResponse.json<ApiSuccessResponse<Assignment>>(
+    return HttpResponse.json(
       {
         success: true,
         data: responseData
@@ -576,7 +576,7 @@ const getAssignmentHandler = http.get(
  * Handles student submission of assignment work including file uploads and online text
  */
 const submitAssignmentHandler = http.post(
-  '/api/v1/assignments/:id/submit',
+  '*/api/v1/assignments/:id/submit',
   async ({ params, request }) => {
     await simulateLatency(200, 500); // File operations take longer
 
@@ -584,7 +584,7 @@ const submitAssignmentHandler = http.post(
 
     // Check authorization
     if (!isAuthorized(request)) {
-      return HttpResponse.json<ApiErrorResponse>(
+      return HttpResponse.json(
         {
           success: false,
           error: {
@@ -600,7 +600,7 @@ const submitAssignmentHandler = http.post(
     // Check if assignment exists
     const assignment = mockAssignments[assignmentId];
     if (!assignment) {
-      return HttpResponse.json<ApiErrorResponse>(
+      return HttpResponse.json(
         {
           success: false,
           error: {
@@ -628,7 +628,7 @@ const submitAssignmentHandler = http.post(
     const isPastCutoff = now > assignment.cutoffdate;
 
     if (isPastCutoff) {
-      return HttpResponse.json<ApiErrorResponse>(
+      return HttpResponse.json(
         {
           success: false,
           error: {
@@ -646,7 +646,7 @@ const submitAssignmentHandler = http.post(
     const attemptNumber = existingSubmission ? existingSubmission.attemptnumber + 1 : 1;
 
     if (assignment.maxattempts !== -1 && attemptNumber > assignment.maxattempts) {
-      return HttpResponse.json<ApiErrorResponse>(
+      return HttpResponse.json(
         {
           success: false,
           error: {
@@ -663,7 +663,7 @@ const submitAssignmentHandler = http.post(
     if (body.files && body.files.length > 0) {
       const fileType = assignment.submissiontypes.find(t => t.type === 'file');
       if (!fileType || !fileType.enabled) {
-        return HttpResponse.json<ApiErrorResponse>(
+        return HttpResponse.json(
           {
             success: false,
             error: {
@@ -677,7 +677,7 @@ const submitAssignmentHandler = http.post(
 
       // Check max files
       if (fileType.maxfiles && body.files.length > fileType.maxfiles) {
-        return HttpResponse.json<ApiErrorResponse>(
+        return HttpResponse.json(
           {
             success: false,
             error: {
@@ -696,7 +696,7 @@ const submitAssignmentHandler = http.post(
         for (const file of body.files) {
           const extension = '.' + file.filename.split('.').pop();
           if (!acceptedTypes.includes(extension)) {
-            return HttpResponse.json<ApiErrorResponse>(
+            return HttpResponse.json(
               {
                 success: false,
                 error: {
@@ -767,7 +767,7 @@ const submitAssignmentHandler = http.post(
  * Handles teacher grading of student submissions
  */
 const gradeSubmissionHandler = http.post(
-  '/api/v1/assignments/:id/grade',
+  '*/api/v1/assignments/:id/grade',
   async ({ params, request }) => {
     await simulateLatency(150, 300);
 
@@ -775,7 +775,7 @@ const gradeSubmissionHandler = http.post(
 
     // Check authorization
     if (!isAuthorized(request)) {
-      return HttpResponse.json<ApiErrorResponse>(
+      return HttpResponse.json(
         {
           success: false,
           error: {
@@ -789,7 +789,7 @@ const gradeSubmissionHandler = http.post(
 
     // Check grading permission
     if (!hasGradingPermission(request)) {
-      return HttpResponse.json<ApiErrorResponse>(
+      return HttpResponse.json(
         {
           success: false,
           error: {
@@ -805,7 +805,7 @@ const gradeSubmissionHandler = http.post(
     // Check if assignment exists
     const assignment = mockAssignments[assignmentId];
     if (!assignment) {
-      return HttpResponse.json<ApiErrorResponse>(
+      return HttpResponse.json(
         {
           success: false,
           error: {
@@ -829,7 +829,7 @@ const gradeSubmissionHandler = http.post(
 
     // Validate grade is within range
     if (body.grade < 0 || body.grade > assignment.grade) {
-      return HttpResponse.json<ApiErrorResponse>(
+      return HttpResponse.json(
         {
           success: false,
           error: {
@@ -845,7 +845,7 @@ const gradeSubmissionHandler = http.post(
     // Check if submission exists
     const submission = mockSubmissions[assignmentId]?.[body.userid];
     if (!submission) {
-      return HttpResponse.json<ApiErrorResponse>(
+      return HttpResponse.json(
         {
           success: false,
           error: {
@@ -881,10 +881,7 @@ const gradeSubmissionHandler = http.post(
     }
     mockGrades[assignmentId][body.userid] = newGrade;
 
-    return HttpResponse.json<ApiSuccessResponse<{
-      grade: Grade;
-      submission: Submission;
-    }>>(
+    return HttpResponse.json(
       {
         success: true,
         data: {
@@ -902,7 +899,7 @@ const gradeSubmissionHandler = http.post(
  * Returns list of all student submissions for an assignment (teacher view)
  */
 const getSubmissionsHandler = http.get(
-  '/api/v1/assignments/:id/submissions',
+  '*/api/v1/assignments/:id/submissions',
   async ({ params, request }) => {
     await simulateLatency(150, 300);
 
@@ -915,7 +912,7 @@ const getSubmissionsHandler = http.get(
 
     // Check authorization
     if (!isAuthorized(request)) {
-      return HttpResponse.json<ApiErrorResponse>(
+      return HttpResponse.json(
         {
           success: false,
           error: {
@@ -929,7 +926,7 @@ const getSubmissionsHandler = http.get(
 
     // Check grading permission
     if (!hasGradingPermission(request)) {
-      return HttpResponse.json<ApiErrorResponse>(
+      return HttpResponse.json(
         {
           success: false,
           error: {
@@ -945,7 +942,7 @@ const getSubmissionsHandler = http.get(
     // Check if assignment exists
     const assignment = mockAssignments[assignmentId];
     if (!assignment) {
-      return HttpResponse.json<ApiErrorResponse>(
+      return HttpResponse.json(
         {
           success: false,
           error: {
@@ -998,7 +995,7 @@ const getSubmissionsHandler = http.get(
     const endIndex = startIndex + perPage;
     const paginatedSubmissions = userSubmissions.slice(startIndex, endIndex);
 
-    return HttpResponse.json<ApiSuccessResponse<UserSubmission[]>>(
+    return HttpResponse.json(
       {
         success: true,
         data: paginatedSubmissions,
@@ -1021,7 +1018,7 @@ const getSubmissionsHandler = http.get(
  * Adds feedback comments and files to a graded submission
  */
 const addFeedbackHandler = http.post(
-  '/api/v1/assignments/:id/feedback',
+  '*/api/v1/assignments/:id/feedback',
   async ({ params, request }) => {
     await simulateLatency(200, 400);
 
@@ -1029,7 +1026,7 @@ const addFeedbackHandler = http.post(
 
     // Check authorization
     if (!isAuthorized(request)) {
-      return HttpResponse.json<ApiErrorResponse>(
+      return HttpResponse.json(
         {
           success: false,
           error: {
@@ -1043,7 +1040,7 @@ const addFeedbackHandler = http.post(
 
     // Check grading permission
     if (!hasGradingPermission(request)) {
-      return HttpResponse.json<ApiErrorResponse>(
+      return HttpResponse.json(
         {
           success: false,
           error: {
@@ -1066,7 +1063,7 @@ const addFeedbackHandler = http.post(
     // Check if grade exists
     const grade = mockGrades[assignmentId]?.[body.userid];
     if (!grade) {
-      return HttpResponse.json<ApiErrorResponse>(
+      return HttpResponse.json(
         {
           success: false,
           error: {
@@ -1096,7 +1093,7 @@ const addFeedbackHandler = http.post(
     grade.feedbackfiles = feedbackFiles;
     grade.timemodified = now;
 
-    return HttpResponse.json<ApiSuccessResponse<Grade>>(
+    return HttpResponse.json(
       {
         success: true,
         data: grade
@@ -1111,7 +1108,7 @@ const addFeedbackHandler = http.post(
  * Returns list of files for a submission
  */
 const getSubmissionFilesHandler = http.get(
-  '/api/v1/assignments/:id/files',
+  '*/api/v1/assignments/:id/files',
   async ({ params, request }) => {
     await simulateLatency(100, 200);
 
@@ -1121,7 +1118,7 @@ const getSubmissionFilesHandler = http.get(
 
     // Check authorization
     if (!isAuthorized(request)) {
-      return HttpResponse.json<ApiErrorResponse>(
+      return HttpResponse.json(
         {
           success: false,
           error: {
@@ -1139,7 +1136,7 @@ const getSubmissionFilesHandler = http.get(
 
     // Check permission: students can only view their own files
     if (!isTeacher && targetUserId !== currentUserId) {
-      return HttpResponse.json<ApiErrorResponse>(
+      return HttpResponse.json(
         {
           success: false,
           error: {
@@ -1154,7 +1151,7 @@ const getSubmissionFilesHandler = http.get(
     // Get submission
     const submission = mockSubmissions[assignmentId]?.[targetUserId];
     if (!submission) {
-      return HttpResponse.json<ApiSuccessResponse<FileAttachment[]>>(
+      return HttpResponse.json(
         {
           success: true,
           data: []
@@ -1163,7 +1160,7 @@ const getSubmissionFilesHandler = http.get(
       );
     }
 
-    return HttpResponse.json<ApiSuccessResponse<FileAttachment[]>>(
+    return HttpResponse.json(
       {
         success: true,
         data: submission.files
