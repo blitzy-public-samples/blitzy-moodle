@@ -58,7 +58,7 @@ afterEach(() => {
 // Mock window.matchMedia for responsive design and media query testing
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: vi.fn().mockImplementation((query: string) => ({
+  value: vi.fn((query: string) => ({
     matches: false,
     media: query,
     onchange: null,
@@ -260,11 +260,8 @@ export const createTestQueryClient = (): QueryClient => {
         retry: false, // Disable mutation retries
       },
     },
-    logger: {
-      log: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(), // Suppress error logging in tests
-    },
+    // Note: logger option was removed in React Query v5
+    // Error suppression is now handled via console mocks above
   });
 };
 
