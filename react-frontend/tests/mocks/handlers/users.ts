@@ -106,6 +106,26 @@ interface EnrolledCourse {
   role: string;
 }
 
+interface UserUpdateRequest {
+  username?: string;
+  email?: string;
+  firstname?: string;
+  lastname?: string;
+  description?: string;
+  profileimageurl?: string;
+}
+
+interface PreferencesUpdateRequest {
+  theme?: string;
+  language?: string;
+  timezone?: string;
+  emailnotifications?: boolean;
+  calendardefaults?: {
+    maxevents?: number;
+    lookahead?: number;
+  };
+}
+
 // ============================================================================
 // Mock Data
 // ============================================================================
@@ -762,7 +782,7 @@ const updateUserHandler = http.put('/api/v1/users/:id', async ({ request, params
   }
 
   // Parse request body
-  const updates = await request.json();
+  const updates = await request.json() as UserUpdateRequest;
 
   // Validation: Check email format
   if (updates.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(updates.email)) {
@@ -1021,7 +1041,7 @@ const updateUserPreferencesHandler = http.put(
     }
 
     // Parse request body
-    const preferencesUpdate = await request.json();
+    const preferencesUpdate = await request.json() as PreferencesUpdateRequest;
 
     // Validation: Check theme value
     if (
