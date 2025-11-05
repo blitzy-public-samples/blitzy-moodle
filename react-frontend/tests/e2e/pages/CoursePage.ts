@@ -1,47 +1,38 @@
-/**
- * Page Object Model for Course Detail View
- * 
- * Encapsulates selectors and interactions for the course detail page,
- * including course information, sections, activities, and enrollment actions.
- * 
- * @module tests/e2e/pages/CoursePage
- */
-
-import { Page, Locator } from '@playwright/test';
+import { type Page, type Locator } from '@playwright/test';
 
 /**
- * Interface representing course information displayed on the course page
+ * Interface representing course information displayed on the course detail page
  */
 export interface CourseInfo {
-  /** Course title/name */
+  /** Course title displayed in the header */
   title: string;
-  /** Course description text */
+  /** Course description or summary text */
   description: string;
-  /** Course instructor/teacher name */
+  /** Name of the course instructor/teacher */
   instructor: string;
-  /** Whether the user is currently enrolled */
+  /** Whether the current user is enrolled in this course */
   enrollmentStatus: boolean;
-  /** Course completion progress percentage (0-100) */
+  /** Optional course completion progress percentage (0-100) */
   progress?: number;
-  /** URL to the course image */
+  /** Optional URL to the course image/banner */
   imageUrl?: string;
 }
 
 /**
- * Interface representing a course activity/module
+ * Interface representing an activity within a course section
  */
 export interface CourseActivity {
   /** Unique identifier for the activity */
   activityId: string;
-  /** Type of activity (e.g., 'assignment', 'quiz', 'forum') */
+  /** Type of activity (e.g., 'assignment', 'quiz', 'forum', 'resource') */
   activityType: string;
   /** Display name of the activity */
   name: string;
   /** Whether the activity has been completed by the user */
   completed?: boolean;
-  /** Date when the activity becomes available */
+  /** Optional date when the activity becomes available */
   availableFrom?: Date;
-  /** Date when the activity is no longer available */
+  /** Optional date when the activity is no longer available */
   availableUntil?: Date;
 }
 
@@ -49,31 +40,41 @@ export interface CourseActivity {
  * Interface representing a course section containing activities
  */
 export interface CourseSection {
-  /** Section number (0-based or 1-based depending on course format) */
+  /** Section number (e.g., 0 for general section, 1+ for numbered sections) */
   sectionNumber: number;
   /** Display name of the section */
   sectionName: string;
-  /** List of activities within this section */
+  /** List of activities contained in this section */
   activities: CourseActivity[];
   /** Whether the section is currently expanded in the UI */
   isExpanded: boolean;
 }
 
 /**
- * Page Object Model for the Course Detail Page
+ * Page Object Model for the Course Detail page
  * 
- * Provides methods to interact with course detail view including:
- * - Viewing course information
- * - Managing enrollment status
- * - Navigating course sections and activities
- * - Checking course progress
- * - Switching between course tabs
+ * Encapsulates all UI elements and interactions for the course detail view,
+ * including course information, enrollment status, sections, activities,
+ * and navigation. Used by E2E tests to interact with course pages in a
+ * maintainable and type-safe manner.
+ * 
+ * @example
+ * ```typescript
+ * const coursePage = new CoursePage(page);
+ * await coursePage.waitForCourse();
+ * const courseInfo = await coursePage.getCourseInfo();
+ * const isEnrolled = await coursePage.isEnrolled();
+ * if (!isEnrolled) {
+ *   await coursePage.clickEnroll();
+ * }
+ * const sections = await coursePage.getSections();
+ * await coursePage.clickActivity('123', 'assignment');
+ * ```
  */
 export class CoursePage {
-  /** Playwright page instance */
   private readonly page: Page;
-
-  // Locators for course page elements
+  
+  // Primary course information locators
   private readonly courseTitle: Locator;
   private readonly courseDescription: Locator;
   private readonly enrollButton: Locator;
@@ -87,250 +88,289 @@ export class CoursePage {
   /**
    * Creates a new CoursePage instance
    * 
-   * @param page - Playwright Page object
+   * @param page - Playwright Page object for browser interactions
    */
   constructor(page: Page) {
     this.page = page;
-
-    // Initialize locators with semantic selectors
-    this.courseTitle = page.locator('[data-testid="course-title"], h1.course-title, .course-header h1');
-    this.courseDescription = page.locator('[data-testid="course-description"], .course-description, .course-summary');
-    this.enrollButton = page.locator('[data-testid="enroll-button"], button:has-text("Enroll"), a:has-text("Enroll")');
-    this.courseImage = page.locator('[data-testid="course-image"], .course-image img, .course-header img');
-    this.sectionList = page.locator('[data-testid="course-sections"], .course-sections, .course-content');
-    this.activityList = page.locator('[data-testid="activity-list"], .activity-list, .section-activities');
-    this.courseProgress = page.locator('[data-testid="course-progress"], .course-progress, .progress-bar');
-    this.unenrollButton = page.locator('[data-testid="unenroll-button"], button:has-text("Unenroll"), a:has-text("Unenroll")');
-    this.courseTabs = page.locator('[data-testid="course-tabs"], .course-tabs, [role="tablist"]');
+    
+    // Initialize locators using Playwright's recommended selectors
+    // Using data-testid attributes for reliable element identification
+    this.courseTitle = page.locator('[data-testid="course-title"]');
+    this.courseDescription = page.locator('[data-testid="course-description"]');
+    this.enrollButton = page.locator('[data-testid="enroll-button"]');
+    this.courseImage = page.locator('[data-testid="course-image"]');
+    this.sectionList = page.locator('[data-testid="course-sections"]');
+    this.activityList = page.locator('[data-testid="activity-list"]');
+    this.courseProgress = page.locator('[data-testid="course-progress"]');
+    this.unenrollButton = page.locator('[data-testid="unenroll-button"]');
+    this.courseTabs = page.locator('[data-testid="course-tabs"]');
   }
 
   /**
-   * Wait for the course page to fully load
+   * Waits for the course page to fully load
    * 
-   * Waits for the course title and main content to be visible,
-   * ensuring the page is ready for interaction.
+   * Ensures that critical course elements are visible and interactive
+   * before proceeding with test actions. Uses Playwright's automatic
+   * waiting mechanisms with a reasonable timeout.
    * 
-   * @param timeout - Maximum wait time in milliseconds (default: 30000)
-   * @throws Error if course page doesn't load within timeout
+   * @throws {Error} If the course page does not load within timeout
    */
-  async waitForCourse(timeout: number = 30000): Promise<void> {
-    try {
-      await this.courseTitle.waitFor({ state: 'visible', timeout });
-      await this.sectionList.waitFor({ state: 'visible', timeout });
-    } catch (error) {
-      throw new Error(`Course page failed to load within ${timeout}ms: ${error}`);
-    }
+  async waitForCourse(): Promise<void> {
+    // Wait for the course title to be visible as primary indicator of page load
+    await this.courseTitle.waitFor({ state: 'visible', timeout: 10000 });
+    
+    // Wait for course sections container to ensure content is loaded
+    await this.sectionList.waitFor({ state: 'visible', timeout: 10000 });
+    
+    // Additional wait for network idle to ensure all async data is loaded
+    await this.page.waitForLoadState('networkidle', { timeout: 15000 });
   }
 
   /**
-   * Extract course information from the page
+   * Extracts and returns comprehensive course information
    * 
-   * Retrieves the course title, description, instructor name,
-   * enrollment status, progress, and image URL.
+   * Retrieves all visible course details including title, description,
+   * instructor information, enrollment status, and progress metrics.
    * 
-   * @returns Promise resolving to CourseInfo object
-   * @throws Error if required course information is not found
+   * @returns Promise resolving to CourseInfo object with course details
+   * @throws {Error} If required elements are not found or data cannot be extracted
    */
   async getCourseInfo(): Promise<CourseInfo> {
+    // Extract course title
+    const title = await this.courseTitle.textContent() || '';
+    
+    // Extract course description
+    const description = await this.courseDescription.textContent() || '';
+    
+    // Extract instructor name from instructor element
+    const instructorElement = this.page.locator('[data-testid="course-instructor"]');
+    const instructor = await instructorElement.textContent() || 'Unknown';
+    
+    // Determine enrollment status by checking for enrolled badge or unenroll button
+    const enrollmentStatus = await this.isEnrolled();
+    
+    // Extract progress if available
+    let progress: number | undefined;
     try {
-      const title = await this.courseTitle.textContent() || '';
-      const description = await this.courseDescription.textContent() || '';
-      
-      // Extract instructor from course metadata
-      const instructorLocator = this.page.locator('[data-testid="course-instructor"], .course-instructor, .instructor-name');
-      const instructor = await instructorLocator.textContent() || 'Unknown';
-      
-      // Check enrollment status
-      const enrollmentStatus = await this.isEnrolled();
-      
-      // Extract progress if available
-      let progress: number | undefined;
-      if (await this.courseProgress.isVisible()) {
-        const progressText = await this.courseProgress.getAttribute('aria-valuenow') || 
-                           await this.courseProgress.getAttribute('data-progress') ||
-                           await this.courseProgress.textContent() || '0';
-        progress = parseInt(progressText.replace(/[^0-9]/g, ''), 10);
+      const progressText = await this.courseProgress.getAttribute('aria-valuenow');
+      if (progressText) {
+        progress = parseInt(progressText, 10);
       }
-      
-      // Extract image URL if available
-      let imageUrl: string | undefined;
-      if (await this.courseImage.isVisible()) {
-        imageUrl = await this.courseImage.getAttribute('src') || undefined;
-      }
-
-      return {
-        title: title.trim(),
-        description: description.trim(),
-        instructor: instructor.trim(),
-        enrollmentStatus,
-        progress,
-        imageUrl,
-      };
-    } catch (error) {
-      throw new Error(`Failed to extract course information: ${error}`);
+    } catch {
+      // Progress not available for this course or user
+      progress = undefined;
     }
+    
+    // Extract course image URL if available
+    let imageUrl: string | undefined;
+    try {
+      imageUrl = await this.courseImage.getAttribute('src') || undefined;
+    } catch {
+      // Course image not available
+      imageUrl = undefined;
+    }
+    
+    return {
+      title: title.trim(),
+      description: description.trim(),
+      instructor: instructor.trim(),
+      enrollmentStatus,
+      progress,
+      imageUrl,
+    };
   }
 
   /**
-   * Check if the user is enrolled in the course
+   * Checks whether the current user is enrolled in the course
    * 
-   * Determines enrollment status by checking for enrollment badge,
-   * the presence of an unenroll button, or absence of enroll button.
+   * Determines enrollment status by checking for the presence of
+   * enrollment indicators (enrolled badge, unenroll button) or
+   * absence of enroll button.
    * 
-   * @returns Promise resolving to true if enrolled, false otherwise
+   * @returns Promise resolving to true if user is enrolled, false otherwise
    */
   async isEnrolled(): Promise<boolean> {
-    try {
-      // Check for enrollment badge
-      const enrolledBadge = this.page.locator('[data-testid="enrolled-badge"], .enrolled-badge, .enrollment-status:has-text("Enrolled")');
-      if (await enrolledBadge.isVisible()) {
-        return true;
-      }
-
-      // Check if unenroll button is visible (indicates enrollment)
-      if (await this.unenrollButton.isVisible({ timeout: 1000 }).catch(() => false)) {
-        return true;
-      }
-
-      // Check if enroll button is NOT visible (might indicate enrollment)
-      const enrollVisible = await this.enrollButton.isVisible({ timeout: 1000 }).catch(() => false);
-      
-      // If enroll button is not visible and we're on the course page, likely enrolled
-      return !enrollVisible;
-    } catch (error) {
-      // Default to false if unable to determine enrollment status
-      return false;
+    // Check if enrolled badge is visible
+    const enrolledBadge = this.page.locator('[data-testid="enrolled-badge"]');
+    const badgeVisible = await enrolledBadge.isVisible().catch(() => false);
+    
+    if (badgeVisible) {
+      return true;
     }
+    
+    // Check if unenroll button is visible (indicates enrollment)
+    const unenrollVisible = await this.unenrollButton.isVisible().catch(() => false);
+    
+    if (unenrollVisible) {
+      return true;
+    }
+    
+    // Check if enroll button is NOT visible (may indicate already enrolled)
+    const enrollVisible = await this.enrollButton.isVisible().catch(() => false);
+    
+    // If enroll button is not visible, user might be enrolled
+    // Return true only if we found positive enrollment indicators
+    return badgeVisible || unenrollVisible;
   }
 
   /**
-   * Click the enroll button to enroll in the course
+   * Clicks the enrollment button to enroll in the course
    * 
-   * Waits for the enroll button to be visible and clickable,
-   * then performs the click action.
+   * Initiates the enrollment process by clicking the enroll button
+   * and waits for the enrollment action to complete. This may trigger
+   * a confirmation dialog or redirect to enrollment options.
    * 
-   * @throws Error if enroll button is not found or not clickable
+   * @throws {Error} If enroll button is not visible or clickable
    */
   async clickEnroll(): Promise<void> {
-    try {
-      await this.enrollButton.waitFor({ state: 'visible', timeout: 5000 });
-      await this.enrollButton.click();
-      
-      // Wait for enrollment to complete (button should disappear or change)
-      await this.page.waitForTimeout(1000);
-    } catch (error) {
-      throw new Error(`Failed to click enroll button: ${error}`);
-    }
+    // Ensure the enroll button is visible and enabled
+    await this.enrollButton.waitFor({ state: 'visible', timeout: 5000 });
+    
+    // Click the enroll button
+    await this.enrollButton.click();
+    
+    // Wait for enrollment to process (may show confirmation or redirect)
+    await this.page.waitForLoadState('networkidle', { timeout: 10000 });
+    
+    // Wait a brief moment for UI updates
+    await this.page.waitForTimeout(1000);
   }
 
   /**
-   * Navigate to unenrollment flow
+   * Navigates to the unenrollment interface
    * 
    * Clicks the unenroll button to begin the unenrollment process.
+   * This typically opens a confirmation dialog or navigates to
+   * an unenrollment page.
    * 
-   * @throws Error if unenroll button is not found or not clickable
+   * @throws {Error} If unenroll button is not visible (user not enrolled)
    */
   async clickUnenroll(): Promise<void> {
-    try {
-      await this.unenrollButton.waitFor({ state: 'visible', timeout: 5000 });
-      await this.unenrollButton.click();
-      
-      // Wait for navigation or modal to appear
-      await this.page.waitForTimeout(1000);
-    } catch (error) {
-      throw new Error(`Failed to click unenroll button: ${error}`);
-    }
+    // Ensure the unenroll button is visible
+    await this.unenrollButton.waitFor({ state: 'visible', timeout: 5000 });
+    
+    // Click the unenroll button
+    await this.unenrollButton.click();
+    
+    // Wait for navigation or modal to appear
+    await this.page.waitForLoadState('networkidle', { timeout: 10000 });
   }
 
   /**
-   * Get list of course sections
+   * Retrieves all course sections with their activities
    * 
-   * Retrieves all visible course sections with their metadata
-   * including section names, activities, and expansion state.
+   * Extracts a structured list of all course sections, including
+   * section metadata and nested activity information. Useful for
+   * verifying course structure and navigating to specific sections.
    * 
    * @returns Promise resolving to array of CourseSection objects
    */
   async getSections(): Promise<CourseSection[]> {
-    try {
-      const sections: CourseSection[] = [];
+    const sections: CourseSection[] = [];
+    
+    // Find all section elements
+    const sectionElements = await this.sectionList.locator('[data-testid^="section-"]').all();
+    
+    for (const sectionElement of sectionElements) {
+      // Extract section number from data attribute
+      const sectionNumberStr = await sectionElement.getAttribute('data-section-number');
+      const sectionNumber = sectionNumberStr ? parseInt(sectionNumberStr, 10) : 0;
       
-      // Find all section elements
-      const sectionElements = await this.page.locator('[data-testid="course-section"], .course-section, .section').all();
+      // Extract section name
+      const sectionNameElement = sectionElement.locator('[data-testid="section-name"]');
+      const sectionName = await sectionNameElement.textContent() || `Section ${sectionNumber}`;
       
-      for (let i = 0; i < sectionElements.length; i++) {
-        const sectionElement = sectionElements[i];
+      // Check if section is expanded
+      const expandedAttr = await sectionElement.getAttribute('data-expanded');
+      const isExpanded = expandedAttr === 'true';
+      
+      // Extract activities within this section
+      const activityElements = await sectionElement.locator('[data-testid^="activity-"]').all();
+      const activities: CourseActivity[] = [];
+      
+      for (const activityElement of activityElements) {
+        const activityId = await activityElement.getAttribute('data-activity-id') || '';
+        const activityType = await activityElement.getAttribute('data-activity-type') || '';
+        const nameElement = activityElement.locator('[data-testid="activity-name"]');
+        const name = await nameElement.textContent() || '';
         
-        // Extract section number
-        const sectionNumberAttr = await sectionElement.getAttribute('data-section-number') || 
-                                  await sectionElement.getAttribute('data-section') || 
-                                  String(i);
-        const sectionNumber = parseInt(sectionNumberAttr, 10);
+        // Check if activity is completed
+        const completedAttr = await activityElement.getAttribute('data-completed');
+        const completed = completedAttr === 'true';
         
-        // Extract section name
-        const sectionNameLocator = sectionElement.locator('.section-title, .section-name, h3, h2').first();
-        const sectionName = await sectionNameLocator.textContent() || `Section ${sectionNumber}`;
-        
-        // Check if section is expanded
-        const isExpanded = await sectionElement.getAttribute('data-expanded') === 'true' ||
-                          await sectionElement.getAttribute('aria-expanded') === 'true' ||
-                          !await sectionElement.locator('.section-content').isHidden();
-        
-        // Get activities in this section
-        const activities = await this.getActivitiesInSection(sectionElement);
-        
-        sections.push({
-          sectionNumber,
-          sectionName: sectionName.trim(),
-          activities,
-          isExpanded,
+        activities.push({
+          activityId,
+          activityType,
+          name: name.trim(),
+          completed,
         });
       }
       
-      return sections;
-    } catch (error) {
-      throw new Error(`Failed to retrieve course sections: ${error}`);
+      sections.push({
+        sectionNumber,
+        sectionName: sectionName.trim(),
+        activities,
+        isExpanded,
+      });
     }
+    
+    return sections;
   }
 
   /**
-   * Get activities within a specific section element
+   * Retrieves all activities across all course sections
    * 
-   * @param sectionElement - Locator for the section element
+   * Provides a flattened list of all activities in the course,
+   * regardless of section organization. Useful for searching
+   * specific activities or verifying activity presence.
+   * 
    * @returns Promise resolving to array of CourseActivity objects
-   * @private
    */
-  private async getActivitiesInSection(sectionElement: Locator): Promise<CourseActivity[]> {
+  async getActivities(): Promise<CourseActivity[]> {
     const activities: CourseActivity[] = [];
     
-    const activityElements = await sectionElement.locator('[data-testid="activity"], .activity, .activity-item').all();
+    // Find all activity elements across all sections
+    const activityElements = await this.activityList.locator('[data-testid^="activity-"]').all();
     
     for (const activityElement of activityElements) {
-      const activityId = await activityElement.getAttribute('data-activity-id') || 
-                        await activityElement.getAttribute('data-id') || 
-                        '';
-      
-      const activityType = await activityElement.getAttribute('data-activity-type') ||
-                          await activityElement.getAttribute('data-type') ||
-                          'unknown';
-      
-      const nameLocator = activityElement.locator('.activity-name, .activity-title, a').first();
-      const name = await nameLocator.textContent() || 'Unnamed Activity';
+      const activityId = await activityElement.getAttribute('data-activity-id') || '';
+      const activityType = await activityElement.getAttribute('data-activity-type') || '';
+      const nameElement = activityElement.locator('[data-testid="activity-name"]');
+      const name = await nameElement.textContent() || '';
       
       // Check completion status
-      const completed = await activityElement.getAttribute('data-completed') === 'true' ||
-                       await activityElement.locator('.completion-icon.completed').isVisible().catch(() => false);
+      const completedAttr = await activityElement.getAttribute('data-completed');
+      const completed = completedAttr === 'true';
       
       // Extract availability dates if present
-      const availableFromAttr = await activityElement.getAttribute('data-available-from');
-      const availableUntilAttr = await activityElement.getAttribute('data-available-until');
+      let availableFrom: Date | undefined;
+      let availableUntil: Date | undefined;
+      
+      try {
+        const availableFromStr = await activityElement.getAttribute('data-available-from');
+        if (availableFromStr) {
+          availableFrom = new Date(availableFromStr);
+        }
+      } catch {
+        availableFrom = undefined;
+      }
+      
+      try {
+        const availableUntilStr = await activityElement.getAttribute('data-available-until');
+        if (availableUntilStr) {
+          availableUntil = new Date(availableUntilStr);
+        }
+      } catch {
+        availableUntil = undefined;
+      }
       
       activities.push({
         activityId,
         activityType,
         name: name.trim(),
         completed,
-        availableFrom: availableFromAttr ? new Date(availableFromAttr) : undefined,
-        availableUntil: availableUntilAttr ? new Date(availableUntilAttr) : undefined,
+        availableFrom,
+        availableUntil,
       });
     }
     
@@ -338,198 +378,193 @@ export class CoursePage {
   }
 
   /**
-   * Get all activities across all course sections
+   * Clicks on a specific activity to navigate to its detail page
    * 
-   * @returns Promise resolving to flat array of all CourseActivity objects
-   */
-  async getActivities(): Promise<CourseActivity[]> {
-    try {
-      const sections = await this.getSections();
-      const allActivities: CourseActivity[] = [];
-      
-      for (const section of sections) {
-        allActivities.push(...section.activities);
-      }
-      
-      return allActivities;
-    } catch (error) {
-      throw new Error(`Failed to retrieve course activities: ${error}`);
-    }
-  }
-
-  /**
-   * Click on a specific activity to navigate to it
+   * Locates the activity by ID and type, then clicks it to navigate
+   * to the activity detail page (e.g., assignment view, quiz page).
+   * Waits for navigation to complete before returning.
    * 
    * @param activityId - Unique identifier of the activity
    * @param activityType - Type of activity (e.g., 'assignment', 'quiz')
-   * @throws Error if activity is not found
+   * @throws {Error} If activity is not found or not clickable
    */
   async clickActivity(activityId: string, activityType: string): Promise<void> {
-    try {
-      // Try multiple selector strategies
-      const activityLocator = this.page.locator(
-        `[data-activity-id="${activityId}"], ` +
-        `[data-id="${activityId}"], ` +
-        `[data-activity-id="${activityId}"][data-activity-type="${activityType}"]`
-      ).first();
-      
-      await activityLocator.waitFor({ state: 'visible', timeout: 5000 });
-      
-      // Click the activity link within the element
-      const linkLocator = activityLocator.locator('a').first();
-      await linkLocator.click();
-      
-      // Wait for navigation
-      await this.page.waitForLoadState('domcontentloaded');
-    } catch (error) {
-      throw new Error(`Failed to click activity ${activityId} (${activityType}): ${error}`);
-    }
+    // Construct specific locator for the activity
+    const activityLocator = this.page.locator(
+      `[data-testid="activity-${activityId}"][data-activity-type="${activityType}"]`
+    );
+    
+    // Ensure activity is visible
+    await activityLocator.waitFor({ state: 'visible', timeout: 5000 });
+    
+    // Click the activity
+    await activityLocator.click();
+    
+    // Wait for navigation to activity page
+    await this.page.waitForLoadState('networkidle', { timeout: 10000 });
   }
 
   /**
-   * Expand a course section to show its contents
+   * Expands a collapsed course section to show its activities
    * 
-   * @param sectionNumber - Number of the section to expand
-   * @throws Error if section is not found
+   * Locates the section by number and expands it if currently collapsed.
+   * Waits for the expansion animation to complete and activities to
+   * become visible.
+   * 
+   * @param sectionNumber - Section number to expand (0 for general section)
+   * @throws {Error} If section is not found
    */
   async expandSection(sectionNumber: number): Promise<void> {
-    try {
-      const sectionLocator = this.page.locator(
-        `[data-section-number="${sectionNumber}"], ` +
-        `[data-section="${sectionNumber}"]`
-      ).first();
+    // Locate the section by number
+    const sectionLocator = this.page.locator(`[data-testid="section-${sectionNumber}"]`);
+    
+    // Check if section is already expanded
+    const expandedAttr = await sectionLocator.getAttribute('data-expanded');
+    const isExpanded = expandedAttr === 'true';
+    
+    if (!isExpanded) {
+      // Find and click the expand button/toggle
+      const expandButton = sectionLocator.locator('[data-testid="section-toggle"]');
+      await expandButton.waitFor({ state: 'visible', timeout: 5000 });
+      await expandButton.click();
       
+      // Wait for expansion animation
+      await this.page.waitForTimeout(500);
+      
+      // Verify section is now expanded
       await sectionLocator.waitFor({ state: 'visible', timeout: 5000 });
-      
-      // Check if already expanded
-      const isExpanded = await sectionLocator.getAttribute('data-expanded') === 'true' ||
-                        await sectionLocator.getAttribute('aria-expanded') === 'true';
-      
-      if (!isExpanded) {
-        // Click the section header or expand button
-        const expandButton = sectionLocator.locator('.section-toggle, .expand-button, .section-title').first();
-        await expandButton.click();
-        
-        // Wait for expansion animation
-        await this.page.waitForTimeout(300);
-      }
-    } catch (error) {
-      throw new Error(`Failed to expand section ${sectionNumber}: ${error}`);
     }
   }
 
   /**
-   * Collapse a course section to hide its contents
+   * Collapses an expanded course section to hide its activities
    * 
-   * @param sectionNumber - Number of the section to collapse
-   * @throws Error if section is not found
+   * Locates the section by number and collapses it if currently expanded.
+   * Waits for the collapse animation to complete.
+   * 
+   * @param sectionNumber - Section number to collapse
+   * @throws {Error} If section is not found
    */
   async collapseSection(sectionNumber: number): Promise<void> {
-    try {
-      const sectionLocator = this.page.locator(
-        `[data-section-number="${sectionNumber}"], ` +
-        `[data-section="${sectionNumber}"]`
-      ).first();
+    // Locate the section by number
+    const sectionLocator = this.page.locator(`[data-testid="section-${sectionNumber}"]`);
+    
+    // Check if section is already collapsed
+    const expandedAttr = await sectionLocator.getAttribute('data-expanded');
+    const isExpanded = expandedAttr === 'true';
+    
+    if (isExpanded) {
+      // Find and click the collapse button/toggle
+      const collapseButton = sectionLocator.locator('[data-testid="section-toggle"]');
+      await collapseButton.waitFor({ state: 'visible', timeout: 5000 });
+      await collapseButton.click();
       
-      await sectionLocator.waitFor({ state: 'visible', timeout: 5000 });
-      
-      // Check if already collapsed
-      const isExpanded = await sectionLocator.getAttribute('data-expanded') === 'true' ||
-                        await sectionLocator.getAttribute('aria-expanded') === 'true';
-      
-      if (isExpanded) {
-        // Click the section header or collapse button
-        const collapseButton = sectionLocator.locator('.section-toggle, .collapse-button, .section-title').first();
-        await collapseButton.click();
-        
-        // Wait for collapse animation
-        await this.page.waitForTimeout(300);
-      }
-    } catch (error) {
-      throw new Error(`Failed to collapse section ${sectionNumber}: ${error}`);
+      // Wait for collapse animation
+      await this.page.waitForTimeout(500);
     }
   }
 
   /**
-   * Get the course completion progress percentage
+   * Retrieves the user's course completion progress percentage
    * 
-   * @returns Promise resolving to progress percentage (0-100), or null if not available
+   * Extracts the completion percentage from the progress indicator.
+   * Returns undefined if progress tracking is not enabled for the course
+   * or the user.
+   * 
+   * @returns Promise resolving to progress percentage (0-100) or undefined
    */
-  async getCourseProgress(): Promise<number | null> {
+  async getCourseProgress(): Promise<number | undefined> {
     try {
-      if (!await this.courseProgress.isVisible({ timeout: 2000 }).catch(() => false)) {
-        return null;
+      // Check if progress element is visible
+      const progressVisible = await this.courseProgress.isVisible();
+      
+      if (!progressVisible) {
+        return undefined;
       }
       
-      // Try multiple methods to extract progress
-      const progressValue = await this.courseProgress.getAttribute('aria-valuenow') ||
-                           await this.courseProgress.getAttribute('data-progress') ||
-                           await this.courseProgress.getAttribute('value');
+      // Extract progress value from ARIA attribute
+      const progressValue = await this.courseProgress.getAttribute('aria-valuenow');
       
       if (progressValue) {
-        return parseInt(progressValue, 10);
+        const progress = parseInt(progressValue, 10);
+        // Validate progress is within expected range
+        return isNaN(progress) ? undefined : Math.max(0, Math.min(100, progress));
       }
       
-      // Try to extract from text content
-      const progressText = await this.courseProgress.textContent() || '0';
-      const matches = progressText.match(/(\d+)%?/);
-      if (matches && matches[1]) {
-        return parseInt(matches[1], 10);
-      }
-      
-      return null;
-    } catch (error) {
-      return null;
+      return undefined;
+    } catch {
+      // Progress not available
+      return undefined;
     }
   }
 
   /**
-   * Verify that the enrollment badge is displayed
+   * Verifies that the enrollment badge is displayed correctly
    * 
-   * Checks for the presence and visibility of an enrollment status indicator.
+   * Checks for the presence and visibility of the enrollment badge,
+   * which indicates the user's enrollment status in the course.
+   * Useful for post-enrollment verification in tests.
    * 
-   * @returns Promise resolving to true if enrollment badge is visible
+   * @returns Promise resolving to true if badge is visible, false otherwise
    */
   async verifyEnrollmentBadge(): Promise<boolean> {
     try {
-      const enrolledBadge = this.page.locator(
-        '[data-testid="enrolled-badge"], ' +
-        '.enrolled-badge, ' +
-        '.enrollment-status:has-text("Enrolled"), ' +
-        '[aria-label*="Enrolled"]'
-      );
+      const enrolledBadge = this.page.locator('[data-testid="enrolled-badge"]');
+      const isVisible = await enrolledBadge.isVisible({ timeout: 5000 });
       
-      return await enrolledBadge.isVisible({ timeout: 3000 }).catch(() => false);
-    } catch (error) {
+      if (isVisible) {
+        // Verify badge text contains enrollment indicator
+        const badgeText = await enrolledBadge.textContent();
+        return badgeText?.toLowerCase().includes('enrolled') || false;
+      }
+      
+      return false;
+    } catch {
       return false;
     }
   }
 
   /**
-   * Switch to a different tab in the course interface
+   * Switches between different course tabs (e.g., Content, Participants, Grades)
    * 
-   * @param tabName - Name of the tab to switch to (e.g., 'Overview', 'Participants', 'Grades')
-   * @throws Error if tab is not found
+   * Navigates to different course views by clicking the specified tab.
+   * Waits for the tab content to load before returning.
+   * 
+   * @param tabName - Name of the tab to switch to (e.g., 'Content', 'Participants', 'Grades')
+   * @throws {Error} If tab is not found or not clickable
    */
   async switchTab(tabName: string): Promise<void> {
-    try {
-      await this.courseTabs.waitFor({ state: 'visible', timeout: 5000 });
-      
-      // Find the tab by text or aria-label
-      const tabLocator = this.courseTabs.locator(
-        `button:has-text("${tabName}"), ` +
-        `a:has-text("${tabName}"), ` +
-        `[role="tab"]:has-text("${tabName}"), ` +
-        `[aria-label="${tabName}"]`
-      ).first();
-      
-      await tabLocator.waitFor({ state: 'visible', timeout: 3000 });
-      await tabLocator.click();
+    // Locate the tab by its accessible name
+    const tabLocator = this.courseTabs.locator(`[role="tab"][aria-label="${tabName}"]`);
+    
+    // Alternative: locate by text content if aria-label not available
+    const tabByText = this.courseTabs.locator(`[role="tab"]:has-text("${tabName}")`);
+    
+    // Try to find tab by aria-label first, fall back to text
+    let targetTab: Locator;
+    const hasAriaLabel = await tabLocator.count() > 0;
+    
+    if (hasAriaLabel) {
+      targetTab = tabLocator;
+    } else {
+      targetTab = tabByText;
+    }
+    
+    // Ensure tab is visible
+    await targetTab.waitFor({ state: 'visible', timeout: 5000 });
+    
+    // Check if tab is already selected
+    const isSelected = await targetTab.getAttribute('aria-selected');
+    
+    if (isSelected !== 'true') {
+      // Click the tab to switch
+      await targetTab.click();
       
       // Wait for tab content to load
+      await this.page.waitForLoadState('networkidle', { timeout: 10000 });
+      
+      // Additional wait for content rendering
       await this.page.waitForTimeout(500);
-    } catch (error) {
-      throw new Error(`Failed to switch to tab "${tabName}": ${error}`);
     }
   }
 }
