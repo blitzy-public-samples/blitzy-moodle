@@ -39,9 +39,35 @@ Object.assign(navigator, {
   },
 });
 
+// Mock matchMedia for responsive tests
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: vi.fn().mockImplementation((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
+});
+
 describe('PostCard Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Reset matchMedia mock before each test
+    (window.matchMedia as any) = vi.fn().mockImplementation((query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
   });
 
   const createMockPost = (overrides?: Partial<ForumPost>): ForumPost => ({
@@ -136,7 +162,9 @@ describe('PostCard Component', () => {
       });
       render(<PostCard post={post} {...mockHandlers} />);
       
-      expect(screen.getByText(/teacher/i)).toBeInTheDocument();
+      const roleBadge = screen.getByTestId('role-badge');
+      expect(roleBadge).toBeInTheDocument();
+      expect(roleBadge).toHaveTextContent('teacher');
     });
 
     it('should render moderator badge', () => {
@@ -170,7 +198,9 @@ describe('PostCard Component', () => {
       });
       render(<PostCard post={post} {...mockHandlers} />);
       
-      expect(screen.getByText(/student/i)).toBeInTheDocument();
+      const roleBadge = screen.getByTestId('role-badge');
+      expect(roleBadge).toBeInTheDocument();
+      expect(roleBadge).toHaveTextContent('student');
     });
   });
 
@@ -948,9 +978,17 @@ describe('PostCard Component', () => {
 
   describe('Responsive Layout', () => {
     it('should render in mobile layout for small screens', () => {
-      // Mock small screen size
-      global.innerWidth = 375;
-      global.dispatchEvent(new Event('resize'));
+      // Mock small screen - matches will be true for down('md')
+      (window.matchMedia as any) = vi.fn().mockImplementation((query: string) => ({
+        matches: query.includes('max-width'), // Match mobile breakpoint
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }));
       
       const post = createMockPost();
       render(<PostCard post={post} {...mockHandlers} />);
@@ -960,9 +998,17 @@ describe('PostCard Component', () => {
     });
 
     it('should render in desktop layout for large screens', () => {
-      // Mock large screen size
-      global.innerWidth = 1920;
-      global.dispatchEvent(new Event('resize'));
+      // Mock large screen - matches will be false for down('md')
+      (window.matchMedia as any) = vi.fn().mockImplementation((query: string) => ({
+        matches: false, // Don't match mobile breakpoint
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }));
       
       const post = createMockPost();
       render(<PostCard post={post} {...mockHandlers} />);
@@ -972,8 +1018,17 @@ describe('PostCard Component', () => {
     });
 
     it('should stack action buttons vertically on mobile', () => {
-      global.innerWidth = 375;
-      global.dispatchEvent(new Event('resize'));
+      // Mock mobile screen
+      (window.matchMedia as any) = vi.fn().mockImplementation((query: string) => ({
+        matches: query.includes('max-width'),
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }));
       
       const post = createMockPost({ canReply: true, canEdit: true });
       render(<PostCard post={post} {...mockHandlers} />);
@@ -983,8 +1038,17 @@ describe('PostCard Component', () => {
     });
 
     it('should display action buttons horizontally on desktop', () => {
-      global.innerWidth = 1920;
-      global.dispatchEvent(new Event('resize'));
+      // Mock desktop screen
+      (window.matchMedia as any) = vi.fn().mockImplementation((query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }));
       
       const post = createMockPost({ canReply: true, canEdit: true });
       render(<PostCard post={post} {...mockHandlers} />);

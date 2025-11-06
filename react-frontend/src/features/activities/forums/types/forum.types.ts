@@ -625,6 +625,123 @@ export interface SubscriptionToggleProps {
 // ============================================================================
 
 /**
+ * User role in forum context
+ * Used for displaying role badges on posts
+ */
+export type UserRole = 'student' | 'teacher' | 'moderator';
+
+/**
+ * Post attachment entity
+ * Represents a file attached to a forum post
+ */
+export interface PostAttachment {
+  /** Attachment ID */
+  id: number;
+  /** Original filename */
+  filename: string;
+  /** File size in bytes */
+  filesize: number;
+  /** MIME type of the file */
+  mimetype: string;
+  /** URL to download the file */
+  fileurl: string;
+  /** Timestamp when file was last modified */
+  timemodified: Date;
+}
+
+/**
+ * Author information for PostCard component
+ * Simplified author structure with camelCase properties
+ */
+export interface PostAuthor {
+  /** User ID */
+  id: number;
+  /** First name */
+  firstName: string;
+  /** Last name */
+  lastName: string;
+  /** Full display name */
+  fullName: string;
+  /** Profile image URL */
+  profileImageUrl: string;
+  /** Profile page URL */
+  profileUrl: string;
+  /** User role (optional) */
+  role?: UserRole;
+}
+
+/**
+ * Forum post entity for PostCard component
+ * Extended post structure with all display and permission data
+ */
+export interface ForumPost {
+  /** Post ID */
+  id: number;
+  /** Discussion ID this post belongs to */
+  discussionId: number;
+  /** Parent post ID for nested replies (null for top-level posts) */
+  parentId: number | null;
+  /** Post subject/title */
+  subject: string;
+  /** Post message content (HTML) */
+  message: string;
+  /** Message format (1=HTML, 2=plain, etc.) */
+  messageFormat: number;
+  /** Post author information */
+  author: PostAuthor;
+  /** Timestamp when post was created */
+  created: Date;
+  /** Timestamp when post was last modified (null if never edited) */
+  modified: Date | null;
+  /** User who last edited the post (null if never edited) */
+  editedBy: PostAuthor | null;
+  /** Whether the post has been deleted */
+  deleted: boolean;
+  /** User who deleted the post (null if not deleted) */
+  deletedBy: PostAuthor | null;
+  /** Timestamp when post was deleted (null if not deleted) */
+  deletedAt: Date | null;
+  /** List of file attachments */
+  attachments: PostAttachment[];
+  /** Whether post has inline files/images */
+  hasInlineFiles: boolean;
+  /** Word count of the message */
+  wordCount: number;
+  /** Character count of the message */
+  charCount: number;
+  /** Whether current user can edit this post */
+  canEdit: boolean;
+  /** Whether current user can delete this post */
+  canDelete: boolean;
+  /** Whether current user can reply to this post */
+  canReply: boolean;
+  /** Whether current user can split this post */
+  canSplit: boolean;
+  /** Whether current user can export this post */
+  canExport: boolean;
+  /** Whether current user can control read tracking */
+  canControlReadTracking: boolean;
+  /** Whether to send immediate email notification */
+  mailNow: boolean;
+  /** Whether post is unread by current user */
+  unread: boolean;
+  /** Average rating for the post (null if no ratings) */
+  rating: number | null;
+  /** Current user's rating (null if not rated) */
+  userRating: number | null;
+  /** Number of replies to this post */
+  replyCount: number;
+  /** Number of likes on this post */
+  likeCount: number;
+  /** Whether current user has liked this post */
+  userHasLiked: boolean;
+  /** Whether post is pending moderation approval */
+  isPending: boolean;
+  /** Whether post has been approved by moderator */
+  moderatorApproved: boolean;
+}
+
+/**
  * Forum list item for catalog/overview displays
  */
 export interface ForumListItem {
