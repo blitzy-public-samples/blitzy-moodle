@@ -37,6 +37,12 @@ export default defineConfig({
     // Use jsdom environment for DOM testing (simulates browser environment)
     environment: 'jsdom',
     
+    // Environment variables for tests
+    // Set absolute API base URL so MSW can intercept requests properly
+    env: {
+      VITE_API_BASE_URL: 'http://localhost:3000/api/v1'
+    },
+    
     // Setup file to run before each test file
     // Contains React Testing Library configuration and custom matchers
     setupFiles: './tests/setup.ts',

@@ -19,6 +19,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { 
   Post,
+  PostResponse,
   DiscussionPost,
   CreatePostData,
   UpdatePostData
@@ -141,10 +142,10 @@ function buildPostHierarchy(flatPosts: DiscussionPost[]): DiscussionPost[] {
  */
 export interface UseDiscussionOptions {
   retryCount?: number;
-  onCreateSuccess?: (data: { post: Post; message?: string }) => void;
+  onCreateSuccess?: (data: PostResponse) => void;
   onCreateError?: (error: Error) => void;
   onCreateSettled?: () => void;
-  onEditSuccess?: (data: { post: Post; message?: string }) => void;
+  onEditSuccess?: (data: PostResponse) => void;
   onEditError?: (error: Error) => void;
   onEditSettled?: () => void;
   onEditConflict?: (data: { post: Post; conflictData: any }) => void;
@@ -287,7 +288,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
       postData: CreatePostData; 
       parentId?: number;
     }) => {
-      return forumApi.createPost(discussionId, { ...postData, parentId });
+      return forumApi.createPost({ ...postData, discussionId, parentPostId: parentId });
     },
     onMutate: async ({ postData, parentId }) => {
       // Cancel outgoing refetches
@@ -371,7 +372,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
       postId: number;
       postData: UpdatePostData;
     }) => {
-      return forumApi.updatePost(postId, postData);
+      return forumApi.updatePost({ ...postData, postId });
     },
     onMutate: async ({ postId, postData }) => {
       await queryClient.cancelQueries({ queryKey: discussionKeys.detail(discussionId) });

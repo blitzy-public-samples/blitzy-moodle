@@ -300,6 +300,21 @@ export interface Post {
   wordcount: number;
   /** Character count in the message */
   charcount: number;
+  /** Whether the discussion is pinned (optional, only for first post) */
+  pinned?: boolean;
+  /** Whether the discussion is locked (optional, only for first post) */
+  locked?: boolean;
+  /** Tags associated with the post (optional) */
+  tags?: string[];
+}
+
+/**
+ * Post response from API mutations
+ * Represents the server response when creating or updating a post
+ */
+export interface PostResponse extends Post {
+  /** Discussion ID (for consistency with API responses) */
+  discussionId: number;
 }
 
 /**
@@ -430,14 +445,22 @@ export interface Rating {
 // ============================================================================
 
 /**
- * Data required to create a new post (reply)
- * Simplified API interface for post creation
+ * Data required to create a new post (reply) or discussion
+ * Unified API interface for post creation
  */
 export interface CreatePostData {
+  /** Forum ID where the post/discussion is being created */
+  forumId: number;
+  /** Discussion ID (for replies) - omit for new discussions */
+  discussionId?: number;
+  /** Parent post ID for nested replies (optional) */
+  parentPostId?: number;
+  /** Subject line (required for new discussions, omitted for replies) */
+  subject?: string;
   /** Post message content */
   message: string;
-  /** Parent post ID for nested replies (optional) */
-  parentId?: number;
+  /** Whether to subscribe to discussion notifications */
+  subscribe?: boolean;
   /** File attachments (optional) */
   attachments?: File[];
 }
@@ -447,6 +470,10 @@ export interface CreatePostData {
  * Simplified API interface for post updates
  */
 export interface UpdatePostData {
+  /** Post ID to update */
+  postId: number;
+  /** Updated subject (if applicable) */
+  subject?: string;
   /** Updated message content */
   message: string;
   /** New file attachments to add (optional) */

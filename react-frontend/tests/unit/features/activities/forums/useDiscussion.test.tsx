@@ -418,7 +418,11 @@ describe('useDiscussion Hook', () => {
       });
 
       await waitFor(() => {
-        expect(forumApi.createPost).toHaveBeenCalledWith(discussionId, { message: 'This is a new reply', parentId: parentPostId });
+        expect(forumApi.createPost).toHaveBeenCalledWith({ 
+          discussionId: discussionId, 
+          message: 'This is a new reply', 
+          parentPostId: parentPostId 
+        });
       });
     });
 
@@ -569,7 +573,10 @@ describe('useDiscussion Hook', () => {
       });
 
       await waitFor(() => {
-        expect(forumApi.updatePost).toHaveBeenCalledWith(postId, postData);
+        expect(forumApi.updatePost).toHaveBeenCalledWith({
+          postId: postId,
+          ...postData
+        });
         expect(onEditSuccess).toHaveBeenCalled();
       });
     });

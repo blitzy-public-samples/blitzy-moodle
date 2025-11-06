@@ -65,12 +65,11 @@ export interface DiscussionResponse {
 
 /**
  * Response data when creating or updating a post
+ * Extends Post with discussionId for consistency
  */
-export interface PostResponse {
-  /** Created or updated post */
-  post: Post;
-  /** Success message */
-  message: string;
+export interface PostResponse extends Post {
+  /** Discussion ID (for consistency with API responses) */
+  discussionId: number;
 }
 
 /**
@@ -308,25 +307,39 @@ export async function createDiscussion(
  * @returns Promise resolving to API response with created Post
  * @throws Error if validation fails or discussion is locked
  */
-export async function createPost(
-  discussionId: number,
-  data: CreatePostData
-): Promise<PostResponse> {
+export async function createPost(data: CreatePostData): Promise<PostResponse> {
   const formData = new FormData();
   formData.append('message', data.message);
   
-  if (data.parentId !== undefined) {
-    formData.append('parentId', String(data.parentId));
+  // Add subject for new discussions
+  if (data.subject !== undefined) {
+    formData.append('subject', data.subject);
   }
   
+  // Add parent post ID for nested replies
+  if (data.parentPostId !== undefined) {
+    formData.append('parentId', String(data.parentPostId));
+  }
+  
+  // Add subscription preference
+  if (data.subscribe !== undefined) {
+    formData.append('subscribe', data.subscribe ? '1' : '0');
+  }
+  
+  // Add file attachments
   if (data.attachments && data.attachments.length > 0) {
     data.attachments.forEach((file, index) => {
       formData.append(`attachments[${index}]`, file);
     });
   }
 
+  // Route to appropriate endpoint based on whether this is a new discussion or reply
+  const endpoint = data.discussionId
+    ? `/forums/discussions/${data.discussionId}/posts`
+    : `/forums/${data.forumId}/discussions`;
+
   const response = await apiClient.post<ApiResponse<PostResponse>>(
-    `/forums/discussions/${discussionId}/posts`,
+    endpoint,
     formData,
     {
       headers: {
@@ -346,17 +359,18 @@ export async function createPost(
  * Maps to PHP endpoint: PUT /api/v1/forums/posts/{id}
  * Wraps: forum_update_post() from lib.php
  *
- * @param postId - Post ID to update
- * @param data - Post update data (message, attachments to add/remove)
+ * @param data - Post update data (postId, message, subject, attachments to add/remove)
  * @returns Promise resolving to API response with updated Post
  * @throws Error if unauthorized, post not found, or concurrent edit detected (409)
  */
-export async function updatePost(
-  postId: number,
-  data: UpdatePostData
-): Promise<PostResponse> {
+export async function updatePost(data: UpdatePostData): Promise<PostResponse> {
   const formData = new FormData();
   formData.append('message', data.message);
+  
+  // Add subject if provided
+  if (data.subject !== undefined) {
+    formData.append('subject', data.subject);
+  }
   
   if (data.attachments && data.attachments.length > 0) {
     data.attachments.forEach((file, index) => {
@@ -369,7 +383,7 @@ export async function updatePost(
   }
 
   const response = await apiClient.put<ApiResponse<PostResponse>>(
-    `/forums/posts/${postId}`,
+    `/forums/posts/${data.postId}`,
     formData,
     {
       headers: {
