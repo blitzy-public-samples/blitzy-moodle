@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import DiscussionThread from '@/features/activities/forums/components/DiscussionThread';
-import type { Discussion, Post, User } from '@/types/entities';
+import type { Discussion, DiscussionPost, Author } from '@/features/activities/forums/types/forum.types';
 
 // Mock the useDiscussion hook
 const mockUseDiscussion = vi.fn();
@@ -12,7 +12,7 @@ vi.mock('@/features/activities/forums/hooks/useDiscussion', () => ({
   useDiscussion: () => mockUseDiscussion(),
 }));
 
-// Mock the PostCard component
+// Mock the PostCard component (default export)
 vi.mock('@/features/activities/forums/components/PostCard', () => ({
   default: ({ post, onReply, onEdit, onDelete, onReport, onQuote, isLocked, depth }: any) => (
     <div
@@ -23,18 +23,18 @@ vi.mock('@/features/activities/forums/components/PostCard', () => ({
     >
       <div data-testid="post-author">{post.author.fullName}</div>
       <div data-testid="post-content">{post.message}</div>
-      <div data-testid="post-timestamp">{post.createdAt}</div>
-      {!isLocked && (
+      <div data-testid="post-timestamp">{post.created?.toString()}</div>
+      {!isLocked && post.canReply && (
         <button onClick={() => onReply(post)} data-testid="reply-button">
           Reply
         </button>
       )}
-      {onEdit && (
+      {onEdit && post.canEdit && (
         <button onClick={() => onEdit(post)} data-testid="edit-button">
           Edit
         </button>
       )}
-      {onDelete && (
+      {onDelete && post.canDelete && (
         <button onClick={() => onDelete(post)} data-testid="delete-button">
           Delete
         </button>
@@ -59,53 +59,142 @@ vi.mock('@/features/auth/hooks/useAuth', () => ({
   useAuth: () => mockUseAuth(),
 }));
 
-// Helper function to create mock user
-const createMockUser = (overrides?: Partial<User>): User => ({
+// Helper function to create mock author
+const createMockAuthor = (overrides?: Partial<Author>): Author => ({
   id: 1,
-  username: 'testuser',
-  fullName: 'Test User',
+  pictureitemid: 0,
+  firstname: 'Test',
+  lastname: 'User',
+  fullname: 'Test User',
   email: 'test@example.com',
-  avatar: 'https://example.com/avatar.jpg',
-  roles: ['student'],
+  deleted: false,
   ...overrides,
 });
 
-// Helper function to create mock post
-const createMockPost = (overrides?: Partial<Post>): Post => ({
+// Helper function to create mock post (DiscussionPost)
+const createMockPost = (overrides?: Partial<DiscussionPost>): DiscussionPost => ({
   id: 1,
   discussionId: 1,
   parentId: null,
-  author: createMockUser(),
   subject: 'Test Post',
   message: 'This is a test post message',
-  createdAt: '2024-01-15T10:00:00Z',
-  modifiedAt: null,
+  userId: 1,
+  userName: 'Test User',
+  userPictureUrl: 'https://example.com/avatar.jpg',
+  created: Math.floor(Date.parse('2024-01-15T10:00:00Z') / 1000), // Unix timestamp in seconds
+  modified: 0,
+  version: 1,
   deleted: false,
-  unread: false,
+  hasAttachments: false,
   attachments: [],
-  children: [],
+  canEdit: true,
+  canDelete: true,
+  canReply: true,
+  unread: false,
+  replies: [],
   ...overrides,
 });
 
-// Helper function to create mock discussion
-const createMockDiscussion = (overrides?: Partial<Discussion>): Discussion => ({
-  id: 1,
-  forumId: 1,
-  name: 'Test Discussion',
-  firstPost: createMockPost({ id: 1, subject: 'Test Discussion' }),
-  author: createMockUser(),
-  createdAt: '2024-01-15T10:00:00Z',
-  modifiedAt: '2024-01-15T12:00:00Z',
-  pinned: false,
-  locked: false,
-  subscribed: false,
-  viewCount: 42,
-  replyCount: 5,
-  unreadCount: 2,
-  participants: 3,
-  posts: [],
-  ...overrides,
-});
+// Helper function to create mock DiscussionDetail (extended Discussion)
+const createMockDiscussion = (overrides?: Partial<Discussion & { author?: Author; created?: number; numViews?: number; numParticipants?: number; numReplies?: number; subscribed?: boolean; locked?: boolean }>): Discussion & { author: Author; created: number; numViews: number; numParticipants: number; numReplies: number; subscribed: boolean } => {
+  // Extract locked boolean if provided and remove it from overrides
+  const { locked, ...rest } = overrides || {};
+  
+  return {
+    id: 1,
+    forumid: 1,
+    name: 'Test Discussion',
+    firstpostid: 1,
+    userid: 1,
+    groupid: 0,
+    assessed: false,
+    timemodified: Math.floor(Date.parse('2024-01-15T12:00:00Z') / 1000), // Unix timestamp
+    usermodified: 1,
+    timestart: 0,
+    timeend: 0,
+    pinned: false,
+    timelocked: locked ? Math.floor(Date.now() / 1000) : 0, // If locked=true, set to current timestamp
+    // DiscussionDetail extended fields
+    author: createMockAuthor(),
+    created: Math.floor(Date.parse('2024-01-15T10:00:00Z') / 1000),
+    numViews: 42,
+    numParticipants: 3,
+    numReplies: 5,
+    subscribed: false,
+    ...rest,
+  };
+};
+
+/**
+ * Build nested post tree from flat array with parentId references
+ * The component expects posts to have their replies arrays populated
+ */
+const buildPostTree = (flatPosts: DiscussionPost[]): DiscussionPost[] => {
+  // Create a map for quick lookup
+  const postMap = new Map<number, DiscussionPost>();
+  
+  // Deep copy posts to avoid mutating original objects
+  const posts = flatPosts.map(p => ({ ...p, replies: [] as DiscussionPost[] }));
+  
+  // Build the map
+  posts.forEach(post => {
+    postMap.set(post.id, post);
+  });
+  
+  // Build the tree by populating replies arrays
+  const rootPosts: DiscussionPost[] = [];
+  
+  posts.forEach(post => {
+    if (!post.parentId) {
+      // This is a root post
+      rootPosts.push(post);
+    } else {
+      // This is a reply, add it to parent's replies array
+      const parent = postMap.get(post.parentId);
+      if (parent) {
+        parent.replies.push(post);
+      } else {
+        // Orphan post (parent doesn't exist) - treat as root post
+        rootPosts.push(post);
+      }
+    }
+  });
+  
+  return rootPosts;
+};
+
+// Helper function to create default mock useDiscussion return value
+const createMockUseDiscussionReturn = (overrides?: any) => {
+  const defaults = {
+    discussion: null,
+    posts: [],
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+    createReply: vi.fn(),
+    isCreatingReply: false,
+    editPost: vi.fn(),
+    isEditingPost: false,
+    deletePost: vi.fn(),
+    isDeletingPost: false,
+    subscribe: vi.fn(),
+    unsubscribe: vi.fn(),
+    isSubscribing: false,
+    isUnsubscribing: false,
+    loadMore: vi.fn(),
+    hasMore: false,
+    isLoadingMore: false,
+    ...overrides,
+  };
+  
+  // Automatically set isError: true if an error is provided (unless explicitly overridden)
+  if (overrides?.error && overrides.isError === undefined) {
+    defaults.isError = true;
+  }
+  
+  return defaults;
+};
 
 describe('DiscussionThread', () => {
   let queryClient: QueryClient;
@@ -122,7 +211,7 @@ describe('DiscussionThread', () => {
 
     // Default mock auth
     mockUseAuth.mockReturnValue({
-      user: createMockUser(),
+      user: createMockAuthor(),
       isAuthenticated: true,
     });
   });
@@ -143,35 +232,39 @@ describe('DiscussionThread', () => {
     it('should render discussion title, author, created date, and view count', () => {
       const discussion = createMockDiscussion({
         name: 'Introduction to React Hooks',
-        author: createMockUser({ fullName: 'Jane Smith' }),
-        createdAt: '2024-01-10T09:30:00Z',
-        viewCount: 156,
+        author: createMockAuthor({ fullname: 'Jane Smith' }),
+        created: Math.floor(Date.parse('2024-01-10T09:30:00Z') / 1000),
+        numViews: 156,
       });
 
-      mockUseDiscussion.mockReturnValue({
+      const posts = [createMockPost({ id: 1, discussionId: 1, subject: 'Introduction to React Hooks', message: 'Initial post' })];
+
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
-        isLoading: false,
-        error: null,
-      });
+        posts,
+      }));
 
       renderComponent(1);
 
       expect(screen.getByRole('heading', { name: 'Introduction to React Hooks' })).toBeInTheDocument();
-      expect(screen.getByText('Jane Smith')).toBeInTheDocument();
+      expect(screen.getByText(/Jane Smith/i)).toBeInTheDocument();
       expect(screen.getByText(/156 views/i)).toBeInTheDocument();
     });
 
     it('should render discussion metadata including reply count and participants', () => {
       const discussion = createMockDiscussion({
-        replyCount: 25,
-        participants: 8,
+        numReplies: 25,
+        numParticipants: 8,
       });
 
-      mockUseDiscussion.mockReturnValue({
+      const posts = [createMockPost({ id: 1, discussionId: 1 })];
+
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
@@ -181,12 +274,14 @@ describe('DiscussionThread', () => {
 
     it('should display pinned badge when discussion is pinned', () => {
       const discussion = createMockDiscussion({ pinned: true });
+      const posts = [createMockPost({ id: 1, discussionId: 1 })];
 
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
@@ -194,18 +289,20 @@ describe('DiscussionThread', () => {
     });
 
     it('should display locked indicator when discussion is locked', () => {
-      const discussion = createMockDiscussion({ locked: true });
+      const discussion = createMockDiscussion({ timelocked: Math.floor(Date.now() / 1000) - 3600 }); // Locked 1 hour ago
+      const posts = [createMockPost({ id: 1, discussionId: 1, canReply: false })];
 
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
       expect(screen.getByText(/locked/i)).toBeInTheDocument();
-      expect(screen.getByText(/this discussion is locked/i)).toBeInTheDocument();
+      expect(screen.getByTestId('locked-indicator')).toBeInTheDocument();
     });
   });
 
@@ -215,19 +312,20 @@ describe('DiscussionThread', () => {
         id: 1,
         subject: 'Original Discussion Post',
         message: 'This is the discussion starter content',
-        author: createMockUser({ fullName: 'Discussion Starter' }),
+        userName: 'Discussion Starter',
+        userId: 10,
       });
 
       const discussion = createMockDiscussion({
-        firstPost: originalPost,
-        posts: [originalPost],
+        firstpostid: 1,
       });
 
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts: [originalPost],
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
@@ -239,21 +337,19 @@ describe('DiscussionThread', () => {
 
     it('should render original post with depth 0', () => {
       const originalPost = createMockPost({ id: 1 });
-      const discussion = createMockDiscussion({
-        firstPost: originalPost,
-        posts: [originalPost],
-      });
+      const discussion = createMockDiscussion({ firstpostid: 1 });
 
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts: [originalPost],
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
-      const originalPostCard = screen.getByTestId('post-card-1');
-      expect(originalPostCard).toHaveAttribute('data-depth', '0');
+      const originalPostWrapper = screen.getByTestId('post-1');
+      expect(originalPostWrapper).toHaveAttribute('data-depth', '0');
     });
   });
 
@@ -265,30 +361,33 @@ describe('DiscussionThread', () => {
       const level4Reply = createMockPost({ id: 5, parentId: 4, message: 'Level 4 reply' });
       const level5Reply = createMockPost({ id: 6, parentId: 5, message: 'Level 5 reply' });
 
-      const discussion = createMockDiscussion({
-        posts: [
-          createMockPost({ id: 1 }),
-          level1Reply,
-          level2Reply,
-          level3Reply,
-          level4Reply,
-          level5Reply,
-        ],
-      });
+      const flatPosts = [
+        createMockPost({ id: 1 }),
+        level1Reply,
+        level2Reply,
+        level3Reply,
+        level4Reply,
+        level5Reply,
+      ];
 
-      mockUseDiscussion.mockReturnValue({
+      const posts = buildPostTree(flatPosts);
+
+      const discussion = createMockDiscussion({ firstpostid: 1 });
+
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
-      expect(screen.getByTestId('post-card-2')).toHaveAttribute('data-depth', '1');
-      expect(screen.getByTestId('post-card-3')).toHaveAttribute('data-depth', '2');
-      expect(screen.getByTestId('post-card-4')).toHaveAttribute('data-depth', '3');
-      expect(screen.getByTestId('post-card-5')).toHaveAttribute('data-depth', '4');
-      expect(screen.getByTestId('post-card-6')).toHaveAttribute('data-depth', '5');
+      expect(screen.getByTestId('post-2')).toHaveAttribute('data-depth', '1');
+      expect(screen.getByTestId('post-3')).toHaveAttribute('data-depth', '2');
+      expect(screen.getByTestId('post-4')).toHaveAttribute('data-depth', '3');
+      expect(screen.getByTestId('post-5')).toHaveAttribute('data-depth', '4');
+      expect(screen.getByTestId('post-6')).toHaveAttribute('data-depth', '5');
     });
 
     it('should render multiple replies at the same level', () => {
@@ -296,30 +395,32 @@ describe('DiscussionThread', () => {
       const reply2 = createMockPost({ id: 3, parentId: 1, message: 'Second reply' });
       const reply3 = createMockPost({ id: 4, parentId: 1, message: 'Third reply' });
 
-      const discussion = createMockDiscussion({
-        posts: [createMockPost({ id: 1 }), reply1, reply2, reply3],
-      });
+      const flatPosts = [createMockPost({ id: 1 }), reply1, reply2, reply3];
+      const posts = buildPostTree(flatPosts);
 
-      mockUseDiscussion.mockReturnValue({
+      const discussion = createMockDiscussion({ firstpostid: 1 });
+
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
-      expect(screen.getByTestId('post-card-2')).toBeInTheDocument();
-      expect(screen.getByTestId('post-card-3')).toBeInTheDocument();
-      expect(screen.getByTestId('post-card-4')).toBeInTheDocument();
+      expect(screen.getByTestId('post-2')).toBeInTheDocument();
+      expect(screen.getByTestId('post-3')).toBeInTheDocument();
+      expect(screen.getByTestId('post-4')).toBeInTheDocument();
 
       // All should be at depth 1
-      expect(screen.getByTestId('post-card-2')).toHaveAttribute('data-depth', '1');
-      expect(screen.getByTestId('post-card-3')).toHaveAttribute('data-depth', '1');
-      expect(screen.getByTestId('post-card-4')).toHaveAttribute('data-depth', '1');
+      expect(screen.getByTestId('post-2')).toHaveAttribute('data-depth', '1');
+      expect(screen.getByTestId('post-3')).toHaveAttribute('data-depth', '1');
+      expect(screen.getByTestId('post-4')).toHaveAttribute('data-depth', '1');
     });
 
     it('should render complex nested tree with multiple branches', () => {
-      const posts = [
+      const flatPosts = [
         createMockPost({ id: 1, parentId: null }),
         createMockPost({ id: 2, parentId: 1 }), // Branch 1
         createMockPost({ id: 3, parentId: 2 }),
@@ -328,44 +429,51 @@ describe('DiscussionThread', () => {
         createMockPost({ id: 6, parentId: 1 }), // Branch 3
       ];
 
-      const discussion = createMockDiscussion({ posts });
+      const posts = buildPostTree(flatPosts);
 
-      mockUseDiscussion.mockReturnValue({
+      const discussion = createMockDiscussion();
+
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
       // Verify all posts are rendered
-      posts.forEach((post) => {
+      flatPosts.forEach((post) => {
         expect(screen.getByTestId(`post-card-${post.id}`)).toBeInTheDocument();
       });
 
       // Verify depths
-      expect(screen.getByTestId('post-card-2')).toHaveAttribute('data-depth', '1');
-      expect(screen.getByTestId('post-card-3')).toHaveAttribute('data-depth', '2');
-      expect(screen.getByTestId('post-card-4')).toHaveAttribute('data-depth', '1');
-      expect(screen.getByTestId('post-card-5')).toHaveAttribute('data-depth', '2');
-      expect(screen.getByTestId('post-card-6')).toHaveAttribute('data-depth', '1');
+      expect(screen.getByTestId('post-2')).toHaveAttribute('data-depth', '1');
+      expect(screen.getByTestId('post-3')).toHaveAttribute('data-depth', '2');
+      expect(screen.getByTestId('post-4')).toHaveAttribute('data-depth', '1');
+      expect(screen.getByTestId('post-5')).toHaveAttribute('data-depth', '2');
+      expect(screen.getByTestId('post-6')).toHaveAttribute('data-depth', '1');
     });
   });
 
   describe('Reply Hierarchy Visualization', () => {
     it('should apply proper indentation classes for nested posts', () => {
-      const reply = createMockPost({ id: 2, parentId: 1 });
-      const nestedReply = createMockPost({ id: 3, parentId: 2 });
+      const flatPosts = [
+        createMockPost({ id: 1 }),
+        createMockPost({ id: 2, parentId: 1 }),
+        createMockPost({ id: 3, parentId: 2 }),
+      ];
 
-      const discussion = createMockDiscussion({
-        posts: [createMockPost({ id: 1 }), reply, nestedReply],
-      });
+      const posts = buildPostTree(flatPosts);
 
-      mockUseDiscussion.mockReturnValue({
+      const discussion = createMockDiscussion();
+
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       const { container } = renderComponent(1);
 
@@ -380,43 +488,51 @@ describe('DiscussionThread', () => {
 
   describe('Expand/Collapse Controls', () => {
     it('should provide expand/collapse button for deeply nested threads', async () => {
-      const posts = [
+      const flatPosts = [
         createMockPost({ id: 1 }),
         createMockPost({ id: 2, parentId: 1 }),
         createMockPost({ id: 3, parentId: 2 }),
         createMockPost({ id: 4, parentId: 3 }),
         createMockPost({ id: 5, parentId: 4 }),
+        createMockPost({ id: 6, parentId: 5 }), // Depth 5 - will show collapse button
+        createMockPost({ id: 7, parentId: 6 }), // Child of post 6, so post 6 has replies
       ];
 
-      const discussion = createMockDiscussion({ posts });
+      const posts = buildPostTree(flatPosts);
 
-      mockUseDiscussion.mockReturnValue({
+      const discussion = createMockDiscussion();
+
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
-      // Look for collapse button near deeply nested posts
+      // Look for collapse button near deeply nested posts (post 6 at depth 5 with replies)
       const collapseButtons = screen.queryAllByRole('button', { name: /collapse/i });
       expect(collapseButtons.length).toBeGreaterThan(0);
     });
 
     it('should collapse nested replies when collapse button is clicked', async () => {
-      const posts = [
+      const flatPosts = [
         createMockPost({ id: 1 }),
         createMockPost({ id: 2, parentId: 1, message: 'Parent reply' }),
         createMockPost({ id: 3, parentId: 2, message: 'Child reply' }),
       ];
 
-      const discussion = createMockDiscussion({ posts });
+      const posts = buildPostTree(flatPosts);
 
-      mockUseDiscussion.mockReturnValue({
+      const discussion = createMockDiscussion();
+
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
@@ -436,19 +552,22 @@ describe('DiscussionThread', () => {
     });
 
     it('should expand collapsed replies when expand button is clicked', async () => {
-      const posts = [
+      const flatPosts = [
         createMockPost({ id: 1 }),
         createMockPost({ id: 2, parentId: 1, message: 'Parent reply' }),
         createMockPost({ id: 3, parentId: 2, message: 'Collapsed child' }),
       ];
 
-      const discussion = createMockDiscussion({ posts });
+      const posts = buildPostTree(flatPosts);
 
-      mockUseDiscussion.mockReturnValue({
+      const discussion = createMockDiscussion();
+
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
@@ -471,48 +590,53 @@ describe('DiscussionThread', () => {
 
   describe('Individual PostCard Rendering', () => {
     it('should render PostCard component for each post', () => {
-      const posts = [
+      const flatPosts = [
         createMockPost({ id: 1 }),
         createMockPost({ id: 2, parentId: 1 }),
         createMockPost({ id: 3, parentId: 1 }),
       ];
 
-      const discussion = createMockDiscussion({ posts });
+      const posts = buildPostTree(flatPosts);
 
-      mockUseDiscussion.mockReturnValue({
+      const discussion = createMockDiscussion();
+
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
-      expect(screen.getByTestId('post-card-1')).toBeInTheDocument();
-      expect(screen.getByTestId('post-card-2')).toBeInTheDocument();
-      expect(screen.getByTestId('post-card-3')).toBeInTheDocument();
+      expect(screen.getByTestId('post-1')).toBeInTheDocument();
+      expect(screen.getByTestId('post-2')).toBeInTheDocument();
+      expect(screen.getByTestId('post-3')).toBeInTheDocument();
     });
 
     it('should pass correct props to PostCard components', () => {
       const post = createMockPost({
         id: 2,
         parentId: 1,
-        author: createMockUser({ fullName: 'Post Author' }),
+        userId: 42,
+        userName: 'Post Author',
         message: 'Test message content',
       });
 
-      const discussion = createMockDiscussion({
-        posts: [createMockPost({ id: 1 }), post],
-      });
+      const discussion = createMockDiscussion();
+      const flatPosts = [createMockPost({ id: 1 }), post];
+      const posts = buildPostTree(flatPosts);
 
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
-      const postCard = screen.getByTestId('post-card-2');
+      const postCard = screen.getByTestId('post-2');
       expect(within(postCard).getByText('Post Author')).toBeInTheDocument();
       expect(within(postCard).getByText('Test message content')).toBeInTheDocument();
     });
@@ -523,22 +647,21 @@ describe('DiscussionThread', () => {
       const teacherPost = createMockPost({
         id: 2,
         parentId: 1,
-        author: createMockUser({
-          fullName: 'Teacher Name',
-          roles: ['teacher'],
-          avatar: 'https://example.com/teacher.jpg',
-        }),
+        userId: 43,
+        userName: 'Teacher Name',
+        userPictureUrl: 'https://example.com/teacher.jpg',
       });
 
-      const discussion = createMockDiscussion({
-        posts: [createMockPost({ id: 1 }), teacherPost],
-      });
+      const discussion = createMockDiscussion();
+      const flatPosts = [createMockPost({ id: 1 }), teacherPost];
+      const posts = buildPostTree(flatPosts);
 
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
@@ -549,21 +672,20 @@ describe('DiscussionThread', () => {
       const moderatorPost = createMockPost({
         id: 2,
         parentId: 1,
-        author: createMockUser({
-          fullName: 'Moderator User',
-          roles: ['moderator'],
-        }),
+        userId: 44,
+        userName: 'Moderator User',
       });
 
-      const discussion = createMockDiscussion({
-        posts: [createMockPost({ id: 1 }), moderatorPost],
-      });
+      const discussion = createMockDiscussion();
+      const flatPosts = [createMockPost({ id: 1 }), moderatorPost];
+      const posts = buildPostTree(flatPosts);
 
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
@@ -579,20 +701,21 @@ describe('DiscussionThread', () => {
         createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
       });
 
-      const discussion = createMockDiscussion({
-        posts: [createMockPost({ id: 1 }), recentPost],
-      });
+      const discussion = createMockDiscussion();
+      const flatPosts = [createMockPost({ id: 1 }), recentPost];
+      const posts = buildPostTree(flatPosts);
 
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
       // The timestamp will be rendered by PostCard mock
-      const postCard = screen.getByTestId('post-card-2');
+      const postCard = screen.getByTestId('post-2');
       expect(within(postCard).getByTestId('post-timestamp')).toBeInTheDocument();
     });
   });
@@ -601,14 +724,16 @@ describe('DiscussionThread', () => {
     it('should show reply button on each post when discussion is not locked', () => {
       const discussion = createMockDiscussion({
         locked: false,
-        posts: [createMockPost({ id: 1 }), createMockPost({ id: 2, parentId: 1 })],
       });
+      const flatPosts = [createMockPost({ id: 1 }), createMockPost({ id: 2, parentId: 1 })];
+      const posts = buildPostTree(flatPosts);
 
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
@@ -619,22 +744,26 @@ describe('DiscussionThread', () => {
     it('should hide reply buttons when discussion is locked', () => {
       const discussion = createMockDiscussion({
         locked: true,
-        posts: [createMockPost({ id: 1 }), createMockPost({ id: 2, parentId: 1 })],
       });
+      const flatPosts = [createMockPost({ id: 1 }), createMockPost({ id: 2, parentId: 1 })];
+      const posts = buildPostTree(flatPosts);
 
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
-      // PostCards should have data-locked="true"
-      const postCards = screen.getAllByTestId(/post-card-/);
-      postCards.forEach((card) => {
-        expect(card).toHaveAttribute('data-locked', 'true');
-      });
+      // Post wrapper boxes should have data-locked="true"
+      // Use specific test IDs to avoid matching nested elements like "post-rating"
+      const post1 = screen.getByTestId('post-1');
+      const post2 = screen.getByTestId('post-2');
+      
+      expect(post1).toHaveAttribute('data-locked', 'true');
+      expect(post2).toHaveAttribute('data-locked', 'true');
     });
 
     it('should handle reply button click', async () => {
@@ -643,19 +772,21 @@ describe('DiscussionThread', () => {
 
       const discussion = createMockDiscussion({
         locked: false,
-        posts: [createMockPost({ id: 1 }), post],
       });
+      const flatPosts = [createMockPost({ id: 1 }), post];
+      const posts = buildPostTree(flatPosts);
 
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
         createReply: handleReply,
-      });
+      }));
 
       renderComponent(1);
 
-      const replyButton = within(screen.getByTestId('post-card-2')).getByTestId('reply-button');
+      const replyButton = within(screen.getByTestId('post-2')).getByTestId('reply-button');
       await user.click(replyButton);
 
       // In real implementation, this would open a reply form
@@ -665,15 +796,16 @@ describe('DiscussionThread', () => {
 
   describe('Quote Functionality', () => {
     it('should provide quote button for referencing previous posts', () => {
-      const discussion = createMockDiscussion({
-        posts: [createMockPost({ id: 1 }), createMockPost({ id: 2, parentId: 1 })],
-      });
+      const discussion = createMockDiscussion();
+      const flatPosts = [createMockPost({ id: 1 }), createMockPost({ id: 2, parentId: 1 })];
+      const posts = buildPostTree(flatPosts);
 
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
@@ -684,20 +816,21 @@ describe('DiscussionThread', () => {
 
   describe('Permalink Functionality', () => {
     it('should provide permalink to individual posts with URL hash', () => {
-      const discussion = createMockDiscussion({
-        posts: [createMockPost({ id: 1 }), createMockPost({ id: 2, parentId: 1 })],
-      });
+      const discussion = createMockDiscussion();
+      const flatPosts = [createMockPost({ id: 1 }), createMockPost({ id: 2, parentId: 1 })];
+      const posts = buildPostTree(flatPosts);
 
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
       // In real implementation, posts would have IDs that can be linked to
-      const postCard = screen.getByTestId('post-card-2');
+      const postCard = screen.getByTestId('post-2');
       expect(postCard).toHaveAttribute('data-post-id', '2');
     });
   });
@@ -712,20 +845,22 @@ describe('DiscussionThread', () => {
       });
 
       const discussion = createMockDiscussion({
-        posts: [createMockPost({ id: 1 }), unreadPost],
         unreadCount: 1,
       });
+      const flatPosts = [createMockPost({ id: 1 }), unreadPost];
+      const posts = buildPostTree(flatPosts);
 
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
       // Check that unread count is displayed
-      expect(screen.getByText(/2 unread/i)).toBeInTheDocument();
+      expect(screen.getByText(/1 unread/i)).toBeInTheDocument();
     });
 
     it('should not show unread indicators for read posts', () => {
@@ -736,15 +871,17 @@ describe('DiscussionThread', () => {
       });
 
       const discussion = createMockDiscussion({
-        posts: [createMockPost({ id: 1 }), readPost],
         unreadCount: 0,
       });
+      const flatPosts = [createMockPost({ id: 1 }), readPost];
+      const posts = buildPostTree(flatPosts);
 
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
@@ -755,21 +892,22 @@ describe('DiscussionThread', () => {
   describe('Moderator Actions', () => {
     beforeEach(() => {
       mockUseAuth.mockReturnValue({
-        user: createMockUser({ roles: ['moderator'] }),
+        user: createMockAuthor({ id: 100, fullname: 'Moderator User' }),
         isAuthenticated: true,
       });
     });
 
     it('should show edit button for moderators on any post', () => {
-      const discussion = createMockDiscussion({
-        posts: [createMockPost({ id: 1 }), createMockPost({ id: 2, parentId: 1 })],
-      });
+      const discussion = createMockDiscussion();
+      const flatPosts = [createMockPost({ id: 1 }), createMockPost({ id: 2, parentId: 1 })];
+      const posts = buildPostTree(flatPosts);
 
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
@@ -778,15 +916,16 @@ describe('DiscussionThread', () => {
     });
 
     it('should show delete button for moderators on any post', () => {
-      const discussion = createMockDiscussion({
-        posts: [createMockPost({ id: 1 }), createMockPost({ id: 2, parentId: 1 })],
-      });
+      const discussion = createMockDiscussion();
+      const flatPosts = [createMockPost({ id: 1 }), createMockPost({ id: 2, parentId: 1 })];
+      const posts = buildPostTree(flatPosts);
 
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
@@ -795,15 +934,16 @@ describe('DiscussionThread', () => {
     });
 
     it('should provide split discussion action for moderators', () => {
-      const discussion = createMockDiscussion({
-        posts: [createMockPost({ id: 1 }), createMockPost({ id: 2, parentId: 1 })],
-      });
+      const discussion = createMockDiscussion();
+      const flatPosts = [createMockPost({ id: 1 }), createMockPost({ id: 2, parentId: 1 })];
+      const posts = buildPostTree(flatPosts);
 
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
@@ -815,11 +955,12 @@ describe('DiscussionThread', () => {
 
   describe('Owner Actions', () => {
     it('should show edit button for post owner', () => {
-      const currentUser = createMockUser({ id: 5, fullName: 'Current User' });
+      const currentUser = createMockAuthor({ id: 5, fullname: 'Current User' });
       const ownPost = createMockPost({
         id: 2,
         parentId: 1,
-        author: currentUser,
+        userId: 5,
+        userName: 'Current User',
       });
 
       mockUseAuth.mockReturnValue({
@@ -827,15 +968,16 @@ describe('DiscussionThread', () => {
         isAuthenticated: true,
       });
 
-      const discussion = createMockDiscussion({
-        posts: [createMockPost({ id: 1 }), ownPost],
-      });
+      const discussion = createMockDiscussion();
+      const flatPosts = [createMockPost({ id: 1 }), ownPost];
+      const posts = buildPostTree(flatPosts);
 
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
@@ -844,11 +986,12 @@ describe('DiscussionThread', () => {
     });
 
     it('should show delete button for post owner', () => {
-      const currentUser = createMockUser({ id: 5 });
+      const currentUser = createMockAuthor({ id: 5, fullname: 'Current User' });
       const ownPost = createMockPost({
         id: 2,
         parentId: 1,
-        author: currentUser,
+        userId: 5,
+        userName: 'Current User',
       });
 
       mockUseAuth.mockReturnValue({
@@ -856,15 +999,16 @@ describe('DiscussionThread', () => {
         isAuthenticated: true,
       });
 
-      const discussion = createMockDiscussion({
-        posts: [createMockPost({ id: 1 }), ownPost],
-      });
+      const discussion = createMockDiscussion();
+      const flatPosts = [createMockPost({ id: 1 }), ownPost];
+      const posts = buildPostTree(flatPosts);
 
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
@@ -873,32 +1017,35 @@ describe('DiscussionThread', () => {
     });
 
     it('should not show edit/delete buttons for other users posts', () => {
-      const otherUser = createMockUser({ id: 99 });
       const otherPost = createMockPost({
         id: 2,
         parentId: 1,
-        author: otherUser,
+        userId: 99,
+        userName: 'Other User',
+        canEdit: false,
+        canDelete: false,
       });
 
       mockUseAuth.mockReturnValue({
-        user: createMockUser({ id: 5, roles: ['student'] }),
+        user: createMockAuthor({ id: 5, fullname: 'Student User' }),
         isAuthenticated: true,
       });
 
-      const discussion = createMockDiscussion({
-        posts: [createMockPost({ id: 1 }), otherPost],
-      });
+      const discussion = createMockDiscussion();
+      const flatPosts = [createMockPost({ id: 1 }), otherPost];
+      const posts = buildPostTree(flatPosts);
 
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
       // Student shouldn't see edit/delete for other users' posts
-      const postCard = screen.getByTestId('post-card-2');
+      const postCard = screen.getByTestId('post-2');
       expect(within(postCard).queryByTestId('edit-button')).not.toBeInTheDocument();
       expect(within(postCard).queryByTestId('delete-button')).not.toBeInTheDocument();
     });
@@ -908,11 +1055,12 @@ describe('DiscussionThread', () => {
     it('should display subscription toggle button', () => {
       const discussion = createMockDiscussion({ subscribed: false });
 
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts: [createMockPost({ id: 1 })],
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
@@ -922,11 +1070,12 @@ describe('DiscussionThread', () => {
     it('should show unsubscribe button when already subscribed', () => {
       const discussion = createMockDiscussion({ subscribed: true });
 
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts: [createMockPost({ id: 1 })],
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
@@ -934,42 +1083,46 @@ describe('DiscussionThread', () => {
     });
 
     it('should handle subscription toggle click', async () => {
-      const toggleSubscription = vi.fn();
+      const subscribe = vi.fn();
       const discussion = createMockDiscussion({ subscribed: false });
 
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts: [createMockPost({ id: 1 })],
         isLoading: false,
         error: null,
-        toggleSubscription,
-      });
+        subscribe,
+      }));
 
       renderComponent(1);
 
       const subscribeButton = screen.getByRole('button', { name: /subscribe/i });
       await user.click(subscribeButton);
 
-      expect(toggleSubscription).toHaveBeenCalledTimes(1);
+      expect(subscribe).toHaveBeenCalledTimes(1);
     });
   });
 
   describe('Load More Pagination', () => {
     it('should show "Load more replies" button for long threads', () => {
-      const posts = Array.from({ length: 25 }, (_, i) =>
+      const allFlatPosts = Array.from({ length: 25 }, (_, i) =>
         createMockPost({ id: i + 1, parentId: i === 0 ? null : 1 })
       );
 
       const discussion = createMockDiscussion({
-        posts: posts.slice(0, 20), // Initial 20 posts
         replyCount: 25,
       });
 
-      mockUseDiscussion.mockReturnValue({
+      const flatPosts = allFlatPosts.slice(0, 20); // Initial 20 posts
+      const posts = buildPostTree(flatPosts);
+
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
         hasMore: true,
-      });
+      }));
 
       renderComponent(1);
 
@@ -979,17 +1132,19 @@ describe('DiscussionThread', () => {
     it('should load more replies when button is clicked', async () => {
       const loadMore = vi.fn();
       const discussion = createMockDiscussion({
-        posts: [createMockPost({ id: 1 })],
         replyCount: 50,
       });
 
-      mockUseDiscussion.mockReturnValue({
+      const posts = buildPostTree([createMockPost({ id: 1 })]);
+
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
         hasMore: true,
         loadMore,
-      });
+      }));
 
       renderComponent(1);
 
@@ -1001,16 +1156,19 @@ describe('DiscussionThread', () => {
 
     it('should not show "Load more" button when all replies are loaded', () => {
       const discussion = createMockDiscussion({
-        posts: [createMockPost({ id: 1 }), createMockPost({ id: 2, parentId: 1 })],
         replyCount: 2,
       });
 
-      mockUseDiscussion.mockReturnValue({
+      const flatPosts = [createMockPost({ id: 1 }), createMockPost({ id: 2, parentId: 1 })];
+      const posts = buildPostTree(flatPosts);
+
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
         hasMore: false,
-      });
+      }));
 
       renderComponent(1);
 
@@ -1021,15 +1179,17 @@ describe('DiscussionThread', () => {
   describe('Empty State', () => {
     it('should display empty state when no replies exist', () => {
       const discussion = createMockDiscussion({
-        posts: [createMockPost({ id: 1 })], // Only original post
-        replyCount: 0,
+        numReplies: 0,
       });
 
-      mockUseDiscussion.mockReturnValue({
+      const posts = [createMockPost({ id: 1 })]; // Only original post
+
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
@@ -1040,23 +1200,26 @@ describe('DiscussionThread', () => {
 
   describe('Loading State', () => {
     it('should display loading skeleton during thread fetch', () => {
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion: null,
+        posts: [],
         isLoading: true,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
-      expect(screen.getByTestId('discussion-skeleton')).toBeInTheDocument();
+      expect(screen.getByTestId('loading-skeleton')).toBeInTheDocument();
     });
 
     it('should hide loading skeleton after data loads', async () => {
-      mockUseDiscussion.mockReturnValue({
-        discussion: createMockDiscussion(),
+      const discussion = createMockDiscussion();
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
+        discussion,
+        posts: [createMockPost({ id: 1 })],
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
@@ -1066,11 +1229,12 @@ describe('DiscussionThread', () => {
 
   describe('Error Handling', () => {
     it('should display error message for failed thread load', () => {
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion: null,
+        posts: [],
         isLoading: false,
         error: new Error('Failed to load discussion'),
-      });
+      }));
 
       renderComponent(1);
 
@@ -1078,29 +1242,31 @@ describe('DiscussionThread', () => {
     });
 
     it('should provide retry button on error', async () => {
-      const retry = vi.fn();
+      const refetch = vi.fn();
 
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion: null,
+        posts: [],
         isLoading: false,
         error: new Error('Network error'),
-        retry,
-      });
+        refetch,
+      }));
 
       renderComponent(1);
 
       const retryButton = screen.getByRole('button', { name: /retry/i });
       await user.click(retryButton);
 
-      expect(retry).toHaveBeenCalledTimes(1);
+      expect(refetch).toHaveBeenCalledTimes(1);
     });
 
     it('should display 404 error for non-existent discussion', () => {
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion: null,
+        posts: [],
         isLoading: false,
-        error: { code: 404, message: 'Discussion not found' },
-      });
+        error: { status: 404, message: 'Discussion not found' },
+      }));
 
       renderComponent(1);
 
@@ -1108,15 +1274,16 @@ describe('DiscussionThread', () => {
     });
 
     it('should display 403 error for permission denied', () => {
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion: null,
+        posts: [],
         isLoading: false,
-        error: { code: 403, message: 'Permission denied' },
-      });
+        error: { status: 403, message: 'Permission denied' },
+      }));
 
       renderComponent(1);
 
-      expect(screen.getByText(/permission denied/i)).toBeInTheDocument();
+      expect(screen.getByText(/you don't have permission to view this discussion/i)).toBeInTheDocument();
     });
   });
 
@@ -1129,15 +1296,16 @@ describe('DiscussionThread', () => {
         message: '[This post has been deleted]',
       });
 
-      const discussion = createMockDiscussion({
-        posts: [createMockPost({ id: 1 }), deletedPost],
-      });
+      const discussion = createMockDiscussion();
+      const flatPosts = [createMockPost({ id: 1 }), deletedPost];
+      const posts = buildPostTree(flatPosts);
 
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
@@ -1148,22 +1316,21 @@ describe('DiscussionThread', () => {
       const postByDeletedUser = createMockPost({
         id: 2,
         parentId: 1,
-        author: createMockUser({
-          id: 999,
-          fullName: '[Deleted User]',
-          deleted: true,
-        }),
+        userId: 999,
+        userName: '[Deleted User]',
+        deleted: true,
       });
 
-      const discussion = createMockDiscussion({
-        posts: [createMockPost({ id: 1 }), postByDeletedUser],
-      });
+      const discussion = createMockDiscussion();
+      const flatPosts = [createMockPost({ id: 1 }), postByDeletedUser];
+      const posts = buildPostTree(flatPosts);
 
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
@@ -1178,15 +1345,16 @@ describe('DiscussionThread', () => {
         status: 'pending',
       });
 
-      const discussion = createMockDiscussion({
-        posts: [createMockPost({ id: 1 }), moderatedPost],
-      });
+      const discussion = createMockDiscussion();
+      const flatPosts = [createMockPost({ id: 1 }), moderatedPost];
+      const posts = buildPostTree(flatPosts);
 
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
@@ -1200,15 +1368,16 @@ describe('DiscussionThread', () => {
         message: 'Orphan post',
       });
 
-      const discussion = createMockDiscussion({
-        posts: [createMockPost({ id: 1 }), orphanPost],
-      });
+      const discussion = createMockDiscussion();
+      const flatPosts = [createMockPost({ id: 1 }), orphanPost];
+      const posts = buildPostTree(flatPosts);
 
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
@@ -1233,20 +1402,21 @@ describe('DiscussionThread', () => {
         createdAt: '2024-01-15T14:00:00Z',
       });
 
-      const discussion = createMockDiscussion({
-        posts: [createMockPost({ id: 1 }), oldPost, newPost],
-      });
+      const discussion = createMockDiscussion();
+      const flatPosts = [createMockPost({ id: 1 }), oldPost, newPost];
+      const posts = buildPostTree(flatPosts);
 
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       const { container } = renderComponent(1);
 
-      const posts = container.querySelectorAll('[data-testid^="post-card-"]');
-      const postMessages = Array.from(posts).map((post) => post.textContent);
+      const postElements = container.querySelectorAll('[data-testid^="post-card-"]');
+      const postMessages = Array.from(postElements).map((post) => post.textContent);
 
       // Verify chronological order
       const oldPostIndex = postMessages.findIndex((text) => text?.includes('Old post'));
@@ -1256,26 +1426,27 @@ describe('DiscussionThread', () => {
     });
 
     it('should maintain nested order within branches', () => {
-      const posts = [
+      const discussion = createMockDiscussion();
+      const flatPosts = [
         createMockPost({ id: 1, createdAt: '2024-01-15T10:00:00Z' }),
         createMockPost({ id: 2, parentId: 1, createdAt: '2024-01-15T11:00:00Z' }),
         createMockPost({ id: 3, parentId: 2, createdAt: '2024-01-15T12:00:00Z' }),
         createMockPost({ id: 4, parentId: 1, createdAt: '2024-01-15T13:00:00Z' }),
       ];
+      const posts = buildPostTree(flatPosts);
 
-      const discussion = createMockDiscussion({ posts });
-
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
       // Verify all posts are rendered
-      posts.forEach((post) => {
-        expect(screen.getByTestId(`post-card-${post.id}`)).toBeInTheDocument();
+      flatPosts.forEach((post) => {
+        expect(screen.getByTestId(`post-${post.id}`)).toBeInTheDocument();
       });
     });
   });
@@ -1283,21 +1454,22 @@ describe('DiscussionThread', () => {
   describe('Concurrent Reply Scenarios', () => {
     it('should handle optimistic updates for new replies', async () => {
       const createReply = vi.fn();
-      const discussion = createMockDiscussion({
-        posts: [createMockPost({ id: 1 })],
-      });
+      const discussion = createMockDiscussion();
+      const flatPosts = [createMockPost({ id: 1 })];
+      const posts = buildPostTree(flatPosts);
 
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
         createReply,
-      });
+      }));
 
       renderComponent(1);
 
       // Mock creating a reply
-      const replyButton = within(screen.getByTestId('post-card-1')).getByTestId('reply-button');
+      const replyButton = within(screen.getByTestId('post-1')).getByTestId('reply-button');
       await user.click(replyButton);
 
       // In real implementation, optimistic update would show the reply immediately
@@ -1305,16 +1477,17 @@ describe('DiscussionThread', () => {
 
     it('should rollback optimistic update on creation failure', async () => {
       const createReply = vi.fn().mockRejectedValue(new Error('Failed to create reply'));
-      const discussion = createMockDiscussion({
-        posts: [createMockPost({ id: 1 })],
-      });
+      const discussion = createMockDiscussion();
+      const flatPosts = [createMockPost({ id: 1 })];
+      const posts = buildPostTree(flatPosts);
 
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
         createReply,
-      });
+      }));
 
       renderComponent(1);
 
@@ -1325,12 +1498,15 @@ describe('DiscussionThread', () => {
   describe('Accessibility', () => {
     it('should have proper heading hierarchy', () => {
       const discussion = createMockDiscussion({ name: 'Test Discussion' });
+      const flatPosts = [createMockPost({ id: 1 })];
+      const posts = buildPostTree(flatPosts);
 
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
@@ -1339,15 +1515,16 @@ describe('DiscussionThread', () => {
     });
 
     it('should have ARIA labels for thread structure', () => {
-      const discussion = createMockDiscussion({
-        posts: [createMockPost({ id: 1 }), createMockPost({ id: 2, parentId: 1 })],
-      });
+      const discussion = createMockDiscussion();
+      const flatPosts = [createMockPost({ id: 1 }), createMockPost({ id: 2, parentId: 1 })];
+      const posts = buildPostTree(flatPosts);
 
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       const { container } = renderComponent(1);
 
@@ -1357,15 +1534,16 @@ describe('DiscussionThread', () => {
     });
 
     it('should support keyboard navigation', async () => {
-      const discussion = createMockDiscussion({
-        posts: [createMockPost({ id: 1 }), createMockPost({ id: 2, parentId: 1 })],
-      });
+      const discussion = createMockDiscussion();
+      const flatPosts = [createMockPost({ id: 1 }), createMockPost({ id: 2, parentId: 1 })];
+      const posts = buildPostTree(flatPosts);
 
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       renderComponent(1);
 
@@ -1378,15 +1556,17 @@ describe('DiscussionThread', () => {
 
     it('should announce new replies to screen readers', () => {
       const discussion = createMockDiscussion({
-        posts: [createMockPost({ id: 1 })],
         unreadCount: 3,
       });
+      const flatPosts = [createMockPost({ id: 1 })];
+      const posts = buildPostTree(flatPosts);
 
-      mockUseDiscussion.mockReturnValue({
+      mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
         discussion,
+        posts,
         isLoading: false,
         error: null,
-      });
+      }));
 
       const { container } = renderComponent(1);
 

@@ -22,9 +22,12 @@ import type {
   PostResponse,
   DiscussionPost,
   CreatePostData,
-  UpdatePostData
+  UpdatePostData,
+  DiscussionDetail,
+  Author
 } from '../types/forum.types';
 import * as forumApi from '../api/forumApi';
+import type { DiscussionWithPosts } from '../api/forumApi';
 
 /**
  * Query key factory for discussion-related queries
@@ -138,6 +141,83 @@ function buildPostHierarchy(flatPosts: DiscussionPost[]): DiscussionPost[] {
 }
 
 /**
+ * Constructs a DiscussionDetail object from API response data
+ * Handles both cases: when backend returns discussion object or only posts
+ * 
+ * @param data - API response data containing discussion and/or posts
+ * @returns DiscussionDetail object with all required properties
+ */
+function constructDiscussionDetail(data: DiscussionWithPosts | undefined): DiscussionDetail | undefined {
+  if (!data) return undefined;
+
+  // If backend returns discussion object, enhance it
+  if (data.discussion) {
+    const firstPost = data.posts?.[0];
+    const uniqueAuthors = new Set(data.posts?.map(p => p.authorid) ?? []);
+    
+    // Create author object from first post or use defaults
+    const author: Author = {
+      id: firstPost?.authorid ?? data.discussion.userid,
+      pictureitemid: 0,
+      firstname: '',
+      lastname: '',
+      fullname: 'Unknown', // Will be populated by API if available
+      email: '',
+      deleted: false
+    };
+    
+    return {
+      ...data.discussion,
+      author,
+      created: firstPost?.timecreated ?? data.discussion.timemodified ?? Math.floor(Date.now() / 1000),
+      numViews: 0, // Not available in current API response
+      numParticipants: uniqueAuthors.size,
+      numReplies: (data.posts?.length ?? 1) - 1, // Subtract starter post
+      subscribed: false // Not available in current API response, should be fetched separately
+    };
+  }
+
+  // Fallback: construct from posts if discussion object not available
+  const firstPost = data.posts?.[0];
+  if (!firstPost) return undefined;
+
+  const uniqueAuthors = new Set(data.posts?.map(p => p.authorid) ?? []);
+
+  const author: Author = {
+    id: firstPost.authorid,
+    pictureitemid: 0,
+    firstname: '',
+    lastname: '',
+    fullname: 'Unknown',
+    email: '',
+    deleted: false
+  };
+
+  return {
+    id: firstPost.discussionid ?? 0,
+    name: firstPost.subject ?? 'Discussion',
+    courseid: 0, // Not available from posts alone
+    forumid: 0, // Not available from posts alone
+    firstpostid: firstPost.id,
+    userid: firstPost.authorid,
+    groupid: 0,
+    assessed: false,
+    timemodified: firstPost.timemodified ?? firstPost.timecreated,
+    usermodified: firstPost.authorid,
+    timestart: 0,
+    timeend: 0,
+    pinned: false,
+    timelocked: 0,
+    author,
+    created: firstPost.timecreated,
+    numViews: 0,
+    numParticipants: uniqueAuthors.size,
+    numReplies: data.posts.length - 1,
+    subscribed: false
+  };
+}
+
+/**
  * Options for useDiscussion hook callbacks
  */
 export interface UseDiscussionOptions {
@@ -218,7 +298,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
   const posts = data?.posts 
     ? buildPostHierarchy(data.posts.map(transformPost)) 
     : undefined;
-  const discussion = data?.discussion;
+  const discussion = constructDiscussionDetail(data);
 
   // Extract pagination info
   const hasMore = data?.hasMore ?? false;

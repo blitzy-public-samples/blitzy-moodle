@@ -334,6 +334,27 @@ export interface DiscussionSummary {
 }
 
 /**
+ * Enhanced discussion with computed metadata
+ * Used by DiscussionThread component for display
+ */
+export interface DiscussionDetail extends Discussion {
+  /** Author of the discussion (from first post) */
+  author: Author;
+  /** Creation timestamp (from first post) */
+  created: number;
+  /** Number of times the discussion has been viewed */
+  numViews: number;
+  /** Number of unique participants in the discussion */
+  numParticipants: number;
+  /** Number of replies (total posts minus 1) */
+  numReplies: number;
+  /** Number of unread replies for current user */
+  unreadCount?: number;
+  /** Whether current user is subscribed to this discussion */
+  subscribed: boolean;
+}
+
+/**
  * Forum subscription entity
  * Represents a user's subscription to an entire forum
  */
@@ -409,6 +430,8 @@ export interface DiscussionPost {
   canDelete: boolean;
   /** Whether current user can reply to this post */
   canReply: boolean;
+  /** Whether this post is unread by the current user */
+  unread?: boolean;
   /** Nested array of reply posts */
   replies: DiscussionPost[];
 }

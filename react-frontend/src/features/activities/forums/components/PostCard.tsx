@@ -918,6 +918,7 @@ const PostCard: React.FC<PostCardProps> = ({
               <IconButton
                 onClick={debouncedHandleEdit}
                 aria-label="Edit post"
+                data-testid="edit-button"
               >
                 <EditIcon />
               </IconButton>
@@ -943,6 +944,7 @@ const PostCard: React.FC<PostCardProps> = ({
                 onClick={debouncedHandleDeleteClick}
                 aria-label="Delete post"
                 color="error"
+                data-testid="delete-button"
               >
                 <DeleteIcon />
               </IconButton>
