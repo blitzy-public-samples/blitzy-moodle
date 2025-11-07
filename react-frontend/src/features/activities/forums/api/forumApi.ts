@@ -126,6 +126,8 @@ export interface DiscussionWithPosts {
   hasMore?: boolean;
   /** Cursor for next page of posts */
   nextCursor?: string;
+  /** Whether current user is subscribed to this discussion (optional, may be fetched separately) */
+  subscribed?: boolean;
 }
 
 // ============================================================================

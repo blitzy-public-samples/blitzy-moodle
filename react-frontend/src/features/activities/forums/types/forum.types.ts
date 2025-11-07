@@ -214,6 +214,10 @@ export interface Forum {
   subscribed: boolean;
   /** Whether the current user can subscribe/unsubscribe to the forum */
   canSubscribe: boolean;
+  /** Whether the current user can create a new discussion in this forum */
+  canAddDiscussion: boolean;
+  /** Whether the current user can moderate discussions (lock, pin, move, delete) */
+  canModerate: boolean;
   /** Number of unread discussions for the current user */
   unreadCount: number;
   /** Total number of discussions in the forum */

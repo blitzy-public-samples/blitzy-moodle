@@ -95,25 +95,19 @@ const createMockPost = (overrides: Partial<DiscussionPost> = {}): DiscussionPost
 
 const createMockDiscussion = (overrides: Partial<Discussion> = {}): Discussion => ({
   id: 100,
-  forumId: 50,
+  courseid: 1,
+  forumid: 50,
   name: 'Test Discussion',
-  userId: 10,
-  userName: 'Test User',
-  userPictureUrl: 'https://example.com/avatar.jpg',
-  timeCreated: Date.now() - 7200000,
-  timeModified: Date.now() - 3600000,
+  firstpostid: 1,
+  userid: 10,
+  groupid: 0,
+  assessed: false,
+  timemodified: Date.now() - 3600000,
+  usermodified: 10,
+  timestart: 0,
+  timeend: 0,
   pinned: false,
-  locked: false,
-  userModified: 10,
-  numReplies: 5,
-  numUnread: 2,
-  subscribed: false,
-  canEdit: true,
-  canDelete: true,
-  canMove: false,
-  canSplit: false,
-  canPin: false,
-  canLock: false,
+  timelocked: 0,
   ...overrides,
 });
 
@@ -188,7 +182,19 @@ describe('useDiscussion Hook', () => {
       });
 
       expect(forumApi.getDiscussionPosts).toHaveBeenCalledWith(discussionId);
-      expect(result.current.discussion).toEqual(mockDiscussion);
+      
+      // Check that discussion is a DiscussionDetail with all base Discussion properties
+      expect(result.current.discussion).toBeDefined();
+      expect(result.current.discussion?.id).toBe(mockDiscussion.id);
+      expect(result.current.discussion?.name).toBe(mockDiscussion.name);
+      expect(result.current.discussion?.forumid).toBe(mockDiscussion.forumid);
+      
+      // Check DiscussionDetail-specific properties added by constructDiscussionDetail
+      expect(result.current.discussion?.author).toBeDefined();
+      expect(result.current.discussion?.numReplies).toBe(2); // 3 posts - 1 = 2 replies
+      expect(result.current.discussion?.numParticipants).toBeGreaterThan(0);
+      expect(result.current.discussion?.subscribed).toBe(false);
+      
       // posts array contains only root posts (parentid === 0)
       expect(result.current.posts).toHaveLength(1);
       // Verify the root post has 2 replies
@@ -353,11 +359,29 @@ describe('useDiscussion Hook', () => {
       const discussionId = 100;
       const initialData = {
         discussion: createMockDiscussion({ numReplies: 5 }),
-        posts: [createMockApiPost()],
+        // Need 6 posts total (1 root + 5 replies) to get numReplies: 5
+        posts: [
+          createMockApiPost({ id: 1, parentid: 0 }),
+          createMockApiPost({ id: 2, parentid: 1 }),
+          createMockApiPost({ id: 3, parentid: 1 }),
+          createMockApiPost({ id: 4, parentid: 1 }),
+          createMockApiPost({ id: 5, parentid: 1 }),
+          createMockApiPost({ id: 6, parentid: 1 }),
+        ],
       };
       const updatedData = {
         discussion: createMockDiscussion({ numReplies: 6 }),
-        posts: [createMockApiPost(), createMockApiPost({ id: 2 })],
+        // Need 7 posts total with 2 roots to get numReplies: 6 and posts.length: 2
+        // Root 1 with 3 replies, Root 2 with 2 replies = 7 total
+        posts: [
+          createMockApiPost({ id: 1, parentid: 0 }),
+          createMockApiPost({ id: 2, parentid: 1 }),
+          createMockApiPost({ id: 3, parentid: 1 }),
+          createMockApiPost({ id: 4, parentid: 1 }),
+          createMockApiPost({ id: 5, parentid: 0 }), // Second root post
+          createMockApiPost({ id: 6, parentid: 5 }),
+          createMockApiPost({ id: 7, parentid: 5 }),
+        ],
       };
 
       vi.mocked(forumApi.getDiscussionPosts)
@@ -863,12 +887,13 @@ describe('useDiscussion Hook', () => {
   describe('Subscription Management', () => {
     it('should subscribe to discussion', async () => {
       const discussionId = 100;
-      const mockDiscussion = createMockDiscussion({ id: discussionId, subscribed: false });
+      const mockDiscussion = createMockDiscussion({ id: discussionId });
       const mockPosts = [createMockApiPost({ discussionid: discussionId, parentid: 0 })];
 
       vi.mocked(forumApi.getDiscussionPosts).mockResolvedValue({
         discussion: mockDiscussion,
         posts: mockPosts,
+        subscribed: false, // Include subscription status in API response
       });
 
       vi.mocked(forumApi.subscribeDiscussion).mockResolvedValue({ subscribed: true });
@@ -896,12 +921,13 @@ describe('useDiscussion Hook', () => {
 
     it('should unsubscribe from discussion', async () => {
       const discussionId = 100;
-      const mockDiscussion = createMockDiscussion({ id: discussionId, subscribed: true });
+      const mockDiscussion = createMockDiscussion({ id: discussionId });
       const mockPosts = [createMockApiPost({ discussionid: discussionId, parentid: 0 })];
 
       vi.mocked(forumApi.getDiscussionPosts).mockResolvedValue({
         discussion: mockDiscussion,
         posts: mockPosts,
+        subscribed: true, // Include subscription status in API response
       });
 
       vi.mocked(forumApi.unsubscribeDiscussion).mockResolvedValue({ subscribed: false });
@@ -929,12 +955,13 @@ describe('useDiscussion Hook', () => {
 
     it('should optimistically update subscription status', async () => {
       const discussionId = 100;
-      const mockDiscussion = createMockDiscussion({ id: discussionId, subscribed: false });
+      const mockDiscussion = createMockDiscussion({ id: discussionId });
       const mockPosts = [createMockApiPost({ discussionid: discussionId, parentid: 0 })];
 
       vi.mocked(forumApi.getDiscussionPosts).mockResolvedValue({
         discussion: mockDiscussion,
         posts: mockPosts,
+        subscribed: false, // Include subscription status in API response
       });
 
       // Delay API response

@@ -173,7 +173,7 @@ function constructDiscussionDetail(data: DiscussionWithPosts | undefined): Discu
       numViews: 0, // Not available in current API response
       numParticipants: uniqueAuthors.size,
       numReplies: (data.posts?.length ?? 1) - 1, // Subtract starter post
-      subscribed: false // Not available in current API response, should be fetched separately
+      subscribed: data.subscribed ?? false // Use API-provided subscription status or default to false
     };
   }
 
@@ -598,10 +598,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
         if (!old) return old;
         return {
           ...old,
-          discussion: {
-            ...old.discussion,
-            subscribed: true,
-          },
+          subscribed: true,
         };
       });
 
@@ -637,10 +634,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
         if (!old) return old;
         return {
           ...old,
-          discussion: {
-            ...old.discussion,
-            subscribed: false,
-          },
+          subscribed: false,
         };
       });
 

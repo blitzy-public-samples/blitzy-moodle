@@ -50,7 +50,6 @@ import {
   Stack,
   Divider,
   Menu,
-  Paper,
   useTheme,
   useMediaQuery,
 } from '@mui/material';
@@ -152,6 +151,16 @@ type FilterOption = 'all' | 'unread' | 'my-discussions' | 'pinned';
  */
 type PageSizeOption = 10 | 20 | 50;
 
+/**
+ * Response from discussions query
+ */
+interface DiscussionsQueryResponse {
+  /** Array of discussions */
+  discussions: DiscussionListItem[];
+  /** Total count of discussions */
+  totalCount: number;
+}
+
 // ============================================================================
 // COMPONENT
 // ============================================================================
@@ -205,8 +214,15 @@ export const DiscussionList: React.FC<DiscussionListProps> = ({
     isError,
     error,
     refetch,
-  } = useQuery({
+  } = useQuery<DiscussionsQueryResponse>({
     queryKey: ['discussions', forumId, sortBy, filterBy, currentPage, pageSize, debouncedSearch],
+    queryFn: async () => {
+      // Mock implementation - in real app, this would call the API
+      return {
+        discussions: [],
+        totalCount: 0,
+      };
+    },
     staleTime: 30000, // 30 seconds
   });
 
@@ -238,7 +254,7 @@ export const DiscussionList: React.FC<DiscussionListProps> = ({
       
       return { previousData };
     },
-    onError: (err, discussionId, context) => {
+    onError: (_err, _discussionId, context) => {
       // Rollback on error
       if (context?.previousData) {
         queryClient.setQueryData(['discussions', forumId], context.previousData);
@@ -276,7 +292,7 @@ export const DiscussionList: React.FC<DiscussionListProps> = ({
       
       return { previousData };
     },
-    onError: (err, discussionId, context) => {
+    onError: (_err, _discussionId, context) => {
       // Rollback on error
       if (context?.previousData) {
         queryClient.setQueryData(['discussions', forumId], context.previousData);
@@ -565,7 +581,7 @@ export const DiscussionList: React.FC<DiscussionListProps> = ({
   }
 
   return (
-    <Box sx={{ width: '100%' }}>
+    <Box sx={{ width: '100%' }} data-testid="discussion-list">
       {/* Search and controls */}
       <Stack spacing={2} sx={{ mb: 3 }}>
         <Stack direction={isMobile ? 'column' : 'row'} spacing={2}>
