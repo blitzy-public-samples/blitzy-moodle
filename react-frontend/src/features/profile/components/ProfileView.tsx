@@ -18,6 +18,11 @@ import {
   Divider,
   Link,
   Stack,
+  Skeleton,
+  Alert,
+  Button,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import {
   Email as EmailIcon,
@@ -26,16 +31,17 @@ import {
   Business as BusinessIcon,
   CalendarMonth as CalendarIcon,
 } from '@mui/icons-material';
-import type { User } from '../types/profile.types';
+import { useProfile } from '../hooks/useProfile';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 
 /**
  * Props for ProfileView component
  */
 export interface ProfileViewProps {
   /**
-   * User object to display
+   * User ID to fetch and display profile for
    */
-  user: User;
+  userId: number;
 
   /**
    * Whether to show full details or compact view
@@ -69,19 +75,66 @@ export interface ProfileViewProps {
  * @example
  * ```tsx
  * <ProfileView
- *   user={userProfile}
+ *   userId={123}
  *   showEditButton={canEdit}
  *   onEdit={() => navigate('/profile/edit')}
  * />
  * ```
  */
 export function ProfileView({
-  user,
+  userId,
   compact = false,
   showEditButton = false,
   onEdit,
   className,
 }: ProfileViewProps) {
+  // Fetch user profile data using the useProfile hook
+  const { profile: user, isLoading, error, refetch } = useProfile(userId);
+
+  // Get authentication state for permission checks
+  const auth = useAuth();
+  const currentUser = auth?.user;
+  const hasCapability = (auth as any)?.hasCapability;
+
+  // Responsive layout detection
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm')); // < 600px
+  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md')); // 600px - 960px
+
+  // Determine layout type
+  const getLayout = (): 'mobile' | 'tablet' | 'desktop' => {
+    if (isMobile) return 'mobile';
+    if (isTablet) return 'tablet';
+    return 'desktop';
+  };
+
+  const layout = getLayout();
+
+  // Determine if current user can edit this profile
+  const canEdit = (() => {
+    // If showEditButton is explicitly set (true or false), respect that
+    if (showEditButton !== undefined && showEditButton !== false) {
+      return true;
+    }
+
+    // If no current user, cannot edit
+    if (!currentUser || !user) {
+      return false;
+    }
+
+    // Viewing own profile - can edit
+    if (currentUser.id === userId) {
+      return true;
+    }
+
+    // Check if user has capability to edit other profiles
+    if (hasCapability && typeof hasCapability === 'function') {
+      return hasCapability('moodle/user:update', { contextlevel: 'user', instanceid: userId });
+    }
+
+    return false;
+  })();
+
   /**
    * Format timestamp to readable date
    */
@@ -100,7 +153,7 @@ export function ProfileView({
    * Format interests string to array of tags
    */
   const getInterests = (): string[] => {
-    if (!user.interests) {
+    if (!user?.interests) {
       return [];
     }
     return user.interests
@@ -109,13 +162,117 @@ export function ProfileView({
       .filter(Boolean);
   };
 
+  // Loading state - show skeleton
+  if (isLoading) {
+    if (compact) {
+      return (
+        <Box className={className} display="flex" alignItems="center" gap={2} data-testid="profile-skeleton">
+          <Skeleton variant="circular" width={48} height={48} data-testid="skeleton-avatar" />
+          <Box flex={1}>
+            <Skeleton variant="text" width="60%" height={24} data-testid="skeleton-name" />
+            <Skeleton variant="text" width="80%" height={20} data-testid="skeleton-info" />
+          </Box>
+        </Box>
+      );
+    }
+
+    return (
+      <Card className={className} sx={{ maxWidth: 900, margin: 'auto' }} data-testid="profile-skeleton">
+        <CardContent>
+          <Box display="flex" alignItems="flex-start" gap={3} mb={3}>
+            <Skeleton variant="circular" width={120} height={120} data-testid="skeleton-avatar" />
+            <Box flex={1}>
+              <Skeleton variant="text" width="40%" height={40} data-testid="skeleton-name" />
+              <Skeleton variant="text" width="30%" height={24} data-testid="skeleton-username" />
+              <Skeleton variant="text" width="100%" height={20} sx={{ mt: 2 }} data-testid="skeleton-bio" />
+              <Skeleton variant="text" width="100%" height={20} data-testid="skeleton-bio-line2" />
+            </Box>
+          </Box>
+          <Divider sx={{ my: 3 }} />
+          <Skeleton variant="rectangular" height={200} data-testid="skeleton-content" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Error state
+  if (error) {
+    // Determine error message based on error code
+    let errorMessage = 'Failed to load profile. Please try again.';
+    
+    if (error instanceof Error) {
+      // Check if Error has custom error code property
+      const errorWithCode = error as Error & { code?: string };
+      
+      if (errorWithCode.code === 'USER_DELETED') {
+        errorMessage = 'This user account has been deleted.';
+      } else if (errorWithCode.code === 'INVALID_USER') {
+        errorMessage = 'Invalid user ID provided.';
+      } else if (errorWithCode.code === 'PERMISSION_DENIED') {
+        errorMessage = 'Permission denied. You are not authorized to view this profile.';
+      } else {
+        errorMessage = error.message;
+      }
+    } else if (typeof error === 'object' && error !== null) {
+      const errorObj = error as { message?: string; code?: string };
+      
+      // Check error code first to provide specific messages
+      if (errorObj.code === 'USER_DELETED') {
+        errorMessage = 'This user account has been deleted.';
+      } else if (errorObj.code === 'INVALID_USER') {
+        errorMessage = 'Invalid user ID provided.';
+      } else if (errorObj.code === 'PERMISSION_DENIED') {
+        errorMessage = 'Permission denied. You are not authorized to view this profile.';
+      } else if (errorObj.message) {
+        errorMessage = errorObj.message;
+      }
+    }
+
+    return (
+      <Box className={className}>
+        <Alert 
+          severity="error"
+          action={
+            refetch && (
+              <Button color="inherit" size="small" onClick={() => refetch()}>
+                Retry
+              </Button>
+            )
+          }
+        >
+          {errorMessage}
+        </Alert>
+      </Box>
+    );
+  }
+
+  // No user data
+  if (!user) {
+    return (
+      <Alert severity="warning" className={className}>
+        User profile not found.
+      </Alert>
+    );
+  }
+
+  // Determine avatar size based on layout
+  const getAvatarSize = (): { width: number; height: number; size: string } => {
+    if (isMobile) return { width: 80, height: 80, size: 'small' };
+    if (isTablet) return { width: 100, height: 100, size: 'medium' };
+    return { width: 120, height: 120, size: 'large' };
+  };
+
+  const avatarSize = getAvatarSize();
+
   if (compact) {
     return (
-      <Box className={className} display="flex" alignItems="center" gap={2}>
+      <Box className={className} display="flex" alignItems="center" gap={2} data-layout={layout}>
         <Avatar
           src={user.profileimageurlsmall || user.profileimageurl}
           alt={user.fullname}
           sx={{ width: 48, height: 48 }}
+          data-testid="profile-avatar"
+          data-size="compact"
         />
         <Box>
           <Typography variant="subtitle1" fontWeight={600}>
@@ -130,16 +287,22 @@ export function ProfileView({
   }
 
   return (
-    <Card className={className} sx={{ maxWidth: 900, margin: 'auto' }}>
+    <Card className={className} sx={{ maxWidth: 900, margin: 'auto' }} data-layout={layout}>
       <CardContent>
         {/* Header Section with Avatar and Basic Info */}
-        <Box display="flex" alignItems="flex-start" gap={3} mb={3}>
-          <Avatar src={user.profileimageurl} alt={user.fullname} sx={{ width: 120, height: 120 }} />
+        <Box component="section" role="region" aria-label="Profile header" display="flex" alignItems="flex-start" gap={3} mb={3}>
+          <Avatar 
+            src={user.profileimageurl} 
+            alt={user.fullname} 
+            sx={{ width: avatarSize.width, height: avatarSize.height }} 
+            data-testid="profile-avatar"
+            data-size={avatarSize.size}
+          />
           <Box flex={1}>
-            <Typography variant="h4" gutterBottom>
+            <Typography variant="h1" component="h1" gutterBottom sx={{ fontSize: '2.125rem' }}>
               {user.fullname}
             </Typography>
-            <Typography variant="subtitle1" color="text.secondary" gutterBottom>
+            <Typography variant="h2" component="h2" color="text.secondary" gutterBottom sx={{ fontSize: '1rem', fontWeight: 400 }}>
               @{user.username}
             </Typography>
 
@@ -154,37 +317,26 @@ export function ProfileView({
 
             {/* Interests Tags */}
             {getInterests().length > 0 && (
-              <Stack direction="row" spacing={1} mt={2} flexWrap="wrap" useFlexGap>
+              <Stack component="ul" role="list" direction="row" spacing={1} mt={2} flexWrap="wrap" useFlexGap sx={{ listStyle: 'none', padding: 0 }}>
                 {getInterests().map((interest) => (
-                  <Chip key={interest} label={interest} size="small" variant="outlined" />
+                  <Box component="li" key={interest}>
+                    <Chip label={interest} size="small" variant="outlined" />
+                  </Box>
                 ))}
               </Stack>
             )}
           </Box>
 
           {/* Edit Button */}
-          {showEditButton && onEdit && (
+          {canEdit && (
             <Box>
-              <Typography
-                component="button"
+              <Button
+                variant="outlined"
+                color="primary"
                 onClick={onEdit}
-                sx={{
-                  px: 2,
-                  py: 1,
-                  borderRadius: 1,
-                  border: '1px solid',
-                  borderColor: 'primary.main',
-                  bgcolor: 'transparent',
-                  color: 'primary.main',
-                  cursor: 'pointer',
-                  '&:hover': {
-                    bgcolor: 'primary.main',
-                    color: 'primary.contrastText',
-                  },
-                }}
               >
                 Edit Profile
-              </Typography>
+              </Button>
             </Box>
           )}
         </Box>
@@ -192,8 +344,8 @@ export function ProfileView({
         <Divider sx={{ my: 3 }} />
 
         {/* Contact Information */}
-        <Box mb={3}>
-          <Typography variant="h6" gutterBottom>
+        <Box component="section" role="region" aria-labelledby="contact-heading" mb={3}>
+          <Typography id="contact-heading" variant="h2" component="h2" gutterBottom sx={{ fontSize: '1.25rem', fontWeight: 500 }}>
             Contact Information
           </Typography>
           <Grid container spacing={2}>
@@ -237,8 +389,8 @@ export function ProfileView({
         {/* Professional Information */}
         {(Boolean(user.institution) || Boolean(user.department)) && (
           <>
-            <Box mb={3}>
-              <Typography variant="h6" gutterBottom>
+            <Box component="section" role="region" aria-labelledby="professional-heading" mb={3}>
+              <Typography id="professional-heading" variant="h2" component="h2" gutterBottom sx={{ fontSize: '1.25rem', fontWeight: 500 }}>
                 Professional Information
               </Typography>
               <Grid container spacing={2}>
@@ -266,8 +418,8 @@ export function ProfileView({
         )}
 
         {/* Activity Information */}
-        <Box>
-          <Typography variant="h6" gutterBottom>
+        <Box component="section" role="region" aria-labelledby="activity-heading">
+          <Typography id="activity-heading" variant="h2" component="h2" gutterBottom sx={{ fontSize: '1.25rem', fontWeight: 500 }}>
             Activity
           </Typography>
           <Grid container spacing={2}>
@@ -299,13 +451,13 @@ export function ProfileView({
         {user.customfields && user.customfields.length > 0 && (
           <>
             <Divider sx={{ my: 3 }} />
-            <Box>
-              <Typography variant="h6" gutterBottom>
+            <Box component="section" role="region" aria-labelledby="additional-heading">
+              <Typography id="additional-heading" variant="h2" component="h2" gutterBottom sx={{ fontSize: '1.25rem', fontWeight: 500 }}>
                 Additional Information
               </Typography>
               <Grid container spacing={2}>
-                {user.customfields.map((field) => (
-                  <Grid item xs={12} sm={6} key={field.shortname}>
+                {user.customfields.map((field, index) => (
+                  <Grid item xs={12} sm={6} key={field.shortname || `customfield-${index}`}>
                     <Typography variant="body2" color="text.secondary">
                       <strong>{field.name}:</strong> {String(field.value)}
                     </Typography>
@@ -321,7 +473,7 @@ export function ProfileView({
           <>
             <Divider sx={{ my: 3 }} />
             <Box>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant="h2" component="h2" gutterBottom sx={{ fontSize: '1.25rem', fontWeight: 500 }}>
                 Roles
               </Typography>
               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
