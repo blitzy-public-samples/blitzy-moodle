@@ -1,0 +1,200 @@
+# Moodle React Frontend API - Apache Configuration
+# Location: /api/.htaccess
+# Purpose: Enables clean RESTful URL routing for the API layer
+#
+# This configuration file:
+# - Routes all /api/v1/* requests through index.php
+# - Preserves the original request URI for path parsing
+# - Enables CORS headers for cross-origin API requests
+# - Supports all HTTP methods (GET, POST, PUT, DELETE, OPTIONS)
+# - Sets proper JSON MIME types
+# - Implements security best practices
+
+# ============================================================================
+# URL REWRITING CONFIGURATION
+# ============================================================================
+
+# Enable Apache mod_rewrite module
+RewriteEngine On
+
+# Set the base directory for rewrite rules
+# Adjust this if the API is mounted at a different path
+RewriteBase /api/
+
+# Don't rewrite requests for actual files (e.g., index.php itself)
+RewriteCond %{REQUEST_FILENAME} !-f
+
+# Don't rewrite requests for actual directories (e.g., /lib/)
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Route all /api/v1/* requests through index.php
+# Pattern: ^v1/(.*)$ captures everything after "v1/"
+# Target: index.php (the API router)
+# Flags:
+#   [QSA] = Query String Append - preserves query parameters from original request
+#   [L] = Last rule - stops processing additional rewrite rules
+# The original URI is automatically preserved in $_SERVER['REQUEST_URI']
+RewriteRule ^v1/(.*)$ index.php [QSA,L]
+
+# ============================================================================
+# CORS (Cross-Origin Resource Sharing) CONFIGURATION
+# ============================================================================
+
+<IfModule mod_headers.c>
+    # Allow cross-origin requests from any origin
+    # IMPORTANT: In production, replace "*" with specific allowed origins
+    # Example: Header set Access-Control-Allow-Origin "https://yourdomain.com"
+    Header always set Access-Control-Allow-Origin "*"
+    
+    # Specify allowed HTTP methods for RESTful API operations
+    Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+    
+    # Specify allowed request headers
+    # Content-Type: For JSON payloads
+    # Authorization: For JWT bearer tokens
+    # Accept: For content negotiation
+    Header always set Access-Control-Allow-Headers "Content-Type, Authorization, Accept"
+    
+    # Allow credentials (cookies, authorization headers, TLS client certificates)
+    # Required for httpOnly cookie-based JWT storage
+    Header always set Access-Control-Allow-Credentials "true"
+    
+    # Cache preflight OPTIONS requests for 1 hour (3600 seconds)
+    # Reduces the number of preflight requests from browsers
+    Header always set Access-Control-Max-Age "3600"
+    
+    # Security headers to protect against common vulnerabilities
+    # Prevent MIME type sniffing
+    Header always set X-Content-Type-Options "nosniff"
+    
+    # Prevent clickjacking attacks
+    Header always set X-Frame-Options "DENY"
+    
+    # Enable XSS protection in older browsers
+    Header always set X-XSS-Protection "1; mode=block"
+    
+    # Enforce HTTPS (uncomment in production with HTTPS)
+    # Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+</IfModule>
+
+# Handle OPTIONS preflight requests
+# Browsers send OPTIONS requests before actual requests for CORS
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_METHOD} OPTIONS
+    RewriteRule ^(.*)$ $1 [R=200,L]
+</IfModule>
+
+# ============================================================================
+# MIME TYPE CONFIGURATION
+# ============================================================================
+
+<IfModule mod_mime.c>
+    # Set proper MIME type for JSON files and responses
+    AddType application/json .json
+    
+    # Support for JSON-LD (Linked Data) if needed
+    AddType application/json .jsonld
+    
+    # Ensure UTF-8 encoding for JSON content
+    AddCharset utf-8 .json .jsonld
+</IfModule>
+
+# ============================================================================
+# SECURITY CONFIGURATION
+# ============================================================================
+
+# Prevent directory listing
+# Users cannot browse the API directory structure
+Options -Indexes
+
+# Deny access to hidden files (starting with dot)
+# Protects .git, .env, .htaccess, etc.
+<FilesMatch "^\.">
+    <IfModule mod_authz_core.c>
+        # Apache 2.4+
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        # Apache 2.2
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Deny access to sensitive configuration and dependency files
+<FilesMatch "(^composer\.(json|lock)$|^package(-lock)?\.json$|\.md$|\.yml$|\.yaml$)">
+    <IfModule mod_authz_core.c>
+        # Apache 2.4+
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        # Apache 2.2
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Deny access to PHP source files in lib directory
+# These should only be included by index.php, not accessed directly
+<FilesMatch "^(lib)/.*\.php$">
+    <IfModule mod_authz_core.c>
+        # Apache 2.4+
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        # Apache 2.2
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# ============================================================================
+# PHP CONFIGURATION (if mod_php is used)
+# ============================================================================
+
+<IfModule mod_php.c>
+    # Don't display errors to clients (security risk)
+    php_flag display_errors Off
+    
+    # Enable error logging for debugging
+    php_flag log_errors On
+    
+    # Set maximum execution time for API requests (30 seconds)
+    php_value max_execution_time 30
+    
+    # Set maximum memory for API requests (128MB)
+    php_value memory_limit 128M
+    
+    # Set maximum POST data size (20MB for file uploads)
+    php_value post_max_size 20M
+    
+    # Set maximum file upload size (20MB)
+    php_value upload_max_filesize 20M
+</IfModule>
+
+# ============================================================================
+# COMPRESSION CONFIGURATION (optional but recommended)
+# ============================================================================
+
+<IfModule mod_deflate.c>
+    # Enable compression for JSON responses to reduce bandwidth
+    AddOutputFilterByType DEFLATE application/json
+    AddOutputFilterByType DEFLATE text/plain
+</IfModule>
+
+# ============================================================================
+# CACHE CONTROL
+# ============================================================================
+
+<IfModule mod_headers.c>
+    # Prevent caching of API responses (dynamic content)
+    # Clients should always get fresh data from the server
+    <FilesMatch "\.php$">
+        Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+        Header set Pragma "no-cache"
+        Header set Expires "Thu, 01 Jan 1970 00:00:00 GMT"
+    </FilesMatch>
+</IfModule>
+
+# End of Apache configuration for Moodle React Frontend API
