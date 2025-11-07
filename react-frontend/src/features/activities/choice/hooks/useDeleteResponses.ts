@@ -173,7 +173,7 @@ export default function useDeleteResponses(): UseMutationResult<
   { previousData: ChoiceResultsCache | undefined }
 > {
   const queryClient = useQueryClient();
-  const { showToast } = useToast();
+  const { success, error: showError } = useToast();
 
   return useMutation<
     DeleteResponsesResponse,
@@ -259,11 +259,10 @@ export default function useDeleteResponses(): UseMutationResult<
       });
 
       // Show success notification
-      showToast({
-        type: 'success',
-        message: `Successfully deleted ${deletedCount} response${deletedCount !== 1 ? 's' : ''}`,
-        duration: 4000,
-      });
+      success(
+        `Successfully deleted ${deletedCount} response${deletedCount !== 1 ? 's' : ''}`,
+        { duration: 4000 }
+      );
     },
 
     /**
@@ -284,11 +283,7 @@ export default function useDeleteResponses(): UseMutationResult<
       // Show error notification with details
       const errorMessage = error.message || 'Failed to delete choice responses';
       
-      showToast({
-        type: 'error',
-        message: errorMessage,
-        duration: 6000,
-      });
+      showError(errorMessage, { duration: 6000 });
 
       // Log error for debugging (in development)
       if (process.env.NODE_ENV === 'development') {
