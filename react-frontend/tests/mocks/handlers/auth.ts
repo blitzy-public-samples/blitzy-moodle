@@ -783,6 +783,207 @@ const meHandler = http.get('*/api/v1/auth/me', async ({ request }) => {
   }
 });
 
+/**
+ * GET /api/v1/auth/password-policy
+ * 
+ * Returns the password policy configuration for the Moodle instance.
+ * 
+ * Success Response (200):
+ * {
+ *   success: true,
+ *   data: {
+ *     minLength: 8,
+ *     minDigits: 1,
+ *     minLower: 1,
+ *     minUpper: 1,
+ *     minNonAlphanumeric: 1,
+ *     reuseLimit: 3,
+ *     maxLength: 128
+ *   }
+ * }
+ */
+const passwordPolicyHandler = http.get('*/api/v1/auth/password-policy', async () => {
+  await simulateNetworkDelay(50, 150); // Faster for policy retrieval
+
+  return HttpResponse.json(
+    {
+      success: true,
+      data: {
+        minLength: 8,
+        minDigits: 1,
+        minLower: 1,
+        minUpper: 1,
+        minNonAlphanumeric: 1,
+        reuseLimit: 3,
+        maxLength: 128,
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+      },
+    },
+    { status: 200 }
+  );
+});
+
+/**
+ * POST /api/v1/auth/password-reset/set
+ * 
+ * Sets a new password using a password reset token.
+ * 
+ * Success Response (200):
+ * {
+ *   success: true,
+ *   data: {
+ *     message: 'Password has been set successfully',
+ *     redirectUrl: '/login'
+ *   }
+ * }
+ * 
+ * Error Responses:
+ * - 400: Missing required fields or invalid password
+ * - 401: Invalid or expired token
+ * - 403: Password reuse policy violation
+ * - 429: Rate limit exceeded
+ */
+const passwordResetSetHandler = http.post('*/api/v1/auth/password-reset/set', async ({ request }) => {
+  await simulateNetworkDelay();
+
+  try {
+    const body = await request.json() as {
+      token?: string;
+      password?: string;
+      logoutOtherSessions?: boolean;
+    };
+
+    const { token, password, logoutOtherSessions } = body;
+
+    // Validate required fields
+    if (!token || !password) {
+      return HttpResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'MISSING_FIELDS',
+            message: 'Token and password are required',
+            details: {
+              missing_fields: [
+                !token ? 'token' : null,
+                !password ? 'password' : null,
+              ].filter(Boolean),
+            },
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    // Mock token validation - check for specific test tokens
+    if (token === 'invalid-token') {
+      return HttpResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'INVALID_TOKEN',
+            message: 'The password reset token is invalid',
+            details: {
+              token_status: 'invalid',
+            },
+          },
+        },
+        { status: 401 }
+      );
+    }
+
+    if (token === 'expired-token') {
+      return HttpResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'TOKEN_EXPIRED',
+            message: 'The password reset token has expired',
+            details: {
+              token_status: 'expired',
+              expiry_time: new Date(Date.now() - 3600000).toISOString(),
+            },
+          },
+        },
+        { status: 401 }
+      );
+    }
+
+    // Mock password validation against policy
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
+    if (!passwordRegex.test(password)) {
+      return HttpResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'INVALID_PASSWORD',
+            message: 'Password does not meet policy requirements',
+            details: {
+              policy: {
+                minLength: 8,
+                minDigits: 1,
+                minLower: 1,
+                minUpper: 1,
+                minNonAlphanumeric: 1,
+              },
+            },
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    // Mock password reuse check - reject specific test password
+    if (password === 'UsedPassword1!') {
+      return HttpResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'PASSWORD_REUSED',
+            message: 'This password has been used recently. Please choose a different password.',
+            details: {
+              reuseLimit: 3,
+            },
+          },
+        },
+        { status: 403 }
+      );
+    }
+
+    // Success response
+    return HttpResponse.json(
+      {
+        success: true,
+        data: {
+          message: 'Password has been successfully updated! Redirecting...',
+          redirectUrl: '/login',
+          sessionsRevoked: logoutOtherSessions === true,
+        },
+        meta: {
+          timestamp: new Date().toISOString(),
+        },
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    return HttpResponse.json(
+      {
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'An unexpected error occurred while setting password',
+          details: {
+            error: error instanceof Error ? error.message : 'Unknown error',
+          },
+        },
+      },
+      { status: 500 }
+    );
+  }
+});
+
 // ============================================================================
 // Exported Handlers
 // ============================================================================
@@ -810,4 +1011,6 @@ export const authHandlers = [
   logoutHandler,
   refreshHandler,
   meHandler,
+  passwordPolicyHandler,
+  passwordResetSetHandler,
 ];

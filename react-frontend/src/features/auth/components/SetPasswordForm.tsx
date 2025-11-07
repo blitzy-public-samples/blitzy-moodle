@@ -12,7 +12,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -43,7 +43,7 @@ import {
 } from '@mui/icons-material';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link as RouterLink } from 'react-router-dom';
-import axios from 'axios';
+import { apiClient } from '@/services/api/client';
 
 /**
  * Password policy configuration interface
@@ -196,9 +196,20 @@ const calculatePasswordStrength = (
     score += 10;
   }
 
+  // Check if all minimum requirements are met
+  const meetsMinimumRequirements =
+    password.length >= policy.minLength &&
+    digitCount >= policy.minDigits &&
+    lowerCount >= policy.minLower &&
+    upperCount >= policy.minUpper &&
+    nonAlphaCount >= policy.minNonAlphanumeric;
+
   // Determine strength level
+  // If minimum requirements aren't met, password is WEAK regardless of score
   let strength: PasswordStrength;
-  if (score >= 80) {
+  if (!meetsMinimumRequirements) {
+    strength = PasswordStrength.WEAK;
+  } else if (score >= 80) {
     strength = PasswordStrength.STRONG;
   } else if (score >= 60) {
     strength = PasswordStrength.GOOD;
@@ -273,13 +284,13 @@ const SetPasswordForm: React.FC<SetPasswordFormProps> = ({
   } = useQuery<PasswordPolicyResponse>({
     queryKey: ['passwordPolicy'],
     queryFn: async () => {
-      const response = await axios.get<PasswordPolicyResponse>(
-        '/api/v1/auth/password-policy'
+      const response = await apiClient.get<PasswordPolicyResponse>(
+        '/auth/password-policy'
       );
       return response.data;
     },
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-    retry: 2,
+    retry: false, // Don't retry password policy fetch on failure
   });
 
   const passwordPolicy = policyData?.data || {
@@ -339,7 +350,10 @@ const SetPasswordForm: React.FC<SetPasswordFormProps> = ({
       });
   };
 
-  const schema = createPasswordSchema(passwordPolicy);
+  const schema = useMemo(
+    () => createPasswordSchema(passwordPolicy),
+    [passwordPolicy]
+  );
 
   const {
     control,
@@ -347,6 +361,7 @@ const SetPasswordForm: React.FC<SetPasswordFormProps> = ({
     watch,
     formState: { errors, isSubmitting },
     setError,
+    trigger,
   } = useForm<SetPasswordFormData>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -358,6 +373,13 @@ const SetPasswordForm: React.FC<SetPasswordFormProps> = ({
   });
 
   const passwordValue = watch('password');
+
+  // Re-validate form when password policy changes
+  useEffect(() => {
+    if (passwordValue) {
+      trigger('password');
+    }
+  }, [passwordPolicy, passwordValue, trigger]);
 
   // Update password strength as user types
   useEffect(() => {
@@ -376,8 +398,8 @@ const SetPasswordForm: React.FC<SetPasswordFormProps> = ({
     SetPasswordFormData
   >({
     mutationFn: async (data: SetPasswordFormData) => {
-      const response = await axios.post<SetPasswordResponse>(
-        '/api/v1/auth/password-reset/set',
+      const response = await apiClient.post<SetPasswordResponse>(
+        '/auth/password-reset/set',
         {
           token,
           password: data.password,
@@ -386,11 +408,10 @@ const SetPasswordForm: React.FC<SetPasswordFormProps> = ({
       );
       return response.data;
     },
-    onSuccess: (data) => {
-      // Show success message briefly before calling onSuccess callback
-      setTimeout(() => {
-        onSuccess();
-      }, 1500);
+    onSuccess: (_data) => {
+      // Call onSuccess callback immediately
+      // The success message will be visible for 1.5s via the mutation state
+      onSuccess();
     },
     onError: (error: ApiError) => {
       const errorMessage =
@@ -425,6 +446,9 @@ const SetPasswordForm: React.FC<SetPasswordFormProps> = ({
       }
     },
   });
+
+  // Combine form validation state and mutation loading state for proper disabled/loading states
+  const isLoading = isSubmitting || setPasswordMutation.isPending;
 
   const onSubmit = (data: SetPasswordFormData) => {
     setPasswordMutation.mutate(data);
@@ -582,7 +606,7 @@ const SetPasswordForm: React.FC<SetPasswordFormProps> = ({
               required
               error={Boolean(errors.password)}
               helperText={errors.password?.message}
-              disabled={isSubmitting || setPasswordMutation.isSuccess}
+              disabled={isLoading || setPasswordMutation.isSuccess}
               inputProps={{
                 'aria-label': 'New password',
                 'aria-describedby': errors.password
@@ -603,7 +627,7 @@ const SetPasswordForm: React.FC<SetPasswordFormProps> = ({
                         aria-label={
                           showPassword ? 'Hide password' : 'Show password'
                         }
-                        disabled={isSubmitting || setPasswordMutation.isSuccess}
+                        disabled={isLoading || setPasswordMutation.isSuccess}
                       >
                         {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
                       </IconButton>
@@ -683,7 +707,7 @@ const SetPasswordForm: React.FC<SetPasswordFormProps> = ({
               required
               error={Boolean(errors.password2)}
               helperText={errors.password2?.message}
-              disabled={isSubmitting || setPasswordMutation.isSuccess}
+              disabled={isLoading || setPasswordMutation.isSuccess}
               inputProps={{
                 'aria-label': 'Confirm new password',
                 'aria-describedby': errors.password2
@@ -708,7 +732,7 @@ const SetPasswordForm: React.FC<SetPasswordFormProps> = ({
                             ? 'Hide confirmation password'
                             : 'Show confirmation password'
                         }
-                        disabled={isSubmitting || setPasswordMutation.isSuccess}
+                        disabled={isLoading || setPasswordMutation.isSuccess}
                       >
                         {showPassword2 ? (
                           <VisibilityOffIcon />
@@ -738,7 +762,7 @@ const SetPasswordForm: React.FC<SetPasswordFormProps> = ({
                 <Checkbox
                   {...field}
                   checked={field.value}
-                  disabled={isSubmitting || setPasswordMutation.isSuccess}
+                  disabled={isLoading || setPasswordMutation.isSuccess}
                   inputProps={{
                     'aria-label': 'Log out from other devices',
                     'aria-describedby': 'logout-sessions-help',
@@ -765,7 +789,7 @@ const SetPasswordForm: React.FC<SetPasswordFormProps> = ({
             component={RouterLink}
             to="/login"
             variant="outlined"
-            disabled={isSubmitting || setPasswordMutation.isSuccess}
+            disabled={isLoading || setPasswordMutation.isSuccess}
             aria-label="Cancel and return to login page"
           >
             Cancel
@@ -773,13 +797,13 @@ const SetPasswordForm: React.FC<SetPasswordFormProps> = ({
           <Button
             type="submit"
             variant="contained"
-            disabled={isSubmitting || setPasswordMutation.isSuccess}
+            disabled={isLoading || setPasswordMutation.isSuccess}
             startIcon={
-              isSubmitting ? <CircularProgress size={20} color="inherit" /> : null
+              isLoading ? <CircularProgress size={20} color="inherit" /> : null
             }
             aria-label="Set new password"
           >
-            {isSubmitting ? 'Setting Password...' : 'Set Password'}
+            {isLoading ? 'Setting Password...' : 'Set Password'}
           </Button>
         </Stack>
 
