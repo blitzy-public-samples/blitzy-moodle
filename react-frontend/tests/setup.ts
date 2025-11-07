@@ -22,27 +22,26 @@ import { QueryClient } from '@tanstack/react-query';
 // Import MSW server setup from mocks directory
 // Note: This assumes ./mocks/server.ts exists with server export
 // If not yet created, this import should be added once MSW is configured
-// import { server } from './mocks/server';
+import { server } from './mocks/server';
 
 /**
  * MSW Server Lifecycle Management
  * Setup API mocking server before all tests, reset handlers between tests, and cleanup after all tests
  */
-// Uncomment when MSW server is created:
-// beforeAll(() => {
-//   // Start MSW server to intercept API requests during tests
-//   server.listen({ onUnhandledRequest: 'warn' });
-// });
+beforeAll(() => {
+  // Start MSW server to intercept API requests during tests
+  server.listen({ onUnhandledRequest: 'warn' });
+});
 
-// afterEach(() => {
-//   // Reset handlers to ensure test isolation
-//   server.resetHandlers();
-// });
+afterEach(() => {
+  // Reset handlers to ensure test isolation
+  server.resetHandlers();
+});
 
-// afterAll(() => {
-//   // Clean up and close the server after all tests complete
-//   server.close();
-// });
+afterAll(() => {
+  // Clean up and close the server after all tests complete
+  server.close();
+});
 
 /**
  * React Testing Library Cleanup
