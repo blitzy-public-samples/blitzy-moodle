@@ -1,7 +1,9 @@
 # Out-of-Scope Issues Documentation
 
 ## Summary
-During validation of the assigned file `react-frontend/tests/unit/features/profile/ProfileView.test.tsx`, the full test suite revealed failures in modules outside the scope of this validation task, as well as one TypeScript compilation error in an out-of-scope file.
+During validation of assigned files in the React frontend, the full test suite revealed failures in modules outside the scope of validation tasks, including API test failures, TypeScript compilation errors, and a flaky test. This document consolidates findings from multiple validation sessions:
+- Initial validation: `react-frontend/tests/unit/features/profile/ProfileView.test.tsx`
+- Current validation: `react-frontend/src/features/activities/choice/hooks/useChoiceResults.ts`
 
 ## Out-of-Scope Test Failures
 
@@ -164,6 +166,40 @@ Test file likely affected by the same unhandled error from useForum.test.tsx cau
 
 ---
 
+### 5. Forums Module (DiscussionList.test.tsx) - Flaky Test
+**File:** `tests/unit/features/activities/forums/DiscussionList.test.tsx`
+
+**Failed Test:** 
+- "DiscussionList Component > Pagination > should disable next button on last page"
+
+**Error:**
+```
+AssertionError: expected element to be disabled
+```
+
+**Flaky Test Behavior:**
+- **Fails:** When run as part of the full test suite (`npm test -- --run`)
+- **Passes:** When run in isolation (`npm test -- --run tests/unit/features/activities/forums/DiscussionList.test.tsx`)
+- **Pre-existing:** Failure occurs even without any modifications to the forums module
+
+**Investigation Details:**
+1. Initially discovered during validation of `useChoiceResults.ts` after fixing a linting warning
+2. Suspected regression was ruled out by:
+   - Confirming only change was type-only import modification in choice module
+   - Stashing changes and re-running tests showed same failure
+   - Running DiscussionList.test.tsx in isolation resulted in all 83 tests passing
+3. Conclusion: This is a pre-existing flaky test caused by test suite interactions or timing issues
+
+**Root Cause:**
+Likely test timing issue or improper cleanup/setup between tests in the full suite. The "next button disabled" assertion may depend on asynchronous state that isn't properly awaited when tests run in parallel or after other forum tests.
+
+**Impact:** 1 intermittent test failure affecting full suite reliability
+**Status:** DOCUMENTED ONLY (out of scope - DiscussionList component not assigned in Agent Action Plan)
+
+**Recommendation:** Investigate test isolation and async state handling in DiscussionList.test.tsx pagination tests. Consider adding proper waitFor() assertions or improving test cleanup to prevent state leakage between tests.
+
+---
+
 ## Out-of-Scope TypeScript Compilation Errors
 
 ### ProfilePage.tsx
@@ -183,17 +219,20 @@ The `params` object from `useParams()` is typed as `{}` instead of the expected 
 ---
 
 ## Full Test Suite Statistics
-- **Test Files:** 4 failed (out of scope) | 13 passed (including in-scope)
-- **Tests:** 92 failed (out of scope) | 696 passed | 1 skipped
+- **Test Files:** 5 failed (out of scope) | 12 passed (including in-scope)
+- **Tests:** 93 failed (out of scope) | 695 passed | 1 skipped
 - **Unhandled Errors:** 1 error (in out-of-scope forum tests)
+- **Flaky Tests:** 1 test (DiscussionList pagination test)
 - **Total:** 789 tests
 
-## In-Scope Status (ProfileView Component)
+## In-Scope Status (Choice Activity - useChoiceResults Hook)
 ✅ **All in-scope tests passing:**
-- `ProfileView.test.tsx`: 43/43 tests passing ✅
+- `useChoiceResults.test.ts`: All tests passing ✅
+- `choiceApi.test.ts`: All tests passing ✅
 
 **Component Under Test:**
-- `ProfileView.tsx`: All TypeScript compilation errors fixed ✅
+- `useChoiceResults.ts`: All TypeScript compilation errors fixed ✅
+- `choiceApi.ts`: All TypeScript type definitions correct ✅
 
 **Test Coverage:**
 - Rendering with valid user data
@@ -212,5 +251,6 @@ The `params` object from `useParams()` is typed as `{}` instead of the expected 
    - Fix MSW request handlers for forum API endpoints
    - Investigate test cleanup to prevent unhandled rejections in useForum.test.tsx
    - Ensure proper error handling in async operations
+   - **Fix flaky DiscussionList pagination test:** Add proper `waitFor()` assertions or improve test isolation to prevent intermittent failures when run in full suite
 3. **ProfilePage.tsx:** Add proper route type definitions for useParams() to resolve TypeScript error
-4. **Test Isolation:** Consider adding better test isolation to prevent error propagation across test files
+4. **Test Isolation:** Consider adding better test isolation to prevent error propagation across test files and to address flaky test behavior
