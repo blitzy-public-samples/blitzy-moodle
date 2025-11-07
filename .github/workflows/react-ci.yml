@@ -1,0 +1,253 @@
+name: React CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'react-frontend/**'
+      - '.github/workflows/react-ci.yml'
+  pull_request:
+    paths:
+      - 'react-frontend/**'
+      - '.github/workflows/react-ci.yml'
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: react-frontend
+
+env:
+  CI: true
+
+jobs:
+  Type-Check:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checking out code
+        uses: actions/checkout@v4
+
+      - name: Setting up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+          cache-dependency-path: 'react-frontend/package-lock.json'
+
+      - name: Installing dependencies
+        run: npm ci
+
+      - name: Running TypeScript type checking
+        run: npm run type-check
+
+  Lint:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checking out code
+        uses: actions/checkout@v4
+
+      - name: Setting up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+          cache-dependency-path: 'react-frontend/package-lock.json'
+
+      - name: Installing dependencies
+        run: npm ci
+
+      - name: Running ESLint
+        run: npm run lint
+
+      - name: Checking code formatting with Prettier
+        run: npm run format:check
+
+  Unit-Tests:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checking out code
+        uses: actions/checkout@v4
+
+      - name: Setting up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+          cache-dependency-path: 'react-frontend/package-lock.json'
+
+      - name: Installing dependencies
+        run: npm ci
+
+      - name: Running unit tests with coverage
+        run: npm run coverage
+
+      - name: Uploading coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: react-frontend/coverage/
+          retention-days: 30
+
+  E2E-Tests:
+    runs-on: ubuntu-24.04
+    needs: [Unit-Tests]
+
+    steps:
+      - name: Checking out code
+        uses: actions/checkout@v4
+
+      - name: Setting up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+          cache-dependency-path: 'react-frontend/package-lock.json'
+
+      - name: Installing dependencies
+        run: npm ci
+
+      - name: Installing Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Building production bundle
+        run: npm run build
+
+      - name: Running E2E tests
+        run: npm run test:e2e
+
+      - name: Uploading Playwright test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            react-frontend/playwright-report/
+            react-frontend/test-results/
+          retention-days: 7
+
+  Accessibility-Tests:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checking out code
+        uses: actions/checkout@v4
+
+      - name: Setting up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+          cache-dependency-path: 'react-frontend/package-lock.json'
+
+      - name: Installing dependencies
+        run: npm ci
+
+      - name: Building production bundle
+        run: npm run build
+
+      - name: Installing axe-core CLI
+        run: npm install -g @axe-core/cli
+
+      - name: Running accessibility tests
+        run: |
+          # Start a local server to serve the built files
+          npx serve -s dist -l 3000 &
+          SERVER_PID=$!
+          sleep 5
+          
+          # Run axe on critical pages
+          axe http://localhost:3000 --exit --disable color-contrast || RESULT=$?
+          
+          # Cleanup
+          kill $SERVER_PID
+          
+          # Exit with the result
+          exit ${RESULT:-0}
+
+      - name: Uploading accessibility test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: accessibility-results
+          path: react-frontend/axe-results.json
+          retention-days: 7
+          if-no-files-found: ignore
+
+  Build:
+    runs-on: ubuntu-24.04
+    needs: [Lint, Unit-Tests]
+
+    steps:
+      - name: Checking out code
+        uses: actions/checkout@v4
+
+      - name: Setting up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+          cache-dependency-path: 'react-frontend/package-lock.json'
+
+      - name: Installing dependencies
+        run: npm ci
+
+      - name: Building production bundle
+        run: npm run build
+
+      - name: Verifying build artifacts
+        run: |
+          # Check that dist directory exists
+          if [ ! -d "dist" ]; then
+            echo "Error: dist directory not found"
+            exit 1
+          fi
+          
+          # Check that index.html exists
+          if [ ! -f "dist/index.html" ]; then
+            echo "Error: dist/index.html not found"
+            exit 1
+          fi
+          
+          # Check that assets directory exists
+          if [ ! -d "dist/assets" ]; then
+            echo "Error: dist/assets directory not found"
+            exit 1
+          fi
+          
+          echo "Build artifacts verified successfully"
+
+      - name: Checking bundle size
+        run: |
+          # Find the main JavaScript bundle
+          MAIN_BUNDLE=$(find dist/assets -name "index-*.js" | head -n 1)
+          
+          if [ -z "$MAIN_BUNDLE" ]; then
+            echo "Error: Main bundle not found"
+            exit 1
+          fi
+          
+          # Get the gzipped size
+          GZIP_SIZE=$(gzip -c "$MAIN_BUNDLE" | wc -c)
+          GZIP_SIZE_KB=$((GZIP_SIZE / 1024))
+          
+          echo "Main bundle gzipped size: ${GZIP_SIZE_KB}KB"
+          
+          # Check if size is under 300KB
+          MAX_SIZE_KB=300
+          if [ $GZIP_SIZE_KB -gt $MAX_SIZE_KB ]; then
+            echo "Error: Main bundle size ${GZIP_SIZE_KB}KB exceeds maximum ${MAX_SIZE_KB}KB"
+            exit 1
+          fi
+          
+          echo "Bundle size check passed: ${GZIP_SIZE_KB}KB <= ${MAX_SIZE_KB}KB"
+
+      - name: Uploading build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: react-frontend/dist/
+          retention-days: 7
