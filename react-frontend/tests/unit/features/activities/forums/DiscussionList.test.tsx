@@ -1305,10 +1305,17 @@ describe('DiscussionList Component', () => {
     });
 
     it('should revert optimistic update if mutation fails', async () => {
-      const mutateFn = vi.fn().mockRejectedValue(new Error('Failed to pin'));
+      // Mock mutation that calls onError callback instead of rejecting
+      const mutateFn = vi.fn().mockImplementation((_, options) => {
+        // Simulate calling the onError callback if it exists
+        if (options?.onError) {
+          options.onError(new Error('Failed to pin'));
+        }
+      });
+      
       mockUseMutation.mockReturnValue({
         mutate: mutateFn,
-        mutateAsync: mutateFn,
+        mutateAsync: vi.fn().mockRejectedValue(new Error('Failed to pin')),
         isLoading: false,
         isError: true,
       });
@@ -1328,8 +1335,12 @@ describe('DiscussionList Component', () => {
       
       if (pinButton) {
         await user.click(pinButton);
-        // Verify the mutation function was called (even though it will fail)
-        expect(mutateFn).toHaveBeenCalled();
+        
+        // Wait for any pending updates
+        await waitFor(() => {
+          // Verify the mutation function was called (even though it will fail)
+          expect(mutateFn).toHaveBeenCalled();
+        });
       } else {
         // If no pin button, the component might not have this functionality yet
         // Just verify the component rendered
