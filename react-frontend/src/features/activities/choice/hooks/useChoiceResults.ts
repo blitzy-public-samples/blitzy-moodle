@@ -1,4 +1,5 @@
 import { useQuery, UseQueryResult } from '@tanstack/react-query';
+import { getChoiceResults } from '../api/choiceApi';
 
 /**
  * Parameters for fetching choice results
@@ -110,6 +111,8 @@ interface ApiResponse<T> {
  * 
  * Makes a GET request to /api/v1/choices/{id}/results with optional
  * query parameters for group filtering and inactive user inclusion.
+ * This function is a simple wrapper around the choiceApi getChoiceResults
+ * function to maintain compatibility with the hook's query function signature.
  * 
  * @param choiceId - The ID of the choice activity
  * @param groupId - Optional group ID to filter responses
@@ -122,59 +125,11 @@ async function fetchChoiceResults(
   groupId?: number,
   includeinactive?: boolean
 ): Promise<ChoiceResultsResponse> {
-  // Build query parameters
-  const params = new URLSearchParams();
-  
-  if (groupId !== undefined && groupId > 0) {
-    params.append('groupId', groupId.toString());
-  }
-  
-  if (includeinactive !== undefined) {
-    params.append('includeinactive', includeinactive ? '1' : '0');
-  }
-
-  // Construct the full URL with query string
-  const queryString = params.toString();
-  const url = `/api/v1/choices/${choiceId}/results${queryString ? `?${queryString}` : ''}`;
-
-  // Make the API request with credentials for JWT authentication
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    },
-    credentials: 'include', // Include cookies for JWT authentication
+  // Call the API function with proper options structure
+  return getChoiceResults(choiceId, {
+    groupId,
+    includeinactive,
   });
-
-  // Handle HTTP errors
-  if (!response.ok) {
-    let errorMessage = `Failed to fetch choice results: ${response.statusText}`;
-    
-    try {
-      const errorData: ApiResponse<never> = await response.json();
-      if (errorData.error?.message) {
-        errorMessage = errorData.error.message;
-      }
-    } catch {
-      // If error response is not JSON, use status text
-    }
-    
-    throw new Error(errorMessage);
-  }
-
-  // Parse the successful response
-  const apiResponse: ApiResponse<ChoiceResultsResponse> = await response.json();
-
-  // Check for application-level errors
-  if (!apiResponse.success) {
-    throw new Error(
-      apiResponse.error?.message || 'Failed to fetch choice results'
-    );
-  }
-
-  // Return the data payload
-  return apiResponse.data;
 }
 
 /**
@@ -271,10 +226,6 @@ function useChoiceResults({
     // Refetch on window focus to keep data fresh
     // Useful when user returns to the tab
     refetchOnWindowFocus: true,
-    
-    // Keep previous data while fetching new data
-    // Provides better UX by showing stale data instead of loading state
-    placeholderData: (previousData) => previousData,
   });
 }
 
