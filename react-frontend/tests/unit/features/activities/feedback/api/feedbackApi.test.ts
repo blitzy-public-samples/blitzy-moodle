@@ -53,8 +53,10 @@ const mockFeedback: Feedback = {
   intro: 'Please complete this survey to help us improve the course',
   introformat: 1,
   anonymous: 2, // FEEDBACK_ANONYMOUS_NO
+  email_notification: 0,
   multiple_submit: 0,
   autonumbering: 1,
+  site_after_submit: '',
   page_after_submit: 'Thank you for your feedback!',
   page_after_submitformat: 1,
   publish_stats: 0,
@@ -196,7 +198,7 @@ describe('Feedback API Client', () => {
       const feedbackId = 1;
       
       server.use(
-        http.get(`${API_BASE_URL}/feedback/${feedbackId}`, () => {
+        http.get(`*${API_BASE_URL}/feedback/${feedbackId}`, () => {
           return HttpResponse.json({
             success: true,
             data: mockFeedback,
@@ -214,7 +216,7 @@ describe('Feedback API Client', () => {
 
     it('should parse response into correct Feedback TypeScript interface', async () => {
       server.use(
-        http.get(`${API_BASE_URL}/feedback/1`, () => {
+        http.get(`*${API_BASE_URL}/feedback/1`, () => {
           return HttpResponse.json({
             success: true,
             data: mockFeedback,
@@ -245,7 +247,7 @@ describe('Feedback API Client', () => {
       let requestHeaders: Headers | undefined;
       
       server.use(
-        http.get(`${API_BASE_URL}/feedback/1`, ({ request }) => {
+        http.get(`*${API_BASE_URL}/feedback/1`, ({ request }) => {
           requestHeaders = request.headers;
           return HttpResponse.json({
             success: true,
@@ -263,7 +265,7 @@ describe('Feedback API Client', () => {
 
     it('should handle 404 Not Found error for invalid feedback ID', async () => {
       server.use(
-        http.get(`${API_BASE_URL}/feedback/999`, () => {
+        http.get(`*${API_BASE_URL}/feedback/999`, () => {
           return HttpResponse.json(
             {
               success: false,
@@ -285,7 +287,7 @@ describe('Feedback API Client', () => {
 
     it('should handle 403 Forbidden error for insufficient permissions', async () => {
       server.use(
-        http.get(`${API_BASE_URL}/feedback/1`, () => {
+        http.get(`*${API_BASE_URL}/feedback/1`, () => {
           return HttpResponse.json(
             {
               success: false,
@@ -308,7 +310,7 @@ describe('Feedback API Client', () => {
 
     it('should handle network error scenarios', async () => {
       server.use(
-        http.get(`${API_BASE_URL}/feedback/1`, () => {
+        http.get(`*${API_BASE_URL}/feedback/1`, () => {
           return HttpResponse.error();
         })
       );
@@ -322,7 +324,7 @@ describe('Feedback API Client', () => {
       const feedbackId = 1;
       
       server.use(
-        http.get(`${API_BASE_URL}/feedback/${feedbackId}/questions`, () => {
+        http.get(`*${API_BASE_URL}/feedback/${feedbackId}/questions`, () => {
           return HttpResponse.json({
             success: true,
             data: mockFeedbackItems,
@@ -339,7 +341,7 @@ describe('Feedback API Client', () => {
 
     it('should parse different question types correctly', async () => {
       server.use(
-        http.get(`${API_BASE_URL}/feedback/1/questions`, () => {
+        http.get(`*${API_BASE_URL}/feedback/1/questions`, () => {
           return HttpResponse.json({
             success: true,
             data: mockFeedbackItems,
@@ -366,7 +368,7 @@ describe('Feedback API Client', () => {
 
     it('should handle empty feedback (no questions)', async () => {
       server.use(
-        http.get(`${API_BASE_URL}/feedback/1/questions`, () => {
+        http.get(`*${API_BASE_URL}/feedback/1/questions`, () => {
           return HttpResponse.json({
             success: true,
             data: [],
@@ -382,7 +384,7 @@ describe('Feedback API Client', () => {
 
     it('should handle permission error for questions retrieval', async () => {
       server.use(
-        http.get(`${API_BASE_URL}/feedback/1/questions`, () => {
+        http.get(`*${API_BASE_URL}/feedback/1/questions`, () => {
           return HttpResponse.json(
             {
               success: false,
@@ -411,7 +413,7 @@ describe('Feedback API Client', () => {
 
     it('should successfully submit feedback response', async () => {
       server.use(
-        http.post(`${API_BASE_URL}/feedback/${feedbackId}/submit`, () => {
+        http.post(`*${API_BASE_URL}/feedback/${feedbackId}/submit`, () => {
           return HttpResponse.json({
             success: true,
             data: mockSubmissionResult,
@@ -431,7 +433,7 @@ describe('Feedback API Client', () => {
       let requestBody: any;
       
       server.use(
-        http.post(`${API_BASE_URL}/feedback/${feedbackId}/submit`, async ({ request }) => {
+        http.post(`*${API_BASE_URL}/feedback/${feedbackId}/submit`, async ({ request }) => {
           requestBody = await request.json();
           return HttpResponse.json({
             success: true,
@@ -455,7 +457,7 @@ describe('Feedback API Client', () => {
       };
 
       server.use(
-        http.post(`${API_BASE_URL}/feedback/${feedbackId}/submit`, () => {
+        http.post(`*${API_BASE_URL}/feedback/${feedbackId}/submit`, () => {
           return HttpResponse.json(
             {
               success: false,
@@ -483,7 +485,7 @@ describe('Feedback API Client', () => {
       };
 
       server.use(
-        http.post(`${API_BASE_URL}/feedback/${feedbackId}/submit`, () => {
+        http.post(`*${API_BASE_URL}/feedback/${feedbackId}/submit`, () => {
           return HttpResponse.json(
             {
               success: false,
@@ -505,7 +507,7 @@ describe('Feedback API Client', () => {
 
     it('should prevent duplicate submission when not allowed', async () => {
       server.use(
-        http.post(`${API_BASE_URL}/feedback/${feedbackId}/submit`, () => {
+        http.post(`*${API_BASE_URL}/feedback/${feedbackId}/submit`, () => {
           return HttpResponse.json(
             {
               success: false,
@@ -528,7 +530,7 @@ describe('Feedback API Client', () => {
 
     it('should handle time window validation (feedback closed)', async () => {
       server.use(
-        http.post(`${API_BASE_URL}/feedback/${feedbackId}/submit`, () => {
+        http.post(`*${API_BASE_URL}/feedback/${feedbackId}/submit`, () => {
           return HttpResponse.json(
             {
               success: false,
@@ -553,7 +555,7 @@ describe('Feedback API Client', () => {
     it('should support optimistic updates pattern', async () => {
       // This test verifies the response structure supports optimistic UI updates
       server.use(
-        http.post(`${API_BASE_URL}/feedback/${feedbackId}/submit`, () => {
+        http.post(`*${API_BASE_URL}/feedback/${feedbackId}/submit`, () => {
           return HttpResponse.json({
             success: true,
             data: {
@@ -580,7 +582,7 @@ describe('Feedback API Client', () => {
 
     it('should successfully fetch analysis data', async () => {
       server.use(
-        http.get(`${API_BASE_URL}/feedback/${feedbackId}/analysis`, () => {
+        http.get(`*${API_BASE_URL}/feedback/${feedbackId}/analysis`, () => {
           return HttpResponse.json({
             success: true,
             data: mockFeedbackAnalysis,
@@ -598,7 +600,7 @@ describe('Feedback API Client', () => {
 
     it('should include statistics and charts data in response', async () => {
       server.use(
-        http.get(`${API_BASE_URL}/feedback/${feedbackId}/analysis`, () => {
+        http.get(`*${API_BASE_URL}/feedback/${feedbackId}/analysis`, () => {
           return HttpResponse.json({
             success: true,
             data: mockFeedbackAnalysis,
@@ -627,7 +629,7 @@ describe('Feedback API Client', () => {
 
     it('should validate permission for analysis viewing (teachers/admins only)', async () => {
       server.use(
-        http.get(`${API_BASE_URL}/feedback/${feedbackId}/analysis`, () => {
+        http.get(`*${API_BASE_URL}/feedback/${feedbackId}/analysis`, () => {
           return HttpResponse.json(
             {
               success: false,
@@ -655,7 +657,7 @@ describe('Feedback API Client', () => {
       let requestUrl: string = '';
       
       server.use(
-        http.get(`${API_BASE_URL}/feedback/${feedbackId}/analysis`, ({ request }) => {
+        http.get(`*${API_BASE_URL}/feedback/${feedbackId}/analysis`, ({ request }) => {
           requestUrl = request.url;
           return HttpResponse.json({
             success: true,
@@ -677,7 +679,7 @@ describe('Feedback API Client', () => {
       let requestUrl: string = '';
       
       server.use(
-        http.get(`${API_BASE_URL}/feedback/${feedbackId}/analysis`, ({ request }) => {
+        http.get(`*${API_BASE_URL}/feedback/${feedbackId}/analysis`, ({ request }) => {
           requestUrl = request.url;
           return HttpResponse.json({
             success: true,
@@ -700,7 +702,7 @@ describe('Feedback API Client', () => {
       };
 
       server.use(
-        http.get(`${API_BASE_URL}/feedback/${feedbackId}/analysis`, () => {
+        http.get(`*${API_BASE_URL}/feedback/${feedbackId}/analysis`, () => {
           return HttpResponse.json({
             success: true,
             data: emptyAnalysis,
@@ -717,7 +719,7 @@ describe('Feedback API Client', () => {
 
     it('should validate TypeScript types for analysis data structure', async () => {
       server.use(
-        http.get(`${API_BASE_URL}/feedback/${feedbackId}/analysis`, () => {
+        http.get(`*${API_BASE_URL}/feedback/${feedbackId}/analysis`, () => {
           return HttpResponse.json({
             success: true,
             data: mockFeedbackAnalysis,
@@ -749,7 +751,7 @@ describe('Feedback API Client', () => {
 
     it('should successfully fetch feedback completion status', async () => {
       server.use(
-        http.get(`${API_BASE_URL}/feedback/${feedbackId}/status`, () => {
+        http.get(`*${API_BASE_URL}/feedback/${feedbackId}/status`, () => {
           return HttpResponse.json({
             success: true,
             data: mockFeedbackStatus,
@@ -772,7 +774,7 @@ describe('Feedback API Client', () => {
       };
 
       server.use(
-        http.get(`${API_BASE_URL}/feedback/${feedbackId}/status`, () => {
+        http.get(`*${API_BASE_URL}/feedback/${feedbackId}/status`, () => {
           return HttpResponse.json({
             success: true,
             data: completedStatus,
@@ -794,7 +796,7 @@ describe('Feedback API Client', () => {
       };
 
       server.use(
-        http.get(`${API_BASE_URL}/feedback/${feedbackId}/status`, () => {
+        http.get(`*${API_BASE_URL}/feedback/${feedbackId}/status`, () => {
           return HttpResponse.json({
             success: true,
             data: anonymousStatus,
@@ -816,7 +818,7 @@ describe('Feedback API Client', () => {
       };
 
       server.use(
-        http.get(`${API_BASE_URL}/feedback/${feedbackId}/status`, () => {
+        http.get(`*${API_BASE_URL}/feedback/${feedbackId}/status`, () => {
           return HttpResponse.json({
             success: true,
             data: multipleSubmitStatus,
@@ -840,7 +842,7 @@ describe('Feedback API Client', () => {
       };
 
       server.use(
-        http.get(`${API_BASE_URL}/feedback/${feedbackId}/status`, () => {
+        http.get(`*${API_BASE_URL}/feedback/${feedbackId}/status`, () => {
           return HttpResponse.json({
             success: true,
             data: statusWithMetadata,
@@ -865,7 +867,7 @@ describe('Feedback API Client', () => {
 
     it('should return true when user can complete feedback', async () => {
       server.use(
-        http.get(`${API_BASE_URL}/feedback/${feedbackId}/can-complete`, () => {
+        http.get(`*${API_BASE_URL}/feedback/${feedbackId}/can-complete`, () => {
           return HttpResponse.json({
             success: true,
             data: {
@@ -883,7 +885,7 @@ describe('Feedback API Client', () => {
 
     it('should return false with reason when user cannot complete', async () => {
       server.use(
-        http.get(`${API_BASE_URL}/feedback/${feedbackId}/can-complete`, () => {
+        http.get(`*${API_BASE_URL}/feedback/${feedbackId}/can-complete`, () => {
           return HttpResponse.json({
             success: true,
             data: {
@@ -902,7 +904,7 @@ describe('Feedback API Client', () => {
 
     it('should handle permission check failure', async () => {
       server.use(
-        http.get(`${API_BASE_URL}/feedback/${feedbackId}/can-complete`, () => {
+        http.get(`*${API_BASE_URL}/feedback/${feedbackId}/can-complete`, () => {
           return HttpResponse.json(
             {
               success: false,
@@ -921,7 +923,7 @@ describe('Feedback API Client', () => {
 
     it('should handle already submitted scenario', async () => {
       server.use(
-        http.get(`${API_BASE_URL}/feedback/${feedbackId}/can-complete`, () => {
+        http.get(`*${API_BASE_URL}/feedback/${feedbackId}/can-complete`, () => {
           return HttpResponse.json({
             success: true,
             data: {
@@ -944,7 +946,7 @@ describe('Feedback API Client', () => {
 
     it('should successfully fetch user feedback responses', async () => {
       server.use(
-        http.get(`${API_BASE_URL}/feedback/${feedbackId}/responses`, () => {
+        http.get(`*${API_BASE_URL}/feedback/${feedbackId}/responses`, () => {
           return HttpResponse.json({
             success: true,
             data: mockFeedbackResponses,
@@ -961,7 +963,7 @@ describe('Feedback API Client', () => {
 
     it('should return responses for current user only', async () => {
       server.use(
-        http.get(`${API_BASE_URL}/feedback/${feedbackId}/responses`, () => {
+        http.get(`*${API_BASE_URL}/feedback/${feedbackId}/responses`, () => {
           return HttpResponse.json({
             success: true,
             data: mockFeedbackResponses,
@@ -979,7 +981,7 @@ describe('Feedback API Client', () => {
 
     it('should handle empty response history', async () => {
       server.use(
-        http.get(`${API_BASE_URL}/feedback/${feedbackId}/responses`, () => {
+        http.get(`*${API_BASE_URL}/feedback/${feedbackId}/responses`, () => {
           return HttpResponse.json({
             success: true,
             data: [],
@@ -1010,7 +1012,7 @@ describe('Feedback API Client', () => {
       ];
 
       server.use(
-        http.get(`${API_BASE_URL}/feedback/${feedbackId}/responses`, () => {
+        http.get(`*${API_BASE_URL}/feedback/${feedbackId}/responses`, () => {
           return HttpResponse.json({
             success: true,
             data: mixedResponses,
@@ -1027,7 +1029,7 @@ describe('Feedback API Client', () => {
 
     it('should handle permission error for viewing reports capability', async () => {
       server.use(
-        http.get(`${API_BASE_URL}/feedback/${feedbackId}/responses`, () => {
+        http.get(`*${API_BASE_URL}/feedback/${feedbackId}/responses`, () => {
           return HttpResponse.json(
             {
               success: false,
@@ -1058,7 +1060,7 @@ describe('Feedback API Client', () => {
 
     it('should successfully save in-progress feedback responses', async () => {
       server.use(
-        http.post(`${API_BASE_URL}/feedback/${feedbackId}/save-progress`, () => {
+        http.post(`*${API_BASE_URL}/feedback/${feedbackId}/save-progress`, () => {
           return HttpResponse.json({
             success: true,
             data: {
@@ -1079,7 +1081,7 @@ describe('Feedback API Client', () => {
 
     it('should allow resuming from saved page', async () => {
       server.use(
-        http.post(`${API_BASE_URL}/feedback/${feedbackId}/save-progress`, () => {
+        http.post(`*${API_BASE_URL}/feedback/${feedbackId}/save-progress`, () => {
           return HttpResponse.json({
             success: true,
             data: {
@@ -1102,7 +1104,7 @@ describe('Feedback API Client', () => {
   describe('Error Handling', () => {
     it('should parse standard error envelope', async () => {
       server.use(
-        http.get(`${API_BASE_URL}/feedback/1`, () => {
+        http.get(`*${API_BASE_URL}/feedback/1`, () => {
           return HttpResponse.json(
             {
               success: false,
@@ -1141,7 +1143,7 @@ describe('Feedback API Client', () => {
 
       for (const { code, status } of errorCodes) {
         server.use(
-          http.get(`${API_BASE_URL}/feedback/1`, () => {
+          http.get(`*${API_BASE_URL}/feedback/1`, () => {
             return HttpResponse.json(
               {
                 success: false,
@@ -1161,7 +1163,7 @@ describe('Feedback API Client', () => {
 
     it('should handle timeout scenarios', async () => {
       server.use(
-        http.get(`${API_BASE_URL}/feedback/1`, async () => {
+        http.get(`*${API_BASE_URL}/feedback/1`, async () => {
           // Simulate timeout with delay
           await new Promise((resolve) => setTimeout(resolve, 10));
           return HttpResponse.error();
@@ -1175,7 +1177,7 @@ describe('Feedback API Client', () => {
       let attemptCount = 0;
 
       server.use(
-        http.get(`${API_BASE_URL}/feedback/1`, () => {
+        http.get(`*${API_BASE_URL}/feedback/1`, () => {
           attemptCount++;
           if (attemptCount < 2) {
             return HttpResponse.error();
@@ -1201,7 +1203,7 @@ describe('Feedback API Client', () => {
   describe('TypeScript Type Safety', () => {
     it('should enforce correct response types', async () => {
       server.use(
-        http.get(`${API_BASE_URL}/feedback/1`, () => {
+        http.get(`*${API_BASE_URL}/feedback/1`, () => {
           return HttpResponse.json({
             success: true,
             data: mockFeedback,
@@ -1228,7 +1230,7 @@ describe('Feedback API Client', () => {
       };
 
       server.use(
-        http.get(`${API_BASE_URL}/feedback/1`, () => {
+        http.get(`*${API_BASE_URL}/feedback/1`, () => {
           return HttpResponse.json({
             success: true,
             data: feedbackWithOptionals,
@@ -1253,7 +1255,7 @@ describe('Feedback API Client', () => {
 
       for (const status of statuses) {
         server.use(
-          http.get(`${API_BASE_URL}/feedback/1/status`, () => {
+          http.get(`*${API_BASE_URL}/feedback/1/status`, () => {
             return HttpResponse.json({
               success: true,
               data: status,
@@ -1296,7 +1298,7 @@ describe('Feedback API Client', () => {
       const queryKey = ['feedback', feedbackId];
 
       server.use(
-        http.get(`${API_BASE_URL}/feedback/${feedbackId}`, () => {
+        http.get(`*${API_BASE_URL}/feedback/${feedbackId}`, () => {
           return HttpResponse.json({
             success: true,
             data: mockFeedback,
@@ -1323,7 +1325,7 @@ describe('Feedback API Client', () => {
 
     it('should support mutation success callbacks', async () => {
       server.use(
-        http.post(`${API_BASE_URL}/feedback/1/submit`, () => {
+        http.post(`*${API_BASE_URL}/feedback/1/submit`, () => {
           return HttpResponse.json({
             success: true,
             data: mockSubmissionResult,
@@ -1358,7 +1360,7 @@ describe('Feedback API Client', () => {
       let callCount = 0;
 
       server.use(
-        http.get(`${API_BASE_URL}/feedback/1`, () => {
+        http.get(`*${API_BASE_URL}/feedback/1`, () => {
           callCount++;
           return HttpResponse.json({
             success: true,

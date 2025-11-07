@@ -24,63 +24,74 @@ import { http, HttpResponse } from 'msw';
 
 interface Feedback {
   id: number;
-  courseId: number;
+  course: number;
   name: string;
   intro: string;
-  introFormat: number;
-  anonymous: boolean;
-  multipleSubmit: boolean;
-  autonumbering: boolean;
-  siteAfterSubmit: string;
-  pageAfterSubmit: string;
-  pageAfterSubmitFormat: number;
-  publishStats: boolean;
-  timeOpen: number;
-  timeClose: number;
-  timeModified: number;
-  completionSubmit: boolean;
-  canView: boolean;
-  canSubmit: boolean;
-  canViewAnalysis: boolean;
-  hasSubmitted: boolean;
+  introformat: number;
+  anonymous: number; // 2 = no anonymous, 1 = anonymous
+  email_notification: number;
+  multiple_submit: number;
+  autonumbering: number;
+  site_after_submit: string;
+  page_after_submit: string;
+  page_after_submitformat: number;
+  publish_stats: number;
+  timeopen: number;
+  timeclose: number;
+  timemodified: number;
+  completionsubmit: number;
 }
 
 interface FeedbackQuestion {
   id: number;
-  feedbackId: number;
-  type: string;
+  feedback: number;
+  template: number;
   name: string;
   label: string;
-  required: boolean;
+  presentation: string;
+  typ: string;
+  hasvalue: number;
   position: number;
-  dependItem: number;
-  dependValue: string;
+  required: number;
+  dependitem: number;
+  dependvalue: string;
   options: string;
-  values?: string[];
 }
 
 interface FeedbackResponse {
   id: number;
-  feedbackId: number;
-  userId: number;
-  anonymous: boolean;
-  timeModified: number;
+  feedback: number;
+  userid: number;
+  anonymous: number;
+  timemodified: number;
   answers: Record<number, any>;
 }
 
 interface FeedbackAnalysis {
   feedbackId: number;
-  totalSubmissions: number;
-  anonymousSubmissions: number;
+  totalResponses: number;
+  completionRate: number;
   questions: Array<{
-    questionId: number;
-    questionName: string;
-    questionType: string;
-    answers: Array<{
+    itemId: number;
+    question: string;
+    type: string;
+    responses: Array<{
       value: string;
       count: number;
       percentage: number;
     }>;
+    average?: number;
+    mode?: number;
+    distribution?: {
+      min: number;
+      max: number;
+      median: number;
+    };
+    percentage?: number;
+  }>;
+  courseBreakdown?: Record<number, {
+    totalResponses: number;
+    completionRate: number;
   }>;
 }
 
@@ -91,47 +102,41 @@ interface FeedbackAnalysis {
 const MOCK_FEEDBACK: Record<number, Feedback> = {
   1: {
     id: 1,
-    courseId: 10,
+    course: 10,
     name: 'Course Evaluation Survey',
-    intro: 'Please provide your feedback on this course',
-    introFormat: 1,
-    anonymous: true,
-    multipleSubmit: false,
-    autonumbering: true,
-    siteAfterSubmit: '',
-    pageAfterSubmit: 'Thank you for your feedback!',
-    pageAfterSubmitFormat: 1,
-    publishStats: true,
-    timeOpen: 1640000000,
-    timeClose: 1672536000,
-    timeModified: 1640000000,
-    completionSubmit: true,
-    canView: true,
-    canSubmit: true,
-    canViewAnalysis: false,
-    hasSubmitted: false
+    intro: 'Please complete this survey to help us improve the course',
+    introformat: 1,
+    anonymous: 2, // FEEDBACK_ANONYMOUS_NO
+    email_notification: 0,
+    multiple_submit: 0,
+    autonumbering: 1,
+    site_after_submit: '',
+    page_after_submit: 'Thank you for your feedback!',
+    page_after_submitformat: 1,
+    publish_stats: 0,
+    timeopen: 0,
+    timeclose: 0,
+    timemodified: 1640000000,
+    completionsubmit: 1
   },
   2: {
     id: 2,
-    courseId: 10,
+    course: 10,
     name: 'Mid-Term Feedback',
     intro: 'How are you finding the course so far?',
-    introFormat: 1,
-    anonymous: false,
-    multipleSubmit: true,
-    autonumbering: true,
-    siteAfterSubmit: '',
-    pageAfterSubmit: 'Your feedback has been recorded',
-    pageAfterSubmitFormat: 1,
-    publishStats: false,
-    timeOpen: 1640000000,
-    timeClose: 1672536000,
-    timeModified: 1640000000,
-    completionSubmit: true,
-    canView: true,
-    canSubmit: true,
-    canViewAnalysis: true,
-    hasSubmitted: true
+    introformat: 1,
+    anonymous: 1, // FEEDBACK_ANONYMOUS_YES
+    email_notification: 1,
+    multiple_submit: 1,
+    autonumbering: 1,
+    site_after_submit: '',
+    page_after_submit: 'Your feedback has been recorded',
+    page_after_submitformat: 1,
+    publish_stats: 1,
+    timeopen: 1640000000,
+    timeclose: 1672536000,
+    timemodified: 1640000000,
+    completionsubmit: 1
   }
 };
 
@@ -139,78 +144,79 @@ const MOCK_QUESTIONS: Record<number, FeedbackQuestion[]> = {
   1: [
     {
       id: 1,
-      feedbackId: 1,
-      type: 'multichoice',
-      name: 'Overall Rating',
-      label: 'How would you rate this course overall?',
-      required: true,
+      feedback: 1,
+      template: 0,
+      name: 'question1',
+      label: 'How would you rate this course?',
+      presentation: '1|2|3|4|5',
+      typ: 'multichoice',
+      hasvalue: 1,
       position: 1,
-      dependItem: 0,
-      dependValue: '',
-      options: 'r>>>>> Excellent | Very Good | Good | Fair | Poor',
-      values: ['Excellent', 'Very Good', 'Good', 'Fair', 'Poor']
+      required: 1,
+      dependitem: 0,
+      dependvalue: '',
+      options: 'r>>>>>1####2####3####4####5'
     },
     {
       id: 2,
-      feedbackId: 1,
-      type: 'textarea',
-      name: 'Comments',
-      label: 'What did you like most about this course?',
-      required: false,
+      feedback: 1,
+      template: 0,
+      name: 'question2',
+      label: 'What did you like most about the course?',
+      presentation: '',
+      typ: 'textarea',
+      hasvalue: 1,
       position: 2,
-      dependItem: 0,
-      dependValue: '',
+      required: 0,
+      dependitem: 0,
+      dependvalue: '',
       options: ''
     },
     {
       id: 3,
-      feedbackId: 1,
-      type: 'textarea',
-      name: 'Improvements',
-      label: 'What could be improved?',
-      required: false,
+      feedback: 1,
+      template: 0,
+      name: 'question3',
+      label: 'Would you recommend this course?',
+      presentation: 'Yes####No',
+      typ: 'multichoice',
+      hasvalue: 1,
       position: 3,
-      dependItem: 0,
-      dependValue: '',
-      options: ''
-    },
-    {
-      id: 4,
-      feedbackId: 1,
-      type: 'numeric',
-      name: 'Instructor Rating',
-      label: 'Rate the instructor (1-10)',
-      required: true,
-      position: 4,
-      dependItem: 0,
-      dependValue: '',
-      options: '1|10'
+      required: 1,
+      dependitem: 0,
+      dependvalue: '',
+      options: 'r>>>>>Yes####No'
     }
   ],
   2: [
     {
-      id: 5,
-      feedbackId: 2,
-      type: 'multichoice',
-      name: 'Difficulty',
+      id: 4,
+      feedback: 2,
+      template: 0,
+      name: 'difficulty',
       label: 'How difficult is the course material?',
-      required: true,
+      presentation: 'Too Easy####Just Right####Too Hard',
+      typ: 'multichoice',
+      hasvalue: 1,
       position: 1,
-      dependItem: 0,
-      dependValue: '',
-      options: 'r>>>>> Too Easy | Easy | Just Right | Difficult | Too Difficult',
-      values: ['Too Easy', 'Easy', 'Just Right', 'Difficult', 'Too Difficult']
+      required: 1,
+      dependitem: 0,
+      dependvalue: '',
+      options: 'r>>>>>Too Easy####Just Right####Too Hard'
     },
     {
-      id: 6,
-      feedbackId: 2,
-      type: 'textarea',
-      name: 'Progress',
+      id: 5,
+      feedback: 2,
+      template: 0,
+      name: 'progress',
       label: 'How is your progress in the course?',
-      required: false,
+      presentation: '',
+      typ: 'textarea',
+      hasvalue: 1,
       position: 2,
-      dependItem: 0,
-      dependValue: '',
+      required: 0,
+      dependitem: 0,
+      dependvalue: '',
       options: ''
     }
   ]
@@ -219,28 +225,32 @@ const MOCK_QUESTIONS: Record<number, FeedbackQuestion[]> = {
 const MOCK_ANALYSIS: Record<number, FeedbackAnalysis> = {
   1: {
     feedbackId: 1,
-    totalSubmissions: 45,
-    anonymousSubmissions: 45,
+    totalResponses: 45,
+    completionRate: 90.0,
     questions: [
       {
-        questionId: 1,
-        questionName: 'Overall Rating',
-        questionType: 'multichoice',
-        answers: [
-          { value: 'Excellent', count: 20, percentage: 44.4 },
-          { value: 'Very Good', count: 15, percentage: 33.3 },
-          { value: 'Good', count: 8, percentage: 17.8 },
-          { value: 'Fair', count: 2, percentage: 4.4 },
-          { value: 'Poor', count: 0, percentage: 0 }
-        ]
+        itemId: 1,
+        question: 'How would you rate this course?',
+        type: 'multichoice',
+        responses: [
+          { value: '5', count: 20, percentage: 44.4 },
+          { value: '4', count: 15, percentage: 33.3 },
+          { value: '3', count: 8, percentage: 17.8 },
+          { value: '2', count: 2, percentage: 4.4 },
+          { value: '1', count: 0, percentage: 0 }
+        ],
+        average: 4.2,
+        mode: 5
       },
       {
-        questionId: 4,
-        questionName: 'Instructor Rating',
-        questionType: 'numeric',
-        answers: [
-          { value: 'Average: 8.5', count: 45, percentage: 100 }
-        ]
+        itemId: 3,
+        question: 'Would you recommend this course?',
+        type: 'multichoice',
+        responses: [
+          { value: 'Yes', count: 42, percentage: 93.3 },
+          { value: 'No', count: 3, percentage: 6.7 }
+        ],
+        percentage: 93.3
       }
     ]
   }
@@ -380,7 +390,7 @@ const submitFeedbackHandler = http.post('*/api/v1/feedback/:id/submit', async ({
   }
   
   // Check if already submitted (for non-multiple submit feedback)
-  if (feedback.hasSubmitted && !feedback.multipleSubmit) {
+  if (feedback.hasSubmitted && feedback.multiple_submit === 0) {
     return HttpResponse.json(
       {
         success: false,
@@ -389,7 +399,7 @@ const submitFeedbackHandler = http.post('*/api/v1/feedback/:id/submit', async ({
           message: 'You have already submitted this feedback',
           details: { 
             feedbackId: id,
-            multipleSubmit: feedback.multipleSubmit
+            multiple_submit: feedback.multiple_submit
           }
         }
       },
@@ -437,17 +447,17 @@ const submitFeedbackHandler = http.post('*/api/v1/feedback/:id/submit', async ({
   
   const response: FeedbackResponse = {
     id: Math.floor(Math.random() * 10000),
-    feedbackId: id,
-    userId: feedback.anonymous ? 0 : 5,
+    feedback: id,
+    userid: feedback.anonymous === 1 ? 0 : 5,
     anonymous: feedback.anonymous,
-    timeModified: Date.now() / 1000,
+    timemodified: Math.floor(Date.now() / 1000),
     answers: body.answers
   };
   
   return HttpResponse.json({
     success: true,
     data: response,
-    message: feedback.pageAfterSubmit || 'Thank you for your feedback!'
+    message: feedback.page_after_submit || 'Thank you for your feedback!'
   }, { status: 201 });
 });
 
@@ -492,7 +502,7 @@ const getAnalysisHandler = http.get('*/api/v1/feedback/:id/analysis', async ({ p
     );
   }
   
-  if (!feedback.publishStats && !feedback.canViewAnalysis) {
+  if (feedback.publish_stats === 0 && !feedback.canViewAnalysis) {
     return HttpResponse.json(
       {
         success: false,

@@ -32,7 +32,7 @@ import type {
 } from '@/features/activities/forums/types/forum.types';
 
 // Mock API base URL
-const API_BASE_URL = 'http://localhost:3000/api/v1';
+const API_BASE_URL = 'http://localhost:8000/api/v1';
 
 // Mock JWT token for authentication
 const MOCK_JWT_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
@@ -40,14 +40,17 @@ const MOCK_JWT_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY
 // Mock data
 const mockForum: Forum = {
   id: 1,
-  courseId: 10,
+  courseid: 10,
   name: 'General Discussion Forum',
   intro: 'Welcome to the general discussion forum',
+  introformat: 1,
   type: 'general',
   assessed: 0,
   assesstimestart: 0,
   assesstimefinish: 0,
   scale: 0,
+  gradeforum: 0,
+  gradeforumnotify: false,
   maxbytes: 512000,
   maxattachments: 5,
   forcesubscribe: 0,
@@ -63,9 +66,16 @@ const mockForum: Forum = {
   completionposts: 0,
   displaywordcount: false,
   lockdiscussionafter: 0,
-  canCreateDiscussion: true,
+  duedate: 0,
+  cutoffdate: 0,
+  subscribed: false,
   canSubscribe: true,
-  isSubscribed: false
+  canAddDiscussion: true,
+  canModerate: false,
+  unreadCount: 0,
+  discussionCount: 5,
+  postCount: 25,
+  participants: 10
 };
 
 const mockDiscussions: Discussion[] = [
@@ -191,7 +201,7 @@ const mockDiscussionWithPosts = {
 // MSW request handlers
 const handlers = [
   // GET forum by ID
-  http.get(`${API_BASE_URL}/forums/:id`, ({ params }) => {
+  http.get(`*${API_BASE_URL}/forums/:id`, ({ params }) => {
     const { id } = params;
     
     if (id === '404') {
@@ -221,7 +231,7 @@ const handlers = [
   }),
 
   // GET discussions list
-  http.get(`${API_BASE_URL}/forums/:id/discussions`, ({ params, request }) => {
+  http.get(`*${API_BASE_URL}/forums/:id/discussions`, ({ params, request }) => {
     const { id } = params;
     const url = new URL(request.url);
     const page = parseInt(url.searchParams.get('page') || '1');
@@ -265,7 +275,7 @@ const handlers = [
   }),
 
   // GET discussion posts
-  http.get(`${API_BASE_URL}/forums/discussions/:id/posts`, ({ params }) => {
+  http.get(`*${API_BASE_URL}/forums/discussions/:id/posts`, ({ params }) => {
     const { id } = params;
     
     if (id === '1') {
@@ -296,7 +306,7 @@ const handlers = [
   }),
 
   // POST create discussion
-  http.post(`${API_BASE_URL}/forums/:id/discussions`, async ({ params, request }) => {
+  http.post(`*${API_BASE_URL}/forums/:id/discussions`, async ({ params, request }) => {
     const { id } = params;
     const formData = await request.formData();
     
@@ -362,7 +372,7 @@ const handlers = [
   }),
 
   // POST create post (reply)
-  http.post(`${API_BASE_URL}/forums/discussions/:id/posts`, async ({ params, request }) => {
+  http.post(`*${API_BASE_URL}/forums/discussions/:id/posts`, async ({ params, request }) => {
     const { id } = params;
     const formData = await request.formData();
     
@@ -399,7 +409,7 @@ const handlers = [
   }),
 
   // PUT update post
-  http.put(`${API_BASE_URL}/forums/posts/:id`, async ({ params, request }) => {
+  http.put(`*${API_BASE_URL}/forums/posts/:id`, async ({ params, request }) => {
     const { id } = params;
     
     // Simulate concurrent edit detection
@@ -446,7 +456,7 @@ const handlers = [
   }),
 
   // DELETE post
-  http.delete(`${API_BASE_URL}/forums/posts/:id`, ({ params }) => {
+  http.delete(`*${API_BASE_URL}/forums/posts/:id`, ({ params }) => {
     const { id } = params;
     
     if (id === '403') {
@@ -463,7 +473,7 @@ const handlers = [
   }),
 
   // POST subscribe to forum
-  http.post(`${API_BASE_URL}/forums/:id/subscribe`, async ({ params, request }) => {
+  http.post(`*${API_BASE_URL}/forums/:id/subscribe`, async ({ params, request }) => {
     const { id } = params;
     
     // Handle optional preferences in body
@@ -480,54 +490,53 @@ const handlers = [
     return HttpResponse.json({
       success: true,
       data: {
-        forumId: parseInt(id as string),
-        isSubscribed: true,
-        preferences
+        subscribed: true,
+        message: 'Successfully subscribed to forum'
       }
     });
   }),
 
   // POST unsubscribe from forum
-  http.post(`${API_BASE_URL}/forums/:id/unsubscribe`, ({ params }) => {
+  http.post(`*${API_BASE_URL}/forums/:id/unsubscribe`, ({ params }) => {
     const { id } = params;
     
     return HttpResponse.json({
       success: true,
       data: {
-        forumId: parseInt(id as string),
-        isSubscribed: false
+        subscribed: false,
+        message: 'Successfully unsubscribed from forum'
       }
     });
   }),
 
   // POST subscribe to discussion
-  http.post(`${API_BASE_URL}/forums/discussions/:id/subscribe`, ({ params }) => {
+  http.post(`*${API_BASE_URL}/forums/discussions/:id/subscribe`, ({ params }) => {
     const { id } = params;
     
     return HttpResponse.json({
       success: true,
       data: {
-        discussionId: parseInt(id as string),
-        isSubscribed: true
+        subscribed: true,
+        message: 'Successfully subscribed to discussion'
       }
     });
   }),
 
   // POST unsubscribe from discussion
-  http.post(`${API_BASE_URL}/forums/discussions/:id/unsubscribe`, ({ params }) => {
+  http.post(`*${API_BASE_URL}/forums/discussions/:id/unsubscribe`, ({ params }) => {
     const { id } = params;
     
     return HttpResponse.json({
       success: true,
       data: {
-        discussionId: parseInt(id as string),
-        isSubscribed: false
+        subscribed: false,
+        message: 'Successfully unsubscribed from discussion'
       }
     });
   }),
 
   // POST mark discussion as read
-  http.post(`${API_BASE_URL}/forums/discussions/:id/read`, ({ params }) => {
+  http.post(`*${API_BASE_URL}/forums/discussions/:id/read`, ({ params }) => {
     const { id } = params;
     
     return HttpResponse.json({
@@ -541,7 +550,7 @@ const handlers = [
   }),
 
   // POST pin discussion
-  http.post(`${API_BASE_URL}/forums/discussions/:id/pin`, ({ params }) => {
+  http.post(`*${API_BASE_URL}/forums/discussions/:id/pin`, ({ params }) => {
     const { id } = params;
     
     if (id === '403') {
@@ -564,7 +573,7 @@ const handlers = [
   }),
 
   // POST unpin discussion
-  http.post(`${API_BASE_URL}/forums/discussions/:id/unpin`, ({ params }) => {
+  http.post(`*${API_BASE_URL}/forums/discussions/:id/unpin`, ({ params }) => {
     const { id } = params;
     
     return HttpResponse.json({
@@ -577,7 +586,7 @@ const handlers = [
   }),
 
   // POST lock discussion
-  http.post(`${API_BASE_URL}/forums/discussions/:id/lock`, ({ params }) => {
+  http.post(`*${API_BASE_URL}/forums/discussions/:id/lock`, ({ params }) => {
     const { id } = params;
     
     return HttpResponse.json({
@@ -590,7 +599,7 @@ const handlers = [
   }),
 
   // POST unlock discussion
-  http.post(`${API_BASE_URL}/forums/discussions/:id/unlock`, ({ params }) => {
+  http.post(`*${API_BASE_URL}/forums/discussions/:id/unlock`, ({ params }) => {
     const { id } = params;
     
     return HttpResponse.json({
@@ -603,7 +612,7 @@ const handlers = [
   }),
 
   // POST report post
-  http.post(`${API_BASE_URL}/forums/posts/:id/report`, async ({ params, request }) => {
+  http.post(`*${API_BASE_URL}/forums/posts/:id/report`, async ({ params, request }) => {
     const { id } = params;
     const body = await request.json() as { reason: string };
     
@@ -621,9 +630,6 @@ const handlers = [
 
 describe('forumApi', () => {
   beforeAll(() => {
-    // Add test-specific handlers to shared server
-    server.use(...handlers);
-    
     // Set up mock JWT token in localStorage for apiClient interceptor
     localStorage.setItem('moodle_access_token', MOCK_JWT_TOKEN);
   });
@@ -633,7 +639,13 @@ describe('forumApi', () => {
     localStorage.clear();
   });
 
+  beforeEach(() => {
+    // Add test-specific handlers before each test (after reset)
+    server.use(...handlers);
+  });
+
   afterEach(() => {
+    // Reset handlers to remove test-specific overrides
     server.resetHandlers();
   });
 
@@ -650,7 +662,7 @@ describe('forumApi', () => {
       let capturedHeaders: Headers | undefined;
       
       server.use(
-        http.get(`${API_BASE_URL}/forums/:id`, ({ request }) => {
+        http.get(`*${API_BASE_URL}/forums/:id`, ({ request }) => {
           capturedHeaders = request.headers;
           return HttpResponse.json({
             success: true,
@@ -677,13 +689,13 @@ describe('forumApi', () => {
       
       // Verify all required Forum properties exist
       expect(result).toHaveProperty('id');
-      expect(result).toHaveProperty('courseId');
+      expect(result).toHaveProperty('courseid');
       expect(result).toHaveProperty('name');
       expect(result).toHaveProperty('intro');
       expect(result).toHaveProperty('type');
-      expect(result).toHaveProperty('canCreateDiscussion');
+      expect(result).toHaveProperty('canAddDiscussion');
       expect(result).toHaveProperty('canSubscribe');
-      expect(result).toHaveProperty('isSubscribed');
+      expect(result).toHaveProperty('subscribed');
     });
   });
 
@@ -791,7 +803,7 @@ describe('forumApi', () => {
 
     it('should handle empty discussion list', async () => {
       server.use(
-        http.get(`${API_BASE_URL}/forums/:id/discussions`, () => {
+        http.get(`*${API_BASE_URL}/forums/:id/discussions`, () => {
           return HttpResponse.json({
             success: true,
             data: [],
@@ -879,7 +891,7 @@ describe('forumApi', () => {
       let capturedFormData: FormData;
       
       server.use(
-        http.post(`${API_BASE_URL}/forums/:id/discussions`, async ({ request }) => {
+        http.post(`*${API_BASE_URL}/forums/:id/discussions`, async ({ request }) => {
           capturedFormData = await request.formData();
           return HttpResponse.json({
             success: true,
@@ -971,7 +983,7 @@ describe('forumApi', () => {
       let capturedFormData: FormData;
       
       server.use(
-        http.post(`${API_BASE_URL}/forums/discussions/:id/posts`, async ({ request }) => {
+        http.post(`*${API_BASE_URL}/forums/discussions/:id/posts`, async ({ request }) => {
           capturedFormData = await request.formData();
           return HttpResponse.json({
             success: true,
@@ -1069,7 +1081,7 @@ describe('forumApi', () => {
       let capturedFormData: FormData;
       
       server.use(
-        http.put(`${API_BASE_URL}/forums/posts/:id`, async ({ request }) => {
+        http.put(`*${API_BASE_URL}/forums/posts/:id`, async ({ request }) => {
           capturedFormData = await request.formData();
           return HttpResponse.json({
             success: true,
@@ -1165,19 +1177,19 @@ describe('forumApi', () => {
     it('should subscribe to forum successfully', async () => {
       const result = await forumApi.subscribeForum(1);
       
-      expect(result.forumId).toBe(1);
-      expect(result.isSubscribed).toBe(true);
+      expect(result.subscribed).toBe(true);
+      expect(result.message).toBe('Successfully subscribed to forum');
     });
 
     it('should include subscription preferences in request body', async () => {
       let capturedBody: any;
       
       server.use(
-        http.post(`${API_BASE_URL}/forums/:id/subscribe`, async ({ request }) => {
+        http.post(`*${API_BASE_URL}/forums/:id/subscribe`, async ({ request }) => {
           capturedBody = await request.json();
           return HttpResponse.json({
             success: true,
-            data: { forumId: 1, isSubscribed: true, preferences: capturedBody }
+            data: { subscribed: true, message: 'Successfully subscribed to forum' }
           });
         })
       );
@@ -1196,7 +1208,7 @@ describe('forumApi', () => {
     it('should return updated subscription status', async () => {
       const result = await forumApi.subscribeForum(1);
       
-      expect(result.isSubscribed).toBe(true);
+      expect(result.subscribed).toBe(true);
     });
   });
 
@@ -1204,15 +1216,15 @@ describe('forumApi', () => {
     it('should unsubscribe from forum successfully', async () => {
       const result = await forumApi.unsubscribeForum(1);
       
-      expect(result.forumId).toBe(1);
-      expect(result.isSubscribed).toBe(false);
+      expect(result.subscribed).toBe(false);
+      expect(result.message).toBe('Successfully unsubscribed from forum');
     });
 
     it('should return 200 OK with updated status', async () => {
       const result = await forumApi.unsubscribeForum(1);
       
       expect(result).toBeDefined();
-      expect(result.isSubscribed).toBe(false);
+      expect(result.subscribed).toBe(false);
     });
   });
 
@@ -1220,8 +1232,8 @@ describe('forumApi', () => {
     it('should subscribe to individual discussion', async () => {
       const result = await forumApi.subscribeDiscussion(1);
       
-      expect(result.discussionId).toBe(1);
-      expect(result.isSubscribed).toBe(true);
+      expect(result.subscribed).toBe(true);
+      expect(result.message).toBe('Successfully subscribed to discussion');
     });
   });
 
@@ -1229,8 +1241,8 @@ describe('forumApi', () => {
     it('should unsubscribe from individual discussion', async () => {
       const result = await forumApi.unsubscribeDiscussion(1);
       
-      expect(result.discussionId).toBe(1);
-      expect(result.isSubscribed).toBe(false);
+      expect(result.subscribed).toBe(false);
+      expect(result.message).toBe('Successfully unsubscribed from discussion');
     });
   });
 
@@ -1302,7 +1314,7 @@ describe('forumApi', () => {
       let capturedBody: any;
       
       server.use(
-        http.post(`${API_BASE_URL}/forums/posts/:id/report`, async ({ request }) => {
+        http.post(`*${API_BASE_URL}/forums/posts/:id/report`, async ({ request }) => {
           capturedBody = await request.json();
           return HttpResponse.json({
             success: true,
@@ -1320,7 +1332,7 @@ describe('forumApi', () => {
   describe('Error Handling', () => {
     it('should handle network timeout error', async () => {
       server.use(
-        http.get(`${API_BASE_URL}/forums/:id`, () => {
+        http.get(`*${API_BASE_URL}/forums/:id`, () => {
           return HttpResponse.error();
         })
       );
@@ -1330,7 +1342,7 @@ describe('forumApi', () => {
 
     it('should handle 500 Internal Server Error', async () => {
       server.use(
-        http.get(`${API_BASE_URL}/forums/:id`, () => {
+        http.get(`*${API_BASE_URL}/forums/:id`, () => {
           return HttpResponse.json({
             success: false,
             error: {
@@ -1346,7 +1358,7 @@ describe('forumApi', () => {
 
     it('should handle 401 Unauthorized (expired/invalid JWT)', async () => {
       server.use(
-        http.get(`${API_BASE_URL}/forums/:id`, () => {
+        http.get(`*${API_BASE_URL}/forums/:id`, () => {
           return HttpResponse.json({
             success: false,
             error: {
@@ -1362,7 +1374,7 @@ describe('forumApi', () => {
 
     it('should handle 429 Too Many Requests (rate limiting)', async () => {
       server.use(
-        http.get(`${API_BASE_URL}/forums/:id`, () => {
+        http.get(`*${API_BASE_URL}/forums/:id`, () => {
           return HttpResponse.json({
             success: false,
             error: {
@@ -1397,7 +1409,7 @@ describe('forumApi', () => {
 
     it('should transform errors to user-friendly messages', async () => {
       server.use(
-        http.get(`${API_BASE_URL}/forums/:id`, () => {
+        http.get(`*${API_BASE_URL}/forums/:id`, () => {
           return HttpResponse.json({
             success: false,
             error: {
@@ -1439,7 +1451,7 @@ describe('forumApi', () => {
       let capturedHeaders: Headers | undefined;
       
       server.use(
-        http.get(`${API_BASE_URL}/forums/:id`, ({ request }) => {
+        http.get(`*${API_BASE_URL}/forums/:id`, ({ request }) => {
           capturedHeaders = request.headers;
           return HttpResponse.json({
             success: true,
@@ -1533,7 +1545,7 @@ describe('forumApi', () => {
       let attemptCount = 0;
       
       server.use(
-        http.get(`${API_BASE_URL}/forums/:id`, () => {
+        http.get(`*${API_BASE_URL}/forums/:id`, () => {
           attemptCount++;
           
           if (attemptCount < 3) {
@@ -1561,7 +1573,7 @@ describe('forumApi', () => {
       let attemptCount = 0;
       
       server.use(
-        http.get(`${API_BASE_URL}/forums/:id`, () => {
+        http.get(`*${API_BASE_URL}/forums/:id`, () => {
           attemptCount++;
           return HttpResponse.error();
         })

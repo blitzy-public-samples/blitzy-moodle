@@ -201,7 +201,7 @@ export function ProfilePage() {
       </Breadcrumbs>
 
       {/* Profile View */}
-      <ProfileView user={user} showEditButton={canEdit} onEdit={handleEdit} />
+      <ProfileView userId={user.id} showEditButton={canEdit} onEdit={handleEdit} />
 
       {/* Additional Actions (if needed) */}
       {canEdit && (

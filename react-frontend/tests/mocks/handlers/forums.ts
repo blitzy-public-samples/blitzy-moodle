@@ -30,40 +30,16 @@
  */
 
 import { http, HttpResponse } from 'msw';
+import type { Forum } from '../../../src/features/activities/forums/types/forum.types';
+import { 
+  ForumType, 
+  ForumSubscriptionMode, 
+  ForumTrackingType 
+} from '../../../src/features/activities/forums/types/forum.types';
 
 // ============================================================================
 // TypeScript Type Definitions
 // ============================================================================
-
-interface Forum {
-  id: number;
-  courseId: number;
-  name: string;
-  intro: string;
-  type: string;
-  assessed: number;
-  assesstimestart: number;
-  assesstimefinish: number;
-  scale: number;
-  maxbytes: number;
-  maxattachments: number;
-  forcesubscribe: number;
-  trackingtype: number;
-  rsstype: number;
-  rssarticles: number;
-  timemodified: number;
-  warnafter: number;
-  blockafter: number;
-  blockperiod: number;
-  completiondiscussions: number;
-  completionreplies: number;
-  completionposts: number;
-  displaywordcount: boolean;
-  lockdiscussionafter: number;
-  canCreateDiscussion: boolean;
-  canSubscribe: boolean;
-  isSubscribed: boolean;
-}
 
 interface Discussion {
   id: number;
@@ -117,18 +93,21 @@ interface Post {
 const MOCK_FORUMS: Record<number, Forum> = {
   1: {
     id: 1,
-    courseId: 10,
+    courseid: 10,
     name: 'General Discussion Forum',
-    intro: 'Welcome to the general discussion forum',
-    type: 'general',
+    intro: 'A forum for general discussions',
+    introformat: 1,
+    type: ForumType.GENERAL,
     assessed: 0,
     assesstimestart: 0,
     assesstimefinish: 0,
     scale: 0,
+    gradeforum: 0,
+    gradeforumnotify: false,
     maxbytes: 512000,
     maxattachments: 5,
-    forcesubscribe: 0,
-    trackingtype: 1,
+    forcesubscribe: ForumSubscriptionMode.CHOOSE,
+    trackingtype: ForumTrackingType.OPTIONAL,
     rsstype: 0,
     rssarticles: 0,
     timemodified: 1640000000,
@@ -140,9 +119,16 @@ const MOCK_FORUMS: Record<number, Forum> = {
     completionposts: 0,
     displaywordcount: false,
     lockdiscussionafter: 0,
-    canCreateDiscussion: true,
+    duedate: 0,
+    cutoffdate: 0,
+    subscribed: false,
     canSubscribe: true,
-    isSubscribed: false
+    canAddDiscussion: true,
+    canModerate: false,
+    unreadCount: 5,
+    discussionCount: 25,
+    postCount: 150,
+    participants: 42
   }
 };
 
@@ -262,6 +248,30 @@ const MOCK_DISCUSSIONS: Record<number, Discussion> = {
     numReplies: 1,
     numUnreadPosts: 0,
     canReply: false,
+    canEdit: true,
+    canDelete: true,
+    canPin: true,
+    canLock: true
+  },
+  100: {
+    id: 100,
+    forumId: 1,
+    name: 'Test Discussion 100',
+    message: 'This is test discussion 100 for forumApi unit tests',
+    messageFormat: 1,
+    userId: 5,
+    userFullName: 'Test User',
+    userPictureUrl: '/user/pic.jpg',
+    created: 1640200000,
+    modified: 1640200000,
+    timeStart: 0,
+    timeEnd: 0,
+    pinned: false,
+    locked: false,
+    groupId: -1,
+    numReplies: 0,
+    numUnreadPosts: 0,
+    canReply: true,
     canEdit: true,
     canDelete: true,
     canPin: true,
@@ -465,16 +475,23 @@ const createDiscussionHandler = http.post('*/api/v1/forums/:id/discussions', asy
     } else if (contentType.includes('multipart/form-data') || contentType.includes('application/x-www-form-urlencoded')) {
       const formData = await request.formData();
       bodyData = {
-        name: formData.get('name') as string,
+        // The API sends 'subject' but the backend stores it as 'name'
+        name: formData.get('subject') as string || formData.get('name') as string,
         message: formData.get('message') as string,
         messageFormat: formData.get('messageFormat') ? Number(formData.get('messageFormat')) : undefined,
         timeStart: formData.get('timeStart') ? Number(formData.get('timeStart')) : undefined,
         timeEnd: formData.get('timeEnd') ? Number(formData.get('timeEnd')) : undefined,
-        groupId: formData.get('groupId') ? Number(formData.get('groupId')) : undefined
+        groupId: formData.get('groupId') ? Number(formData.get('groupId')) : undefined,
+        subscribe: formData.get('subscribe') === 'true',
+        pinned: formData.get('pinned') === 'true'
       };
     } else {
       // Default to JSON for backward compatibility
       bodyData = await request.json();
+      // Map subject to name for JSON requests too
+      if (bodyData.subject && !bodyData.name) {
+        bodyData.name = bodyData.subject;
+      }
     }
   } catch (error) {
     return HttpResponse.json(
@@ -496,10 +513,10 @@ const createDiscussionHandler = http.post('*/api/v1/forums/:id/discussions', asy
         success: false,
         error: {
           code: 'VALIDATION_ERROR',
-          message: 'Discussion name and message are required',
+          message: 'Discussion subject and message are required',
           details: {
             missing_fields: [
-              !bodyData.name ? 'name' : null,
+              !bodyData.name ? 'subject' : null,
               !bodyData.message ? 'message' : null
             ].filter(Boolean)
           }
@@ -929,13 +946,16 @@ const pinDiscussionHandler = http.post('*/api/v1/forums/discussions/:id/pin', as
     );
   }
   
+  // Update the mock data to persist the pinned state
+  MOCK_DISCUSSIONS[id] = {
+    ...discussion,
+    pinned: true
+  };
+  
   return HttpResponse.json({
     success: true,
     data: {
-      discussion: {
-        ...discussion,
-        pinned: true
-      },
+      discussion: MOCK_DISCUSSIONS[id],
       message: 'Discussion pinned successfully'
     }
   });
@@ -965,13 +985,16 @@ const unpinDiscussionHandler = http.post('*/api/v1/forums/discussions/:id/unpin'
     );
   }
   
+  // Update the mock data to persist the unpinned state
+  MOCK_DISCUSSIONS[id] = {
+    ...discussion,
+    pinned: false
+  };
+  
   return HttpResponse.json({
     success: true,
     data: {
-      discussion: {
-        ...discussion,
-        pinned: false
-      },
+      discussion: MOCK_DISCUSSIONS[id],
       message: 'Discussion unpinned successfully'
     }
   });
@@ -1001,13 +1024,16 @@ const lockDiscussionHandler = http.post('*/api/v1/forums/discussions/:id/lock', 
     );
   }
   
+  // Update the mock data to persist the locked state
+  MOCK_DISCUSSIONS[id] = {
+    ...discussion,
+    locked: true
+  };
+  
   return HttpResponse.json({
     success: true,
     data: {
-      discussion: {
-        ...discussion,
-        locked: true
-      },
+      discussion: MOCK_DISCUSSIONS[id],
       message: 'Discussion locked successfully'
     }
   });
@@ -1037,13 +1063,16 @@ const unlockDiscussionHandler = http.post('*/api/v1/forums/discussions/:id/unloc
     );
   }
   
+  // Update the mock data to persist the unlocked state
+  MOCK_DISCUSSIONS[id] = {
+    ...discussion,
+    locked: false
+  };
+  
   return HttpResponse.json({
     success: true,
     data: {
-      discussion: {
-        ...discussion,
-        locked: false
-      },
+      discussion: MOCK_DISCUSSIONS[id],
       message: 'Discussion unlocked successfully'
     }
   });

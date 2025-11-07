@@ -33,10 +33,12 @@ vi.mock('react-router-dom', () => ({
 }));
 
 // Mock clipboard API
-Object.assign(navigator, {
-  clipboard: {
+Object.defineProperty(navigator, 'clipboard', {
+  value: {
     writeText: vi.fn().mockResolvedValue(undefined),
   },
+  writable: true,
+  configurable: true,
 });
 
 // Mock matchMedia for responsive tests
