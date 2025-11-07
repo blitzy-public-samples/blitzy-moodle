@@ -313,7 +313,7 @@ export function AvatarUpload({
       event.stopPropagation();
       setDragActive(false);
 
-      const file = event.dataTransfer.files?.[0];
+      const file = event.dataTransfer?.files?.[0];
       if (file) {
         void handleFileSelect(file);
       }
@@ -347,61 +347,98 @@ export function AvatarUpload({
   return (
     <Box className={className} display="flex" flexDirection="column" alignItems="center" gap={2}>
       {/* Avatar Display with Upload Zone */}
-      <Paper
-        onDragEnter={handleDrag}
-        onDragOver={handleDrag}
-        onDragLeave={handleDrag}
-        onDrop={handleDrop}
-        onClick={handleClick}
-        sx={{
-          position: 'relative',
-          borderRadius: '50%',
-          cursor: isProcessing ? 'not-allowed' : 'pointer',
-          border: dragActive ? '3px dashed' : '3px solid transparent',
-          borderColor: dragActive ? 'primary.main' : 'transparent',
-          transition: 'all 0.3s ease',
-          '&:hover': {
-            borderColor: isProcessing ? 'transparent' : 'primary.light',
-            transform: isProcessing ? 'none' : 'scale(1.05)',
-          },
-        }}
-      >
-        <Avatar
-          src={displayUrl}
-          sx={{
-            width: sizeConfig.size,
-            height: sizeConfig.size,
-            opacity: isProcessing ? 0.5 : 1,
+      <Box sx={{ position: 'relative', display: 'inline-block' }}>
+        <Paper
+          role="button"
+          tabIndex={0}
+          aria-label="Upload avatar image"
+          onDragEnter={handleDrag}
+          onDragOver={handleDrag}
+          onDragLeave={handleDrag}
+          onDrop={handleDrop}
+          onClick={handleClick}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              handleClick();
+            }
           }}
-        />
-
-        {/* Upload Overlay */}
-        <Box
           sx={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
+            position: 'relative',
             borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: 'rgba(0, 0, 0, 0.4)',
-            opacity: 0,
-            transition: 'opacity 0.3s ease',
+            cursor: isProcessing ? 'not-allowed' : 'pointer',
+            border: dragActive ? '3px dashed' : '3px solid transparent',
+            borderColor: dragActive ? 'primary.main' : 'transparent',
+            transition: 'all 0.3s ease',
             '&:hover': {
-              opacity: isProcessing ? 0 : 1,
+              borderColor: isProcessing ? 'transparent' : 'primary.light',
+              transform: isProcessing ? 'none' : 'scale(1.05)',
             },
           }}
         >
-          {isProcessing ? (
-            <CircularProgress size={sizeConfig.iconSize} sx={{ color: 'white' }} />
-          ) : (
-            <CameraIcon sx={{ fontSize: sizeConfig.iconSize, color: 'white' }} />
-          )}
-        </Box>
-      </Paper>
+          <Avatar
+            src={displayUrl}
+            alt="User avatar"
+            sx={{
+              width: sizeConfig.size,
+              height: sizeConfig.size,
+              opacity: isProcessing ? 0.5 : 1,
+            }}
+          />
+
+          {/* Upload Overlay */}
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: 'rgba(0, 0, 0, 0.4)',
+              opacity: 0,
+              transition: 'opacity 0.3s ease',
+              '&:hover': {
+                opacity: isProcessing ? 0 : 1,
+              },
+            }}
+          >
+            {isProcessing ? (
+              <CircularProgress size={sizeConfig.iconSize} sx={{ color: 'white' }} />
+            ) : (
+              <CameraIcon sx={{ fontSize: sizeConfig.iconSize, color: 'white' }} />
+            )}
+          </Box>
+
+          {/* Instructions - positioned inside Paper for accessibility */}
+          <Typography 
+            variant="body2" 
+            color="text.secondary" 
+            sx={{
+              position: 'absolute',
+              top: '100%',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              marginTop: 1,
+              textAlign: 'center',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {dragActive ? (
+              'Drop image here'
+            ) : (
+              <>
+                Click or drag image to upload
+                <br />
+                Max size: {(finalConstraints.maxSize / 1024 / 1024).toFixed(1)}MB
+              </>
+            )}
+          </Typography>
+        </Paper>
+      </Box>
 
       {/* Hidden File Input */}
       <input
@@ -411,20 +448,8 @@ export function AvatarUpload({
         onChange={handleInputChange}
         style={{ display: 'none' }}
         disabled={isProcessing}
+        aria-label="Upload avatar image"
       />
-
-      {/* Instructions */}
-      <Typography variant="body2" color="text.secondary" textAlign="center">
-        {dragActive ? (
-          'Drop image here'
-        ) : (
-          <>
-            Click or drag image to upload
-            <br />
-            Max size: {(finalConstraints.maxSize / 1024 / 1024).toFixed(1)}MB
-          </>
-        )}
-      </Typography>
 
       {/* Action Buttons */}
       <Box display="flex" gap={1}>
@@ -449,21 +474,21 @@ export function AvatarUpload({
 
       {/* Validation Error */}
       {validationError && (
-        <Alert severity="error" sx={{ width: '100%', maxWidth: 400 }}>
+        <Alert severity="error" aria-live="assertive" sx={{ width: '100%', maxWidth: 400 }}>
           {validationError}
         </Alert>
       )}
 
       {/* Upload Error */}
       {uploadError && (
-        <Alert severity="error" sx={{ width: '100%', maxWidth: 400 }}>
+        <Alert severity="error" aria-live="assertive" sx={{ width: '100%', maxWidth: 400 }}>
           {uploadError.message || 'Failed to upload avatar'}
         </Alert>
       )}
 
       {/* Upload Progress */}
       {isUploading && (
-        <Alert severity="info" sx={{ width: '100%', maxWidth: 400 }}>
+        <Alert severity="info" aria-live="polite" sx={{ width: '100%', maxWidth: 400 }}>
           Uploading avatar...
         </Alert>
       )}
