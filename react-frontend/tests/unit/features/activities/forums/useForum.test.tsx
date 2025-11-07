@@ -14,12 +14,12 @@ import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll, vi } 
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
-import { setupServer } from 'msw/node';
+import { server } from '../../../../mocks/server';
 import { ReactNode } from 'react';
 import { useForum } from '@/features/activities/forums/hooks/useForum';
 
 // Mock API base URL
-const API_BASE_URL = 'http://localhost:3000/api/v1';
+const API_BASE_URL = 'http://localhost:8000/api/v1';
 
 // Mock forum data - state that can be modified during tests
 let forumSubscriptionState = false;
@@ -98,7 +98,7 @@ const mockDiscussionsData = {
 };
 
 // MSW server setup
-const server = setupServer(
+const handlers = [
   // GET forum details
   http.get(`${API_BASE_URL}/forums/:id`, ({ params }) => {
     const { id } = params;
@@ -239,11 +239,12 @@ const server = setupServer(
       },
     });
   })
-);
+];
 
 // Start server before all tests
 beforeAll(() => {
-  server.listen({ onUnhandledRequest: 'error' });
+  // Add test-specific handlers to shared server
+  server.use(...handlers);
 });
 
 // Reset mock state before each test
@@ -260,7 +261,7 @@ afterEach(() => {
 
 // Close server after all tests
 afterAll(() => {
-  server.close();
+  // Server cleanup handled globally
 });
 
 // Helper to create query client
@@ -729,8 +730,10 @@ describe('useForum', () => {
 
       const { result } = renderHook(() => useForum(1), { wrapper });
 
+      // Wait for both forum and discussions to load
       await waitFor(() => {
         expect(result.current.forum).toBeDefined();
+        expect(result.current.discussions).toBeDefined();
       });
 
       // Pin discussion
@@ -742,6 +745,8 @@ describe('useForum', () => {
 
       // Verify cache updated
       expect(result.current.discussions).toBeDefined();
+      const pinnedDiscussion = result.current.discussions?.find(d => d.id === 101);
+      expect(pinnedDiscussion?.pinned).toBe(true);
     });
 
     it('should lock discussion (moderator only)', async () => {
@@ -750,8 +755,10 @@ describe('useForum', () => {
 
       const { result } = renderHook(() => useForum(1), { wrapper });
 
+      // Wait for both forum and discussions to load
       await waitFor(() => {
         expect(result.current.forum).toBeDefined();
+        expect(result.current.discussions).toBeDefined();
       });
 
       // Lock discussion
@@ -761,8 +768,10 @@ describe('useForum', () => {
         expect(result.current.isLocking).toBe(false);
       });
 
-      // Verify mutation completed
+      // Verify mutation completed and cache updated
       expect(result.current.discussions).toBeDefined();
+      const lockedDiscussion = result.current.discussions?.find(d => d.id === 101);
+      expect(lockedDiscussion?.locked).toBe(true);
     });
   });
 

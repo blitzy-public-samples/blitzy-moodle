@@ -15,8 +15,8 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest';
-import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
+import { server } from '../../../../mocks/server';
 
 // Import the forumApi module (adjust path based on actual location)
 import * as forumApi from '@/features/activities/forums/api/forumApi';
@@ -619,21 +619,16 @@ const handlers = [
   })
 ];
 
-// Setup MSW server
-const server = setupServer(...handlers);
-
 describe('forumApi', () => {
   beforeAll(() => {
-    // Start MSW server
-    server.listen({ onUnhandledRequest: 'error' });
+    // Add test-specific handlers to shared server
+    server.use(...handlers);
     
     // Set up mock JWT token in localStorage for apiClient interceptor
     localStorage.setItem('moodle_access_token', MOCK_JWT_TOKEN);
   });
 
   afterAll(() => {
-    server.close();
-    
     // Clean up localStorage
     localStorage.clear();
   });

@@ -18,7 +18,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
-import { setupServer } from 'msw/node';
+import { server } from '../../../../../mocks/server';
 import {
   getFeedback,
   getFeedbackQuestions,
@@ -185,17 +185,9 @@ const mockSubmissionResult: FeedbackSubmissionResult = {
   message: 'Feedback submitted successfully',
 };
 
-// Setup MSW server
-const server = setupServer();
-
 describe('Feedback API Client', () => {
-  beforeEach(() => {
-    server.listen({ onUnhandledRequest: 'error' });
-  });
-
   afterEach(() => {
     server.resetHandlers();
-    server.close();
     vi.clearAllMocks();
   });
 

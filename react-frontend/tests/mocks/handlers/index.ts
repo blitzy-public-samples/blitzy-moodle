@@ -11,6 +11,9 @@
  * - courses: Course management endpoints (CRUD, enrollment, contents)
  * - assignments: Assignment activity endpoints (view, submit, grade)
  * - quizzes: Quiz activity endpoints (attempt, submit, review)
+ * - forums: Forum activity endpoints (discussions, posts, subscriptions)
+ * - feedback: Feedback activity endpoints (questions, responses, analysis)
+ * - admin: Admin endpoints (settings, users, roles, plugins)
  * 
  * Usage:
  * ```typescript
@@ -32,6 +35,9 @@ import { usersHandlers } from './users';
 import { coursesHandlers } from './courses';
 import { assignmentsHandlers } from './assignments';
 import { quizzesHandlers } from './quizzes';
+import { forumsHandlers } from './forums';
+import { feedbackHandlers } from './feedback';
+import { adminHandlers } from './admin';
 
 /**
  * Combined array of all MSW request handlers
@@ -45,6 +51,9 @@ import { quizzesHandlers } from './quizzes';
  * 3. Courses (multiple handlers)
  * 4. Assignments (multiple handlers)
  * 5. Quizzes (multiple handlers)
+ * 6. Forums (multiple handlers)
+ * 7. Feedback (multiple handlers)
+ * 8. Admin (multiple handlers)
  * 
  * Total handler count varies based on feature implementation.
  */
@@ -54,6 +63,9 @@ export const handlers = [
   ...coursesHandlers,
   ...assignmentsHandlers,
   ...quizzesHandlers,
+  ...forumsHandlers,
+  ...feedbackHandlers,
+  ...adminHandlers,
 ];
 
 /**
@@ -74,4 +86,7 @@ export {
   coursesHandlers,
   assignmentsHandlers,
   quizzesHandlers,
+  forumsHandlers,
+  feedbackHandlers,
+  adminHandlers,
 };

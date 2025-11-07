@@ -13,7 +13,7 @@
 
 import { describe, it, expect, beforeAll, afterAll, afterEach, vi, beforeEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
-import { setupServer } from 'msw/node';
+import { server } from '../../../mocks/server';
 import axios, { AxiosError } from 'axios';
 import { 
   fetchUserProfile, 
@@ -65,17 +65,9 @@ const mockProfileUpdateData: UpdateProfilePayload = {
   interests: ['react', 'typescript', 'testing'],
 };
 
-// Setup MSW server for API mocking
-const server = setupServer();
-
 describe('profileApi', () => {
-  beforeAll(() => {
-    server.listen({ onUnhandledRequest: 'error' });
-  });
-
-  afterAll(() => {
-    server.close();
-  });
+  // Use shared MSW server from tests/mocks/server.ts
+  // No need to call listen() or close() - handled globally
 
   afterEach(() => {
     server.resetHandlers();

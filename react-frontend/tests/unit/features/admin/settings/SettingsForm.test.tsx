@@ -19,8 +19,8 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'vitest-axe';
 import 'vitest-axe/extend-expect';
-import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
+import { server } from '../../../../mocks/server';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Provider } from 'react-redux';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
@@ -192,9 +192,9 @@ const mockSettings: SettingSection[] = [
 ];
 
 /**
- * MSW server setup for API mocking
+ * Test-specific MSW handlers
  */
-const server = setupServer(
+const handlers = [
   // GET settings endpoint
   http.get('/api/v1/admin/settings', () => {
     return HttpResponse.json({
@@ -228,12 +228,16 @@ const server = setupServer(
       },
     });
   })
-);
+];
 
-// Enable API mocking before tests
-beforeEach(() => server.listen({ onUnhandledRequest: 'error' }));
-afterEach(() => server.resetHandlers());
-afterEach(() => server.close());
+// Register test-specific handlers with shared server
+beforeEach(() => {
+  server.use(...handlers);
+});
+
+afterEach(() => {
+  server.resetHandlers();
+});
 
 /**
  * Test utilities
