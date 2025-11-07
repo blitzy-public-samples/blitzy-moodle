@@ -327,3 +327,101 @@ export interface SubmitChoiceResponse {
     message: string;
   }>;
 }
+
+/**
+ * Detailed user response data for choice results.
+ *
+ * Comprehensive user information returned in the results endpoint,
+ * including user profile fields, group memberships, selected options,
+ * and response timestamps. This provides all necessary data for
+ * displaying detailed choice results and analytics.
+ *
+ * Based on Moodle's user profile structure and choice response data
+ * from public/mod/choice/lib.php and public/user/profile/lib.php.
+ */
+export interface ChoiceUserResponse {
+  /** User ID */
+  id: number;
+
+  /** User's first name */
+  firstname: string;
+
+  /** User's last name */
+  lastname: string;
+
+  /** User's email address (optional, may be hidden based on permissions) */
+  email?: string;
+
+  /** User's ID number (optional) */
+  idnumber?: string;
+
+  /** User's department (optional) */
+  department?: string;
+
+  /** User's institution (optional) */
+  institution?: string;
+
+  /** User's primary phone number (optional) */
+  phone1?: string;
+
+  /** User's secondary phone number (optional) */
+  phone2?: string;
+
+  /** User's city (optional) */
+  city?: string;
+
+  /** User's country code (optional) */
+  country?: string;
+
+  /** Array of groups the user belongs to */
+  groups: Array<{
+    /** Group ID */
+    id: number;
+    /** Group name */
+    name: string;
+  }>;
+
+  /** Array of options the user selected */
+  selectedOptions: Array<{
+    /** Option ID */
+    id: number;
+    /** Option text */
+    text: string;
+    /** Maximum answers allowed (optional) */
+    maxanswers?: number;
+  }>;
+
+  /** Timestamp when the response was last modified */
+  timemodified: number;
+
+  /** Answer ID for this user's response */
+  answerid: number;
+}
+
+/**
+ * Response structure for GET /api/v1/choices/{id}/results endpoint.
+ *
+ * Complete results data for a choice activity including all user responses
+ * with detailed user information, group memberships, selected options, and
+ * filtering metadata. This structure supports group filtering and active/
+ * inactive user filtering as specified in the API requirements.
+ *
+ * The API endpoint wraps existing Moodle choice functions from
+ * public/mod/choice/lib.php (choice_get_response_data, choice_get_all_responses).
+ */
+export interface ChoiceResultsResponse {
+  /** Array of user responses with comprehensive details */
+  responses: ChoiceUserResponse[];
+
+  /** Total count of responses (after filtering) */
+  totalCount: number;
+
+  /** Choice activity ID */
+  choiceId: number;
+
+  /** Group ID filter applied (optional, present if filtered by group) */
+  groupId?: number;
+
+  /** Whether inactive users are included in results */
+  includeinactive: boolean;
+}

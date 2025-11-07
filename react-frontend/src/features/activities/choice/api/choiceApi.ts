@@ -89,12 +89,11 @@ export async function getChoiceResults(
   );
 
   // Extract and return data from the standard API response envelope
-  if (response.data.success && response.data.data) {
+  // The apiClient's interceptors ensure we only get success responses here
+  if (response.data.success) {
     return response.data.data;
   }
 
-  // Handle application-level errors
-  throw new Error(
-    response.data.error?.message || 'Failed to fetch choice results'
-  );
+  // Handle application-level errors (should not reach here due to interceptors)
+  throw new Error('Failed to fetch choice results');
 }

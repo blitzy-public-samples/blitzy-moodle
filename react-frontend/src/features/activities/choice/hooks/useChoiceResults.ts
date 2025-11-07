@@ -88,25 +88,6 @@ interface ChoiceResultsResponse {
 }
 
 /**
- * Standard API response envelope
- */
-interface ApiResponse<T> {
-  /** Whether the request was successful */
-  success: boolean;
-  /** Response data */
-  data: T;
-  /** Error information if request failed */
-  error?: {
-    /** Error code */
-    code: string;
-    /** Human-readable error message */
-    message: string;
-    /** Additional error details */
-    details?: Record<string, unknown>;
-  };
-}
-
-/**
  * Fetches detailed choice results data from the API
  * 
  * Makes a GET request to /api/v1/choices/{id}/results with optional
