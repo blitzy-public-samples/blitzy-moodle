@@ -83,9 +83,9 @@ export interface UseUpdateProfileOptions<TData = ProfileUpdateResponse> {
  * ```
  */
 export function useUpdateProfile(
-  options: UseUpdateProfileOptions = {}
+  options: UseUpdateProfileOptions<User> = {}
 ): UseMutationResult<
-  ProfileUpdateResponse,
+  User,
   Error,
   UpdateProfilePayload,
   { previousProfile?: User; queryKey: readonly unknown[] } | undefined
@@ -94,12 +94,12 @@ export function useUpdateProfile(
   const { onSuccess, onError, optimisticUpdate = true } = options;
 
   return useMutation<
-    ProfileUpdateResponse,
+    User,
     Error,
     UpdateProfilePayload,
     { previousProfile?: User; queryKey: readonly unknown[] } | undefined
   >({
-    mutationFn: updateUserProfile,
+    mutationFn: (payload: UpdateProfilePayload) => updateUserProfile(payload.userid, payload),
 
     // Optimistic update - immediately update cache before API call
     onMutate: async (updatedProfile) => {
@@ -244,14 +244,14 @@ export function useUploadAvatar(
 export function useDeleteAvatar(
   userId: number,
   options: Omit<
-    UseUpdateProfileOptions<{ success: boolean; message: string }>,
+    UseUpdateProfileOptions<void>,
     'optimisticUpdate'
   > = {}
-): UseMutationResult<{ success: boolean; message: string }, Error, void, unknown> {
+): UseMutationResult<void, Error, void, unknown> {
   const queryClient = useQueryClient();
   const { onSuccess, onError } = options;
 
-  return useMutation<{ success: boolean; message: string }, Error, void>({
+  return useMutation<void, Error, void>({
     mutationFn: () => deleteAvatar(userId),
 
     onSuccess: (data) => {
@@ -371,13 +371,13 @@ export interface BatchProfileUpdate {
 export function useBatchUpdateProfile(
   userId: number,
   options: UseUpdateProfileOptions<{
-    profile?: ProfileUpdateResponse;
+    profile?: User;
     avatar?: AvatarUploadResponse;
     preferences?: UserPreferences;
   }> = {}
 ): UseMutationResult<
   {
-    profile?: ProfileUpdateResponse;
+    profile?: User;
     avatar?: AvatarUploadResponse;
     preferences?: UserPreferences;
   },
@@ -391,14 +391,14 @@ export function useBatchUpdateProfile(
   return useMutation({
     mutationFn: async (updates: BatchProfileUpdate) => {
       const results: {
-        profile?: ProfileUpdateResponse;
+        profile?: User;
         avatar?: AvatarUploadResponse;
         preferences?: UserPreferences;
       } = {};
 
       // Execute updates in sequence
       if (updates.profile) {
-        results.profile = await updateUserProfile(updates.profile);
+        results.profile = await updateUserProfile(updates.profile.userid, updates.profile);
       }
 
       if (updates.avatar) {

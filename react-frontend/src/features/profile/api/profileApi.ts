@@ -5,345 +5,358 @@
  * updating profile information, and managing avatar uploads.
  * All API calls delegate to existing Moodle PHP backend functions.
  *
+ * Implements comprehensive error handling, retry logic with exponential backoff,
+ * request timeout management, and JWT authentication integration.
+ *
  * @module features/profile/api
  */
 
-import type {
-  User,
-  UpdateProfilePayload,
-  ProfileUpdateResponse,
+import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
+import { authService } from '@/services/auth/authService';
+import type { 
+  User, 
+  UpdateProfilePayload, 
   AvatarUploadResponse,
-  UserPreferences,
+  UserPreferences 
 } from '../types/profile.types';
 
 /**
- * API response type definitions
- * These interfaces define the structure of raw API responses
+ * API Configuration
  */
-interface APIErrorResponse {
-  message?: string;
-  error?: {
-    code?: string;
-    message?: string;
-    details?: Record<string, unknown>;
+const API_BASE_URL = process.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+const REQUEST_TIMEOUT = 30000; // 30 seconds
+const MAX_RETRIES = 3; // 3 retries after initial attempt = 4 total attempts
+const INITIAL_RETRY_DELAY = 1000; // 1 second
+
+/**
+ * Create axios instance with default configuration
+ */
+const createApiClient = (): AxiosInstance => {
+  const client = axios.create({
+    baseURL: API_BASE_URL,
+    timeout: REQUEST_TIMEOUT,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  // Request interceptor to add JWT token
+  client.interceptors.request.use(
+    (config) => {
+      const token = authService.getAccessToken();
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      return config;
+    },
+    (error) => {
+      return Promise.reject(error);
+    }
+  );
+
+  // Response interceptor to handle token refresh on 401
+  client.interceptors.response.use(
+    (response) => response,
+    async (error: AxiosError) => {
+      const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
+
+      // Handle 401 Unauthorized - attempt token refresh
+      if (error.response?.status === 401 && !originalRequest._retry) {
+        originalRequest._retry = true;
+
+        try {
+          await authService.refreshToken();
+          
+          // Retry the original request with new token
+          const token = authService.getAccessToken();
+          if (token && originalRequest.headers) {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+          }
+          
+          return client.request(originalRequest);
+        } catch (refreshError) {
+          // Token refresh failed, reject the original error
+          return Promise.reject(error);
+        }
+      }
+
+      return Promise.reject(error);
+    }
+  );
+
+  return client;
+};
+
+/**
+ * Sleep utility for retry delays
+ */
+const sleep = (ms: number): Promise<void> => {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+};
+
+/**
+ * Retry logic with exponential backoff for 5xx errors
+ */
+const retryRequest = async <T>(
+  requestFn: () => Promise<T>,
+  retries: number = MAX_RETRIES
+): Promise<T> => {
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await requestFn();
+    } catch (error) {
+      lastError = error as Error;
+
+      // Only retry on 5xx server errors
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status;
+        
+        // Don't retry on 4xx client errors
+        if (status && status >= 400 && status < 500) {
+          throw error;
+        }
+
+        // Don't retry if this was the last attempt
+        if (attempt === retries) {
+          throw error;
+        }
+
+        // Calculate exponential backoff delay
+        const delay = INITIAL_RETRY_DELAY * Math.pow(2, attempt);
+        await sleep(delay);
+      } else {
+        // Non-axios errors should not be retried
+        throw error;
+      }
+    }
+  }
+
+  throw lastError;
+};
+
+/**
+ * Extract error message from API error response
+ * 
+ * For 422 validation errors, preserves the full axios error with validation details
+ * For other errors, extracts and throws the error message from response
+ */
+const handleApiError = (error: any): never => {
+  if (axios.isAxiosError(error) && error.response) {
+    const status = error.response.status;
+    const errorData = error.response.data?.error;
+    
+    // For 422 validation errors, preserve the full axios error with details
+    if (status === 422) {
+      throw error;
+    }
+    
+    // For other errors, throw a new Error with the message from the API
+    if (errorData?.message) {
+      throw new Error(errorData.message);
+    }
+  }
+  
+  // Re-throw original error if we can't extract a better message
+  throw error;
+};
+
+/**
+ * Transform interests from comma-separated string to array if needed
+ */
+const transformInterests = (interests: string | string[] | undefined): string[] | undefined => {
+  if (!interests) return undefined;
+  if (Array.isArray(interests)) return interests;
+  if (typeof interests === 'string') {
+    return interests.split(',').map((i) => i.trim()).filter((i) => i.length > 0);
+  }
+  return undefined;
+};
+
+/**
+ * Transform API response to User type
+ */
+const transformProfileResponse = (data: any): User => {
+  return {
+    ...data,
+    interests: transformInterests(data.interests),
   };
-  code?: string;
-  details?: Record<string, unknown>;
-}
-
-interface APIDataResponse<T> {
-  data?: T;
-  user?: User;
-  preferences?: UserPreferences;
-  profileimageurl?: string;
-  profileimageurlsmall?: string;
-  message?: string;
-  valid?: boolean;
-}
+};
 
 /**
- * Base API configuration
- * In a real implementation, these would come from environment config
- */
-const API_BASE_URL = '/api/v1';
-
-/**
- * Fetch user profile by ID
+ * Get user profile by ID
+ *
+ * Makes GET request to /api/v1/users/{userId}
+ * Includes JWT token authentication
+ * Retries on 5xx errors with exponential backoff
  *
  * @param userId - The ID of the user whose profile to fetch
  * @returns Promise resolving to User object
- * @throws Error if API request fails or user not found
+ * @throws Error with message from API response
  */
 export async function fetchUserProfile(userId: number): Promise<User> {
-  const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      // JWT token would be added by interceptor in real implementation
-    },
-    credentials: 'include',
-  });
+  const client = createApiClient();
 
-  if (!response.ok) {
-    const error = (await response
-      .json()
-      .catch(() => ({ message: 'Failed to fetch profile' }))) as APIErrorResponse;
-    throw new Error(error.message ?? `HTTP ${response.status}: Failed to fetch user profile`);
+  const fetchProfile = async () => {
+    const response = await client.get(`/users/${userId}`);
+    const profile = transformProfileResponse(response.data.data);
+    return profile;
+  };
+
+  try {
+    return await retryRequest(fetchProfile);
+  } catch (error) {
+    handleApiError(error);
+    throw error; // TypeScript needs this even though handleApiError never returns
   }
-
-  const data = (await response.json()) as APIDataResponse<User>;
-  return (data.data ?? data) as User;
 }
 
 /**
- * Fetch current authenticated user's profile
+ * Get current authenticated user profile
+ *
+ * Makes GET request to /api/v1/auth/me
+ * Includes JWT token authentication
+ * Retries on 5xx errors with exponential backoff
  *
  * @returns Promise resolving to current User object
- * @throws Error if not authenticated or API request fails
+ * @throws Error with message from API response
  */
 export async function fetchCurrentUserProfile(): Promise<User> {
-  const response = await fetch(`${API_BASE_URL}/auth/me`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    credentials: 'include',
-  });
+  const client = createApiClient();
 
-  if (!response.ok) {
-    const error = (await response
-      .json()
-      .catch(() => ({ message: 'Not authenticated' }))) as APIErrorResponse;
-    throw new Error(error.message ?? 'Failed to fetch current user profile');
+  const fetchCurrentUser = async () => {
+    const response = await client.get(`/auth/me`);
+    const profile = transformProfileResponse(response.data.data);
+    return profile;
+  };
+
+  try {
+    return await retryRequest(fetchCurrentUser);
+  } catch (error) {
+    handleApiError(error);
+    throw error; // TypeScript needs this even though handleApiError never returns
   }
-
-  const data = (await response.json()) as APIDataResponse<User>;
-  return (data.data ?? data) as User;
 }
 
 /**
  * Update user profile information
  *
- * Calls Moodle's user_update_user() function via API endpoint.
- * Validates and sanitizes input on the backend.
+ * Makes PUT request to /api/v1/users/{userId} with JSON payload
+ * Includes JWT token authentication
+ * Retries on 5xx errors with exponential backoff
  *
- * @param payload - Profile update data
- * @returns Promise resolving to updated profile and status
- * @throws Error if validation fails or update not permitted
+ * @param userId - The ID of the user whose profile to update
+ * @param data - Profile update data
+ * @returns Promise resolving to updated User object
+ * @throws Error with message from API response (or full AxiosError for 422 validation errors)
  */
-export async function updateUserProfile(
-  payload: UpdateProfilePayload
-): Promise<ProfileUpdateResponse> {
-  const response = await fetch(`${API_BASE_URL}/users/${payload.userid}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    credentials: 'include',
-    body: JSON.stringify(payload),
-  });
+export async function updateUserProfile(userId: number, data: UpdateProfilePayload): Promise<User> {
+  const client = createApiClient();
 
-  const data = (await response.json()) as APIDataResponse<User> & APIErrorResponse;
-
-  if (!response.ok) {
-    return {
-      success: false,
-      error: {
-        code: data.error?.code ?? data.code ?? 'UPDATE_FAILED',
-        message: data.error?.message ?? data.message ?? 'Update failed',
-        details: data.error?.details ?? data.details,
-      },
-    };
-  }
-
-  return {
-    success: true,
-    data: (data.data ?? data.user) as User,
+  const updateProfileRequest = async () => {
+    const response = await client.put(`/users/${userId}`, data);
+    const profile = transformProfileResponse(response.data.data);
+    return profile;
   };
+
+  try {
+    return await retryRequest(updateProfileRequest);
+  } catch (error) {
+    handleApiError(error);
+    throw error; // TypeScript needs this even though handleApiError never returns
+  }
 }
 
 /**
  * Upload user avatar/profile picture
  *
- * Handles file upload with validation on both client and server.
- * Calls Moodle's file upload and user picture update functions.
+ * Makes POST request to /api/v1/files/upload with multipart/form-data
+ * Includes JWT token authentication
+ * Retries on 5xx errors with exponential backoff
  *
- * @param userId - User ID whose avatar to update
+ * @param userId - The ID of the user whose avatar to upload
  * @param file - Image file to upload
- * @returns Promise resolving to new avatar URLs
- * @throws Error if file validation fails or upload not permitted
+ * @returns Promise resolving to AvatarUploadResponse object with file metadata
+ * @throws Error with message from API response (or full AxiosError for 422 validation errors)
  */
 export async function uploadAvatar(userId: number, file: File): Promise<AvatarUploadResponse> {
-  // Client-side validation
-  const maxSize = 5 * 1024 * 1024; // 5MB
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+  const client = createApiClient();
 
-  if (file.size > maxSize) {
-    return {
-      success: false,
-      profileimageurl: '',
-      profileimageurlsmall: '',
-      error: {
-        code: 'FILE_TOO_LARGE',
-        message: 'File size exceeds 5MB limit',
-        details: { fileSize: `${(file.size / 1024 / 1024).toFixed(2)}MB` },
+  const uploadAvatarRequest = async () => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('userId', userId.toString());
+    formData.append('contextType', 'user');
+
+    // Let axios automatically set Content-Type with boundary for FormData
+    const response = await client.post('/files/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
       },
-    };
-  }
+    });
 
-  if (!allowedTypes.includes(file.type)) {
-    return {
-      success: false,
-      profileimageurl: '',
-      profileimageurlsmall: '',
-      error: {
-        code: 'INVALID_FILE_TYPE',
-        message: 'Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed',
-        details: { receivedType: file.type },
-      },
-    };
-  }
-
-  // Prepare multipart form data
-  const formData = new FormData();
-  formData.append('avatar', file);
-  formData.append('userid', userId.toString());
-
-  const response = await fetch(`${API_BASE_URL}/users/${userId}/avatar`, {
-    method: 'POST',
-    credentials: 'include',
-    body: formData,
-    // Don't set Content-Type header - browser will set it with boundary
-  });
-
-  const data = (await response.json()) as APIDataResponse<{
-    profileimageurl: string;
-    profileimageurlsmall: string;
-  }> &
-    APIErrorResponse;
-
-  if (!response.ok) {
-    return {
-      success: false,
-      profileimageurl: '',
-      profileimageurlsmall: '',
-      error: {
-        code: data.code ?? 'UPLOAD_FAILED',
-        message: data.message ?? 'Failed to upload avatar',
-        details: data.details,
-      },
-    };
-  }
-
-  return {
-    success: true,
-    profileimageurl: data.profileimageurl ?? data.data?.profileimageurl ?? '',
-    profileimageurlsmall: data.profileimageurlsmall ?? data.data?.profileimageurlsmall ?? '',
+    return response.data.data;
   };
+
+  try {
+    return await retryRequest(uploadAvatarRequest);
+  } catch (error) {
+    handleApiError(error);
+    throw error; // TypeScript needs this even though handleApiError never returns
+  }
 }
 
 /**
- * Delete user avatar (revert to default)
+ * Delete user avatar/profile picture
  *
- * @param userId - User ID whose avatar to delete
- * @returns Promise resolving to success status
- * @throws Error if deletion not permitted
+ * Makes DELETE request to /api/v1/users/{userId}/avatar
+ * Includes JWT token authentication
+ * Retries on 5xx errors with exponential backoff
+ *
+ * @param userId - The ID of the user whose avatar to delete
+ * @returns Promise resolving when avatar is deleted
+ * @throws Error with message from API response
  */
-export async function deleteAvatar(userId: number): Promise<{ success: boolean; message: string }> {
-  const response = await fetch(`${API_BASE_URL}/users/${userId}/avatar`, {
-    method: 'DELETE',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    credentials: 'include',
-  });
+export async function deleteAvatar(userId: number): Promise<void> {
+  const client = createApiClient();
 
-  if (!response.ok) {
-    const error = (await response
-      .json()
-      .catch(() => ({ message: 'Failed to delete avatar' }))) as APIErrorResponse;
-    throw new Error(error.message ?? 'Failed to delete avatar');
-  }
-
-  const data = (await response.json()) as APIDataResponse<never>;
-  return {
-    success: true,
-    message: data.message ?? 'Avatar deleted successfully',
+  const deleteAvatarRequest = async () => {
+    await client.delete(`/users/${userId}/avatar`);
   };
+
+  try {
+    return await retryRequest(deleteAvatarRequest);
+  } catch (error) {
+    handleApiError(error);
+    throw error; // TypeScript needs this even though handleApiError never returns
+  }
 }
 
 /**
  * Update user preferences
  *
- * @param userId - User ID whose preferences to update
- * @param preferences - Preferences to update (partial)
- * @returns Promise resolving to updated preferences
- * @throws Error if update fails
- */
-export async function updateUserPreferences(
-  userId: number,
-  preferences: Partial<UserPreferences>
-): Promise<UserPreferences> {
-  const response = await fetch(`${API_BASE_URL}/users/${userId}/preferences`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    credentials: 'include',
-    body: JSON.stringify(preferences),
-  });
-
-  if (!response.ok) {
-    const error = (await response
-      .json()
-      .catch(() => ({ message: 'Failed to update preferences' }))) as APIErrorResponse;
-    throw new Error(error.message ?? 'Failed to update preferences');
-  }
-
-  const data = (await response.json()) as APIDataResponse<UserPreferences>;
-  return data.data ?? data.preferences ?? preferences;
-}
-
-/**
- * Fetch user preferences
+ * Makes PUT request to /api/v1/users/{userId}/preferences with JSON payload
+ * Includes JWT token authentication
+ * Retries on 5xx errors with exponential backoff
  *
- * @param userId - User ID whose preferences to fetch
- * @returns Promise resolving to user preferences
- * @throws Error if fetch fails
+ * @param userId - The ID of the user whose preferences to update
+ * @param preferences - User preferences key-value map
+ * @returns Promise resolving to updated UserPreferences object
+ * @throws Error with message from API response (or full AxiosError for 422 validation errors)
  */
-export async function fetchUserPreferences(userId: number): Promise<UserPreferences> {
-  const response = await fetch(`${API_BASE_URL}/users/${userId}/preferences`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    credentials: 'include',
-  });
+export async function updateUserPreferences(userId: number, preferences: UserPreferences): Promise<UserPreferences> {
+  const client = createApiClient();
 
-  if (!response.ok) {
-    const error = (await response
-      .json()
-      .catch(() => ({ message: 'Failed to fetch preferences' }))) as APIErrorResponse;
-    throw new Error(error.message ?? 'Failed to fetch preferences');
-  }
-
-  const data = (await response.json()) as APIDataResponse<UserPreferences>;
-  return data.data ?? data.preferences ?? ({} as UserPreferences);
-}
-
-/**
- * Validate profile field value
- *
- * Performs server-side validation for a specific field before form submission
- * Useful for real-time validation feedback
- *
- * @param field - Field name to validate
- * @param value - Field value to validate
- * @returns Promise resolving to validation result
- */
-export async function validateProfileField(
-  field: string,
-  value: unknown
-): Promise<{ valid: boolean; message?: string }> {
-  const response = await fetch(`${API_BASE_URL}/users/validate`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    credentials: 'include',
-    body: JSON.stringify({ field, value }),
-  });
-
-  if (!response.ok) {
-    return {
-      valid: false,
-      message: 'Validation service unavailable',
-    };
-  }
-
-  const data = (await response.json()) as APIDataResponse<never>;
-  return {
-    valid: data.valid !== false,
-    message: data.message,
+  const updatePreferencesRequest = async () => {
+    const response = await client.put(`/users/${userId}/preferences`, preferences);
+    return response.data.data;
   };
+
+  try {
+    return await retryRequest(updatePreferencesRequest);
+  } catch (error) {
+    handleApiError(error);
+    throw error; // TypeScript needs this even though handleApiError never returns
+  }
 }

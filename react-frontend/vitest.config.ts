@@ -6,7 +6,7 @@ import path from 'path';
  * Vitest Configuration for Moodle React Frontend
  * 
  * Configures the testing environment for unit and integration tests with:
- * - jsdom environment for DOM testing
+ * - happy-dom environment for DOM testing (better FormData/File support than jsdom)
  * - React Testing Library integration
  * - 90%+ coverage thresholds
  * - TypeScript support
@@ -34,13 +34,14 @@ export default defineConfig({
     // Enable global test APIs (describe, it, expect, etc.) without imports
     globals: true,
     
-    // Use jsdom environment for DOM testing (simulates browser environment)
-    environment: 'jsdom',
+    // Use happy-dom environment for DOM testing (simulates browser environment)
+    // happy-dom is used instead of jsdom due to better compatibility with FormData and File objects
+    environment: 'happy-dom',
     
     // Environment variables for tests
     // Set absolute API base URL so MSW can intercept requests properly
     env: {
-      VITE_API_BASE_URL: 'http://localhost:3000/api/v1'
+      VITE_API_BASE_URL: 'http://localhost:8000/api/v1'
     },
     
     // Setup file to run before each test file

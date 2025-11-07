@@ -163,14 +163,17 @@ export function ProfileEditForm({
     error,
     isSuccess,
   } = useUpdateProfile({
-    onSuccess: (response) => {
-      if (response.success) {
-        onSuccess?.();
-      } else if (response.error) {
-        // Handle validation errors
-        // If error has field-specific details, set them
-        if (response.error.details && typeof response.error.details === 'object') {
-          Object.entries(response.error.details).forEach(([field, message]) => {
+    onSuccess: () => {
+      // Mutation succeeded
+      onSuccess?.();
+    },
+    onError: (error) => {
+      // Handle validation errors
+      // Check if error has field-specific details
+      if (error && typeof error === 'object' && 'details' in error) {
+        const details = (error as any).details;
+        if (details && typeof details === 'object') {
+          Object.entries(details).forEach(([field, message]) => {
             if (typeof message === 'string') {
               setError(field as keyof ProfileFormData, {
                 type: 'server',
