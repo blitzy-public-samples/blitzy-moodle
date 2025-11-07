@@ -49,10 +49,10 @@ export function ProfilePage() {
   const userId = userIdParam ? parseInt(userIdParam, 10) : undefined;
 
   // Fetch profile data
-  const { data: user, isLoading, isError, error, refetch } = useProfile(userId);
+  const { profile: user, isLoading, isError, error, refetch } = useProfile(userId);
 
   // Fetch current user to determine edit permissions
-  const { data: currentUser, isLoading: isLoadingCurrentUser } = useCurrentUser();
+  const { profile: currentUser, isLoading: isLoadingCurrentUser } = useCurrentUser();
 
   /**
    * Check if current user can edit this profile

@@ -16,12 +16,53 @@ import {
 } from '../api/profileApi';
 import type {
   UpdateProfilePayload,
+  UpdateProfileData,
   ProfileUpdateResponse,
   AvatarUploadResponse,
   UserPreferences,
   User,
 } from '../types/profile.types';
 import { profileKeys } from './useProfile';
+
+/**
+ * Convert UpdateProfilePayload (internal format with booleans and enums)
+ * to UpdateProfileData (API format with numeric literals)
+ */
+function convertPayloadToApiFormat(payload: Omit<UpdateProfilePayload, 'userid'>): UpdateProfileData {
+  const apiData: UpdateProfileData = {};
+
+  // Copy all string/number fields directly
+  if (payload.firstname !== undefined) apiData.firstname = payload.firstname;
+  if (payload.lastname !== undefined) apiData.lastname = payload.lastname;
+  if (payload.email !== undefined) apiData.email = payload.email;
+  if (payload.description !== undefined) apiData.description = payload.description;
+  if (payload.city !== undefined) apiData.city = payload.city;
+  if (payload.country !== undefined) apiData.country = payload.country;
+  if (payload.timezone !== undefined) apiData.timezone = payload.timezone;
+  if (payload.phone1 !== undefined) apiData.phone1 = payload.phone1;
+  if (payload.phone2 !== undefined) apiData.phone2 = payload.phone2;
+  if (payload.institution !== undefined) apiData.institution = payload.institution;
+  if (payload.department !== undefined) apiData.department = payload.department;
+  if (payload.address !== undefined) apiData.address = payload.address;
+  if (payload.lang !== undefined) apiData.lang = payload.lang;
+  if (payload.calendartype !== undefined) apiData.calendartype = payload.calendartype;
+  if (payload.theme !== undefined) apiData.theme = payload.theme;
+
+  // Convert boolean to 0 | 1 for API
+  if (payload.autosubscribe !== undefined) {
+    apiData.autosubscribe = payload.autosubscribe ? 1 : 0;
+  }
+  if (payload.trackforums !== undefined) {
+    apiData.trackforums = payload.trackforums ? 1 : 0;
+  }
+
+  // mailformat is already MailFormat enum (0 or 1), can be used directly
+  if (payload.mailformat !== undefined) {
+    apiData.mailformat = payload.mailformat as 0 | 1;
+  }
+
+  return apiData;
+}
 
 /**
  * Options for profile update mutations
@@ -99,7 +140,18 @@ export function useUpdateProfile(
     UpdateProfilePayload,
     { previousProfile?: User; queryKey: readonly unknown[] } | undefined
   >({
-    mutationFn: (payload: UpdateProfilePayload) => updateUserProfile(payload.userid, payload),
+    mutationFn: async (payload: UpdateProfilePayload) => {
+      // Extract userid and convert payload to API format
+      const { userid, ...internalData } = payload;
+      const apiData = convertPayloadToApiFormat(internalData);
+      try {
+        const result = await updateUserProfile(userid, apiData);
+        return result;
+      } catch (error) {
+        // Re-throw the error to ensure it's properly caught by React Query
+        throw error;
+      }
+    },
 
     // Optimistic update - immediately update cache before API call
     onMutate: async (updatedProfile) => {
@@ -398,7 +450,9 @@ export function useBatchUpdateProfile(
 
       // Execute updates in sequence
       if (updates.profile) {
-        results.profile = await updateUserProfile(updates.profile.userid, updates.profile);
+        const { userid, ...internalData } = updates.profile;
+        const apiData = convertPayloadToApiFormat(internalData);
+        results.profile = await updateUserProfile(userid, apiData);
       }
 
       if (updates.avatar) {

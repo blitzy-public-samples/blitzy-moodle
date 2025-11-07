@@ -15,7 +15,7 @@ import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
 import { authService } from '@/services/auth/authService';
 import type { 
   User, 
-  UpdateProfilePayload, 
+  UpdateProfileData,
   AvatarUploadResponse,
   UserPreferences 
 } from '../types/profile.types';
@@ -251,7 +251,7 @@ export async function fetchCurrentUserProfile(): Promise<User> {
  * @returns Promise resolving to updated User object
  * @throws Error with message from API response (or full AxiosError for 422 validation errors)
  */
-export async function updateUserProfile(userId: number, data: UpdateProfilePayload): Promise<User> {
+export async function updateUserProfile(userId: number, data: UpdateProfileData): Promise<User> {
   const client = createApiClient();
 
   const updateProfileRequest = async () => {

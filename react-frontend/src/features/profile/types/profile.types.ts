@@ -287,9 +287,72 @@ export interface User {
 }
 
 /**
- * Update profile payload interface
+ * Update profile data interface (for API requests)
  * Based on user_update_user() parameters from public/user/lib.php
  * Contains fields that can be updated via profile edit form
+ * Note: userid is passed as URL parameter, not in request body
+ */
+export interface UpdateProfileData {
+  /** User's first name */
+  firstname?: string;
+
+  /** User's last name */
+  lastname?: string;
+
+  /** Email address */
+  email?: string;
+
+  /** Profile description (bio) */
+  description?: string;
+
+  /** Home city */
+  city?: string;
+
+  /** Home country code (ISO 3166-1 alpha-2) */
+  country?: string;
+
+  /** Timezone code or '99' for server default */
+  timezone?: string;
+
+  /** Phone number 1 */
+  phone1?: string;
+
+  /** Phone number 2 (mobile) */
+  phone2?: string;
+
+  /** Institution */
+  institution?: string;
+
+  /** Department */
+  department?: string;
+
+  /** Postal address */
+  address?: string;
+
+  /** Language code */
+  lang?: string;
+
+  /** Calendar type */
+  calendartype?: CalendarType;
+
+  /** Theme name */
+  theme?: string;
+
+  /** Mailformat preference (0 = plain text, 1 = HTML) */
+  mailformat?: 0 | 1;
+
+  /** Auto-subscribe to forum posts (0 or 1) */
+  autosubscribe?: 0 | 1;
+
+  /** Track forum read/unread (0 or 1) */
+  trackforums?: 0 | 1;
+}
+
+/**
+ * Update profile payload interface (for mutation hooks)
+ * Based on user_update_user() parameters from public/user/lib.php
+ * Contains fields that can be updated via profile edit form
+ * Includes userid for internal routing to correct user
  */
 export interface UpdateProfilePayload {
   /** User ID (required to identify which user to update) */
