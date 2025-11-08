@@ -230,7 +230,11 @@ export const PageNavigation: React.FC<PageNavigationProps> = ({
   const handleKeyDown = (event: React.KeyboardEvent): void => {
     // Allow Ctrl+Enter to submit on any page
     if (event.ctrlKey && event.key === 'Enter' && isValid && !navigationDisabled) {
-      handleSubmit();
+      try {
+        onSubmit();
+      } catch (error) {
+        console.error('Error submitting feedback:', error);
+      }
       return;
     }
 
