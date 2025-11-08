@@ -42,7 +42,7 @@ import {
   Info as InfoIcon,
 } from '@mui/icons-material';
 import { format, parseISO } from 'date-fns';
-import ReactJson from 'react-json-view';
+import ReactJson from '@microlink/react-json-view';
 
 /**
  * xAPI Actor interface representing the user who performed the action
@@ -611,6 +611,10 @@ const xAPIStatementViewer: React.FC<XAPIStatementViewerProps> = ({
 
   // Single statement view
   if (filteredStatements.length === 1) {
+    const statement = filteredStatements[0];
+    // TypeScript guard: this should never be undefined given the length check
+    if (!statement) return null;
+    
     return (
       <Box>
         {availableVerbs.length > 1 && (
@@ -633,7 +637,7 @@ const xAPIStatementViewer: React.FC<XAPIStatementViewerProps> = ({
           </Box>
         )}
         <StatementCard
-          statement={filteredStatements[0]}
+          statement={statement}
           jsonTheme={jsonTheme}
           showJsonByDefault={showJsonByDefault}
         />

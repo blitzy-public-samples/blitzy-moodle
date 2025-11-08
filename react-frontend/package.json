@@ -53,6 +53,7 @@
     "@emotion/react": "^11.11.3",
     "@emotion/styled": "^11.11.0",
     "@hookform/resolvers": "^3.3.3",
+    "@microlink/react-json-view": "^1.27.0",
     "@mui/icons-material": "^5.15.0",
     "@mui/material": "^5.15.0",
     "@mui/x-data-grid": "^6.18.6",
