@@ -28,15 +28,7 @@ import {
   Event as EventIcon,
   Score as ScoreIcon,
 } from '@mui/icons-material';
-import { format, formatDistanceStrict } from 'date-fns';
-
-/**
- * Interface for H5P interaction type
- */
-interface H5PInteractionType {
-  type: string;
-  label: string;
-}
+import { format } from 'date-fns';
 
 /**
  * Interface for H5P result additional data (xAPI statements)
@@ -189,8 +181,7 @@ const ResponseRenderer: React.FC<{
   interactiontype: string;
   response: string;
   correctpattern: string | null;
-  description: string;
-}> = ({ interactiontype, response, correctpattern, description }) => {
+}> = ({ interactiontype, response, correctpattern }) => {
   const decodedResponse = decodeResponse(response);
   const decodedCorrect = correctpattern ? decodeResponse(correctpattern) : null;
 
@@ -678,7 +669,6 @@ const ResultsDetail: React.FC<ResultsDetailProps> = ({ data, loading = false }) 
                           interactiontype={result.interactiontype}
                           response={result.response}
                           correctpattern={result.correctpattern}
-                          description={result.description}
                         />
                       </Box>
 
