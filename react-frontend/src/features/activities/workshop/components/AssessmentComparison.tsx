@@ -23,45 +23,29 @@ import {
   Error as ErrorIcon,
   Refresh as RefreshIcon,
 } from '@mui/icons-material';
+import {
+  Workshop,
+  WorkshopAssessment as BaseWorkshopAssessment,
+  DimensionGrade,
+} from '@/features/activities/workshop/types';
 
 /**
- * Workshop entity type
+ * Extended assessment dimension that combines dimension grade with metadata
+ * Used for displaying and comparing dimension-level assessments
  */
-interface Workshop {
+interface AssessmentDimension extends DimensionGrade {
   id: number;
-  name: string;
-  course: number;
-  strategy: string;
-  grade: number;
-  gradinggrade: number;
-}
-
-/**
- * Workshop assessment dimension/criterion
- */
-interface AssessmentDimension {
-  id: number;
-  dimensionid: number;
   description: string;
-  grade: number;
-  peercomment: string;
   weight: number;
   criterionName?: string;
 }
 
 /**
- * Workshop assessment entity
+ * Extended workshop assessment that includes dimension grades
+ * The shared WorkshopAssessment type doesn't include dimensions inline,
+ * but this component needs them for comparison purposes
  */
-interface WorkshopAssessment {
-  id: number;
-  submissionid: number;
-  reviewerid: number;
-  grade: number;
-  gradinggrade: number;
-  gradinggradeover: number | null;
-  feedbackauthor: string;
-  feedbackauthorformat: number;
-  weight: number;
+interface WorkshopAssessment extends BaseWorkshopAssessment {
   dimensions: AssessmentDimension[];
 }
 
@@ -130,13 +114,15 @@ export function calculateAgreement(
 
   referenceAssessment.dimensions.forEach((refDim) => {
     const userDim = userAssessment.dimensions.find(
-      (d) => d.dimensionid === refDim.dimensionid
+      (d) => d.dimensionId === refDim.dimensionId
     );
 
     if (userDim) {
       matchedDimensions++;
-      const maxGrade = Math.max(refDim.grade, userDim.grade, refDim.weight || 100);
-      const difference = Math.abs(refDim.grade - userDim.grade);
+      const refGrade = refDim.grade ?? 0;
+      const userGrade = userDim.grade ?? 0;
+      const maxGrade = Math.max(refGrade, userGrade, refDim.weight || 100);
+      const difference = Math.abs(refGrade - userGrade);
       
       totalDifference += difference;
       totalPossible += maxGrade;
@@ -167,11 +153,12 @@ export function calculateDimensionComparisons(
 
   return referenceAssessment.dimensions.map((refDim) => {
     const userDim = userAssessment.dimensions.find(
-      (d) => d.dimensionid === refDim.dimensionid
+      (d) => d.dimensionId === refDim.dimensionId
     );
 
     const userGrade = userDim?.grade ?? 0;
-    const difference = userGrade - refDim.grade;
+    const refGrade = refDim.grade ?? 0;
+    const difference = userGrade - refGrade;
     const maxGrade = refDim.weight || 100;
     const percentageDifference = (Math.abs(difference) / maxGrade) * 100;
 
@@ -185,9 +172,9 @@ export function calculateDimensionComparisons(
     }
 
     return {
-      dimensionId: refDim.dimensionid,
-      criterionName: refDim.criterionName || refDim.description || `Criterion ${refDim.dimensionid}`,
-      referenceGrade: refDim.grade,
+      dimensionId: refDim.dimensionId,
+      criterionName: refDim.criterionName || refDim.description || `Criterion ${refDim.dimensionId}`,
+      referenceGrade: refGrade,
       userGrade,
       difference,
       percentageDifference: Math.round(percentageDifference * 10) / 10,
@@ -508,7 +495,7 @@ const AssessmentComparison: React.FC<AssessmentComparisonProps> = ({
       </Card>
 
       {/* Feedback Comparison */}
-      {referenceAssessment.feedbackauthor && userAssessment.feedbackauthor && (
+      {referenceAssessment.feedbackAuthor && userAssessment.feedbackAuthor && (
         <Card sx={{ mb: 3 }}>
           <CardContent>
             <Typography variant="h6" component="h3" sx={{ mb: 2 }}>
@@ -521,7 +508,7 @@ const AssessmentComparison: React.FC<AssessmentComparisonProps> = ({
                     Reference Feedback
                   </Typography>
                   <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                    {referenceAssessment.feedbackauthor}
+                    {referenceAssessment.feedbackAuthor}
                   </Typography>
                 </Paper>
               </Grid>
@@ -531,7 +518,7 @@ const AssessmentComparison: React.FC<AssessmentComparisonProps> = ({
                     Your Feedback
                   </Typography>
                   <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                    {userAssessment.feedbackauthor}
+                    {userAssessment.feedbackAuthor}
                   </Typography>
                 </Paper>
               </Grid>
@@ -556,8 +543,8 @@ const AssessmentComparison: React.FC<AssessmentComparisonProps> = ({
           <Divider sx={{ my: 2 }} />
           <Typography variant="body2" color="text.secondary">
             <strong>Grading Grade:</strong> Your assessment quality score for this example is{' '}
-            {userAssessment.gradinggrade !== null && userAssessment.gradinggrade !== undefined
-              ? `${userAssessment.gradinggrade} / ${workshop.gradinggrade}`
+            {userAssessment.gradingGrade !== null && userAssessment.gradingGrade !== undefined
+              ? `${userAssessment.gradingGrade} / ${workshop.gradingGrade}`
               : 'pending calculation'}.
             This reflects how well your assessment matched the reference assessment.
           </Typography>
