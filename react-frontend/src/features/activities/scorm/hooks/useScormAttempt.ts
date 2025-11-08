@@ -165,7 +165,7 @@ async function createScormAttempt(
     `/api/v1/scorm/${params.scormId}/attempt`,
     {
       userId: params.userId,
-      mode: params.mode || 'normal',
+      mode: params.mode ?? 'normal',
       newAttempt: params.newAttempt !== false,
     }
   );
@@ -327,7 +327,7 @@ export default function useScormAttempt(
         mode: params.mode,
         newAttempt: params.force !== false,
       }),
-    onMutate: async (params) => {
+    onMutate: async () => {
       // Cancel outgoing refetches to avoid overwriting optimistic update
       await queryClient.cancelQueries({
         queryKey: ['scorm', 'attempts', scormId, userId],
@@ -357,7 +357,7 @@ export default function useScormAttempt(
 
       return { previousAttempts };
     },
-    onError: (error, variables, context) => {
+    onError: (_error, _variables, context) => {
       // Rollback optimistic update on error
       if (context?.previousAttempts) {
         queryClient.setQueryData(
@@ -366,29 +366,29 @@ export default function useScormAttempt(
         );
       }
     },
-    onSuccess: (newAttempt) => {
+    onSuccess: () => {
       // Invalidate and refetch attempt queries
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ['scorm', 'attempts', scormId, userId],
       });
 
       // Also invalidate the specific SCORM details query
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ['scorm', scormId],
       });
 
       // Invalidate user progress queries
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ['scorm', 'progress', scormId, userId],
       });
     },
   });
 
   // Extract data from query response
-  const lastAttempt = attemptsData?.data.lastAttempt || null;
-  const allAttempts = attemptsData?.data.attempts || [];
-  const totalAttempts = attemptsData?.data.totalAttempts || 0;
-  const scormConfig = attemptsData?.data.scormConfig || null;
+  const lastAttempt = attemptsData?.data.lastAttempt ?? null;
+  const allAttempts = attemptsData?.data.attempts ?? [];
+  const totalAttempts = attemptsData?.data.totalAttempts ?? 0;
+  const scormConfig = attemptsData?.data.scormConfig ?? null;
 
   // Calculate validation results
   const canStartNewAttempt = validateCanStartNewAttempt(
@@ -408,13 +408,13 @@ export default function useScormAttempt(
   const createAttempt = async (
     params?: { mode?: ScormAttemptMode; force?: boolean }
   ): Promise<ScormAttempt> => {
-    return createAttemptMutation.mutateAsync(params || {});
+    return createAttemptMutation.mutateAsync(params ?? {});
   };
 
   return {
     attempt: lastAttempt,
     isLoading,
-    error: error as Error | null,
+    error,
     createAttempt,
     canStartNewAttempt,
     attemptsLeft,

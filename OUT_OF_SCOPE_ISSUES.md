@@ -47,6 +47,62 @@ The test expects the "next" pagination button to be disabled when on the last pa
 **Root Cause**: 
 The test is checking `expect(nextButton).toBeDisabled()` but the button is not in a disabled state when viewing the last page.
 
+**Scope Status**: OUT OF SCOPE - Forums module
+
+---
+
+## TypeScript Compilation Errors in Profile Module (Out of Scope)
+
+**Date**: 2024-11-08
+**Discovered During**: Module-wide TypeScript compilation check for scorm useScormAttempt validation
+
+### Issue 1: profileApi.ts Type Mismatch
+
+**File**: `src/features/profile/api/profileApi.ts`
+**Line**: 248:5
+
+**Error Message**:
+```
+error TS2322: Type 'string[] | undefined' is not assignable to type 'string | undefined'.
+  Type 'string[]' is not assignable to type 'string'.
+```
+
+**Description**:
+A property is being assigned an array of strings when the type definition expects a single string or undefined.
+
+**Scope Status**: OUT OF SCOPE - Profile module
+
+### Issue 2: ProfileEditForm.tsx Type Conversion Error
+
+**File**: `src/features/profile/components/ProfileEditForm.tsx`
+**Line**: 175:26
+
+**Error Message**:
+```
+error TS2352: Conversion of type 'Error & Record<"details", unknown>' to type 'ApiError' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Property 'code' is missing in type 'Error & Record<"details", unknown>' but required in type 'ApiError'.
+```
+
+**Description**:
+An unsafe type conversion is being attempted. The error object being cast to `ApiError` is missing the required `code` property.
+
+**Scope Status**: OUT OF SCOPE - Profile module
+
+### Issue 3: useProfile.ts Mutation Callback Type Error
+
+**File**: `src/features/profile/hooks/useProfile.ts`
+**Line**: 528:5
+
+**Error Message**:
+```
+error TS2322: Type '(error: Error, variables: UpdateProfilePayload, context?: UpdateProfileContext) => void' is not assignable to type '(error: Error, variables: UpdateProfilePayload, onMutateResult: unknown, context: MutationFunctionContext) => unknown'.
+  Types of parameters 'context' and 'onMutateResult' are incompatible.
+    Type 'unknown' is not assignable to type 'UpdateProfileContext | undefined'.
+```
+
+**Description**:
+The mutation error callback function signature does not match the expected type from React Query. The parameter order and types are incompatible.
+
 **Scope Status**: 
 - ❌ OUT OF SCOPE - Forums module is not part of the h5pactivity validation scope
 - The assigned file for this validation is: `react-frontend/src/features/activities/h5pactivity/components/AttemptsTable.tsx`
