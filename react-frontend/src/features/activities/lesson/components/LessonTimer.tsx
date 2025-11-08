@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import type React from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Box, Typography, useTheme } from '@mui/material';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 
@@ -62,12 +63,12 @@ type UrgencyLevel = 'normal' | 'warning' | 'critical';
  * />
  * ```
  */
-const LessonTimer: React.FC<LessonTimerProps> = ({
+function LessonTimer({
   timeRemaining: initialTimeRemaining,
   onTimeExpired,
   isActive,
   variant = 'full',
-}) => {
+}: LessonTimerProps): React.JSX.Element {
   const theme = useTheme();
   
   // Local state for countdown synchronized with parent prop
@@ -97,11 +98,11 @@ const LessonTimer: React.FC<LessonTimerProps> = ({
   const getUrgencyLevel = useCallback((seconds: number): UrgencyLevel => {
     if (seconds > 300) {
       return 'normal';
-    } else if (seconds > 60) {
-      return 'warning';
-    } else {
-      return 'critical';
     }
+    if (seconds > 60) {
+      return 'warning';
+    }
+    return 'critical';
   }, []);
 
   /**
@@ -261,6 +262,6 @@ const LessonTimer: React.FC<LessonTimerProps> = ({
       </Typography>
     </Box>
   );
-};
+}
 
 export default LessonTimer;
