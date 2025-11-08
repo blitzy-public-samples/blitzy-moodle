@@ -266,7 +266,8 @@ export const GroupFilter: React.FC<GroupFilterProps> = ({
    * Render single group state (only one option available)
    */
   if (groups.length === 1 && !showAllParticipants) {
-    const singleGroup = groups[0];
+    // Non-null assertion is safe here due to length check above
+    const singleGroup = groups[0]!;
     return (
       <FormControl size={size} className={className} disabled>
         <InputLabel>{getLabel()}</InputLabel>
