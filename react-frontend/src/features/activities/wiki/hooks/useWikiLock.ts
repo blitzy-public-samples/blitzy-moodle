@@ -1,8 +1,9 @@
 /**
  * useWikiLock Hook
  *
- * Custom React hook for managing wiki page edit locks to prevent concurrent editing.
- * Provides functions to acquire, release, and check lock status with automatic cleanup.
+ * Custom React hook for managing wiki page edit locks to prevent concurrent editing conflicts.
+ * Automatically acquires edit lock when component mounts, sends heartbeat pings to maintain lock,
+ * handles lock conflicts when another user is editing, and releases lock on unmount or navigation.
  *
  * @package    react-frontend
  * @subpackage features/activities/wiki/hooks
@@ -10,36 +11,73 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  *
  * Features:
- * - Acquire exclusive page edit lock
- * - Release lock on unmount or explicit call
- * - Track lock ownership status
- * - Handle lock expiration and renewal
- * - Support section-specific locks
+ * - Automatic lock acquisition on component mount
+ * - Periodic heartbeat to maintain active locks
+ * - Lock conflict detection and user notification
+ * - Lock holder information display
+ * - Override capability for privileged users
+ * - Automatic cleanup on unmount
  *
  * Usage:
  * ```typescript
- * const { acquireLock, releaseLock, hasLock, lockStatus } = useWikiLock({ pageId: 123 });
+ * // Basic usage with auto-acquire
+ * const { hasLock, lockHolder, acquireLock, releaseLock } = useWikiLock({
+ *   pageId: 123,
+ *   autoAcquire: true
+ * });
  *
- * // Acquire lock before editing
- * await acquireLock();
+ * // Section-specific lock
+ * const { hasLock, lockConflict } = useWikiLock({
+ *   pageId: 123,
+ *   section: 'Introduction',
+ *   autoAcquire: true
+ * });
  *
- * // Release lock when done
- * await releaseLock();
+ * // Force acquire with override permissions
+ * const { forceAcquire, canOverride } = useWikiLock({ pageId: 123 });
+ * if (canOverride && lockConflict) {
+ *   await forceAcquire();
+ * }
  * ```
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  acquirePageLock,
-  releasePageLock,
-  checkPageLockStatus,
-} from '../api/wikiApi';
-import type { WikiPageLock } from '../types/wiki.types';
+import axios from 'axios';
 
 // ============================================================================
 // TYPE DEFINITIONS
 // ============================================================================
+
+/**
+ * Information about a user holding a lock
+ */
+export interface LockHolder {
+  /** User ID */
+  id: number;
+  /** Full name of the user */
+  fullname: string;
+  /** User email */
+  email?: string;
+  /** URL to user profile picture */
+  profileImageUrl?: string;
+  /** Timestamp when lock was acquired (ISO 8601) */
+  lockedAt: string;
+}
+
+/**
+ * Lock conflict information when another user holds the lock
+ */
+export interface LockConflict {
+  /** Whether a lock conflict exists */
+  exists: boolean;
+  /** Information about the user holding the lock */
+  holder: LockHolder | null;
+  /** Message describing the conflict */
+  message: string;
+  /** Timestamp when the conflict was detected */
+  detectedAt: string;
+}
 
 /**
  * Parameters for useWikiLock hook
@@ -49,49 +87,113 @@ export interface UseWikiLockParams {
   pageId: number;
   /** Optional section name for section-specific locks */
   section?: string;
-  /** Whether to automatically acquire lock on mount (default: false) */
+  /** Whether to automatically acquire lock on mount (default: true) */
   autoAcquire?: boolean;
-  /** Lock renewal interval in milliseconds (default: 5 minutes) */
-  renewalInterval?: number;
-  /** Whether to automatically release lock on unmount (default: true) */
-  autoRelease?: boolean;
 }
 
 /**
  * Return value from useWikiLock hook
  */
 export interface UseWikiLockResult {
-  /** Function to acquire page lock */
-  acquireLock: () => Promise<void>;
-  /** Function to release page lock */
-  releaseLock: () => Promise<void>;
   /** Whether current user has the lock */
   hasLock: boolean;
-  /** Whether page is locked by anyone */
-  isLocked: boolean;
-  /** Current lock details if page is locked */
-  lock: WikiPageLock | null;
-  /** Whether lock is owned by current user */
-  isOwnedByCurrentUser: boolean;
+  /** Information about the user currently holding the lock (null if no lock or current user has it) */
+  lockHolder: LockHolder | null;
   /** Whether lock acquisition is in progress */
   isAcquiring: boolean;
   /** Whether lock release is in progress */
   isReleasing: boolean;
-  /** Error from last lock operation */
-  error: Error | null;
-  /** Manually refresh lock status */
-  refreshLockStatus: () => void;
+  /** Function to acquire page lock */
+  acquireLock: () => Promise<void>;
+  /** Function to release page lock */
+  releaseLock: () => Promise<void>;
+  /** Function to force acquire lock (override) - requires permissions */
+  forceAcquire: () => Promise<void>;
+  /** Whether current user can override locks */
+  canOverride: boolean;
+  /** Lock conflict details if another user is editing */
+  lockConflict: LockConflict | null;
 }
 
 // ============================================================================
 // CONSTANTS
 // ============================================================================
 
-/** Default lock renewal interval (5 minutes) */
-const DEFAULT_RENEWAL_INTERVAL = 5 * 60 * 1000;
+/** Heartbeat interval in milliseconds (30 seconds) */
+const HEARTBEAT_INTERVAL = 30 * 1000;
 
-/** Query key for lock status */
+/** Query key prefix for lock status */
 const LOCK_STATUS_QUERY_KEY = 'wiki-page-lock';
+
+// ============================================================================
+// API CLIENT FUNCTIONS
+// ============================================================================
+
+/**
+ * Check existing lock status for a wiki page
+ */
+const checkLockStatus = async (pageId: number): Promise<{
+  success: boolean;
+  data: {
+    hasLock: boolean;
+    lockHolder: LockHolder | null;
+    canOverride: boolean;
+  };
+}> => {
+  const response = await axios.get(`/api/v1/wiki/${pageId}/lock`);
+  return response.data;
+};
+
+/**
+ * Acquire edit lock for a wiki page
+ */
+const acquireLock = async (pageId: number, section?: string, force: boolean = false): Promise<{
+  success: boolean;
+  data?: {
+    lockAcquired: boolean;
+    lockHolder: LockHolder | null;
+  };
+  error?: {
+    code: string;
+    message: string;
+    details?: {
+      lockHolder: LockHolder;
+    };
+  };
+}> => {
+  const response = await axios.post(`/api/v1/wiki/${pageId}/lock`, {
+    pageId,
+    section: section || null,
+    force,
+  });
+  return response.data;
+};
+
+/**
+ * Send heartbeat to maintain active lock
+ */
+const sendHeartbeat = async (pageId: number): Promise<{
+  success: boolean;
+  data?: {
+    lockMaintained: boolean;
+  };
+}> => {
+  const response = await axios.put(`/api/v1/wiki/${pageId}/lock/heartbeat`);
+  return response.data;
+};
+
+/**
+ * Release edit lock for a wiki page
+ */
+const releaseLock = async (pageId: number): Promise<{
+  success: boolean;
+  data?: {
+    lockReleased: boolean;
+  };
+}> => {
+  const response = await axios.delete(`/api/v1/wiki/${pageId}/lock`);
+  return response.data;
+};
 
 // ============================================================================
 // HOOK IMPLEMENTATION
@@ -101,41 +203,43 @@ const LOCK_STATUS_QUERY_KEY = 'wiki-page-lock';
  * Custom hook for managing wiki page edit locks
  *
  * Provides comprehensive lock management including acquisition, release,
- * automatic renewal, and cleanup on unmount. Ensures only one user can
- * edit a page at a time.
+ * automatic heartbeat maintenance, lock conflict detection, and cleanup on unmount.
+ * Ensures only one user can edit a page at a time while providing clear feedback
+ * about lock status and conflicts.
  *
  * @param params - Hook configuration parameters
  * @returns Object with lock management functions and state
  *
  * @example
  * ```typescript
- * // Basic usage
- * const { acquireLock, releaseLock, hasLock } = useWikiLock({ pageId: 123 });
- *
- * // With auto-acquire on mount
- * const { hasLock } = useWikiLock({
+ * // Basic usage with auto-acquire
+ * const { hasLock, lockHolder, acquireLock, releaseLock } = useWikiLock({
  *   pageId: 123,
- *   autoAcquire: true,
- *   autoRelease: true
+ *   autoAcquire: true
  * });
  *
  * // Section-specific lock
- * const { acquireLock } = useWikiLock({
+ * const { hasLock, lockConflict } = useWikiLock({
  *   pageId: 123,
- *   section: 'Introduction'
+ *   section: 'Introduction',
+ *   autoAcquire: true
  * });
+ *
+ * // With override capability
+ * const { forceAcquire, canOverride, lockConflict } = useWikiLock({ pageId: 123 });
+ * if (canOverride && lockConflict?.exists) {
+ *   await forceAcquire();
+ * }
  * ```
  */
 export function useWikiLock({
   pageId,
   section,
-  autoAcquire = false,
-  renewalInterval = DEFAULT_RENEWAL_INTERVAL,
-  autoRelease = true,
+  autoAcquire = true,
 }: UseWikiLockParams): UseWikiLockResult {
   const queryClient = useQueryClient();
-  const renewalIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const [hasLock, setHasLock] = useState(false);
+  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const isMountedRef = useRef<boolean>(true);
 
   // ============================================================================
   // QUERY: Lock Status
@@ -143,22 +247,24 @@ export function useWikiLock({
 
   /**
    * Query to check current lock status of the page.
-   * Polls periodically to detect if lock is lost.
+   * Fetches lock information including holder details and override permissions.
    */
   const {
-    data: lockStatus,
-    error: statusError,
-    refetch: refreshLockStatus,
+    data: lockStatusData,
+    isLoading: isCheckingLock,
   } = useQuery({
     queryKey: [LOCK_STATUS_QUERY_KEY, pageId],
-    queryFn: () => checkPageLockStatus(pageId),
-    // Refetch every 30 seconds to monitor lock status
-    refetchInterval: 30000,
-    // Keep data fresh for 20 seconds
-    staleTime: 20000,
-    // Don't retry on error (likely auth or permission issue)
-    retry: false,
+    queryFn: () => checkLockStatus(pageId),
+    staleTime: 10000, // Consider data fresh for 10 seconds
+    refetchInterval: 15000, // Refetch every 15 seconds for real-time updates
+    retry: 1, // Retry once on failure
+    refetchOnWindowFocus: true, // Recheck when user returns to tab
   });
+
+  // Extract lock status information
+  const hasLock = lockStatusData?.data?.hasLock ?? false;
+  const lockHolder = lockStatusData?.data?.lockHolder ?? null;
+  const canOverride = lockStatusData?.data?.canOverride ?? false;
 
   // ============================================================================
   // MUTATION: Acquire Lock
@@ -166,39 +272,47 @@ export function useWikiLock({
 
   /**
    * Mutation to acquire page edit lock.
-   * Sets up automatic renewal interval on success.
+   * Sets up automatic heartbeat on success.
    */
   const acquireLockMutation = useMutation({
-    mutationFn: () => acquirePageLock(pageId, section),
+    mutationFn: ({ force = false }: { force?: boolean } = {}) => 
+      acquireLock(pageId, section, force),
     onSuccess: (response) => {
-      if (response.success) {
-        setHasLock(true);
-
+      if (response.success && response.data?.lockAcquired) {
         // Update lock status in cache
         queryClient.setQueryData([LOCK_STATUS_QUERY_KEY, pageId], {
-          locked: true,
-          lock: response.lock,
-          ownedByCurrentUser: true,
+          success: true,
+          data: {
+            hasLock: true,
+            lockHolder: null, // Current user has lock, so no holder to display
+            canOverride,
+          },
         });
 
-        // Set up automatic lock renewal
-        if (renewalInterval > 0) {
-          renewalIntervalRef.current = setInterval(() => {
-            // Renew lock by acquiring again
-            acquirePageLock(pageId, section).catch((error) => {
-              console.error('Failed to renew lock:', error);
-              setHasLock(false);
-              if (renewalIntervalRef.current) {
-                clearInterval(renewalIntervalRef.current);
-              }
-            });
-          }, renewalInterval);
-        }
+        // Start heartbeat interval to maintain lock
+        startHeartbeat();
+
+        // Invalidate queries to refresh UI
+        queryClient.invalidateQueries({ queryKey: [LOCK_STATUS_QUERY_KEY, pageId] });
       }
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      // Lock conflict - another user has the lock
+      if (error.response?.data?.error?.code === 'LOCK_CONFLICT') {
+        const conflictHolder = error.response.data.error.details?.lockHolder;
+        if (conflictHolder) {
+          // Update cache with conflict information
+          queryClient.setQueryData([LOCK_STATUS_QUERY_KEY, pageId], {
+            success: true,
+            data: {
+              hasLock: false,
+              lockHolder: conflictHolder,
+              canOverride,
+            },
+          });
+        }
+      }
       console.error('Failed to acquire lock:', error);
-      setHasLock(false);
     },
   });
 
@@ -208,64 +322,131 @@ export function useWikiLock({
 
   /**
    * Mutation to release page edit lock.
-   * Clears renewal interval and updates cache.
+   * Clears heartbeat interval and updates cache.
    */
   const releaseLockMutation = useMutation({
-    mutationFn: () => releasePageLock(pageId),
+    mutationFn: () => releaseLock(pageId),
     onSuccess: (response) => {
-      if (response.success) {
-        setHasLock(false);
-
-        // Clear renewal interval
-        if (renewalIntervalRef.current) {
-          clearInterval(renewalIntervalRef.current);
-          renewalIntervalRef.current = null;
-        }
+      if (response.success && response.data?.lockReleased) {
+        // Stop heartbeat
+        stopHeartbeat();
 
         // Update lock status in cache
         queryClient.setQueryData([LOCK_STATUS_QUERY_KEY, pageId], {
-          locked: false,
-          lock: null,
-          ownedByCurrentUser: false,
+          success: true,
+          data: {
+            hasLock: false,
+            lockHolder: null,
+            canOverride,
+          },
         });
+
+        // Invalidate queries to refresh UI
+        queryClient.invalidateQueries({ queryKey: [LOCK_STATUS_QUERY_KEY, pageId] });
       }
     },
     onError: (error) => {
       console.error('Failed to release lock:', error);
+      // Still try to stop heartbeat even on error
+      stopHeartbeat();
     },
   });
+
+  // ============================================================================
+  // HEARTBEAT MANAGEMENT
+  // ============================================================================
+
+  /**
+   * Start periodic heartbeat to maintain lock
+   */
+  const startHeartbeat = useCallback(() => {
+    // Clear any existing interval
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current);
+    }
+
+    // Set up new heartbeat interval (every 30 seconds)
+    heartbeatIntervalRef.current = setInterval(async () => {
+      try {
+        const response = await sendHeartbeat(pageId);
+        if (!response.success || !response.data?.lockMaintained) {
+          // Lock was lost, stop heartbeat
+          stopHeartbeat();
+          
+          // Update cache to reflect lost lock
+          queryClient.setQueryData([LOCK_STATUS_QUERY_KEY, pageId], {
+            success: true,
+            data: {
+              hasLock: false,
+              lockHolder: null,
+              canOverride,
+            },
+          });
+
+          // Invalidate queries
+          queryClient.invalidateQueries({ queryKey: [LOCK_STATUS_QUERY_KEY, pageId] });
+          
+          console.warn('Lock heartbeat failed - lock may have been lost');
+        }
+      } catch (error) {
+        console.error('Heartbeat error:', error);
+        // On network error, let the interval continue but log the issue
+        // The lock status query will detect if lock is actually lost
+      }
+    }, HEARTBEAT_INTERVAL);
+  }, [pageId, queryClient, canOverride]);
+
+  /**
+   * Stop heartbeat interval
+   */
+  const stopHeartbeat = useCallback(() => {
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current);
+      heartbeatIntervalRef.current = null;
+    }
+  }, []);
 
   // ============================================================================
   // EFFECTS
   // ============================================================================
 
   /**
-   * Effect: Auto-acquire lock on mount if requested
+   * Effect: Track component mount status
    */
   useEffect(() => {
-    if (autoAcquire && !hasLock) {
-      acquireLockMutation.mutate();
-    }
-  }, [autoAcquire]); // Only run on mount
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   /**
-   * Effect: Auto-release lock on unmount
+   * Effect: Auto-acquire lock on mount if requested and no conflict exists
+   */
+  useEffect(() => {
+    if (autoAcquire && !hasLock && !lockHolder && !isCheckingLock) {
+      // Only auto-acquire if no one else has the lock
+      acquireLockMutation.mutate({ force: false });
+    }
+  }, [autoAcquire, hasLock, lockHolder, isCheckingLock]);
+
+  /**
+   * Effect: Cleanup - release lock and stop heartbeat on unmount
    */
   useEffect(() => {
     return () => {
-      // Clear renewal interval
-      if (renewalIntervalRef.current) {
-        clearInterval(renewalIntervalRef.current);
-      }
+      // Stop heartbeat interval
+      stopHeartbeat();
 
-      // Release lock if we have it and auto-release is enabled
-      if (hasLock && autoRelease) {
-        releasePageLock(pageId).catch((error) => {
+      // Release lock if we have it
+      // Use the raw API call to avoid React Query issues during unmount
+      if (hasLock) {
+        releaseLock(pageId).catch((error) => {
           console.error('Failed to release lock on unmount:', error);
         });
       }
     };
-  }, [pageId, hasLock, autoRelease]);
+  }, [pageId, hasLock, stopHeartbeat]);
 
   // ============================================================================
   // PUBLIC API FUNCTIONS
@@ -275,54 +456,83 @@ export function useWikiLock({
    * Acquire page edit lock
    *
    * Attempts to obtain exclusive edit lock for the page.
-   * Throws error if page is already locked by another user.
+   * If another user has the lock, this will fail and return lock conflict information.
    *
-   * @throws Error if lock acquisition fails
+   * @throws Error if lock acquisition fails for reasons other than conflict
    */
-  const acquireLock = async (): Promise<void> => {
-    await acquireLockMutation.mutateAsync();
-  };
+  const handleAcquireLock = useCallback(async (): Promise<void> => {
+    try {
+      await acquireLockMutation.mutateAsync({ force: false });
+    } catch (error: any) {
+      // If it's a lock conflict, the error is already handled in onError
+      // Re-throw other errors
+      if (error.response?.data?.error?.code !== 'LOCK_CONFLICT') {
+        throw error;
+      }
+    }
+  }, [acquireLockMutation]);
 
   /**
    * Release page edit lock
    *
    * Releases the current user's lock on the page, allowing others to edit.
    * Should be called when canceling edit or after successful save.
+   * Automatically stops the heartbeat interval.
    *
    * @throws Error if lock release fails
    */
-  const releaseLock = async (): Promise<void> => {
+  const handleReleaseLock = useCallback(async (): Promise<void> => {
     await releaseLockMutation.mutateAsync();
-  };
+  }, [releaseLockMutation]);
+
+  /**
+   * Force acquire lock (override existing lock)
+   *
+   * Forcefully acquires the lock even if another user has it.
+   * Requires mod/wiki:overridelock capability.
+   * Use with caution as it will interrupt another user's editing session.
+   *
+   * @throws Error if force acquire fails or user lacks permissions
+   */
+  const handleForceAcquire = useCallback(async (): Promise<void> => {
+    if (!canOverride) {
+      throw new Error('User does not have permission to override locks');
+    }
+    await acquireLockMutation.mutateAsync({ force: true });
+  }, [acquireLockMutation, canOverride]);
 
   // ============================================================================
   // COMPUTED STATE
   // ============================================================================
 
-  const isLocked = lockStatus?.locked ?? false;
-  const lock = lockStatus?.lock ?? null;
-  const isOwnedByCurrentUser = lockStatus?.ownedByCurrentUser ?? false;
+  /**
+   * Determine if there is a lock conflict
+   */
+  const lockConflict: LockConflict | null = lockHolder
+    ? {
+        exists: true,
+        holder: lockHolder,
+        message: `This page is currently being edited by ${lockHolder.fullname}`,
+        detectedAt: new Date().toISOString(),
+      }
+    : null;
+
   const isAcquiring = acquireLockMutation.isPending;
   const isReleasing = releaseLockMutation.isPending;
-  const error =
-    (acquireLockMutation.error as Error | null) ||
-    (releaseLockMutation.error as Error | null) ||
-    (statusError as Error | null);
 
   // ============================================================================
   // RETURN
   // ============================================================================
 
   return {
-    acquireLock,
-    releaseLock,
     hasLock,
-    isLocked,
-    lock,
-    isOwnedByCurrentUser,
+    lockHolder,
     isAcquiring,
     isReleasing,
-    error,
-    refreshLockStatus,
+    acquireLock: handleAcquireLock,
+    releaseLock: handleReleaseLock,
+    forceAcquire: handleForceAcquire,
+    canOverride,
+    lockConflict,
   };
 }
