@@ -377,7 +377,8 @@ export function useFeedbackCompletion(
         // Find next page with items
         const pages = completionData.pages;
         for (let i = currentPage + 1; i < pages.length; i++) {
-          if (pages[i].items.length > 0) {
+          const page = pages[i];
+          if (page && page.items.length > 0) {
             nextPage = i;
             break;
           }
@@ -416,7 +417,8 @@ export function useFeedbackCompletion(
 
       // Find previous page with items
       for (let i = currentPage - 1; i >= 0; i--) {
-        if (pages[i].items.length > 0) {
+        const page = pages[i];
+        if (page && page.items.length > 0) {
           previousPage = i;
           break;
         }
@@ -588,7 +590,8 @@ export function useFeedbackCompletion(
 
     // Check if there's a next page with items
     for (let i = currentPage + 1; i < completionData.pages.length; i++) {
-      if (completionData.pages[i].items.length > 0) {
+      const page = completionData.pages[i];
+      if (page && page.items.length > 0) {
         return true;
       }
     }
@@ -606,7 +609,8 @@ export function useFeedbackCompletion(
 
     // Check if there's a previous page with items
     for (let i = currentPage - 1; i >= 0; i--) {
-      if (completionData.pages[i].items.length > 0) {
+      const page = completionData.pages[i];
+      if (page && page.items.length > 0) {
         return true;
       }
     }

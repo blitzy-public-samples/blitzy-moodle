@@ -126,3 +126,33 @@ The failure only manifests when tests are run as part of the complete suite, sug
 - Commit hash: c822d9128df
 - Cleaned up temporary ad-hoc test files
 
+
+## Test Failure in DiscussionList Component (Out of Scope)
+
+**File:** `tests/unit/features/activities/forums/DiscussionList.test.tsx`
+
+**Test:** `DiscussionList Component > Pagination > should disable next button on last page`
+
+**Issue:** The test expects the "next" button to be disabled on the last page, but the button remains enabled.
+
+**Error Message:**
+```
+Error: expect(element).toBeDisabled()
+
+Received element is not disabled:
+  <button
+  aria-label="Go to next page"
+  class="MuiButtonBase-root MuiPaginationItem-root..."
+  tabindex="0"
+  type="button"
+/>
+```
+
+**Root Cause:** The pagination component is not properly disabling the next button when on the last page. This is likely an issue in the `DiscussionList.tsx` component implementation.
+
+**Scope Status:** OUT-OF-SCOPE - This file is not listed in the Agent Action Plan. My assigned file is `react-frontend/src/features/activities/feedback/hooks/useFeedbackCompletion.ts`.
+
+**Recommendation:** The forums feature developer should investigate and fix the pagination logic in the DiscussionList component.
+
+---
+
