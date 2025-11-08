@@ -92,14 +92,14 @@ export function useUpdatePost(options: UseUpdatePostOptions = {}): UseUpdatePost
     mutationFn: (data: UpdatePostData) => updatePost(data),
     onSuccess: (data, variables) => {
       // Invalidate relevant queries based on the post ID
-      queryClient.invalidateQueries({ queryKey: ['post', variables.postId] });
+      void queryClient.invalidateQueries({ queryKey: ['post', variables.postId] });
       
       // Invalidate discussion queries if discussionId is available
       // (We may need to get this from the response data if not in variables)
       if (data.discussionId) {
-        queryClient.invalidateQueries({ queryKey: ['discussions', data.discussionId] });
-        queryClient.invalidateQueries({ queryKey: ['discussion', data.discussionId] });
-        queryClient.invalidateQueries({ queryKey: ['posts', data.discussionId] });
+        void queryClient.invalidateQueries({ queryKey: ['discussions', data.discussionId] });
+        void queryClient.invalidateQueries({ queryKey: ['discussion', data.discussionId] });
+        void queryClient.invalidateQueries({ queryKey: ['posts', data.discussionId] });
       }
       
       // Call success callback if provided

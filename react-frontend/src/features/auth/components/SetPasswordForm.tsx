@@ -12,7 +12,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import type React from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -377,7 +378,7 @@ const SetPasswordForm: React.FC<SetPasswordFormProps> = ({
   // Re-validate form when password policy changes
   useEffect(() => {
     if (passwordValue) {
-      trigger('password');
+      void trigger('password');
     }
   }, [passwordPolicy, passwordValue, trigger]);
 
@@ -700,7 +701,7 @@ const SetPasswordForm: React.FC<SetPasswordFormProps> = ({
           render={({ field }) => (
             <TextField
               {...field}
-              label={`New Password (again)`}
+              label="New Password (again)"
               type={showPassword2 ? 'text' : 'password'}
               autoComplete="new-password"
               fullWidth

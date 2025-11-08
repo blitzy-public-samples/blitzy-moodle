@@ -1,11 +1,11 @@
-import React from 'react';
+import type {
+  SelectChangeEvent} from '@mui/material';
 import {
   FormControl,
   InputLabel,
   Select,
   MenuItem,
   Skeleton,
-  SelectChangeEvent,
   Box,
   Alert,
 } from '@mui/material';
@@ -68,11 +68,11 @@ export interface GroupFilterProps {
  * @param props - Component props
  * @returns React component rendering a group filter dropdown
  */
-const GroupFilter: React.FC<GroupFilterProps> = ({
+function GroupFilter({
   courseId,
   selectedGroupId,
   onGroupChange,
-}) => {
+}: GroupFilterProps) {
   /**
    * Fetch groups for the specified course using React Query
    * Endpoint: GET /api/v1/courses/{courseid}/groups
@@ -123,7 +123,7 @@ const GroupFilter: React.FC<GroupFilterProps> = ({
   }
 
   // Extract groups array from response (empty array if error)
-  const groups = groupsResponse?.data || [];
+  const groups = groupsResponse?.data ?? [];
 
   return (
     <Box>
@@ -158,6 +158,6 @@ const GroupFilter: React.FC<GroupFilterProps> = ({
       </FormControl>
     </Box>
   );
-};
+}
 
 export default GroupFilter;

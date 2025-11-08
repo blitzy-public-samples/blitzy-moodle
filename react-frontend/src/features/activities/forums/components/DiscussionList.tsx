@@ -62,6 +62,15 @@ import {
   MoreVert as MoreVertIcon,
   Person as PersonIcon,
 } from '@mui/icons-material';
+import {
+  pinDiscussion,
+  unpinDiscussion,
+  lockDiscussion,
+  unlockDiscussion,
+  deleteDiscussion,
+  bulkDeleteDiscussions,
+  bulkMoveDiscussions,
+} from '../api/forumApi';
 
 // ============================================================================
 // TYPES
@@ -161,6 +170,13 @@ interface DiscussionsQueryResponse {
   totalCount: number;
 }
 
+/**
+ * Context type for optimistic mutations
+ */
+interface MutationContext {
+  previousData?: unknown;
+}
+
 // ============================================================================
 // COMPONENT
 // ============================================================================
@@ -223,7 +239,7 @@ export const DiscussionList: React.FC<DiscussionListProps> = ({
     refetch,
   } = useQuery<DiscussionsQueryResponse>({
     queryKey: ['discussions', forumId, sortBy, filterBy, currentPage, pageSize, debouncedSearch],
-    queryFn: async () => {
+    queryFn: () => {
       // Mock implementation - in real app, this would call the API
       return {
         discussions: [],
@@ -236,8 +252,25 @@ export const DiscussionList: React.FC<DiscussionListProps> = ({
   // Pin/Unpin mutation
   const pinMutation = useMutation({
     mutationFn: async (discussionId: number) => {
-      // API call to pin/unpin discussion
-      return { discussionId };
+      // Determine if discussion is currently pinned
+      const queryData = queryClient.getQueryData<DiscussionsQueryResponse>([
+        'discussions',
+        forumId,
+        sortBy,
+        filterBy,
+        currentPage,
+        pageSize,
+        debouncedSearch,
+      ]);
+      const discussion = queryData?.discussions.find((d) => d.id === discussionId);
+      const isPinned = discussion?.isPinned ?? false;
+
+      // Call appropriate API based on current state
+      if (isPinned) {
+        return await unpinDiscussion(discussionId);
+      } else {
+        return await pinDiscussion(discussionId);
+      }
     },
     onMutate: async (discussionId) => {
       // Optimistic update
@@ -248,8 +281,10 @@ export const DiscussionList: React.FC<DiscussionListProps> = ({
       // Optimistically update the discussion
       queryClient.setQueryData(
         ['discussions', forumId, sortBy, filterBy, currentPage, pageSize, debouncedSearch],
-        (old: any) => {
-          if (!old) return old;
+        (old: DiscussionsQueryResponse | undefined) => {
+          if (!old) {
+            return old;
+          }
           return {
             ...old,
             discussions: old.discussions.map((d: DiscussionListItem) =>
@@ -261,22 +296,39 @@ export const DiscussionList: React.FC<DiscussionListProps> = ({
       
       return { previousData };
     },
-    onError: (_err, _discussionId, context) => {
+    onError: (_err, _discussionId, context: MutationContext | undefined) => {
       // Rollback on error
       if (context?.previousData) {
         queryClient.setQueryData(['discussions', forumId], context.previousData);
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['discussions', forumId] });
+      void queryClient.invalidateQueries({ queryKey: ['discussions', forumId] });
     },
   });
 
   // Lock/Unlock mutation
   const lockMutation = useMutation({
     mutationFn: async (discussionId: number) => {
-      // API call to lock/unlock discussion
-      return { discussionId };
+      // Determine if discussion is currently locked
+      const queryData = queryClient.getQueryData<DiscussionsQueryResponse>([
+        'discussions',
+        forumId,
+        sortBy,
+        filterBy,
+        currentPage,
+        pageSize,
+        debouncedSearch,
+      ]);
+      const discussion = queryData?.discussions.find((d) => d.id === discussionId);
+      const isLocked = discussion?.isLocked ?? false;
+
+      // Call appropriate API based on current state
+      if (isLocked) {
+        return await unlockDiscussion(discussionId);
+      } else {
+        return await lockDiscussion(discussionId);
+      }
     },
     onMutate: async (discussionId) => {
       // Optimistic update
@@ -286,8 +338,10 @@ export const DiscussionList: React.FC<DiscussionListProps> = ({
       
       queryClient.setQueryData(
         ['discussions', forumId, sortBy, filterBy, currentPage, pageSize, debouncedSearch],
-        (old: any) => {
-          if (!old) return old;
+        (old: DiscussionsQueryResponse | undefined) => {
+          if (!old) {
+            return old;
+          }
           return {
             ...old,
             discussions: old.discussions.map((d: DiscussionListItem) =>
@@ -299,55 +353,52 @@ export const DiscussionList: React.FC<DiscussionListProps> = ({
       
       return { previousData };
     },
-    onError: (_err, _discussionId, context) => {
+    onError: (_err, _discussionId, context: MutationContext | undefined) => {
       // Rollback on error
       if (context?.previousData) {
         queryClient.setQueryData(['discussions', forumId], context.previousData);
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['discussions', forumId] });
+      void queryClient.invalidateQueries({ queryKey: ['discussions', forumId] });
     },
   });
 
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (discussionId: number) => {
-      // API call to delete discussion
-      return { discussionId };
+      return await deleteDiscussion(discussionId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['discussions', forumId] });
+      void queryClient.invalidateQueries({ queryKey: ['discussions', forumId] });
     },
   });
 
   // Bulk delete mutation
   const bulkDeleteMutation = useMutation({
     mutationFn: async (discussionIds: number[]) => {
-      // API call to bulk delete discussions
-      return { discussionIds };
+      return await bulkDeleteDiscussions(discussionIds);
     },
     onSuccess: () => {
       setSelectedDiscussions(new Set());
-      queryClient.invalidateQueries({ queryKey: ['discussions', forumId] });
+      void queryClient.invalidateQueries({ queryKey: ['discussions', forumId] });
     },
   });
 
   // Bulk move mutation
   const bulkMoveMutation = useMutation({
     mutationFn: async ({ discussionIds, targetForumId }: { discussionIds: number[]; targetForumId: number }) => {
-      // API call to bulk move discussions
-      return { discussionIds, targetForumId };
+      return await bulkMoveDiscussions(discussionIds, targetForumId);
     },
     onSuccess: () => {
       setSelectedDiscussions(new Set());
-      queryClient.invalidateQueries({ queryKey: ['discussions', forumId] });
+      void queryClient.invalidateQueries({ queryKey: ['discussions', forumId] });
     },
   });
 
   // Sorted and filtered discussions
   const discussions = useMemo(() => {
-    if (!data?.discussions) return [];
+    if (!data?.discussions) {return [];}
 
     let result = [...data.discussions];
 
@@ -383,10 +434,11 @@ export const DiscussionList: React.FC<DiscussionListProps> = ({
           return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
         case 'most-replies':
           return b.replyCount - a.replyCount;
-        case 'recently-updated':
+        case 'recently-updated': {
           const aTime = a.lastPost ? new Date(a.lastPost.timestamp).getTime() : new Date(a.createdAt).getTime();
           const bTime = b.lastPost ? new Date(b.lastPost.timestamp).getTime() : new Date(b.createdAt).getTime();
           return bTime - aTime;
+        }
         case 'newest':
         default:
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
@@ -495,9 +547,9 @@ export const DiscussionList: React.FC<DiscussionListProps> = ({
       return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
     } else if (diffDays < 7) {
       return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
-    } else {
+    } 
       return date.toLocaleDateString();
-    }
+    
   }, []);
 
   // Calculate total pages
@@ -558,7 +610,7 @@ export const DiscussionList: React.FC<DiscussionListProps> = ({
               No discussions found
             </Typography>
             <Typography variant="body2" color="text.secondary" gutterBottom>
-              No discussions match your search query "{debouncedSearch}"
+              No discussions match your search query &quot;{debouncedSearch}&quot;
             </Typography>
             <Button onClick={handleSearchClear} sx={{ mt: 2 }}>
               Clear Search
@@ -724,8 +776,8 @@ export const DiscussionList: React.FC<DiscussionListProps> = ({
       >
         {discussions.map((discussion, index) => {
           const isSelected = selectedDiscussions.has(discussion.id);
-          const canPin = permissions.canPin;
-          const canLock = permissions.canLock;
+          const {canPin} = permissions;
+          const {canLock} = permissions;
           const canDelete = permissions.canDelete || discussion.author.id === currentUser.id;
 
           return (
@@ -805,7 +857,7 @@ export const DiscussionList: React.FC<DiscussionListProps> = ({
                   <ListItemAvatar>
                     <Tooltip title={discussion.author.name}>
                       <Avatar
-                        src={discussion.author.avatarUrl || undefined}
+                        src={discussion.author.avatarUrl ?? undefined}
                         alt={discussion.author.name}
                         onClick={(e) => handleAuthorClick(e, discussion.author.id)}
                         sx={{ cursor: 'pointer' }}
@@ -943,7 +995,7 @@ export const DiscussionList: React.FC<DiscussionListProps> = ({
         {activeDiscussionId && permissions.canPin && (
           <MenuItem
             onClick={() => {
-              handlePinClick({} as any, activeDiscussionId);
+              pinMutation.mutate(activeDiscussionId);
               handleMenuClose();
             }}
           >
@@ -954,7 +1006,7 @@ export const DiscussionList: React.FC<DiscussionListProps> = ({
         {activeDiscussionId && permissions.canLock && (
           <MenuItem
             onClick={() => {
-              handleLockClick({} as any, activeDiscussionId);
+              lockMutation.mutate(activeDiscussionId);
               handleMenuClose();
             }}
           >
@@ -965,7 +1017,9 @@ export const DiscussionList: React.FC<DiscussionListProps> = ({
         {activeDiscussionId && permissions.canDelete && (
           <MenuItem
             onClick={() => {
-              handleDeleteClick({} as any, activeDiscussionId);
+              if (window.confirm('Are you sure you want to delete this discussion?')) {
+                deleteMutation.mutate(activeDiscussionId);
+              }
               handleMenuClose();
             }}
             sx={{ color: 'error.main' }}

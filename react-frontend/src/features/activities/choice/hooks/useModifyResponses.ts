@@ -166,7 +166,7 @@ export default function useModifyResponses(): UseMutationResult<
         queryClient.setQueryData<ChoiceResultsCache>(
           ['choices', choiceId, 'results'],
           (oldData) => {
-            if (!oldData || !oldData.responses) return oldData;
+            if (!oldData?.responses) {return oldData;}
 
             // Create a set of attemptIds for faster lookup
             const attemptIdSet = new Set(attemptIds);
@@ -186,14 +186,14 @@ export default function useModifyResponses(): UseMutationResult<
             // Recalculate option counts based on updated responses
             const optionCounts = new Map<number, number>();
             updatedResponses.forEach((response) => {
-              const currentCount = optionCounts.get(response.optionId) || 0;
+              const currentCount = optionCounts.get(response.optionId) ?? 0;
               optionCounts.set(response.optionId, currentCount + 1);
             });
 
             // Update option counts in choice data
             const updatedOptions = oldData.choice.options.map((option) => ({
               ...option,
-              count: optionCounts.get(option.id) || 0,
+              count: optionCounts.get(option.id) ?? 0,
             }));
 
             return {
@@ -241,12 +241,12 @@ export default function useModifyResponses(): UseMutationResult<
       const { choiceId } = variables;
 
       // Invalidate and refetch choice results to ensure data consistency
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ['choices', choiceId, 'results'],
       });
 
       // Also invalidate the choice details cache as counts may have changed
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ['choices', choiceId],
       });
 
@@ -265,7 +265,7 @@ export default function useModifyResponses(): UseMutationResult<
       const { choiceId } = variables;
 
       // Ensure cache is synchronized regardless of success or failure
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ['choices', choiceId],
       });
     },

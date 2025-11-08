@@ -650,6 +650,74 @@ export async function unlockDiscussion(
 }
 
 /**
+ * Delete a discussion
+ *
+ * Moderator action to delete a discussion and all its posts. This is typically
+ * a soft delete that can be recovered by administrators.
+ *
+ * Maps to PHP endpoint: DELETE /api/v1/forums/discussions/{id}
+ * Wraps: forum_delete_discussion() from lib.php
+ *
+ * @param discussionId - Discussion ID
+ * @returns Promise resolving to API response with deletion confirmation
+ * @throws Error if user lacks moderation permissions (403)
+ */
+export async function deleteDiscussion(
+  discussionId: number
+): Promise<{ discussionId: number; message: string }> {
+  const response = await apiClient.delete<
+    ApiResponse<{ discussionId: number; message: string }>
+  >(`/forums/discussions/${discussionId}`);
+  return extractData(response);
+}
+
+/**
+ * Bulk delete multiple discussions
+ *
+ * Moderator action to delete multiple discussions at once. More efficient
+ * than individual delete calls for batch operations.
+ *
+ * Maps to PHP endpoint: POST /api/v1/forums/discussions/bulk-delete
+ * Wraps: forum_bulk_delete_discussions() from lib.php
+ *
+ * @param discussionIds - Array of discussion IDs to delete
+ * @returns Promise resolving to API response with deletion count
+ * @throws Error if user lacks moderation permissions (403)
+ */
+export async function bulkDeleteDiscussions(
+  discussionIds: number[]
+): Promise<{ discussionIds: number[]; count: number; message: string }> {
+  const response = await apiClient.post<
+    ApiResponse<{ discussionIds: number[]; count: number; message: string }>
+  >(`/forums/discussions/bulk-delete`, { discussionIds });
+  return extractData(response);
+}
+
+/**
+ * Bulk move discussions to another forum
+ *
+ * Moderator action to move multiple discussions to a different forum. Preserves
+ * all posts and metadata while updating the parent forum.
+ *
+ * Maps to PHP endpoint: POST /api/v1/forums/discussions/bulk-move
+ * Wraps: forum_bulk_move_discussions() from lib.php
+ *
+ * @param discussionIds - Array of discussion IDs to move
+ * @param targetForumId - Target forum ID to move discussions to
+ * @returns Promise resolving to API response with move count
+ * @throws Error if user lacks moderation permissions (403)
+ */
+export async function bulkMoveDiscussions(
+  discussionIds: number[],
+  targetForumId: number
+): Promise<{ discussionIds: number[]; targetForumId: number; count: number; message: string }> {
+  const response = await apiClient.post<
+    ApiResponse<{ discussionIds: number[]; targetForumId: number; count: number; message: string }>
+  >(`/forums/discussions/bulk-move`, { discussionIds, targetForumId });
+  return extractData(response);
+}
+
+/**
  * Report an inappropriate post
  *
  * Allows users to report posts that violate forum rules or contain inappropriate

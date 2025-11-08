@@ -60,7 +60,7 @@ import {
 import { useForum } from '../hooks/useForum';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { DiscussionList } from './DiscussionList';
-import type { ForumType } from '../types/forum.types';
+import { ForumType } from '../types/forum.types';
 
 // ============================================================================
 // TYPES
@@ -81,40 +81,46 @@ export interface ForumViewComponentProps {
 /**
  * Get forum type display information
  */
-const getForumTypeInfo = (type: ForumType): { icon: React.ReactElement; label: string; color: string } => {
+const getForumTypeInfo = (
+  type: ForumType
+): {
+  icon: React.ReactElement;
+  label: string;
+  color: 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning';
+} => {
   switch (type) {
-    case 'single':
+    case ForumType.SINGLE:
       return {
         icon: <ArticleIcon fontSize="small" />,
         label: 'Single Discussion',
         color: 'primary',
       };
-    case 'qanda':
+    case ForumType.QANDA:
       return {
         icon: <QuestionAnswerIcon fontSize="small" />,
         label: 'Q&A forum',
         color: 'secondary',
       };
-    case 'blog':
+    case ForumType.BLOG:
       return {
         icon: <ArticleIcon fontSize="small" />,
         label: 'Blog-style',
         color: 'info',
       };
-    case 'news':
+    case ForumType.NEWS:
       return {
         icon: <ForumIcon fontSize="small" />,
         label: 'News Forum',
         color: 'warning',
       };
-    case 'social':
+    case ForumType.SOCIAL:
       return {
         icon: <GroupsIcon fontSize="small" />,
         label: 'Social Forum',
         color: 'success',
       };
-    case 'general':
-    case 'eachuser':
+    case ForumType.GENERAL:
+    case ForumType.EACHUSER:
     default:
       return {
         icon: <ForumIcon fontSize="small" />,
@@ -129,9 +135,9 @@ const getForumTypeInfo = (type: ForumType): { icon: React.ReactElement; label: s
  */
 const formatStatistics = (discussionCount: number, postCount: number, unreadCount?: number) => {
   return {
-    discussions: (discussionCount || 0).toLocaleString(),
-    posts: (postCount || 0).toLocaleString(),
-    unread: (unreadCount || 0).toLocaleString(),
+    discussions: (discussionCount ?? 0).toLocaleString(),
+    posts: (postCount ?? 0).toLocaleString(),
+    unread: (unreadCount ?? 0).toLocaleString(),
   };
 };
 
@@ -139,7 +145,7 @@ const formatStatistics = (discussionCount: number, postCount: number, unreadCoun
  * Format bytes to human-readable size
  */
 const formatBytes = (bytes: number): string => {
-  if (bytes === 0) return '0 Bytes';
+  if (bytes === 0) {return '0 Bytes';}
   
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
@@ -155,6 +161,7 @@ const formatBytes = (bytes: number): string => {
 /**
  * ForumView component - Container for complete forum display
  */
+// eslint-disable-next-line react/function-component-definition
 export const ForumView: React.FC<ForumViewComponentProps> = ({ forumId }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -186,12 +193,14 @@ export const ForumView: React.FC<ForumViewComponentProps> = ({ forumId }) => {
 
   const handleMoveDiscussions = () => {
     // TODO: Implement move discussions functionality
+    // eslint-disable-next-line no-console
     console.log('Move discussions');
     handleModerateClose();
   };
 
   const handleLockDiscussions = () => {
     // TODO: Implement lock discussions functionality
+    // eslint-disable-next-line no-console
     console.log('Lock discussions');
     handleModerateClose();
   };
@@ -295,11 +304,11 @@ export const ForumView: React.FC<ForumViewComponentProps> = ({ forumId }) => {
   // EVENT HANDLERS
   // ============================================================================
 
-  const handleToggleSubscription = async () => {
+  const handleToggleSubscription = () => {
     if (!forum.canSubscribe) {
       return;
     }
-    await toggleSubscription();
+    toggleSubscription();
   };
 
   const handleCreateDiscussion = () => {
@@ -349,7 +358,7 @@ export const ForumView: React.FC<ForumViewComponentProps> = ({ forumId }) => {
                 icon={typeInfo.icon}
                 label={typeInfo.label}
                 size="small"
-                color={typeInfo.color as any}
+                color={typeInfo.color}
                 variant="outlined"
                 aria-label={`Forum type: ${typeInfo.label}`}
               />

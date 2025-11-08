@@ -8,7 +8,8 @@
  */
 
 import { jwtDecode } from 'jwt-decode';
-import axios, { AxiosError } from 'axios';
+import type { AxiosError } from 'axios';
+import axios from 'axios';
 import { getItem, setItem, removeItem } from '@/services/storage/storageService';
 import { AUTH_ENDPOINTS } from '@/services/api/endpoints';
 import type { ApiResponse } from '@/types/api';
@@ -163,9 +164,9 @@ export async function refreshToken(): Promise<string> {
         const { accessToken, refreshToken: newRefreshToken } = response.data.data;
         setTokens(accessToken, newRefreshToken);
         return accessToken;
-      } else {
+      } 
         throw new Error('Token refresh failed: Invalid response');
-      }
+      
     } catch (error) {
       // Clear tokens if refresh fails
       clearTokens();

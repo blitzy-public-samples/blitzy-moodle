@@ -33,6 +33,14 @@ import {
 } from '@mui/icons-material';
 import { useProfile } from '../hooks/useProfile';
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import type { UseAuthReturn } from '@/features/auth/hooks/useAuth';
+
+/**
+ * Extended auth type with optional capability checking
+ */
+type AuthWithCapabilities = UseAuthReturn & {
+  hasCapability?: (capability: string, context: { contextlevel: string; instanceid: number }) => boolean;
+};
 
 /**
  * Props for ProfileView component
@@ -94,7 +102,7 @@ export function ProfileView({
   // Get authentication state for permission checks
   const auth = useAuth();
   const currentUser = auth?.user;
-  const hasCapability = (auth as any)?.hasCapability;
+  const hasCapability = (auth as AuthWithCapabilities)?.hasCapability;
 
   // Responsive layout detection
   const theme = useTheme();
@@ -103,8 +111,8 @@ export function ProfileView({
 
   // Determine layout type
   const getLayout = (): 'mobile' | 'tablet' | 'desktop' => {
-    if (isMobile) return 'mobile';
-    if (isTablet) return 'tablet';
+    if (isMobile) {return 'mobile';}
+    if (isTablet) {return 'tablet';}
     return 'desktop';
   };
 
@@ -257,8 +265,8 @@ export function ProfileView({
 
   // Determine avatar size based on layout
   const getAvatarSize = (): { width: number; height: number; size: string } => {
-    if (isMobile) return { width: 80, height: 80, size: 'small' };
-    if (isTablet) return { width: 100, height: 100, size: 'medium' };
+    if (isMobile) {return { width: 80, height: 80, size: 'small' };}
+    if (isTablet) {return { width: 100, height: 100, size: 'medium' };}
     return { width: 120, height: 120, size: 'large' };
   };
 

@@ -31,6 +31,7 @@ import {
 import { useProfile, useCurrentUser } from '../hooks/useProfile';
 import { ProfileEditForm } from '../components/ProfileEditForm';
 import { AvatarUpload } from '../components/AvatarUpload';
+import type { UserRole } from '../types/profile.types';
 
 /**
  * Tab panel interface
@@ -109,7 +110,7 @@ export function ProfileEditPage() {
 
     // Admin users can edit any profile
     const isAdmin = currentUser.roles?.some(
-      (role: any) => role.shortname === 'admin' || role.shortname === 'manager'
+      (role: UserRole) => role.shortname === 'admin' || role.shortname === 'manager'
     );
 
     return isAdmin ?? false;

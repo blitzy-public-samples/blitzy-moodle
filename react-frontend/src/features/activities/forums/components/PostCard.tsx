@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import type React from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Card,
@@ -108,10 +109,10 @@ const formatTimestamp = (date: Date): string => {
     if (daysSincePost <= 7) {
       // Recent posts: show relative time
       return formatDistanceToNow(date, { addSuffix: true });
-    } else {
+    } 
       // Older posts: show absolute date
       return format(date, 'MMM d, yyyy');
-    }
+    
   } catch (error) {
     // Handle any date formatting errors gracefully
     return 'Invalid date';
@@ -122,16 +123,16 @@ const formatTimestamp = (date: Date): string => {
  * Format file size for display
  */
 const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) return '0 Bytes';
+  if (bytes === 0) {return '0 Bytes';}
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   const size = bytes / Math.pow(k, i);
   // For MB and GB, always show one decimal place
   if (i >= 2) {
-    return size.toFixed(1) + ' ' + sizes[i];
+    return `${size.toFixed(1)  } ${  sizes[i]}`;
   }
-  return Math.round(size * 100) / 100 + ' ' + sizes[i];
+  return `${Math.round(size * 100) / 100  } ${  sizes[i]}`;
 };
 
 /**
@@ -154,7 +155,7 @@ const getRoleBadgeColor = (role: UserRole): 'primary' | 'secondary' | 'success' 
  */
 const getInitials = (fullName: string): string => {
   const names = fullName.trim().split(/\s+/).filter(n => n.length > 0);
-  if (names.length === 0) return '?';
+  if (names.length === 0) {return '?';}
   if (names.length === 1) {
     const first = names[0];
     return first ? first.charAt(0).toUpperCase() : '?';
@@ -283,7 +284,7 @@ const PostCard: React.FC<PostCardProps> = ({
    * Handle like/unlike action with debouncing and optimistic updates
    */
   const handleLike = useCallback(() => {
-    if (!onLike) return;
+    if (!onLike) {return;}
     
     // Optimistic update
     const newLikedState = !isLiked;

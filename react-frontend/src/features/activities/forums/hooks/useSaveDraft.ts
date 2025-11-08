@@ -75,7 +75,7 @@ export interface UseSaveDraftReturn {
 function getDraftFromStorage(key: string): DraftData | null {
   try {
     const item = localStorage.getItem(key);
-    if (!item) return null;
+    if (!item) {return null;}
     
     const draft = JSON.parse(item) as DraftData;
     
@@ -166,14 +166,14 @@ export function useSaveDraft(options: UseSaveDraftOptions): UseSaveDraftReturn {
    * Save draft to localStorage
    */
   const saveDraft = useCallback((data: Omit<DraftData, 'savedAt'>) => {
-    if (!enabled) return;
+    if (!enabled) {return;}
     
     // Don't save empty drafts
-    if (!data.message?.trim()) return;
+    if (!data.message?.trim()) {return;}
     
     // Don't save if data hasn't changed
     const dataStr = JSON.stringify(data);
-    if (dataStr === lastSaveDataRef.current) return;
+    if (dataStr === lastSaveDataRef.current) {return;}
     
     saveDraftToStorage(draftKey, data);
     lastSaveDataRef.current = dataStr;

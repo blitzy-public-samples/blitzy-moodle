@@ -99,7 +99,7 @@ function extractFilename(contentDisposition: string | null, format: ExportFormat
   );
 
   if (filenameMatch) {
-    const filename = filenameMatch[1] || filenameMatch[2] || filenameMatch[3];
+    const filename = filenameMatch[1] ?? filenameMatch[2] ?? filenameMatch[3];
     if (filename) {
       return decodeURIComponent(filename.trim());
     }
@@ -185,11 +185,11 @@ async function exportResults(input: ExportResultsInput): Promise<ExportResultsRe
     );
 
     // Extract filename from Content-Disposition header
-    const contentDisposition = response.headers['content-disposition'];
-    const filename = extractFilename(contentDisposition, format);
+    const contentDisposition = response.headers['content-disposition'] as string | undefined;
+    const filename = extractFilename(contentDisposition ?? null, format);
 
     // Get content type
-    const contentType = response.headers['content-type'] || 'application/octet-stream';
+    const contentType = (response.headers['content-type'] as string | undefined) ?? 'application/octet-stream';
 
     return {
       blob: response.data as Blob,
@@ -281,7 +281,7 @@ export default function useExportResults(options: UseExportResultsOptions = {}) 
       return result;
     },
 
-    onSuccess: async (data, variables) => {
+    onSuccess: (data, variables) => {
       const { blob, filename } = data;
       const { choiceId, format, groupId } = variables;
 
@@ -289,7 +289,7 @@ export default function useExportResults(options: UseExportResultsOptions = {}) 
       triggerBrowserDownload(blob, filename);
 
       // Track analytics event (fire and forget)
-      trackReportDownloadedEvent({
+      void trackReportDownloadedEvent({
         choiceId,
         format,
         groupId,

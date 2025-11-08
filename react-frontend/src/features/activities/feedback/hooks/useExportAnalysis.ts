@@ -8,7 +8,8 @@
  * @module features/activities/feedback/hooks/useExportAnalysis
  */
 
-import { useMutation, UseMutationResult } from '@tanstack/react-query';
+import type { UseMutationResult } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 
 /**
  * Parameters for exporting feedback analysis
@@ -76,12 +77,12 @@ function extractFilename(contentDisposition: string | null): string {
 
   // Try to match filename*=UTF-8''filename or filename="filename"
   const utf8Match = contentDisposition.match(/filename\*=UTF-8''(.+)/);
-  if (utf8Match && utf8Match[1]) {
+  if (utf8Match?.[1]) {
     return decodeURIComponent(utf8Match[1]);
   }
 
   const filenameMatch = contentDisposition.match(/filename="?(.+?)"?(?:;|$)/);
-  if (filenameMatch && filenameMatch[1]) {
+  if (filenameMatch?.[1]) {
     return filenameMatch[1];
   }
 

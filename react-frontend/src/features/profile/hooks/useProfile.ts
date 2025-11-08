@@ -13,7 +13,9 @@ import {
   useMutation,
   useQueryClient,
   type UseQueryResult,
-  type UseMutationResult 
+  type UseMutationResult,
+  type QueryObserverResult,
+  type UseQueryOptions
 } from '@tanstack/react-query';
 import { 
   fetchUserProfile, 
@@ -30,21 +32,21 @@ function convertPayloadToApiFormat(payload: Omit<UpdateProfilePayload, 'userid'>
   const apiData: UpdateProfileData = {};
 
   // Copy all string/number fields directly
-  if (payload.firstname !== undefined) apiData.firstname = payload.firstname;
-  if (payload.lastname !== undefined) apiData.lastname = payload.lastname;
-  if (payload.email !== undefined) apiData.email = payload.email;
-  if (payload.description !== undefined) apiData.description = payload.description;
-  if (payload.city !== undefined) apiData.city = payload.city;
-  if (payload.country !== undefined) apiData.country = payload.country;
-  if (payload.timezone !== undefined) apiData.timezone = payload.timezone;
-  if (payload.phone1 !== undefined) apiData.phone1 = payload.phone1;
-  if (payload.phone2 !== undefined) apiData.phone2 = payload.phone2;
-  if (payload.institution !== undefined) apiData.institution = payload.institution;
-  if (payload.department !== undefined) apiData.department = payload.department;
-  if (payload.address !== undefined) apiData.address = payload.address;
-  if (payload.lang !== undefined) apiData.lang = payload.lang;
-  if (payload.calendartype !== undefined) apiData.calendartype = payload.calendartype;
-  if (payload.theme !== undefined) apiData.theme = payload.theme;
+  if (payload.firstname !== undefined) {apiData.firstname = payload.firstname;}
+  if (payload.lastname !== undefined) {apiData.lastname = payload.lastname;}
+  if (payload.email !== undefined) {apiData.email = payload.email;}
+  if (payload.description !== undefined) {apiData.description = payload.description;}
+  if (payload.city !== undefined) {apiData.city = payload.city;}
+  if (payload.country !== undefined) {apiData.country = payload.country;}
+  if (payload.timezone !== undefined) {apiData.timezone = payload.timezone;}
+  if (payload.phone1 !== undefined) {apiData.phone1 = payload.phone1;}
+  if (payload.phone2 !== undefined) {apiData.phone2 = payload.phone2;}
+  if (payload.institution !== undefined) {apiData.institution = payload.institution;}
+  if (payload.department !== undefined) {apiData.department = payload.department;}
+  if (payload.address !== undefined) {apiData.address = payload.address;}
+  if (payload.lang !== undefined) {apiData.lang = payload.lang;}
+  if (payload.calendartype !== undefined) {apiData.calendartype = payload.calendartype;}
+  if (payload.theme !== undefined) {apiData.theme = payload.theme;}
 
   // Convert boolean to 0 | 1 for API
   if (payload.autosubscribe !== undefined) {
@@ -74,6 +76,15 @@ export const profileKeys = {
   detail: (id: number) => [...profileKeys.details(), id] as const,
   current: () => [...profileKeys.all, 'current'] as const,
 };
+
+/**
+ * Context type for useUpdateProfile mutation
+ * Used for optimistic updates and rollback
+ */
+interface UpdateProfileContext {
+  previousProfile?: User;
+  userId: number;
+}
 
 /**
  * Options for useProfile hook
@@ -161,7 +172,7 @@ export interface UseProfileResult {
   /**
    * Refetch function to manually trigger data refresh
    */
-  refetch: () => Promise<any>;
+  refetch: () => Promise<QueryObserverResult<User, Error>>;
 
   /**
    * Function to update the profile
@@ -241,7 +252,7 @@ export function useProfile(
 
   // Build query options, only including values that were explicitly provided
   // This allows QueryClient defaults to be used when options are not specified
-  const queryOptions: any = {
+  const queryOptions: UseQueryOptions<User, Error> = {
     queryKey,
     queryFn,
     // Only throw errors in development for easier debugging
@@ -255,11 +266,11 @@ export function useProfile(
   } else if (userId === null) {
     queryOptions.enabled = false;
   }
-  if (staleTime !== undefined) queryOptions.staleTime = staleTime;
-  if (cacheTime !== undefined) queryOptions.gcTime = cacheTime; // Note: 'cacheTime' was renamed to 'gcTime' in React Query v5
-  if (refetchOnWindowFocus !== undefined) queryOptions.refetchOnWindowFocus = refetchOnWindowFocus;
-  if (refetchOnMount !== undefined) queryOptions.refetchOnMount = refetchOnMount;
-  if (retry !== undefined) queryOptions.retry = retry;
+  if (staleTime !== undefined) {queryOptions.staleTime = staleTime;}
+  if (cacheTime !== undefined) {queryOptions.gcTime = cacheTime;} // Note: 'cacheTime' was renamed to 'gcTime' in React Query v5
+  if (refetchOnWindowFocus !== undefined) {queryOptions.refetchOnWindowFocus = refetchOnWindowFocus;}
+  if (refetchOnMount !== undefined) {queryOptions.refetchOnMount = refetchOnMount;}
+  if (retry !== undefined) {queryOptions.retry = retry;}
 
   const queryResult = useQuery<User, Error>(queryOptions);
 
@@ -494,7 +505,7 @@ export function useUpdateProfile(
       // Optimistically update to the new value
       if (previousProfile) {
         queryClient.setQueryData<User>(queryKey, (old) => {
-          if (!old) return old;
+          if (!old) {return old;}
           
           // Merge update payload with existing data
           return {
@@ -514,7 +525,7 @@ export function useUpdateProfile(
     },
 
     // Rollback optimistic update on error
-    onError: (error: Error, variables: UpdateProfilePayload, context: any) => {
+    onError: (error: Error, variables: UpdateProfilePayload, context?: UpdateProfileContext) => {
       if (context?.previousProfile && context?.userId) {
         const queryKey = profileKeys.detail(context.userId);
         queryClient.setQueryData(queryKey, context.previousProfile);
@@ -531,13 +542,13 @@ export function useUpdateProfile(
       const userId = variables.userid;
 
       // Invalidate the specific user profile query to trigger refetch
-      queryClient.invalidateQueries({ 
+      void queryClient.invalidateQueries({ 
         queryKey: profileKeys.detail(userId),
         exact: true 
       });
 
       // If updating current user, also invalidate current user query
-      queryClient.invalidateQueries({ 
+      void queryClient.invalidateQueries({ 
         queryKey: profileKeys.current(),
         exact: true 
       });

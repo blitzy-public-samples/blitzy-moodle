@@ -11,7 +11,8 @@
  * @module features/profile/api
  */
 
-import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
+import type { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
+import axios from 'axios';
 import { authService } from '@/services/auth/authService';
 import type { 
   User, 
@@ -19,6 +20,22 @@ import type {
   AvatarUploadResponse,
   UserPreferences 
 } from '../types/profile.types';
+
+/**
+ * Standard API response envelope
+ */
+interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  meta?: {
+    pagination?: {
+      page: number;
+      perPage: number;
+      total: number;
+      totalPages: number;
+    };
+  };
+}
 
 /**
  * API Configuration
@@ -142,10 +159,11 @@ const retryRequest = async <T>(
  * For 422 validation errors, preserves the full axios error with validation details
  * For other errors, extracts and throws the error message from response
  */
-const handleApiError = (error: any): never => {
+const handleApiError = (error: unknown): never => {
   if (axios.isAxiosError(error) && error.response) {
-    const status = error.response.status;
-    const errorData = error.response.data?.error;
+    const {status} = error.response;
+    const responseData = error.response.data as { error?: { message?: string } } | undefined;
+    const errorData = responseData?.error;
     
     // For 422 validation errors, preserve the full axios error with details
     if (status === 422) {
@@ -166,8 +184,8 @@ const handleApiError = (error: any): never => {
  * Transform interests from comma-separated string to array if needed
  */
 const transformInterests = (interests: string | string[] | undefined): string[] | undefined => {
-  if (!interests) return undefined;
-  if (Array.isArray(interests)) return interests;
+  if (!interests) {return undefined;}
+  if (Array.isArray(interests)) {return interests;}
   if (typeof interests === 'string') {
     return interests.split(',').map((i) => i.trim()).filter((i) => i.length > 0);
   }
@@ -175,9 +193,56 @@ const transformInterests = (interests: string | string[] | undefined): string[] 
 };
 
 /**
+ * Raw profile API response interface
+ */
+interface RawProfileResponse {
+  id: number;
+  username?: string;
+  firstname?: string;
+  lastname?: string;
+  fullname: string;
+  email?: string;
+  address?: string;
+  phone1?: string;
+  phone2?: string;
+  department?: string;
+  institution?: string;
+  idnumber?: string;
+  interests?: string | string[];
+  firstaccess?: number;
+  lastaccess?: number;
+  auth?: string;
+  suspended?: boolean;
+  confirmed?: boolean;
+  lang?: string;
+  calendartype?: string;
+  theme?: string;
+  timezone?: string;
+  mailformat?: number;
+  maildisplay?: number;
+  maildigest?: number;
+  trackforums?: boolean;
+  autosubscribe?: boolean;
+  description?: string;
+  descriptionformat?: number;
+  city?: string;
+  country?: string;
+  profileimageurlsmall: string;
+  profileimageurl: string;
+  customfields?: unknown[];
+  preferences?: unknown[];
+  roles?: unknown[];
+  firstnamephonetic?: string;
+  lastnamephonetic?: string;
+  middlename?: string;
+  alternatename?: string;
+  imagealt?: string;
+}
+
+/**
  * Transform API response to User type
  */
-const transformProfileResponse = (data: any): User => {
+const transformProfileResponse = (data: RawProfileResponse): User => {
   return {
     ...data,
     interests: transformInterests(data.interests),
@@ -199,7 +264,7 @@ export async function fetchUserProfile(userId: number): Promise<User> {
   const client = createApiClient();
 
   const fetchProfile = async () => {
-    const response = await client.get(`/users/${userId}`);
+    const response = await client.get<ApiResponse<RawProfileResponse>>(`/users/${userId}`);
     const profile = transformProfileResponse(response.data.data);
     return profile;
   };
@@ -226,7 +291,7 @@ export async function fetchCurrentUserProfile(): Promise<User> {
   const client = createApiClient();
 
   const fetchCurrentUser = async () => {
-    const response = await client.get(`/auth/me`);
+    const response = await client.get<ApiResponse<RawProfileResponse>>(`/auth/me`);
     const profile = transformProfileResponse(response.data.data);
     return profile;
   };
@@ -255,7 +320,7 @@ export async function updateUserProfile(userId: number, data: UpdateProfileData)
   const client = createApiClient();
 
   const updateProfileRequest = async () => {
-    const response = await client.put(`/users/${userId}`, data);
+    const response = await client.put<ApiResponse<RawProfileResponse>>(`/users/${userId}`, data);
     const profile = transformProfileResponse(response.data.data);
     return profile;
   };
@@ -290,7 +355,7 @@ export async function uploadAvatar(userId: number, file: File): Promise<AvatarUp
     formData.append('contextType', 'user');
 
     // Let axios automatically set Content-Type with boundary for FormData
-    const response = await client.post('/files/upload', formData, {
+    const response = await client.post<ApiResponse<AvatarUploadResponse>>('/files/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -349,7 +414,7 @@ export async function updateUserPreferences(userId: number, preferences: UserPre
   const client = createApiClient();
 
   const updatePreferencesRequest = async () => {
-    const response = await client.put(`/users/${userId}/preferences`, preferences);
+    const response = await client.put<ApiResponse<UserPreferences>>(`/users/${userId}/preferences`, preferences);
     return response.data.data;
   };
 

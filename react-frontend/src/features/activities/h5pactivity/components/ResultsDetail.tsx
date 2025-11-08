@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 import {
   Box,
   Card,
@@ -410,7 +410,7 @@ const ResultsDetail: React.FC<ResultsDetailProps> = ({ data, loading = false }) 
   }
 
   // Empty state
-  if (!data || !data.results || data.results.length === 0) {
+  if (!data?.results || data.results.length === 0) {
     return (
       <Card>
         <CardContent>

@@ -76,7 +76,7 @@ export interface UseForumOptions {
   /** Whether to refetch on window focus (default: true) */
   refetchOnWindowFocus?: boolean;
   /** Data transformation function */
-  select?: (data: Forum) => any;
+  select?: (data: Forum) => Forum;
   /** Callback executed on successful forum fetch */
   onSuccess?: (data: Forum) => void;
   /** Callback executed on forum fetch error */
@@ -212,7 +212,7 @@ export function useForum(
   /**
    * Fetch forum details
    */
-  const forumQuery = useQuery({
+  const forumQuery = useQuery<Forum>({
     queryKey: forumKeys.detail(forumId),
     queryFn: () => getForum(forumId),
     enabled,
@@ -224,9 +224,10 @@ export function useForum(
   // Handle onSuccess callback using useEffect (React Query v5 removed query callbacks)
   const prevDataRef = useRef<Forum | undefined>();
   useEffect(() => {
-    if (forumQuery.isSuccess && forumQuery.data && forumQuery.data !== prevDataRef.current) {
-      prevDataRef.current = forumQuery.data;
-      onSuccess?.(forumQuery.data);
+    const {data} = forumQuery;
+    if (forumQuery.isSuccess && data && data !== prevDataRef.current) {
+      prevDataRef.current = data;
+      onSuccess?.(data);
     }
   }, [forumQuery.isSuccess, forumQuery.data, onSuccess]);
 
@@ -262,9 +263,9 @@ export function useForum(
     mutationFn: async (subscribed: boolean) => {
       if (subscribed) {
         return await unsubscribeForum(forumId);
-      } else {
+      } 
         return await subscribeForum(forumId);
-      }
+      
     },
     // Optimistic update: immediately update subscription state
     onMutate: async (subscribed) => {
@@ -296,7 +297,7 @@ export function useForum(
     },
     // Always refetch after error or success
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: forumKeys.detail(forumId) });
+      void queryClient.invalidateQueries({ queryKey: forumKeys.detail(forumId) });
     },
   });
 
@@ -315,7 +316,7 @@ export function useForum(
         });
       }
       // Invalidate discussions to refresh read status
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: forumKeys.discussions(forumId),
       });
     },
@@ -328,11 +329,11 @@ export function useForum(
     mutationFn: (data: CreateDiscussionData) => createDiscussionApi(forumId, data),
     onSuccess: () => {
       // Invalidate discussions list to show new discussion
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: forumKeys.discussions(forumId),
       });
       // Invalidate forum to update discussion count
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: forumKeys.detail(forumId),
       });
     },
@@ -446,9 +447,10 @@ export function useForum(
    * Toggle subscription to the forum
    */
   const toggleSubscription = useCallback(() => {
-    const currentSubscribed = forumQuery.data?.subscribed ?? false;
+    const {data} = forumQuery;
+    const currentSubscribed = data?.subscribed ?? false;
     subscriptionMutation.mutate(currentSubscribed);
-  }, [forumQuery.data?.subscribed, subscriptionMutation]);
+  }, [forumQuery.data, subscriptionMutation]);
 
   /**
    * Mark all discussions as read
@@ -518,7 +520,7 @@ export function useForum(
           ...discussionOptions,
           page: page + 1,
         };
-        queryClient.prefetchQuery({
+        void queryClient.prefetchQuery({
           queryKey: forumKeys.discussions(forumId, nextPageOptions),
           queryFn: () => getDiscussions(forumId, nextPageOptions),
         });
@@ -530,8 +532,8 @@ export function useForum(
    * Refetch forum data
    */
   const refetch = useCallback(() => {
-    forumQuery.refetch();
-    discussionsQuery.refetch();
+    void forumQuery.refetch();
+    void discussionsQuery.refetch();
   }, [forumQuery, discussionsQuery]);
 
   // ============================================================================

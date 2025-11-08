@@ -18,7 +18,8 @@
  * @module features/activities/forums/components/PostForm
  */
 
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import type React from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import {
   Box,
@@ -84,6 +85,39 @@ interface PostFormData {
   locked?: boolean;
   /** Tags or categories */
   tags?: string[];
+}
+
+/**
+ * Error structure with field-level validation errors
+ */
+interface ErrorWithFields {
+  code?: string;
+  message?: string;
+  fields?: Record<string, string>;
+}
+
+/**
+ * Type guard to check if error has field-level validation errors
+ */
+function hasFieldErrors(error: unknown): error is ErrorWithFields {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'fields' in error &&
+    typeof (error as ErrorWithFields).fields === 'object'
+  );
+}
+
+/**
+ * Type guard to check if error has a code property
+ */
+function hasErrorCode(error: unknown): error is ErrorWithFields {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    typeof (error as ErrorWithFields).code === 'string'
+  );
 }
 
 /**
@@ -199,13 +233,13 @@ export function PostForm({
     setError,
   } = useForm<PostFormData>({
     defaultValues: {
-      subject: draft?.subject || post?.subject || '',
-      message: draft?.message || post?.message || '',
+      subject: draft?.subject ?? post?.subject ?? '',
+      message: draft?.message ?? post?.message ?? '',
       subscribe: draft?.subscribe ?? false,
       emailNotification: 'digest',
-      pinned: post?.pinned || false,
-      locked: post?.locked || false,
-      tags: post?.tags || [],
+      pinned: post?.pinned ?? false,
+      locked: post?.locked ?? false,
+      tags: post?.tags ?? [],
     },
   });
 
@@ -293,7 +327,7 @@ export function PostForm({
     if (!isEditing && !draft) {
       const savedDraft = loadDraft();
       if (savedDraft) {
-        setValue('subject', savedDraft.subject || '');
+        setValue('subject', savedDraft.subject ?? '');
         setValue('message', savedDraft.message);
         setValue('subscribe', savedDraft.subscribe ?? true);
       }
@@ -303,38 +337,60 @@ export function PostForm({
   // Handle mutation errors
   useEffect(() => {
     if (isUpdateError && updateError) {
-      if ((updateError as any).code === 'CONCURRENT_EDIT' || updateError.message?.includes('409')) {
+      // Cast to unknown to use type guards
+      const err = updateError as unknown;
+      
+      if (hasErrorCode(err) && err.code === 'CONCURRENT_EDIT') {
         setConcurrentEditError(true);
-      } else if ((updateError as any).fields) {
+      } else if (updateError.message?.includes('409')) {
+        setConcurrentEditError(true);
+      } else if (hasFieldErrors(err)) {
         // Handle server validation errors with field-level errors
-        const fieldErrors = (updateError as any).fields;
-        Object.keys(fieldErrors).forEach((field) => {
-          setError(field as any, {
-            type: 'server',
-            message: fieldErrors[field],
+        const fieldErrors = err.fields;
+        if (fieldErrors) {
+          Object.keys(fieldErrors).forEach((field) => {
+            const errorMessage = fieldErrors[field];
+            if (errorMessage) {
+              setError(field as keyof PostFormData, {
+                type: 'server',
+                message: errorMessage,
+              });
+            }
           });
-        });
+        }
       } else {
-        setNetworkError(updateError.message || 'An error occurred');
+        const errorMessage = updateError.message ?? 'An error occurred';
+        setNetworkError(errorMessage);
       }
     }
   }, [isUpdateError, updateError, setError]);
 
   useEffect(() => {
     if (isCreateError && createError) {
-      if ((createError as any).code === 'CONCURRENT_EDIT' || createError.message?.includes('409')) {
+      // Cast to unknown to use type guards
+      const err = createError as unknown;
+      
+      if (hasErrorCode(err) && err.code === 'CONCURRENT_EDIT') {
         setConcurrentEditError(true);
-      } else if ((createError as any).fields) {
+      } else if (createError.message?.includes('409')) {
+        setConcurrentEditError(true);
+      } else if (hasFieldErrors(err)) {
         // Handle server validation errors with field-level errors
-        const fieldErrors = (createError as any).fields;
-        Object.keys(fieldErrors).forEach((field) => {
-          setError(field as any, {
-            type: 'server',
-            message: fieldErrors[field],
+        const fieldErrors = err.fields;
+        if (fieldErrors) {
+          Object.keys(fieldErrors).forEach((field) => {
+            const errorMessage = fieldErrors[field];
+            if (errorMessage) {
+              setError(field as keyof PostFormData, {
+                type: 'server',
+                message: errorMessage,
+              });
+            }
           });
-        });
+        }
       } else {
-        setNetworkError(createError.message || 'An error occurred');
+        const errorMessage = createError.message ?? 'An error occurred';
+        setNetworkError(errorMessage);
       }
     }
   }, [isCreateError, createError, setError]);
@@ -422,7 +478,7 @@ export function PostForm({
     if (isEditing) {
       // Update existing post
       const updateData = {
-        postId: post!.id,
+        postId: post.id,
         message: data.message,
         ...(isNewDiscussion && { subject: data.subject }),
         attachments: files.map((f) => f.file),
@@ -450,7 +506,7 @@ export function PostForm({
    */
   const handleFileSelect = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
-      const selectedFiles = Array.from(event.target.files || []);
+      const selectedFiles = Array.from(event.target.files ?? []);
       addFiles(selectedFiles);
       
       // Reset input to allow selecting the same file again
@@ -528,7 +584,7 @@ export function PostForm({
    */
   const insertFormattedText = useCallback((before: string, after: string) => {
     const textarea = messageInputRef.current;
-    if (!textarea) return;
+    if (!textarea) {return;}
 
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
@@ -578,7 +634,7 @@ export function PostForm({
    */
   const handleBulletList = useCallback(() => {
     const textarea = messageInputRef.current;
-    if (!textarea) return;
+    if (!textarea) {return;}
 
     const currentValue = getValues('message') || '';
     const lines = currentValue.split('\n');
@@ -609,12 +665,12 @@ export function PostForm({
    */
   const handleMessageChange = useCallback((value: string) => {
     // Detect @ mentions
-    const cursorPos = messageInputRef.current?.selectionStart || 0;
+    const cursorPos = messageInputRef.current?.selectionStart ?? 0;
     const textBeforeCursor = value.substring(0, cursorPos);
     const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
     
     if (mentionMatch) {
-      setMentionQuery(mentionMatch[1] || '');
+      setMentionQuery(mentionMatch[1] ?? '');
       setShowMentionSuggestions(true);
     } else {
       setShowMentionSuggestions(false);
@@ -627,7 +683,7 @@ export function PostForm({
    */
   const handleInsertMention = useCallback((username: string) => {
     const textarea = messageInputRef.current;
-    if (!textarea) return;
+    if (!textarea) {return;}
 
     const currentValue = getValues('message') || '';
     const cursorPos = textarea.selectionStart;
@@ -638,7 +694,7 @@ export function PostForm({
     const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
     if (mentionMatch) {
       const beforeMention = textBeforeCursor.substring(0, mentionMatch.index);
-      const newValue = beforeMention + `@${username} ` + textAfterCursor;
+      const newValue = `${beforeMention  }@${username} ${  textAfterCursor}`;
       setValue('message', newValue, { shouldDirty: true });
       setShowMentionSuggestions(false);
       setMentionQuery('');
@@ -656,8 +712,8 @@ export function PostForm({
    * Format file size
    */
   const formatFileSize = (bytes: number): string => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    if (bytes < 1024) {return `${bytes} B`;}
+    if (bytes < 1024 * 1024) {return `${(bytes / 1024).toFixed(1)} KB`;}
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
@@ -675,7 +731,7 @@ export function PostForm({
       }
       // Submit form if Enter is pressed elsewhere
       e.preventDefault();
-      onSubmit();
+      void onSubmit();
     }
   };
 
@@ -735,8 +791,8 @@ export function PostForm({
             Please fix the following errors:
           </Typography>
           <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
-            {validationErrors.map((error, index) => (
-              <li key={index}>{error}</li>
+            {validationErrors.map((error) => (
+              <li key={error}>{error}</li>
             ))}
           </ul>
         </Alert>
@@ -775,7 +831,7 @@ export function PostForm({
               size="small"
               onClick={() => {
                 setNetworkError(null);
-                onSubmit();
+                void onSubmit();
               }}
             >
               Retry
@@ -879,8 +935,8 @@ export function PostForm({
                   disabled={isSubmitting}
                   error={!!errors.subject}
                   helperText={
-                    errors.subject?.message ||
-                    `${field.value?.length || 0} / ${SUBJECT_MAX_LENGTH} characters`
+                    errors.subject?.message ??
+                    `${field.value?.length ?? 0} / ${SUBJECT_MAX_LENGTH} characters`
                   }
                   sx={{ mb: 2 }}
                   inputProps={{
@@ -1070,8 +1126,8 @@ export function PostForm({
                   disabled={isSubmitting}
                   error={!!errors.message}
                   helperText={
-                    errors.message?.message ||
-                    `${field.value?.length || 0} / ${MESSAGE_MAX_LENGTH} characters`
+                    errors.message?.message ??
+                    `${field.value?.length ?? 0} / ${MESSAGE_MAX_LENGTH} characters`
                   }
                   onChange={(e) => {
                     field.onChange(e);
@@ -1254,7 +1310,7 @@ export function PostForm({
                       multiple
                       renderValue={(selected) => (
                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                          {(selected as string[]).map((value) => (
+                          {(selected).map((value) => (
                             <Chip key={value} label={value} size="small" />
                           ))}
                         </Box>
@@ -1398,7 +1454,7 @@ export function PostForm({
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setShowUnsavedWarning(false)}>Keep editing</Button>
-          <Button onClick={handleConfirmCancel} color="error" autoFocus>
+          <Button onClick={handleConfirmCancel} color="error">
             Discard changes
           </Button>
         </DialogActions>

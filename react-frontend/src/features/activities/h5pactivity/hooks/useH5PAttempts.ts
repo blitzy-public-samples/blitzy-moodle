@@ -12,7 +12,8 @@
  * @packageDocumentation
  */
 
-import { useQuery, useQueryClient, UseQueryResult } from '@tanstack/react-query';
+import type { UseQueryResult } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/services/api/client';
 import type { ApiResponse } from '@/types/api';
 
@@ -441,7 +442,7 @@ export function useInvalidateH5PAttempts() {
 
   return (activityId: number | null | undefined) => {
     if (activityId) {
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ['h5pAttempts', activityId],
       });
     }

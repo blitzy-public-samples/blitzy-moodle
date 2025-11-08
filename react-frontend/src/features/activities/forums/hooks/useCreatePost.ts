@@ -86,15 +86,15 @@ export function useCreatePost(options: UseCreatePostOptions = {}): UseCreatePost
     onSuccess: (data, variables) => {
       // Invalidate relevant queries based on the discussion ID
       if (variables.discussionId) {
-        queryClient.invalidateQueries({ queryKey: ['discussions', variables.discussionId] });
-        queryClient.invalidateQueries({ queryKey: ['discussion', variables.discussionId] });
-        queryClient.invalidateQueries({ queryKey: ['posts', variables.discussionId] });
+        void queryClient.invalidateQueries({ queryKey: ['discussions', variables.discussionId] });
+        void queryClient.invalidateQueries({ queryKey: ['discussion', variables.discussionId] });
+        void queryClient.invalidateQueries({ queryKey: ['posts', variables.discussionId] });
       }
       
       // Invalidate forum queries to refetch discussion list
       if (variables.forumId) {
-        queryClient.invalidateQueries({ queryKey: ['forum', variables.forumId] });
-        queryClient.invalidateQueries({ queryKey: ['discussions'] });
+        void queryClient.invalidateQueries({ queryKey: ['forum', variables.forumId] });
+        void queryClient.invalidateQueries({ queryKey: ['discussions'] });
       }
       
       // Call success callback if provided

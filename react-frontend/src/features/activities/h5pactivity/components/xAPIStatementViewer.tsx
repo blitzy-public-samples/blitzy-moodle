@@ -10,7 +10,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import React, { useState, useMemo } from 'react';
+import type React from 'react';
+import { useState, useMemo } from 'react';
 import {
   Card,
   CardContent,
@@ -32,6 +33,7 @@ import {
   Alert,
   IconButton,
   Grid,
+  type SelectChangeEvent,
 } from '@mui/material';
 import {
   ExpandMore as ExpandMoreIcon,
@@ -88,7 +90,7 @@ interface XAPIResult {
   completion?: boolean;
   response?: string;
   duration?: string;
-  extensions?: Record<string, any>;
+  extensions?: Record<string, unknown>;
 }
 
 /**
@@ -104,7 +106,7 @@ interface XAPIDefinition {
   type?: string;
   interactionType?: string;
   correctResponsesPattern?: string[];
-  extensions?: Record<string, any>;
+  extensions?: Record<string, unknown>;
 }
 
 /**
@@ -129,7 +131,7 @@ interface XAPIContext {
     category?: XAPIObject[];
     other?: XAPIObject[];
   };
-  extensions?: Record<string, any>;
+  extensions?: Record<string, unknown>;
 }
 
 /**
@@ -164,8 +166,8 @@ interface XAPIStatementViewerProps {
  * Extracts the display name from a language map, preferring English
  */
 const getDisplayName = (languageMap?: { [key: string]: string }): string => {
-  if (!languageMap) return '';
-  return languageMap['en-US'] || languageMap['en'] || Object.values(languageMap)[0] || '';
+  if (!languageMap) {return '';}
+  return languageMap['en-US'] ?? languageMap['en'] ?? Object.values(languageMap)[0] ?? '';
 };
 
 /**
@@ -173,20 +175,20 @@ const getDisplayName = (languageMap?: { [key: string]: string }): string => {
  * Example: PT1H30M45S -> "1 hour 30 minutes 45 seconds"
  */
 const formatDuration = (isoDuration?: string): string => {
-  if (!isoDuration) return 'N/A';
+  if (!isoDuration) {return 'N/A';}
   
   try {
     const matches = isoDuration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?/);
-    if (!matches) return isoDuration;
+    if (!matches) {return isoDuration;}
 
-    const hours = parseInt(matches[1] || '0', 10);
-    const minutes = parseInt(matches[2] || '0', 10);
-    const seconds = parseFloat(matches[3] || '0');
+    const hours = parseInt(matches[1] ?? '0', 10);
+    const minutes = parseInt(matches[2] ?? '0', 10);
+    const seconds = parseFloat(matches[3] ?? '0');
 
     const parts: string[] = [];
-    if (hours > 0) parts.push(`${hours} hour${hours !== 1 ? 's' : ''}`);
-    if (minutes > 0) parts.push(`${minutes} minute${minutes !== 1 ? 's' : ''}`);
-    if (seconds > 0) parts.push(`${Math.round(seconds)} second${seconds !== 1 ? 's' : ''}`);
+    if (hours > 0) {parts.push(`${hours} hour${hours !== 1 ? 's' : ''}`);}
+    if (minutes > 0) {parts.push(`${minutes} minute${minutes !== 1 ? 's' : ''}`);}
+    if (seconds > 0) {parts.push(`${Math.round(seconds)} second${seconds !== 1 ? 's' : ''}`);}
 
     return parts.length > 0 ? parts.join(' ') : '0 seconds';
   } catch (error) {
@@ -199,11 +201,11 @@ const formatDuration = (isoDuration?: string): string => {
  */
 const getVerbDisplay = (verb: XAPIVerb): string => {
   const displayName = getDisplayName(verb.display);
-  if (displayName) return displayName;
+  if (displayName) {return displayName;}
   
   // Fallback: extract from verb ID
   const parts = verb.id.split('/');
-  return parts[parts.length - 1] || 'unknown';
+  return parts[parts.length - 1] ?? 'unknown';
 };
 
 /**
@@ -212,11 +214,11 @@ const getVerbDisplay = (verb: XAPIVerb): string => {
 const getVerbColor = (verbId: string): 'info' | 'primary' | 'success' | 'error' | 'warning' => {
   const lowercaseId = verbId.toLowerCase();
   
-  if (lowercaseId.includes('experienced') || lowercaseId.includes('viewed')) return 'info';
-  if (lowercaseId.includes('answered') || lowercaseId.includes('responded')) return 'primary';
-  if (lowercaseId.includes('completed')) return 'success';
-  if (lowercaseId.includes('passed')) return 'success';
-  if (lowercaseId.includes('failed')) return 'error';
+  if (lowercaseId.includes('experienced') || lowercaseId.includes('viewed')) {return 'info';}
+  if (lowercaseId.includes('answered') || lowercaseId.includes('responded')) {return 'primary';}
+  if (lowercaseId.includes('completed')) {return 'success';}
+  if (lowercaseId.includes('passed')) {return 'success';}
+  if (lowercaseId.includes('failed')) {return 'error';}
   
   return 'warning';
 };
@@ -224,17 +226,20 @@ const getVerbColor = (verbId: string): 'info' | 'primary' | 'success' | 'error' 
 /**
  * Single Statement Viewer Component
  */
-const StatementCard: React.FC<{
+interface StatementCardProps {
   statement: XAPIStatement;
   jsonTheme: string;
   showJsonByDefault: boolean;
-}> = ({ statement, jsonTheme, showJsonByDefault }) => {
+}
+
+function StatementCard({ statement, jsonTheme, showJsonByDefault }: StatementCardProps): React.ReactElement {
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
 
-  const handleCopyToClipboard = (data: any, section: string) => {
-    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-    setCopiedSection(section);
-    setTimeout(() => setCopiedSection(null), 2000);
+  const handleCopyToClipboard = (data: unknown, section: string) => {
+    void navigator.clipboard.writeText(JSON.stringify(data, null, 2)).then(() => {
+      setCopiedSection(section);
+      setTimeout(() => setCopiedSection(null), 2000);
+    });
   };
 
   const verbDisplay = getVerbDisplay(statement.verb);
@@ -547,11 +552,11 @@ const StatementCard: React.FC<{
             )}
             <ReactJson
               src={statement}
-              theme={jsonTheme as any}
+              theme={jsonTheme as 'rjv-default' | 'monokai' | 'ocean' | 'paraiso'}
               collapsed={1}
               displayDataTypes={false}
-              displayObjectSize={true}
-              enableClipboard={true}
+              displayObjectSize
+              enableClipboard
               name="statement"
               iconStyle="triangle"
               style={{
@@ -565,19 +570,22 @@ const StatementCard: React.FC<{
       </CardContent>
     </Card>
   );
-};
+}
 
 /**
  * xAPI Statement Viewer Component
  * 
  * Main component for displaying xAPI statements with filtering and navigation
  */
-const xAPIStatementViewer: React.FC<XAPIStatementViewerProps> = ({
+function XAPIStatementViewer({
   statements,
   showJsonByDefault = false,
   jsonTheme = 'rjv-default',
-}) => {
-  const statementsArray = Array.isArray(statements) ? statements : [statements];
+}: XAPIStatementViewerProps): React.ReactElement | null {
+  const statementsArray = useMemo(
+    () => (Array.isArray(statements) ? statements : [statements]),
+    [statements]
+  );
   const [selectedTab, setSelectedTab] = useState(0);
   const [verbFilter, setVerbFilter] = useState<string>('all');
 
@@ -593,7 +601,7 @@ const xAPIStatementViewer: React.FC<XAPIStatementViewerProps> = ({
 
   // Filter statements by verb
   const filteredStatements = useMemo(() => {
-    if (verbFilter === 'all') return statementsArray;
+    if (verbFilter === 'all') {return statementsArray;}
     return statementsArray.filter((stmt) => {
       const verbDisplay = getVerbDisplay(stmt.verb);
       return verbDisplay === verbFilter;
@@ -604,7 +612,7 @@ const xAPIStatementViewer: React.FC<XAPIStatementViewerProps> = ({
     setSelectedTab(newValue);
   };
 
-  const handleVerbFilterChange = (event: any) => {
+  const handleVerbFilterChange = (event: SelectChangeEvent<string>) => {
     setVerbFilter(event.target.value);
     setSelectedTab(0); // Reset to first tab when filter changes
   };
@@ -613,7 +621,7 @@ const xAPIStatementViewer: React.FC<XAPIStatementViewerProps> = ({
   if (filteredStatements.length === 1) {
     const statement = filteredStatements[0];
     // TypeScript guard: this should never be undefined given the length check
-    if (!statement) return null;
+    if (!statement) {return null;}
     
     return (
       <Box>
@@ -691,7 +699,7 @@ const xAPIStatementViewer: React.FC<XAPIStatementViewerProps> = ({
                 : `#${index + 1}`;
               return (
                 <Tab
-                  key={stmt.id || index}
+                  key={stmt.id ?? index}
                   label={`${verbDisplay} - ${timestamp}`}
                   id={`statement-tab-${index}`}
                   aria-controls={`statement-tabpanel-${index}`}
@@ -702,7 +710,7 @@ const xAPIStatementViewer: React.FC<XAPIStatementViewerProps> = ({
 
           {filteredStatements.map((stmt, index) => (
             <Box
-              key={stmt.id || index}
+              key={stmt.id ?? index}
               role="tabpanel"
               hidden={selectedTab !== index}
               id={`statement-tabpanel-${index}`}
@@ -721,6 +729,6 @@ const xAPIStatementViewer: React.FC<XAPIStatementViewerProps> = ({
       )}
     </Box>
   );
-};
+}
 
-export default xAPIStatementViewer;
+export default XAPIStatementViewer;

@@ -1,8 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import type React from 'react';
+import { useMemo, useState } from 'react';
+import type {
+  GridColDef,
+  GridRowSelectionModel} from '@mui/x-data-grid';
 import {
   DataGrid,
-  GridColDef,
-  GridRowSelectionModel,
   GridToolbarContainer,
 } from '@mui/x-data-grid';
 import {
@@ -68,12 +70,12 @@ interface CustomToolbarProps {
   availableOptions: Array<{ id: number; text: string }>;
 }
 
-const CustomToolbar: React.FC<CustomToolbarProps> = ({
+function CustomToolbar({
   selectedRows,
   onDelete,
   onModify,
   availableOptions,
-}) => {
+}: CustomToolbarProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
 
@@ -157,12 +159,12 @@ const CustomToolbar: React.FC<CustomToolbarProps> = ({
       </Stack>
     </GridToolbarContainer>
   );
-};
+}
 
 /**
  * Custom component to display when there are no rows in the table
  */
-const NoRowsOverlay: React.FC = () => {
+function NoRowsOverlay() {
   return (
     <Stack
       height="100%"
@@ -178,20 +180,20 @@ const NoRowsOverlay: React.FC = () => {
       </Typography>
     </Stack>
   );
-};
+}
 
 /**
  * Data table component displaying choice results with user details, groups,
  * selected options, and bulk action support using Material-UI DataGrid
  */
-const ChoiceResultsTable: React.FC<ChoiceResultsTableProps> = ({
+function ChoiceResultsTable({
   results,
   onDelete,
   onModify,
   loading,
   extraFields,
   availableOptions = [],
-}) => {
+}: ChoiceResultsTableProps) {
   const [selectionModel, setSelectionModel] = useState<GridRowSelectionModel>([]);
 
   /**
@@ -386,6 +388,6 @@ const ChoiceResultsTable: React.FC<ChoiceResultsTableProps> = ({
       />
     </Paper>
   );
-};
+}
 
 export default ChoiceResultsTable;

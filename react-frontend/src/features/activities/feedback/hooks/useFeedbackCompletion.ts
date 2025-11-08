@@ -144,6 +144,15 @@ interface ApiResponse<T> {
 }
 
 /**
+ * Error response structure for failed HTTP requests
+ */
+interface ErrorResponse {
+  error?: {
+    message?: string;
+  };
+}
+
+/**
  * Hook return type with all completion management functions
  */
 interface UseFeedbackCompletionReturn {
@@ -154,9 +163,9 @@ interface UseFeedbackCompletionReturn {
   error: Error | null;
   
   // Navigation functions
-  goToNextPage: () => Promise<number | null>;
-  goToPreviousPage: () => Promise<number | null>;
-  goToPage: (pageIndex: number) => Promise<number>;
+  goToNextPage: (options?: NavigationOptions) => number | null;
+  goToPreviousPage: (options?: NavigationOptions) => number | null;
+  goToPage: (pageIndex: number) => number;
   canGoNext: boolean;
   canGoPrevious: boolean;
   
@@ -247,14 +256,22 @@ export function useFeedbackCompletion(
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`);
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        try {
+          const errorData = (await response.json()) as ErrorResponse;
+          if (errorData.error?.message) {
+            errorMessage = errorData.error.message;
+          }
+        } catch {
+          // If parsing fails, use default error message
+        }
+        throw new Error(errorMessage);
       }
 
-      const result: ApiResponse<FeedbackCompletionData> = await response.json();
+      const result = (await response.json()) as ApiResponse<FeedbackCompletionData>;
       
       if (!result.success) {
-        throw new Error(result.error?.message || 'Failed to fetch completion data');
+        throw new Error(result.error?.message ?? 'Failed to fetch completion data');
       }
 
       return result.data;
@@ -292,15 +309,23 @@ export function useFeedbackCompletion(
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`);
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        try {
+          const errorData = (await response.json()) as ErrorResponse;
+          if (errorData.error?.message) {
+            errorMessage = errorData.error.message;
+          }
+        } catch {
+          // If parsing fails, use default error message
+        }
+        throw new Error(errorMessage);
       }
 
       return response.json();
     },
     onSuccess: () => {
       // Invalidate completion query to refetch updated data
-      queryClient.invalidateQueries({ queryKey: ['feedback', feedbackId, 'completion'] });
+      void queryClient.invalidateQueries({ queryKey: ['feedback', feedbackId, 'completion'] });
     },
     onError: (error: Error) => {
       console.error('Failed to save draft:', error);
@@ -333,15 +358,15 @@ export function useFeedbackCompletion(
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({})) as { error?: { message?: string } };
+        throw new Error(errorData.error?.message ?? `HTTP ${response.status}: ${response.statusText}`);
       }
 
       return response.json();
     },
     onSuccess: () => {
       // Invalidate all feedback-related queries
-      queryClient.invalidateQueries({ queryKey: ['feedback', feedbackId] });
+      void queryClient.invalidateQueries({ queryKey: ['feedback', feedbackId] });
     },
     onError: (error: Error) => {
       console.error('Failed to submit feedback:', error);
@@ -352,10 +377,10 @@ export function useFeedbackCompletion(
    * Navigate to the next page with validation
    * 
    * @param options - Navigation options including strict check flag
-   * @returns Promise resolving to next page index or null if no next page
+   * @returns Next page index or null if no next page
    */
   const goToNextPage = useCallback(
-    async (options: NavigationOptions = {}): Promise<number | null> => {
+    (options: NavigationOptions = {}): number | null => {
       if (!completionData) {
         throw new Error('Completion data not loaded');
       }
@@ -375,7 +400,7 @@ export function useFeedbackCompletion(
 
       if (nextPage === null) {
         // Find next page with items
-        const pages = completionData.pages;
+        const {pages} = completionData;
         for (let i = currentPage + 1; i < pages.length; i++) {
           const page = pages[i];
           if (page && page.items.length > 0) {
@@ -399,10 +424,10 @@ export function useFeedbackCompletion(
    * Navigate to the previous page with validation
    * 
    * @param options - Navigation options including strict check flag
-   * @returns Promise resolving to previous page index or null if no previous page
+   * @returns Previous page index or null if no previous page
    */
   const goToPreviousPage = useCallback(
-    async (options: NavigationOptions = {}): Promise<number | null> => {
+    (options: NavigationOptions = {}): number | null => {
       if (!completionData) {
         throw new Error('Completion data not loaded');
       }
@@ -412,7 +437,7 @@ export function useFeedbackCompletion(
       }
 
       const { strictCheck = true } = options;
-      const pages = completionData.pages;
+      const {pages} = completionData;
       let previousPage: number | null = null;
 
       // Find previous page with items
@@ -446,10 +471,10 @@ export function useFeedbackCompletion(
    * Navigate directly to a specific page
    * 
    * @param pageIndex - The target page index
-   * @returns Promise resolving to the page index
+   * @returns The page index
    */
   const goToPage = useCallback(
-    async (pageIndex: number): Promise<number> => {
+    (pageIndex: number): number => {
       if (!completionData) {
         throw new Error('Completion data not loaded');
       }
@@ -504,7 +529,7 @@ export function useFeedbackCompletion(
    * @returns Array of feedback items on the current page
    */
   const getCurrentPageItems = useCallback((): FeedbackItem[] => {
-    if (!completionData || !completionData.pages[currentPage]) {
+    if (!completionData?.pages[currentPage]) {
       return [];
     }
     return completionData.pages[currentPage].items;
@@ -564,7 +589,7 @@ export function useFeedbackCompletion(
    */
   const isPageValid = useCallback(
     (pageIndex: number): boolean => {
-      if (!completionData || !completionData.pages[pageIndex]) {
+      if (!completionData?.pages[pageIndex]) {
         return false;
       }
 
@@ -630,7 +655,7 @@ export function useFeedbackCompletion(
     completionData,
     isLoading,
     isError,
-    error: error as Error | null,
+    error,
 
     // Navigation functions
     goToNextPage,

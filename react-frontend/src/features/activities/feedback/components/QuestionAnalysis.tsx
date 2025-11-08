@@ -10,7 +10,7 @@
  * Based on Moodle's feedback item analysis patterns.
  */
 
-import React from 'react';
+import type React from 'react';
 import {
   Box,
   Paper,
@@ -106,12 +106,105 @@ interface QuestionAnalysisProps {
 }
 
 /**
+ * Chart data structure for visualizations
+ */
+interface ChartDataItem {
+  name: string;
+  value: number;
+  percentage: string;
+  fullLabel: string;
+}
+
+/**
+ * Tooltip payload structure from recharts
+ */
+interface TooltipPayload {
+  payload: ChartDataItem;
+  name?: string;
+  value?: number;
+}
+
+/**
+ * Custom Tooltip Component for Bar Charts
+ */
+interface BarChartTooltipProps {
+  active?: boolean;
+  payload?: TooltipPayload[];
+}
+
+function BarChartTooltip({ active, payload }: BarChartTooltipProps): React.ReactElement | null {
+  if (active && payload && payload.length > 0 && payload[0]) {
+    const data = payload[0].payload;
+    return (
+      <Paper sx={{ p: 1.5 }}>
+        <Typography variant="body2" fontWeight="bold">
+          <span dangerouslySetInnerHTML={{ __html: data.fullLabel }} />
+        </Typography>
+        <Typography variant="body2">
+          Responses: {data.value}
+        </Typography>
+        <Typography variant="body2">
+          Percentage: {data.percentage}
+        </Typography>
+      </Paper>
+    );
+  }
+  return null;
+}
+
+/**
+ * Pie chart data structure
+ */
+interface PieChartDataItem {
+  name: string;
+  value: number;
+  percentage: string;
+}
+
+/**
+ * Pie tooltip payload structure
+ */
+interface PieTooltipPayload {
+  name?: string;
+  value?: number;
+  payload: PieChartDataItem;
+}
+
+/**
+ * Custom Tooltip Component for Pie Charts
+ */
+interface PieChartTooltipProps {
+  active?: boolean;
+  payload?: PieTooltipPayload[];
+}
+
+function PieChartTooltip({ active, payload }: PieChartTooltipProps): React.ReactElement | null {
+  if (active && payload && payload.length > 0 && payload[0]) {
+    const data = payload[0];
+    return (
+      <Paper sx={{ p: 1.5 }}>
+        <Typography variant="body2" fontWeight="bold">
+          {data.name}
+        </Typography>
+        <Typography variant="body2">
+          Responses: {data.value}
+        </Typography>
+        <Typography variant="body2">
+          Percentage: {data.payload.percentage}
+        </Typography>
+      </Paper>
+    );
+  }
+  return null;
+}
+
+/**
  * QuestionAnalysis Component
  * 
  * Renders individual question analysis with appropriate visualizations
  * based on item type.
  */
-export const QuestionAnalysis: React.FC<QuestionAnalysisProps> = ({
+export function QuestionAnalysis({
   itemNumber,
   label,
   questionName,
@@ -121,7 +214,7 @@ export const QuestionAnalysis: React.FC<QuestionAnalysisProps> = ({
   showPieChart = false,
   chartHeight = 400,
   isAnonymous: _isAnonymous = false,
-}) => {
+}: QuestionAnalysisProps): React.ReactElement {
   const theme = useTheme();
 
   /**
@@ -158,7 +251,7 @@ export const QuestionAnalysis: React.FC<QuestionAnalysisProps> = ({
    * Formats percentage for display
    */
   const formatPercentage = (quotient: number): string => {
-    return formatFloat(quotient * 100, 2) + ' %';
+    return `${formatFloat(quotient * 100, 2)  } %`;
   };
 
   /**
@@ -213,37 +306,18 @@ export const QuestionAnalysis: React.FC<QuestionAnalysisProps> = ({
               width={150}
               tick={{ fontSize: 12 }}
             />
-            <Tooltip
-              content={({ active, payload }) => {
-                if (active && payload && payload.length > 0 && payload[0]) {
-                  const data = payload[0].payload;
-                  return (
-                    <Paper sx={{ p: 1.5 }}>
-                      <Typography variant="body2" fontWeight="bold">
-                        <span dangerouslySetInnerHTML={{ __html: data.fullLabel }} />
-                      </Typography>
-                      <Typography variant="body2">
-                        Responses: {data.value}
-                      </Typography>
-                      <Typography variant="body2">
-                        Percentage: {data.percentage}
-                      </Typography>
-                    </Paper>
-                  );
-                }
-                return null;
-              }}
-            />
+            <Tooltip content={<BarChartTooltip />} />
             <Legend />
             <Bar dataKey="value" name="Responses" label={{ position: 'right' }}>
-              {chartData.map((_entry, index) => (
-                <Cell key={`cell-${index}`} fill={colors[index]} />
+              {chartData.map((entry, index) => (
+                // eslint-disable-next-line react/no-array-index-key
+                <Cell key={`cell-${entry.name}-${index}`} fill={colors[index]} />
               ))}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
       );
-    } else {
+    } 
       return (
         <ResponsiveContainer width="100%" height={chartHeight}>
           <BarChart
@@ -259,37 +333,18 @@ export const QuestionAnalysis: React.FC<QuestionAnalysisProps> = ({
               tick={{ fontSize: 12 }}
             />
             <YAxis />
-            <Tooltip
-              content={({ active, payload }) => {
-                if (active && payload && payload.length > 0 && payload[0]) {
-                  const data = payload[0].payload;
-                  return (
-                    <Paper sx={{ p: 1.5 }}>
-                      <Typography variant="body2" fontWeight="bold">
-                        <span dangerouslySetInnerHTML={{ __html: data.fullLabel }} />
-                      </Typography>
-                      <Typography variant="body2">
-                        Responses: {data.value}
-                      </Typography>
-                      <Typography variant="body2">
-                        Percentage: {data.percentage}
-                      </Typography>
-                    </Paper>
-                  );
-                }
-                return null;
-              }}
-            />
+            <Tooltip content={<BarChartTooltip />} />
             <Legend />
             <Bar dataKey="value" name="Responses">
-              {chartData.map((_entry, index) => (
-                <Cell key={`cell-${index}`} fill={colors[index]} />
+              {chartData.map((entry, index) => (
+                // eslint-disable-next-line react/no-array-index-key
+                <Cell key={`cell-${entry.name}-${index}`} fill={colors[index]} />
               ))}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
       );
-    }
+    
   };
 
   /**
@@ -311,37 +366,18 @@ export const QuestionAnalysis: React.FC<QuestionAnalysisProps> = ({
             data={chartData}
             cx="50%"
             cy="50%"
-            labelLine={true}
-            label={(entry) => `${entry.name}: ${entry.value} (${entry.percentage})`}
+            labelLine
+            label={(entry: PieChartDataItem) => `${entry.name}: ${entry.value} (${entry.percentage})`}
             outerRadius={120}
             fill={theme.palette.primary.main}
             dataKey="value"
           >
-            {chartData.map((_entry, index) => (
-              <Cell key={`cell-${index}`} fill={colors[index]} />
+            {chartData.map((entry, index) => (
+              // eslint-disable-next-line react/no-array-index-key
+              <Cell key={`cell-${entry.name}-${index}`} fill={colors[index]} />
             ))}
           </Pie>
-          <Tooltip
-            content={({ active, payload }) => {
-              if (active && payload && payload.length > 0 && payload[0]) {
-                const data = payload[0];
-                return (
-                  <Paper sx={{ p: 1.5 }}>
-                    <Typography variant="body2" fontWeight="bold">
-                      {data.name}
-                    </Typography>
-                    <Typography variant="body2">
-                      Responses: {data.value}
-                    </Typography>
-                    <Typography variant="body2">
-                      Percentage: {data.payload.percentage}
-                    </Typography>
-                  </Paper>
-                );
-              }
-              return null;
-            }}
-          />
+          <Tooltip content={<PieChartTooltip />} />
           <Legend />
         </PieChart>
       </ResponsiveContainer>
@@ -391,7 +427,8 @@ export const QuestionAnalysis: React.FC<QuestionAnalysisProps> = ({
         {data && data.length > 0 && (
           <>
             {data.map((value, index) => (
-              <TableRow key={`value-${index}`}>
+              // eslint-disable-next-line react/no-array-index-key
+              <TableRow key={`value-${value}-${index}`}>
                 <TableCell
                   sx={{
                     fontFamily: 'monospace',
@@ -451,9 +488,11 @@ export const QuestionAnalysis: React.FC<QuestionAnalysisProps> = ({
       <>
         {values.map((value, index) => {
           const isEmpty = !value || value.trim().length === 0;
+          const keyValue = value ? value.substring(0, 20) : 'empty';
           return (
             <TableRow
-              key={`text-${index}`}
+              // eslint-disable-next-line react/no-array-index-key
+              key={`text-${keyValue}-${index}`}
               sx={{
                 '&:hover': {
                   backgroundColor: alpha(theme.palette.primary.main, 0.04),
@@ -565,4 +604,4 @@ export const QuestionAnalysis: React.FC<QuestionAnalysisProps> = ({
       </Table>
     </TableContainer>
   );
-};
+}

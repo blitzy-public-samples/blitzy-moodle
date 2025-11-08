@@ -13,7 +13,9 @@
  * - Integration with Moodle groups system
  */
 
-import React from 'react';
+import type React from 'react';
+import type {
+  SelectChangeEvent} from '@mui/material';
 import {
   FormControl,
   InputLabel,
@@ -21,8 +23,7 @@ import {
   MenuItem,
   CircularProgress,
   FormHelperText,
-  Box,
-  SelectChangeEvent,
+  Box
 } from '@mui/material';
 import { Groups as GroupsIcon } from '@mui/icons-material';
 
@@ -151,7 +152,7 @@ export const GroupFilter: React.FC<GroupFilterProps> = ({
    * Handle group selection change
    */
   const handleChange = (event: SelectChangeEvent<number>): void => {
-    const value = event.target.value;
+    const {value} = event.target;
     const groupId = typeof value === 'string' ? parseInt(value, 10) : value;
     onChange(groupId);
   };

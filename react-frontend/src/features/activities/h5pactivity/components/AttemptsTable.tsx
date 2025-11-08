@@ -17,7 +17,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import React, { useMemo, useState, useCallback } from 'react';
+import type React from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import {
   Box,
   Chip,
@@ -29,16 +30,17 @@ import {
   Menu,
   MenuItem,
 } from '@mui/material';
-import {
-  DataGrid,
+import type {
   GridColDef,
   GridRenderCellParams,
   GridSortModel,
   GridFilterModel,
   GridPaginationModel,
-  GridToolbarContainer,
   GridRowSelectionModel,
-  GridValueGetterParams,
+  GridValueGetterParams} from '@mui/x-data-grid';
+import {
+  DataGrid,
+  GridToolbarContainer
 } from '@mui/x-data-grid';
 import {
   CheckCircle as CheckCircleIcon,
@@ -196,7 +198,7 @@ const EmptyState: React.FC = () => (
  */
 const LoadingSkeleton: React.FC = () => (
   <Box sx={{ width: '100%', p: 2 }}>
-    {[...Array(5)].map((_, index) => (
+    {Array.from({ length: 5 }).map((_, index) => (
       <Skeleton
         key={index}
         variant="rectangular"
@@ -207,6 +209,57 @@ const LoadingSkeleton: React.FC = () => (
     ))}
   </Box>
 );
+
+/**
+ * Factory function to create a custom footer component with statistics
+ */
+const createCustomFooter = (statistics: AttemptStatistics) => {
+  const CustomFooterComponent: React.FC = () => (
+    <Box
+      sx={{
+        p: 2,
+        display: 'flex',
+        justifyContent: 'space-around',
+        borderTop: 1,
+        borderColor: 'divider',
+        backgroundColor: 'background.default',
+      }}
+    >
+      <Box sx={{ textAlign: 'center' }}>
+        <Typography variant="caption" color="text.secondary">
+          Total Attempts
+        </Typography>
+        <Typography variant="h6">{statistics.totalAttempts}</Typography>
+      </Box>
+      <Box sx={{ textAlign: 'center' }}>
+        <Typography variant="caption" color="text.secondary">
+          Average Score
+        </Typography>
+        <Typography variant="h6">
+          {statistics.averageScore.toFixed(1)}%
+        </Typography>
+      </Box>
+      <Box sx={{ textAlign: 'center' }}>
+        <Typography variant="caption" color="text.secondary">
+          Completion Rate
+        </Typography>
+        <Typography variant="h6">
+          {statistics.completionRate.toFixed(1)}%
+        </Typography>
+      </Box>
+      <Box sx={{ textAlign: 'center' }}>
+        <Typography variant="caption" color="text.secondary">
+          Success Rate
+        </Typography>
+        <Typography variant="h6">
+          {statistics.successRate.toFixed(1)}%
+        </Typography>
+      </Box>
+    </Box>
+  );
+  
+  return CustomFooterComponent;
+};
 
 /**
  * AttemptsTable Component
@@ -500,53 +553,6 @@ const AttemptsTable: React.FC<AttemptsTableProps> = ({
     [handleViewDetails]
   );
 
-  /**
-   * Custom footer with statistics
-   */
-  const CustomFooter: React.FC = () => (
-    <Box
-      sx={{
-        p: 2,
-        display: 'flex',
-        justifyContent: 'space-around',
-        borderTop: 1,
-        borderColor: 'divider',
-        backgroundColor: 'background.default',
-      }}
-    >
-      <Box sx={{ textAlign: 'center' }}>
-        <Typography variant="caption" color="text.secondary">
-          Total Attempts
-        </Typography>
-        <Typography variant="h6">{statistics.totalAttempts}</Typography>
-      </Box>
-      <Box sx={{ textAlign: 'center' }}>
-        <Typography variant="caption" color="text.secondary">
-          Average Score
-        </Typography>
-        <Typography variant="h6">
-          {statistics.averageScore.toFixed(1)}%
-        </Typography>
-      </Box>
-      <Box sx={{ textAlign: 'center' }}>
-        <Typography variant="caption" color="text.secondary">
-          Completion Rate
-        </Typography>
-        <Typography variant="h6">
-          {statistics.completionRate.toFixed(1)}%
-        </Typography>
-      </Box>
-      <Box sx={{ textAlign: 'center' }}>
-        <Typography variant="caption" color="text.secondary">
-          Success Rate
-        </Typography>
-        <Typography variant="h6">
-          {statistics.successRate.toFixed(1)}%
-        </Typography>
-      </Box>
-    </Box>
-  );
-
   // Error state
   if (error) {
     return (
@@ -598,7 +604,7 @@ const AttemptsTable: React.FC<AttemptsTableProps> = ({
         disableRowSelectionOnClick
         slots={{
           toolbar: CustomToolbar,
-          footer: CustomFooter,
+          footer: createCustomFooter(statistics),
         }}
         slotProps={{
           toolbar: {

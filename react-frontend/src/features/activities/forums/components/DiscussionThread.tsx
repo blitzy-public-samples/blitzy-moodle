@@ -17,7 +17,8 @@
  * - Full WCAG 2.1 AA accessibility support
  */
 
-import React, { useState, useCallback, useMemo } from 'react';
+import type React from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -164,7 +165,7 @@ export const DiscussionThread: React.FC<DiscussionThreadProps> = ({ discussionId
   const { user } = useAuth();
 
   // Check if user is a moderator (simplified - in real app, check capabilities)
-  const isModerator = user && user.id !== undefined;
+  const isModerator = user?.id !== undefined;
 
   /**
    * Handle moderator menu
@@ -179,7 +180,6 @@ export const DiscussionThread: React.FC<DiscussionThreadProps> = ({ discussionId
 
   const handleSplitDiscussion = useCallback(() => {
     // TODO: Implement split discussion logic
-    console.log('Split discussion');
     handleCloseModeratorMenu();
   }, [handleCloseModeratorMenu]);
 
@@ -203,7 +203,7 @@ export const DiscussionThread: React.FC<DiscussionThreadProps> = ({ discussionId
    */
   const handleReply = useCallback(
     (postId: number, content: string) => {
-      if (!discussion) return;
+      if (!discussion) {return;}
       createReply({
         postData: {
           forumId: discussion.forumid,
@@ -244,9 +244,9 @@ export const DiscussionThread: React.FC<DiscussionThreadProps> = ({ discussionId
   /**
    * Handle quote post
    */
-  const handleQuote = useCallback((postId: number) => {
+  const handleQuote = useCallback((_postId: number) => {
     // Quote functionality - implementation depends on PostCard
-    console.log('Quote post:', postId);
+    // No-op placeholder for future implementation
   }, []);
 
   /**
@@ -342,7 +342,7 @@ export const DiscussionThread: React.FC<DiscussionThreadProps> = ({ discussionId
               role="group"
               aria-label={`Replies to post ${post.id}`}
             >
-              {post.replies!.map((reply) => renderPost(reply, depth + 1))}
+              {post.replies.map((reply) => renderPost(reply, depth + 1))}
             </Box>
           )}
         </Box>
@@ -364,7 +364,7 @@ export const DiscussionThread: React.FC<DiscussionThreadProps> = ({ discussionId
    * The hook already provides this, but we'll use the posts array directly
    */
   const postTree = useMemo(() => {
-    if (!posts || posts.length === 0) return [];
+    if (!posts || posts.length === 0) {return [];}
     
     // posts array already contains root-level posts with nested replies
     // (including orphan posts that are treated as root-level)
@@ -384,7 +384,11 @@ export const DiscussionThread: React.FC<DiscussionThreadProps> = ({ discussionId
   }
 
   // Error state - 404 Not Found
-  if (isError && error && 'status' in error && (error as any).status === 404) {
+  const errorStatus = error && typeof error === 'object' && 'status' in error 
+    ? (error as { status: number }).status 
+    : undefined;
+  
+  if (isError && errorStatus === 404) {
     return (
       <Alert
         severity="error"
@@ -395,13 +399,13 @@ export const DiscussionThread: React.FC<DiscussionThreadProps> = ({ discussionId
           </Button>
         }
       >
-        Discussion not found. It may have been deleted or you don't have access to view it.
+        Discussion not found. It may have been deleted or you don&apos;t have access to view it.
       </Alert>
     );
   }
 
   // Error state - 403 Permission Denied
-  if (isError && error && 'status' in error && (error as any).status === 403) {
+  if (isError && errorStatus === 403) {
     return (
       <Alert
         severity="error"
@@ -412,7 +416,7 @@ export const DiscussionThread: React.FC<DiscussionThreadProps> = ({ discussionId
           </Button>
         }
       >
-        You don't have permission to view this discussion.
+        You don&apos;t have permission to view this discussion.
       </Alert>
     );
   }

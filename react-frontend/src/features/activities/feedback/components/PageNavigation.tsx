@@ -12,7 +12,7 @@
  * @module features/activities/feedback/components/PageNavigation
  */
 
-import React from 'react';
+import type React from 'react';
 import {
   Box,
   Button,
@@ -309,7 +309,7 @@ export const PageNavigation: React.FC<PageNavigationProps> = ({
             {Array.from({ length: totalPages }, (_, index) => (
               <Step key={index} completed={index < currentPage}>
                 <StepLabel>
-                  {pageLabels && pageLabels[index]
+                  {pageLabels?.[index]
                     ? pageLabels[index]
                     : `Page ${index + 1}`}
                 </StepLabel>

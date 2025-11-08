@@ -12,7 +12,8 @@
  * - TypeScript strict mode compliance
  */
 
-import React, { useState, MouseEvent } from 'react';
+import { useState } from 'react';
+import type { MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   IconButton,
@@ -79,7 +80,7 @@ export interface ChapterActionMenuProps {
  * 
  * Displays a menu with chapter management actions based on user permissions.
  */
-export const ChapterActionMenu: React.FC<ChapterActionMenuProps> = ({
+export function ChapterActionMenu({
   chapterId,
   bookId,
   isHidden,
@@ -90,7 +91,7 @@ export const ChapterActionMenu: React.FC<ChapterActionMenuProps> = ({
   isFirst = false,
   isLast = false,
   className,
-}) => {
+}: ChapterActionMenuProps): JSX.Element | null {
   const navigate = useNavigate();
   
   // Menu state
@@ -313,6 +314,7 @@ export const ChapterActionMenu: React.FC<ChapterActionMenuProps> = ({
             disabled={isDeleting}
             color="error"
             variant="contained"
+            // eslint-disable-next-line jsx-a11y/no-autofocus
             autoFocus
           >
             {isDeleting ? 'Deleting...' : 'Delete'}
@@ -321,6 +323,6 @@ export const ChapterActionMenu: React.FC<ChapterActionMenuProps> = ({
       </Dialog>
     </>
   );
-};
+}
 
 export default ChapterActionMenu;

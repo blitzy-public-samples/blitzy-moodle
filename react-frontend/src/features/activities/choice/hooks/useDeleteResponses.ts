@@ -114,15 +114,24 @@ async function deleteChoiceResponses(
     );
 
     return response.data;
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Transform API error into standardized format
-    if (error.response?.data?.error) {
+    if (
+      error &&
+      typeof error === 'object' &&
+      'response' in error &&
+      error.response &&
+      typeof error.response === 'object' &&
+      'data' in error.response
+    ) {
       const apiError = error.response.data as ApiErrorResponse;
       throw new Error(apiError.error.message || 'Failed to delete choice responses');
     }
     
     throw new Error(
-      error.message || 'An unexpected error occurred while deleting responses'
+      error instanceof Error
+        ? error.message
+        : 'An unexpected error occurred while deleting responses'
     );
   }
 }
@@ -200,7 +209,7 @@ export default function useDeleteResponses(): UseMutationResult<
       // Optimistically update the cache
       if (previousData) {
         queryClient.setQueryData<ChoiceResultsCache>(queryKey, (old) => {
-          if (!old) return old;
+          if (!old) {return old;}
 
           // Filter out deleted responses
           const filteredResponses = old.responses.filter(
@@ -212,13 +221,13 @@ export default function useDeleteResponses(): UseMutationResult<
           filteredResponses.forEach((response) => {
             optionCounts.set(
               response.optionid,
-              (optionCounts.get(response.optionid) || 0) + 1
+              (optionCounts.get(response.optionid) ?? 0) + 1
             );
           });
 
           const updatedOptions = old.options.map((option) => ({
             ...option,
-            count: optionCounts.get(option.id) || 0,
+            count: optionCounts.get(option.id) ?? 0,
           }));
 
           return {
@@ -243,23 +252,23 @@ export default function useDeleteResponses(): UseMutationResult<
       const deletedCount = data.data.deleted;
 
       // Invalidate the results cache to trigger a refetch
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ['choices', choiceId, 'results'],
       });
 
       // Also invalidate the main choice query in case metadata changed
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ['choices', choiceId],
       });
 
       // Invalidate the choice list if it exists
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ['choices'],
         exact: false,
       });
 
       // Show success notification
-      success(
+      void success(
         `Successfully deleted ${deletedCount} response${deletedCount !== 1 ? 's' : ''}`,
         { duration: 4000 }
       );
@@ -283,7 +292,7 @@ export default function useDeleteResponses(): UseMutationResult<
       // Show error notification with details
       const errorMessage = error.message || 'Failed to delete choice responses';
       
-      showError(errorMessage, { duration: 6000 });
+      void showError(errorMessage, { duration: 6000 });
 
       // Log error for debugging (in development)
       if (process.env.NODE_ENV === 'development') {
@@ -299,7 +308,7 @@ export default function useDeleteResponses(): UseMutationResult<
       const { choiceId } = variables;
 
       // Ensure we have the latest data
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ['choices', choiceId, 'results'],
       });
     },

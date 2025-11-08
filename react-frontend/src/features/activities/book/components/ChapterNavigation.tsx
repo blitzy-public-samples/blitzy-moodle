@@ -9,7 +9,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import React, { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, Button } from '@mui/material';
 import { NavigateBefore as NavigateBeforeIcon, NavigateNext as NavigateAfterIcon } from '@mui/icons-material';
@@ -47,12 +47,12 @@ interface ChapterNavigationProps {
  * @param {ChapterNavigationProps} props - Component props
  * @returns {JSX.Element} Navigation buttons container
  */
-export const ChapterNavigation: React.FC<ChapterNavigationProps> = ({
-  currentChapterId,
+export function ChapterNavigation({
+  currentChapterId: _currentChapterId,
   previousChapterId,
   nextChapterId,
   bookId,
-}) => {
+}: ChapterNavigationProps): JSX.Element {
   const navigate = useNavigate();
 
   /**
@@ -60,27 +60,27 @@ export const ChapterNavigation: React.FC<ChapterNavigationProps> = ({
    * 
    * @param {number} chapterId - Target chapter ID
    */
-  const navigateToChapter = (chapterId: number): void => {
+  const navigateToChapter = useCallback((chapterId: number): void => {
     navigate(`/activities/book/${bookId}/chapter/${chapterId}`);
-  };
+  }, [navigate, bookId]);
 
   /**
    * Handle previous chapter navigation
    */
-  const handlePrevious = (): void => {
+  const handlePrevious = useCallback((): void => {
     if (previousChapterId !== null) {
       navigateToChapter(previousChapterId);
     }
-  };
+  }, [previousChapterId, navigateToChapter]);
 
   /**
    * Handle next chapter navigation
    */
-  const handleNext = (): void => {
+  const handleNext = useCallback((): void => {
     if (nextChapterId !== null) {
       navigateToChapter(nextChapterId);
     }
-  };
+  }, [nextChapterId, navigateToChapter]);
 
   /**
    * Setup keyboard navigation shortcuts
@@ -116,7 +116,7 @@ export const ChapterNavigation: React.FC<ChapterNavigationProps> = ({
     return (): void => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [previousChapterId, nextChapterId, currentChapterId, bookId]); // Re-run effect when chapter IDs change
+  }, [previousChapterId, nextChapterId, handlePrevious, handleNext]); // Re-run effect when dependencies change
 
   return (
     <Box
@@ -168,6 +168,6 @@ export const ChapterNavigation: React.FC<ChapterNavigationProps> = ({
       </Button>
     </Box>
   );
-};
+}
 
 export default ChapterNavigation;
