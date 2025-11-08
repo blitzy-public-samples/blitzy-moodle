@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import type React from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box,
   Breadcrumbs,
@@ -137,7 +138,7 @@ interface WikiPage {
  * - Sticky navigation on scroll
  * - Keyboard shortcuts and accessibility features
  */
-const WikiNavigation: React.FC<WikiNavigationProps> = ({
+function WikiNavigation({
   wikiId,
   currentPage,
   onNavigate,
@@ -149,7 +150,7 @@ const WikiNavigation: React.FC<WikiNavigationProps> = ({
   recentPages = [],
   sticky = true,
   permissions = {},
-}) => {
+}: WikiNavigationProps) {
   const theme = useTheme();
   const isMobileScreen = useMediaQuery(theme.breakpoints.down('md'));
   const isMobile = isMobileProp ?? isMobileScreen;
@@ -164,7 +165,9 @@ const WikiNavigation: React.FC<WikiNavigationProps> = ({
 
   // Effect to handle sticky navigation on scroll
   useEffect(() => {
-    if (!sticky) return;
+    if (!sticky) {
+      return;
+    }
 
     const handleScroll = () => {
       const shouldBeSticky = window.scrollY > 100;
@@ -356,7 +359,7 @@ const WikiNavigation: React.FC<WikiNavigationProps> = ({
         icon: <ViewIcon />,
         label: 'View',
         action: 'view' as const,
-        show: permissions.canViewPermission !== false,
+        show: currentPage?.hasViewPermission !== false,
         shortcut: '',
       },
       {
@@ -417,7 +420,9 @@ const WikiNavigation: React.FC<WikiNavigationProps> = ({
 
   // Render search with autocomplete
   const renderSearch = () => {
-    if (!showSearch) return null;
+    if (!showSearch) {
+      return null;
+    }
 
     return (
       <Autocomplete
@@ -476,7 +481,9 @@ const WikiNavigation: React.FC<WikiNavigationProps> = ({
 
   // Render tag filters
   const renderTagFilters = () => {
-    if (allTags.length === 0) return null;
+    if (allTags.length === 0) {
+      return null;
+    }
 
     return (
       <Box sx={{ mb: 2 }}>
@@ -515,7 +522,9 @@ const WikiNavigation: React.FC<WikiNavigationProps> = ({
 
   // Render recently viewed pages
   const renderRecentPages = () => {
-    if (recentPages.length === 0) return null;
+    if (recentPages.length === 0) {
+      return null;
+    }
 
     return (
       <>
@@ -576,6 +585,134 @@ const WikiNavigation: React.FC<WikiNavigationProps> = ({
       </>
     );
   };
+
+  // Render mobile drawer
+  const renderMobileDrawer = () => (
+    <Drawer
+      anchor="left"
+      open={mobileDrawerOpen}
+      onClose={handleDrawerToggle}
+      ModalProps={{
+        keepMounted: true, // Better open performance on mobile
+      }}
+      aria-label="Wiki navigation drawer"
+    >
+      <Box
+        sx={{ width: 280, pt: 2 }}
+        role="navigation"
+        aria-label="Wiki mobile navigation"
+      >
+        <Box sx={{ px: 2, mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6">Wiki Navigation</Typography>
+          <IconButton onClick={handleDrawerToggle} aria-label="Close navigation drawer">
+            <CloseIcon />
+          </IconButton>
+        </Box>
+        <Divider />
+        <Box sx={{ px: 2, py: 2 }}>
+          {renderBreadcrumbs()}
+        </Box>
+        <Divider />
+        <Box sx={{ px: 2, py: 2 }}>
+          {renderSearch()}
+        </Box>
+        <Divider />
+        <Box sx={{ py: 1 }}>
+          <Typography variant="subtitle2" sx={{ px: 2, py: 1, color: 'text.secondary' }}>
+            Actions
+          </Typography>
+          {renderNavigationMenu()}
+        </Box>
+        {recentPages.length > 0 && (
+          <>
+            <Divider />
+            <Box sx={{ py: 1 }}>
+              <Typography variant="subtitle2" sx={{ px: 2, py: 1, color: 'text.secondary' }}>
+                Recent Pages
+              </Typography>
+              <List dense>
+                {recentPages.slice(0, 5).map(page => (
+                  <ListItem key={page.id} disablePadding>
+                    <ListItemButton
+                      onClick={() => {
+                        onNavigate({ type: 'page', pageId: page.id, pageTitle: page.title });
+                        handleDrawerToggle();
+                      }}
+                    >
+                      <ListItemIcon>
+                        {page.isBroken ? (
+                          <BrokenLinkIcon fontSize="small" color="error" />
+                        ) : (
+                          <LinkIcon fontSize="small" />
+                        )}
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={page.title}
+                        primaryTypographyProps={{ noWrap: true }}
+                      />
+                    </ListItemButton>
+                  </ListItem>
+                ))}
+              </List>
+            </Box>
+          </>
+        )}
+        <Divider />
+        <Box sx={{ px: 2, py: 2 }}>
+          {renderTagFilters()}
+        </Box>
+      </Box>
+    </Drawer>
+  );
+
+  // Render more actions menu (overflow menu)
+  const renderMoreMenu = () => (
+    <>
+      <Tooltip title="More options">
+        <IconButton
+          onClick={handleMenuOpen}
+          size="small"
+          aria-label="More navigation options"
+          aria-controls="more-menu"
+          aria-haspopup="true"
+        >
+          <MoreVertIcon />
+        </IconButton>
+      </Tooltip>
+      <Menu
+        id="more-menu"
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleMenuClose}
+        MenuListProps={{
+          'aria-label': 'Additional navigation options',
+        }}
+      >
+        {currentPage?.tags && currentPage.tags.length > 0 && (
+          <MenuItem disabled>
+            <Typography variant="caption" fontWeight="bold">
+              Page Tags
+            </Typography>
+          </MenuItem>
+        )}
+        {currentPage?.tags?.map(tag => (
+          <MenuItem key={tag} onClick={() => { handleTagClick(tag); handleMenuClose(); }}>
+            <ListItemIcon>
+              <LabelIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>{tag}</ListItemText>
+          </MenuItem>
+        ))}
+        {currentPage?.tags && currentPage.tags.length > 0 && <Divider />}
+        <MenuItem onClick={() => { handleActionClick('map'); }}>
+          <ListItemIcon>
+            <MapIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>View Wiki Map</ListItemText>
+        </MenuItem>
+      </Menu>
+    </>
+  );
 
   // Main render
   return (
@@ -780,134 +917,6 @@ const WikiNavigation: React.FC<WikiNavigationProps> = ({
       </Box>
     </>
   );
-};
+}
 
 export default WikiNavigation;
-
-  // Render mobile drawer
-  const renderMobileDrawer = () => (
-    <Drawer
-      anchor="left"
-      open={mobileDrawerOpen}
-      onClose={handleDrawerToggle}
-      ModalProps={{
-        keepMounted: true, // Better open performance on mobile
-      }}
-      aria-label="Wiki navigation drawer"
-    >
-      <Box
-        sx={{ width: 280, pt: 2 }}
-        role="navigation"
-        aria-label="Wiki mobile navigation"
-      >
-        <Box sx={{ px: 2, mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="h6">Wiki Navigation</Typography>
-          <IconButton onClick={handleDrawerToggle} aria-label="Close navigation drawer">
-            <CloseIcon />
-          </IconButton>
-        </Box>
-        <Divider />
-        <Box sx={{ px: 2, py: 2 }}>
-          {renderBreadcrumbs()}
-        </Box>
-        <Divider />
-        <Box sx={{ px: 2, py: 2 }}>
-          {renderSearch()}
-        </Box>
-        <Divider />
-        <Box sx={{ py: 1 }}>
-          <Typography variant="subtitle2" sx={{ px: 2, py: 1, color: 'text.secondary' }}>
-            Actions
-          </Typography>
-          {renderNavigationMenu()}
-        </Box>
-        {recentPages.length > 0 && (
-          <>
-            <Divider />
-            <Box sx={{ py: 1 }}>
-              <Typography variant="subtitle2" sx={{ px: 2, py: 1, color: 'text.secondary' }}>
-                Recent Pages
-              </Typography>
-              <List dense>
-                {recentPages.slice(0, 5).map(page => (
-                  <ListItem key={page.id} disablePadding>
-                    <ListItemButton
-                      onClick={() => {
-                        onNavigate({ type: 'page', pageId: page.id, pageTitle: page.title });
-                        handleDrawerToggle();
-                      }}
-                    >
-                      <ListItemIcon>
-                        {page.isBroken ? (
-                          <BrokenLinkIcon fontSize="small" color="error" />
-                        ) : (
-                          <LinkIcon fontSize="small" />
-                        )}
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={page.title}
-                        primaryTypographyProps={{ noWrap: true }}
-                      />
-                    </ListItemButton>
-                  </ListItem>
-                ))}
-              </List>
-            </Box>
-          </>
-        )}
-        <Divider />
-        <Box sx={{ px: 2, py: 2 }}>
-          {renderTagFilters()}
-        </Box>
-      </Box>
-    </Drawer>
-  );
-
-  // Render more actions menu (overflow menu)
-  const renderMoreMenu = () => (
-    <>
-      <Tooltip title="More options">
-        <IconButton
-          onClick={handleMenuOpen}
-          size="small"
-          aria-label="More navigation options"
-          aria-controls="more-menu"
-          aria-haspopup="true"
-        >
-          <MoreVertIcon />
-        </IconButton>
-      </Tooltip>
-      <Menu
-        id="more-menu"
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleMenuClose}
-        MenuListProps={{
-          'aria-label': 'Additional navigation options',
-        }}
-      >
-        {currentPage?.tags && currentPage.tags.length > 0 && (
-          <MenuItem disabled>
-            <Typography variant="caption" fontWeight="bold">
-              Page Tags
-            </Typography>
-          </MenuItem>
-        )}
-        {currentPage?.tags?.map(tag => (
-          <MenuItem key={tag} onClick={() => { handleTagClick(tag); handleMenuClose(); }}>
-            <ListItemIcon>
-              <LabelIcon fontSize="small" />
-            </ListItemIcon>
-            <ListItemText>{tag}</ListItemText>
-          </MenuItem>
-        ))}
-        {currentPage?.tags && currentPage.tags.length > 0 && <Divider />}
-        <MenuItem onClick={() => { handleActionClick('map'); }}>
-          <ListItemIcon>
-            <MapIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>View Wiki Map</ListItemText>
-        </MenuItem>
-      </Menu>
-    </>
-  );
