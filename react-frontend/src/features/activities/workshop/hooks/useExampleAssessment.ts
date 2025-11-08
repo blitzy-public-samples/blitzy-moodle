@@ -333,11 +333,17 @@ export function useCreateExampleAssessment(): UseMutationResult<
 export function useUpdateExampleAssessment(): UseMutationResult<
   ExampleAssessment,
   Error,
-  UpdateExampleAssessmentInput
+  UpdateExampleAssessmentInput,
+  { previousAssessment: ExampleAssessment | undefined }
 > {
   const queryClient = useQueryClient();
   
-  return useMutation<ExampleAssessment, Error, UpdateExampleAssessmentInput>({
+  return useMutation<
+    ExampleAssessment,
+    Error,
+    UpdateExampleAssessmentInput,
+    { previousAssessment: ExampleAssessment | undefined }
+  >({
     mutationFn: async (input: UpdateExampleAssessmentInput) => {
       const response = await apiClient.put<{
         success: boolean;
