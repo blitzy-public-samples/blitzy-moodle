@@ -43,7 +43,7 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
+import { apiClient } from '@/services/api/client';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -140,7 +140,7 @@ const checkLockStatus = async (pageId: number): Promise<{
     canOverride: boolean;
   };
 }> => {
-  const response = await axios.get(`/api/v1/wiki/${pageId}/lock`);
+  const response = await apiClient.get(`/api/v1/wiki/${pageId}/lock`);
   return response.data;
 };
 
@@ -161,7 +161,7 @@ const acquireLock = async (pageId: number, section?: string, force: boolean = fa
     };
   };
 }> => {
-  const response = await axios.post(`/api/v1/wiki/${pageId}/lock`, {
+  const response = await apiClient.post(`/api/v1/wiki/${pageId}/lock`, {
     pageId,
     section: section || null,
     force,
@@ -178,7 +178,7 @@ const sendHeartbeat = async (pageId: number): Promise<{
     lockMaintained: boolean;
   };
 }> => {
-  const response = await axios.put(`/api/v1/wiki/${pageId}/lock/heartbeat`);
+  const response = await apiClient.put(`/api/v1/wiki/${pageId}/lock/heartbeat`);
   return response.data;
 };
 
@@ -191,7 +191,7 @@ const releaseLock = async (pageId: number): Promise<{
     lockReleased: boolean;
   };
 }> => {
-  const response = await axios.delete(`/api/v1/wiki/${pageId}/lock`);
+  const response = await apiClient.delete(`/api/v1/wiki/${pageId}/lock`);
   return response.data;
 };
 
