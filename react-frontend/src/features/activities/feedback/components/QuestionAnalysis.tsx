@@ -36,18 +36,12 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  Label,
 } from 'recharts';
 
 /**
  * Type of feedback item/question
  */
 type FeedbackItemType = 'multichoice' | 'multichoicerated' | 'numeric' | 'textarea' | 'textfield' | 'info' | 'label';
-
-/**
- * Sub-type for multichoice items
- */
-type MultichoiceSubtype = 'r' | 'c' | 'd'; // radio, checkbox, dropdown
 
 /**
  * Analysis data for multichoice items
@@ -126,7 +120,7 @@ export const QuestionAnalysis: React.FC<QuestionAnalysisProps> = ({
   horizontalChart = true,
   showPieChart = false,
   chartHeight = 400,
-  isAnonymous = false,
+  isAnonymous: _isAnonymous = false,
 }) => {
   const theme = useTheme();
 
@@ -145,7 +139,10 @@ export const QuestionAnalysis: React.FC<QuestionAnalysisProps> = ({
 
     const colors: string[] = [];
     for (let i = 0; i < count; i++) {
-      colors.push(baseColors[i % baseColors.length]);
+      const color = baseColors[i % baseColors.length];
+      if (color) {
+        colors.push(color);
+      }
     }
     return colors;
   };
@@ -218,7 +215,7 @@ export const QuestionAnalysis: React.FC<QuestionAnalysisProps> = ({
             />
             <Tooltip
               content={({ active, payload }) => {
-                if (active && payload && payload.length > 0) {
+                if (active && payload && payload.length > 0 && payload[0]) {
                   const data = payload[0].payload;
                   return (
                     <Paper sx={{ p: 1.5 }}>
@@ -239,7 +236,7 @@ export const QuestionAnalysis: React.FC<QuestionAnalysisProps> = ({
             />
             <Legend />
             <Bar dataKey="value" name="Responses" label={{ position: 'right' }}>
-              {chartData.map((entry, index) => (
+              {chartData.map((_entry, index) => (
                 <Cell key={`cell-${index}`} fill={colors[index]} />
               ))}
             </Bar>
@@ -264,7 +261,7 @@ export const QuestionAnalysis: React.FC<QuestionAnalysisProps> = ({
             <YAxis />
             <Tooltip
               content={({ active, payload }) => {
-                if (active && payload && payload.length > 0) {
+                if (active && payload && payload.length > 0 && payload[0]) {
                   const data = payload[0].payload;
                   return (
                     <Paper sx={{ p: 1.5 }}>
@@ -285,7 +282,7 @@ export const QuestionAnalysis: React.FC<QuestionAnalysisProps> = ({
             />
             <Legend />
             <Bar dataKey="value" name="Responses">
-              {chartData.map((entry, index) => (
+              {chartData.map((_entry, index) => (
                 <Cell key={`cell-${index}`} fill={colors[index]} />
               ))}
             </Bar>
@@ -320,13 +317,13 @@ export const QuestionAnalysis: React.FC<QuestionAnalysisProps> = ({
             fill={theme.palette.primary.main}
             dataKey="value"
           >
-            {chartData.map((entry, index) => (
+            {chartData.map((_entry, index) => (
               <Cell key={`cell-${index}`} fill={colors[index]} />
             ))}
           </Pie>
           <Tooltip
             content={({ active, payload }) => {
-              if (active && payload && payload.length > 0) {
+              if (active && payload && payload.length > 0 && payload[0]) {
                 const data = payload[0];
                 return (
                   <Paper sx={{ p: 1.5 }}>
