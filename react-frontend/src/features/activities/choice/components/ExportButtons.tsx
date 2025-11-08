@@ -63,11 +63,11 @@ interface ExportButtonConfig {
  * @param props - Component props
  * @returns JSX element containing the export button group
  */
-const ExportButtons: React.FC<ExportButtonsProps> = ({
+function ExportButtons({
   onExport,
   loading,
   disabled = false,
-}) => {
+}: ExportButtonsProps): JSX.Element {
   // Track which button was clicked to show loading state on correct button
   const [activeFormat, setActiveFormat] = useState<ExportFormat | null>(null);
 
@@ -178,6 +178,6 @@ const ExportButtons: React.FC<ExportButtonsProps> = ({
       </ButtonGroup>
     </Box>
   );
-};
+}
 
 export default ExportButtons;
