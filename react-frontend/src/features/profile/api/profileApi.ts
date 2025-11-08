@@ -246,6 +246,10 @@ const transformProfileResponse = (data: RawProfileResponse): User => {
   return {
     ...data,
     interests: transformInterests(data.interests),
+    calendartype: data.calendartype as User['calendartype'],
+    customfields: data.customfields as User['customfields'],
+    preferences: data.preferences as User['preferences'],
+    roles: data.roles as User['roles'],
   };
 };
 

@@ -172,7 +172,7 @@ export function ProfileEditForm({
       // Handle validation errors
       // Check if error has field-specific details
       if (error && typeof error === 'object' && 'details' in error) {
-        const apiError = error as ApiError;
+        const apiError = error as unknown as ApiError;
         const {details} = apiError;
         if (details && typeof details === 'object') {
           Object.entries(details).forEach(([field, message]) => {

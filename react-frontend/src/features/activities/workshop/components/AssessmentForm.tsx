@@ -107,7 +107,6 @@ interface GradingStrategyRendererProps {
   control: any;
   errors: any;
   isEditable: boolean;
-  setValue: (name: string, value: any) => void;
 }
 
 /**
@@ -120,14 +119,13 @@ const GradingStrategyRenderer: React.FC<GradingStrategyRendererProps> = ({
   control,
   errors,
   isEditable,
-  setValue,
 }) => {
   /**
    * Render accumulative strategy fields
    * Shows text fields for each dimension with min/max validation
    */
   const renderAccumulativeStrategy = () => {
-    return dimensions.map((dimension, index) => (
+    return dimensions.map((dimension) => (
       <Box key={dimension.id} sx={{ mb: 3 }}>
         <Typography variant="subtitle2" gutterBottom>
           {dimension.description}
@@ -389,8 +387,6 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({
     control,
     handleSubmit,
     formState: { errors, isSubmitting },
-    setValue,
-    watch,
     reset,
   } = useForm<AssessmentFormData>({
     defaultValues: {
@@ -404,9 +400,6 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({
   const [instructionsExpanded, setInstructionsExpanded] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [submitAction, setSubmitAction] = useState<'draft' | 'close' | 'next'>('draft');
-
-  // Watch feedback author field for character counting
-  const feedbackAuthorValue = watch('feedbackauthor');
 
   /**
    * Initialize form with existing assessment data
@@ -739,7 +732,6 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({
               control={control}
               errors={errors}
               isEditable={isEditable}
-              setValue={setValue}
             />
           )}
         </Box>

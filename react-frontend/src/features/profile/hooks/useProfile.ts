@@ -483,7 +483,7 @@ export function useUpdateProfile(
     retryDelay = (attemptIndex: number) => Math.min(1000 * Math.pow(2, attemptIndex), 30000),
   } = options;
 
-  return useMutation<User, Error, UpdateProfilePayload>({
+  return useMutation<User, Error, UpdateProfilePayload, UpdateProfileContext>({
     mutationFn: (data: UpdateProfilePayload) => {
       // Extract userid and convert payload to API format
       const { userid, ...internalData } = data;
@@ -525,7 +525,7 @@ export function useUpdateProfile(
     },
 
     // Rollback optimistic update on error
-    onError: (error: Error, variables: UpdateProfilePayload, context?: UpdateProfileContext) => {
+    onError: (error: Error, variables: UpdateProfilePayload, context: UpdateProfileContext | undefined) => {
       if (context?.previousProfile && context?.userId) {
         const queryKey = profileKeys.detail(context.userId);
         queryClient.setQueryData(queryKey, context.previousProfile);

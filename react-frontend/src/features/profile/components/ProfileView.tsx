@@ -164,9 +164,13 @@ export function ProfileView({
     if (!user?.interests) {
       return [];
     }
+    // Handle both string and array formats
+    if (Array.isArray(user.interests)) {
+      return user.interests.filter(Boolean);
+    }
     return user.interests
       .split(',')
-      .map((i) => i.trim())
+      .map((interest: string) => interest.trim())
       .filter(Boolean);
   };
 

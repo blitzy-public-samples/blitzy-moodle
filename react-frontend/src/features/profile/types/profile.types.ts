@@ -198,8 +198,8 @@ export interface User {
   /** ID number (arbitrary institution identifier) */
   idnumber?: string;
 
-  /** User interests (comma-separated tags) */
-  interests?: string;
+  /** User interests (comma-separated tags or array) */
+  interests?: string | string[];
 
   /** Timestamp of first site access (0 if never) */
   firstaccess?: number;
@@ -403,8 +403,8 @@ export interface UpdateProfilePayload {
   /** Theme name */
   theme?: string;
 
-  /** User interests (comma-separated tags) */
-  interests?: string;
+  /** User interests (comma-separated tags or array) */
+  interests?: string | string[];
 
   /** Image alt text for profile picture */
   imagealt?: string;
