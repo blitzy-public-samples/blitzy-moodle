@@ -275,7 +275,7 @@ const AttemptsTable: React.FC<AttemptsTableProps> = ({
     setSortModel(newModel);
     
     // Announce sort change to screen readers
-    if (newModel.length > 0) {
+    if (newModel.length > 0 && newModel[0]) {
       const { field, sort } = newModel[0];
       const announcement = `Table sorted by ${field} in ${sort === 'asc' ? 'ascending' : 'descending'} order`;
       const ariaLive = document.createElement('div');
