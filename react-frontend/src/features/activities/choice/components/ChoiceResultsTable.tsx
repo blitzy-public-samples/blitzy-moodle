@@ -6,7 +6,6 @@ import {
   GridToolbarContainer,
 } from '@mui/x-data-grid';
 import {
-  Box,
   Button,
   Typography,
   Paper,
