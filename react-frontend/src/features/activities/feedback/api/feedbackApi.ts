@@ -169,7 +169,7 @@ export interface QuestionAnalysis {
  * @throws Error if feedback not found or access denied
  */
 export async function getFeedback(id: number): Promise<ApiResponse<Feedback>> {
-  const response = await apiClient.get<ApiResponse<Feedback>>(`/feedback/${id}`);
+  const response = await apiClient.get<ApiResponse<Feedback>>(`feedback/${id}`);
   return response.data;
 }
 
@@ -192,7 +192,7 @@ export async function submitFeedbackResponse(
   responses: Record<number, string | number>
 ): Promise<ApiResponse<FeedbackSubmissionResult>> {
   const response = await apiClient.post<ApiResponse<FeedbackSubmissionResult>>(
-    `/feedback/${feedbackId}/submit`,
+    `feedback/${feedbackId}/submit`,
     responses
   );
   return response.data;
@@ -217,7 +217,7 @@ export async function saveProgress(
   responses: Record<number, string | number>
 ): Promise<ApiResponse<SaveProgressResult>> {
   const response = await apiClient.post<ApiResponse<SaveProgressResult>>(
-    `/feedback/${feedbackId}/save-progress`,
+    `feedback/${feedbackId}/save-progress`,
     { responses }
   );
   return response.data;
@@ -242,7 +242,7 @@ export async function getFeedbackAnalysis(
   options?: AnalysisOptions
 ): Promise<ApiResponse<FeedbackAnalysis>> {
   const response = await apiClient.get<ApiResponse<FeedbackAnalysis>>(
-    `/feedback/${feedbackId}/analysis`,
+    `feedback/${feedbackId}/analysis`,
     { params: options }
   );
   return response.data;
@@ -264,7 +264,7 @@ export async function getFeedbackStatus(
   feedbackId: number
 ): Promise<ApiResponse<FeedbackStatus>> {
   const response = await apiClient.get<ApiResponse<FeedbackStatus>>(
-    `/feedback/${feedbackId}/status`
+    `feedback/${feedbackId}/status`
   );
   return response.data;
 }
@@ -285,7 +285,7 @@ export async function getFeedbackQuestions(
   feedbackId: number
 ): Promise<ApiResponse<FeedbackItem[]>> {
   const response = await apiClient.get<ApiResponse<FeedbackItem[]>>(
-    `/feedback/${feedbackId}/questions`
+    `feedback/${feedbackId}/questions`
   );
   return response.data;
 }

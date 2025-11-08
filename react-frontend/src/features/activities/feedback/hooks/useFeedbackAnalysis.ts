@@ -161,8 +161,8 @@ interface UseFeedbackAnalysisOptions {
   enabled?: boolean;
   /** Custom stale time in milliseconds (default: 5 minutes) */
   staleTime?: number;
-  /** Custom cache time in milliseconds (default: 10 minutes) */
-  cacheTime?: number;
+  /** Custom garbage collection time in milliseconds (default: 10 minutes) */
+  gcTime?: number;
   /** Refetch on window focus */
   refetchOnWindowFocus?: boolean;
   /** Refetch interval in milliseconds (null = no interval) */
@@ -189,8 +189,10 @@ const fetchFeedbackAnalysis = async (
     }
 
     // Make API request
+    // Note: apiClient already has baseURL set to /api/v1 or http://localhost:8000/api/v1
+    // Use relative path (no leading slash) so Axios appends it to baseURL correctly
     const response = await apiClient.get<FeedbackAnalysisResponse>(
-      `/api/v1/feedback/${feedbackId}/analysis`,
+      `feedback/${feedbackId}/analysis`,
       { params }
     );
 
@@ -294,7 +296,7 @@ const fetchFeedbackAnalysis = async (
  * const { data, refetch } = useFeedbackAnalysis({
  *   feedbackId: 42,
  *   staleTime: 2 * 60 * 1000, // 2 minutes
- *   cacheTime: 5 * 60 * 1000, // 5 minutes
+ *   gcTime: 5 * 60 * 1000, // 5 minutes (garbage collection time)
  *   refetchOnWindowFocus: true,
  *   refetchInterval: 30000 // Refetch every 30 seconds
  * });
@@ -313,7 +315,7 @@ export function useFeedbackAnalysis(
     groupId = 0,
     enabled = true,
     staleTime = 5 * 60 * 1000, // 5 minutes default
-    cacheTime = 10 * 60 * 1000, // 10 minutes default
+    gcTime = 10 * 60 * 1000, // 10 minutes default
     refetchOnWindowFocus = false,
     refetchInterval = false
   } = options;
@@ -328,16 +330,16 @@ export function useFeedbackAnalysis(
     throw new Error('groupId must be non-negative (0 for all groups)');
   }
 
-  return useQuery<FeedbackAnalysisData, Error>({
+  return useQuery<FeedbackAnalysisData, Error, FeedbackAnalysisData, readonly [string, number, string, number]>({
     // Query key includes feedbackId and groupId for proper caching
-    queryKey: ['feedback', feedbackId, 'analysis', groupId],
+    queryKey: ['feedback', feedbackId, 'analysis', groupId] as const,
 
     // Query function
     queryFn: () => fetchFeedbackAnalysis(feedbackId, groupId),
 
     // Caching configuration
     staleTime,
-    cacheTime,
+    gcTime,
 
     // Refetch configuration
     enabled,
@@ -360,11 +362,11 @@ export function useFeedbackAnalysis(
     // Retry delay - exponential backoff
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
 
-    // Keep previous data while refetching (prevents UI flickering)
-    keepPreviousData: true,
+    // Note: keepPreviousData was renamed to placeholderData in React Query v5
+    // Using default behavior which is similar
 
     // Mark data as stale on error but keep it in cache
-    useErrorBoundary: false,
+    throwOnError: false,
 
     // Meta information for debugging
     meta: {

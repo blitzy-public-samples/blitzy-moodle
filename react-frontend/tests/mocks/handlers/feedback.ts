@@ -17,31 +17,26 @@
  */
 
 import { http, HttpResponse } from 'msw';
+import { FeedbackQuestionType } from '../../../src/features/activities/feedback/types/feedback.types';
+import type {
+  Feedback,
+  FeedbackItem,
+  FeedbackAnalysis
+} from '../../../src/features/activities/feedback/types/feedback.types';
 
 // ============================================================================
 // TypeScript Type Definitions
 // ============================================================================
 
-interface Feedback {
-  id: number;
-  course: number;
-  name: string;
-  intro: string;
-  introformat: number;
-  anonymous: number; // 2 = no anonymous, 1 = anonymous
-  email_notification: number;
-  multiple_submit: number;
-  autonumbering: number;
-  site_after_submit: string;
-  page_after_submit: string;
-  page_after_submitformat: number;
-  publish_stats: number;
-  timeopen: number;
-  timeclose: number;
-  timemodified: number;
-  completionsubmit: number;
+// Extended Feedback type with mock-specific permission flags
+interface FeedbackMock extends Feedback {
+  canView?: boolean; // Permission to view feedback
+  canViewAnalysis?: boolean; // Permission to view analysis/results
+  canSubmit?: boolean; // Permission to submit feedback
+  hasSubmitted?: boolean; // Whether user has already submitted
 }
 
+// Mock representation of FeedbackItem with string type instead of enum
 interface FeedbackQuestion {
   id: number;
   feedback: number;
@@ -58,6 +53,7 @@ interface FeedbackQuestion {
   options: string;
 }
 
+// Mock representation of FeedbackResponse
 interface FeedbackResponse {
   id: number;
   feedback: number;
@@ -67,39 +63,11 @@ interface FeedbackResponse {
   answers: Record<number, any>;
 }
 
-interface FeedbackAnalysis {
-  feedbackId: number;
-  totalResponses: number;
-  completionRate: number;
-  questions: Array<{
-    itemId: number;
-    question: string;
-    type: string;
-    responses: Array<{
-      value: string;
-      count: number;
-      percentage: number;
-    }>;
-    average?: number;
-    mode?: number;
-    distribution?: {
-      min: number;
-      max: number;
-      median: number;
-    };
-    percentage?: number;
-  }>;
-  courseBreakdown?: Record<number, {
-    totalResponses: number;
-    completionRate: number;
-  }>;
-}
-
 // ============================================================================
 // Mock Data
 // ============================================================================
 
-const MOCK_FEEDBACK: Record<number, Feedback> = {
+const MOCK_FEEDBACK: Record<number, FeedbackMock> = {
   1: {
     id: 1,
     course: 10,
@@ -117,7 +85,11 @@ const MOCK_FEEDBACK: Record<number, Feedback> = {
     timeopen: 0,
     timeclose: 0,
     timemodified: 1640000000,
-    completionsubmit: 1
+    completionsubmit: 1,
+    canView: true,
+    canViewAnalysis: true,
+    canSubmit: true,
+    hasSubmitted: false
   },
   2: {
     id: 2,
@@ -136,7 +108,11 @@ const MOCK_FEEDBACK: Record<number, Feedback> = {
     timeopen: 1640000000,
     timeclose: 1672536000,
     timemodified: 1640000000,
-    completionsubmit: 1
+    completionsubmit: 1,
+    canView: true,
+    canViewAnalysis: true,
+    canSubmit: true,
+    hasSubmitted: false
   }
 };
 
@@ -227,11 +203,15 @@ const MOCK_ANALYSIS: Record<number, FeedbackAnalysis> = {
     feedbackId: 1,
     totalResponses: 45,
     completionRate: 90.0,
-    questions: [
+    meetAnonymousThreshold: true,
+    items: [
       {
         itemId: 1,
         question: 'How would you rate this course?',
-        type: 'multichoice',
+        type: FeedbackQuestionType.MULTICHOICE,
+        position: 1,
+        required: true,
+        totalResponses: 45,
         responses: [
           { value: '5', count: 20, percentage: 44.4 },
           { value: '4', count: 15, percentage: 33.3 },
@@ -239,20 +219,82 @@ const MOCK_ANALYSIS: Record<number, FeedbackAnalysis> = {
           { value: '2', count: 2, percentage: 4.4 },
           { value: '1', count: 0, percentage: 0 }
         ],
-        average: 4.2,
-        mode: 5
+        statistics: {
+          mean: 4.2,
+          median: 5,
+          mode: 5,
+          standardDeviation: 0.85,
+          variance: 0.72
+        }
       },
       {
         itemId: 3,
         question: 'Would you recommend this course?',
-        type: 'multichoice',
+        type: FeedbackQuestionType.MULTICHOICE,
+        position: 3,
+        required: false,
+        totalResponses: 45,
         responses: [
           { value: 'Yes', count: 42, percentage: 93.3 },
           { value: 'No', count: 3, percentage: 6.7 }
         ],
-        percentage: 93.3
+        statistics: {
+          mean: 0.93,
+          median: 1,
+          mode: 1,
+          standardDeviation: 0.25,
+          variance: 0.06
+        }
       }
-    ]
+    ],
+    statistics: {
+      totalResponses: 45,
+      completionRate: 90.0,
+      averageCompletionTime: 240,
+      responsesByCourse: [
+        { courseId: 1, courseName: 'Introduction to Computer Science', responseCount: 45 }
+      ],
+      responsesByGroup: [
+        { groupId: 1, groupName: 'Group A', responseCount: 25 },
+        { groupId: 2, groupName: 'Group B', responseCount: 20 }
+      ]
+    }
+  },
+  2: {
+    feedbackId: 2,
+    totalResponses: 30,
+    completionRate: 75.0,
+    meetAnonymousThreshold: false,
+    groupId: 1,
+    items: [
+      {
+        itemId: 5,
+        question: 'What did you learn from this module?',
+        type: FeedbackQuestionType.TEXTAREA,
+        position: 1,
+        required: true,
+        totalResponses: 30,
+        responses: [],
+        statistics: {
+          mean: 0,
+          median: 0,
+          mode: 0,
+          standardDeviation: 0,
+          variance: 0
+        }
+      }
+    ],
+    statistics: {
+      totalResponses: 30,
+      completionRate: 75.0,
+      averageCompletionTime: 180,
+      responsesByCourse: [
+        { courseId: 1, courseName: 'Introduction to Computer Science', responseCount: 30 }
+      ],
+      responsesByGroup: [
+        { groupId: 1, groupName: 'Group A', responseCount: 30 }
+      ]
+    }
   }
 };
 
