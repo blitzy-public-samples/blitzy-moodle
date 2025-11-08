@@ -414,3 +414,48 @@ export interface SaveWikiPageResult {
   /** Optional error message if success is false */
   error?: string;
 }
+
+/**
+ * Request parameters for saving a wiki page
+ * 
+ * Used by the wiki edit hook to send save requests to the API.
+ */
+export interface WikiSaveRequest {
+  /** Page content to save */
+  content: string;
+
+  /** Content format (HTML, Markdown, etc.) */
+  contentFormat: WikiFormat;
+}
+
+/**
+ * Response from wiki page preview operation
+ * 
+ * Contains rendered HTML and any parser warnings.
+ */
+export interface WikiPreviewResponse {
+  /** Rendered HTML content */
+  html: string;
+
+  /** Whether preview rendering was successful */
+  success: boolean;
+
+  /** Optional warning messages from parser */
+  warnings?: string[];
+}
+
+/**
+ * Validation error for wiki content
+ * 
+ * Describes a validation failure with field, message, and error code.
+ */
+export interface WikiValidationError {
+  /** Field that failed validation */
+  field: string;
+
+  /** Human-readable error message */
+  message: string;
+
+  /** Error code for programmatic handling */
+  code: string;
+}

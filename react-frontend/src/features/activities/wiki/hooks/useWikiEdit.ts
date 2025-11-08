@@ -15,10 +15,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { useDebounce } from '@/hooks/useDebounce';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
+import useDebounce from '@/hooks/useDebounce';
+import useLocalStorage from '@/hooks/useLocalStorage';
 import { useWikiLock } from './useWikiLock';
-import { wikiApi } from '../api/wikiApi';
+import { saveWikiPage, previewWikiPage } from '../api/wikiApi';
 import type { 
   WikiFormat, 
   WikiPage, 
@@ -194,11 +194,12 @@ export function useWikiEdit({
    * 
    * @returns Validation result with errors if any
    */
-  const validate = useCallback((): ValidationResult => {
+  const validate = useCallback((content?: string): ValidationResult => {
     const errors: WikiValidationError[] = [];
+    const contentToValidate = content !== undefined ? content : currentContent;
     
     // Check if content is empty
-    const trimmedContent = currentContent.trim();
+    const trimmedContent = contentToValidate.trim();
     if (trimmedContent.length < CONTENT_LIMITS.MIN_LENGTH) {
       errors.push({
         field: 'content',
@@ -208,7 +209,7 @@ export function useWikiEdit({
     }
     
     // Check content length
-    if (currentContent.length > CONTENT_LIMITS.MAX_LENGTH) {
+    if (contentToValidate.length > CONTENT_LIMITS.MAX_LENGTH) {
       errors.push({
         field: 'content',
         message: `Content exceeds maximum length of ${CONTENT_LIMITS.MAX_LENGTH} characters`,
@@ -239,7 +240,7 @@ export function useWikiEdit({
    */
   const saveMutation = useMutation({
     mutationFn: async (data: WikiSaveRequest) => {
-      return wikiApi.saveWikiPage(pageId, data);
+      return saveWikiPage(pageId, data);
     },
     onMutate: async (data) => {
       // Cancel any outgoing refetches
@@ -260,13 +261,13 @@ export function useWikiEdit({
       
       return { previousPage };
     },
-    onError: (error, variables, context) => {
+    onError: (_error, _variables, context) => {
       // Rollback on error
       if (context?.previousPage) {
         queryClient.setQueryData(['wiki', 'page', pageId], context.previousPage);
       }
     },
-    onSuccess: (data) => {
+    onSuccess: (_data) => {
       // Update state on successful save
       setLastSaved(new Date());
       setHasUnsavedChanges(false);
@@ -292,7 +293,7 @@ export function useWikiEdit({
    */
   const previewMutation = useMutation({
     mutationFn: async () => {
-      return wikiApi.previewWikiPage(pageId, {
+      return previewWikiPage(pageId, {
         content: currentContent,
         contentFormat,
       });
