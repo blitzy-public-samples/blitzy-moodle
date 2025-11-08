@@ -117,8 +117,8 @@ const ChapterView: React.FC<ChapterViewProps> = ({
   nextChapterId,
   canEdit,
   canViewHidden,
-  courseModuleId,
-  allChapters,
+  courseModuleId: _courseModuleId, // Received but not used in current implementation
+  allChapters: _allChapters, // Received but not used in current implementation
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -135,6 +135,33 @@ const ChapterView: React.FC<ChapterViewProps> = ({
    */
   const containerPadding = isMobile ? 2 : isTablet ? 3 : 4;
   const contentMarginBottom = isMobile ? 3 : 4;
+
+  /**
+   * Handle chapter deletion
+   * TODO: Implement API call to delete chapter
+   */
+  const handleDelete = async (chapterId: number): Promise<void> => {
+    console.warn(`Delete chapter ${chapterId} - API implementation needed`);
+    // Future implementation: await deleteChapter(book.id, chapterId);
+  };
+
+  /**
+   * Handle chapter visibility toggle
+   * TODO: Implement API call to toggle chapter visibility
+   */
+  const handleToggleVisibility = async (chapterId: number, currentHiddenState: boolean): Promise<void> => {
+    console.warn(`Toggle visibility for chapter ${chapterId} (currently ${currentHiddenState ? 'hidden' : 'visible'}) - API implementation needed`);
+    // Future implementation: await updateChapterVisibility(book.id, chapterId, !currentHiddenState);
+  };
+
+  /**
+   * Handle chapter movement (up/down in order)
+   * TODO: Implement API call to reorder chapters
+   */
+  const handleMove = async (chapterId: number, direction: 'up' | 'down'): Promise<void> => {
+    console.warn(`Move chapter ${chapterId} ${direction} - API implementation needed`);
+    // Future implementation: await moveChapter(book.id, chapterId, direction);
+  };
 
   return (
     <Paper
@@ -170,10 +197,11 @@ const ChapterView: React.FC<ChapterViewProps> = ({
             <ChapterActionMenu
               chapterId={chapter.id}
               bookId={book.id}
-              courseModuleId={courseModuleId}
               canEdit={canEdit}
               isHidden={chapter.hidden}
-              allChapters={allChapters}
+              onDelete={handleDelete}
+              onToggleVisibility={handleToggleVisibility}
+              onMove={handleMove}
             />
           </Box>
         )}
@@ -210,9 +238,6 @@ const ChapterView: React.FC<ChapterViewProps> = ({
             previousChapterId={previousChapterId}
             nextChapterId={nextChapterId}
             bookId={book.id}
-            courseModuleId={courseModuleId}
-            allChapters={allChapters}
-            isMobile={isMobile}
           />
         </Box>
       </Box>

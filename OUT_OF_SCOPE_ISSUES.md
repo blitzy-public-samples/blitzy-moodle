@@ -111,3 +111,40 @@ The failure appears to have been a transient issue, possibly related to:
 - Full project test suite clean with 0 failures
 - ResultsDetail.tsx compiles successfully with TypeScript strict mode
 
+
+---
+
+## TypeScript Compilation Errors in Profile Module
+**Documented by**: ChapterView.tsx validator
+**Date**: Session continuation
+**Module**: Profile
+
+### Issue 1: Type Mismatch in profileApi.ts
+**File**: `src/features/profile/api/profileApi.ts`
+**Line**: 248:5
+**Error**: `TS2322: Type 'string[] | undefined' is not assignable to type 'string | undefined'. Type 'string[]' is not assignable to type 'string'.`
+
+**Reason Out of Scope**: This file is in the profile module, not the book module. My assigned file is `ChapterView.tsx` in the book module.
+
+**Recommendation**: The profile module developer should fix the type mismatch. The API likely returns an array of strings but the type signature expects a single string or undefined. Either update the type definition or handle the array appropriately.
+
+### Issue 2: Type Conversion Error in ProfileEditForm.tsx
+**File**: `src/features/profile/components/ProfileEditForm.tsx`
+**Line**: 175:26
+**Error**: `TS2352: Conversion of type 'Error & Record<"details", unknown>' to type 'ApiError' may be a mistake because neither type sufficiently overlaps with the other. Property 'code' is missing in type 'Error & Record<"details", unknown>' but required in type 'ApiError'.`
+
+**Reason Out of Scope**: This file is in the profile module, not the book module. My assigned file is `ChapterView.tsx` in the book module.
+
+**Recommendation**: The profile module developer should add the `code` property to the error object or use proper type guards to safely convert the error type to ApiError.
+
+### Issue 3: Mutation Context Type Error in useProfile.ts
+**File**: `src/features/profile/hooks/useProfile.ts`
+**Line**: 528:5
+**Error**: `TS2322: Type '(error: Error, variables: UpdateProfilePayload, context?: UpdateProfileContext) => void' is not assignable to type '(error: Error, variables: UpdateProfilePayload, onMutateResult: unknown, context: MutationFunctionContext) => unknown'. Types of parameters 'context' and 'onMutateResult' are incompatible. Type 'unknown' is not assignable to type 'UpdateProfileContext | undefined'.`
+
+**Reason Out of Scope**: This file is in the profile module, not the book module. My assigned file is `ChapterView.tsx` in the book module.
+
+**Recommendation**: The profile module developer should update the mutation callback function signature to match React Query's expected type signature, ensuring the onMutateResult parameter is properly typed.
+
+**Impact**: These errors prevent the entire project from passing TypeScript compilation. However, they do not affect the book module's functionality, which compiles successfully with zero errors.
+
