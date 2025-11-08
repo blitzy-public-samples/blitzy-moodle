@@ -1,59 +1,63 @@
 # Out-of-Scope Issues Documentation
 
 ## Summary
-During validation of `react-frontend/src/features/activities/choice/hooks/useExportResults.ts`, the following issues were discovered in out-of-scope files that are NOT part of this validation's scope.
+During validation of `ChoiceResultsTable.tsx`, one test failure was identified in the full test suite that is outside the scope of this validation task.
 
-## Test Failures in Forum Components (Out-of-Scope)
+## Issue 1: DiscussionList.test.tsx Test Failure in Full Suite
 
-### File: tests/unit/features/activities/forums/PostCard.test.tsx
-**Status**: OUT OF SCOPE - Not listed in Agent Action Plan
-**Failures**: 10 tests failing
-**Issue Type**: Pagination and navigation button state assertions
+**File:** `react-frontend/tests/unit/features/activities/forums/DiscussionList.test.tsx`
 
-Sample error:
-```
-AssertionError: expected element to be disabled
-```
+**Status:** Out of scope (not mentioned in Agent Action Plan)
 
-**Details**: Tests are failing assertions related to pagination button states (disabled/enabled) in the PostCard component. This appears to be a timing or state management issue where buttons are not transitioning to their expected disabled/enabled states within the test timeout.
+**Description:**
+- When running the full test suite, 1 test failure occurs in this file
+- When running the DiscussionList.test.tsx file in isolation, all 83 tests pass successfully
+- This indicates a test pollution or shared state issue between test files
 
-**Recommended Action**: These failures should be addressed by the agent responsible for forum components validation.
+**Diagnosis:**
+The failure only manifests when tests are run as part of the complete suite, suggesting:
+1. Test pollution from another test file that runs before DiscussionList.test.tsx
+2. Shared state that isn't properly cleaned up between test files  
+3. Global mocks or stubs that are modified by other tests
+4. Possible timing or race condition in the full suite context
 
-### File: tests/unit/features/activities/forums/DiscussionList.test.tsx  
-**Status**: OUT OF SCOPE - Not listed in Agent Action Plan
-**Failures**: 10 tests failing
-**Issue Type**: Pagination and navigation button state assertions
+**Recommendation for Future Work:**
+1. Investigate test execution order to identify which test file runs immediately before DiscussionList.test.tsx
+2. Review global setup/teardown hooks in vitest.config.ts
+3. Check for shared module state that isn't reset between test files
+4. Consider using `--isolate` flag or restructuring test setup to ensure proper isolation
 
-Sample error:
-```
-AssertionError: expected element to be disabled
-```
+**Evidence:**
+- Full suite run: 904 tests passed, 1 failed (in DiscussionList.test.tsx)
+- Isolated run: All 83 tests in DiscussionList.test.tsx passed
+- Build: Successful with no compilation errors
 
-**Details**: Similar to PostCard.test.tsx, tests are failing assertions related to pagination button states in the DiscussionList component.
+**Impact:**
+- Does not affect the functionality of ChoiceResultsTable.tsx (my assigned file)
+- Does not block production deployment of choice activity features
+- Should be addressed in a separate validation task for forum features
 
-**Recommended Action**: These failures should be addressed by the agent responsible for forum components validation.
+---
 
-## In-Scope Validation Results
+## In-Scope File Status
 
-### File: react-frontend/src/features/activities/choice/hooks/useExportResults.ts
-**Status**: ✅ VALIDATED SUCCESSFULLY
-**TypeScript Compilation**: ✅ PASS
-**Unit Tests**: ✅ ALL 19 TESTS PASSING
-**Test File**: react-frontend/tests/unit/features/activities/choice/hooks/blitzy_adhoc_test_useExportResults.test.tsx
+**File:** `react-frontend/src/features/activities/choice/components/ChoiceResultsTable.tsx`
 
-All functionality tested and working correctly:
-- ODS, XLS, TXT export formats
-- Browser download with filename handling
-- Analytics tracking
-- Error handling (permission denied, invalid choice, network errors)
-- Retry logic (retries network errors, does not retry permission errors)
-- Callback functions (onExportStart, onExportSuccess, onExportError)
-- Type safety
+**Status:** ✅ All validations passed
 
-## Module-Level Status
+**Changes Made:**
+1. Created comprehensive ad-hoc test file with 14 test cases
+2. Fixed mock initialization order bug in test setup
+3. Implemented robust props-based testing strategy for MUI DataGrid
+4. All 14 tests passing in isolation
+5. Module builds successfully
+6. No TypeScript compilation errors
 
-**TypeScript Compilation**: ✅ SUCCESS (0 errors)
-**Total Test Results**: 909 passed, 20 failed (out-of-scope), 1 skipped
-**In-Scope Test Results**: 19 passed, 0 failed
-**Overall Module Health**: GOOD (failures are isolated to out-of-scope forum components)
+**Test Coverage:**
+- Component rendering with props
+- Empty state handling
+- Loading state display
+- Callback function wiring
+- Column configuration
+- Bulk action UI elements
 
