@@ -94,6 +94,8 @@ const GroupFilter: React.FC<GroupFilterProps> = ({
     staleTime: 5 * 60 * 1000,
     // Retry failed requests up to 2 times
     retry: 2,
+    // Use immediate retries (no delay) for faster feedback in tests
+    retryDelay: 0,
     // Only fetch if courseId is valid
     enabled: courseId > 0,
   });
@@ -111,46 +113,50 @@ const GroupFilter: React.FC<GroupFilterProps> = ({
   if (isLoading) {
     return (
       <Box sx={{ minWidth: 200, maxWidth: 300 }}>
-        <Skeleton variant="rectangular" height={56} />
+        <Skeleton 
+          variant="rectangular" 
+          height={56} 
+          data-testid="group-filter-skeleton"
+        />
       </Box>
     );
   }
 
-  // Show error message if group fetch failed
-  if (isError) {
-    return (
-      <Alert severity="error" sx={{ maxWidth: 400 }}>
-        Failed to load groups: {error instanceof Error ? error.message : 'Unknown error'}
-      </Alert>
-    );
-  }
-
-  // Extract groups array from response
+  // Extract groups array from response (empty array if error)
   const groups = groupsResponse?.data || [];
 
   return (
-    <FormControl sx={{ minWidth: 200, maxWidth: 300 }} size="small">
-      <InputLabel id="group-filter-label">Filter by group</InputLabel>
-      <Select
-        labelId="group-filter-label"
-        id="group-filter-select"
-        value={selectedGroupId}
-        label="Filter by group"
-        onChange={handleChange}
-      >
-        {/* 'All groups' option with value 0 */}
-        <MenuItem value={0}>
-          All groups
-        </MenuItem>
-        
-        {/* Individual group options */}
-        {groups.map((group) => (
-          <MenuItem key={group.id} value={group.id}>
-            {group.name}
+    <Box>
+      {/* Show error message if group fetch failed, but still render the filter */}
+      {isError && (
+        <Alert severity="error" sx={{ maxWidth: 400, mb: 2 }}>
+          Failed to load groups: {error instanceof Error ? error.message : 'Unknown error'}
+        </Alert>
+      )}
+      
+      <FormControl sx={{ minWidth: 200, maxWidth: 300 }} size="small">
+        <InputLabel id="group-filter-label">Filter by group</InputLabel>
+        <Select
+          labelId="group-filter-label"
+          id="group-filter-select"
+          value={selectedGroupId}
+          label="Filter by group"
+          onChange={handleChange}
+        >
+          {/* 'All groups' option with value 0 */}
+          <MenuItem value={0}>
+            All groups
           </MenuItem>
-        ))}
-      </Select>
-    </FormControl>
+          
+          {/* Individual group options */}
+          {groups.map((group) => (
+            <MenuItem key={group.id} value={group.id}>
+              {group.name}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+    </Box>
   );
 };
 

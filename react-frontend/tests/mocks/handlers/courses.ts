@@ -1107,6 +1107,83 @@ const getCourseContentsHandler = http.get('http://*/api/v1/courses/:id/contents'
   });
 });
 
+/**
+ * GET /api/v1/courses/:courseId/groups
+ * 
+ * Returns the list of groups for a specific course. Used by the GroupFilter
+ * component in the choice activity module.
+ * 
+ * Query Parameters:
+ * - None
+ * 
+ * Success Response (200):
+ * {
+ *   success: true,
+ *   data: [
+ *     { id: 1, name: "Group A" },
+ *     { id: 2, name: "Group B" }
+ *   ]
+ * }
+ * 
+ * Error Response (404):
+ * {
+ *   success: false,
+ *   error: {
+ *     code: "COURSE_NOT_FOUND",
+ *     message: "Course not found",
+ *     details: { courseId: 999 }
+ *   }
+ * }
+ */
+const getCourseGroupsHandler = http.get('*/api/v1/courses/:courseId/groups', ({ params }) => {
+  const courseId = Number(params.courseId);
+  
+  // Validate courseId
+  if (isNaN(courseId) || courseId <= 0) {
+    return HttpResponse.json(
+      {
+        success: false,
+        error: {
+          code: 'INVALID_COURSE_ID',
+          message: 'Invalid course ID',
+          details: { courseId: params.courseId },
+        },
+      },
+      { status: 400 }
+    );
+  }
+  
+  // Check if course exists
+  const course = mockCourses.find((c) => c.id === courseId);
+  if (!course) {
+    return HttpResponse.json(
+      {
+        success: false,
+        error: {
+          code: 'COURSE_NOT_FOUND',
+          message: 'Course not found',
+          details: { courseId },
+        },
+      },
+      { status: 404 }
+    );
+  }
+  
+  // Generate mock groups for the course
+  // In a real scenario, these would come from the database
+  const mockGroups = [
+    { id: 1, name: 'Group A', courseid: courseId },
+    { id: 2, name: 'Group B', courseid: courseId },
+    { id: 3, name: 'Section 101', courseid: courseId },
+    { id: 4, name: 'Section 102', courseid: courseId },
+  ];
+  
+  return HttpResponse.json({
+    success: true,
+    data: mockGroups,
+  });
+});
+
 // ============================================================================
 // Export Handlers Array
 // ============================================================================
@@ -1122,4 +1199,5 @@ export const coursesHandlers = [
   deleteCourseHandler,
   enrollCourseHandler,
   getCourseContentsHandler,
+  getCourseGroupsHandler,
 ];
