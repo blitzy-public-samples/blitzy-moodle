@@ -15,8 +15,9 @@
  * @module features/activities/choice/hooks/useExportResults
  */
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import axios, { AxiosError } from 'axios';
+import { useMutation } from '@tanstack/react-query';
+import { apiClient } from '@/services/api/client';
+import type { AxiosError } from 'axios';
 
 /**
  * Supported export formats for choice results
@@ -99,7 +100,9 @@ function extractFilename(contentDisposition: string | null, format: ExportFormat
 
   if (filenameMatch) {
     const filename = filenameMatch[1] || filenameMatch[2] || filenameMatch[3];
-    return decodeURIComponent(filename.trim());
+    if (filename) {
+      return decodeURIComponent(filename.trim());
+    }
   }
 
   return `choice_export.${format}`;
@@ -139,11 +142,7 @@ function triggerBrowserDownload(blob: Blob, filename: string): void {
  */
 async function trackReportDownloadedEvent(event: ReportDownloadedEvent): Promise<void> {
   try {
-    // NOTE: In a real implementation, this would use the centralized API client
-    // from '@/services/api/client' which handles authentication, base URL, etc.
-    // Since depends_on_files is empty, we're using axios directly here.
-    
-    await axios.post('/api/v1/analytics/events', {
+    await apiClient.post('/analytics/events', {
       eventType: 'report_downloaded',
       eventData: {
         choiceId: event.choiceId,
@@ -178,18 +177,10 @@ async function exportResults(input: ExportResultsInput): Promise<ExportResultsRe
   }
 
   try {
-    // NOTE: In a real implementation, this would use the centralized API client
-    // from '@/services/api/client' which handles JWT tokens, error interceptors, etc.
-    // Since depends_on_files is empty, we're using axios directly here.
-    
-    const response = await axios.get(
-      `/api/v1/choices/${choiceId}/export?${params.toString()}`,
+    const response = await apiClient.get(
+      `/choices/${choiceId}/export?${params.toString()}`,
       {
         responseType: 'blob',
-        headers: {
-          // Authorization header would be added by API client interceptor
-          // 'Authorization': `Bearer ${token}`
-        },
       }
     );
 
@@ -207,23 +198,23 @@ async function exportResults(input: ExportResultsInput): Promise<ExportResultsRe
     };
   } catch (error) {
     // Handle axios errors
-    if (axios.isAxiosError(error)) {
-      const axiosError = error as AxiosError<ApiErrorResponse>;
+    const axiosError = error as AxiosError<ApiErrorResponse>;
+    
+    if (axiosError.response?.data) {
+      // API returned structured error
+      throw axiosError.response.data;
+    }
 
-      if (axiosError.response?.data) {
-        // API returned structured error
-        throw axiosError.response.data;
-      }
-
-      // Network or other axios error
+    if (axiosError.response) {
+      // Network or other axios error with response
       throw {
         success: false,
         error: {
           code: 'EXPORT_FAILED',
           message: axiosError.message || 'Failed to export choice results',
           details: {
-            status: axiosError.response?.status,
-            statusText: axiosError.response?.statusText,
+            status: axiosError.response.status,
+            statusText: axiosError.response.statusText,
           },
         },
       } as ApiErrorResponse;
@@ -273,7 +264,6 @@ async function exportResults(input: ExportResultsInput): Promise<ExportResultsRe
  * ```
  */
 export default function useExportResults(options: UseExportResultsOptions = {}) {
-  const queryClient = useQueryClient();
   const { onExportStart, onExportSuccess, onExportError } = options;
 
   return useMutation<ExportResultsResponse, ApiErrorResponse, ExportResultsInput>({
