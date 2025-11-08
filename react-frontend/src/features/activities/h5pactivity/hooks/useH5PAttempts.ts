@@ -13,6 +13,8 @@
  */
 
 import { useQuery, useQueryClient, UseQueryResult } from '@tanstack/react-query';
+import { apiClient } from '@/services/api/client';
+import type { ApiResponse } from '@/types/api';
 
 // ============================================================================
 // Type Definitions
@@ -186,27 +188,7 @@ interface AttemptsQueryReturn {
   isEnabled: boolean;
 }
 
-/**
- * API error response structure.
- */
-interface ApiErrorResponse {
-  success: false;
-  error: {
-    code: string;
-    message: string;
-    details?: Record<string, unknown>;
-  };
-}
-
-/**
- * API success response structure.
- */
-interface ApiSuccessResponse {
-  success: true;
-  data: H5PAttemptsResponse;
-}
-
-type ApiResponse = ApiSuccessResponse | ApiErrorResponse;
+// API response types are imported from '@/types/api' and used throughout this module
 
 // ============================================================================
 // API Client Function
@@ -271,42 +253,26 @@ async function fetchH5PAttempts(
   }
 
   try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        // JWT token will be automatically included by API client interceptors
-      },
-      credentials: 'include', // Include cookies for authentication
-      body: JSON.stringify(body),
-    });
+    // Use apiClient.post() for consistent API calls with automatic JWT injection
+    const response = await apiClient.post<ApiResponse<H5PAttemptsResponse>>(url, body);
 
-    if (!response.ok) {
-      // Handle HTTP error responses
-      if (response.status === 403) {
-        throw new Error('Permission denied: You do not have access to view these attempts');
-      }
-      if (response.status === 404) {
-        throw new Error('H5P activity not found');
-      }
-      if (response.status === 401) {
-        throw new Error('Authentication required: Please log in to view attempts');
-      }
-      throw new Error(`HTTP error: ${response.status} ${response.statusText}`);
-    }
-
-    const apiResponse: ApiResponse = await response.json();
+    // apiClient already handles HTTP errors via interceptors, so we get data directly
+    const apiResponse = response.data;
 
     if (!apiResponse.success) {
       // Handle API error responses
-      const errorMessage = apiResponse.error.message || 'Failed to fetch H5P attempts';
+      const errorMessage = apiResponse.error?.message || 'Failed to fetch H5P attempts';
       throw new Error(errorMessage);
+    }
+
+    if (!apiResponse.data) {
+      throw new Error('Failed to fetch H5P attempts: No data returned');
     }
 
     // Apply client-side sorting if needed (for score sorting)
     if (sortBy === 'score' && apiResponse.data.usersattempts) {
-      apiResponse.data.usersattempts.forEach((userAttempt) => {
-        userAttempt.attempts.sort((a, b) => {
+      apiResponse.data.usersattempts.forEach((userAttempt: UserAttempts) => {
+        userAttempt.attempts.sort((a: H5PAttempt, b: H5PAttempt) => {
           const scoreA = a.scaled;
           const scoreB = b.scaled;
           return sortOrder === 'asc' ? scoreA - scoreB : scoreB - scoreA;
@@ -317,6 +283,7 @@ async function fetchH5PAttempts(
     return apiResponse.data;
   } catch (error) {
     // Handle network errors and other exceptions
+    // apiClient interceptors already transform AxiosErrors to standard errors
     if (error instanceof Error) {
       throw error;
     }
@@ -392,8 +359,6 @@ export default function useH5PAttempts(params: AttemptsQueryParams): AttemptsQue
     enabled = true,
   } = params;
 
-  const queryClient = useQueryClient();
-
   // Construct query key with all parameters for proper cache isolation
   const queryKey = [
     'h5pAttempts',
@@ -434,17 +399,7 @@ export default function useH5PAttempts(params: AttemptsQueryParams): AttemptsQue
     // Retry failed requests twice with exponential backoff
     retry: 2,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-    // Keep previous data while fetching new data to prevent UI flickering
-    placeholderData: (previousData) => previousData,
   });
-
-  // Helper function to invalidate attempts cache
-  // This can be called after mutations that affect attempts (e.g., new attempt submission)
-  const invalidateAttemptsCache = () => {
-    queryClient.invalidateQueries({
-      queryKey: ['h5pAttempts', activityId],
-    });
-  };
 
   // Extract and transform data from query result
   const attempts = query.data?.usersattempts || [];

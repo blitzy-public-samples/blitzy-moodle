@@ -14,6 +14,7 @@
  * - forums: Forum activity endpoints (discussions, posts, subscriptions)
  * - choices: Choice activity endpoints (results, responses)
  * - feedback: Feedback activity endpoints (questions, responses, analysis)
+ * - h5p: H5P activity endpoints (attempts, user attempts)
  * - admin: Admin endpoints (settings, users, roles, plugins)
  * 
  * Usage:
@@ -39,6 +40,7 @@ import { quizzesHandlers } from './quizzes';
 import { forumsHandlers } from './forums';
 import { choicesHandlers } from './choices';
 import { feedbackHandlers } from './feedback';
+import { h5pHandlers } from './h5p';
 import { adminHandlers } from './admin';
 
 /**
@@ -56,7 +58,8 @@ import { adminHandlers } from './admin';
  * 6. Forums (multiple handlers)
  * 7. Choices (1 handler)
  * 8. Feedback (multiple handlers)
- * 9. Admin (multiple handlers)
+ * 9. H5P (2 handlers)
+ * 10. Admin (multiple handlers)
  * 
  * Total handler count varies based on feature implementation.
  */
@@ -69,6 +72,7 @@ export const handlers = [
   ...forumsHandlers,
   ...choicesHandlers,
   ...feedbackHandlers,
+  ...h5pHandlers,
   ...adminHandlers,
 ];
 
@@ -93,5 +97,6 @@ export {
   forumsHandlers,
   choicesHandlers,
   feedbackHandlers,
+  h5pHandlers,
   adminHandlers,
 };
