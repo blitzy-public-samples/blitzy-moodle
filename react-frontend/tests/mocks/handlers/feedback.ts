@@ -571,6 +571,70 @@ const getAnalysisHandler = http.get('*/api/v1/feedback/:id/analysis', async ({ p
   });
 });
 
+/**
+ * GET /api/v1/feedback/:id/export
+ * Export feedback analysis to Excel format
+ */
+const exportAnalysisHandler = http.get('*/api/v1/feedback/:id/export', async ({ params, request }) => {
+  await simulateNetworkDelay();
+  
+  const id = Number(params.id);
+  const feedback = MOCK_FEEDBACK[id];
+  
+  // Parse query parameters
+  const url = new URL(request.url);
+  const courseId = url.searchParams.get('courseid');
+  
+  if (!feedback) {
+    return HttpResponse.json(
+      {
+        success: false,
+        error: {
+          code: 'FEEDBACK_NOT_FOUND',
+          message: `Feedback activity with ID ${id} not found`,
+          details: { feedbackId: id }
+        }
+      },
+      { status: 404 }
+    );
+  }
+  
+  if (!feedback.canViewAnalysis) {
+    return HttpResponse.json(
+      {
+        success: false,
+        error: {
+          code: 'PERMISSION_DENIED',
+          message: 'You do not have permission to export this feedback',
+          details: {
+            required_capability: 'mod/feedback:viewanalysepage',
+            context: 'module'
+          }
+        }
+      },
+      { status: 403 }
+    );
+  }
+  
+  // Create a mock Excel file blob
+  const mockExcelData = 'PK\x03\x04'; // Excel file magic number
+  const blob = new Blob([mockExcelData], { 
+    type: 'application/vnd.ms-excel' 
+  });
+  
+  // Generate filename based on feedback name
+  const filename = `feedback_analysis_${id}.xls`;
+  
+  // Return blob with Content-Disposition header
+  return new HttpResponse(blob, {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/vnd.ms-excel',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+    },
+  });
+});
+
 // ============================================================================
 // Export Handlers
 // ============================================================================
@@ -594,4 +658,5 @@ export const feedbackHandlers = [
   getQuestionsHandler,
   submitFeedbackHandler,
   getAnalysisHandler,
+  exportAnalysisHandler,
 ];
