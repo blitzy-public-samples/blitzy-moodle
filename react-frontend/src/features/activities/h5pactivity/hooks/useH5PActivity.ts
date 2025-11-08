@@ -1,6 +1,6 @@
-import { useQuery, useMutation, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as h5pApi from '../api/h5pApi';
-import type { H5PActivity, H5PDisplayOptions, H5PAccessInfo } from '../types/h5p.types';
+import type { H5PActivity, H5PDisplayOptions, H5PAccessInfo, H5PActivityUpdatePayload } from '../types/h5p.types';
 
 /**
  * Options for the useH5PActivity hook.
@@ -71,7 +71,7 @@ interface UseH5PActivityResult {
    * Update activity configuration with optimistic updates.
    * @param updates - Partial activity data to update
    */
-  updateActivity: (updates: Partial<H5PActivity>) => Promise<void>;
+  updateActivity: (updates: H5PActivityUpdatePayload) => Promise<void>;
 
   /**
    * True if the update mutation is in progress.
@@ -147,7 +147,7 @@ interface UseH5PActivityResult {
  * const { activity, updateActivity, isUpdating } = useH5PActivity(activityId);
  * 
  * const handleEnableTracking = async () => {
- *   await updateActivity({ enabletracking: true });
+ *   await updateActivity({ enabletracking: 1 });
  * };
  * 
  * return (
@@ -245,7 +245,7 @@ export default function useH5PActivity(
    * This provides instant feedback to users while maintaining data consistency.
    */
   const updateMutation = useMutation({
-    mutationFn: (updates: Partial<H5PActivity>) => {
+    mutationFn: (updates: H5PActivityUpdatePayload) => {
       if (!activityId) {
         throw new Error('Activity ID is required for updates');
       }
@@ -270,7 +270,7 @@ export default function useH5PActivity(
       // Return context with previous value for potential rollback
       return { previousActivity };
     },
-    onError: (error, variables, context) => {
+    onError: (error, _variables, context) => {
       // On error, rollback to the previous cached value
       if (context?.previousActivity) {
         queryClient.setQueryData(['h5pActivity', activityId], context.previousActivity);
@@ -357,7 +357,7 @@ export default function useH5PActivity(
    * ```
    */
   const isTrackingEnabled = (): boolean => {
-    return activityQuery.data?.enabletracking ?? false;
+    return activityQuery.data?.enabletracking === 1;
   };
 
   /**
@@ -445,7 +445,7 @@ export default function useH5PActivity(
    * const handleToggleTracking = async () => {
    *   try {
    *     await updateActivity({ 
-   *       enabletracking: !activity.enabletracking 
+   *       enabletracking: activity.enabletracking === 1 ? 0 : 1 
    *     });
    *     toast.success('Tracking setting updated');
    *   } catch (error) {
@@ -454,7 +454,7 @@ export default function useH5PActivity(
    * };
    * ```
    */
-  const updateActivity = async (updates: Partial<H5PActivity>): Promise<void> => {
+  const updateActivity = async (updates: H5PActivityUpdatePayload): Promise<void> => {
     await updateMutation.mutateAsync(updates);
   };
 
