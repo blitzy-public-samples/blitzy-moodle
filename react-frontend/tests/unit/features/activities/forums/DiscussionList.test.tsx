@@ -715,10 +715,13 @@ describe('DiscussionList Component', () => {
 
     it('should disable next button on last page', async () => {
       // Set up data for 3 pages total (60 items / 20 per page = 3 pages)
-      mockUseQuery.mockReturnValue({
-        data: { discussions: mockDiscussions, totalCount: 60, hasMore: false },
-        isLoading: false,
-        isError: false,
+      // Use mockImplementation to ensure consistent behavior on every call
+      mockUseQuery.mockImplementation((options) => {
+        return {
+          data: { discussions: mockDiscussions, totalCount: 60, hasMore: false },
+          isLoading: false,
+          isError: false,
+        };
       });
 
       renderWithProviders(<DiscussionList {...defaultProps} />);

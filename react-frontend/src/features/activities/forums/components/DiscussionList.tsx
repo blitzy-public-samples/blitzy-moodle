@@ -188,6 +188,7 @@ export const DiscussionList: React.FC<DiscussionListProps> = ({
 
   // Refs
   const searchTimeoutRef = useRef<NodeJS.Timeout>();
+  const isFirstRenderRef = useRef(true);
 
   // Debounced search effect
   useEffect(() => {
@@ -197,7 +198,13 @@ export const DiscussionList: React.FC<DiscussionListProps> = ({
 
     searchTimeoutRef.current = setTimeout(() => {
       setDebouncedSearch(searchQuery);
-      setCurrentPage(1); // Reset to first page on new search
+      
+      // Only reset page if this is not the first render
+      if (!isFirstRenderRef.current) {
+        setCurrentPage(1); // Reset to first page on new search
+      } else {
+        isFirstRenderRef.current = false;
+      }
     }, 300);
 
     return () => {
@@ -916,7 +923,9 @@ export const DiscussionList: React.FC<DiscussionListProps> = ({
           <Pagination
             count={totalPages}
             page={currentPage}
-            onChange={(_, page) => setCurrentPage(page)}
+            onChange={(_, page) => {
+              setCurrentPage(page);
+            }}
             color="primary"
             showFirstButton
             showLastButton
