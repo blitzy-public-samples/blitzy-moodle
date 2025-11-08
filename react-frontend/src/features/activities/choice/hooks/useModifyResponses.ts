@@ -128,7 +128,7 @@ export default function useModifyResponses(): UseMutationResult<
 
       // Make API request to modify responses
       const response = await apiClient.put<{ success: boolean; data: ModifyResponsesResponse }>(
-        `/api/v1/choices/${choiceId}/responses`,
+        `/choices/${choiceId}/responses`,
         {
           userIds: userIds || [],
           attemptIds: attemptIds || [],
@@ -166,7 +166,7 @@ export default function useModifyResponses(): UseMutationResult<
         queryClient.setQueryData<ChoiceResultsCache>(
           ['choices', choiceId, 'results'],
           (oldData) => {
-            if (!oldData) return oldData;
+            if (!oldData || !oldData.responses) return oldData;
 
             // Create a set of attemptIds for faster lookup
             const attemptIdSet = new Set(attemptIds);
@@ -224,11 +224,11 @@ export default function useModifyResponses(): UseMutationResult<
       }
 
       // Show error toast notification
-      showToast({
-        type: 'error',
-        message: `Failed to modify responses: ${error.message}`,
-        duration: 5000,
-      });
+      showToast(
+        `Failed to modify responses: ${error.message}`,
+        'error',
+        { duration: 5000 }
+      );
 
       // Log error for debugging
       console.error('Error modifying choice responses:', error);
@@ -251,11 +251,11 @@ export default function useModifyResponses(): UseMutationResult<
       });
 
       // Show success toast notification
-      showToast({
-        type: 'success',
-        message: data.message || `Successfully modified ${data.modifiedCount} response(s)`,
-        duration: 3000,
-      });
+      showToast(
+        data.message || `Successfully modified ${data.modifiedCount} response(s)`,
+        'success',
+        { duration: 3000 }
+      );
     },
 
     /**
@@ -269,9 +269,5 @@ export default function useModifyResponses(): UseMutationResult<
         queryKey: ['choices', choiceId],
       });
     },
-
-    // Retry configuration
-    retry: 1, // Retry once on failure
-    retryDelay: 1000, // Wait 1 second before retrying
   });
 }
