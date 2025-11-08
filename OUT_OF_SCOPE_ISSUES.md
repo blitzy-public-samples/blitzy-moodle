@@ -156,3 +156,29 @@ Received element is not disabled:
 
 ---
 
+
+## Test Failure in Forums Feature (Discovered during full test suite run - 2024-11-08)
+
+**File:** `tests/unit/features/activities/forums/DiscussionList.test.tsx`
+
+**Test:** "DiscussionList Component > Pagination > should disable next button on last page"
+
+**Issue:** The test expects the next button to be disabled on the last page, but the button is not disabled.
+
+**Error:**
+```
+Error: expect(element).toBeDisabled()
+
+Received element is not disabled:
+  <button
+  aria-label="Go to next page"
+  class="MuiButtonBase-root MuiPaginationItem-root..."
+  tabindex="0"
+  type="button"
+/>
+```
+
+**Status:** OUT OF SCOPE - This is in the forums feature, not the feedback feature. The feedback feature GroupFilter component is working correctly with all 10 ad-hoc tests passing.
+
+**Recommendation:** The forums feature validator should investigate why the pagination component is not disabling the next button on the last page.
+
