@@ -328,11 +328,21 @@ export function buildDisplayOptions(options: {
   about?: boolean;
 }): number {
   let bitmask = 0;
-  if (options.frame) bitmask |= 1;
-  if (options.export) bitmask |= 2;
-  if (options.embed) bitmask |= 4;
-  if (options.copyright) bitmask |= 8;
-  if (options.about) bitmask |= 16;
+  if (options.frame) {
+    bitmask |= 1;
+  }
+  if (options.export) {
+    bitmask |= 2;
+  }
+  if (options.embed) {
+    bitmask |= 4;
+  }
+  if (options.copyright) {
+    bitmask |= 8;
+  }
+  if (options.about) {
+    bitmask |= 16;
+  }
   return bitmask;
 }
 

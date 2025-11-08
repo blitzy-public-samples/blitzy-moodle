@@ -279,8 +279,8 @@ export default function useH5PActivity(
     },
     onSuccess: () => {
       // On success, invalidate and refetch to get authoritative data from server
-      queryClient.invalidateQueries({ queryKey: ['h5pActivity', activityId] });
-      queryClient.invalidateQueries({ queryKey: ['h5pActivityAccess', activityId] });
+      void queryClient.invalidateQueries({ queryKey: ['h5pActivity', activityId] });
+      void queryClient.invalidateQueries({ queryKey: ['h5pActivityAccess', activityId] });
     },
   });
 
@@ -310,13 +310,13 @@ export default function useH5PActivity(
    */
   const parseDisplayOptions = (displayoptions: string): H5PDisplayOptions => {
     try {
-      const parsed = JSON.parse(displayoptions);
+      const parsed = JSON.parse(displayoptions) as Record<string, unknown>;
       return {
-        frame: parsed.frame ?? true,
-        export: parsed.export ?? false,
-        embed: parsed.embed ?? false,
-        copyright: parsed.copyright ?? false,
-        about: parsed.about ?? false,
+        frame: (parsed.frame as boolean | undefined) ?? true,
+        export: (parsed.export as boolean | undefined) ?? false,
+        embed: (parsed.embed as boolean | undefined) ?? false,
+        copyright: (parsed.copyright as boolean | undefined) ?? false,
+        about: (parsed.about as boolean | undefined) ?? false,
       };
     } catch (error) {
       // Return safe default values if parsing fails
@@ -412,8 +412,8 @@ export default function useH5PActivity(
    * ```
    */
   const refetch = (): void => {
-    activityQuery.refetch();
-    accessQuery.refetch();
+    void activityQuery.refetch();
+    void accessQuery.refetch();
   };
 
   /**
@@ -467,7 +467,7 @@ export default function useH5PActivity(
     // Loading states
     isLoading: activityQuery.isLoading || accessQuery.isLoading,
     isError: activityQuery.isError || accessQuery.isError,
-    error: (activityQuery.error || accessQuery.error) as Error | null,
+    error: activityQuery.error ?? accessQuery.error ?? null,
     isUpdating: updateMutation.isPending,
 
     // Actions
