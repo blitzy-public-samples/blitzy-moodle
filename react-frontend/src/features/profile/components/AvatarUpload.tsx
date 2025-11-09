@@ -414,9 +414,9 @@ export function AvatarUpload({
           </Box>
 
           {/* Instructions - positioned inside Paper for accessibility */}
-          <Typography 
-            variant="body2" 
-            color="text.secondary" 
+          <Typography
+            variant="body2"
+            color="text.secondary"
             sx={{
               position: 'absolute',
               top: '100%',

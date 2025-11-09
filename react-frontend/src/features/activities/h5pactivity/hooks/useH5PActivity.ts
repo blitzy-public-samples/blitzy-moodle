@@ -1,6 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as h5pApi from '../api/h5pApi';
-import type { H5PActivity, H5PDisplayOptions, H5PAccessInfo, H5PActivityUpdatePayload } from '../types/h5p.types';
+import type {
+  H5PActivity,
+  H5PDisplayOptions,
+  H5PAccessInfo,
+  H5PActivityUpdatePayload,
+} from '../types/h5p.types';
 
 /**
  * Options for the useH5PActivity hook.
@@ -81,13 +86,13 @@ interface UseH5PActivityResult {
 
 /**
  * Custom React Query hook for fetching and managing H5P activity data.
- * 
+ *
  * This hook provides comprehensive access to H5P activity configuration including:
  * - Activity metadata (id, course, name, intro, grade settings)
  * - Display options (frame, export, embed, copyright, about flags)
  * - Tracking configuration (enabletracking, grademethod, reviewmode)
  * - Access permissions (canview, cansubmit, canreviewattempts capabilities)
- * 
+ *
  * Features:
  * - Automatic caching with 5-minute stale time (activity config changes infrequently)
  * - Parallel fetching of activity data and access information
@@ -96,20 +101,20 @@ interface UseH5PActivityResult {
  * - Automatic query invalidation on successful updates
  * - Comprehensive error handling for 404, 403, and network errors
  * - Helper functions for parsing display options and checking permissions
- * 
+ *
  * @param activityId - The ID of the H5P activity to fetch (required, pass null to disable)
  * @param options - Additional options including enabled flag to control query execution
  * @returns Object containing activity data, access info, loading states, and helper functions
- * 
+ *
  * @example
  * Basic usage:
  * ```tsx
  * const { activity, access, isLoading, isError } = useH5PActivity(123);
- * 
+ *
  * if (isLoading) return <LoadingSpinner />;
  * if (isError) return <ErrorMessage />;
  * if (!activity) return <NotFound />;
- * 
+ *
  * return (
  *   <div>
  *     <h1>{activity.name}</h1>
@@ -117,21 +122,21 @@ interface UseH5PActivityResult {
  *   </div>
  * );
  * ```
- * 
+ *
  * @example
  * Using helper functions:
  * ```tsx
- * const { 
- *   activity, 
- *   parseDisplayOptions, 
- *   isTrackingEnabled, 
- *   canViewReports 
+ * const {
+ *   activity,
+ *   parseDisplayOptions,
+ *   isTrackingEnabled,
+ *   canViewReports
  * } = useH5PActivity(activityId);
- * 
+ *
  * if (!activity) return null;
- * 
+ *
  * const displayOpts = parseDisplayOptions(activity.displayoptions);
- * 
+ *
  * return (
  *   <div>
  *     {displayOpts.frame && <Frame />}
@@ -140,32 +145,32 @@ interface UseH5PActivityResult {
  *   </div>
  * );
  * ```
- * 
+ *
  * @example
  * Updating activity configuration:
  * ```tsx
  * const { activity, updateActivity, isUpdating } = useH5PActivity(activityId);
- * 
+ *
  * const handleEnableTracking = async () => {
  *   await updateActivity({ enabletracking: 1 });
  * };
- * 
+ *
  * return (
- *   <Button 
- *     onClick={handleEnableTracking} 
+ *   <Button
+ *     onClick={handleEnableTracking}
  *     disabled={isUpdating}
  *   >
  *     Enable Tracking
  *   </Button>
  * );
  * ```
- * 
+ *
  * @example
  * Conditional fetching:
  * ```tsx
  * const [selectedId, setSelectedId] = useState<number | null>(null);
- * const { activity } = useH5PActivity(selectedId, { 
- *   enabled: selectedId !== null 
+ * const { activity } = useH5PActivity(selectedId, {
+ *   enabled: selectedId !== null
  * });
  * ```
  */
@@ -181,7 +186,7 @@ export default function useH5PActivity(
 
   /**
    * Fetch H5P activity data including metadata, configuration, and settings.
-   * 
+   *
    * Returns:
    * - id: Activity instance ID
    * - course: Course ID
@@ -212,7 +217,7 @@ export default function useH5PActivity(
 
   /**
    * Fetch access information and capability flags in parallel.
-   * 
+   *
    * Returns capability flags:
    * - canview: User can view the activity
    * - cansubmit: User can submit attempts (requires tracking enabled)
@@ -235,13 +240,13 @@ export default function useH5PActivity(
 
   /**
    * Mutation for updating H5P activity configuration.
-   * 
+   *
    * Implements optimistic updates:
    * 1. Immediately updates the cache with new values
    * 2. Sends update request to server
    * 3. On success: invalidates cache to refetch authoritative data
    * 4. On error: rolls back to previous cached value
-   * 
+   *
    * This provides instant feedback to users while maintaining data consistency.
    */
   const updateMutation = useMutation({
@@ -286,17 +291,17 @@ export default function useH5PActivity(
 
   /**
    * Parse display options JSON string into a typed object with boolean flags.
-   * 
+   *
    * Display options control how the H5P content is displayed:
    * - frame: Show the H5P frame around content
    * - export: Allow users to download/export content
    * - embed: Allow content to be embedded in other sites
    * - copyright: Display copyright information
    * - about: Show H5P about information
-   * 
+   *
    * @param displayoptions - JSON string from the activity.displayoptions field
    * @returns Typed object with boolean flags, defaults to safe values on parse error
-   * 
+   *
    * @example
    * ```tsx
    * const displayOpts = parseDisplayOptions(activity.displayoptions);
@@ -333,20 +338,20 @@ export default function useH5PActivity(
 
   /**
    * Check if attempt tracking is enabled for this activity.
-   * 
+   *
    * When tracking is enabled:
    * - User attempts are recorded and stored
    * - Grades are calculated and reported
    * - Teachers can view attempt reports
    * - Students can review their own attempts
-   * 
+   *
    * When tracking is disabled:
    * - Content is available but attempts are not recorded
    * - No grades are assigned
    * - Activity functions as content display only
-   * 
+   *
    * @returns true if tracking is enabled, false otherwise
-   * 
+   *
    * @example
    * ```tsx
    * if (isTrackingEnabled()) {
@@ -362,19 +367,19 @@ export default function useH5PActivity(
 
   /**
    * Check if the current user has permission to view activity reports.
-   * 
+   *
    * This typically means the user can:
    * - View all student attempts
    * - Access the reports page
    * - See detailed attempt data and scores
-   * 
+   *
    * Usually granted to:
    * - Teachers and instructors
    * - Course managers and administrators
    * - Users with mod/h5pactivity:reviewattempts capability
-   * 
+   *
    * @returns true if user can review attempts, false otherwise
-   * 
+   *
    * @example
    * ```tsx
    * {canViewReports() && (
@@ -390,20 +395,20 @@ export default function useH5PActivity(
 
   /**
    * Manually refetch both activity data and access information.
-   * 
+   *
    * Use cases:
    * - After external updates that may have changed the activity
    * - When recovering from an error state
    * - When user explicitly requests fresh data
    * - After navigating back to the activity from elsewhere
-   * 
+   *
    * Note: Automatic refetching occurs on window focus, so manual
    * refetch is rarely needed.
-   * 
+   *
    * @example
    * ```tsx
    * const { refetch, isLoading } = useH5PActivity(activityId);
-   * 
+   *
    * return (
    *   <Button onClick={() => refetch()} disabled={isLoading}>
    *     Refresh Activity Data
@@ -418,7 +423,7 @@ export default function useH5PActivity(
 
   /**
    * Update activity configuration with optimistic UI updates.
-   * 
+   *
    * Supports updating:
    * - name: Activity name
    * - intro: Activity description
@@ -427,25 +432,25 @@ export default function useH5PActivity(
    * - grademethod: Grading method (highest, average, first, last)
    * - reviewmode: When students can review attempts
    * - grade: Maximum grade value
-   * 
+   *
    * The update is optimistic:
    * 1. UI updates immediately with new values
    * 2. Request is sent to server
    * 3. On success: server data replaces optimistic update
    * 4. On failure: UI reverts to previous values
-   * 
+   *
    * @param updates - Partial activity object with fields to update
    * @returns Promise that resolves when update completes
    * @throws Error if activityId is null or update fails
-   * 
+   *
    * @example
    * ```tsx
    * const { updateActivity, isUpdating } = useH5PActivity(activityId);
-   * 
+   *
    * const handleToggleTracking = async () => {
    *   try {
-   *     await updateActivity({ 
-   *       enabletracking: activity.enabletracking === 1 ? 0 : 1 
+   *     await updateActivity({
+   *       enabletracking: activity.enabletracking === 1 ? 0 : 1
    *     });
    *     toast.success('Tracking setting updated');
    *   } catch (error) {

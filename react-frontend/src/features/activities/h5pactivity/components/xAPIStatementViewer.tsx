@@ -1,10 +1,10 @@
 /**
  * xAPI Statement Viewer Component
- * 
+ *
  * Displays and analyzes xAPI (Experience API) statements captured during H5P activity interactions.
  * Provides detailed visualization of xAPI statement structure including actor, verb, object, result,
  * and context information with expandable JSON tree view and interactive filtering capabilities.
- * 
+ *
  * @package    react-frontend
  * @copyright  2024 Moodle React Frontend
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -166,7 +166,9 @@ interface XAPIStatementViewerProps {
  * Extracts the display name from a language map, preferring English
  */
 const getDisplayName = (languageMap?: { [key: string]: string }): string => {
-  if (!languageMap) {return '';}
+  if (!languageMap) {
+    return '';
+  }
   return languageMap['en-US'] ?? languageMap['en'] ?? Object.values(languageMap)[0] ?? '';
 };
 
@@ -175,20 +177,30 @@ const getDisplayName = (languageMap?: { [key: string]: string }): string => {
  * Example: PT1H30M45S -> "1 hour 30 minutes 45 seconds"
  */
 const formatDuration = (isoDuration?: string): string => {
-  if (!isoDuration) {return 'N/A';}
-  
+  if (!isoDuration) {
+    return 'N/A';
+  }
+
   try {
     const matches = isoDuration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?/);
-    if (!matches) {return isoDuration;}
+    if (!matches) {
+      return isoDuration;
+    }
 
     const hours = parseInt(matches[1] ?? '0', 10);
     const minutes = parseInt(matches[2] ?? '0', 10);
     const seconds = parseFloat(matches[3] ?? '0');
 
     const parts: string[] = [];
-    if (hours > 0) {parts.push(`${hours} hour${hours !== 1 ? 's' : ''}`);}
-    if (minutes > 0) {parts.push(`${minutes} minute${minutes !== 1 ? 's' : ''}`);}
-    if (seconds > 0) {parts.push(`${Math.round(seconds)} second${seconds !== 1 ? 's' : ''}`);}
+    if (hours > 0) {
+      parts.push(`${hours} hour${hours !== 1 ? 's' : ''}`);
+    }
+    if (minutes > 0) {
+      parts.push(`${minutes} minute${minutes !== 1 ? 's' : ''}`);
+    }
+    if (seconds > 0) {
+      parts.push(`${Math.round(seconds)} second${seconds !== 1 ? 's' : ''}`);
+    }
 
     return parts.length > 0 ? parts.join(' ') : '0 seconds';
   } catch (error) {
@@ -201,8 +213,10 @@ const formatDuration = (isoDuration?: string): string => {
  */
 const getVerbDisplay = (verb: XAPIVerb): string => {
   const displayName = getDisplayName(verb.display);
-  if (displayName) {return displayName;}
-  
+  if (displayName) {
+    return displayName;
+  }
+
   // Fallback: extract from verb ID
   const parts = verb.id.split('/');
   return parts[parts.length - 1] ?? 'unknown';
@@ -213,13 +227,23 @@ const getVerbDisplay = (verb: XAPIVerb): string => {
  */
 const getVerbColor = (verbId: string): 'info' | 'primary' | 'success' | 'error' | 'warning' => {
   const lowercaseId = verbId.toLowerCase();
-  
-  if (lowercaseId.includes('experienced') || lowercaseId.includes('viewed')) {return 'info';}
-  if (lowercaseId.includes('answered') || lowercaseId.includes('responded')) {return 'primary';}
-  if (lowercaseId.includes('completed')) {return 'success';}
-  if (lowercaseId.includes('passed')) {return 'success';}
-  if (lowercaseId.includes('failed')) {return 'error';}
-  
+
+  if (lowercaseId.includes('experienced') || lowercaseId.includes('viewed')) {
+    return 'info';
+  }
+  if (lowercaseId.includes('answered') || lowercaseId.includes('responded')) {
+    return 'primary';
+  }
+  if (lowercaseId.includes('completed')) {
+    return 'success';
+  }
+  if (lowercaseId.includes('passed')) {
+    return 'success';
+  }
+  if (lowercaseId.includes('failed')) {
+    return 'error';
+  }
+
   return 'warning';
 };
 
@@ -232,7 +256,11 @@ interface StatementCardProps {
   showJsonByDefault: boolean;
 }
 
-function StatementCard({ statement, jsonTheme, showJsonByDefault }: StatementCardProps): React.ReactElement {
+function StatementCard({
+  statement,
+  jsonTheme,
+  showJsonByDefault,
+}: StatementCardProps): React.ReactElement {
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
 
   const handleCopyToClipboard = (data: unknown, section: string) => {
@@ -252,11 +280,7 @@ function StatementCard({ statement, jsonTheme, showJsonByDefault }: StatementCar
       <CardHeader
         title={
           <Box display="flex" alignItems="center" gap={1}>
-            <Chip
-              label={verbDisplay}
-              color={verbColor}
-              size="small"
-            />
+            <Chip label={verbDisplay} color={verbColor} size="small" />
             <Typography variant="h6" component="span">
               xAPI Statement
             </Typography>
@@ -400,11 +424,12 @@ function StatementCard({ statement, jsonTheme, showJsonByDefault }: StatementCar
                         />
                       </Box>
                     )}
-                    {statement.result.score.raw !== undefined && statement.result.score.max !== undefined && (
-                      <Typography variant="body1" mt={1}>
-                        Raw Score: {statement.result.score.raw} / {statement.result.score.max}
-                      </Typography>
-                    )}
+                    {statement.result.score.raw !== undefined &&
+                      statement.result.score.max !== undefined && (
+                        <Typography variant="body1" mt={1}>
+                          Raw Score: {statement.result.score.raw} / {statement.result.score.max}
+                        </Typography>
+                      )}
                   </Grid>
                 )}
 
@@ -574,7 +599,7 @@ function StatementCard({ statement, jsonTheme, showJsonByDefault }: StatementCar
 
 /**
  * xAPI Statement Viewer Component
- * 
+ *
  * Main component for displaying xAPI statements with filtering and navigation
  */
 function XAPIStatementViewer({
@@ -601,7 +626,9 @@ function XAPIStatementViewer({
 
   // Filter statements by verb
   const filteredStatements = useMemo(() => {
-    if (verbFilter === 'all') {return statementsArray;}
+    if (verbFilter === 'all') {
+      return statementsArray;
+    }
     return statementsArray.filter((stmt) => {
       const verbDisplay = getVerbDisplay(stmt.verb);
       return verbDisplay === verbFilter;
@@ -621,19 +648,17 @@ function XAPIStatementViewer({
   if (filteredStatements.length === 1) {
     const statement = filteredStatements[0];
     // TypeScript guard: this should never be undefined given the length check
-    if (!statement) {return null;}
-    
+    if (!statement) {
+      return null;
+    }
+
     return (
       <Box>
         {availableVerbs.length > 1 && (
           <Box mb={2}>
             <FormControl fullWidth size="small">
               <InputLabel>Filter by Verb</InputLabel>
-              <Select
-                value={verbFilter}
-                label="Filter by Verb"
-                onChange={handleVerbFilterChange}
-              >
+              <Select value={verbFilter} label="Filter by Verb" onChange={handleVerbFilterChange}>
                 <MenuItem value="all">All Verbs</MenuItem>
                 {availableVerbs.map((verb) => (
                   <MenuItem key={verb} value={verb}>
@@ -660,11 +685,7 @@ function XAPIStatementViewer({
         <Box mb={2}>
           <FormControl fullWidth size="small">
             <InputLabel>Filter by Verb</InputLabel>
-            <Select
-              value={verbFilter}
-              label="Filter by Verb"
-              onChange={handleVerbFilterChange}
-            >
+            <Select value={verbFilter} label="Filter by Verb" onChange={handleVerbFilterChange}>
               <MenuItem value="all">All Verbs ({statementsArray.length})</MenuItem>
               {availableVerbs.map((verb) => {
                 const count = statementsArray.filter(

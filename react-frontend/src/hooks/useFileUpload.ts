@@ -127,15 +127,13 @@ function validateFileSize(file: File, maxSize: number): string | null {
 function validateFileType(file: File, allowedTypes: string[]): string | null {
   const fileType = file.type;
   const fileExtension = `.${file.name.split('.').pop()?.toLowerCase()}`;
-  
-  const isAllowed = allowedTypes.some(
-    (type) => fileType === type || fileExtension === type
-  );
-  
+
+  const isAllowed = allowedTypes.some((type) => fileType === type || fileExtension === type);
+
   if (!isAllowed) {
     return `File type "${file.type || fileExtension}" is not allowed`;
   }
-  
+
   return null;
 }
 
@@ -199,28 +197,28 @@ export function useFileUpload(options: UseFileUploadOptions = {}): UseFileUpload
   const addFiles = useCallback(
     (newFiles: File[]) => {
       const validatedFiles: FileAttachment[] = [];
-      
+
       for (const file of newFiles) {
         // Check if max files limit is reached
         if (files.length + validatedFiles.length >= maxFiles) {
           onValidationError?.(`Maximum of ${maxFiles} files allowed`);
           break;
         }
-        
+
         // Validate file size
         const sizeError = validateFileSize(file, maxFileSize);
         if (sizeError) {
           onValidationError?.(sizeError);
           continue;
         }
-        
+
         // Validate file type
         const typeError = validateFileType(file, allowedTypes);
         if (typeError) {
           onValidationError?.(typeError);
           continue;
         }
-        
+
         // Create file attachment
         const attachment: FileAttachment = {
           id: generateFileId(),
@@ -231,10 +229,10 @@ export function useFileUpload(options: UseFileUploadOptions = {}): UseFileUpload
           progress: 0,
           preview: createPreviewUrl(file),
         };
-        
+
         validatedFiles.push(attachment);
       }
-      
+
       if (validatedFiles.length > 0) {
         setFiles((prev) => [...prev, ...validatedFiles]);
         onFilesAdded?.(validatedFiles);
@@ -250,15 +248,15 @@ export function useFileUpload(options: UseFileUploadOptions = {}): UseFileUpload
     (fileId: string) => {
       setFiles((prev) => {
         const file = prev.find((f) => f.id === fileId);
-        
+
         // Revoke preview URL to free memory
         if (file?.preview) {
           URL.revokeObjectURL(file.preview);
         }
-        
+
         return prev.filter((f) => f.id !== fileId);
       });
-      
+
       onFileRemoved?.(fileId);
     },
     [onFileRemoved]
@@ -274,7 +272,7 @@ export function useFileUpload(options: UseFileUploadOptions = {}): UseFileUpload
         URL.revokeObjectURL(file.preview);
       }
     });
-    
+
     setFiles([]);
   }, [files]);
 
@@ -282,22 +280,14 @@ export function useFileUpload(options: UseFileUploadOptions = {}): UseFileUpload
    * Update upload progress for a file
    */
   const updateProgress = useCallback((fileId: string, progress: number) => {
-    setFiles((prev) =>
-      prev.map((file) =>
-        file.id === fileId ? { ...file, progress } : file
-      )
-    );
+    setFiles((prev) => prev.map((file) => (file.id === fileId ? { ...file, progress } : file)));
   }, []);
 
   /**
    * Set error for a file
    */
   const setFileError = useCallback((fileId: string, error: string) => {
-    setFiles((prev) =>
-      prev.map((file) =>
-        file.id === fileId ? { ...file, error } : file
-      )
-    );
+    setFiles((prev) => prev.map((file) => (file.id === fileId ? { ...file, error } : file)));
   }, []);
 
   /**

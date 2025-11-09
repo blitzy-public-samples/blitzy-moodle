@@ -1,6 +1,6 @@
 /**
  * Authentication Hook - Minimal Stub
- * 
+ *
  * This is a minimal stub implementation to satisfy imports.
  * The full auth feature will be implemented in a separate task.
  * Tests mock this hook completely.
@@ -26,7 +26,7 @@ export interface UseAuthReturn {
 
 /**
  * Hook to access authentication state
- * 
+ *
  * NOTE: This is a stub implementation. Tests will mock this completely.
  * In production, this would connect to Redux auth state or context.
  */

@@ -1,15 +1,15 @@
 /**
  * Custom React Query hook for fetching and managing feedback analysis data
- * 
+ *
  * Provides aggregated analysis results for all feedback items including:
  * - Response counts and statistics
  * - Group-filtered analysis
  * - Anonymous protection validation
  * - Per-item analysis data
- * 
+ *
  * Wraps GET /api/v1/feedback/{id}/analysis endpoint that calls existing
  * Moodle feedback analysis functions (mod_feedback_structure methods).
- * 
+ *
  * @module useFeedbackAnalysis
  */
 
@@ -172,7 +172,7 @@ interface UseFeedbackAnalysisOptions {
 
 /**
  * Fetches feedback analysis data from the API
- * 
+ *
  * @param feedbackId - Feedback activity ID
  * @param groupId - Optional group ID for filtering
  * @returns Promise resolving to feedback analysis data
@@ -200,9 +200,7 @@ const fetchFeedbackAnalysis = async (
     // Validate response structure
     if (!response.data || !response.data.success) {
       const errorResponse = response.data as unknown as ApiErrorResponse;
-      throw new Error(
-        errorResponse?.error?.message || 'Failed to fetch feedback analysis'
-      );
+      throw new Error(errorResponse?.error?.message || 'Failed to fetch feedback analysis');
     }
 
     // Return analysis data
@@ -242,24 +240,24 @@ const fetchFeedbackAnalysis = async (
 
 /**
  * Custom React Query hook for fetching and managing feedback analysis data
- * 
+ *
  * Provides aggregated analysis results for all feedback items including response
  * counts, statistics, and group-filtered analysis. Implements intelligent caching
  * to minimize API calls while keeping data fresh.
- * 
+ *
  * @param options - Configuration options for the hook
  * @returns React Query result with feedback analysis data and query state
- * 
+ *
  * @example
  * ```tsx
  * // Basic usage - fetch all responses
  * const { data, isLoading, error } = useFeedbackAnalysis({
  *   feedbackId: 42
  * });
- * 
+ *
  * if (isLoading) return <LoadingSpinner />;
  * if (error) return <ErrorAlert error={error} />;
- * 
+ *
  * return (
  *   <div>
  *     <h2>{data.feedbackName} Analysis</h2>
@@ -270,17 +268,17 @@ const fetchFeedbackAnalysis = async (
  *   </div>
  * );
  * ```
- * 
+ *
  * @example
  * ```tsx
  * // Group-filtered analysis
  * const [selectedGroup, setSelectedGroup] = useState<number>(0);
- * 
+ *
  * const { data, isLoading } = useFeedbackAnalysis({
  *   feedbackId: 42,
  *   groupId: selectedGroup
  * });
- * 
+ *
  * // Check anonymous protection
  * if (data && !data.anonymousProtection.sufficientResponses) {
  *   return (
@@ -290,7 +288,7 @@ const fetchFeedbackAnalysis = async (
  *   );
  * }
  * ```
- * 
+ *
  * @example
  * ```tsx
  * // With custom caching and refetch configuration
@@ -301,7 +299,7 @@ const fetchFeedbackAnalysis = async (
  *   refetchOnWindowFocus: true,
  *   refetchInterval: 30000 // Refetch every 30 seconds
  * });
- * 
+ *
  * // Manual refetch on button click
  * const handleRefresh = () => {
  *   refetch();
@@ -318,7 +316,7 @@ export function useFeedbackAnalysis(
     staleTime = 5 * 60 * 1000, // 5 minutes default
     gcTime = 10 * 60 * 1000, // 10 minutes default
     refetchOnWindowFocus = false,
-    refetchInterval = false
+    refetchInterval = false,
   } = options;
 
   // Validate feedbackId
@@ -331,7 +329,12 @@ export function useFeedbackAnalysis(
     throw new Error('groupId must be non-negative (0 for all groups)');
   }
 
-  return useQuery<FeedbackAnalysisData, Error, FeedbackAnalysisData, readonly [string, number, string, number]>({
+  return useQuery<
+    FeedbackAnalysisData,
+    Error,
+    FeedbackAnalysisData,
+    readonly [string, number, string, number]
+  >({
     // Query key includes feedbackId and groupId for proper caching
     queryKey: ['feedback', feedbackId, 'analysis', groupId] as const,
 
@@ -350,10 +353,7 @@ export function useFeedbackAnalysis(
     // Retry configuration - retry failed requests up to 2 times
     retry: (failureCount, error) => {
       // Don't retry on permission or not found errors
-      if (
-        error.message.includes('permission') ||
-        error.message.includes('not found')
-      ) {
+      if (error.message.includes('permission') || error.message.includes('not found')) {
         return false;
       }
       // Retry up to 2 times for other errors
@@ -371,14 +371,14 @@ export function useFeedbackAnalysis(
 
     // Meta information for debugging
     meta: {
-      errorMessage: 'Failed to load feedback analysis data'
-    }
+      errorMessage: 'Failed to load feedback analysis data',
+    },
   });
 }
 
 /**
  * Type guard to check if analysis data has sufficient responses for display
- * 
+ *
  * @param data - Feedback analysis data
  * @returns True if analysis can be displayed, false if blocked by anonymous protection
  */
@@ -400,7 +400,7 @@ export function canDisplayAnalysis(
 
 /**
  * Helper function to calculate response rate
- * 
+ *
  * @param data - Feedback analysis data
  * @param totalEnrolled - Total number of enrolled users (optional)
  * @returns Response rate as percentage (0-100), or null if totalEnrolled not provided
@@ -425,5 +425,5 @@ export type {
   FeedbackAnalysisSummary,
   FeedbackItemAnalysis,
   AnonymousProtection,
-  UseFeedbackAnalysisOptions
+  UseFeedbackAnalysisOptions,
 };

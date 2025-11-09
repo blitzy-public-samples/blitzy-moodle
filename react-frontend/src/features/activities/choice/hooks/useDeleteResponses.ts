@@ -1,9 +1,9 @@
 /**
  * Choice Activity - Delete Responses Hook
- * 
+ *
  * React Query mutation hook for deleting choice responses with optimistic updates,
  * automatic cache invalidation, and comprehensive error handling.
- * 
+ *
  * @module features/activities/choice/hooks/useDeleteResponses
  */
 
@@ -71,11 +71,11 @@ interface ChoiceResultsCache {
 
 /**
  * Deletes choice responses via the API
- * 
+ *
  * Calls DELETE /api/v1/choices/{id}/responses endpoint which wraps the
  * existing choice_delete_responses() PHP function. Requires the
  * mod/choice:deleteresponses capability.
- * 
+ *
  * @param input - Choice ID and array of attempt IDs to delete
  * @returns Promise resolving to deletion response
  * @throws ApiErrorResponse if deletion fails or permission denied
@@ -95,7 +95,7 @@ async function deleteChoiceResponses(
   }
 
   // Ensure all attempt IDs are valid positive integers
-  const validAttemptIds = attemptIds.filter(id => Number.isInteger(id) && id > 0);
+  const validAttemptIds = attemptIds.filter((id) => Number.isInteger(id) && id > 0);
   if (validAttemptIds.length !== attemptIds.length) {
     throw new Error('All attempt IDs must be valid positive integers');
   }
@@ -127,7 +127,7 @@ async function deleteChoiceResponses(
       const apiError = error.response.data as ApiErrorResponse;
       throw new Error(apiError.error.message || 'Failed to delete choice responses');
     }
-    
+
     throw new Error(
       error instanceof Error
         ? error.message
@@ -138,19 +138,19 @@ async function deleteChoiceResponses(
 
 /**
  * React Query mutation hook for deleting choice responses
- * 
+ *
  * Features:
  * - Optimistic updates: Immediately removes deleted responses from cache
  * - Automatic cache invalidation: Refetches choice results on success
  * - Rollback on error: Restores previous cache state if deletion fails
  * - Toast notifications: Shows success/error messages to user
  * - Permission validation: Ensures user has mod/choice:deleteresponses capability
- * 
+ *
  * @example
  * ```tsx
  * function ChoiceResponseManager({ choiceId }) {
  *   const deleteResponses = useDeleteResponses();
- * 
+ *
  *   const handleDelete = (attemptIds: number[]) => {
  *     deleteResponses.mutate(
  *       { choiceId, attemptIds },
@@ -161,7 +161,7 @@ async function deleteChoiceResponses(
  *       }
  *     );
  *   };
- * 
+ *
  *   return (
  *     <button
  *       onClick={() => handleDelete([1, 2, 3])}
@@ -172,7 +172,7 @@ async function deleteChoiceResponses(
  *   );
  * }
  * ```
- * 
+ *
  * @returns UseMutationResult with mutate function and state
  */
 export default function useDeleteResponses(): UseMutationResult<
@@ -209,7 +209,9 @@ export default function useDeleteResponses(): UseMutationResult<
       // Optimistically update the cache
       if (previousData) {
         queryClient.setQueryData<ChoiceResultsCache>(queryKey, (old) => {
-          if (!old) {return old;}
+          if (!old) {
+            return old;
+          }
 
           // Filter out deleted responses
           const filteredResponses = old.responses.filter(
@@ -219,10 +221,7 @@ export default function useDeleteResponses(): UseMutationResult<
           // Recalculate option counts
           const optionCounts = new Map<number, number>();
           filteredResponses.forEach((response) => {
-            optionCounts.set(
-              response.optionid,
-              (optionCounts.get(response.optionid) ?? 0) + 1
-            );
+            optionCounts.set(response.optionid, (optionCounts.get(response.optionid) ?? 0) + 1);
           });
 
           const updatedOptions = old.options.map((option) => ({
@@ -283,15 +282,12 @@ export default function useDeleteResponses(): UseMutationResult<
 
       // Rollback to previous data if available
       if (context?.previousData) {
-        queryClient.setQueryData(
-          ['choices', choiceId, 'results'],
-          context.previousData
-        );
+        queryClient.setQueryData(['choices', choiceId, 'results'], context.previousData);
       }
 
       // Show error notification with details
       const errorMessage = error.message || 'Failed to delete choice responses';
-      
+
       void showError(errorMessage, { duration: 6000 });
 
       // Log error for debugging (in development)

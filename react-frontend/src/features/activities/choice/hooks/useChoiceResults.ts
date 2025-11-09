@@ -89,12 +89,12 @@ interface ChoiceResultsResponse {
 
 /**
  * Fetches detailed choice results data from the API
- * 
+ *
  * Makes a GET request to /api/v1/choices/{id}/results with optional
  * query parameters for group filtering and inactive user inclusion.
  * This function is a simple wrapper around the choiceApi getChoiceResults
  * function to maintain compatibility with the hook's query function signature.
- * 
+ *
  * @param choiceId - The ID of the choice activity
  * @param groupId - Optional group ID to filter responses
  * @param includeinactive - Whether to include responses from inactive users
@@ -115,32 +115,32 @@ async function fetchChoiceResults(
 
 /**
  * React Query hook for fetching detailed choice results and response data
- * 
+ *
  * Retrieves comprehensive results including user responses with full details,
  * group memberships, selected options, and response timestamps. Supports
  * filtering by group and inclusion of inactive users.
- * 
+ *
  * The hook uses React Query for efficient data fetching, caching, and
  * automatic refetching. Results are cached for 2 minutes (staleTime) to
  * balance data freshness with server load for frequently changing data.
- * 
+ *
  * @param params - Parameters for fetching choice results
  * @param params.choiceId - The ID of the choice activity (required, must be > 0)
  * @param params.groupId - Optional group ID to filter responses by specific group
  * @param params.includeinactive - Whether to include responses from inactive users (default: false)
- * 
+ *
  * @returns UseQueryResult with choice results data and query state
- * 
+ *
  * @example
  * Basic usage - fetch all active users' responses:
  * ```typescript
  * const { data, isLoading, error } = useChoiceResults({
  *   choiceId: 42
  * });
- * 
+ *
  * if (isLoading) return <LoadingSpinner />;
  * if (error) return <ErrorMessage error={error} />;
- * 
+ *
  * return (
  *   <div>
  *     <h2>Total Responses: {data.totalCount}</h2>
@@ -150,7 +150,7 @@ async function fetchChoiceResults(
  *   </div>
  * );
  * ```
- * 
+ *
  * @example
  * Filter by group and include inactive users:
  * ```typescript
@@ -160,12 +160,12 @@ async function fetchChoiceResults(
  *   includeinactive: true
  * });
  * ```
- * 
+ *
  * @example
  * Access specific fields from responses:
  * ```typescript
  * const { data } = useChoiceResults({ choiceId: 42 });
- * 
+ *
  * data?.responses.forEach(response => {
  *   console.log(`${response.firstname} ${response.lastname}`);
  *   console.log(`Groups: ${response.groups.map(g => g.name).join(', ')}`);
@@ -183,27 +183,27 @@ function useChoiceResults({
     // Query key includes all parameters that affect the data
     // This ensures proper cache isolation for different parameter combinations
     queryKey: ['choices', choiceId, 'results', { groupId, includeinactive }],
-    
+
     // Query function that fetches the data
     queryFn: () => fetchChoiceResults(choiceId, groupId, includeinactive),
-    
+
     // Cache data for 2 minutes (120,000 ms)
     // Results data changes frequently as users submit responses
     // 2 minutes balances freshness with reduced server load
     staleTime: 2 * 60 * 1000,
-    
+
     // Only run the query if choiceId is valid
     // Prevents unnecessary API calls with invalid IDs
     enabled: !!choiceId && choiceId > 0,
-    
+
     // Retry failed requests up to 2 times
     // Helps handle transient network issues
     retry: 2,
-    
+
     // Exponential backoff for retries
     // Delays: 1s, 2s, capped at 30s
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-    
+
     // Refetch on window focus to keep data fresh
     // Useful when user returns to the tab
     refetchOnWindowFocus: true,

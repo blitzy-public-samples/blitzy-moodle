@@ -63,11 +63,11 @@ interface LessonNavigationProps {
 
 /**
  * LessonNavigation Component
- * 
+ *
  * Provides navigation controls for lesson pages including Previous/Next buttons,
  * page position display, and optional page overview functionality. Supports
  * keyboard navigation and respects lesson branching logic constraints.
- * 
+ *
  * Features:
  * - Previous and Next navigation buttons with appropriate disabled states
  * - Current page position indicator (e.g., "Page 3 of 15")
@@ -75,7 +75,7 @@ interface LessonNavigationProps {
  * - Keyboard shortcuts (ArrowLeft for previous, ArrowRight for next)
  * - Full accessibility support with ARIA labels
  * - Integrates with lesson branching logic
- * 
+ *
  * @param props - Component props
  * @returns React component for lesson navigation
  */
@@ -289,11 +289,7 @@ function LessonNavigation({
             <Typography id="page-overview-title" variant="h6" component="h2">
               Lesson Pages
             </Typography>
-            <IconButton
-              onClick={handleCloseOverview}
-              aria-label="Close page overview"
-              size="small"
-            >
+            <IconButton onClick={handleCloseOverview} aria-label="Close page overview" size="small">
               <CloseIcon />
             </IconButton>
           </Box>
@@ -325,9 +321,7 @@ function LessonNavigation({
                     key={page.id}
                     disablePadding
                     sx={{
-                      backgroundColor: isCurrentPage
-                        ? 'action.selected'
-                        : 'transparent',
+                      backgroundColor: isCurrentPage ? 'action.selected' : 'transparent',
                     }}
                   >
                     <ListItemButton
@@ -339,15 +333,9 @@ function LessonNavigation({
                       {/* Completion Status Icon */}
                       <ListItemIcon>
                         {page.completed ? (
-                          <CheckCircleIcon
-                            color="success"
-                            aria-label="Completed"
-                          />
+                          <CheckCircleIcon color="success" aria-label="Completed" />
                         ) : (
-                          <RadioButtonUncheckedIcon
-                            color="action"
-                            aria-label="Not completed"
-                          />
+                          <RadioButtonUncheckedIcon color="action" aria-label="Not completed" />
                         )}
                       </ListItemIcon>
 

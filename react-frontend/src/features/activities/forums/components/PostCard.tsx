@@ -103,16 +103,15 @@ const formatTimestamp = (date: Date): string => {
     if (!date || isNaN(date.getTime())) {
       return 'Invalid date';
     }
-    
+
     const daysSincePost = differenceInDays(new Date(), date);
-    
+
     if (daysSincePost <= 7) {
       // Recent posts: show relative time
       return formatDistanceToNow(date, { addSuffix: true });
-    } 
-      // Older posts: show absolute date
-      return format(date, 'MMM d, yyyy');
-    
+    }
+    // Older posts: show absolute date
+    return format(date, 'MMM d, yyyy');
   } catch (error) {
     // Handle any date formatting errors gracefully
     return 'Invalid date';
@@ -123,16 +122,18 @@ const formatTimestamp = (date: Date): string => {
  * Format file size for display
  */
 const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) {return '0 Bytes';}
+  if (bytes === 0) {
+    return '0 Bytes';
+  }
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   const size = bytes / Math.pow(k, i);
   // For MB and GB, always show one decimal place
   if (i >= 2) {
-    return `${size.toFixed(1)  } ${  sizes[i]}`;
+    return `${size.toFixed(1)} ${sizes[i]}`;
   }
-  return `${Math.round(size * 100) / 100  } ${  sizes[i]}`;
+  return `${Math.round(size * 100) / 100} ${sizes[i]}`;
 };
 
 /**
@@ -154,8 +155,13 @@ const getRoleBadgeColor = (role: UserRole): 'primary' | 'secondary' | 'success' 
  * Extract initials from full name for default avatar
  */
 const getInitials = (fullName: string): string => {
-  const names = fullName.trim().split(/\s+/).filter(n => n.length > 0);
-  if (names.length === 0) {return '?';}
+  const names = fullName
+    .trim()
+    .split(/\s+/)
+    .filter((n) => n.length > 0);
+  if (names.length === 0) {
+    return '?';
+  }
   if (names.length === 1) {
     const first = names[0];
     return first ? first.charAt(0).toUpperCase() : '?';
@@ -193,14 +199,14 @@ function PostCard({
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  
+
   // Check if current user has moderator privileges
   const isModerator = currentUserRole === 'moderator' || currentUserRole === 'teacher';
-  
+
   // Determine the actual liked state (optimistic or real)
   const isLiked = optimisticLiked ?? post.userHasLiked;
   const likeCount = optimisticLikeCount ?? post.likeCount;
-  
+
   // Clear optimistic state after successful update
   useEffect(() => {
     if (optimisticLiked !== null && post.userHasLiked === optimisticLiked) {
@@ -210,8 +216,6 @@ function PostCard({
       setOptimisticLikeCount(null);
     }
   }, [post.userHasLiked, post.likeCount, optimisticLiked, optimisticLikeCount]);
-
-
 
   /**
    * Handle reply action
@@ -284,21 +288,23 @@ function PostCard({
    * Handle like/unlike action with debouncing and optimistic updates
    */
   const handleLike = useCallback(() => {
-    if (!onLike) {return;}
-    
+    if (!onLike) {
+      return;
+    }
+
     // Optimistic update
     const newLikedState = !isLiked;
     const newLikeCount = newLikedState ? likeCount + 1 : likeCount - 1;
-    
+
     setOptimisticLiked(newLikedState);
     setOptimisticLikeCount(newLikeCount);
-    
+
     // Set status message for screen readers
     setStatusMessage(newLikedState ? 'Post liked' : 'Post unliked');
-    
+
     // Clear status message after announcement
     setTimeout(() => setStatusMessage(''), 1000);
-    
+
     // Call handler immediately
     try {
       onLike(post.id);
@@ -469,7 +475,27 @@ function PostCard({
 
   // Sanitize HTML content to prevent XSS
   const sanitizedMessage = DOMPurify.sanitize(post.message, {
-    ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'a', 'ul', 'ol', 'li', 'code', 'pre', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'img'],
+    ALLOWED_TAGS: [
+      'p',
+      'br',
+      'strong',
+      'em',
+      'u',
+      'a',
+      'ul',
+      'ol',
+      'li',
+      'code',
+      'pre',
+      'blockquote',
+      'h1',
+      'h2',
+      'h3',
+      'h4',
+      'h5',
+      'h6',
+      'img',
+    ],
     ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class'],
   });
 
@@ -483,11 +509,11 @@ function PostCard({
   // Render deleted post placeholder
   if (post.deleted) {
     return (
-      <Card 
-        sx={{ 
-          mb: 2, 
+      <Card
+        sx={{
+          mb: 2,
           opacity: 0.6,
-          backgroundColor: 'action.disabledBackground' 
+          backgroundColor: 'action.disabledBackground',
         }}
         role="article"
         aria-label="Deleted post"
@@ -505,12 +531,12 @@ function PostCard({
   // Render pending approval state
   if (post.isPending && !post.moderatorApproved) {
     return (
-      <Card 
-        sx={{ 
+      <Card
+        sx={{
           mb: 2,
           borderColor: 'warning.main',
           borderWidth: 2,
-          borderStyle: 'solid'
+          borderStyle: 'solid',
         }}
         role="article"
         aria-label="Post pending approval"
@@ -519,7 +545,7 @@ function PostCard({
           <Alert severity="warning" sx={{ mb: 2 }}>
             This post is pending approval
           </Alert>
-          
+
           {/* Author Section */}
           <Box display="flex" alignItems="flex-start" gap={2} mb={2}>
             <Avatar
@@ -528,7 +554,8 @@ function PostCard({
               sx={{ width: 48, height: 48 }}
               data-testid={!post.author?.profileImageUrl ? 'default-avatar' : undefined}
             >
-              {!post.author?.profileImageUrl && getInitials(post.author?.fullName || 'Deleted User')}
+              {!post.author?.profileImageUrl &&
+                getInitials(post.author?.fullName || 'Deleted User')}
             </Avatar>
             <Box flex={1}>
               <Box display="flex" alignItems="center" gap={1}>
@@ -542,7 +569,12 @@ function PostCard({
                     </Typography>
                   </Link>
                 ) : (
-                  <Typography variant="subtitle1" component="span" fontWeight="bold" color="text.secondary">
+                  <Typography
+                    variant="subtitle1"
+                    component="span"
+                    fontWeight="bold"
+                    color="text.secondary"
+                  >
                     {post.author?.fullName || 'Deleted User'}
                   </Typography>
                 )}
@@ -606,7 +638,7 @@ function PostCard({
   }
 
   return (
-    <Card 
+    <Card
       className={isMobile ? 'mobile-layout' : 'desktop-layout'}
       sx={{ mb: 2 }}
       role="article"
@@ -652,7 +684,12 @@ function PostCard({
                   </Typography>
                 </Link>
               ) : (
-                <Typography variant="subtitle1" component="span" fontWeight="bold" color="text.secondary">
+                <Typography
+                  variant="subtitle1"
+                  component="span"
+                  fontWeight="bold"
+                  color="text.secondary"
+                >
                   {post.author?.fullName || 'Deleted User'}
                 </Typography>
               )}
@@ -678,8 +715,7 @@ function PostCard({
                 <>
                   {' • '}
                   <span>
-                    Edited by {post.editedBy.fullName} on {format(post.modified, 'PPpp')}
-                    {' '}
+                    Edited by {post.editedBy.fullName} on {format(post.modified, 'PPpp')}{' '}
                     <Link
                       to={`/mod/forum/discuss.php?d=${post.discussionId}#p${post.id}/history`}
                       style={{ textDecoration: 'underline' }}
@@ -708,23 +744,21 @@ function PostCard({
               maxHeight: shouldShowExpandButton ? 300 : 'none',
               overflow: shouldShowExpandButton ? 'hidden' : 'visible',
               '& img': { maxWidth: '100%', height: 'auto' },
-              '& pre': { 
+              '& pre': {
                 backgroundColor: 'action.hover',
                 padding: 2,
                 borderRadius: 1,
-                overflowX: 'auto'
+                overflowX: 'auto',
               },
               '& code': {
                 backgroundColor: 'action.hover',
                 padding: 0.5,
                 borderRadius: 0.5,
-                fontFamily: 'monospace'
+                fontFamily: 'monospace',
               },
             }}
           >
-            <Box
-              dangerouslySetInnerHTML={{ __html: sanitizedMessage }}
-            />
+            <Box dangerouslySetInnerHTML={{ __html: sanitizedMessage }} />
             {shouldShowExpandButton && (
               <Box
                 sx={{
@@ -779,15 +813,9 @@ function PostCard({
             <Box>
               {post.attachments.map((attachment) => {
                 const isImage = attachment.mimetype.startsWith('image/');
-                
+
                 return (
-                  <Box 
-                    key={attachment.id}
-                    display="flex"
-                    alignItems="center"
-                    gap={1}
-                    py={0.5}
-                  >
+                  <Box key={attachment.id} display="flex" alignItems="center" gap={1} py={0.5}>
                     {isImage ? (
                       <Box
                         component="img"
@@ -802,14 +830,10 @@ function PostCard({
                         }}
                       />
                     ) : (
-                      <Box sx={{ width: 24, height: 24 }}>
-                        {getFileIcon(attachment.mimetype)}
-                      </Box>
+                      <Box sx={{ width: 24, height: 24 }}>{getFileIcon(attachment.mimetype)}</Box>
                     )}
                     <Box flex={1}>
-                      <Typography variant="body2">
-                        {attachment.filename}
-                      </Typography>
+                      <Typography variant="body2">{attachment.filename}</Typography>
                       <Typography variant="caption" color="text.secondary">
                         {formatFileSize(attachment.filesize)}
                       </Typography>
@@ -837,12 +861,7 @@ function PostCard({
               <Typography variant="body2" color="text.secondary">
                 Average Rating:
               </Typography>
-              <Rating 
-                value={post.rating} 
-                precision={0.5} 
-                readOnly 
-                size="small"
-              />
+              <Rating value={post.rating} precision={0.5} readOnly size="small" />
               <Typography variant="body2" color="text.secondary">
                 {post.rating.toFixed(1)}
               </Typography>
@@ -857,11 +876,7 @@ function PostCard({
               <Typography variant="body2" color="text.secondary">
                 Your Rating:
               </Typography>
-              <Rating 
-                value={post.userRating} 
-                readOnly 
-                size="small"
-              />
+              <Rating value={post.userRating} readOnly size="small" />
             </Box>
           </Box>
         )}
@@ -871,9 +886,9 @@ function PostCard({
 
       {/* Action Buttons */}
       <CardActions sx={{ justifyContent: 'space-between', px: 2, flexWrap: 'wrap' }}>
-        <Box 
-          display="flex" 
-          gap={1} 
+        <Box
+          display="flex"
+          gap={1}
           flexWrap="wrap"
           data-testid="action-buttons"
           className={isMobile ? 'vertical' : 'horizontal'}
@@ -902,10 +917,7 @@ function PostCard({
           {/* Reply Button */}
           {post.canReply && onReply && (
             <Tooltip title="Reply">
-              <IconButton
-                onClick={debouncedHandleReply}
-                aria-label="Reply to post"
-              >
+              <IconButton onClick={debouncedHandleReply} aria-label="Reply to post">
                 <Badge badgeContent={post.replyCount || 0} color="secondary">
                   <ReplyIcon />
                 </Badge>
@@ -929,10 +941,7 @@ function PostCard({
           {/* Quote Button */}
           {post.canReply && onQuote && (
             <Tooltip title="Quote">
-              <IconButton
-                onClick={debouncedHandleQuote}
-                aria-label="Quote post"
-              >
+              <IconButton onClick={debouncedHandleQuote} aria-label="Quote post">
                 <FormatQuoteIcon />
               </IconButton>
             </Tooltip>
@@ -955,10 +964,7 @@ function PostCard({
           {/* Report Button */}
           {onReport && (
             <Tooltip title="Report">
-              <IconButton
-                onClick={debouncedHandleReport}
-                aria-label="Report post"
-              >
+              <IconButton onClick={debouncedHandleReport} aria-label="Report post">
                 <FlagIcon />
               </IconButton>
             </Tooltip>
@@ -966,10 +972,7 @@ function PostCard({
 
           {/* Permalink Button */}
           <Tooltip title={copySuccess ? 'Copied!' : 'Copy permalink'}>
-            <IconButton
-              onClick={handlePermalink}
-              aria-label="Copy permalink to clipboard"
-            >
+            <IconButton onClick={handlePermalink} aria-label="Copy permalink to clipboard">
               <LinkIcon color={copySuccess ? 'success' : undefined} />
             </IconButton>
           </Tooltip>
@@ -993,11 +996,7 @@ function PostCard({
           {/* Moderator Reject Button */}
           {isModerator && onReject && (
             <Tooltip title="Reject">
-              <IconButton
-                onClick={debouncedHandleReject}
-                aria-label="Reject post"
-                color="error"
-              >
+              <IconButton onClick={debouncedHandleReject} aria-label="Reject post" color="error">
                 <CloseIcon />
               </IconButton>
             </Tooltip>
@@ -1006,10 +1005,7 @@ function PostCard({
           {/* Split Button */}
           {isModerator && post.canSplit && onSplit && (
             <Tooltip title="Split Discussion">
-              <IconButton
-                onClick={debouncedHandleSplit}
-                aria-label="Split discussion"
-              >
+              <IconButton onClick={debouncedHandleSplit} aria-label="Split discussion">
                 <CallSplitIcon />
               </IconButton>
             </Tooltip>
@@ -1018,10 +1014,7 @@ function PostCard({
           {/* Move Button (Moderator) */}
           {isModerator && onMove && (
             <Tooltip title="Move Post">
-              <IconButton
-                onClick={debouncedHandleMove}
-                aria-label="Move post"
-              >
+              <IconButton onClick={debouncedHandleMove} aria-label="Move post">
                 <DriveFileMoveIcon />
               </IconButton>
             </Tooltip>
@@ -1045,18 +1038,14 @@ function PostCard({
         aria-labelledby="delete-dialog-title"
         aria-describedby="delete-dialog-description"
       >
-        <DialogTitle id="delete-dialog-title">
-          Confirm Delete
-        </DialogTitle>
+        <DialogTitle id="delete-dialog-title">Confirm Delete</DialogTitle>
         <DialogContent>
           <DialogContentText id="delete-dialog-description">
             Are you sure you want to delete this post? This action cannot be undone.
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleDeleteCancel}>
-            Cancel
-          </Button>
+          <Button onClick={handleDeleteCancel}>Cancel</Button>
           <Button onClick={debouncedHandleDeleteConfirm} color="error">
             Confirm
           </Button>

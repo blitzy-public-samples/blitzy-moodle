@@ -50,7 +50,7 @@ import {
 export interface WikiNavigationProps {
   /** The ID of the wiki */
   wikiId: number;
-  
+
   /** Current page information */
   currentPage?: {
     id: number;
@@ -60,37 +60,37 @@ export interface WikiNavigationProps {
     hasEditPermission?: boolean;
     hasViewPermission?: boolean;
   };
-  
+
   /** Callback when navigating to a different page or action */
   onNavigate: (target: NavigationTarget) => void;
-  
+
   /** Whether to show the search functionality */
   showSearch?: boolean;
-  
+
   /** Whether the component is being rendered on a mobile device */
   isMobile?: boolean;
-  
+
   /** Course information for breadcrumb */
   course?: {
     id: number;
     name: string;
   };
-  
+
   /** Wiki information for breadcrumb */
   wiki?: {
     id: number;
     name: string;
   };
-  
+
   /** Available pages for search autocomplete */
   availablePages?: WikiPage[];
-  
+
   /** Recently viewed pages */
   recentPages?: WikiPage[];
-  
+
   /** Whether to enable sticky navigation on scroll */
   sticky?: boolean;
-  
+
   /** Current user permissions */
   permissions?: {
     canEdit?: boolean;
@@ -125,7 +125,7 @@ interface WikiPage {
 
 /**
  * WikiNavigation Component
- * 
+ *
  * Provides comprehensive navigation features for wiki pages including:
  * - Breadcrumb trail showing course > wiki > page hierarchy
  * - Navigation menu with permission-based action visibility
@@ -223,16 +223,12 @@ function WikiNavigation({
     // Filter by search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(page =>
-        page.title.toLowerCase().includes(query)
-      );
+      filtered = filtered.filter((page) => page.title.toLowerCase().includes(query));
     }
 
     // Filter by selected tags
     if (selectedTags.length > 0) {
-      filtered = filtered.filter(page =>
-        page.tags?.some(tag => selectedTags.includes(tag))
-      );
+      filtered = filtered.filter((page) => page.tags?.some((tag) => selectedTags.includes(tag)));
     }
 
     return filtered;
@@ -241,42 +237,51 @@ function WikiNavigation({
   // Extract unique tags from all pages
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();
-    availablePages.forEach(page => {
-      page.tags?.forEach(tag => tagSet.add(tag));
+    availablePages.forEach((page) => {
+      page.tags?.forEach((tag) => tagSet.add(tag));
     });
     return Array.from(tagSet).sort();
   }, [availablePages]);
 
   // Handlers
   const handleDrawerToggle = useCallback(() => {
-    setMobileDrawerOpen(prev => !prev);
+    setMobileDrawerOpen((prev) => !prev);
   }, []);
 
-  const handleSearchChange = useCallback((_event: React.SyntheticEvent, value: WikiPage | null) => {
-    if (value) {
-      onNavigate({ type: 'page', pageId: value.id, pageTitle: value.title });
-      setSearchQuery('');
-    }
-  }, [onNavigate]);
-
-  const handleActionClick = useCallback((action: 'view' | 'edit' | 'history' | 'map' | 'files') => {
-    onNavigate({ type: 'action', action });
-    setMobileDrawerOpen(false);
-    setAnchorEl(null);
-  }, [onNavigate]);
-
-  const handleTagClick = useCallback((tag: string) => {
-    setSelectedTags(prev => {
-      if (prev.includes(tag)) {
-        return prev.filter(t => t !== tag);
+  const handleSearchChange = useCallback(
+    (_event: React.SyntheticEvent, value: WikiPage | null) => {
+      if (value) {
+        onNavigate({ type: 'page', pageId: value.id, pageTitle: value.title });
+        setSearchQuery('');
       }
-      return [...prev, tag];
-    });
-    onNavigate({ type: 'tag', tag });
-  }, [onNavigate]);
+    },
+    [onNavigate]
+  );
+
+  const handleActionClick = useCallback(
+    (action: 'view' | 'edit' | 'history' | 'map' | 'files') => {
+      onNavigate({ type: 'action', action });
+      setMobileDrawerOpen(false);
+      setAnchorEl(null);
+    },
+    [onNavigate]
+  );
+
+  const handleTagClick = useCallback(
+    (tag: string) => {
+      setSelectedTags((prev) => {
+        if (prev.includes(tag)) {
+          return prev.filter((t) => t !== tag);
+        }
+        return [...prev, tag];
+      });
+      onNavigate({ type: 'tag', tag });
+    },
+    [onNavigate]
+  );
 
   const handleTagRemove = useCallback((tag: string) => {
-    setSelectedTags(prev => prev.filter(t => t !== tag));
+    setSelectedTags((prev) => prev.filter((t) => t !== tag));
   }, []);
 
   const handleMenuOpen = useCallback((event: React.MouseEvent<HTMLElement>) => {
@@ -295,9 +300,12 @@ function WikiNavigation({
     setRecentMenuAnchor(null);
   }, []);
 
-  const handleBreadcrumbClick = useCallback((target: NavigationTarget) => {
-    onNavigate(target);
-  }, [onNavigate]);
+  const handleBreadcrumbClick = useCallback(
+    (target: NavigationTarget) => {
+      onNavigate(target);
+    },
+    [onNavigate]
+  );
 
   // Render breadcrumb navigation
   const renderBreadcrumbs = () => (
@@ -394,11 +402,11 @@ function WikiNavigation({
         show: permissions.canManageFiles === true,
         shortcut: '',
       },
-    ].filter(action => action.show);
+    ].filter((action) => action.show);
 
     return (
       <List dense>
-        {actions.map(action => (
+        {actions.map((action) => (
           <ListItem key={action.id} disablePadding>
             <Tooltip
               title={action.shortcut ? `${action.label} (${action.shortcut})` : action.label}
@@ -458,7 +466,7 @@ function WikiNavigation({
                 <Typography variant="body2">{option.title}</Typography>
                 {option.tags && option.tags.length > 0 && (
                   <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
-                    {option.tags.map(tag => (
+                    {option.tags.map((tag) => (
                       <Chip key={tag} label={tag} size="small" sx={{ height: 18 }} />
                     ))}
                   </Box>
@@ -491,7 +499,7 @@ function WikiNavigation({
           Filter by tags:
         </Typography>
         <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-          {allTags.slice(0, 10).map(tag => {
+          {allTags.slice(0, 10).map((tag) => {
             const isSelected = selectedTags.includes(tag);
             return (
               <Chip
@@ -556,7 +564,7 @@ function WikiNavigation({
             </Typography>
           </MenuItem>
           <Divider />
-          {recentPages.map(page => (
+          {recentPages.map((page) => (
             <MenuItem
               key={page.id}
               onClick={() => {
@@ -597,25 +605,25 @@ function WikiNavigation({
       }}
       aria-label="Wiki navigation drawer"
     >
-      <Box
-        sx={{ width: 280, pt: 2 }}
-        role="navigation"
-        aria-label="Wiki mobile navigation"
-      >
-        <Box sx={{ px: 2, mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <Box sx={{ width: 280, pt: 2 }} role="navigation" aria-label="Wiki mobile navigation">
+        <Box
+          sx={{
+            px: 2,
+            mb: 2,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
           <Typography variant="h6">Wiki Navigation</Typography>
           <IconButton onClick={handleDrawerToggle} aria-label="Close navigation drawer">
             <CloseIcon />
           </IconButton>
         </Box>
         <Divider />
-        <Box sx={{ px: 2, py: 2 }}>
-          {renderBreadcrumbs()}
-        </Box>
+        <Box sx={{ px: 2, py: 2 }}>{renderBreadcrumbs()}</Box>
         <Divider />
-        <Box sx={{ px: 2, py: 2 }}>
-          {renderSearch()}
-        </Box>
+        <Box sx={{ px: 2, py: 2 }}>{renderSearch()}</Box>
         <Divider />
         <Box sx={{ py: 1 }}>
           <Typography variant="subtitle2" sx={{ px: 2, py: 1, color: 'text.secondary' }}>
@@ -631,7 +639,7 @@ function WikiNavigation({
                 Recent Pages
               </Typography>
               <List dense>
-                {recentPages.slice(0, 5).map(page => (
+                {recentPages.slice(0, 5).map((page) => (
                   <ListItem key={page.id} disablePadding>
                     <ListItemButton
                       onClick={() => {
@@ -658,9 +666,7 @@ function WikiNavigation({
           </>
         )}
         <Divider />
-        <Box sx={{ px: 2, py: 2 }}>
-          {renderTagFilters()}
-        </Box>
+        <Box sx={{ px: 2, py: 2 }}>{renderTagFilters()}</Box>
       </Box>
     </Drawer>
   );
@@ -695,8 +701,14 @@ function WikiNavigation({
             </Typography>
           </MenuItem>
         )}
-        {currentPage?.tags?.map(tag => (
-          <MenuItem key={tag} onClick={() => { handleTagClick(tag); handleMenuClose(); }}>
+        {currentPage?.tags?.map((tag) => (
+          <MenuItem
+            key={tag}
+            onClick={() => {
+              handleTagClick(tag);
+              handleMenuClose();
+            }}
+          >
             <ListItemIcon>
               <LabelIcon fontSize="small" />
             </ListItemIcon>
@@ -704,7 +716,11 @@ function WikiNavigation({
           </MenuItem>
         ))}
         {currentPage?.tags && currentPage.tags.length > 0 && <Divider />}
-        <MenuItem onClick={() => { handleActionClick('map'); }}>
+        <MenuItem
+          onClick={() => {
+            handleActionClick('map');
+          }}
+        >
           <ListItemIcon>
             <MapIcon fontSize="small" />
           </ListItemIcon>
@@ -745,11 +761,7 @@ function WikiNavigation({
           )}
 
           {/* Desktop breadcrumbs */}
-          {!isMobile && (
-            <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-              {renderBreadcrumbs()}
-            </Box>
-          )}
+          {!isMobile && <Box sx={{ flexGrow: 1, minWidth: 0 }}>{renderBreadcrumbs()}</Box>}
 
           {/* Mobile title */}
           {isMobile && currentPage && (
@@ -827,11 +839,7 @@ function WikiNavigation({
         </Toolbar>
 
         {/* Desktop tag filters (below toolbar) */}
-        {!isMobile && allTags.length > 0 && (
-          <Box sx={{ px: 2, pb: 1 }}>
-            {renderTagFilters()}
-          </Box>
-        )}
+        {!isMobile && allTags.length > 0 && <Box sx={{ px: 2, pb: 1 }}>{renderTagFilters()}</Box>}
       </AppBar>
 
       {/* Spacer for sticky navigation */}
@@ -874,10 +882,12 @@ function WikiNavigation({
                 Recent Pages
               </Typography>
               <List dense>
-                {recentPages.slice(0, 5).map(page => (
+                {recentPages.slice(0, 5).map((page) => (
                   <ListItem key={page.id} disablePadding>
                     <ListItemButton
-                      onClick={() => onNavigate({ type: 'page', pageId: page.id, pageTitle: page.title })}
+                      onClick={() =>
+                        onNavigate({ type: 'page', pageId: page.id, pageTitle: page.title })
+                      }
                       sx={{ borderRadius: 1 }}
                     >
                       <ListItemIcon sx={{ minWidth: 32 }}>
@@ -908,7 +918,14 @@ function WikiNavigation({
       {/* Accessibility: Keyboard shortcuts help */}
       <Box
         component="div"
-        sx={{ position: 'absolute', left: -10000, top: 'auto', width: 1, height: 1, overflow: 'hidden' }}
+        sx={{
+          position: 'absolute',
+          left: -10000,
+          top: 'auto',
+          width: 1,
+          height: 1,
+          overflow: 'hidden',
+        }}
         aria-live="polite"
         aria-atomic="true"
         role="status"

@@ -75,15 +75,17 @@ export interface UseSaveDraftReturn {
 function getDraftFromStorage(key: string): DraftData | null {
   try {
     const item = localStorage.getItem(key);
-    if (!item) {return null;}
-    
+    if (!item) {
+      return null;
+    }
+
     const draft = JSON.parse(item) as DraftData;
-    
+
     // Validate draft structure
     if (!draft.message || typeof draft.savedAt !== 'number') {
       return null;
     }
-    
+
     return draft;
   } catch (error) {
     console.error('Error loading draft from localStorage:', error);
@@ -152,11 +154,7 @@ function removeDraftFromStorage(key: string): void {
  * ```
  */
 export function useSaveDraft(options: UseSaveDraftOptions): UseSaveDraftReturn {
-  const {
-    draftKey,
-    autoSaveInterval: _autoSaveInterval = 30000,
-    enabled = true,
-  } = options;
+  const { draftKey, autoSaveInterval: _autoSaveInterval = 30000, enabled = true } = options;
 
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastSaveDataRef = useRef<string>('');
@@ -165,20 +163,29 @@ export function useSaveDraft(options: UseSaveDraftOptions): UseSaveDraftReturn {
   /**
    * Save draft to localStorage
    */
-  const saveDraft = useCallback((data: Omit<DraftData, 'savedAt'>) => {
-    if (!enabled) {return;}
-    
-    // Don't save empty drafts
-    if (!data.message?.trim()) {return;}
-    
-    // Don't save if data hasn't changed
-    const dataStr = JSON.stringify(data);
-    if (dataStr === lastSaveDataRef.current) {return;}
-    
-    saveDraftToStorage(draftKey, data);
-    lastSaveDataRef.current = dataStr;
-    setLastSavedAt(Date.now());
-  }, [draftKey, enabled]);
+  const saveDraft = useCallback(
+    (data: Omit<DraftData, 'savedAt'>) => {
+      if (!enabled) {
+        return;
+      }
+
+      // Don't save empty drafts
+      if (!data.message?.trim()) {
+        return;
+      }
+
+      // Don't save if data hasn't changed
+      const dataStr = JSON.stringify(data);
+      if (dataStr === lastSaveDataRef.current) {
+        return;
+      }
+
+      saveDraftToStorage(draftKey, data);
+      lastSaveDataRef.current = dataStr;
+      setLastSavedAt(Date.now());
+    },
+    [draftKey, enabled]
+  );
 
   /**
    * Load draft from localStorage

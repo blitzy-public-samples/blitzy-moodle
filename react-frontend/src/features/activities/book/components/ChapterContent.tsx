@@ -1,9 +1,9 @@
 /**
  * ChapterContent Component
- * 
+ *
  * Displays the actual content of a book chapter including title and HTML content.
  * Handles proper rendering of HTML content with sanitization and formatting.
- * 
+ *
  * @package    react-frontend
  * @subpackage activities/book
  * @copyright  2024 Moodle React Frontend
@@ -29,19 +29,14 @@ export interface ChapterContentProps {
 
 /**
  * ChapterContent Component
- * 
+ *
  * Renders the title and HTML content of a book chapter.
  * Applies appropriate formatting based on book numbering settings.
- * 
+ *
  * @param props - Component props
  * @returns Rendered chapter content
  */
-function ChapterContent({
-  chapter,
-  book,
-  canViewHidden,
-  shouldDimContent,
-}: ChapterContentProps) {
+function ChapterContent({ chapter, book, canViewHidden, shouldDimContent }: ChapterContentProps) {
   /**
    * Generate chapter number prefix based on book numbering style
    * 0 = None, 1 = Numbers, 2 = Bullets, 3 = Indented
@@ -50,7 +45,7 @@ function ChapterContent({
     if (book.numbering === 0) {
       return '';
     }
-    
+
     if (book.numbering === 1) {
       // Numbered chapters
       if (chapter.subchapter) {
@@ -58,12 +53,12 @@ function ChapterContent({
       }
       return `${chapter.pagenum}. `;
     }
-    
+
     if (book.numbering === 2) {
       // Bullets
       return chapter.subchapter ? '◦ ' : '• ';
     }
-    
+
     // Indented (3) or custom
     return '';
   };
@@ -100,7 +95,8 @@ function ChapterContent({
           wordBreak: 'break-word',
         }}
       >
-        {prefix}{chapter.title}
+        {prefix}
+        {chapter.title}
         {chapter.hidden && canViewHidden && (
           <Typography
             component="span"

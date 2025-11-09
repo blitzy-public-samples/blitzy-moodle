@@ -1,14 +1,14 @@
 /**
  * ChapterView Component
- * 
+ *
  * Container component that orchestrates the complete chapter view by composing
  * ChapterContent, ChapterNavigation, and ChapterActionMenu components.
- * 
+ *
  * Provides responsive layout using MUI Box and Paper components.
  * Handles chapter visibility indicators (dimmed text for hidden chapters).
  * Manages the overall structure of a chapter display including title, content,
  * navigation controls, and action menu.
- * 
+ *
  * @package    react-frontend
  * @subpackage activities/book
  * @copyright  2024 Moodle React Frontend
@@ -102,10 +102,10 @@ export interface ChapterViewProps {
 
 /**
  * ChapterView Container Component
- * 
+ *
  * Orchestrates the display of a book chapter by composing multiple sub-components.
  * Provides the overall structure and layout for chapter viewing.
- * 
+ *
  * @param props - Component props
  * @returns Rendered chapter view
  */
@@ -149,7 +149,9 @@ function ChapterView({
    * TODO: Implement API call to toggle chapter visibility
    */
   const handleToggleVisibility = (chapterId: number, currentHiddenState: boolean): void => {
-    console.warn(`Toggle visibility for chapter ${chapterId} (currently ${currentHiddenState ? 'hidden' : 'visible'}) - API implementation needed`);
+    console.warn(
+      `Toggle visibility for chapter ${chapterId} (currently ${currentHiddenState ? 'hidden' : 'visible'}) - API implementation needed`
+    );
     // Future implementation: await updateChapterVisibility(book.id, chapterId, !currentHiddenState);
   };
 
@@ -211,9 +213,7 @@ function ChapterView({
             marginBottom: contentMarginBottom,
             marginTop: canEdit ? (isMobile ? 5 : 6) : 0,
             // Additional dimmed text color when chapter is hidden
-            color: shouldDimContent
-              ? theme.palette.text.secondary
-              : theme.palette.text.primary,
+            color: shouldDimContent ? theme.palette.text.secondary : theme.palette.text.primary,
           }}
         >
           <ChapterContent

@@ -39,7 +39,10 @@ import type { UseAuthReturn } from '@/features/auth/hooks/useAuth';
  * Extended auth type with optional capability checking
  */
 type AuthWithCapabilities = UseAuthReturn & {
-  hasCapability?: (capability: string, context: { contextlevel: string; instanceid: number }) => boolean;
+  hasCapability?: (
+    capability: string,
+    context: { contextlevel: string; instanceid: number }
+  ) => boolean;
 };
 
 /**
@@ -111,8 +114,12 @@ export function ProfileView({
 
   // Determine layout type
   const getLayout = (): 'mobile' | 'tablet' | 'desktop' => {
-    if (isMobile) {return 'mobile';}
-    if (isTablet) {return 'tablet';}
+    if (isMobile) {
+      return 'mobile';
+    }
+    if (isTablet) {
+      return 'tablet';
+    }
     return 'desktop';
   };
 
@@ -178,7 +185,13 @@ export function ProfileView({
   if (isLoading) {
     if (compact) {
       return (
-        <Box className={className} display="flex" alignItems="center" gap={2} data-testid="profile-skeleton">
+        <Box
+          className={className}
+          display="flex"
+          alignItems="center"
+          gap={2}
+          data-testid="profile-skeleton"
+        >
           <Skeleton variant="circular" width={48} height={48} data-testid="skeleton-avatar" />
           <Box flex={1}>
             <Skeleton variant="text" width="60%" height={24} data-testid="skeleton-name" />
@@ -189,14 +202,24 @@ export function ProfileView({
     }
 
     return (
-      <Card className={className} sx={{ maxWidth: 900, margin: 'auto' }} data-testid="profile-skeleton">
+      <Card
+        className={className}
+        sx={{ maxWidth: 900, margin: 'auto' }}
+        data-testid="profile-skeleton"
+      >
         <CardContent>
           <Box display="flex" alignItems="flex-start" gap={3} mb={3}>
             <Skeleton variant="circular" width={120} height={120} data-testid="skeleton-avatar" />
             <Box flex={1}>
               <Skeleton variant="text" width="40%" height={40} data-testid="skeleton-name" />
               <Skeleton variant="text" width="30%" height={24} data-testid="skeleton-username" />
-              <Skeleton variant="text" width="100%" height={20} sx={{ mt: 2 }} data-testid="skeleton-bio" />
+              <Skeleton
+                variant="text"
+                width="100%"
+                height={20}
+                sx={{ mt: 2 }}
+                data-testid="skeleton-bio"
+              />
               <Skeleton variant="text" width="100%" height={20} data-testid="skeleton-bio-line2" />
             </Box>
           </Box>
@@ -211,11 +234,11 @@ export function ProfileView({
   if (error) {
     // Determine error message based on error code
     let errorMessage = 'Failed to load profile. Please try again.';
-    
+
     if (error instanceof Error) {
       // Check if Error has custom error code property
       const errorWithCode = error as Error & { code?: string };
-      
+
       if (errorWithCode.code === 'USER_DELETED') {
         errorMessage = 'This user account has been deleted.';
       } else if (errorWithCode.code === 'INVALID_USER') {
@@ -227,7 +250,7 @@ export function ProfileView({
       }
     } else if (typeof error === 'object' && error !== null) {
       const errorObj = error as { message?: string; code?: string };
-      
+
       // Check error code first to provide specific messages
       if (errorObj.code === 'USER_DELETED') {
         errorMessage = 'This user account has been deleted.';
@@ -242,7 +265,7 @@ export function ProfileView({
 
     return (
       <Box className={className}>
-        <Alert 
+        <Alert
           severity="error"
           action={
             refetch && (
@@ -269,8 +292,12 @@ export function ProfileView({
 
   // Determine avatar size based on layout
   const getAvatarSize = (): { width: number; height: number; size: string } => {
-    if (isMobile) {return { width: 80, height: 80, size: 'small' };}
-    if (isTablet) {return { width: 100, height: 100, size: 'medium' };}
+    if (isMobile) {
+      return { width: 80, height: 80, size: 'small' };
+    }
+    if (isTablet) {
+      return { width: 100, height: 100, size: 'medium' };
+    }
     return { width: 120, height: 120, size: 'large' };
   };
 
@@ -302,11 +329,19 @@ export function ProfileView({
     <Card className={className} sx={{ maxWidth: 900, margin: 'auto' }} data-layout={layout}>
       <CardContent>
         {/* Header Section with Avatar and Basic Info */}
-        <Box component="section" role="region" aria-label="Profile header" display="flex" alignItems="flex-start" gap={3} mb={3}>
-          <Avatar 
-            src={user.profileimageurl} 
-            alt={user.fullname} 
-            sx={{ width: avatarSize.width, height: avatarSize.height }} 
+        <Box
+          component="section"
+          role="region"
+          aria-label="Profile header"
+          display="flex"
+          alignItems="flex-start"
+          gap={3}
+          mb={3}
+        >
+          <Avatar
+            src={user.profileimageurl}
+            alt={user.fullname}
+            sx={{ width: avatarSize.width, height: avatarSize.height }}
             data-testid="profile-avatar"
             data-size={avatarSize.size}
           />
@@ -314,7 +349,13 @@ export function ProfileView({
             <Typography variant="h1" component="h1" gutterBottom sx={{ fontSize: '2.125rem' }}>
               {user.fullname}
             </Typography>
-            <Typography variant="h2" component="h2" color="text.secondary" gutterBottom sx={{ fontSize: '1rem', fontWeight: 400 }}>
+            <Typography
+              variant="h2"
+              component="h2"
+              color="text.secondary"
+              gutterBottom
+              sx={{ fontSize: '1rem', fontWeight: 400 }}
+            >
               @{user.username}
             </Typography>
 
@@ -329,7 +370,16 @@ export function ProfileView({
 
             {/* Interests Tags */}
             {getInterests().length > 0 && (
-              <Stack component="ul" role="list" direction="row" spacing={1} mt={2} flexWrap="wrap" useFlexGap sx={{ listStyle: 'none', padding: 0 }}>
+              <Stack
+                component="ul"
+                role="list"
+                direction="row"
+                spacing={1}
+                mt={2}
+                flexWrap="wrap"
+                useFlexGap
+                sx={{ listStyle: 'none', padding: 0 }}
+              >
                 {getInterests().map((interest) => (
                   <Box component="li" key={interest}>
                     <Chip label={interest} size="small" variant="outlined" />
@@ -342,11 +392,7 @@ export function ProfileView({
           {/* Edit Button */}
           {canEdit && (
             <Box>
-              <Button
-                variant="outlined"
-                color="primary"
-                onClick={onEdit}
-              >
+              <Button variant="outlined" color="primary" onClick={onEdit}>
                 Edit Profile
               </Button>
             </Box>
@@ -357,7 +403,13 @@ export function ProfileView({
 
         {/* Contact Information */}
         <Box component="section" role="region" aria-labelledby="contact-heading" mb={3}>
-          <Typography id="contact-heading" variant="h2" component="h2" gutterBottom sx={{ fontSize: '1.25rem', fontWeight: 500 }}>
+          <Typography
+            id="contact-heading"
+            variant="h2"
+            component="h2"
+            gutterBottom
+            sx={{ fontSize: '1.25rem', fontWeight: 500 }}
+          >
             Contact Information
           </Typography>
           <Grid container spacing={2}>
@@ -402,7 +454,13 @@ export function ProfileView({
         {(Boolean(user.institution) || Boolean(user.department)) && (
           <>
             <Box component="section" role="region" aria-labelledby="professional-heading" mb={3}>
-              <Typography id="professional-heading" variant="h2" component="h2" gutterBottom sx={{ fontSize: '1.25rem', fontWeight: 500 }}>
+              <Typography
+                id="professional-heading"
+                variant="h2"
+                component="h2"
+                gutterBottom
+                sx={{ fontSize: '1.25rem', fontWeight: 500 }}
+              >
                 Professional Information
               </Typography>
               <Grid container spacing={2}>
@@ -431,7 +489,13 @@ export function ProfileView({
 
         {/* Activity Information */}
         <Box component="section" role="region" aria-labelledby="activity-heading">
-          <Typography id="activity-heading" variant="h2" component="h2" gutterBottom sx={{ fontSize: '1.25rem', fontWeight: 500 }}>
+          <Typography
+            id="activity-heading"
+            variant="h2"
+            component="h2"
+            gutterBottom
+            sx={{ fontSize: '1.25rem', fontWeight: 500 }}
+          >
             Activity
           </Typography>
           <Grid container spacing={2}>
@@ -464,7 +528,13 @@ export function ProfileView({
           <>
             <Divider sx={{ my: 3 }} />
             <Box component="section" role="region" aria-labelledby="additional-heading">
-              <Typography id="additional-heading" variant="h2" component="h2" gutterBottom sx={{ fontSize: '1.25rem', fontWeight: 500 }}>
+              <Typography
+                id="additional-heading"
+                variant="h2"
+                component="h2"
+                gutterBottom
+                sx={{ fontSize: '1.25rem', fontWeight: 500 }}
+              >
                 Additional Information
               </Typography>
               <Grid container spacing={2}>
@@ -485,7 +555,12 @@ export function ProfileView({
           <>
             <Divider sx={{ my: 3 }} />
             <Box>
-              <Typography variant="h2" component="h2" gutterBottom sx={{ fontSize: '1.25rem', fontWeight: 500 }}>
+              <Typography
+                variant="h2"
+                component="h2"
+                gutterBottom
+                sx={{ fontSize: '1.25rem', fontWeight: 500 }}
+              >
                 Roles
               </Typography>
               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>

@@ -1,24 +1,9 @@
 import type React from 'react';
 import { useMemo, useState } from 'react';
-import type {
-  GridColDef,
-  GridRowSelectionModel} from '@mui/x-data-grid';
-import {
-  DataGrid,
-  GridToolbarContainer,
-} from '@mui/x-data-grid';
-import {
-  Button,
-  Typography,
-  Paper,
-  Stack,
-  Menu,
-  MenuItem,
-} from '@mui/material';
-import {
-  Delete as DeleteIcon,
-  SwapHoriz as SwapIcon,
-} from '@mui/icons-material';
+import type { GridColDef, GridRowSelectionModel } from '@mui/x-data-grid';
+import { DataGrid, GridToolbarContainer } from '@mui/x-data-grid';
+import { Button, Typography, Paper, Stack, Menu, MenuItem } from '@mui/material';
+import { Delete as DeleteIcon, SwapHoriz as SwapIcon } from '@mui/icons-material';
 
 /**
  * Interface representing a user's response to a choice activity
@@ -70,12 +55,7 @@ interface CustomToolbarProps {
   availableOptions: Array<{ id: number; text: string }>;
 }
 
-function CustomToolbar({
-  selectedRows,
-  onDelete,
-  onModify,
-  availableOptions,
-}: CustomToolbarProps) {
+function CustomToolbar({ selectedRows, onDelete, onModify, availableOptions }: CustomToolbarProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
 
@@ -146,10 +126,7 @@ function CustomToolbar({
               }}
             >
               {availableOptions.map((option) => (
-                <MenuItem
-                  key={option.id}
-                  onClick={() => handleSelectOption(option.id)}
-                >
+                <MenuItem key={option.id} onClick={() => handleSelectOption(option.id)}>
                   {option.text}
                 </MenuItem>
               ))}
@@ -166,12 +143,7 @@ function CustomToolbar({
  */
 function NoRowsOverlay() {
   return (
-    <Stack
-      height="100%"
-      alignItems="center"
-      justifyContent="center"
-      sx={{ py: 4 }}
-    >
+    <Stack height="100%" alignItems="center" justifyContent="center" sx={{ py: 4 }}>
       <Typography variant="h6" color="text.secondary" gutterBottom>
         No responses yet
       </Typography>

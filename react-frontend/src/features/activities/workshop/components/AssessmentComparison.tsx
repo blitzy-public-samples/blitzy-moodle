@@ -114,9 +114,7 @@ function calculateAgreement(
   let matchedDimensions = 0;
 
   referenceAssessment.dimensions.forEach((refDim) => {
-    const userDim = userAssessment.dimensions.find(
-      (d) => d.dimensionId === refDim.dimensionId
-    );
+    const userDim = userAssessment.dimensions.find((d) => d.dimensionId === refDim.dimensionId);
 
     if (userDim) {
       matchedDimensions++;
@@ -124,7 +122,7 @@ function calculateAgreement(
       const userGrade = userDim.grade ?? 0;
       const maxGrade = Math.max(refGrade, userGrade, refDim.weight || 100);
       const difference = Math.abs(refGrade - userGrade);
-      
+
       totalDifference += difference;
       totalPossible += maxGrade;
     }
@@ -153,9 +151,7 @@ function calculateDimensionComparisons(
   }
 
   return referenceAssessment.dimensions.map((refDim) => {
-    const userDim = userAssessment.dimensions.find(
-      (d) => d.dimensionId === refDim.dimensionId
-    );
+    const userDim = userAssessment.dimensions.find((d) => d.dimensionId === refDim.dimensionId);
 
     const userGrade = userDim?.grade ?? 0;
     const refGrade = refDim.grade ?? 0;
@@ -174,7 +170,8 @@ function calculateDimensionComparisons(
 
     return {
       dimensionId: refDim.dimensionId,
-      criterionName: refDim.criterionName ?? refDim.description ?? `Criterion ${refDim.dimensionId}`,
+      criterionName:
+        refDim.criterionName ?? refDim.description ?? `Criterion ${refDim.dimensionId}`,
       referenceGrade: refGrade,
       userGrade,
       difference,
@@ -196,32 +193,35 @@ function getAgreementFeedback(agreementPercentage: number): {
   if (agreementPercentage >= AGREEMENT_THRESHOLDS.EXCELLENT) {
     return {
       level: 'Excellent',
-      message: 'Your assessment closely matches the reference assessment. You have demonstrated a strong understanding of the assessment criteria.',
+      message:
+        'Your assessment closely matches the reference assessment. You have demonstrated a strong understanding of the assessment criteria.',
       color: 'success',
       icon: <CheckCircleIcon />,
     };
   } else if (agreementPercentage >= AGREEMENT_THRESHOLDS.GOOD) {
     return {
       level: 'Good',
-      message: 'Your assessment is generally aligned with the reference. Review the specific differences to further improve your assessment skills.',
+      message:
+        'Your assessment is generally aligned with the reference. Review the specific differences to further improve your assessment skills.',
       color: 'info',
       icon: <CheckCircleIcon />,
     };
   } else if (agreementPercentage >= AGREEMENT_THRESHOLDS.FAIR) {
     return {
       level: 'Fair',
-      message: 'Your assessment shows some understanding, but there are notable differences from the reference. Please review the criteria carefully and consider reassessing.',
+      message:
+        'Your assessment shows some understanding, but there are notable differences from the reference. Please review the criteria carefully and consider reassessing.',
       color: 'warning',
       icon: <WarningIcon />,
     };
-  } 
-    return {
-      level: 'Needs Improvement',
-      message: 'Your assessment differs significantly from the reference. Please review the assessment criteria and example more carefully before reassessing.',
-      color: 'error',
-      icon: <ErrorIcon />,
-    };
-  
+  }
+  return {
+    level: 'Needs Improvement',
+    message:
+      'Your assessment differs significantly from the reference. Please review the assessment criteria and example more carefully before reassessing.',
+    color: 'error',
+    icon: <ErrorIcon />,
+  };
 }
 
 /**
@@ -244,9 +244,7 @@ function getMatchTypeColor(matchType: 'exact' | 'close' | 'significant'): string
 function getImprovementTips(dimensionComparisons: DimensionComparison[]): string[] {
   const tips: string[] = [];
 
-  const significantDifferences = dimensionComparisons.filter(
-    (d) => d.matchType === 'significant'
-  );
+  const significantDifferences = dimensionComparisons.filter((d) => d.matchType === 'significant');
 
   if (significantDifferences.length > 0) {
     tips.push(
@@ -267,9 +265,7 @@ function getImprovementTips(dimensionComparisons: DimensionComparison[]): string
     );
   }
 
-  const highVariance = dimensionComparisons.some(
-    (d) => d.percentageDifference > 50
-  );
+  const highVariance = dimensionComparisons.some((d) => d.percentageDifference > 50);
   if (highVariance) {
     tips.push(
       'Some of your scores differ greatly from the reference. Take time to carefully read both the criterion description and the submission before scoring.'
@@ -277,9 +273,7 @@ function getImprovementTips(dimensionComparisons: DimensionComparison[]): string
   }
 
   if (tips.length === 0) {
-    tips.push(
-      'Continue to practice assessing submissions to maintain your assessment skills.'
-    );
+    tips.push('Continue to practice assessing submissions to maintain your assessment skills.');
   }
 
   return tips;
@@ -287,7 +281,7 @@ function getImprovementTips(dimensionComparisons: DimensionComparison[]): string
 
 /**
  * AssessmentComparison Component
- * 
+ *
  * Displays a side-by-side comparison of a reference assessment and user's assessment
  * for workshop example submissions. Highlights differences and provides feedback
  * on assessment quality to help users improve their assessment skills.
@@ -314,10 +308,7 @@ function AssessmentComparison({
       };
     }
 
-    const dimensionDifferences = calculateDimensionComparisons(
-      referenceAssessment,
-      userAssessment
-    );
+    const dimensionDifferences = calculateDimensionComparisons(referenceAssessment, userAssessment);
     const overallAgreement = calculateAgreement(referenceAssessment, userAssessment);
 
     return {
@@ -343,8 +334,8 @@ function AssessmentComparison({
       <Card>
         <CardContent>
           <Alert severity="info">
-            No reference assessment is available for this example. Your assessment has been recorded,
-            but comparison is not possible without a reference.
+            No reference assessment is available for this example. Your assessment has been
+            recorded, but comparison is not possible without a reference.
           </Alert>
         </CardContent>
       </Card>
@@ -356,7 +347,9 @@ function AssessmentComparison({
       {/* Overall Agreement Section */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+          <Box
+            sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}
+          >
             <Typography variant="h6" component="h2">
               Assessment Comparison
             </Typography>
@@ -372,9 +365,7 @@ function AssessmentComparison({
             <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
               Assessment Quality: {agreementFeedback.level}
             </Typography>
-            <Typography variant="body2">
-              {agreementFeedback.message}
-            </Typography>
+            <Typography variant="body2">{agreementFeedback.message}</Typography>
           </Alert>
 
           {canReassess && onReassess && (
@@ -401,11 +392,21 @@ function AssessmentComparison({
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell><strong>Criterion</strong></TableCell>
-                  <TableCell align="right"><strong>Reference Score</strong></TableCell>
-                  <TableCell align="right"><strong>Your Score</strong></TableCell>
-                  <TableCell align="right"><strong>Difference</strong></TableCell>
-                  <TableCell align="center"><strong>Match</strong></TableCell>
+                  <TableCell>
+                    <strong>Criterion</strong>
+                  </TableCell>
+                  <TableCell align="right">
+                    <strong>Reference Score</strong>
+                  </TableCell>
+                  <TableCell align="right">
+                    <strong>Your Score</strong>
+                  </TableCell>
+                  <TableCell align="right">
+                    <strong>Difference</strong>
+                  </TableCell>
+                  <TableCell align="center">
+                    <strong>Match</strong>
+                  </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -417,8 +418,8 @@ function AssessmentComparison({
                         comparison.matchType === 'exact'
                           ? 'rgba(76, 175, 80, 0.08)'
                           : comparison.matchType === 'close'
-                          ? 'rgba(255, 152, 0, 0.08)'
-                          : 'rgba(244, 67, 54, 0.08)',
+                            ? 'rgba(255, 152, 0, 0.08)'
+                            : 'rgba(244, 67, 54, 0.08)',
                     }}
                   >
                     <TableCell>{comparison.criterionName}</TableCell>
@@ -431,8 +432,8 @@ function AssessmentComparison({
                           comparison.difference > 0
                             ? '#d32f2f'
                             : comparison.difference < 0
-                            ? '#1976d2'
-                            : '#666',
+                              ? '#1976d2'
+                              : '#666',
                         fontWeight: 'bold',
                       }}
                     >
@@ -546,8 +547,8 @@ function AssessmentComparison({
             <strong>Grading Grade:</strong> Your assessment quality score for this example is{' '}
             {userAssessment.gradingGrade !== null && userAssessment.gradingGrade !== undefined
               ? `${userAssessment.gradingGrade} / ${workshop.gradingGrade}`
-              : 'pending calculation'}.
-            This reflects how well your assessment matched the reference assessment.
+              : 'pending calculation'}
+            . This reflects how well your assessment matched the reference assessment.
           </Typography>
         </CardContent>
       </Card>

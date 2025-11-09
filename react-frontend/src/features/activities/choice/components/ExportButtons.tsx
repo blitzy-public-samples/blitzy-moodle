@@ -1,10 +1,5 @@
 import React, { useState } from 'react';
-import {
-  ButtonGroup,
-  Button,
-  CircularProgress,
-  Box,
-} from '@mui/material';
+import { ButtonGroup, Button, CircularProgress, Box } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
 
 /**
@@ -45,11 +40,11 @@ interface ExportButtonConfig {
 
 /**
  * ExportButtons Component
- * 
+ *
  * Renders a button group for exporting choice activity results to multiple formats.
  * This component provides three export options: ODS (OpenDocument Spreadsheet),
  * XLS (Excel), and TXT (plain text).
- * 
+ *
  * Features:
  * - Material-UI ButtonGroup for consistent styling
  * - Download icon on each button
@@ -57,17 +52,13 @@ interface ExportButtonConfig {
  * - Automatic button disabling during export
  * - Accessible with proper ARIA labels
  * - Permission-based visibility (requires mod/choice:downloadresponses capability)
- * 
+ *
  * Based on Moodle's choice module report.php export functionality.
- * 
+ *
  * @param props - Component props
  * @returns JSX element containing the export button group
  */
-function ExportButtons({
-  onExport,
-  loading,
-  disabled = false,
-}: ExportButtonsProps): JSX.Element {
+function ExportButtons({ onExport, loading, disabled = false }: ExportButtonsProps): JSX.Element {
   // Track which button was clicked to show loading state on correct button
   const [activeFormat, setActiveFormat] = useState<ExportFormat | null>(null);
 
@@ -142,7 +133,7 @@ function ExportButtons({
       >
         {exportButtons.map((buttonConfig) => {
           const isActiveButton = loading && activeFormat === buttonConfig.format;
-          
+
           return (
             <Button
               key={buttonConfig.format}
@@ -150,11 +141,7 @@ function ExportButtons({
               disabled={disabled || loading}
               startIcon={
                 isActiveButton ? (
-                  <CircularProgress
-                    size={20}
-                    color="inherit"
-                    aria-label="Exporting"
-                  />
+                  <CircularProgress size={20} color="inherit" aria-label="Exporting" />
                 ) : (
                   <DownloadIcon />
                 )

@@ -1,9 +1,9 @@
 /**
  * TypeScript type definitions for H5P Activity module
- * 
+ *
  * This file defines interfaces and enums for the H5P Activity feature,
  * corresponding to the Moodle mod_h5pactivity module structure.
- * 
+ *
  * @module h5p.types
  */
 
@@ -74,7 +74,7 @@ export interface H5PDisplayOptions {
 /**
  * Main H5P Activity interface
  * Represents a single H5P activity instance in a course
- * 
+ *
  * Maps to the h5pactivity database table structure
  */
 export interface H5PActivity {
@@ -107,7 +107,7 @@ export interface H5PActivity {
 /**
  * Access information for H5P activity
  * Contains capability checks for the current user
- * 
+ *
  * Maps to the response from get_h5pactivity_access_information external API
  */
 export interface H5PAccessInfo {
@@ -124,7 +124,7 @@ export interface H5PAccessInfo {
 /**
  * H5P Activity attempt data
  * Represents a single user attempt at an H5P activity
- * 
+ *
  * Maps to the h5pactivity_attempts database table
  */
 export interface H5PAttempt {

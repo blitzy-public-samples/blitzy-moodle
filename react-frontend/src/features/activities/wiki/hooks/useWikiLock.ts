@@ -132,7 +132,9 @@ const LOCK_STATUS_QUERY_KEY = 'wiki-page-lock';
 /**
  * Check existing lock status for a wiki page
  */
-const checkLockStatus = async (pageId: number): Promise<{
+const checkLockStatus = async (
+  pageId: number
+): Promise<{
   success: boolean;
   data: {
     hasLock: boolean;
@@ -154,7 +156,11 @@ const checkLockStatus = async (pageId: number): Promise<{
 /**
  * Acquire edit lock for a wiki page
  */
-const acquireLock = async (pageId: number, section?: string, force: boolean = false): Promise<{
+const acquireLock = async (
+  pageId: number,
+  section?: string,
+  force: boolean = false
+): Promise<{
   success: boolean;
   data?: {
     lockAcquired: boolean;
@@ -192,7 +198,9 @@ const acquireLock = async (pageId: number, section?: string, force: boolean = fa
 /**
  * Send heartbeat to maintain active lock
  */
-const sendHeartbeat = async (pageId: number): Promise<{
+const sendHeartbeat = async (
+  pageId: number
+): Promise<{
   success: boolean;
   data?: {
     lockMaintained: boolean;
@@ -210,7 +218,9 @@ const sendHeartbeat = async (pageId: number): Promise<{
 /**
  * Release edit lock for a wiki page
  */
-const releaseLock = async (pageId: number): Promise<{
+const releaseLock = async (
+  pageId: number
+): Promise<{
   success: boolean;
   data?: {
     lockReleased: boolean;
@@ -279,10 +289,7 @@ export function useWikiLock({
    * Query to check current lock status of the page.
    * Fetches lock information including holder details and override permissions.
    */
-  const {
-    data: lockStatusData,
-    isLoading: isCheckingLock,
-  } = useQuery({
+  const { data: lockStatusData, isLoading: isCheckingLock } = useQuery({
     queryKey: [LOCK_STATUS_QUERY_KEY, pageId],
     queryFn: () => checkLockStatus(pageId),
     staleTime: 10000, // Consider data fresh for 10 seconds
@@ -305,7 +312,7 @@ export function useWikiLock({
    * Sets up automatic heartbeat on success.
    */
   const acquireLockMutation = useMutation({
-    mutationFn: ({ force = false }: { force?: boolean } = {}) => 
+    mutationFn: ({ force = false }: { force?: boolean } = {}) =>
       acquireLock(pageId, section, force),
     onSuccess: (response) => {
       if (response.success && response.data?.lockAcquired) {
@@ -329,9 +336,14 @@ export function useWikiLock({
     onError: (error: unknown) => {
       // Lock conflict - another user has the lock
       if (error && typeof error === 'object' && 'response' in error) {
-        const axiosError = error as { response?: { data?: { error?: { code?: string; details?: { lockHolder?: LockHolder } } } } };
+        const axiosError = error as {
+          response?: {
+            data?: { error?: { code?: string; details?: { lockHolder?: LockHolder } } };
+          };
+        };
         if (axiosError.response?.data?.error?.code === 'LOCK_CONFLICT') {
-          const conflictHolder: LockHolder | undefined = axiosError.response.data.error.details?.lockHolder;
+          const conflictHolder: LockHolder | undefined =
+            axiosError.response.data.error.details?.lockHolder;
           if (conflictHolder) {
             // Update cache with conflict information
             queryClient.setQueryData([LOCK_STATUS_QUERY_KEY, pageId], {
@@ -416,7 +428,7 @@ export function useWikiLock({
           if (!response.success || !response.data?.lockMaintained) {
             // Lock was lost, stop heartbeat
             stopHeartbeat();
-            
+
             // Update cache to reflect lost lock
             queryClient.setQueryData([LOCK_STATUS_QUERY_KEY, pageId], {
               success: true,
@@ -429,7 +441,7 @@ export function useWikiLock({
 
             // Invalidate queries
             void queryClient.invalidateQueries({ queryKey: [LOCK_STATUS_QUERY_KEY, pageId] });
-            
+
             console.warn('Lock heartbeat failed - lock may have been lost');
           }
         } catch (error) {

@@ -1,6 +1,6 @@
 /**
  * useDiscussion Hook
- * 
+ *
  * Custom React Query hook for managing discussion thread data and operations.
  * Provides:
  * - Discussion and posts fetching with automatic caching
@@ -12,27 +12,27 @@
  * - Mark as read functionality
  * - Moderator actions (pin, lock, move, split)
  * - Post reporting
- * 
+ *
  * @module features/activities/forums/hooks/useDiscussion
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { 
+import type {
   Post,
   PostResponse,
   DiscussionPost,
   CreatePostData,
   UpdatePostData,
   DiscussionDetail,
-  Author
+  Author,
 } from '../types/forum.types';
 import * as forumApi from '../api/forumApi';
-import type { 
+import type {
   DiscussionWithPosts,
   SubscriptionResponse,
   MarkReadResponse,
   ModerationResponse,
-  ReportResponse
+  ReportResponse,
 } from '../api/forumApi';
 
 /**
@@ -50,7 +50,7 @@ export const discussionKeys = {
 /**
  * Transforms API Post objects to DiscussionPost objects
  * Converts snake_case to camelCase and adds UI-specific properties
- * 
+ *
  * @param apiPost - Post object from API
  * @returns Transformed DiscussionPost object
  */
@@ -65,15 +65,15 @@ function transformPost(apiPost: Post): DiscussionPost {
   // Prioritize userid if explicitly provided (especially for deleted users),
   // otherwise use authorid
   const userId = apiPostWithUserData.userid ?? apiPost.authorid ?? 0;
-  
+
   // Use username from API if present, otherwise create placeholder
   // Handle deleted users (userid=0) with special placeholder
-  const userName = apiPostWithUserData.username 
-    ? apiPostWithUserData.username 
-    : userId === 0 
-      ? '[deleted user]' 
+  const userName = apiPostWithUserData.username
+    ? apiPostWithUserData.username
+    : userId === 0
+      ? '[deleted user]'
       : `User ${userId}`;
-  
+
   // Use userpictureurl from API if present
   const userPictureUrl = apiPostWithUserData.userpictureurl ?? '';
 
@@ -107,7 +107,7 @@ function transformPost(apiPost: Post): DiscussionPost {
 /**
  * Reconstructs nested post hierarchy from flat array
  * Converts flat API response into tree structure with replies
- * 
+ *
  * @param flatPosts - Flat array of posts from API
  * @returns Array of root posts with nested replies
  */
@@ -117,17 +117,17 @@ function buildPostHierarchy(flatPosts: DiscussionPost[]): DiscussionPost[] {
   const rootPosts: DiscussionPost[] = [];
 
   // First pass: create map and initialize replies arrays
-  flatPosts.forEach(post => {
+  flatPosts.forEach((post) => {
     postMap.set(post.id, { ...post, replies: [] });
   });
 
   // Second pass: build hierarchy
-  flatPosts.forEach(post => {
+  flatPosts.forEach((post) => {
     const postWithReplies = postMap.get(post.id);
     if (!postWithReplies) {
       return;
     }
-    
+
     if (post.parentId === null || post.parentId === 0) {
       // Root level post
       rootPosts.push(postWithReplies);
@@ -150,18 +150,22 @@ function buildPostHierarchy(flatPosts: DiscussionPost[]): DiscussionPost[] {
 /**
  * Constructs a DiscussionDetail object from API response data
  * Handles both cases: when backend returns discussion object or only posts
- * 
+ *
  * @param data - API response data containing discussion and/or posts
  * @returns DiscussionDetail object with all required properties
  */
-function constructDiscussionDetail(data: DiscussionWithPosts | undefined): DiscussionDetail | undefined {
-  if (!data) {return undefined;}
+function constructDiscussionDetail(
+  data: DiscussionWithPosts | undefined
+): DiscussionDetail | undefined {
+  if (!data) {
+    return undefined;
+  }
 
   // If backend returns discussion object, enhance it
   if (data.discussion) {
     const firstPost = data.posts?.[0];
-    const uniqueAuthors = new Set(data.posts?.map(p => p.authorid) ?? []);
-    
+    const uniqueAuthors = new Set(data.posts?.map((p) => p.authorid) ?? []);
+
     // Create author object from first post or use defaults
     const author: Author = {
       id: firstPost?.authorid ?? data.discussion.userid,
@@ -170,25 +174,28 @@ function constructDiscussionDetail(data: DiscussionWithPosts | undefined): Discu
       lastname: '',
       fullname: 'Unknown', // Will be populated by API if available
       email: '',
-      deleted: false
+      deleted: false,
     };
-    
+
     return {
       ...data.discussion,
       author,
-      created: firstPost?.timecreated ?? data.discussion.timemodified ?? Math.floor(Date.now() / 1000),
+      created:
+        firstPost?.timecreated ?? data.discussion.timemodified ?? Math.floor(Date.now() / 1000),
       numViews: 0, // Not available in current API response
       numParticipants: uniqueAuthors.size,
       numReplies: (data.posts?.length ?? 1) - 1, // Subtract starter post
-      subscribed: data.subscribed ?? false // Use API-provided subscription status or default to false
+      subscribed: data.subscribed ?? false, // Use API-provided subscription status or default to false
     };
   }
 
   // Fallback: construct from posts if discussion object not available
   const firstPost = data.posts?.[0];
-  if (!firstPost) {return undefined;}
+  if (!firstPost) {
+    return undefined;
+  }
 
-  const uniqueAuthors = new Set(data.posts?.map(p => p.authorid) ?? []);
+  const uniqueAuthors = new Set(data.posts?.map((p) => p.authorid) ?? []);
 
   const author: Author = {
     id: firstPost.authorid,
@@ -197,7 +204,7 @@ function constructDiscussionDetail(data: DiscussionWithPosts | undefined): Discu
     lastname: '',
     fullname: 'Unknown',
     email: '',
-    deleted: false
+    deleted: false,
   };
 
   return {
@@ -220,7 +227,7 @@ function constructDiscussionDetail(data: DiscussionWithPosts | undefined): Discu
     numViews: 0,
     numParticipants: uniqueAuthors.size,
     numReplies: data.posts.length - 1,
-    subscribed: false
+    subscribed: false,
   };
 }
 
@@ -236,7 +243,11 @@ export interface UseDiscussionOptions {
   onEditError?: (error: Error) => void;
   onEditSettled?: () => void;
   onEditConflict?: (data: { post: Post; conflictData: Post }) => void;
-  onDeleteSuccess?: (data: { softDeleted?: boolean; hardDeleted?: boolean; message?: string }) => void;
+  onDeleteSuccess?: (data: {
+    softDeleted?: boolean;
+    hardDeleted?: boolean;
+    message?: string;
+  }) => void;
   onDeleteError?: (error: Error) => void;
   onLoadMoreError?: (error: Error) => void;
   onSubscribeSuccess?: (data: SubscriptionResponse) => void;
@@ -263,19 +274,19 @@ export interface UseDiscussionOptions {
 
 /**
  * Custom hook for discussion thread management
- * 
+ *
  * @param discussionId - ID of the discussion to manage
  * @param options - Optional callbacks for mutation events
  * @returns Object containing discussion data, posts, loading states, and mutation functions
- * 
+ *
  * @example
  * ```tsx
- * const { 
- *   discussion, 
- *   posts, 
- *   isLoading, 
- *   createReply, 
- *   editPost 
+ * const {
+ *   discussion,
+ *   posts,
+ *   isLoading,
+ *   createReply,
+ *   editPost
  * } = useDiscussion(discussionId, {
  *   onCreateSuccess: (data) => console.log('Post created', data),
  *   onEditConflict: (data) => showConflictDialog(data)
@@ -286,14 +297,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
   const queryClient = useQueryClient();
 
   // Fetch discussion and posts
-  const {
-    data,
-    isLoading,
-    isSuccess,
-    isError,
-    error,
-    refetch,
-  } = useQuery({
+  const { data, isLoading, isSuccess, isError, error, refetch } = useQuery({
     queryKey: discussionKeys.detail(discussionId),
     queryFn: () => forumApi.getDiscussionPosts(discussionId),
     staleTime: 30000, // 30 seconds
@@ -302,9 +306,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
   });
 
   // Transform API Post objects to DiscussionPost objects and reconstruct hierarchy
-  const posts = data?.posts 
-    ? buildPostHierarchy(data.posts.map(transformPost)) 
-    : undefined;
+  const posts = data?.posts ? buildPostHierarchy(data.posts.map(transformPost)) : undefined;
   const discussion = constructDiscussionDetail(data);
 
   // Extract pagination info
@@ -324,7 +326,9 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
     onSuccess: (newData) => {
       // Append new posts to existing data
       queryClient.setQueryData<DiscussionWithPosts>(discussionKeys.detail(discussionId), (old) => {
-        if (!old) {return old;}
+        if (!old) {
+          return old;
+        }
 
         return {
           ...old,
@@ -350,7 +354,9 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
       // Append new replies to the flat posts array in the cache
       // The hierarchy will be automatically rebuilt on next render
       queryClient.setQueryData<DiscussionWithPosts>(discussionKeys.detail(discussionId), (old) => {
-        if (!old) {return old;}
+        if (!old) {
+          return old;
+        }
 
         return {
           ...old,
@@ -368,13 +374,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
    * Create a reply to a post with optimistic update
    */
   const createReplyMutation = useMutation({
-    mutationFn: async ({ 
-      postData, 
-      parentId 
-    }: { 
-      postData: CreatePostData; 
-      parentId?: number;
-    }) => {
+    mutationFn: async ({ postData, parentId }: { postData: CreatePostData; parentId?: number }) => {
       return forumApi.createPost({ ...postData, discussionId, parentPostId: parentId });
     },
     onMutate: async ({ postData, parentId }) => {
@@ -389,7 +389,9 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
 
       // Optimistically update cache
       queryClient.setQueryData<DiscussionWithPosts>(discussionKeys.detail(discussionId), (old) => {
-        if (!old) {return old;}
+        if (!old) {
+          return old;
+        }
 
         // Create optimistic Post object matching API structure
         const optimisticPost: Post = {
@@ -400,7 +402,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
           timecreated: Math.floor(Date.now() / 1000),
           timemodified: Math.floor(Date.now() / 1000),
           mailed: false,
-          subject: `Re: ${  old.discussion?.name ?? ''}`,
+          subject: `Re: ${old.discussion?.name ?? ''}`,
           message: postData.message,
           messageformat: 1, // HTML format
           messagetrust: false,
@@ -434,11 +436,11 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
     onSuccess: (data) => {
       // Invalidate the lists query to refresh forum/discussion lists
       void queryClient.invalidateQueries({ queryKey: discussionKeys.lists() });
-      
+
       // Invalidate the detail query to trigger a refetch and ensure data consistency
       // The refetch will replace ALL optimistic posts with real data from server
       void queryClient.invalidateQueries({ queryKey: discussionKeys.detail(discussionId) });
-      
+
       // Call user-provided success callback
       options?.onCreateSuccess?.(data);
     },
@@ -452,13 +454,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
    * Edit a post with conflict detection
    */
   const editPostMutation = useMutation({
-    mutationFn: async ({
-      postId,
-      postData,
-    }: {
-      postId: number;
-      postData: UpdatePostData;
-    }) => {
+    mutationFn: async ({ postId, postData }: { postId: number; postData: UpdatePostData }) => {
       return forumApi.updatePost({ ...postData, postId });
     },
     onMutate: async ({ postId, postData }) => {
@@ -467,11 +463,13 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
 
       // Optimistically update the post in flat array
       queryClient.setQueryData<DiscussionWithPosts>(discussionKeys.detail(discussionId), (old) => {
-        if (!old) {return old;}
+        if (!old) {
+          return old;
+        }
 
         return {
           ...old,
-          posts: old.posts.map((post: Post) => 
+          posts: old.posts.map((post: Post) =>
             post.id === postId
               ? {
                   ...post,
@@ -489,12 +487,12 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
       if (context?.previousData) {
         queryClient.setQueryData(discussionKeys.detail(discussionId), context.previousData);
       }
-      
+
       // Check for conflict (409 status code) - type guard for axios error
       if (
-        typeof err === 'object' && 
-        err !== null && 
-        'response' in err && 
+        typeof err === 'object' &&
+        err !== null &&
+        'response' in err &&
         typeof err.response === 'object' &&
         err.response !== null &&
         'status' in err.response &&
@@ -502,16 +500,17 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
       ) {
         // Call conflict callback with conflict data
         const responseData = 'data' in err.response ? err.response.data : undefined;
-        
+
         // Check for 'post' or 'currentPost' in response data
-        const conflictPost = typeof responseData === 'object' && responseData !== null
-          ? ('post' in responseData 
-              ? responseData.post as Post 
-              : ('currentPost' in responseData 
-                  ? responseData.currentPost as Post 
-                  : undefined))
-          : undefined;
-        
+        const conflictPost =
+          typeof responseData === 'object' && responseData !== null
+            ? 'post' in responseData
+              ? (responseData.post as Post)
+              : 'currentPost' in responseData
+                ? (responseData.currentPost as Post)
+                : undefined
+            : undefined;
+
         // Only call onEditConflict if we have valid conflict data
         if (conflictPost && typeof responseData === 'object' && responseData !== null) {
           options?.onEditConflict?.({
@@ -520,7 +519,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
           });
         }
       }
-      
+
       // Call user-provided error callback
       options?.onEditError?.(err);
     },
@@ -548,7 +547,9 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
 
       // Optimistically mark as deleted in flat array
       queryClient.setQueryData<DiscussionWithPosts>(discussionKeys.detail(discussionId), (old) => {
-        if (!old) {return old;}
+        if (!old) {
+          return old;
+        }
 
         return {
           ...old,
@@ -577,34 +578,44 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
       // Update cache based on delete type
       if (data.softDeleted) {
         // Keep the post in cache but mark as deleted (flat array)
-        queryClient.setQueryData<DiscussionWithPosts>(discussionKeys.detail(discussionId), (old) => {
-          if (!old) {return old;}
+        queryClient.setQueryData<DiscussionWithPosts>(
+          discussionKeys.detail(discussionId),
+          (old) => {
+            if (!old) {
+              return old;
+            }
 
-          return {
-            ...old,
-            posts: old.posts.map((post: Post) =>
-              post.id === context?.postId
-                ? {
-                    ...post,
-                    deleted: true,
-                    message: '[deleted]',
-                  }
-                : post
-            ),
-          };
-        });
+            return {
+              ...old,
+              posts: old.posts.map((post: Post) =>
+                post.id === context?.postId
+                  ? {
+                      ...post,
+                      deleted: true,
+                      message: '[deleted]',
+                    }
+                  : post
+              ),
+            };
+          }
+        );
       } else if (data.hardDeleted) {
         // Remove the post from cache (flat array)
-        queryClient.setQueryData<DiscussionWithPosts>(discussionKeys.detail(discussionId), (old) => {
-          if (!old) {return old;}
+        queryClient.setQueryData<DiscussionWithPosts>(
+          discussionKeys.detail(discussionId),
+          (old) => {
+            if (!old) {
+              return old;
+            }
 
-          return {
-            ...old,
-            posts: old.posts.filter((post: Post) => post.id !== context?.postId),
-          };
-        });
+            return {
+              ...old,
+              posts: old.posts.filter((post: Post) => post.id !== context?.postId),
+            };
+          }
+        );
       }
-      
+
       void queryClient.invalidateQueries({ queryKey: discussionKeys.lists() });
       // Call user-provided success callback
       options?.onDeleteSuccess?.(data);
@@ -623,7 +634,9 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
 
       // Optimistically update subscription status
       queryClient.setQueryData<DiscussionWithPosts>(discussionKeys.detail(discussionId), (old) => {
-        if (!old) {return old;}
+        if (!old) {
+          return old;
+        }
         return {
           ...old,
           subscribed: true,
@@ -659,7 +672,9 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
 
       // Optimistically update subscription status
       queryClient.setQueryData<DiscussionWithPosts>(discussionKeys.detail(discussionId), (old) => {
-        if (!old) {return old;}
+        if (!old) {
+          return old;
+        }
         return {
           ...old,
           subscribed: false,
@@ -694,7 +709,9 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
 
       // Optimistically update unread count
       queryClient.setQueryData<DiscussionWithPosts>(discussionKeys.detail(discussionId), (old) => {
-        if (!old?.discussion) {return old;}
+        if (!old?.discussion) {
+          return old;
+        }
         return {
           ...old,
           discussion: {

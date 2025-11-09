@@ -1,6 +1,6 @@
 /**
  * PageNavigation Component
- * 
+ *
  * Provides navigation controls for multi-page feedback forms with:
  * - Previous/Next navigation buttons with proper disabled states
  * - Page indicators showing current position
@@ -8,7 +8,7 @@
  * - Submit button on final page
  * - Validation state management
  * - Full keyboard accessibility (WCAG 2.1 AA compliant)
- * 
+ *
  * @module features/activities/feedback/components/PageNavigation
  */
 
@@ -119,10 +119,10 @@ export interface PageNavigationProps {
 
 /**
  * PageNavigation Component
- * 
+ *
  * Renders navigation controls for multi-page feedback forms including
  * previous/next buttons, page indicators, and progress display.
- * 
+ *
  * @example
  * ```tsx
  * <PageNavigation
@@ -158,9 +158,7 @@ export function PageNavigation({
 
   // Validate props
   if (currentPage < 0 || currentPage >= totalPages) {
-    console.error(
-      `Invalid currentPage: ${currentPage}. Must be between 0 and ${totalPages - 1}`
-    );
+    console.error(`Invalid currentPage: ${currentPage}. Must be between 0 and ${totalPages - 1}`);
   }
 
   if (totalPages <= 0) {
@@ -168,15 +166,11 @@ export function PageNavigation({
   }
 
   if (pageLabels && pageLabels.length !== totalPages) {
-    console.error(
-      `pageLabels length (${pageLabels.length}) must match totalPages (${totalPages})`
-    );
+    console.error(`pageLabels length (${pageLabels.length}) must match totalPages (${totalPages})`);
   }
 
   // Calculate progress percentage
-  const progressPercentage = totalPages > 0
-    ? ((currentPage + 1) / totalPages) * 100
-    : 0;
+  const progressPercentage = totalPages > 0 ? ((currentPage + 1) / totalPages) * 100 : 0;
 
   // Determine if we're on the first or last page
   const isFirstPage = currentPage === 0;
@@ -309,9 +303,7 @@ export function PageNavigation({
             {Array.from({ length: totalPages }, (_, index) => (
               <Step key={index} completed={index < currentPage}>
                 <StepLabel>
-                  {pageLabels?.[index]
-                    ? pageLabels[index]
-                    : `Page ${index + 1}`}
+                  {pageLabels?.[index] ? pageLabels[index] : `Page ${index + 1}`}
                 </StepLabel>
               </Step>
             ))}
@@ -372,11 +364,7 @@ export function PageNavigation({
             endIcon={<SendIcon />}
             onClick={handleSubmit}
             disabled={!isValid || navigationDisabled}
-            aria-label={
-              isSubmitting
-                ? 'Submitting feedback...'
-                : 'Submit feedback form'
-            }
+            aria-label={isSubmitting ? 'Submitting feedback...' : 'Submit feedback form'}
             aria-disabled={!isValid || navigationDisabled}
             sx={{
               minWidth: isMobile ? '100%' : 140,

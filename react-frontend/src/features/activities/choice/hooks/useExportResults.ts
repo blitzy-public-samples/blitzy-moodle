@@ -1,9 +1,9 @@
 /**
  * Choice Activity Export Results Hook
- * 
+ *
  * React Query mutation hook for exporting choice activity results to various formats.
  * Wraps GET /api/v1/choices/{id}/export API endpoint.
- * 
+ *
  * Features:
  * - Export to ODS, XLS, or TXT formats
  * - Browser download with proper Content-Type and Content-Disposition headers
@@ -11,7 +11,7 @@
  * - Analytics event tracking (report_downloaded)
  * - Toast notifications during export process
  * - Requires mod/choice:downloadresponses capability (enforced by API)
- * 
+ *
  * @module features/activities/choice/hooks/useExportResults
  */
 
@@ -84,7 +84,7 @@ export interface UseExportResultsOptions {
 
 /**
  * Extracts filename from Content-Disposition header
- * 
+ *
  * @param contentDisposition - Content-Disposition header value
  * @returns Extracted filename or default based on format
  */
@@ -110,7 +110,7 @@ function extractFilename(contentDisposition: string | null, format: ExportFormat
 
 /**
  * Triggers browser download for a blob
- * 
+ *
  * @param blob - File blob to download
  * @param filename - Suggested filename
  */
@@ -137,7 +137,7 @@ function triggerBrowserDownload(blob: Blob, filename: string): void {
 
 /**
  * Tracks report_downloaded analytics event
- * 
+ *
  * @param event - Event payload
  */
 async function trackReportDownloadedEvent(event: ReportDownloadedEvent): Promise<void> {
@@ -159,7 +159,7 @@ async function trackReportDownloadedEvent(event: ReportDownloadedEvent): Promise
 
 /**
  * Exports choice activity results to specified format
- * 
+ *
  * @param input - Export parameters
  * @returns Promise resolving to export response with blob and metadata
  * @throws ApiErrorResponse if export fails
@@ -177,19 +177,17 @@ async function exportResults(input: ExportResultsInput): Promise<ExportResultsRe
   }
 
   try {
-    const response = await apiClient.get(
-      `/choices/${choiceId}/export?${params.toString()}`,
-      {
-        responseType: 'blob',
-      }
-    );
+    const response = await apiClient.get(`/choices/${choiceId}/export?${params.toString()}`, {
+      responseType: 'blob',
+    });
 
     // Extract filename from Content-Disposition header
     const contentDisposition = response.headers['content-disposition'] as string | undefined;
     const filename = extractFilename(contentDisposition ?? null, format);
 
     // Get content type
-    const contentType = (response.headers['content-type'] as string | undefined) ?? 'application/octet-stream';
+    const contentType =
+      (response.headers['content-type'] as string | undefined) ?? 'application/octet-stream';
 
     return {
       blob: response.data as Blob,
@@ -199,7 +197,7 @@ async function exportResults(input: ExportResultsInput): Promise<ExportResultsRe
   } catch (error) {
     // Handle axios errors
     const axiosError = error as AxiosError<ApiErrorResponse>;
-    
+
     if (axiosError.response?.data) {
       // API returned structured error
       throw axiosError.response.data;
@@ -234,13 +232,13 @@ async function exportResults(input: ExportResultsInput): Promise<ExportResultsRe
 
 /**
  * React Query mutation hook for exporting choice activity results
- * 
+ *
  * Provides a mutation function that exports choice results to ODS, XLS, or TXT format,
  * triggers browser download, tracks analytics events, and shows toast notifications.
- * 
+ *
  * @param options - Hook configuration options for callbacks
  * @returns Mutation object with mutate, mutateAsync, and status properties
- * 
+ *
  * @example
  * ```tsx
  * const { mutate: exportResults, isLoading } = useExportResults({
@@ -254,7 +252,7 @@ async function exportResults(input: ExportResultsInput): Promise<ExportResultsRe
  *     toast.error(`Export failed: ${error}`);
  *   },
  * });
- * 
+ *
  * // Trigger export
  * exportResults({
  *   choiceId: 42,

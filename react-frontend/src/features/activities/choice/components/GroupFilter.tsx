@@ -1,14 +1,5 @@
-import type {
-  SelectChangeEvent} from '@mui/material';
-import {
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Skeleton,
-  Box,
-  Alert,
-} from '@mui/material';
+import type { SelectChangeEvent } from '@mui/material';
+import { FormControl, InputLabel, Select, MenuItem, Skeleton, Box, Alert } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 
@@ -37,12 +28,12 @@ export interface GroupFilterProps {
    * The course ID to fetch groups from
    */
   courseId: number;
-  
+
   /**
    * The currently selected group ID (0 for 'All groups')
    */
   selectedGroupId: number;
-  
+
   /**
    * Callback function invoked when group selection changes
    * @param groupId - The newly selected group ID (0 for all groups)
@@ -52,27 +43,23 @@ export interface GroupFilterProps {
 
 /**
  * GroupFilter Component
- * 
+ *
  * A dropdown selector component for filtering choice results by group membership.
  * Uses Material-UI Select with dynamic group loading based on course context.
- * 
+ *
  * Features:
  * - Fetches groups dynamically from the course using React Query
  * - Supports 'All groups' option for showing all responses
  * - Updates results when group selection changes
  * - Shows loading skeleton during data fetch
  * - Displays error messages if group fetch fails
- * 
+ *
  * Reference: public/mod/choice/report.php lines 79-84 (groups_print_activity_menu)
- * 
+ *
  * @param props - Component props
  * @returns React component rendering a group filter dropdown
  */
-function GroupFilter({
-  courseId,
-  selectedGroupId,
-  onGroupChange,
-}: GroupFilterProps) {
+function GroupFilter({ courseId, selectedGroupId, onGroupChange }: GroupFilterProps) {
   /**
    * Fetch groups for the specified course using React Query
    * Endpoint: GET /api/v1/courses/{courseid}/groups
@@ -85,9 +72,7 @@ function GroupFilter({
   } = useQuery<GroupsApiResponse>({
     queryKey: ['course-groups', courseId],
     queryFn: async () => {
-      const response = await axios.get<GroupsApiResponse>(
-        `/api/v1/courses/${courseId}/groups`
-      );
+      const response = await axios.get<GroupsApiResponse>(`/api/v1/courses/${courseId}/groups`);
       return response.data;
     },
     // Keep data fresh for 5 minutes
@@ -113,11 +98,7 @@ function GroupFilter({
   if (isLoading) {
     return (
       <Box sx={{ minWidth: 200, maxWidth: 300 }}>
-        <Skeleton 
-          variant="rectangular" 
-          height={56} 
-          data-testid="group-filter-skeleton"
-        />
+        <Skeleton variant="rectangular" height={56} data-testid="group-filter-skeleton" />
       </Box>
     );
   }
@@ -133,7 +114,7 @@ function GroupFilter({
           Failed to load groups: {error instanceof Error ? error.message : 'Unknown error'}
         </Alert>
       )}
-      
+
       <FormControl sx={{ minWidth: 200, maxWidth: 300 }} size="small">
         <InputLabel id="group-filter-label">Filter by group</InputLabel>
         <Select
@@ -144,10 +125,8 @@ function GroupFilter({
           onChange={handleChange}
         >
           {/* 'All groups' option with value 0 */}
-          <MenuItem value={0}>
-            All groups
-          </MenuItem>
-          
+          <MenuItem value={0}>All groups</MenuItem>
+
           {/* Individual group options */}
           {groups.map((group) => (
             <MenuItem key={group.id} value={group.id}>

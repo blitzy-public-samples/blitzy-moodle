@@ -1,12 +1,12 @@
 /**
  * Custom React hook for managing SCORM attempt state and operations
- * 
+ *
  * This hook provides comprehensive SCORM attempt management including:
  * - Fetching current/last user attempts
  * - Creating new attempts with validation
  * - Checking attempt permissions and limits
  * - Managing attempt modes (normal, browse, review)
- * 
+ *
  * @module useScormAttempt
  */
 
@@ -30,12 +30,12 @@ export enum ScormForceAttempt {
 /**
  * SCORM completion status values
  */
-export type ScormCompletionStatus = 
-  | 'completed' 
-  | 'incomplete' 
-  | 'not attempted' 
-  | 'passed' 
-  | 'failed' 
+export type ScormCompletionStatus =
+  | 'completed'
+  | 'incomplete'
+  | 'not attempted'
+  | 'passed'
+  | 'failed'
   | 'unknown';
 
 /**
@@ -134,33 +134,25 @@ export interface UseScormAttemptReturn {
 
 /**
  * Fetches SCORM attempts for a user
- * 
+ *
  * @param scormId - The SCORM package ID
  * @param userId - The user ID
  * @returns Promise resolving to attempts response
  */
-async function fetchScormAttempts(
-  scormId: number,
-  userId: number
-): Promise<AttemptsResponse> {
-  const response = await apiClient.get<AttemptsResponse>(
-    `/api/v1/scorm/${scormId}/attempts`,
-    {
-      params: { userId },
-    }
-  );
+async function fetchScormAttempts(scormId: number, userId: number): Promise<AttemptsResponse> {
+  const response = await apiClient.get<AttemptsResponse>(`/api/v1/scorm/${scormId}/attempts`, {
+    params: { userId },
+  });
   return response.data;
 }
 
 /**
  * Creates a new SCORM attempt
- * 
+ *
  * @param params - Attempt creation parameters
  * @returns Promise resolving to created attempt
  */
-async function createScormAttempt(
-  params: CreateAttemptParams
-): Promise<ScormAttempt> {
+async function createScormAttempt(params: CreateAttemptParams): Promise<ScormAttempt> {
   const response = await apiClient.post<AttemptResponse>(
     `/api/v1/scorm/${params.scormId}/attempt`,
     {
@@ -174,7 +166,7 @@ async function createScormAttempt(
 
 /**
  * Validates if a new attempt can be started based on SCORM settings
- * 
+ *
  * @param scormConfig - SCORM configuration
  * @param totalAttempts - Total attempts made so far
  * @param lastAttempt - Last attempt data (if any)
@@ -215,10 +207,7 @@ function validateCanStartNewAttempt(
   }
 
   // If last attempt is complete and force new attempt is ON_COMPLETE, allow new attempt
-  if (
-    lastAttempt.isCompleted && 
-    scormConfig.forceNewAttempt === ScormForceAttempt.ON_COMPLETE
-  ) {
+  if (lastAttempt.isCompleted && scormConfig.forceNewAttempt === ScormForceAttempt.ON_COMPLETE) {
     return true;
   }
 
@@ -233,7 +222,7 @@ function validateCanStartNewAttempt(
 
 /**
  * Calculates the number of attempts remaining
- * 
+ *
  * @param scormConfig - SCORM configuration
  * @param totalAttempts - Total attempts made so far
  * @returns Number of attempts remaining, or null if unlimited
@@ -257,14 +246,14 @@ function calculateAttemptsLeft(
 
 /**
  * Custom React hook for managing SCORM attempt state and operations
- * 
+ *
  * This hook provides complete SCORM attempt management with automatic
  * caching, optimistic updates, and validation logic.
- * 
+ *
  * @param scormId - The SCORM package ID
  * @param userId - The user ID
  * @returns Object containing attempt data and operations
- * 
+ *
  * @example
  * ```tsx
  * function ScormPlayer({ scormId, userId }) {
@@ -276,16 +265,16 @@ function calculateAttemptsLeft(
  *     canStartNewAttempt,
  *     attemptsLeft
  *   } = useScormAttempt(scormId, userId);
- * 
+ *
  *   if (isLoading) return <LoadingSpinner />;
  *   if (error) return <ErrorMessage error={error} />;
- * 
+ *
  *   return (
  *     <div>
  *       {attempt ? (
  *         <AttemptView attempt={attempt} />
  *       ) : (
- *         <Button 
+ *         <Button
  *           onClick={() => createAttempt()}
  *           disabled={!canStartNewAttempt}
  *         >
@@ -297,10 +286,7 @@ function calculateAttemptsLeft(
  * }
  * ```
  */
-export default function useScormAttempt(
-  scormId: number,
-  userId: number
-): UseScormAttemptReturn {
+export default function useScormAttempt(scormId: number, userId: number): UseScormAttemptReturn {
   const queryClient = useQueryClient();
 
   // Query for fetching attempts
@@ -334,25 +320,17 @@ export default function useScormAttempt(
       });
 
       // Snapshot previous value
-      const previousAttempts = queryClient.getQueryData([
-        'scorm',
-        'attempts',
-        scormId,
-        userId,
-      ]);
+      const previousAttempts = queryClient.getQueryData(['scorm', 'attempts', scormId, userId]);
 
       // Optimistically update the attempt count
       if (attemptsData) {
-        queryClient.setQueryData(
-          ['scorm', 'attempts', scormId, userId],
-          {
-            ...attemptsData,
-            data: {
-              ...attemptsData.data,
-              totalAttempts: attemptsData.data.totalAttempts + 1,
-            },
-          }
-        );
+        queryClient.setQueryData(['scorm', 'attempts', scormId, userId], {
+          ...attemptsData,
+          data: {
+            ...attemptsData.data,
+            totalAttempts: attemptsData.data.totalAttempts + 1,
+          },
+        });
       }
 
       return { previousAttempts };
@@ -360,10 +338,7 @@ export default function useScormAttempt(
     onError: (_error, _variables, context) => {
       // Rollback optimistic update on error
       if (context?.previousAttempts) {
-        queryClient.setQueryData(
-          ['scorm', 'attempts', scormId, userId],
-          context.previousAttempts
-        );
+        queryClient.setQueryData(['scorm', 'attempts', scormId, userId], context.previousAttempts);
       }
     },
     onSuccess: () => {
@@ -391,11 +366,7 @@ export default function useScormAttempt(
   const scormConfig = attemptsData?.data.scormConfig ?? null;
 
   // Calculate validation results
-  const canStartNewAttempt = validateCanStartNewAttempt(
-    scormConfig,
-    totalAttempts,
-    lastAttempt
-  );
+  const canStartNewAttempt = validateCanStartNewAttempt(scormConfig, totalAttempts, lastAttempt);
 
   const attemptsLeft = calculateAttemptsLeft(scormConfig, totalAttempts);
 
@@ -405,9 +376,10 @@ export default function useScormAttempt(
   };
 
   // Wrapper for createAttempt with proper typing
-  const createAttempt = async (
-    params?: { mode?: ScormAttemptMode; force?: boolean }
-  ): Promise<ScormAttempt> => {
+  const createAttempt = async (params?: {
+    mode?: ScormAttemptMode;
+    force?: boolean;
+  }): Promise<ScormAttempt> => {
     return createAttemptMutation.mutateAsync(params ?? {});
   };
 

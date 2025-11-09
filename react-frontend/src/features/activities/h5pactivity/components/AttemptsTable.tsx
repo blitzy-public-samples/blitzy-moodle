@@ -1,6 +1,6 @@
 /**
  * H5P Activity Attempts Table Component
- * 
+ *
  * Displays H5P activity attempts in a comprehensive, sortable, and filterable table.
  * Features include:
  * - Sortable columns for all attempt metadata
@@ -11,7 +11,7 @@
  * - Summary statistics in table footer
  * - Loading and empty state handling
  * - Responsive design with column hiding on mobile
- * 
+ *
  * @package    react-frontend
  * @copyright  2024 Moodle
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -37,11 +37,9 @@ import type {
   GridFilterModel,
   GridPaginationModel,
   GridRowSelectionModel,
-  GridValueGetterParams} from '@mui/x-data-grid';
-import {
-  DataGrid,
-  GridToolbarContainer
+  GridValueGetterParams,
 } from '@mui/x-data-grid';
+import { DataGrid, GridToolbarContainer } from '@mui/x-data-grid';
 import {
   CheckCircle as CheckCircleIcon,
   RadioButtonUnchecked as RadioButtonUncheckedIcon,
@@ -108,10 +106,10 @@ interface AttemptsTableProps {
 /**
  * Custom toolbar with export functionality
  */
-function CustomToolbar({ 
-  onExportCsv, 
-  onExportJson, 
-  enableExport 
+function CustomToolbar({
+  onExportCsv,
+  onExportJson,
+  enableExport,
 }: {
   onExportCsv?: () => void;
   onExportJson?: () => void;
@@ -204,17 +202,11 @@ function EmptyState(): React.ReactElement {
  */
 function LoadingSkeleton(): React.ReactElement {
   const skeletonIds = ['skeleton-1', 'skeleton-2', 'skeleton-3', 'skeleton-4', 'skeleton-5'];
-  
+
   return (
     <Box sx={{ width: '100%', p: 2 }}>
       {skeletonIds.map((id) => (
-        <Skeleton
-          key={id}
-          variant="rectangular"
-          height={52}
-          sx={{ mb: 1 }}
-          animation="wave"
-        />
+        <Skeleton key={id} variant="rectangular" height={52} sx={{ mb: 1 }} animation="wave" />
       ))}
     </Box>
   );
@@ -246,36 +238,30 @@ const createCustomFooter = (statistics: AttemptStatistics) => {
           <Typography variant="caption" color="text.secondary">
             Average Score
           </Typography>
-          <Typography variant="h6">
-            {statistics.averageScore.toFixed(1)}%
-          </Typography>
+          <Typography variant="h6">{statistics.averageScore.toFixed(1)}%</Typography>
         </Box>
         <Box sx={{ textAlign: 'center' }}>
           <Typography variant="caption" color="text.secondary">
             Completion Rate
           </Typography>
-          <Typography variant="h6">
-            {statistics.completionRate.toFixed(1)}%
-          </Typography>
+          <Typography variant="h6">{statistics.completionRate.toFixed(1)}%</Typography>
         </Box>
         <Box sx={{ textAlign: 'center' }}>
           <Typography variant="caption" color="text.secondary">
             Success Rate
           </Typography>
-          <Typography variant="h6">
-            {statistics.successRate.toFixed(1)}%
-          </Typography>
+          <Typography variant="h6">{statistics.successRate.toFixed(1)}%</Typography>
         </Box>
       </Box>
     );
   }
-  
+
   return CustomFooterComponent;
 };
 
 /**
  * AttemptsTable Component
- * 
+ *
  * Renders H5P attempts in a Material-UI DataGrid with comprehensive features
  */
 function AttemptsTable({
@@ -316,9 +302,7 @@ function AttemptsTable({
     }
 
     const totalScore = attempts.reduce((sum, attempt) => {
-      const percentage = attempt.maxscore > 0
-        ? (attempt.rawscore / attempt.maxscore) * 100
-        : 0;
+      const percentage = attempt.maxscore > 0 ? (attempt.rawscore / attempt.maxscore) * 100 : 0;
       return sum + percentage;
     }, 0);
 
@@ -338,7 +322,7 @@ function AttemptsTable({
    */
   const handleSortModelChange = useCallback((newModel: GridSortModel) => {
     setSortModel(newModel);
-    
+
     // Announce sort change to screen readers
     if (newModel.length > 0 && newModel[0]) {
       const { field, sort } = newModel[0];
@@ -359,7 +343,7 @@ function AttemptsTable({
    */
   const handleFilterModelChange = useCallback((newModel: GridFilterModel) => {
     setFilterModel(newModel);
-    
+
     // Announce filter change to screen readers
     if (newModel.items.length > 0) {
       const announcement = `Table filtered. ${newModel.items.length} filter${newModel.items.length > 1 ? 's' : ''} applied`;
@@ -463,10 +447,8 @@ function AttemptsTable({
         description: 'Score achieved',
         renderCell: (params: GridRenderCellParams<H5PAttempt>) => {
           const { rawscore, maxscore } = params.row;
-          const percentage = maxscore > 0
-            ? ((rawscore / maxscore) * 100).toFixed(1)
-            : '0.0';
-          
+          const percentage = maxscore > 0 ? ((rawscore / maxscore) * 100).toFixed(1) : '0.0';
+
           return (
             <Box sx={{ display: 'flex', flexDirection: 'column' }}>
               <Typography variant="body2" component="span">
@@ -524,13 +506,7 @@ function AttemptsTable({
               label={isSuccess ? 'Success' : 'Failed'}
               color={isSuccess ? 'success' : 'default'}
               size="small"
-              icon={
-                isSuccess ? (
-                  <CheckCircleIcon />
-                ) : (
-                  <RadioButtonUncheckedIcon />
-                )
-              }
+              icon={isSuccess ? <CheckCircleIcon /> : <RadioButtonUncheckedIcon />}
               aria-label={isSuccess ? 'Successful attempt' : 'Failed attempt'}
             />
           );

@@ -1,11 +1,11 @@
 /**
  * Set Password Form Component
- * 
+ *
  * React Hook Form-based set password form component using Material-UI v5 components
  * with Zod validation. This component collects new password and confirmation,
  * displays password policy requirements from API, validates password strength
  * client-side, and calls the password set API endpoint with reset token.
- * 
+ *
  * @package    react-frontend
  * @subpackage auth
  * @copyright  2024 Moodle React Frontend
@@ -261,21 +261,15 @@ const getStrengthLabel = (strength: PasswordStrength): string => {
 
 /**
  * SetPasswordForm Component
- * 
+ *
  * Renders a form for users to set a new password using a reset token.
  * Features include password strength indicator, policy requirements display,
  * and accessibility compliance.
  */
-function SetPasswordForm({
-  token,
-  onSuccess,
-  username,
-}: SetPasswordFormProps): React.JSX.Element {
+function SetPasswordForm({ token, onSuccess, username }: SetPasswordFormProps): React.JSX.Element {
   const [showPassword, setShowPassword] = useState(false);
   const [showPassword2, setShowPassword2] = useState(false);
-  const [passwordStrength, setPasswordStrength] = useState<PasswordStrengthResult | null>(
-    null
-  );
+  const [passwordStrength, setPasswordStrength] = useState<PasswordStrengthResult | null>(null);
 
   // Fetch password policy from API
   const {
@@ -285,24 +279,26 @@ function SetPasswordForm({
   } = useQuery<PasswordPolicyResponse>({
     queryKey: ['passwordPolicy'],
     queryFn: async () => {
-      const response = await apiClient.get<PasswordPolicyResponse>(
-        '/auth/password-policy'
-      );
+      const response = await apiClient.get<PasswordPolicyResponse>('/auth/password-policy');
       return response.data;
     },
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     retry: false, // Don't retry password policy fetch on failure
   });
 
-  const passwordPolicy = useMemo(() => policyData?.data ?? {
-    minLength: 8,
-    minDigits: 1,
-    minLower: 1,
-    minUpper: 1,
-    minNonAlphanumeric: 1,
-    reuseLimit: 5,
-    maxLength: 128,
-  }, [policyData]);
+  const passwordPolicy = useMemo(
+    () =>
+      policyData?.data ?? {
+        minLength: 8,
+        minDigits: 1,
+        minLower: 1,
+        minUpper: 1,
+        minNonAlphanumeric: 1,
+        reuseLimit: 5,
+        maxLength: 128,
+      },
+    [policyData]
+  );
 
   // Create dynamic Zod schema based on password policy
   const createPasswordSchema = (policy: PasswordPolicy) => {
@@ -351,10 +347,7 @@ function SetPasswordForm({
       });
   };
 
-  const schema = useMemo(
-    () => createPasswordSchema(passwordPolicy),
-    [passwordPolicy]
-  );
+  const schema = useMemo(() => createPasswordSchema(passwordPolicy), [passwordPolicy]);
 
   const {
     control,
@@ -393,20 +386,13 @@ function SetPasswordForm({
   }, [passwordValue, passwordPolicy]);
 
   // Set password mutation
-  const setPasswordMutation = useMutation<
-    SetPasswordResponse,
-    ApiError,
-    SetPasswordFormData
-  >({
+  const setPasswordMutation = useMutation<SetPasswordResponse, ApiError, SetPasswordFormData>({
     mutationFn: async (data: SetPasswordFormData) => {
-      const response = await apiClient.post<SetPasswordResponse>(
-        '/auth/password-reset/set',
-        {
-          token,
-          password: data.password,
-          logoutOtherSessions: data.logoutOtherSessions,
-        }
-      );
+      const response = await apiClient.post<SetPasswordResponse>('/auth/password-reset/set', {
+        token,
+        password: data.password,
+        logoutOtherSessions: data.logoutOtherSessions,
+      });
       return response.data;
     },
     onSuccess: (_data) => {
@@ -500,12 +486,7 @@ function SetPasswordForm({
       <Stack spacing={3}>
         {/* Success message */}
         {setPasswordMutation.isSuccess && (
-          <Alert
-            severity="success"
-            icon={<CheckCircleIcon />}
-            role="alert"
-            aria-live="polite"
-          >
+          <Alert severity="success" icon={<CheckCircleIcon />} role="alert" aria-live="polite">
             {setPasswordMutation.data?.data?.message ||
               'Password has been successfully updated! Redirecting...'}
           </Alert>
@@ -610,24 +591,18 @@ function SetPasswordForm({
               disabled={isLoading || setPasswordMutation.isSuccess}
               inputProps={{
                 'aria-label': 'New password',
-                'aria-describedby': errors.password
-                  ? 'password-error'
-                  : 'password-strength',
+                'aria-describedby': errors.password ? 'password-error' : 'password-strength',
                 'aria-invalid': Boolean(errors.password),
                 maxLength: passwordPolicy.maxLength,
               }}
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
-                    <Tooltip
-                      title={showPassword ? 'Hide password' : 'Show password'}
-                    >
+                    <Tooltip title={showPassword ? 'Hide password' : 'Show password'}>
                       <IconButton
                         onClick={handleTogglePasswordVisibility}
                         edge="end"
-                        aria-label={
-                          showPassword ? 'Hide password' : 'Show password'
-                        }
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
                         disabled={isLoading || setPasswordMutation.isSuccess}
                       >
                         {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
@@ -649,9 +624,7 @@ function SetPasswordForm({
           <Box
             role="status"
             aria-live="polite"
-            aria-label={`Password strength: ${getStrengthLabel(
-              passwordStrength.strength
-            )}`}
+            aria-label={`Password strength: ${getStrengthLabel(passwordStrength.strength)}`}
             id="password-strength"
           >
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
@@ -711,20 +684,14 @@ function SetPasswordForm({
               disabled={isLoading || setPasswordMutation.isSuccess}
               inputProps={{
                 'aria-label': 'Confirm new password',
-                'aria-describedby': errors.password2
-                  ? 'password2-error'
-                  : undefined,
+                'aria-describedby': errors.password2 ? 'password2-error' : undefined,
                 'aria-invalid': Boolean(errors.password2),
                 maxLength: passwordPolicy.maxLength,
               }}
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
-                    <Tooltip
-                      title={
-                        showPassword2 ? 'Hide password' : 'Show password'
-                      }
-                    >
+                    <Tooltip title={showPassword2 ? 'Hide password' : 'Show password'}>
                       <IconButton
                         onClick={handleTogglePassword2Visibility}
                         edge="end"
@@ -735,11 +702,7 @@ function SetPasswordForm({
                         }
                         disabled={isLoading || setPasswordMutation.isSuccess}
                       >
-                        {showPassword2 ? (
-                          <VisibilityOffIcon />
-                        ) : (
-                          <VisibilityIcon />
-                        )}
+                        {showPassword2 ? <VisibilityOffIcon /> : <VisibilityIcon />}
                       </IconButton>
                     </Tooltip>
                   </InputAdornment>
@@ -772,9 +735,7 @@ function SetPasswordForm({
               }
               label={
                 <Box>
-                  <Typography variant="body2">
-                    Log out from other devices
-                  </Typography>
+                  <Typography variant="body2">Log out from other devices</Typography>
                   <FormHelperText id="logout-sessions-help">
                     For security, log out all other sessions when you change your password
                   </FormHelperText>
@@ -799,9 +760,7 @@ function SetPasswordForm({
             type="submit"
             variant="contained"
             disabled={isLoading || setPasswordMutation.isSuccess}
-            startIcon={
-              isLoading ? <CircularProgress size={20} color="inherit" /> : null
-            }
+            startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
             aria-label="Set new password"
           >
             {isLoading ? 'Setting Password...' : 'Set Password'}

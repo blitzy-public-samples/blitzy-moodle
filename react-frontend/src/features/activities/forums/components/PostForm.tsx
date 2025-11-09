@@ -253,8 +253,8 @@ export function PostForm({
   const draftKey = isNewDiscussion
     ? `forum-${forumId}-new-discussion`
     : isEditing
-    ? `forum-${forumId}-edit-post-${post.id}`
-    : `forum-${forumId}-reply-${discussionId}`;
+      ? `forum-${forumId}-edit-post-${post.id}`
+      : `forum-${forumId}-reply-${discussionId}`;
 
   const { saveDraft, loadDraft, deleteDraft, lastSavedAt } = useSaveDraft({
     draftKey,
@@ -279,7 +279,12 @@ export function PostForm({
   });
 
   // Create post mutation
-  const { createPost, isLoading: isCreating, isError: isCreateError, error: createError } = useCreatePost({
+  const {
+    createPost,
+    isLoading: isCreating,
+    isError: isCreateError,
+    error: createError,
+  } = useCreatePost({
     onSuccess: (data) => {
       setIsSubmittingLocal(false);
       deleteDraft();
@@ -298,7 +303,12 @@ export function PostForm({
   });
 
   // Update post mutation
-  const { updatePost, isLoading: isUpdating, isError: isUpdateError, error: updateError } = useUpdatePost({
+  const {
+    updatePost,
+    isLoading: isUpdating,
+    isError: isUpdateError,
+    error: updateError,
+  } = useUpdatePost({
     onSuccess: (data) => {
       setIsSubmittingLocal(false);
       deleteDraft();
@@ -339,7 +349,7 @@ export function PostForm({
     if (isUpdateError && updateError) {
       // Cast to unknown to use type guards
       const err = updateError as unknown;
-      
+
       if (hasErrorCode(err) && err.code === 'CONCURRENT_EDIT') {
         setConcurrentEditError(true);
       } else if (updateError.message?.includes('409')) {
@@ -369,7 +379,7 @@ export function PostForm({
     if (isCreateError && createError) {
       // Cast to unknown to use type guards
       const err = createError as unknown;
-      
+
       if (hasErrorCode(err) && err.code === 'CONCURRENT_EDIT') {
         setConcurrentEditError(true);
       } else if (createError.message?.includes('409')) {
@@ -508,7 +518,7 @@ export function PostForm({
     (event: React.ChangeEvent<HTMLInputElement>) => {
       const selectedFiles = Array.from(event.target.files ?? []);
       addFiles(selectedFiles);
-      
+
       // Reset input to allow selecting the same file again
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -582,31 +592,36 @@ export function PostForm({
   /**
    * Insert formatted text into message
    */
-  const insertFormattedText = useCallback((before: string, after: string) => {
-    const textarea = messageInputRef.current;
-    if (!textarea) {return;}
+  const insertFormattedText = useCallback(
+    (before: string, after: string) => {
+      const textarea = messageInputRef.current;
+      if (!textarea) {
+        return;
+      }
 
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const currentValue = getValues('message') || '';
-    const selectedText = currentValue.substring(start, end);
-    
-    const newValue = 
-      currentValue.substring(0, start) +
-      before +
-      selectedText +
-      after +
-      currentValue.substring(end);
-    
-    setValue('message', newValue, { shouldDirty: true });
-    
-    // Restore focus and selection
-    setTimeout(() => {
-      textarea.focus();
-      const newCursorPos = start + before.length + selectedText.length;
-      textarea.setSelectionRange(newCursorPos, newCursorPos);
-    }, 0);
-  }, [getValues, setValue]);
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const currentValue = getValues('message') || '';
+      const selectedText = currentValue.substring(start, end);
+
+      const newValue =
+        currentValue.substring(0, start) +
+        before +
+        selectedText +
+        after +
+        currentValue.substring(end);
+
+      setValue('message', newValue, { shouldDirty: true });
+
+      // Restore focus and selection
+      setTimeout(() => {
+        textarea.focus();
+        const newCursorPos = start + before.length + selectedText.length;
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+      }, 0);
+    },
+    [getValues, setValue]
+  );
 
   /**
    * Handle bold formatting
@@ -634,12 +649,14 @@ export function PostForm({
    */
   const handleBulletList = useCallback(() => {
     const textarea = messageInputRef.current;
-    if (!textarea) {return;}
+    if (!textarea) {
+      return;
+    }
 
     const currentValue = getValues('message') || '';
     const lines = currentValue.split('\n');
-    const newLines = lines.map(line => line.trim() ? `- ${line}` : line);
-    
+    const newLines = lines.map((line) => (line.trim() ? `- ${line}` : line));
+
     setValue('message', newLines.join('\n'), { shouldDirty: true });
   }, [getValues, setValue]);
 
@@ -653,12 +670,15 @@ export function PostForm({
   /**
    * Handle emoji selection
    */
-  const handleEmojiSelect = useCallback((emoji: string) => {
-    const currentValue = getValues('message') || '';
-    setValue('message', currentValue + emoji, { shouldDirty: true });
-    setShowEmojiPicker(false);
-    messageInputRef.current?.focus();
-  }, [getValues, setValue]);
+  const handleEmojiSelect = useCallback(
+    (emoji: string) => {
+      const currentValue = getValues('message') || '';
+      setValue('message', currentValue + emoji, { shouldDirty: true });
+      setShowEmojiPicker(false);
+      messageInputRef.current?.focus();
+    },
+    [getValues, setValue]
+  );
 
   /**
    * Handle message input change to detect mentions
@@ -668,7 +688,7 @@ export function PostForm({
     const cursorPos = messageInputRef.current?.selectionStart ?? 0;
     const textBeforeCursor = value.substring(0, cursorPos);
     const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
-    
+
     if (mentionMatch) {
       setMentionQuery(mentionMatch[1] ?? '');
       setShowMentionSuggestions(true);
@@ -681,39 +701,48 @@ export function PostForm({
   /**
    * Insert mention into message
    */
-  const handleInsertMention = useCallback((username: string) => {
-    const textarea = messageInputRef.current;
-    if (!textarea) {return;}
+  const handleInsertMention = useCallback(
+    (username: string) => {
+      const textarea = messageInputRef.current;
+      if (!textarea) {
+        return;
+      }
 
-    const currentValue = getValues('message') || '';
-    const cursorPos = textarea.selectionStart;
-    const textBeforeCursor = currentValue.substring(0, cursorPos);
-    const textAfterCursor = currentValue.substring(cursorPos);
-    
-    // Replace the @query with @username
-    const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
-    if (mentionMatch) {
-      const beforeMention = textBeforeCursor.substring(0, mentionMatch.index);
-      const newValue = `${beforeMention  }@${username} ${  textAfterCursor}`;
-      setValue('message', newValue, { shouldDirty: true });
-      setShowMentionSuggestions(false);
-      setMentionQuery('');
-      
-      // Restore focus
-      setTimeout(() => {
-        textarea.focus();
-        const newCursorPos = beforeMention.length + username.length + 2;
-        textarea.setSelectionRange(newCursorPos, newCursorPos);
-      }, 0);
-    }
-  }, [getValues, setValue]);
+      const currentValue = getValues('message') || '';
+      const cursorPos = textarea.selectionStart;
+      const textBeforeCursor = currentValue.substring(0, cursorPos);
+      const textAfterCursor = currentValue.substring(cursorPos);
+
+      // Replace the @query with @username
+      const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
+      if (mentionMatch) {
+        const beforeMention = textBeforeCursor.substring(0, mentionMatch.index);
+        const newValue = `${beforeMention}@${username} ${textAfterCursor}`;
+        setValue('message', newValue, { shouldDirty: true });
+        setShowMentionSuggestions(false);
+        setMentionQuery('');
+
+        // Restore focus
+        setTimeout(() => {
+          textarea.focus();
+          const newCursorPos = beforeMention.length + username.length + 2;
+          textarea.setSelectionRange(newCursorPos, newCursorPos);
+        }, 0);
+      }
+    },
+    [getValues, setValue]
+  );
 
   /**
    * Format file size
    */
   const formatFileSize = (bytes: number): string => {
-    if (bytes < 1024) {return `${bytes} B`;}
-    if (bytes < 1024 * 1024) {return `${(bytes / 1024).toFixed(1)} KB`;}
+    if (bytes < 1024) {
+      return `${bytes} B`;
+    }
+    if (bytes < 1024 * 1024) {
+      return `${(bytes / 1024).toFixed(1)} KB`;
+    }
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
@@ -751,8 +780,8 @@ export function PostForm({
         isNewDiscussion
           ? 'Create new discussion form'
           : isEditing
-          ? 'Edit post form'
-          : 'Reply to post form'
+            ? 'Edit post form'
+            : 'Reply to post form'
       }
     >
       {/* Header */}
@@ -761,8 +790,8 @@ export function PostForm({
           {isNewDiscussion
             ? 'Create New Discussion'
             : isEditing
-            ? 'Edit Post'
-            : 'Reply to Discussion'}
+              ? 'Edit Post'
+              : 'Reply to Discussion'}
         </Typography>
       </Box>
 
@@ -781,9 +810,9 @@ export function PostForm({
 
       {/* Validation errors */}
       {validationErrors.length > 0 && (
-        <Alert 
-          severity="error" 
-          sx={{ mb: 2 }} 
+        <Alert
+          severity="error"
+          sx={{ mb: 2 }}
           onClose={() => setValidationErrors([])}
           aria-label="Form has errors"
         >
@@ -800,12 +829,7 @@ export function PostForm({
 
       {/* React Hook Form validation errors summary */}
       {Object.keys(errors).length > 1 && (
-        <Alert 
-          severity="error" 
-          sx={{ mb: 2 }}
-          role="alert"
-          aria-label="Form has errors"
-        >
+        <Alert severity="error" sx={{ mb: 2 }} role="alert" aria-label="Form has errors">
           <Typography variant="subtitle2" gutterBottom>
             Please fix the following errors:
           </Typography>
@@ -821,13 +845,13 @@ export function PostForm({
 
       {/* Network error */}
       {networkError && (
-        <Alert 
-          severity="error" 
-          sx={{ mb: 2 }} 
+        <Alert
+          severity="error"
+          sx={{ mb: 2 }}
           onClose={() => setNetworkError(null)}
           action={
-            <Button 
-              color="inherit" 
+            <Button
+              color="inherit"
               size="small"
               onClick={() => {
                 setNetworkError(null);
@@ -844,16 +868,12 @@ export function PostForm({
 
       {/* Concurrent edit error */}
       {concurrentEditError && (
-        <Alert 
-          severity="warning" 
-          sx={{ mb: 2 }} 
+        <Alert
+          severity="warning"
+          sx={{ mb: 2 }}
           onClose={() => setConcurrentEditError(false)}
           action={
-            <Button 
-              color="inherit" 
-              size="small" 
-              onClick={() => window.location.reload()}
-            >
+            <Button color="inherit" size="small" onClick={() => window.location.reload()}>
               Reload latest version
             </Button>
           }
@@ -868,8 +888,8 @@ export function PostForm({
           <Typography variant="h6" gutterBottom>
             Preview Mode
           </Typography>
-          <Paper 
-            variant="outlined" 
+          <Paper
+            variant="outlined"
             sx={{ p: 3, mb: 2, minHeight: 200 }}
             data-testid="message-preview"
           >
@@ -889,12 +909,7 @@ export function PostForm({
                   Attachments:
                 </Typography>
                 {files.map((file) => (
-                  <Chip
-                    key={file.id}
-                    label={file.name}
-                    size="small"
-                    sx={{ mr: 1, mb: 1 }}
-                  />
+                  <Chip key={file.id} label={file.name} size="small" sx={{ mr: 1, mb: 1 }} />
                 ))}
               </Box>
             )}
@@ -1055,7 +1070,41 @@ export function PostForm({
                       maxWidth: 300,
                     }}
                   >
-                    {['😀', '😁', '😂', '🤣', '😃', '😄', '😅', '😆', '😉', '😊', '😋', '😎', '😍', '😘', '🥰', '😗', '🤗', '🤔', '🤨', '😐', '😑', '😶', '🙄', '😏', '😣', '😥', '😮', '🤐', '😯', '😪', '😫', '🥱', '😴'].map((emoji) => (
+                    {[
+                      '😀',
+                      '😁',
+                      '😂',
+                      '🤣',
+                      '😃',
+                      '😄',
+                      '😅',
+                      '😆',
+                      '😉',
+                      '😊',
+                      '😋',
+                      '😎',
+                      '😍',
+                      '😘',
+                      '🥰',
+                      '😗',
+                      '🤗',
+                      '🤔',
+                      '🤨',
+                      '😐',
+                      '😑',
+                      '😶',
+                      '🙄',
+                      '😏',
+                      '😣',
+                      '😥',
+                      '😮',
+                      '🤐',
+                      '😯',
+                      '😪',
+                      '😫',
+                      '🥱',
+                      '😴',
+                    ].map((emoji) => (
                       <Button
                         key={emoji}
                         size="small"
@@ -1310,7 +1359,7 @@ export function PostForm({
                       multiple
                       renderValue={(selected) => (
                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                          {(selected).map((value) => (
+                          {selected.map((value) => (
                             <Chip key={value} label={value} size="small" />
                           ))}
                         </Box>
@@ -1381,19 +1430,19 @@ export function PostForm({
                 isSubmitting
                   ? 'Posting'
                   : isEditing
-                  ? 'Update post'
-                  : isReplying
-                  ? 'Post reply'
-                  : 'Post discussion'
+                    ? 'Update post'
+                    : isReplying
+                      ? 'Post reply'
+                      : 'Post discussion'
               }
             >
               {isSubmitting
                 ? 'Posting...'
                 : isEditing
-                ? 'Update Post'
-                : isReplying
-                ? 'Post Reply'
-                : 'Post Discussion'}
+                  ? 'Update Post'
+                  : isReplying
+                    ? 'Post Reply'
+                    : 'Post Discussion'}
             </Button>
 
             <Button
@@ -1417,11 +1466,7 @@ export function PostForm({
             </Button>
 
             {lastSavedAt && (
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ ml: 2 }}
-              >
+              <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>
                 Draft saved
               </Typography>
             )}

@@ -1,10 +1,10 @@
 /**
  * Custom React hook for exporting feedback analysis to Excel format.
- * 
+ *
  * This hook provides a mutation for triggering Excel export download of feedback analysis data.
  * It wraps the GET /api/v1/feedback/{id}/export endpoint that calls existing Moodle
  * analysis_to_excel functions.
- * 
+ *
  * @module features/activities/feedback/hooks/useExportAnalysis
  */
 
@@ -45,7 +45,7 @@ export interface UseExportAnalysisOptions {
 
 /**
  * Triggers download of a blob file in the browser
- * 
+ *
  * @param blob - The file blob to download
  * @param filename - The filename to use for the download
  */
@@ -55,10 +55,10 @@ function triggerDownload(blob: Blob, filename: string): void {
   link.href = url;
   link.download = filename;
   link.style.display = 'none';
-  
+
   document.body.appendChild(link);
   link.click();
-  
+
   // Cleanup
   document.body.removeChild(link);
   window.URL.revokeObjectURL(url);
@@ -66,7 +66,7 @@ function triggerDownload(blob: Blob, filename: string): void {
 
 /**
  * Extracts filename from Content-Disposition header
- * 
+ *
  * @param contentDisposition - The Content-Disposition header value
  * @returns The extracted filename or a default filename
  */
@@ -91,7 +91,7 @@ function extractFilename(contentDisposition: string | null): string {
 
 /**
  * Fetches the Excel file from the API
- * 
+ *
  * @param params - Export parameters including feedbackId and optional courseId
  * @returns Promise resolving to the filename that was downloaded
  * @throws Error if the request fails or returns an error
@@ -109,7 +109,7 @@ async function exportAnalysis(params: ExportAnalysisParams): Promise<string> {
   const response = await fetch(url.toString(), {
     method: 'GET',
     headers: {
-      'Accept': 'application/vnd.ms-excel',
+      Accept: 'application/vnd.ms-excel',
     },
     credentials: 'include', // Include cookies for authentication
   });
@@ -119,10 +119,10 @@ async function exportAnalysis(params: ExportAnalysisParams): Promise<string> {
     // Try to parse error response
     const contentType = response.headers.get('content-type');
     if (contentType && contentType.includes('application/json')) {
-      const errorData = await response.json() as ApiError;
+      const errorData = (await response.json()) as ApiError;
       throw new Error(errorData.error.message || 'Failed to export feedback analysis');
     }
-    
+
     throw new Error(`Failed to export feedback analysis: ${response.statusText}`);
   }
 
@@ -141,22 +141,22 @@ async function exportAnalysis(params: ExportAnalysisParams): Promise<string> {
 
 /**
  * Custom hook for exporting feedback analysis to Excel format.
- * 
+ *
  * This hook provides a mutation that triggers an Excel export of feedback analysis data.
  * The export includes:
  * - Feedback metadata (date, completed count, question count)
  * - All feedback items with their responses
  * - Analysis data formatted as an Excel spreadsheet
- * 
+ *
  * The hook handles:
  * - File download triggering
  * - Loading states during export
  * - Error handling with user-friendly messages
  * - Success callbacks with filename
- * 
+ *
  * @param options - Optional callbacks for success and error handling
  * @returns Mutation result with mutate function, loading state, and error
- * 
+ *
  * @example
  * ```tsx
  * function ExportButton({ feedbackId }: { feedbackId: number }) {
@@ -168,7 +168,7 @@ async function exportAnalysis(params: ExportAnalysisParams): Promise<string> {
  *       toast.error(error.message);
  *     }
  *   });
- * 
+ *
  *   return (
  *     <Button
  *       onClick={() => mutate({ feedbackId, courseId: 5 })}

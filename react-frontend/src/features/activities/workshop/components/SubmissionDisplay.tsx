@@ -1,10 +1,10 @@
 /**
  * Workshop Submission Display Component
- * 
+ *
  * Displays workshop submission content including title, text content, attachments,
  * author information, and submission metadata. Renders submission in read-only view
  * with proper formatting, file previews, and optional author anonymization.
- * 
+ *
  * @package    mod_workshop
  * @copyright  2024 Moodle React Frontend
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -123,27 +123,28 @@ const getFileIcon = (mimetype: string): React.ReactElement => {
     mimetype.includes('text')
   ) {
     return <DocIcon />;
-  } 
-    return <FileIcon />;
-  
+  }
+  return <FileIcon />;
 };
 
 /**
  * Format file size in human-readable format
  */
 const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) {return '0 Bytes';}
-  
+  if (bytes === 0) {
+    return '0 Bytes';
+  }
+
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
-  return `${Math.round(bytes / Math.pow(k, i) * 100) / 100  } ${  sizes[i]}`;
+
+  return `${Math.round((bytes / Math.pow(k, i)) * 100) / 100} ${sizes[i]}`;
 };
 
 /**
  * SubmissionDisplay Component
- * 
+ *
  * Renders a complete workshop submission with all metadata, content, and attachments.
  * Supports both regular and example submissions with appropriate styling and indicators.
  */
@@ -155,7 +156,7 @@ function SubmissionDisplay({
 }: SubmissionDisplayProps): React.ReactElement {
   // Determine if author information should be hidden
   const shouldHideAuthor = workshop.anonymoussubmissions || !showAuthor;
-  
+
   // Check if submission has been modified after creation
   const isModified = submission.timemodified > submission.timecreated;
 
@@ -180,11 +181,7 @@ function SubmissionDisplay({
         role="region"
         aria-label="Author information"
       >
-        <Avatar
-          src={author.profileimageurl}
-          alt={author.fullname}
-          sx={{ width: 64, height: 64 }}
-        />
+        <Avatar src={author.profileimageurl} alt={author.fullname} sx={{ width: 64, height: 64 }} />
         <Box>
           <Link
             href={author.profileurl}
@@ -195,11 +192,13 @@ function SubmissionDisplay({
             {author.fullname}
           </Link>
           <Typography variant="body2" color="text.secondary">
-            Submitted {formatDistanceToNow(new Date(submission.timecreated * 1000), { addSuffix: true })}
+            Submitted{' '}
+            {formatDistanceToNow(new Date(submission.timecreated * 1000), { addSuffix: true })}
           </Typography>
           {isModified && (
             <Typography variant="caption" color="text.secondary">
-              Modified {formatDistanceToNow(new Date(submission.timemodified * 1000), { addSuffix: true })}
+              Modified{' '}
+              {formatDistanceToNow(new Date(submission.timemodified * 1000), { addSuffix: true })}
             </Typography>
           )}
         </Box>
@@ -553,9 +552,7 @@ function SubmissionDisplay({
         {renderTimestamps()}
 
         {/* Submission Content */}
-        <Box sx={{ mt: 2, mb: 2 }}>
-          {renderContent()}
-        </Box>
+        <Box sx={{ mt: 2, mb: 2 }}>{renderContent()}</Box>
 
         {/* Inline Images */}
         {renderInlineImages()}

@@ -8,45 +8,73 @@
  */
 
 import React from 'react';
-import { 
-  useQuery, 
+import {
+  useQuery,
   useMutation,
   useQueryClient,
   type UseQueryResult,
   type UseMutationResult,
   type QueryObserverResult,
-  type UseQueryOptions
+  type UseQueryOptions,
 } from '@tanstack/react-query';
-import { 
-  fetchUserProfile, 
-  fetchCurrentUserProfile,
-  updateUserProfile 
-} from '../api/profileApi';
+import { fetchUserProfile, fetchCurrentUserProfile, updateUserProfile } from '../api/profileApi';
 import type { User, UpdateProfilePayload, UpdateProfileData } from '../types/profile.types';
 
 /**
  * Convert UpdateProfilePayload (internal format with booleans and enums)
  * to UpdateProfileData (API format with numeric literals)
  */
-function convertPayloadToApiFormat(payload: Omit<UpdateProfilePayload, 'userid'>): UpdateProfileData {
+function convertPayloadToApiFormat(
+  payload: Omit<UpdateProfilePayload, 'userid'>
+): UpdateProfileData {
   const apiData: UpdateProfileData = {};
 
   // Copy all string/number fields directly
-  if (payload.firstname !== undefined) {apiData.firstname = payload.firstname;}
-  if (payload.lastname !== undefined) {apiData.lastname = payload.lastname;}
-  if (payload.email !== undefined) {apiData.email = payload.email;}
-  if (payload.description !== undefined) {apiData.description = payload.description;}
-  if (payload.city !== undefined) {apiData.city = payload.city;}
-  if (payload.country !== undefined) {apiData.country = payload.country;}
-  if (payload.timezone !== undefined) {apiData.timezone = payload.timezone;}
-  if (payload.phone1 !== undefined) {apiData.phone1 = payload.phone1;}
-  if (payload.phone2 !== undefined) {apiData.phone2 = payload.phone2;}
-  if (payload.institution !== undefined) {apiData.institution = payload.institution;}
-  if (payload.department !== undefined) {apiData.department = payload.department;}
-  if (payload.address !== undefined) {apiData.address = payload.address;}
-  if (payload.lang !== undefined) {apiData.lang = payload.lang;}
-  if (payload.calendartype !== undefined) {apiData.calendartype = payload.calendartype;}
-  if (payload.theme !== undefined) {apiData.theme = payload.theme;}
+  if (payload.firstname !== undefined) {
+    apiData.firstname = payload.firstname;
+  }
+  if (payload.lastname !== undefined) {
+    apiData.lastname = payload.lastname;
+  }
+  if (payload.email !== undefined) {
+    apiData.email = payload.email;
+  }
+  if (payload.description !== undefined) {
+    apiData.description = payload.description;
+  }
+  if (payload.city !== undefined) {
+    apiData.city = payload.city;
+  }
+  if (payload.country !== undefined) {
+    apiData.country = payload.country;
+  }
+  if (payload.timezone !== undefined) {
+    apiData.timezone = payload.timezone;
+  }
+  if (payload.phone1 !== undefined) {
+    apiData.phone1 = payload.phone1;
+  }
+  if (payload.phone2 !== undefined) {
+    apiData.phone2 = payload.phone2;
+  }
+  if (payload.institution !== undefined) {
+    apiData.institution = payload.institution;
+  }
+  if (payload.department !== undefined) {
+    apiData.department = payload.department;
+  }
+  if (payload.address !== undefined) {
+    apiData.address = payload.address;
+  }
+  if (payload.lang !== undefined) {
+    apiData.lang = payload.lang;
+  }
+  if (payload.calendartype !== undefined) {
+    apiData.calendartype = payload.calendartype;
+  }
+  if (payload.theme !== undefined) {
+    apiData.theme = payload.theme;
+  }
 
   // Convert boolean to 0 | 1 for API
   if (payload.autosubscribe !== undefined) {
@@ -236,19 +264,16 @@ export function useProfile(
   options: UseProfileOptions = {}
 ): UseProfileResult {
   // Destructure options without defaults to allow QueryClient defaults to be used
-  const {
-    enabled,
-    staleTime,
-    cacheTime,
-    refetchOnWindowFocus,
-    refetchOnMount,
-    retry,
-  } = options;
+  const { enabled, staleTime, cacheTime, refetchOnWindowFocus, refetchOnMount, retry } = options;
 
   // Determine query key and fetch function based on whether userId is provided
   // Check for both undefined and null since userId can be number | null | undefined
-  const queryKey = userId !== undefined && userId !== null ? profileKeys.detail(userId) : profileKeys.current();
-  const queryFn = userId !== undefined && userId !== null ? () => fetchUserProfile(userId) : fetchCurrentUserProfile;
+  const queryKey =
+    userId !== undefined && userId !== null ? profileKeys.detail(userId) : profileKeys.current();
+  const queryFn =
+    userId !== undefined && userId !== null
+      ? () => fetchUserProfile(userId)
+      : fetchCurrentUserProfile;
 
   // Build query options, only including values that were explicitly provided
   // This allows QueryClient defaults to be used when options are not specified
@@ -266,20 +291,26 @@ export function useProfile(
   } else if (userId === null) {
     queryOptions.enabled = false;
   }
-  if (staleTime !== undefined) {queryOptions.staleTime = staleTime;}
-  if (cacheTime !== undefined) {queryOptions.gcTime = cacheTime;} // Note: 'cacheTime' was renamed to 'gcTime' in React Query v5
-  if (refetchOnWindowFocus !== undefined) {queryOptions.refetchOnWindowFocus = refetchOnWindowFocus;}
-  if (refetchOnMount !== undefined) {queryOptions.refetchOnMount = refetchOnMount;}
-  if (retry !== undefined) {queryOptions.retry = retry;}
+  if (staleTime !== undefined) {
+    queryOptions.staleTime = staleTime;
+  }
+  if (cacheTime !== undefined) {
+    queryOptions.gcTime = cacheTime;
+  } // Note: 'cacheTime' was renamed to 'gcTime' in React Query v5
+  if (refetchOnWindowFocus !== undefined) {
+    queryOptions.refetchOnWindowFocus = refetchOnWindowFocus;
+  }
+  if (refetchOnMount !== undefined) {
+    queryOptions.refetchOnMount = refetchOnMount;
+  }
+  if (retry !== undefined) {
+    queryOptions.retry = retry;
+  }
 
   const queryResult = useQuery<User, Error>(queryOptions);
 
   // Integrate update profile mutation
-  const {
-    mutate: mutateProfile,
-    isPending: isUpdating,
-    error: updateError,
-  } = useUpdateProfile();
+  const { mutate: mutateProfile, isPending: isUpdating, error: updateError } = useUpdateProfile();
 
   // Wrap mutation to automatically include userId
   const updateProfile = React.useCallback(
@@ -293,12 +324,12 @@ export function useProfile(
     ) => {
       // Determine which userId to use: provided userId or current user
       const targetUserId = userId ?? queryResult.data?.id;
-      
+
       if (targetUserId === undefined) {
         console.error('Cannot update profile: userId is undefined');
         return;
       }
-      
+
       // Call mutation with full payload including userid and pass through options
       mutateProfile(
         {
@@ -475,7 +506,7 @@ export function useUpdateProfile(
   options: UseUpdateProfileOptions = {}
 ): UseMutationResult<User, Error, UpdateProfilePayload> {
   const queryClient = useQueryClient();
-  
+
   const {
     onSuccess,
     onError,
@@ -505,16 +536,19 @@ export function useUpdateProfile(
       // Optimistically update to the new value
       if (previousProfile) {
         queryClient.setQueryData<User>(queryKey, (old) => {
-          if (!old) {return old;}
-          
+          if (!old) {
+            return old;
+          }
+
           // Merge update payload with existing data
           return {
             ...old,
             ...variables,
             // Preserve computed/server-only fields
-            fullname: variables.firstname && variables.lastname
-              ? `${variables.firstname} ${variables.lastname}`.trim()
-              : old.fullname,
+            fullname:
+              variables.firstname && variables.lastname
+                ? `${variables.firstname} ${variables.lastname}`.trim()
+                : old.fullname,
             timemodified: Date.now() / 1000, // Optimistically update modification time
           };
         });
@@ -525,7 +559,11 @@ export function useUpdateProfile(
     },
 
     // Rollback optimistic update on error
-    onError: (error: Error, variables: UpdateProfilePayload, context: UpdateProfileContext | undefined) => {
+    onError: (
+      error: Error,
+      variables: UpdateProfilePayload,
+      context: UpdateProfileContext | undefined
+    ) => {
       if (context?.previousProfile && context?.userId) {
         const queryKey = profileKeys.detail(context.userId);
         queryClient.setQueryData(queryKey, context.previousProfile);
@@ -542,15 +580,15 @@ export function useUpdateProfile(
       const userId = variables.userid;
 
       // Invalidate the specific user profile query to trigger refetch
-      void queryClient.invalidateQueries({ 
+      void queryClient.invalidateQueries({
         queryKey: profileKeys.detail(userId),
-        exact: true 
+        exact: true,
       });
 
       // If updating current user, also invalidate current user query
-      void queryClient.invalidateQueries({ 
+      void queryClient.invalidateQueries({
         queryKey: profileKeys.current(),
-        exact: true 
+        exact: true,
       });
 
       // Call user-provided success handler

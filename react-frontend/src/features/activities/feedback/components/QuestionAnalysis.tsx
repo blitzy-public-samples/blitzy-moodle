@@ -1,12 +1,12 @@
 /**
  * QuestionAnalysis Component
- * 
+ *
  * Displays aggregated analysis results for a single feedback item/question.
  * Supports multiple item types with appropriate visualizations:
  * - Multichoice: Bar/Pie charts with response counts and percentages
  * - Numeric: Statistics including mean, individual values
  * - Text: List of all text responses
- * 
+ *
  * Based on Moodle's feedback item analysis patterns.
  */
 
@@ -41,7 +41,14 @@ import {
 /**
  * Type of feedback item/question
  */
-type FeedbackItemType = 'multichoice' | 'multichoicerated' | 'numeric' | 'textarea' | 'textfield' | 'info' | 'label';
+type FeedbackItemType =
+  | 'multichoice'
+  | 'multichoicerated'
+  | 'numeric'
+  | 'textarea'
+  | 'textfield'
+  | 'info'
+  | 'label';
 
 /**
  * Analysis data for multichoice items
@@ -140,12 +147,8 @@ function BarChartTooltip({ active, payload }: BarChartTooltipProps): React.React
         <Typography variant="body2" fontWeight="bold">
           <span dangerouslySetInnerHTML={{ __html: data.fullLabel }} />
         </Typography>
-        <Typography variant="body2">
-          Responses: {data.value}
-        </Typography>
-        <Typography variant="body2">
-          Percentage: {data.percentage}
-        </Typography>
+        <Typography variant="body2">Responses: {data.value}</Typography>
+        <Typography variant="body2">Percentage: {data.percentage}</Typography>
       </Paper>
     );
   }
@@ -186,12 +189,8 @@ function PieChartTooltip({ active, payload }: PieChartTooltipProps): React.React
         <Typography variant="body2" fontWeight="bold">
           {data.name}
         </Typography>
-        <Typography variant="body2">
-          Responses: {data.value}
-        </Typography>
-        <Typography variant="body2">
-          Percentage: {data.payload.percentage}
-        </Typography>
+        <Typography variant="body2">Responses: {data.value}</Typography>
+        <Typography variant="body2">Percentage: {data.payload.percentage}</Typography>
       </Paper>
     );
   }
@@ -200,7 +199,7 @@ function PieChartTooltip({ active, payload }: PieChartTooltipProps): React.React
 
 /**
  * QuestionAnalysis Component
- * 
+ *
  * Renders individual question analysis with appropriate visualizations
  * based on item type.
  */
@@ -251,7 +250,7 @@ export function QuestionAnalysis({
    * Formats percentage for display
    */
   const formatPercentage = (quotient: number): string => {
-    return `${formatFloat(quotient * 100, 2)  } %`;
+    return `${formatFloat(quotient * 100, 2)} %`;
   };
 
   /**
@@ -300,12 +299,7 @@ export function QuestionAnalysis({
           >
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis type="number" />
-            <YAxis
-              type="category"
-              dataKey="name"
-              width={150}
-              tick={{ fontSize: 12 }}
-            />
+            <YAxis type="category" dataKey="name" width={150} tick={{ fontSize: 12 }} />
             <Tooltip content={<BarChartTooltip />} />
             <Legend />
             <Bar dataKey="value" name="Responses" label={{ position: 'right' }}>
@@ -317,34 +311,24 @@ export function QuestionAnalysis({
           </BarChart>
         </ResponsiveContainer>
       );
-    } 
-      return (
-        <ResponsiveContainer width="100%" height={chartHeight}>
-          <BarChart
-            data={chartData}
-            margin={{ top: 20, right: 30, left: 20, bottom: 80 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis
-              dataKey="name"
-              angle={-45}
-              textAnchor="end"
-              height={100}
-              tick={{ fontSize: 12 }}
-            />
-            <YAxis />
-            <Tooltip content={<BarChartTooltip />} />
-            <Legend />
-            <Bar dataKey="value" name="Responses">
-              {chartData.map((entry, index) => (
-                // eslint-disable-next-line react/no-array-index-key
-                <Cell key={`cell-${entry.name}-${index}`} fill={colors[index]} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      );
-    
+    }
+    return (
+      <ResponsiveContainer width="100%" height={chartHeight}>
+        <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} tick={{ fontSize: 12 }} />
+          <YAxis />
+          <Tooltip content={<BarChartTooltip />} />
+          <Legend />
+          <Bar dataKey="value" name="Responses">
+            {chartData.map((entry, index) => (
+              // eslint-disable-next-line react/no-array-index-key
+              <Cell key={`cell-${entry.name}-${index}`} fill={colors[index]} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    );
   };
 
   /**
@@ -367,7 +351,9 @@ export function QuestionAnalysis({
             cx="50%"
             cy="50%"
             labelLine
-            label={(entry: PieChartDataItem) => `${entry.name}: ${entry.value} (${entry.percentage})`}
+            label={(entry: PieChartDataItem) =>
+              `${entry.name}: ${entry.value} (${entry.percentage})`
+            }
             outerRadius={120}
             fill={theme.palette.primary.main}
             dataKey="value"
@@ -397,12 +383,8 @@ export function QuestionAnalysis({
         <TableCell>
           {showPieChart ? (
             <Box sx={{ display: 'flex', flexDirection: 'row', gap: 2 }}>
-              <Box sx={{ flex: 1 }}>
-                {renderBarChart(analysisData.multichoiceData)}
-              </Box>
-              <Box sx={{ flex: 1 }}>
-                {renderPieChart(analysisData.multichoiceData)}
-              </Box>
+              <Box sx={{ flex: 1 }}>{renderBarChart(analysisData.multichoiceData)}</Box>
+              <Box sx={{ flex: 1 }}>{renderPieChart(analysisData.multichoiceData)}</Box>
             </Box>
           ) : (
             renderBarChart(analysisData.multichoiceData)
@@ -451,8 +433,7 @@ export function QuestionAnalysis({
           >
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               <Typography variant="body1">
-                <strong>Average:</strong>{' '}
-                {avg !== null ? formatFloat(avg, 2) : '-'}
+                <strong>Average:</strong> {avg !== null ? formatFloat(avg, 2) : '-'}
               </Typography>
               {min !== undefined && (
                 <Typography variant="body2" color="text.secondary">
@@ -525,9 +506,7 @@ export function QuestionAnalysis({
               pl: 4,
             }}
           >
-            <Typography variant="body2">
-              Total responses: {count}
-            </Typography>
+            <Typography variant="body2">Total responses: {count}</Typography>
           </TableCell>
         </TableRow>
       </>
@@ -542,27 +521,25 @@ export function QuestionAnalysis({
       case 'multichoice':
       case 'multichoicerated':
         return renderMultichoiceAnalysis();
-      
+
       case 'numeric':
         return renderNumericAnalysis();
-      
+
       case 'textarea':
       case 'textfield':
         return renderTextAnalysis();
-      
+
       case 'info':
       case 'label':
         // Info and label items don't have analyzable data
         return (
           <TableRow>
             <TableCell sx={{ pl: 4, fontStyle: 'italic', color: theme.palette.text.secondary }}>
-              <Typography variant="body2">
-                This item type does not collect responses.
-              </Typography>
+              <Typography variant="body2">This item type does not collect responses.</Typography>
             </TableCell>
           </TableRow>
         );
-      
+
       default:
         return (
           <TableRow>
@@ -595,12 +572,8 @@ export function QuestionAnalysis({
           },
         }}
       >
-        <TableHead>
-          {renderQuestionHeader()}
-        </TableHead>
-        <TableBody>
-          {renderAnalysisContent()}
-        </TableBody>
+        <TableHead>{renderQuestionHeader()}</TableHead>
+        <TableBody>{renderAnalysisContent()}</TableBody>
       </Table>
     </TableContainer>
   );

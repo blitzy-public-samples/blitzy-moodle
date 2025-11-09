@@ -1,9 +1,9 @@
 /**
  * GroupFilter Component
- * 
+ *
  * Group filter dropdown component for filtering feedback analysis results by course group.
  * Mimics the functionality of groups_print_activity_menu from Moodle's grouplib.php.
- * 
+ *
  * Features:
  * - MUI Select component for group selection
  * - Dynamic group loading with React Query integration
@@ -22,7 +22,7 @@ import {
   MenuItem,
   CircularProgress,
   FormHelperText,
-  Box
+  Box,
 } from '@mui/material';
 import { Groups as GroupsIcon } from '@mui/icons-material';
 import type { GroupFilterProps } from '../types/feedback.types';
@@ -30,7 +30,7 @@ import { GroupMode } from '../types/feedback.types';
 
 /**
  * GroupFilter Component
- * 
+ *
  * A dropdown component for filtering feedback analysis by course group.
  * Integrates with Moodle's group system and provides a user-friendly interface
  * for group selection with loading states and error handling.
@@ -54,7 +54,7 @@ export function GroupFilter({
    * Handle group selection change
    */
   const handleChange = (event: SelectChangeEvent<number>): void => {
-    const {value} = event.target;
+    const { value } = event.target;
     const groupId = typeof value === 'string' ? parseInt(value, 10) : value;
     onChange(groupId);
   };
@@ -100,13 +100,7 @@ export function GroupFilter({
               </Box>
             )
           }
-          endAdornment={
-            <CircularProgress
-              size={20}
-              sx={{ mr: 2 }}
-              color="inherit"
-            />
-          }
+          endAdornment={<CircularProgress size={20} sx={{ mr: 2 }} color="inherit" />}
         >
           <MenuItem value={selectedGroupId}>Loading...</MenuItem>
         </Select>
@@ -173,7 +167,7 @@ export function GroupFilter({
     const singleGroup = groups[0];
     if (!singleGroup) {
       // Defensive check - should never happen due to length check
-      return null;
+      return <Box />;
     }
     return (
       <FormControl size={size} className={className} disabled>
@@ -191,7 +185,9 @@ export function GroupFilter({
         >
           <MenuItem value={singleGroup.id}>{singleGroup.name}</MenuItem>
         </Select>
-        <FormHelperText>{getLabel()}: {singleGroup.name}</FormHelperText>
+        <FormHelperText>
+          {getLabel()}: {singleGroup.name}
+        </FormHelperText>
       </FormControl>
     );
   }
@@ -222,23 +218,17 @@ export function GroupFilter({
       >
         {showAllParticipants && (
           <MenuItem value={0}>
-            <Box sx={{ fontWeight: selectedGroupId === 0 ? 600 : 400 }}>
-              All participants
-            </Box>
+            <Box sx={{ fontWeight: selectedGroupId === 0 ? 600 : 400 }}>All participants</Box>
           </MenuItem>
         )}
         {groups.map((group) => (
           <MenuItem key={group.id} value={group.id}>
-            <Box sx={{ fontWeight: selectedGroupId === group.id ? 600 : 400 }}>
-              {group.name}
-            </Box>
+            <Box sx={{ fontWeight: selectedGroupId === group.id ? 600 : 400 }}>{group.name}</Box>
           </MenuItem>
         ))}
       </Select>
       {groups.length === 0 && showAllParticipants && (
-        <FormHelperText>
-          No groups available. Showing all participants.
-        </FormHelperText>
+        <FormHelperText>No groups available. Showing all participants.</FormHelperText>
       )}
     </FormControl>
   );

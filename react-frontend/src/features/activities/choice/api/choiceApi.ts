@@ -72,11 +72,11 @@ export async function getChoiceResults(
 ): Promise<ChoiceResultsResponse> {
   // Build query parameters
   const params = new URLSearchParams();
-  
+
   if (options?.groupId !== undefined && options.groupId > 0) {
     params.append('groupId', options.groupId.toString());
   }
-  
+
   if (options?.includeinactive !== undefined) {
     params.append('includeinactive', options.includeinactive ? '1' : '0');
   }

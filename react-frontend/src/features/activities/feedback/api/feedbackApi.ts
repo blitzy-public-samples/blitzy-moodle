@@ -260,9 +260,7 @@ export async function getFeedbackAnalysis(
  * @param feedbackId - Feedback module ID
  * @returns Promise resolving to API response with completion status
  */
-export async function getFeedbackStatus(
-  feedbackId: number
-): Promise<ApiResponse<FeedbackStatus>> {
+export async function getFeedbackStatus(feedbackId: number): Promise<ApiResponse<FeedbackStatus>> {
   const response = await apiClient.get<ApiResponse<FeedbackStatus>>(
     `feedback/${feedbackId}/status`
   );

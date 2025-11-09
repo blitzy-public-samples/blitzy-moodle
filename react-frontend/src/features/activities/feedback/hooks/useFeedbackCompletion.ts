@@ -1,16 +1,16 @@
 /**
  * Custom React Query hook for managing feedback completion state and multi-page navigation.
- * 
+ *
  * This hook provides comprehensive feedback completion management including:
  * - Fetching completion data (current page, completed pages, draft responses, submission status)
  * - Page navigation with validation (next/previous page with strict checking)
  * - Draft response saving for unfinished attempts
  * - Final submission handling
  * - State synchronization with server
- * 
+ *
  * Wraps GET /api/v1/feedback/{id}/completion endpoint that calls existing Moodle
  * mod_feedback_completion class methods without duplicating business logic.
- * 
+ *
  * @module useFeedbackCompletion
  */
 
@@ -161,44 +161,44 @@ interface UseFeedbackCompletionReturn {
   isLoading: boolean;
   isError: boolean;
   error: Error | null;
-  
+
   // Navigation functions
   goToNextPage: (options?: NavigationOptions) => number | null;
   goToPreviousPage: (options?: NavigationOptions) => number | null;
   goToPage: (pageIndex: number) => number;
   canGoNext: boolean;
   canGoPrevious: boolean;
-  
+
   // Response management
   saveDraft: (responses: Record<string, string>) => Promise<void>;
   submitFeedback: (responses: Record<string, string>) => Promise<void>;
   isSavingDraft: boolean;
   isSubmitting: boolean;
-  
+
   // State helpers
   getCurrentPageItems: () => FeedbackItem[];
   getPageCompletionStatus: (pageIndex: number) => 'completed' | 'incompleted' | 'empty';
   getDraftResponseForItem: (itemId: number) => string | null;
   isPageValid: (pageIndex: number) => boolean;
-  
+
   // Refresh function
   refetch: () => Promise<void>;
 }
 
 /**
  * Custom React Query hook for managing feedback completion state and multi-page navigation.
- * 
+ *
  * This hook handles:
  * - Fetching and caching completion data from the server
  * - Managing page navigation with validation
  * - Saving draft responses as users progress through pages
  * - Final feedback submission
  * - Optimistic updates for better UX
- * 
+ *
  * @param feedbackId - The ID of the feedback activity
  * @param options - Optional configuration for the hook
  * @returns Object containing completion data and management functions
- * 
+ *
  * @example
  * ```tsx
  * const {
@@ -208,7 +208,7 @@ interface UseFeedbackCompletionReturn {
  *   saveDraft,
  *   submitFeedback,
  * } = useFeedbackCompletion(feedbackId);
- * 
+ *
  * // Navigate to next page after saving draft
  * await saveDraft({ 'item_123': 'response value' });
  * await goToNextPage();
@@ -269,7 +269,7 @@ export function useFeedbackCompletion(
       }
 
       const result = (await response.json()) as ApiResponse<FeedbackCompletionData>;
-      
+
       if (!result.success) {
         throw new Error(result.error?.message ?? 'Failed to fetch completion data');
       }
@@ -293,20 +293,17 @@ export function useFeedbackCompletion(
     SaveDraftRequest
   >({
     mutationFn: async (request: SaveDraftRequest) => {
-      const response = await fetch(
-        `/api/v1/feedback/${feedbackId}/completion/save-draft`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify({
-            page: request.page,
-            responses: request.responses,
-          }),
-        }
-      );
+      const response = await fetch(`/api/v1/feedback/${feedbackId}/completion/save-draft`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          page: request.page,
+          responses: request.responses,
+        }),
+      });
 
       if (!response.ok) {
         let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
@@ -342,24 +339,25 @@ export function useFeedbackCompletion(
     SubmitFeedbackRequest
   >({
     mutationFn: async (request: SubmitFeedbackRequest) => {
-      const response = await fetch(
-        `/api/v1/feedback/${feedbackId}/completion/submit`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify({
-            page: request.page,
-            responses: request.responses,
-          }),
-        }
-      );
+      const response = await fetch(`/api/v1/feedback/${feedbackId}/completion/submit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          page: request.page,
+          responses: request.responses,
+        }),
+      });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({})) as { error?: { message?: string } };
-        throw new Error(errorData.error?.message ?? `HTTP ${response.status}: ${response.statusText}`);
+        const errorData = (await response.json().catch(() => ({}))) as {
+          error?: { message?: string };
+        };
+        throw new Error(
+          errorData.error?.message ?? `HTTP ${response.status}: ${response.statusText}`
+        );
       }
 
       return response.json();
@@ -375,7 +373,7 @@ export function useFeedbackCompletion(
 
   /**
    * Navigate to the next page with validation
-   * 
+   *
    * @param options - Navigation options including strict check flag
    * @returns Next page index or null if no next page
    */
@@ -400,7 +398,7 @@ export function useFeedbackCompletion(
 
       if (nextPage === null) {
         // Find next page with items
-        const {pages} = completionData;
+        const { pages } = completionData;
         for (let i = currentPage + 1; i < pages.length; i++) {
           const page = pages[i];
           if (page && page.items.length > 0) {
@@ -422,7 +420,7 @@ export function useFeedbackCompletion(
 
   /**
    * Navigate to the previous page with validation
-   * 
+   *
    * @param options - Navigation options including strict check flag
    * @returns Previous page index or null if no previous page
    */
@@ -437,7 +435,7 @@ export function useFeedbackCompletion(
       }
 
       const { strictCheck = true } = options;
-      const {pages} = completionData;
+      const { pages } = completionData;
       let previousPage: number | null = null;
 
       // Find previous page with items
@@ -469,7 +467,7 @@ export function useFeedbackCompletion(
 
   /**
    * Navigate directly to a specific page
-   * 
+   *
    * @param pageIndex - The target page index
    * @returns The page index
    */
@@ -491,7 +489,7 @@ export function useFeedbackCompletion(
 
   /**
    * Save draft responses for the current page
-   * 
+   *
    * @param responses - Map of item keys to response values
    * @returns Promise that resolves when draft is saved
    */
@@ -508,7 +506,7 @@ export function useFeedbackCompletion(
 
   /**
    * Submit the feedback (final submission)
-   * 
+   *
    * @param responses - Map of item keys to response values for the last page
    * @returns Promise that resolves when feedback is submitted
    */
@@ -525,7 +523,7 @@ export function useFeedbackCompletion(
 
   /**
    * Get items for the current page
-   * 
+   *
    * @returns Array of feedback items on the current page
    */
   const getCurrentPageItems = useCallback((): FeedbackItem[] => {
@@ -537,7 +535,7 @@ export function useFeedbackCompletion(
 
   /**
    * Get completion status for a specific page
-   * 
+   *
    * @param pageIndex - The page index to check
    * @returns Completion status: 'completed', 'incompleted', or 'empty'
    */
@@ -562,7 +560,7 @@ export function useFeedbackCompletion(
 
   /**
    * Get draft response value for a specific item
-   * 
+   *
    * @param itemId - The item ID to look up
    * @returns The draft response value or null if not found
    */
@@ -583,7 +581,7 @@ export function useFeedbackCompletion(
 
   /**
    * Check if a page has all required items completed
-   * 
+   *
    * @param pageIndex - The page index to validate
    * @returns True if page is valid (all required items answered)
    */

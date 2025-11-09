@@ -97,14 +97,14 @@ interface ResultsDetailProps {
  * Interaction type labels mapping
  */
 const INTERACTION_TYPE_LABELS: Record<string, string> = {
-  'choice': 'Multiple Choice',
+  choice: 'Multiple Choice',
   'true-false': 'True/False',
   'fill-in': 'Fill in the Blanks',
   'long-fill-in': 'Long Fill in',
-  'matching': 'Matching',
-  'sequencing': 'Sequencing',
-  'compound': 'Compound',
-  'other': 'Other',
+  matching: 'Matching',
+  sequencing: 'Sequencing',
+  compound: 'Compound',
+  other: 'Other',
 };
 
 /**
@@ -120,15 +120,15 @@ const formatDuration = (seconds: number): string => {
   const secs = seconds % 60;
 
   const parts: string[] = [];
-  
+
   if (hours > 0) {
     parts.push(`${hours} hour${hours !== 1 ? 's' : ''}`);
   }
-  
+
   if (minutes > 0) {
     parts.push(`${minutes} minute${minutes !== 1 ? 's' : ''}`);
   }
-  
+
   if (secs > 0) {
     parts.push(`${secs} second${secs !== 1 ? 's' : ''}`);
   }
@@ -146,7 +146,7 @@ const decodeResponse = (value: string): Array<string | string[]> => {
   }
 
   const list = value.split('[,]');
-  
+
   return list.map((item) => {
     if (item.includes('[.]')) {
       return item.split('[.]');
@@ -177,7 +177,11 @@ const parseAdditionals = (additionals: string | null): H5PResultAdditionals | nu
 /**
  * Component for rendering different interaction type responses
  */
-function ResponseRenderer({ interactiontype, response, correctpattern }: {
+function ResponseRenderer({
+  interactiontype,
+  response,
+  correctpattern,
+}: {
   interactiontype: string;
   response: string;
   correctpattern: string | null;
@@ -197,7 +201,9 @@ function ResponseRenderer({ interactiontype, response, correctpattern }: {
             Your answer:
           </Typography>
           <Chip
-            icon={userAnswer === 'true' ? <RadioButtonUncheckedIcon /> : <RadioButtonUncheckedIcon />}
+            icon={
+              userAnswer === 'true' ? <RadioButtonUncheckedIcon /> : <RadioButtonUncheckedIcon />
+            }
             label={userAnswer === 'true' ? 'True' : 'False'}
             color={userAnswer === correctAnswer ? 'success' : 'error'}
             size="small"
@@ -232,7 +238,10 @@ function ResponseRenderer({ interactiontype, response, correctpattern }: {
           {decodedResponse.map((item) => {
             const isCorrect = decodedCorrect?.includes(item);
             return (
-              <Box key={`choice-${String(item)}`} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box
+                key={`choice-${String(item)}`}
+                sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+              >
                 {isCorrect ? (
                   <CheckBoxIcon color="success" fontSize="small" />
                 ) : (
@@ -250,7 +259,10 @@ function ResponseRenderer({ interactiontype, response, correctpattern }: {
             </Typography>
             <Stack spacing={1}>
               {decodedCorrect.map((item) => (
-                <Box key={`correct-${String(item)}`} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box
+                  key={`correct-${String(item)}`}
+                  sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+                >
                   <CheckCircleIcon color="success" fontSize="small" />
                   <Typography variant="body2">{String(item)}</Typography>
                 </Box>
@@ -278,7 +290,7 @@ function ResponseRenderer({ interactiontype, response, correctpattern }: {
             </Typography>
             <Alert severity="success" variant="outlined">
               <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-                {decodedCorrect.map(item => String(item)).join(', ')}
+                {decodedCorrect.map((item) => String(item)).join(', ')}
               </Typography>
             </Alert>
           </Box>
@@ -299,8 +311,11 @@ function ResponseRenderer({ interactiontype, response, correctpattern }: {
             if (Array.isArray(item)) {
               const [source, target] = item;
               const correctPair = decodedCorrect?.[index];
-              const isCorrect = Array.isArray(correctPair) && correctPair[0] === source && correctPair[1] === target;
-              
+              const isCorrect =
+                Array.isArray(correctPair) &&
+                correctPair[0] === source &&
+                correctPair[1] === target;
+
               return (
                 <Grid item xs={12} key={`match-${String(source)}-${String(target)}`}>
                   <Paper
@@ -351,7 +366,11 @@ function ResponseRenderer({ interactiontype, response, correctpattern }: {
 /**
  * Component for displaying xAPI statement data
  */
-function XAPIStatementViewer({ additionals }: { additionals: H5PResultAdditionals }): React.ReactElement {
+function XAPIStatementViewer({
+  additionals,
+}: {
+  additionals: H5PResultAdditionals;
+}): React.ReactElement {
   return (
     <Paper variant="outlined" sx={{ p: 2, mt: 2, backgroundColor: 'grey.50' }}>
       <Typography variant="subtitle2" gutterBottom color="text.secondary">
@@ -379,7 +398,7 @@ function XAPIStatementViewer({ additionals }: { additionals: H5PResultAdditional
 
 /**
  * ResultsDetail Component
- * 
+ *
  * Displays detailed results of a single H5P activity attempt with question-level breakdown,
  * responses, correctness indicators, and scoring information.
  */
@@ -432,11 +451,13 @@ function ResultsDetail({ data, loading = false }: ResultsDetailProps): React.Rea
 
   // Calculate statistics
   const totalQuestions = results.length;
-  const questionsAnswered = results.filter(r => r.response && r.response.length > 0).length;
-  const correctAnswers = results.filter(r => r.success === 1).length;
-  const completedResults = results.filter(r => r.completion === 1).length;
-  const completionPercentage = totalQuestions > 0 ? Math.round((completedResults / totalQuestions) * 100) : 0;
-  const scorePercentage = attempt.maxscore > 0 ? Math.round((attempt.rawscore / attempt.maxscore) * 100) : 0;
+  const questionsAnswered = results.filter((r) => r.response && r.response.length > 0).length;
+  const correctAnswers = results.filter((r) => r.success === 1).length;
+  const completedResults = results.filter((r) => r.completion === 1).length;
+  const completionPercentage =
+    totalQuestions > 0 ? Math.round((completedResults / totalQuestions) * 100) : 0;
+  const scorePercentage =
+    attempt.maxscore > 0 ? Math.round((attempt.rawscore / attempt.maxscore) * 100) : 0;
 
   return (
     <Box sx={{ width: '100%' }}>
@@ -446,7 +467,7 @@ function ResultsDetail({ data, loading = false }: ResultsDetailProps): React.Rea
           <Typography variant="h5" gutterBottom fontWeight="bold">
             Attempt #{attempt.attempt} Results
           </Typography>
-          
+
           <Grid container spacing={3} sx={{ mt: 1 }}>
             <Grid item xs={12} sm={6} md={3}>
               <Stack spacing={1}>
@@ -497,7 +518,9 @@ function ResultsDetail({ data, loading = false }: ResultsDetailProps): React.Rea
                 </Typography>
                 <Stack direction="row" spacing={1}>
                   <Chip
-                    icon={attempt.completion === 1 ? <CheckCircleIcon /> : <RadioButtonUncheckedIcon />}
+                    icon={
+                      attempt.completion === 1 ? <CheckCircleIcon /> : <RadioButtonUncheckedIcon />
+                    }
                     label={attempt.completion === 1 ? 'Complete' : 'Incomplete'}
                     color={attempt.completion === 1 ? 'success' : 'default'}
                     size="small"
@@ -517,7 +540,12 @@ function ResultsDetail({ data, loading = false }: ResultsDetailProps): React.Rea
 
           {/* Overall Score Progress */}
           <Box sx={{ mt: 3 }}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+            <Stack
+              direction="row"
+              justifyContent="space-between"
+              alignItems="center"
+              sx={{ mb: 1 }}
+            >
               <Typography variant="body2" color="text.secondary">
                 Overall Score
               </Typography>
@@ -540,7 +568,7 @@ function ResultsDetail({ data, loading = false }: ResultsDetailProps): React.Rea
           <Typography variant="h6" gutterBottom fontWeight="bold">
             Attempt Statistics
           </Typography>
-          
+
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={6} sm={3}>
               <Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}>
@@ -595,21 +623,25 @@ function ResultsDetail({ data, loading = false }: ResultsDetailProps): React.Rea
           <Typography variant="h6" gutterBottom fontWeight="bold">
             Detailed Results
           </Typography>
-          
+
           <Stack spacing={1} sx={{ mt: 2 }}>
             {results.map((result, index) => {
               const additionals = parseAdditionals(result.additionals);
               const hasXAPIData = additionals !== null && Object.keys(additionals).length > 0;
-              const scorePercentageResult = result.maxscore > 0 
-                ? Math.round((result.rawscore / result.maxscore) * 100) 
-                : 0;
+              const scorePercentageResult =
+                result.maxscore > 0 ? Math.round((result.rawscore / result.maxscore) * 100) : 0;
 
               return (
                 <Accordion key={result.id}>
                   <AccordionSummary
                     expandIcon={<ExpandMoreIcon />}
                     sx={{
-                      backgroundColor: result.success === 1 ? 'success.lighter' : result.success === 0 ? 'error.lighter' : 'grey.50',
+                      backgroundColor:
+                        result.success === 1
+                          ? 'success.lighter'
+                          : result.success === 0
+                            ? 'error.lighter'
+                            : 'grey.50',
                     }}
                   >
                     <Stack
@@ -621,9 +653,11 @@ function ResultsDetail({ data, loading = false }: ResultsDetailProps): React.Rea
                       <Typography variant="body1" fontWeight="bold" sx={{ minWidth: '80px' }}>
                         Question {index + 1}
                       </Typography>
-                      
+
                       <Chip
-                        label={INTERACTION_TYPE_LABELS[result.interactiontype] ?? result.interactiontype}
+                        label={
+                          INTERACTION_TYPE_LABELS[result.interactiontype] ?? result.interactiontype
+                        }
                         size="small"
                         color="primary"
                         variant="outlined"
@@ -635,13 +669,12 @@ function ResultsDetail({ data, loading = false }: ResultsDetailProps): React.Rea
                         <Typography variant="body2" fontWeight="medium">
                           {result.rawscore} / {result.maxscore}
                         </Typography>
-                        {result.success !== null && (
-                          result.success === 1 ? (
+                        {result.success !== null &&
+                          (result.success === 1 ? (
                             <CheckCircleIcon color="success" fontSize="small" />
                           ) : (
                             <CancelIcon color="error" fontSize="small" />
-                          )
-                        )}
+                          ))}
                       </Stack>
                     </Stack>
                   </AccordionSummary>
@@ -681,7 +714,12 @@ function ResultsDetail({ data, loading = false }: ResultsDetailProps): React.Rea
                             Score
                           </Typography>
                           <Box>
-                            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.5 }}>
+                            <Stack
+                              direction="row"
+                              justifyContent="space-between"
+                              alignItems="center"
+                              sx={{ mb: 0.5 }}
+                            >
                               <Typography variant="body2">
                                 {result.rawscore} / {result.maxscore} points
                               </Typography>
@@ -703,7 +741,13 @@ function ResultsDetail({ data, loading = false }: ResultsDetailProps): React.Rea
                           </Typography>
                           <Stack direction="row" spacing={1}>
                             <Chip
-                              icon={result.completion === 1 ? <CheckCircleIcon /> : <RadioButtonUncheckedIcon />}
+                              icon={
+                                result.completion === 1 ? (
+                                  <CheckCircleIcon />
+                                ) : (
+                                  <RadioButtonUncheckedIcon />
+                                )
+                              }
                               label={result.completion === 1 ? 'Completed' : 'Incomplete'}
                               color={result.completion === 1 ? 'success' : 'default'}
                               size="small"

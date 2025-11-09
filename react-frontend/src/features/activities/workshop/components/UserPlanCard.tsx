@@ -74,11 +74,11 @@ interface UserPlanCardProps {
 
 /**
  * UserPlanCard Component
- * 
+ *
  * Displays the workshop user plan with phase-specific tasks and completion status.
  * Shows all five workshop phases (Setup, Submission, Assessment, Evaluation, Closed)
  * with expandable accordion sections for each phase.
- * 
+ *
  * Features:
  * - Accordion-style phase sections with task checklists
  * - Active phase highlighting with distinct background color
@@ -86,7 +86,7 @@ interface UserPlanCardProps {
  * - Action links for tasks that require user interaction
  * - Badge showing completed task count for each phase
  * - Automatically expands the currently active phase
- * 
+ *
  * @param {UserPlanCardProps} props - Component props
  * @returns {JSX.Element} Rendered UserPlanCard component
  */
@@ -108,7 +108,7 @@ function UserPlanCard({ userPlan, currentPhase }: UserPlanCardProps): React.Reac
    * @returns True if the phase is active
    */
   const isActivePhase = (phase: WorkshopPhase): boolean => {
-    return phase.active || (currentPhase?.id === phase.id);
+    return phase.active || currentPhase?.id === phase.id;
   };
 
   /**
@@ -124,9 +124,8 @@ function UserPlanCard({ userPlan, currentPhase }: UserPlanCardProps): React.Reac
       return <StarIcon color="primary" />;
     } else if (completedCount === totalCount && totalCount > 0) {
       return <CheckCircleIcon sx={{ color: theme.palette.success.main }} />;
-    } 
-      return <RadioButtonUncheckedIcon color="disabled" />;
-    
+    }
+    return <RadioButtonUncheckedIcon color="disabled" />;
   };
 
   /**
@@ -139,9 +138,8 @@ function UserPlanCard({ userPlan, currentPhase }: UserPlanCardProps): React.Reac
       return <CheckCircleIcon sx={{ color: theme.palette.success.main }} />;
     } else if (task.completed === 'info') {
       return <HelpIcon sx={{ color: theme.palette.info.main }} />;
-    } 
-      return <RadioButtonUncheckedIcon color="disabled" />;
-    
+    }
+    return <RadioButtonUncheckedIcon color="disabled" />;
   };
 
   /**
@@ -177,9 +175,7 @@ function UserPlanCard({ userPlan, currentPhase }: UserPlanCardProps): React.Reac
               key={phase.id}
               defaultExpanded={isActive}
               sx={{
-                backgroundColor: isActive
-                  ? theme.palette.action.selected
-                  : 'transparent',
+                backgroundColor: isActive ? theme.palette.action.selected : 'transparent',
                 '&:before': {
                   display: 'none',
                 },
@@ -267,8 +263,8 @@ function UserPlanCard({ userPlan, currentPhase }: UserPlanCardProps): React.Reac
                           <Button
                             size="small"
                             variant="outlined"
-                            onClick={() => handleTaskAction(task.link)}
-                            disabled={task.completed === 'info'}
+                            onClick={() => task.link && handleTaskAction(task.link)}
+                            disabled={task.completed === 'info' || !task.link}
                             sx={{ minWidth: 80 }}
                           >
                             {task.completed === true ? 'View' : 'Start'}
@@ -281,11 +277,7 @@ function UserPlanCard({ userPlan, currentPhase }: UserPlanCardProps): React.Reac
                     <ListItem>
                       <ListItemText
                         primary={
-                          <Typography
-                            variant="body2"
-                            color="text.secondary"
-                            fontStyle="italic"
-                          >
+                          <Typography variant="body2" color="text.secondary" fontStyle="italic">
                             No tasks available for this phase
                           </Typography>
                         }

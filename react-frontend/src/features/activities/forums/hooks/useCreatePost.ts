@@ -90,13 +90,13 @@ export function useCreatePost(options: UseCreatePostOptions = {}): UseCreatePost
         void queryClient.invalidateQueries({ queryKey: ['discussion', variables.discussionId] });
         void queryClient.invalidateQueries({ queryKey: ['posts', variables.discussionId] });
       }
-      
+
       // Invalidate forum queries to refetch discussion list
       if (variables.forumId) {
         void queryClient.invalidateQueries({ queryKey: ['forum', variables.forumId] });
         void queryClient.invalidateQueries({ queryKey: ['discussions'] });
       }
-      
+
       // Call success callback if provided
       onSuccess?.(data);
     },

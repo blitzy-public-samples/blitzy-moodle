@@ -1,13 +1,13 @@
 /**
  * Custom React Query hook for fetching and managing H5P activity user attempts data.
- * 
+ *
  * This hook provides comprehensive data fetching for H5P activity attempts with support for:
  * - Filtering by user IDs and name initials
  * - Pagination with configurable page size
  * - Sorting by attempt number, timestamp, or score
  * - Automatic caching and background refetching
  * - Both teacher (all attempts) and student (own attempts) views
- * 
+ *
  * @module useH5PAttempts
  * @packageDocumentation
  */
@@ -119,38 +119,38 @@ type SortOrder = 'asc' | 'desc';
 interface AttemptsQueryParams {
   /** H5P activity instance ID (required) */
   activityId: number | null | undefined;
-  /** 
+  /**
    * Array of user IDs to filter attempts by.
    * If empty or undefined, returns current user's attempts only.
    * Used in teacher view to fetch specific users' attempts.
    */
   userIds?: number[];
-  /** 
+  /**
    * Current page number for pagination (1-based).
    * @default 1
    */
   page?: number;
-  /** 
+  /**
    * Number of items per page.
    * @default 20
    */
   perPage?: number;
-  /** 
+  /**
    * Field to sort by.
    * @default 'timecreated'
    */
   sortBy?: SortField;
-  /** 
+  /**
    * Sort order direction.
    * @default 'desc'
    */
   sortOrder?: SortOrder;
-  /** 
+  /**
    * Filter users by first name initial (single letter).
    * Used for alphabetical filtering in large participant lists.
    */
   firstInitial?: string;
-  /** 
+  /**
    * Filter users by last name initial (single letter).
    * Used for alphabetical filtering in large participant lists.
    */
@@ -197,11 +197,11 @@ interface AttemptsQueryReturn {
 
 /**
  * Fetches H5P attempts data from the API.
- * 
+ *
  * This function makes HTTP requests to either:
  * - GET /api/v1/h5p/attempts - for fetching specific user(s) attempts
  * - GET /api/v1/h5p/user-attempts - for fetching all enrolled users' attempts with pagination
- * 
+ *
  * @param activityId - The H5P activity instance ID
  * @param options - Query options including filters, pagination, and sorting
  * @returns Promise resolving to the attempts data
@@ -222,8 +222,8 @@ async function fetchH5PAttempts(
   } = options;
 
   // Determine which endpoint to use based on whether we're fetching specific users or all users
-  const useUserAttemptsEndpoint = !userIds || userIds.length === 0 || 
-    firstInitial || lastInitial || page > 1;
+  const useUserAttemptsEndpoint =
+    !userIds || userIds.length === 0 || firstInitial || lastInitial || page > 1;
 
   let url: string;
   let body: Record<string, unknown>;
@@ -231,11 +231,11 @@ async function fetchH5PAttempts(
   if (useUserAttemptsEndpoint) {
     // Use get_user_attempts endpoint for paginated list of all enrolled users
     url = '/api/v1/h5p/user-attempts';
-    
+
     // Convert sortBy to SQL-style sort order (e.g., "firstname ASC")
     const sortField = sortBy === 'score' ? 'id' : sortBy; // score sorting not directly supported in SQL
     const sortOrderParam = `${sortField} ${sortOrder.toUpperCase()}`;
-    
+
     body = {
       h5pactivityid: activityId,
       sortorder: sortOrderParam,
@@ -298,7 +298,7 @@ async function fetchH5PAttempts(
 
 /**
  * Custom React Query hook for fetching and managing H5P activity attempts data.
- * 
+ *
  * This hook provides a complete solution for displaying H5P activity attempts with:
  * - Automatic caching with 3-minute stale time
  * - Background refetching on window focus
@@ -306,7 +306,7 @@ async function fetchH5PAttempts(
  * - Comprehensive filtering and sorting options
  * - Pagination support for large datasets
  * - Error handling and loading states
- * 
+ *
  * @example
  * // Teacher view - fetch all attempts for an activity
  * const {
@@ -322,7 +322,7 @@ async function fetchH5PAttempts(
  *   sortBy: 'timecreated',
  *   sortOrder: 'desc'
  * });
- * 
+ *
  * @example
  * // Student view - fetch only current user's attempts
  * const {
@@ -332,7 +332,7 @@ async function fetchH5PAttempts(
  *   activityId: 123,
  *   userIds: [currentUserId]
  * });
- * 
+ *
  * @example
  * // Filter by name initials (teacher view)
  * const {
@@ -343,7 +343,7 @@ async function fetchH5PAttempts(
  *   firstInitial: 'J',
  *   lastInitial: 'D'
  * });
- * 
+ *
  * @param params - Query parameters including activityId and optional filters
  * @returns Object containing attempts data, loading states, and refetch function
  */
@@ -424,17 +424,17 @@ export default function useH5PAttempts(params: AttemptsQueryParams): AttemptsQue
 
 /**
  * Hook for invalidating H5P attempts cache.
- * 
+ *
  * Use this hook when you need to manually invalidate the attempts cache,
  * for example after a new attempt is submitted or an attempt is deleted.
- * 
+ *
  * @example
  * const invalidateAttempts = useInvalidateH5PAttempts();
- * 
+ *
  * // After submitting a new attempt
  * await submitAttempt(data);
  * invalidateAttempts(activityId);
- * 
+ *
  * @returns Function to invalidate attempts cache for a given activity
  */
 export function useInvalidateH5PAttempts() {
@@ -451,20 +451,20 @@ export function useInvalidateH5PAttempts() {
 
 /**
  * Hook for prefetching H5P attempts data.
- * 
+ *
  * Use this hook to prefetch attempts data before it's needed,
  * for example when hovering over a link or button that will show attempts.
- * 
+ *
  * @example
  * const prefetchAttempts = usePrefetchH5PAttempts();
- * 
+ *
  * <button
  *   onMouseEnter={() => prefetchAttempts({ activityId: 123 })}
  *   onClick={() => navigate('/h5p/123/attempts')}
  * >
  *   View Attempts
  * </button>
- * 
+ *
  * @returns Function to prefetch attempts data
  */
 export function usePrefetchH5PAttempts() {
@@ -500,15 +500,16 @@ export function usePrefetchH5PAttempts() {
 
     await queryClient.prefetchQuery({
       queryKey,
-      queryFn: () => fetchH5PAttempts(activityId, {
-        userIds,
-        page,
-        perPage,
-        sortBy,
-        sortOrder,
-        firstInitial,
-        lastInitial,
-      }),
+      queryFn: () =>
+        fetchH5PAttempts(activityId, {
+          userIds,
+          page,
+          perPage,
+          sortBy,
+          sortOrder,
+          firstInitial,
+          lastInitial,
+        }),
       staleTime: 3 * 60 * 1000,
     });
   };

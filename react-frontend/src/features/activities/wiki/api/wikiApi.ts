@@ -125,10 +125,9 @@ export async function getWikiPages(
   wikiId: number,
   options?: WikiPageFetchOptions
 ): Promise<WikiPage[]> {
-  const response = await apiClient.get<ApiResponse<WikiPageListResponse>>(
-    `/wiki/${wikiId}/pages`,
-    { params: options }
-  );
+  const response = await apiClient.get<ApiResponse<WikiPageListResponse>>(`/wiki/${wikiId}/pages`, {
+    params: options,
+  });
   const data = extractData(response);
   return data.pages;
 }
@@ -264,14 +263,10 @@ export async function getPageVersions(pageId: number): Promise<WikiVersion[]> {
  * @returns Promise resolving to lock details
  * @throws Error if page already locked by another user or access denied
  */
-export async function acquirePageLock(
-  pageId: number,
-  section?: string
-): Promise<LockResponse> {
-  const response = await apiClient.post<ApiResponse<LockResponse>>(
-    `/wiki/pages/${pageId}/lock`,
-    { section: section ?? null }
-  );
+export async function acquirePageLock(pageId: number, section?: string): Promise<LockResponse> {
+  const response = await apiClient.post<ApiResponse<LockResponse>>(`/wiki/pages/${pageId}/lock`, {
+    section: section ?? null,
+  });
   return extractData(response);
 }
 

@@ -1,9 +1,9 @@
 /**
  * DiscussionThread Component
- * 
+ *
  * Renders a forum discussion thread with nested replies.
  * Supports expand/collapse, pagination, moderation actions, and full accessibility.
- * 
+ *
  * Features:
  * - Discussion header with metadata (title, author, date, views, participants)
  * - Original post (starter post) with prominence
@@ -83,7 +83,7 @@ function convertToForumPost(post: DiscussionPost): ForumPost {
   const modified = post.modified > 0 ? new Date(post.modified * 1000) : null;
 
   // Convert attachments from DiscussionPost format to PostAttachment format
-  const attachments: PostAttachment[] = post.attachments.map(att => ({
+  const attachments: PostAttachment[] = post.attachments.map((att) => ({
     id: att.id,
     filename: att.filename,
     filesize: att.filesize,
@@ -134,10 +134,10 @@ function convertToForumPost(post: DiscussionPost): ForumPost {
 export function DiscussionThread({ discussionId }: DiscussionThreadProps): React.JSX.Element {
   // State for collapsed threads
   const [collapsedThreads, setCollapsedThreads] = useState<Set<number>>(new Set());
-  
+
   // State for moderator actions menu
   const [moderatorMenuAnchor, setModeratorMenuAnchor] = useState<null | HTMLElement>(null);
-  
+
   // Fetch discussion data using the hook
   const {
     discussion,
@@ -203,7 +203,9 @@ export function DiscussionThread({ discussionId }: DiscussionThreadProps): React
    */
   const handleReply = useCallback(
     (postId: number, content: string) => {
-      if (!discussion) {return;}
+      if (!discussion) {
+        return;
+      }
       createReply({
         postData: {
           forumId: discussion.forumid,
@@ -268,7 +270,7 @@ export function DiscussionThread({ discussionId }: DiscussionThreadProps): React
       const isCollapsed = collapsedThreads.has(post.id);
       const hasReplies = post.replies && post.replies.length > 0;
       const showCollapseControl = depth >= MAX_DISPLAY_DEPTH && hasReplies;
-      
+
       // Calculate actual display depth (capped at MAX_DISPLAY_DEPTH)
       const displayDepth = Math.min(depth, MAX_DISPLAY_DEPTH);
 
@@ -314,9 +316,7 @@ export function DiscussionThread({ discussionId }: DiscussionThreadProps): React
                     : `Collapse ${post.replies?.length || 0} replies`
                 }
               >
-                {isCollapsed
-                  ? `Show ${post.replies?.length || 0} replies`
-                  : 'Collapse replies'}
+                {isCollapsed ? `Show ${post.replies?.length || 0} replies` : 'Collapse replies'}
               </Button>
             </Box>
           )}
@@ -338,10 +338,7 @@ export function DiscussionThread({ discussionId }: DiscussionThreadProps): React
 
           {/* Render nested replies */}
           {!isCollapsed && hasReplies && (
-            <Box
-              role="group"
-              aria-label={`Replies to post ${post.id}`}
-            >
+            <Box role="group" aria-label={`Replies to post ${post.id}`}>
               {post.replies.map((reply) => renderPost(reply, depth + 1))}
             </Box>
           )}
@@ -364,8 +361,10 @@ export function DiscussionThread({ discussionId }: DiscussionThreadProps): React
    * The hook already provides this, but we'll use the posts array directly
    */
   const postTree = useMemo(() => {
-    if (!posts || posts.length === 0) {return [];}
-    
+    if (!posts || posts.length === 0) {
+      return [];
+    }
+
     // posts array already contains root-level posts with nested replies
     // (including orphan posts that are treated as root-level)
     return posts;
@@ -384,10 +383,11 @@ export function DiscussionThread({ discussionId }: DiscussionThreadProps): React
   }
 
   // Error state - 404 Not Found
-  const errorStatus = error && typeof error === 'object' && 'status' in error 
-    ? (error as { status: number }).status 
-    : undefined;
-  
+  const errorStatus =
+    error && typeof error === 'object' && 'status' in error
+      ? (error as { status: number }).status
+      : undefined;
+
   if (isError && errorStatus === 404) {
     return (
       <Alert
@@ -517,12 +517,7 @@ export function DiscussionThread({ discussionId }: DiscussionThreadProps): React
           </Box>
 
           {/* Discussion Title */}
-          <Typography
-            variant="h4"
-            component="h1"
-            gutterBottom
-            data-testid="discussion-title"
-          >
+          <Typography variant="h4" component="h1" gutterBottom data-testid="discussion-title">
             {discussion.name}
           </Typography>
 
@@ -608,27 +603,17 @@ export function DiscussionThread({ discussionId }: DiscussionThreadProps): React
                   horizontal: 'left',
                 }}
               >
-                <MenuItem onClick={handleSplitDiscussion}>
-                  Split Discussion
-                </MenuItem>
-                <MenuItem onClick={handleCloseModeratorMenu}>
-                  Lock Discussion
-                </MenuItem>
-                <MenuItem onClick={handleCloseModeratorMenu}>
-                  Pin Discussion
-                </MenuItem>
-                <MenuItem onClick={handleCloseModeratorMenu}>
-                  Move Discussion
-                </MenuItem>
+                <MenuItem onClick={handleSplitDiscussion}>Split Discussion</MenuItem>
+                <MenuItem onClick={handleCloseModeratorMenu}>Lock Discussion</MenuItem>
+                <MenuItem onClick={handleCloseModeratorMenu}>Pin Discussion</MenuItem>
+                <MenuItem onClick={handleCloseModeratorMenu}>Move Discussion</MenuItem>
               </Menu>
             </>
           )}
 
           {/* Subscription Toggle */}
           <Button
-            startIcon={
-              discussion.subscribed ? <NotificationsOffIcon /> : <NotificationsIcon />
-            }
+            startIcon={discussion.subscribed ? <NotificationsOffIcon /> : <NotificationsIcon />}
             onClick={handleSubscriptionToggle}
             disabled={isSubscribing || isUnsubscribing}
             data-testid="subscription-toggle"

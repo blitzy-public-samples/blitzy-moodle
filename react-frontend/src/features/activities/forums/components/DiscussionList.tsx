@@ -214,7 +214,7 @@ export function DiscussionList({
 
     searchTimeoutRef.current = setTimeout(() => {
       setDebouncedSearch(searchQuery);
-      
+
       // Only reset page if this is not the first render
       if (!isFirstRenderRef.current) {
         setCurrentPage(1); // Reset to first page on new search
@@ -231,13 +231,7 @@ export function DiscussionList({
   }, [searchQuery]);
 
   // Fetch discussions using React Query
-  const {
-    data,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useQuery<DiscussionsQueryResponse>({
+  const { data, isLoading, isError, error, refetch } = useQuery<DiscussionsQueryResponse>({
     queryKey: ['discussions', forumId, sortBy, filterBy, currentPage, pageSize, debouncedSearch],
     queryFn: () => {
       // Mock implementation - in real app, this would call the API
@@ -268,16 +262,15 @@ export function DiscussionList({
       // Call appropriate API based on current state
       if (isPinned) {
         return await unpinDiscussion(discussionId);
-      } 
-        return await pinDiscussion(discussionId);
-      
+      }
+      return await pinDiscussion(discussionId);
     },
     onMutate: async (discussionId) => {
       // Optimistic update
       await queryClient.cancelQueries({ queryKey: ['discussions', forumId] });
-      
+
       const previousData = queryClient.getQueryData(['discussions', forumId]);
-      
+
       // Optimistically update the discussion
       queryClient.setQueryData(
         ['discussions', forumId, sortBy, filterBy, currentPage, pageSize, debouncedSearch],
@@ -293,7 +286,7 @@ export function DiscussionList({
           };
         }
       );
-      
+
       return { previousData };
     },
     onError: (_err, _discussionId, context: MutationContext | undefined) => {
@@ -326,16 +319,15 @@ export function DiscussionList({
       // Call appropriate API based on current state
       if (isLocked) {
         return await unlockDiscussion(discussionId);
-      } 
-        return await lockDiscussion(discussionId);
-      
+      }
+      return await lockDiscussion(discussionId);
     },
     onMutate: async (discussionId) => {
       // Optimistic update
       await queryClient.cancelQueries({ queryKey: ['discussions', forumId] });
-      
+
       const previousData = queryClient.getQueryData(['discussions', forumId]);
-      
+
       queryClient.setQueryData(
         ['discussions', forumId, sortBy, filterBy, currentPage, pageSize, debouncedSearch],
         (old: DiscussionsQueryResponse | undefined) => {
@@ -350,7 +342,7 @@ export function DiscussionList({
           };
         }
       );
-      
+
       return { previousData };
     },
     onError: (_err, _discussionId, context: MutationContext | undefined) => {
@@ -387,7 +379,13 @@ export function DiscussionList({
 
   // Bulk move mutation
   const bulkMoveMutation = useMutation({
-    mutationFn: async ({ discussionIds, targetForumId }: { discussionIds: number[]; targetForumId: number }) => {
+    mutationFn: async ({
+      discussionIds,
+      targetForumId,
+    }: {
+      discussionIds: number[];
+      targetForumId: number;
+    }) => {
       return await bulkMoveDiscussions(discussionIds, targetForumId);
     },
     onSuccess: () => {
@@ -398,20 +396,22 @@ export function DiscussionList({
 
   // Sorted and filtered discussions
   const discussions = useMemo(() => {
-    if (!data?.discussions) {return [];}
+    if (!data?.discussions) {
+      return [];
+    }
 
     let result = [...data.discussions];
 
     // Apply filter
     switch (filterBy) {
       case 'unread':
-        result = result.filter(d => d.unreadCount > 0);
+        result = result.filter((d) => d.unreadCount > 0);
         break;
       case 'my-discussions':
-        result = result.filter(d => d.author.id === currentUser.id);
+        result = result.filter((d) => d.author.id === currentUser.id);
         break;
       case 'pinned':
-        result = result.filter(d => d.isPinned);
+        result = result.filter((d) => d.isPinned);
         break;
       case 'all':
       default:
@@ -421,9 +421,10 @@ export function DiscussionList({
     // Apply search
     if (debouncedSearch) {
       const searchLower = debouncedSearch.toLowerCase();
-      result = result.filter(d => 
-        d.title.toLowerCase().includes(searchLower) ||
-        d.author.name.toLowerCase().includes(searchLower)
+      result = result.filter(
+        (d) =>
+          d.title.toLowerCase().includes(searchLower) ||
+          d.author.name.toLowerCase().includes(searchLower)
       );
     }
 
@@ -435,8 +436,12 @@ export function DiscussionList({
         case 'most-replies':
           return b.replyCount - a.replyCount;
         case 'recently-updated': {
-          const aTime = a.lastPost ? new Date(a.lastPost.timestamp).getTime() : new Date(a.createdAt).getTime();
-          const bTime = b.lastPost ? new Date(b.lastPost.timestamp).getTime() : new Date(b.createdAt).getTime();
+          const aTime = a.lastPost
+            ? new Date(a.lastPost.timestamp).getTime()
+            : new Date(a.createdAt).getTime();
+          const bTime = b.lastPost
+            ? new Date(b.lastPost.timestamp).getTime()
+            : new Date(b.createdAt).getTime();
           return bTime - aTime;
         }
         case 'newest':
@@ -446,49 +451,64 @@ export function DiscussionList({
     });
 
     // Pinned discussions always at top
-    const pinned = result.filter(d => d.isPinned);
-    const unpinned = result.filter(d => !d.isPinned);
-    
+    const pinned = result.filter((d) => d.isPinned);
+    const unpinned = result.filter((d) => !d.isPinned);
+
     return [...pinned, ...unpinned];
   }, [data?.discussions, filterBy, debouncedSearch, sortBy, currentUser.id]);
 
   // Handlers
-  const handleDiscussionClick = useCallback((discussionId: number) => {
-    navigate(`/forums/${forumId}/discussions/${discussionId}`);
-  }, [navigate, forumId]);
+  const handleDiscussionClick = useCallback(
+    (discussionId: number) => {
+      navigate(`/forums/${forumId}/discussions/${discussionId}`);
+    },
+    [navigate, forumId]
+  );
 
-  const handleAuthorClick = useCallback((e: React.MouseEvent, authorId: number) => {
-    e.stopPropagation();
-    navigate(`/users/${authorId}`);
-  }, [navigate]);
+  const handleAuthorClick = useCallback(
+    (e: React.MouseEvent, authorId: number) => {
+      e.stopPropagation();
+      navigate(`/users/${authorId}`);
+    },
+    [navigate]
+  );
 
-  const handlePinClick = useCallback((e: React.MouseEvent, discussionId: number) => {
-    e.stopPropagation();
-    pinMutation.mutate(discussionId);
-  }, [pinMutation]);
+  const handlePinClick = useCallback(
+    (e: React.MouseEvent, discussionId: number) => {
+      e.stopPropagation();
+      pinMutation.mutate(discussionId);
+    },
+    [pinMutation]
+  );
 
-  const handleLockClick = useCallback((e: React.MouseEvent, discussionId: number) => {
-    e.stopPropagation();
-    lockMutation.mutate(discussionId);
-  }, [lockMutation]);
+  const handleLockClick = useCallback(
+    (e: React.MouseEvent, discussionId: number) => {
+      e.stopPropagation();
+      lockMutation.mutate(discussionId);
+    },
+    [lockMutation]
+  );
 
-  const handleDeleteClick = useCallback((e: React.MouseEvent, discussionId: number) => {
-    e.stopPropagation();
-    if (window.confirm('Are you sure you want to delete this discussion?')) {
-      deleteMutation.mutate(discussionId);
-    }
-  }, [deleteMutation]);
+  const handleDeleteClick = useCallback(
+    (e: React.MouseEvent, discussionId: number) => {
+      e.stopPropagation();
+      if (window.confirm('Are you sure you want to delete this discussion?')) {
+        deleteMutation.mutate(discussionId);
+      }
+    },
+    [deleteMutation]
+  );
 
   const handleSelectAll = useCallback(() => {
     if (selectedDiscussions.size === discussions.length) {
       setSelectedDiscussions(new Set());
     } else {
-      setSelectedDiscussions(new Set(discussions.map(d => d.id)));
+      setSelectedDiscussions(new Set(discussions.map((d) => d.id)));
     }
   }, [discussions, selectedDiscussions.size]);
 
   const handleSelectDiscussion = useCallback((discussionId: number) => {
-    setSelectedDiscussions(prev => {
+    setSelectedDiscussions((prev) => {
       const next = new Set(prev);
       if (next.has(discussionId)) {
         next.delete(discussionId);
@@ -507,14 +527,17 @@ export function DiscussionList({
     }
   }, [selectedDiscussions, bulkDeleteMutation]);
 
-  const handleBulkMove = useCallback((targetForumId: number) => {
-    if (selectedDiscussions.size > 0) {
-      bulkMoveMutation.mutate({
-        discussionIds: Array.from(selectedDiscussions),
-        targetForumId,
-      });
-    }
-  }, [selectedDiscussions, bulkMoveMutation]);
+  const handleBulkMove = useCallback(
+    (targetForumId: number) => {
+      if (selectedDiscussions.size > 0) {
+        bulkMoveMutation.mutate({
+          discussionIds: Array.from(selectedDiscussions),
+          targetForumId,
+        });
+      }
+    },
+    [selectedDiscussions, bulkMoveMutation]
+  );
 
   const handleSearchClear = useCallback(() => {
     setSearchQuery('');
@@ -547,9 +570,8 @@ export function DiscussionList({
       return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
     } else if (diffDays < 7) {
       return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
-    } 
-      return date.toLocaleDateString();
-    
+    }
+    return date.toLocaleDateString();
   }, []);
 
   // Calculate total pages
@@ -587,8 +609,8 @@ export function DiscussionList({
   // Error state
   if (isError) {
     return (
-      <Alert 
-        severity="error" 
+      <Alert
+        severity="error"
         action={
           <Button color="inherit" size="small" onClick={() => refetch()}>
             Retry
@@ -658,11 +680,7 @@ export function DiscussionList({
               ),
               endAdornment: searchQuery && (
                 <InputAdornment position="end">
-                  <IconButton
-                    size="small"
-                    onClick={handleSearchClear}
-                    aria-label="Clear search"
-                  >
+                  <IconButton size="small" onClick={handleSearchClear} aria-label="Clear search">
                     <ClearIcon />
                   </IconButton>
                 </InputAdornment>
@@ -727,14 +745,14 @@ export function DiscussionList({
           <Stack direction="row" spacing={2} alignItems="center">
             <Checkbox
               checked={selectedDiscussions.size === discussions.length && discussions.length > 0}
-              indeterminate={selectedDiscussions.size > 0 && selectedDiscussions.size < discussions.length}
+              indeterminate={
+                selectedDiscussions.size > 0 && selectedDiscussions.size < discussions.length
+              }
               onChange={handleSelectAll}
               inputProps={{ 'aria-label': 'Select all discussions' }}
             />
             <Typography variant="body2" color="text.secondary">
-              {selectedDiscussions.size > 0
-                ? `${selectedDiscussions.size} selected`
-                : 'Select all'}
+              {selectedDiscussions.size > 0 ? `${selectedDiscussions.size} selected` : 'Select all'}
             </Typography>
             {selectedDiscussions.size > 0 && (
               <>
@@ -776,8 +794,8 @@ export function DiscussionList({
       >
         {discussions.map((discussion, index) => {
           const isSelected = selectedDiscussions.has(discussion.id);
-          const {canPin} = permissions;
-          const {canLock} = permissions;
+          const { canPin } = permissions;
+          const { canLock } = permissions;
           const canDelete = permissions.canDelete || discussion.author.id === currentUser.id;
 
           return (
@@ -803,7 +821,9 @@ export function DiscussionList({
                         <Tooltip title={discussion.isLocked ? 'Unlock' : 'Lock'}>
                           <IconButton
                             edge="end"
-                            aria-label={discussion.isLocked ? 'Unlock discussion' : 'Lock discussion'}
+                            aria-label={
+                              discussion.isLocked ? 'Unlock discussion' : 'Lock discussion'
+                            }
                             onClick={(e) => handleLockClick(e, discussion.id)}
                             color={discussion.isLocked ? 'warning' : 'default'}
                           >
@@ -883,7 +903,7 @@ export function DiscussionList({
                         >
                           {discussion.title}
                         </Typography>
-                        
+
                         {discussion.isPinned && (
                           <Chip
                             icon={<PinIcon />}
@@ -893,7 +913,7 @@ export function DiscussionList({
                             variant="outlined"
                           />
                         )}
-                        
+
                         {discussion.isLocked && (
                           <Chip
                             icon={<LockIcon />}
@@ -904,7 +924,7 @@ export function DiscussionList({
                             aria-label="Locked discussion"
                           />
                         )}
-                        
+
                         {discussion.unreadCount > 0 && (
                           <Badge
                             badgeContent={discussion.unreadCount}
@@ -962,7 +982,7 @@ export function DiscussionList({
                   />
                 </ListItemButton>
               </ListItem>
-              
+
               {index < discussions.length - 1 && <Divider component="li" />}
             </React.Fragment>
           );
@@ -987,11 +1007,7 @@ export function DiscussionList({
       )}
 
       {/* Mobile action menu */}
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleMenuClose}
-      >
+      <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
         {activeDiscussionId && permissions.canPin && (
           <MenuItem
             onClick={() => {
@@ -1000,7 +1016,7 @@ export function DiscussionList({
             }}
           >
             <PinIcon sx={{ mr: 1 }} />
-            {discussions.find(d => d.id === activeDiscussionId)?.isPinned ? 'Unpin' : 'Pin'}
+            {discussions.find((d) => d.id === activeDiscussionId)?.isPinned ? 'Unpin' : 'Pin'}
           </MenuItem>
         )}
         {activeDiscussionId && permissions.canLock && (
@@ -1011,7 +1027,7 @@ export function DiscussionList({
             }}
           >
             <LockIcon sx={{ mr: 1 }} />
-            {discussions.find(d => d.id === activeDiscussionId)?.isLocked ? 'Unlock' : 'Lock'}
+            {discussions.find((d) => d.id === activeDiscussionId)?.isLocked ? 'Unlock' : 'Lock'}
           </MenuItem>
         )}
         {activeDiscussionId && permissions.canDelete && (

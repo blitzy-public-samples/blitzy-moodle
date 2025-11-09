@@ -14,11 +14,11 @@
 import type { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
 import axios from 'axios';
 import { authService } from '@/services/auth/authService';
-import type { 
-  User, 
+import type {
+  User,
   UpdateProfileData,
   AvatarUploadResponse,
-  UserPreferences 
+  UserPreferences,
 } from '../types/profile.types';
 
 /**
@@ -83,13 +83,13 @@ const createApiClient = (): AxiosInstance => {
 
         try {
           await authService.refreshToken();
-          
+
           // Retry the original request with new token
           const token = authService.getAccessToken();
           if (token && originalRequest.headers) {
             originalRequest.headers.Authorization = `Bearer ${token}`;
           }
-          
+
           return client.request(originalRequest);
         } catch (refreshError) {
           // Token refresh failed, reject the original error
@@ -129,7 +129,7 @@ const retryRequest = async <T>(
       // Only retry on 5xx server errors
       if (axios.isAxiosError(error)) {
         const status = error.response?.status;
-        
+
         // Don't retry on 4xx client errors
         if (status && status >= 400 && status < 500) {
           throw error;
@@ -155,27 +155,27 @@ const retryRequest = async <T>(
 
 /**
  * Extract error message from API error response
- * 
+ *
  * For 422 validation errors, preserves the full axios error with validation details
  * For other errors, extracts and throws the error message from response
  */
 const handleApiError = (error: unknown): never => {
   if (axios.isAxiosError(error) && error.response) {
-    const {status} = error.response;
+    const { status } = error.response;
     const responseData = error.response.data as { error?: { message?: string } } | undefined;
     const errorData = responseData?.error;
-    
+
     // For 422 validation errors, preserve the full axios error with details
     if (status === 422) {
       throw error;
     }
-    
+
     // For other errors, throw a new Error with the message from the API
     if (errorData?.message) {
       throw new Error(errorData.message);
     }
   }
-  
+
   // Re-throw original error if we can't extract a better message
   throw error;
 };
@@ -184,10 +184,17 @@ const handleApiError = (error: unknown): never => {
  * Transform interests from comma-separated string to array if needed
  */
 const transformInterests = (interests: string | string[] | undefined): string[] | undefined => {
-  if (!interests) {return undefined;}
-  if (Array.isArray(interests)) {return interests;}
+  if (!interests) {
+    return undefined;
+  }
+  if (Array.isArray(interests)) {
+    return interests;
+  }
   if (typeof interests === 'string') {
-    return interests.split(',').map((i) => i.trim()).filter((i) => i.length > 0);
+    return interests
+      .split(',')
+      .map((i) => i.trim())
+      .filter((i) => i.length > 0);
   }
   return undefined;
 };
@@ -359,11 +366,15 @@ export async function uploadAvatar(userId: number, file: File): Promise<AvatarUp
     formData.append('contextType', 'user');
 
     // Let axios automatically set Content-Type with boundary for FormData
-    const response = await client.post<ApiResponse<AvatarUploadResponse>>('/files/upload', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    const response = await client.post<ApiResponse<AvatarUploadResponse>>(
+      '/files/upload',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
 
     return response.data.data;
   };
@@ -414,11 +425,17 @@ export async function deleteAvatar(userId: number): Promise<void> {
  * @returns Promise resolving to updated UserPreferences object
  * @throws Error with message from API response (or full AxiosError for 422 validation errors)
  */
-export async function updateUserPreferences(userId: number, preferences: UserPreferences): Promise<UserPreferences> {
+export async function updateUserPreferences(
+  userId: number,
+  preferences: UserPreferences
+): Promise<UserPreferences> {
   const client = createApiClient();
 
   const updatePreferencesRequest = async () => {
-    const response = await client.put<ApiResponse<UserPreferences>>(`/users/${userId}/preferences`, preferences);
+    const response = await client.put<ApiResponse<UserPreferences>>(
+      `/users/${userId}/preferences`,
+      preferences
+    );
     return response.data.data;
   };
 

@@ -109,12 +109,14 @@ export interface UseForumReturn {
   /** Array of discussions in the forum */
   discussions: Discussion[] | undefined;
   /** Pagination metadata */
-  pagination: {
-    page: number;
-    perPage: number;
-    total: number;
-    totalPages: number;
-  } | undefined;
+  pagination:
+    | {
+        page: number;
+        perPage: number;
+        total: number;
+        totalPages: number;
+      }
+    | undefined;
 
   // Mutation states
   /** Subscription toggle mutation loading state */
@@ -185,10 +187,7 @@ export interface UseForumReturn {
  * }
  * ```
  */
-export function useForum(
-  forumId: number,
-  options: UseForumOptions = {}
-): UseForumReturn {
+export function useForum(forumId: number, options: UseForumOptions = {}): UseForumReturn {
   const queryClient = useQueryClient();
   const {
     enabled = true,
@@ -201,9 +200,7 @@ export function useForum(
   } = options;
 
   // Local state for discussion options
-  const [discussionOptions] = useState<DiscussionListOptions | undefined>(
-    initialDiscussionOptions
-  );
+  const [discussionOptions] = useState<DiscussionListOptions | undefined>(initialDiscussionOptions);
 
   // ============================================================================
   // QUERIES
@@ -224,7 +221,7 @@ export function useForum(
   // Handle onSuccess callback using useEffect (React Query v5 removed query callbacks)
   const prevDataRef = useRef<Forum | undefined>();
   useEffect(() => {
-    const {data} = forumQuery;
+    const { data } = forumQuery;
     if (forumQuery.isSuccess && data && data !== prevDataRef.current) {
       prevDataRef.current = data;
       onSuccess?.(data);
@@ -263,9 +260,8 @@ export function useForum(
     mutationFn: async (subscribed: boolean) => {
       if (subscribed) {
         return await unsubscribeForum(forumId);
-      } 
-        return await subscribeForum(forumId);
-      
+      }
+      return await subscribeForum(forumId);
     },
     // Optimistic update: immediately update subscription state
     onMutate: async (subscribed) => {
@@ -289,10 +285,7 @@ export function useForum(
     // Rollback on error
     onError: (_error, _subscribed, context) => {
       if (context?.previousForum) {
-        queryClient.setQueryData<Forum>(
-          forumKeys.detail(forumId),
-          context.previousForum
-        );
+        queryClient.setQueryData<Forum>(forumKeys.detail(forumId), context.previousForum);
       }
     },
     // Always refetch after error or success
@@ -356,10 +349,7 @@ export function useForum(
             d.id === response.discussion.id ? response.discussion : d
           ),
         };
-        queryClient.setQueryData(
-          forumKeys.discussions(forumId, discussionOptions),
-          updatedData
-        );
+        queryClient.setQueryData(forumKeys.discussions(forumId, discussionOptions), updatedData);
       }
     },
   });
@@ -381,10 +371,7 @@ export function useForum(
             d.id === response.discussion.id ? response.discussion : d
           ),
         };
-        queryClient.setQueryData(
-          forumKeys.discussions(forumId, discussionOptions),
-          updatedData
-        );
+        queryClient.setQueryData(forumKeys.discussions(forumId, discussionOptions), updatedData);
       }
     },
   });
@@ -406,10 +393,7 @@ export function useForum(
             d.id === response.discussion.id ? response.discussion : d
           ),
         };
-        queryClient.setQueryData(
-          forumKeys.discussions(forumId, discussionOptions),
-          updatedData
-        );
+        queryClient.setQueryData(forumKeys.discussions(forumId, discussionOptions), updatedData);
       }
     },
   });
@@ -431,10 +415,7 @@ export function useForum(
             d.id === response.discussion.id ? response.discussion : d
           ),
         };
-        queryClient.setQueryData(
-          forumKeys.discussions(forumId, discussionOptions),
-          updatedData
-        );
+        queryClient.setQueryData(forumKeys.discussions(forumId, discussionOptions), updatedData);
       }
     },
   });
@@ -447,7 +428,7 @@ export function useForum(
    * Toggle subscription to the forum
    */
   const toggleSubscription = useCallback(() => {
-    const {data} = forumQuery;
+    const { data } = forumQuery;
     const currentSubscribed = data?.subscribed ?? false;
     subscriptionMutation.mutate(currentSubscribed);
   }, [forumQuery, subscriptionMutation]);

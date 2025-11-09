@@ -62,9 +62,7 @@ import type {
  * ```
  */
 export async function getH5PActivity(activityId: number): Promise<H5PActivity> {
-  const response = await apiClient.get<ApiResponse<H5PActivity>>(
-    `/h5p/activity/${activityId}`
-  );
+  const response = await apiClient.get<ApiResponse<H5PActivity>>(`/h5p/activity/${activityId}`);
   return extractData(response);
 }
 
@@ -98,9 +96,7 @@ export async function getH5PActivity(activityId: number): Promise<H5PActivity> {
  * }
  * ```
  */
-export async function getAccessInformation(
-  activityId: number
-): Promise<H5PAccessInfo> {
+export async function getAccessInformation(activityId: number): Promise<H5PAccessInfo> {
   const response = await apiClient.get<ApiResponse<H5PAccessInfo>>(
     `/h5p/activity/${activityId}/access`
   );
@@ -176,10 +172,7 @@ export async function updateH5PActivity(
  * const userAttempts = await getH5PAttempts(123, 456);
  * ```
  */
-export async function getH5PAttempts(
-  activityId: number,
-  userId?: number
-): Promise<H5PAttempt[]> {
+export async function getH5PAttempts(activityId: number, userId?: number): Promise<H5PAttempt[]> {
   const params = userId ? { userid: userId } : {};
   const response = await apiClient.get<ApiResponse<H5PAttempt[]>>(
     `/h5p/activity/${activityId}/attempts`,

@@ -93,7 +93,7 @@ export function useUpdatePost(options: UseUpdatePostOptions = {}): UseUpdatePost
     onSuccess: (data, variables) => {
       // Invalidate relevant queries based on the post ID
       void queryClient.invalidateQueries({ queryKey: ['post', variables.postId] });
-      
+
       // Invalidate discussion queries if discussionId is available
       // (We may need to get this from the response data if not in variables)
       if (data.discussionId) {
@@ -101,7 +101,7 @@ export function useUpdatePost(options: UseUpdatePostOptions = {}): UseUpdatePost
         void queryClient.invalidateQueries({ queryKey: ['discussion', data.discussionId] });
         void queryClient.invalidateQueries({ queryKey: ['posts', data.discussionId] });
       }
-      
+
       // Call success callback if provided
       onSuccess?.(data);
     },

@@ -156,7 +156,7 @@ function GradingStrategyRenderer({
               message: `Maximum grade is ${dimension.max ?? dimension.grade}`,
             },
             validate: (value) => {
-              const numValue = parseFloat(value);
+              const numValue = parseFloat(String(value));
               if (isNaN(numValue)) {
                 return 'Please enter a valid number';
               }
@@ -205,7 +205,11 @@ function GradingStrategyRenderer({
           defaultValue=""
           rules={{ required: 'Please select a level' }}
           render={({ field }) => (
-            <FormControl fullWidth error={!!errors?.dimensions?.[`dim_${dimension.id}`]} disabled={!isEditable}>
+            <FormControl
+              fullWidth
+              error={!!errors?.dimensions?.[`dim_${dimension.id}`]}
+              disabled={!isEditable}
+            >
               <InputLabel>Select Level</InputLabel>
               <Select {...field} label="Select Level">
                 {dimension.levels?.map((level) => (
@@ -215,7 +219,7 @@ function GradingStrategyRenderer({
                 ))}
               </Select>
               {errors?.dimensions?.[`dim_${dimension.id}`] && (
-                <FormHelperText>{errors.dimensions[`dim_${dimension.id}`].message}</FormHelperText>
+                <FormHelperText>{errors.dimensions[`dim_${dimension.id}`]?.message}</FormHelperText>
               )}
             </FormControl>
           )}
@@ -255,7 +259,7 @@ function GradingStrategyRenderer({
               error={!!errors?.dimensions?.[`dim_${dimension.id}`]}
               helperText={
                 errors?.dimensions?.[`dim_${dimension.id}`]?.message ??
-                `${field.value?.length ?? 0} characters`
+                `${String(field.value ?? '').length} characters`
               }
               placeholder="Enter your comment..."
             />
@@ -284,7 +288,11 @@ function GradingStrategyRenderer({
           defaultValue=""
           rules={{ required: 'Please select the number of errors' }}
           render={({ field }) => (
-            <FormControl fullWidth error={!!errors?.dimensions?.[`dim_${dimension.id}`]} disabled={!isEditable}>
+            <FormControl
+              fullWidth
+              error={!!errors?.dimensions?.[`dim_${dimension.id}`]}
+              disabled={!isEditable}
+            >
               <InputLabel>Number of Errors</InputLabel>
               <Select {...field} label="Number of Errors">
                 {Array.from({ length: (dimension.grade || 10) + 1 }, (_, i) => i).map((num) => (
@@ -294,7 +302,7 @@ function GradingStrategyRenderer({
                 ))}
               </Select>
               {errors?.dimensions?.[`dim_${dimension.id}`] && (
-                <FormHelperText>{errors.dimensions[`dim_${dimension.id}`].message}</FormHelperText>
+                <FormHelperText>{errors.dimensions[`dim_${dimension.id}`]?.message}</FormHelperText>
               )}
             </FormControl>
           )}
@@ -314,11 +322,7 @@ function GradingStrategyRenderer({
     case 'numerrors':
       return <>{renderNumErrorsStrategy()}</>;
     default:
-      return (
-        <Alert severity="error">
-          Unknown grading strategy: {strategy}
-        </Alert>
-      );
+      return <Alert severity="error">Unknown grading strategy: {strategy}</Alert>;
   }
 }
 
@@ -372,11 +376,11 @@ function RichTextEditor({
 
 /**
  * AssessmentForm Component
- * 
+ *
  * A comprehensive form component for workshop assessments that supports multiple grading strategies.
  * Provides functionality for peer and example assessments with validation, draft saving, and
  * final submission capabilities.
- * 
+ *
  * @param props - AssessmentFormProps containing workshop, assessment, and callback functions
  * @returns React component for assessment form
  */
@@ -415,7 +419,7 @@ function AssessmentForm({
   useEffect(() => {
     if (assessment && dimensions) {
       const dimensionValues: Record<string, string | number> = {};
-      
+
       // Load existing dimension grades from assessment
       dimensions.forEach((dimension) => {
         const existingGrade = assessment[`grade_${dimension.id}`];
@@ -457,10 +461,10 @@ function AssessmentForm({
    * Handle file upload for overall feedback attachments
    */
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const {files} = event.target;
+    const { files } = event.target;
     if (files) {
       const fileArray = Array.from(files);
-      
+
       // Validate file count
       const maxFiles = workshop.overallfeedbackmaxfiles ?? 5;
       if (fileArray.length > maxFiles) {
@@ -470,7 +474,7 @@ function AssessmentForm({
 
       // Validate file sizes
       const maxBytes = workshop.overallfeedbackmaxbytes ?? 5242880; // 5MB default
-      const oversizedFiles = fileArray.filter(file => file.size > maxBytes);
+      const oversizedFiles = fileArray.filter((file) => file.size > maxBytes);
       if (oversizedFiles.length > 0) {
         alert(`Some files exceed the maximum size of ${(maxBytes / 1048576).toFixed(2)}MB`);
         return;
@@ -550,10 +554,12 @@ function AssessmentForm({
           control={control}
           rules={{
             required: isRequired ? 'Overall feedback is required' : false,
-            minLength: isRequired ? {
-              value: 10,
-              message: 'Feedback must be at least 10 characters',
-            } : undefined,
+            minLength: isRequired
+              ? {
+                  value: 10,
+                  message: 'Feedback must be at least 10 characters',
+                }
+              : undefined,
           }}
           render={({ field }) => (
             <RichTextEditor
@@ -656,14 +662,10 @@ function AssessmentForm({
 
     return (
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, flexWrap: 'wrap' }}>
-        <Button
-          variant="outlined"
-          onClick={onCancel}
-          disabled={isSubmitting}
-        >
+        <Button variant="outlined" onClick={onCancel} disabled={isSubmitting}>
           Cancel
         </Button>
-        
+
         <Button
           variant="outlined"
           onClick={handleSubmit((data) => {
@@ -730,9 +732,7 @@ function AssessmentForm({
             Assessment Criteria
           </Typography>
           {dimensions.length === 0 ? (
-            <Alert severity="warning">
-              No assessment dimensions configured for this workshop.
-            </Alert>
+            <Alert severity="warning">No assessment dimensions configured for this workshop.</Alert>
           ) : (
             <GradingStrategyRenderer
               strategy={workshop.strategy}

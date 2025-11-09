@@ -191,9 +191,7 @@ export async function getDiscussions(
  * @returns Promise resolving to API response with Discussion and Post array
  * @throws Error if discussion not found or access denied
  */
-export async function getDiscussionPosts(
-  discussionId: number
-): Promise<DiscussionWithPosts> {
+export async function getDiscussionPosts(discussionId: number): Promise<DiscussionWithPosts> {
   const response = await apiClient.get<ApiResponse<DiscussionWithPosts>>(
     `/forums/discussions/${discussionId}/posts`
   );
@@ -216,10 +214,9 @@ export async function fetchMorePosts(
   discussionId: number,
   cursor: string
 ): Promise<{ posts: Post[]; hasMore: boolean; nextCursor?: string }> {
-  const response = await apiClient.get<ApiResponse<{ posts: Post[]; hasMore: boolean; nextCursor?: string }>>(
-    `/forums/discussions/${discussionId}/posts`,
-    { params: { cursor } }
-  );
+  const response = await apiClient.get<
+    ApiResponse<{ posts: Post[]; hasMore: boolean; nextCursor?: string }>
+  >(`/forums/discussions/${discussionId}/posts`, { params: { cursor } });
   return extractData(response);
 }
 
@@ -268,15 +265,15 @@ export async function createDiscussion(
   const formData = new FormData();
   formData.append('subject', data.subject);
   formData.append('message', data.message);
-  
+
   if (data.subscribe !== undefined) {
     formData.append('subscribe', String(data.subscribe));
   }
-  
+
   if (data.pinned !== undefined) {
     formData.append('pinned', String(data.pinned));
   }
-  
+
   if (data.attachments && data.attachments.length > 0) {
     data.attachments.forEach((file, index) => {
       formData.append(`attachments[${index}]`, file);
@@ -312,22 +309,22 @@ export async function createDiscussion(
 export async function createPost(data: CreatePostData): Promise<PostResponse> {
   const formData = new FormData();
   formData.append('message', data.message);
-  
+
   // Add subject for new discussions
   if (data.subject !== undefined) {
     formData.append('subject', data.subject);
   }
-  
+
   // Add parent post ID for nested replies
   if (data.parentPostId !== undefined) {
     formData.append('parentId', String(data.parentPostId));
   }
-  
+
   // Add subscription preference
   if (data.subscribe !== undefined) {
     formData.append('subscribe', data.subscribe ? '1' : '0');
   }
-  
+
   // Add file attachments
   if (data.attachments && data.attachments.length > 0) {
     data.attachments.forEach((file, index) => {
@@ -340,15 +337,11 @@ export async function createPost(data: CreatePostData): Promise<PostResponse> {
     ? `/forums/discussions/${data.discussionId}/posts`
     : `/forums/${data.forumId}/discussions`;
 
-  const response = await apiClient.post<ApiResponse<PostResponse>>(
-    endpoint,
-    formData,
-    {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    }
-  );
+  const response = await apiClient.post<ApiResponse<PostResponse>>(endpoint, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
   return extractData(response);
 }
 
@@ -368,18 +361,18 @@ export async function createPost(data: CreatePostData): Promise<PostResponse> {
 export async function updatePost(data: UpdatePostData): Promise<PostResponse> {
   const formData = new FormData();
   formData.append('message', data.message);
-  
+
   // Add subject if provided
   if (data.subject !== undefined) {
     formData.append('subject', data.subject);
   }
-  
+
   if (data.attachments && data.attachments.length > 0) {
     data.attachments.forEach((file, index) => {
       formData.append(`attachments[${index}]`, file);
     });
   }
-  
+
   if (data.removeAttachments && data.removeAttachments.length > 0) {
     formData.append('removeAttachments', JSON.stringify(data.removeAttachments));
   }
@@ -460,9 +453,7 @@ export async function subscribeForum(
  * @returns Promise resolving to API response with subscription status
  * @throws Error if unsubscribe not allowed (forced subscription)
  */
-export async function unsubscribeForum(
-  forumId: number
-): Promise<SubscriptionResponse> {
+export async function unsubscribeForum(forumId: number): Promise<SubscriptionResponse> {
   const response = await apiClient.post<ApiResponse<SubscriptionResponse>>(
     `/forums/${forumId}/unsubscribe`
   );
@@ -481,9 +472,7 @@ export async function unsubscribeForum(
  * @param discussionId - Discussion ID
  * @returns Promise resolving to API response with subscription status
  */
-export async function subscribeDiscussion(
-  discussionId: number
-): Promise<SubscriptionResponse> {
+export async function subscribeDiscussion(discussionId: number): Promise<SubscriptionResponse> {
   const response = await apiClient.post<ApiResponse<SubscriptionResponse>>(
     `/forums/discussions/${discussionId}/subscribe`
   );
@@ -502,9 +491,7 @@ export async function subscribeDiscussion(
  * @param discussionId - Discussion ID
  * @returns Promise resolving to API response with subscription status
  */
-export async function unsubscribeDiscussion(
-  discussionId: number
-): Promise<SubscriptionResponse> {
+export async function unsubscribeDiscussion(discussionId: number): Promise<SubscriptionResponse> {
   const response = await apiClient.post<ApiResponse<SubscriptionResponse>>(
     `/forums/discussions/${discussionId}/unsubscribe`
   );
@@ -527,9 +514,7 @@ export async function unsubscribeDiscussion(
  * @param discussionId - Discussion ID
  * @returns Promise resolving to API response with read count and updated unread total
  */
-export async function markDiscussionRead(
-  discussionId: number
-): Promise<MarkReadResponse> {
+export async function markDiscussionRead(discussionId: number): Promise<MarkReadResponse> {
   const response = await apiClient.post<ApiResponse<MarkReadResponse>>(
     `/forums/discussions/${discussionId}/read`
   );
@@ -548,9 +533,7 @@ export async function markDiscussionRead(
  * @param forumId - Forum module ID
  * @returns Promise resolving to API response with read count and updated unread total
  */
-export async function markForumRead(
-  forumId: number
-): Promise<MarkReadResponse> {
+export async function markForumRead(forumId: number): Promise<MarkReadResponse> {
   const response = await apiClient.post<ApiResponse<MarkReadResponse>>(
     `/forums/${forumId}/mark-read`
   );
@@ -574,9 +557,7 @@ export async function markForumRead(
  * @returns Promise resolving to API response with updated discussion
  * @throws Error if user lacks moderation permissions (403)
  */
-export async function pinDiscussion(
-  discussionId: number
-): Promise<ModerationResponse> {
+export async function pinDiscussion(discussionId: number): Promise<ModerationResponse> {
   const response = await apiClient.post<ApiResponse<ModerationResponse>>(
     `/forums/discussions/${discussionId}/pin`
   );
@@ -596,9 +577,7 @@ export async function pinDiscussion(
  * @returns Promise resolving to API response with updated discussion
  * @throws Error if user lacks moderation permissions (403)
  */
-export async function unpinDiscussion(
-  discussionId: number
-): Promise<ModerationResponse> {
+export async function unpinDiscussion(discussionId: number): Promise<ModerationResponse> {
   const response = await apiClient.post<ApiResponse<ModerationResponse>>(
     `/forums/discussions/${discussionId}/unpin`
   );
@@ -618,9 +597,7 @@ export async function unpinDiscussion(
  * @returns Promise resolving to API response with updated discussion
  * @throws Error if user lacks moderation permissions (403)
  */
-export async function lockDiscussion(
-  discussionId: number
-): Promise<ModerationResponse> {
+export async function lockDiscussion(discussionId: number): Promise<ModerationResponse> {
   const response = await apiClient.post<ApiResponse<ModerationResponse>>(
     `/forums/discussions/${discussionId}/lock`
   );
@@ -640,9 +617,7 @@ export async function lockDiscussion(
  * @returns Promise resolving to API response with updated discussion
  * @throws Error if user lacks moderation permissions (403)
  */
-export async function unlockDiscussion(
-  discussionId: number
-): Promise<ModerationResponse> {
+export async function unlockDiscussion(discussionId: number): Promise<ModerationResponse> {
   const response = await apiClient.post<ApiResponse<ModerationResponse>>(
     `/forums/discussions/${discussionId}/unlock`
   );
@@ -665,9 +640,9 @@ export async function unlockDiscussion(
 export async function deleteDiscussion(
   discussionId: number
 ): Promise<{ discussionId: number; message: string }> {
-  const response = await apiClient.delete<
-    ApiResponse<{ discussionId: number; message: string }>
-  >(`/forums/discussions/${discussionId}`);
+  const response = await apiClient.delete<ApiResponse<{ discussionId: number; message: string }>>(
+    `/forums/discussions/${discussionId}`
+  );
   return extractData(response);
 }
 
@@ -731,10 +706,7 @@ export async function bulkMoveDiscussions(
  * @returns Promise resolving to API response with report ID
  * @throws Error if reason is empty or reporting fails
  */
-export async function reportPost(
-  postId: number,
-  reason: string
-): Promise<ReportResponse> {
+export async function reportPost(postId: number, reason: string): Promise<ReportResponse> {
   const response = await apiClient.post<ApiResponse<ReportResponse>>(
     `/forums/posts/${postId}/report`,
     { reason }

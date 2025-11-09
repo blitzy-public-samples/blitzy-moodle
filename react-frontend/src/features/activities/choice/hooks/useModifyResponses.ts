@@ -1,18 +1,18 @@
 /**
  * React Query mutation hook for modifying choice responses
- * 
+ *
  * This hook wraps the PUT /api/v1/choices/{id}/responses endpoint to modify
  * user responses to a new option. It supports bulk modification where multiple
  * users can have their choices changed to a different option.
- * 
+ *
  * Features:
  * - Optimistic updates for immediate UI feedback
  * - Automatic cache invalidation on success
  * - Rollback on error with toast notification
  * - Permission validation (requires mod/choice:deleteresponses capability)
- * 
+ *
  * Based on: public/mod/choice/lib.php - choice_modify_responses()
- * 
+ *
  * @packageDocumentation
  */
 
@@ -71,15 +71,15 @@ interface ChoiceResultsCache {
 
 /**
  * Custom hook for modifying choice responses with optimistic updates
- * 
+ *
  * This hook provides a mutation function to change user responses to a different
  * option in a choice activity. It implements optimistic updates by immediately
  * modifying the cached data, then rolling back if the API call fails.
- * 
+ *
  * @example
  * ```typescript
  * const { mutate, isLoading, error } = useModifyResponses();
- * 
+ *
  * const handleModify = () => {
  *   mutate({
  *     choiceId: 123,
@@ -89,7 +89,7 @@ interface ChoiceResultsCache {
  *   });
  * };
  * ```
- * 
+ *
  * @returns UseMutationResult with mutation function and state
  */
 export default function useModifyResponses(): UseMutationResult<
@@ -166,7 +166,9 @@ export default function useModifyResponses(): UseMutationResult<
         queryClient.setQueryData<ChoiceResultsCache>(
           ['choices', choiceId, 'results'],
           (oldData) => {
-            if (!oldData?.responses) {return oldData;}
+            if (!oldData?.responses) {
+              return oldData;
+            }
 
             // Create a set of attemptIds for faster lookup
             const attemptIdSet = new Set(attemptIds);
@@ -224,11 +226,7 @@ export default function useModifyResponses(): UseMutationResult<
       }
 
       // Show error toast notification
-      showToast(
-        `Failed to modify responses: ${error.message}`,
-        'error',
-        { duration: 5000 }
-      );
+      showToast(`Failed to modify responses: ${error.message}`, 'error', { duration: 5000 });
 
       // Log error for debugging
       console.error('Error modifying choice responses:', error);

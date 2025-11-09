@@ -37,11 +37,11 @@ type UrgencyLevel = 'normal' | 'warning' | 'critical';
 
 /**
  * LessonTimer Component
- * 
+ *
  * Displays a countdown timer for timed lessons with real-time updates.
  * Provides visual warning indicators when time is running low and triggers
  * auto-submission when the timer expires.
- * 
+ *
  * Features:
  * - Real-time countdown with second-by-second updates
  * - Color-coded urgency states:
@@ -52,7 +52,7 @@ type UrgencyLevel = 'normal' | 'warning' | 'critical';
  * - Supports pause/resume via isActive prop
  * - Auto-submission trigger at expiration
  * - Flexible display variants (compact/full)
- * 
+ *
  * @example
  * ```tsx
  * <LessonTimer
@@ -70,10 +70,10 @@ function LessonTimer({
   variant = 'full',
 }: LessonTimerProps): React.JSX.Element {
   const theme = useTheme();
-  
+
   // Local state for countdown synchronized with parent prop
   const [timeRemaining, setTimeRemaining] = useState<number>(initialTimeRemaining);
-  
+
   // Track if expiration callback has been called to prevent duplicate calls
   const [hasExpired, setHasExpired] = useState<boolean>(false);
 
@@ -108,17 +108,20 @@ function LessonTimer({
   /**
    * Get color for current urgency level using MUI theme palette
    */
-  const getUrgencyColor = useCallback((urgency: UrgencyLevel): string => {
-    switch (urgency) {
-      case 'critical':
-        return theme.palette.error.main;
-      case 'warning':
-        return theme.palette.warning.main;
-      case 'normal':
-      default:
-        return theme.palette.success.main;
-    }
-  }, [theme.palette]);
+  const getUrgencyColor = useCallback(
+    (urgency: UrgencyLevel): string => {
+      switch (urgency) {
+        case 'critical':
+          return theme.palette.error.main;
+        case 'warning':
+          return theme.palette.warning.main;
+        case 'normal':
+        default:
+          return theme.palette.success.main;
+      }
+    },
+    [theme.palette]
+  );
 
   /**
    * Format time as HH:MM:SS or MM:SS based on duration
@@ -127,7 +130,7 @@ function LessonTimer({
   const formatTime = useCallback((seconds: number): string => {
     // Ensure non-negative value
     const totalSeconds = Math.max(0, seconds);
-    
+
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const secs = totalSeconds % 60;
@@ -139,7 +142,7 @@ function LessonTimer({
     if (hours > 0) {
       return `${padZero(hours)}:${padZero(minutes)}:${padZero(secs)}`;
     }
-    
+
     // Use MM:SS format for less than 1 hour
     return `${padZero(minutes)}:${padZero(secs)}`;
   }, []);
@@ -153,15 +156,15 @@ function LessonTimer({
     const secs = seconds % 60;
 
     const parts: string[] = [];
-    
+
     if (hours > 0) {
       parts.push(`${hours} ${hours === 1 ? 'hour' : 'hours'}`);
     }
-    
+
     if (minutes > 0) {
       parts.push(`${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`);
     }
-    
+
     if (secs > 0 || parts.length === 0) {
       parts.push(`${secs} ${secs === 1 ? 'second' : 'seconds'}`);
     }
@@ -183,7 +186,7 @@ function LessonTimer({
     const intervalId = setInterval(() => {
       setTimeRemaining((prevTime) => {
         const newTime = prevTime - 1;
-        
+
         // Trigger expiration callback when reaching 0
         if (newTime <= 0 && !hasExpired) {
           setHasExpired(true);
@@ -193,7 +196,7 @@ function LessonTimer({
           }, 0);
           return 0;
         }
-        
+
         return newTime;
       });
     }, 1000);
@@ -245,7 +248,7 @@ function LessonTimer({
           aria-hidden="true"
         />
       )}
-      
+
       <Typography
         variant={variant === 'full' ? 'h6' : 'body2'}
         component="span"

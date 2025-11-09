@@ -417,7 +417,7 @@ export interface SaveWikiPageResult {
 
 /**
  * Request parameters for saving a wiki page
- * 
+ *
  * Used by the wiki edit hook to send save requests to the API.
  */
 export interface WikiSaveRequest {
@@ -430,7 +430,7 @@ export interface WikiSaveRequest {
 
 /**
  * Response from wiki page preview operation
- * 
+ *
  * Contains rendered HTML and any parser warnings.
  */
 export interface WikiPreviewResponse {
@@ -446,7 +446,7 @@ export interface WikiPreviewResponse {
 
 /**
  * Validation error for wiki content
- * 
+ *
  * Describes a validation failure with field, message, and error code.
  */
 export interface WikiValidationError {

@@ -145,12 +145,14 @@ const formatStatistics = (discussionCount: number, postCount: number, unreadCoun
  * Format bytes to human-readable size
  */
 const formatBytes = (bytes: number): string => {
-  if (bytes === 0) {return '0 Bytes';}
-  
+  if (bytes === 0) {
+    return '0 Bytes';
+  }
+
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
+
   return `${Math.round((bytes / Math.pow(k, i)) * 100) / 100} ${sizes[i]}`;
 };
 
@@ -166,18 +168,11 @@ export const ForumView: React.FC<ForumViewComponentProps> = ({ forumId }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
-  
+
   // Hooks
   const { user } = useAuth();
-  const {
-    forum,
-    isLoading,
-    isError,
-    error,
-    isSubscribing,
-    toggleSubscription,
-    refetch,
-  } = useForum(forumId);
+  const { forum, isLoading, isError, error, isSubscribing, toggleSubscription, refetch } =
+    useForum(forumId);
 
   // Menu state for moderator actions
   const [moderateMenuAnchor, setModerateMenuAnchor] = React.useState<null | HTMLElement>(null);
@@ -211,9 +206,15 @@ export const ForumView: React.FC<ForumViewComponentProps> = ({ forumId }) => {
 
   if (isLoading) {
     return (
-      <Box sx={{ width: '100%', p: 2 }} role="status" aria-label="Loading forum" aria-live="polite" data-testid="forum-skeleton">
+      <Box
+        sx={{ width: '100%', p: 2 }}
+        role="status"
+        aria-label="Loading forum"
+        aria-live="polite"
+        data-testid="forum-skeleton"
+      >
         {/* Screen reader announcement */}
-        <Typography 
+        <Typography
           component="div"
           sx={{
             position: 'absolute',
@@ -229,7 +230,7 @@ export const ForumView: React.FC<ForumViewComponentProps> = ({ forumId }) => {
         >
           Loading forum
         </Typography>
-        
+
         <Card>
           <CardContent>
             {/* Header Skeleton */}
@@ -245,7 +246,7 @@ export const ForumView: React.FC<ForumViewComponentProps> = ({ forumId }) => {
             </Stack>
           </CardContent>
         </Card>
-        
+
         {/* Discussion List Skeleton */}
         <Box sx={{ mt: 2 }}>
           {[1, 2, 3].map((item) => (
@@ -267,7 +268,7 @@ export const ForumView: React.FC<ForumViewComponentProps> = ({ forumId }) => {
 
   if (isError || !forum) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to load forum';
-    
+
     return (
       <Box sx={{ width: '100%', p: 2 }}>
         <Alert
@@ -295,7 +296,7 @@ export const ForumView: React.FC<ForumViewComponentProps> = ({ forumId }) => {
   const statistics = formatStatistics(forum.discussionCount, forum.postCount, forum.unreadCount);
   const isArchived = forum.cutoffdate > 0 && Date.now() / 1000 > forum.cutoffdate;
   const isReadOnly = isArchived || (forum.duedate > 0 && Date.now() / 1000 > forum.duedate);
-  
+
   // Permission checks - Check if user can add discussions
   // Respects both the permission from the backend and the local read-only state
   const canAddDiscussion = forum.canAddDiscussion && !isReadOnly;
@@ -352,7 +353,7 @@ export const ForumView: React.FC<ForumViewComponentProps> = ({ forumId }) => {
                   </Tooltip>
                 )}
               </Typography>
-              
+
               {/* Forum Type Chip */}
               <Chip
                 icon={typeInfo.icon}
@@ -372,10 +373,14 @@ export const ForumView: React.FC<ForumViewComponentProps> = ({ forumId }) => {
                   <span>
                     <Button
                       variant={forum.subscribed ? 'contained' : 'outlined'}
-                      startIcon={forum.subscribed ? <NotificationsIcon /> : <NotificationsOffIcon />}
+                      startIcon={
+                        forum.subscribed ? <NotificationsIcon /> : <NotificationsOffIcon />
+                      }
                       onClick={handleToggleSubscription}
                       disabled={isSubscribing}
-                      aria-label={forum.subscribed ? 'Unsubscribe from forum' : 'Subscribe to forum'}
+                      aria-label={
+                        forum.subscribed ? 'Unsubscribe from forum' : 'Subscribe to forum'
+                      }
                       aria-pressed={forum.subscribed}
                     >
                       {forum.subscribed ? 'Unsubscribe' : 'Subscribe'}
@@ -407,12 +412,8 @@ export const ForumView: React.FC<ForumViewComponentProps> = ({ forumId }) => {
                       'aria-labelledby': 'moderate-button',
                     }}
                   >
-                    <MenuItem onClick={handleMoveDiscussions}>
-                      Move discussions
-                    </MenuItem>
-                    <MenuItem onClick={handleLockDiscussions}>
-                      Lock discussions
-                    </MenuItem>
+                    <MenuItem onClick={handleMoveDiscussions}>Move discussions</MenuItem>
+                    <MenuItem onClick={handleLockDiscussions}>Lock discussions</MenuItem>
                   </Menu>
                 </>
               )}
