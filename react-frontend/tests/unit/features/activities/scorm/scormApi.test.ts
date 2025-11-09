@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
-import axios from '@/services/api/client';
+import { apiClient } from '@/services/api/client';
 import {
   fetchScorm,
   fetchScormScos,
@@ -31,7 +31,7 @@ import type {
   ScormScoType,
 } from '@/features/activities/scorm/types/scorm.types';
 
-// Mock axios
+// Mock apiClient
 vi.mock('@/services/api/client');
 
 describe('scormApi', () => {
@@ -102,16 +102,17 @@ describe('scormApi', () => {
         meta: {},
       };
 
-      vi.mocked(axios.get).mockResolvedValue({ data: mockResponse });
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockResponse });
 
       const result = await fetchScorm(1);
 
-      expect(axios.get).toHaveBeenCalledWith('/api/v1/scorm/1');
+      expect(apiClient.get).toHaveBeenCalledWith('/scorm/1');
       expect(result).toEqual(mockScorm);
     });
 
     it('should handle 404 error when SCORM package not found', async () => {
       const mockError = {
+        isAxiosError: true,
         response: {
           status: 404,
           data: {
@@ -124,16 +125,16 @@ describe('scormApi', () => {
         },
       };
 
-      vi.mocked(axios.get).mockRejectedValue(mockError);
+      vi.mocked(apiClient.get).mockRejectedValue(mockError);
 
       await expect(fetchScorm(999)).rejects.toThrow();
     });
 
     it('should handle network errors', async () => {
       const networkError = new Error('Network Error');
-      vi.mocked(axios.get).mockRejectedValue(networkError);
+      vi.mocked(apiClient.get).mockRejectedValue(networkError);
 
-      await expect(fetchScorm(1)).rejects.toThrow('Network Error');
+      await expect(fetchScorm(1)).rejects.toThrow('Failed to fetch SCORM package. Please try again.');
     });
   });
 
@@ -184,11 +185,11 @@ describe('scormApi', () => {
         },
       };
 
-      vi.mocked(axios.get).mockResolvedValue({ data: mockResponse });
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockResponse });
 
       const result = await fetchScormScos(1);
 
-      expect(axios.get).toHaveBeenCalledWith('/api/v1/scorm/1/scos');
+      expect(apiClient.get).toHaveBeenCalledWith('/scorm/1/scos');
       expect(result).toEqual(mockScos);
       expect(result).toHaveLength(2);
       expect(result[0].sortOrder).toBeLessThan(result[1].sortOrder);
@@ -240,7 +241,7 @@ describe('scormApi', () => {
         },
       };
 
-      vi.mocked(axios.get).mockResolvedValue({ data: mockResponse });
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockResponse });
 
       const result = await fetchScormScos(2);
 
@@ -255,7 +256,7 @@ describe('scormApi', () => {
         meta: {},
       };
 
-      vi.mocked(axios.get).mockResolvedValue({ data: mockResponse });
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockResponse });
 
       const result = await fetchScormScos(1);
 
@@ -316,12 +317,12 @@ describe('scormApi', () => {
         },
       };
 
-      vi.mocked(axios.get).mockResolvedValue({ data: mockResponse });
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockResponse });
 
-      const result = await fetchScormToc(1, 5);
+      const result = await fetchScormToc(1, { scormId: 1, attempt: 5 });
 
-      expect(axios.get).toHaveBeenCalledWith('/api/v1/scorm/1/toc', {
-        params: { attemptId: 5 },
+      expect(apiClient.get).toHaveBeenCalledWith('/scorm/1/toc', {
+        params: { scormId: 1, attempt: 5 },
       });
       expect(result).toEqual(mockToc);
       expect(result[2].prerequisiteMet).toBe(false);
@@ -365,7 +366,7 @@ describe('scormApi', () => {
         meta: {},
       };
 
-      vi.mocked(axios.get).mockResolvedValue({ data: mockResponse });
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockResponse });
 
       const result = await fetchScormToc(1);
 
@@ -402,11 +403,11 @@ describe('scormApi', () => {
         meta: {},
       };
 
-      vi.mocked(axios.get).mockResolvedValue({ data: mockResponse });
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockResponse });
 
       const result = await fetchPlayerConfig(1);
 
-      expect(axios.get).toHaveBeenCalledWith('/api/v1/scorm/1/player');
+      expect(apiClient.get).toHaveBeenCalledWith('/scorm/1/player');
       expect(result).toEqual(mockConfig);
       expect(result.popup).toBe(true);
       expect(result.width).toBe(1024);
@@ -440,7 +441,7 @@ describe('scormApi', () => {
         meta: {},
       };
 
-      vi.mocked(axios.get).mockResolvedValue({ data: mockResponse });
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockResponse });
 
       const result = await fetchPlayerConfig(2);
 
@@ -462,19 +463,18 @@ describe('scormApi', () => {
         meta: {},
       };
 
-      vi.mocked(axios.post).mockResolvedValue({ data: mockResponse });
+      vi.mocked(apiClient.post).mockResolvedValue({ data: mockResponse });
 
-      const result = await launchSco({
+      const result = await launchSco(1, {
         scormId: 1,
         scoId: 2,
-        attemptId: 10,
-        newAttempt: false,
+        attempt: 10,
       });
 
-      expect(axios.post).toHaveBeenCalledWith('/api/v1/scorm/1/launch', {
+      expect(apiClient.post).toHaveBeenCalledWith('/scorm/1/launch', {
+        scormId: 1,
         scoId: 2,
-        attemptId: 10,
-        newAttempt: false,
+        attempt: 10,
       });
       expect(result).toEqual(mockResponse.data);
     });
@@ -493,48 +493,50 @@ describe('scormApi', () => {
         },
       };
 
-      vi.mocked(axios.post).mockResolvedValue({ data: mockResponse });
+      vi.mocked(apiClient.post).mockResolvedValue({ data: mockResponse });
 
-      const result = await launchSco({
+      const result = await launchSco(1, {
         scormId: 1,
         scoId: 1,
-        newAttempt: true,
+        attempt: 15,
       });
 
-      expect(axios.post).toHaveBeenCalledWith('/api/v1/scorm/1/launch', {
+      expect(apiClient.post).toHaveBeenCalledWith('/scorm/1/launch', {
+        scormId: 1,
         scoId: 1,
-        newAttempt: true,
+        attempt: 15,
       });
       expect(result.attemptId).toBe(15);
     });
 
     it('should handle prerequisite not met error', async () => {
       const mockError = {
+        isAxiosError: true,
         response: {
           status: 403,
           data: {
             success: false,
             error: {
               code: 'PREREQUISITE_NOT_MET',
-              message: 'Prerequisites not satisfied',
+              message: 'prerequisite not met',
               details: {
                 requiredSco: 'item_1',
               },
+              status: 403,
             },
           },
         },
       };
 
-      vi.mocked(axios.post).mockRejectedValue(mockError);
+      vi.mocked(apiClient.post).mockRejectedValue(mockError);
 
       await expect(
-        launchSco({
+        launchSco(1, {
           scormId: 1,
           scoId: 3,
-          attemptId: 5,
-          newAttempt: false,
+          attempt: 5,
         })
-      ).rejects.toThrow();
+      ).rejects.toThrow('Prerequisites not met. Please complete required content first.');
     });
   });
 
@@ -548,84 +550,89 @@ describe('scormApi', () => {
         timeStamp: Date.now(),
       };
 
-      const cmiElements = [
-        { element: 'cmi.core.lesson_status', value: 'completed' },
-        { element: 'cmi.core.score.raw', value: '85' },
-        { element: 'cmi.core.score.min', value: '0' },
-        { element: 'cmi.core.score.max', value: '100' },
-        { element: 'cmi.core.session_time', value: '00:25:30' },
-        { element: 'cmi.suspend_data', value: 'level=5,checkpoint=3' },
-      ];
+      const cmiElements: Record<string, string | number> = {
+        'cmi.core.lesson_status': 'completed',
+        'cmi.core.score.raw': '85',
+        'cmi.core.score.min': '0',
+        'cmi.core.score.max': '100',
+        'cmi.core.session_time': '00:25:30',
+        'cmi.suspend_data': 'level=5,checkpoint=3',
+      };
 
       const mockResponse = {
         success: true,
         data: {
-          saved: true,
-          attemptId: 5,
+          success: true,
+          message: 'Tracking data saved successfully',
         },
         meta: {
           version: 'SCORM_12',
         },
       };
 
-      vi.mocked(axios.post).mockResolvedValue({ data: mockResponse });
+      vi.mocked(apiClient.post).mockResolvedValue({ data: mockResponse });
 
-      const result = await submitTracking({
-        attemptId: 5,
+      const result = await submitTracking(1, {
+        scormId: 1,
         scoId: 2,
+        attempt: 5,
         tracks: cmiElements,
       });
 
-      expect(axios.post).toHaveBeenCalledWith('/api/v1/scorm/attempts/5/tracking', {
+      expect(apiClient.post).toHaveBeenCalledWith('/scorm/1/track', {
+        scormId: 1,
         scoId: 2,
+        attempt: 5,
         tracks: cmiElements,
       });
       expect(result).toEqual(mockResponse.data);
     });
 
     it('should submit SCORM 2004 tracking data with cmi.* elements', async () => {
-      const cmiElements = [
-        { element: 'cmi.completion_status', value: 'completed' },
-        { element: 'cmi.success_status', value: 'passed' },
-        { element: 'cmi.score.scaled', value: '0.85' },
-        { element: 'cmi.score.raw', value: '85' },
-        { element: 'cmi.score.min', value: '0' },
-        { element: 'cmi.score.max', value: '100' },
-        { element: 'cmi.session_time', value: 'PT25M30S' },
-        { element: 'cmi.location', value: 'page_5' },
-        { element: 'cmi.suspend_data', value: '{"progress":50,"bookmark":"section3"}' },
-      ];
+      const cmiElements: Record<string, string | number> = {
+        'cmi.completion_status': 'completed',
+        'cmi.success_status': 'passed',
+        'cmi.score.scaled': '0.85',
+        'cmi.score.raw': '85',
+        'cmi.score.min': '0',
+        'cmi.score.max': '100',
+        'cmi.session_time': 'PT25M30S',
+        'cmi.location': 'page_5',
+        'cmi.suspend_data': '{"progress":50,"bookmark":"section3"}',
+      };
 
       const mockResponse = {
         success: true,
         data: {
-          saved: true,
-          attemptId: 8,
+          success: true,
+          message: 'Tracking data saved successfully',
         },
         meta: {
           version: 'SCORM_2004',
         },
       };
 
-      vi.mocked(axios.post).mockResolvedValue({ data: mockResponse });
+      vi.mocked(apiClient.post).mockResolvedValue({ data: mockResponse });
 
-      const result = await submitTracking({
-        attemptId: 8,
+      const result = await submitTracking(1, {
+        scormId: 1,
         scoId: 3,
+        attempt: 8,
         tracks: cmiElements,
       });
 
-      expect(result.saved).toBe(true);
+      expect(result.success).toBe(true);
     });
 
     it('should handle large suspend_data exceeding 4KB', async () => {
       const largeSuspendData = 'x'.repeat(5000); // Exceeds typical 4KB limit
 
-      const cmiElements = [
-        { element: 'cmi.suspend_data', value: largeSuspendData },
-      ];
+      const cmiElements: Record<string, string> = {
+        'cmi.suspend_data': largeSuspendData,
+      };
 
       const mockError = {
+        isAxiosError: true,
         response: {
           status: 413,
           data: {
@@ -637,65 +644,70 @@ describe('scormApi', () => {
                 maxSize: 4096,
                 actualSize: 5000,
               },
+              status: 413,
             },
           },
         },
       };
 
-      vi.mocked(axios.post).mockRejectedValue(mockError);
+      vi.mocked(apiClient.post).mockRejectedValue(mockError);
 
       await expect(
-        submitTracking({
-          attemptId: 5,
+        submitTracking(1, {
+          scormId: 1,
           scoId: 2,
+          attempt: 5,
           tracks: cmiElements,
         })
-      ).rejects.toThrow();
+      ).rejects.toThrow('Suspend data exceeds maximum allowed size');
     });
 
     it('should handle network interruption during tracking submission', async () => {
-      const cmiElements = [
-        { element: 'cmi.core.lesson_status', value: 'incomplete' },
-      ];
+      const cmiElements: Record<string, string> = {
+        'cmi.core.lesson_status': 'incomplete',
+      };
 
       const networkError = new Error('Network request failed');
-      vi.mocked(axios.post).mockRejectedValue(networkError);
+      vi.mocked(apiClient.post).mockRejectedValue(networkError);
 
       await expect(
-        submitTracking({
-          attemptId: 5,
+        submitTracking(1, {
+          scormId: 1,
           scoId: 2,
+          attempt: 5,
           tracks: cmiElements,
         })
-      ).rejects.toThrow('Network request failed');
+      ).rejects.toThrow('Failed to save progress. Please try again.');
     });
 
     it('should handle concurrent tracking submissions', async () => {
       const mockResponse = {
         success: true,
-        data: { saved: true, attemptId: 5 },
+        data: { success: true, message: 'Tracking data saved successfully' },
         meta: {},
       };
 
-      vi.mocked(axios.post).mockResolvedValue({ data: mockResponse });
+      vi.mocked(apiClient.post).mockResolvedValue({ data: mockResponse });
 
       const promises = [
-        submitTracking({
-          attemptId: 5,
+        submitTracking(1, {
+          scormId: 1,
           scoId: 2,
-          tracks: [{ element: 'cmi.core.lesson_status', value: 'incomplete' }],
+          attempt: 5,
+          tracks: { 'cmi.core.lesson_status': 'incomplete' },
         }),
-        submitTracking({
-          attemptId: 5,
+        submitTracking(1, {
+          scormId: 1,
           scoId: 2,
-          tracks: [{ element: 'cmi.core.score.raw', value: '75' }],
+          attempt: 5,
+          tracks: { 'cmi.core.score.raw': '75' },
         }),
       ];
 
       const results = await Promise.all(promises);
 
       expect(results).toHaveLength(2);
-      expect(axios.post).toHaveBeenCalledTimes(2);
+      expect(apiClient.post).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -727,11 +739,11 @@ describe('scormApi', () => {
         },
       };
 
-      vi.mocked(axios.post).mockResolvedValue({ data: mockResponse });
+      vi.mocked(apiClient.post).mockResolvedValue({ data: mockResponse });
 
       const result = await createAttempt(1);
 
-      expect(axios.post).toHaveBeenCalledWith('/api/v1/scorm/1/attempts');
+      expect(apiClient.post).toHaveBeenCalledWith('/scorm/1/attempt');
       expect(result).toEqual(mockAttempt);
       expect(result.attempt).toBe(1);
       expect(result.status).toBe('incomplete');
@@ -764,7 +776,7 @@ describe('scormApi', () => {
         },
       };
 
-      vi.mocked(axios.post).mockResolvedValue({ data: mockResponse });
+      vi.mocked(apiClient.post).mockResolvedValue({ data: mockResponse });
 
       const result = await createAttempt(1);
 
@@ -773,6 +785,7 @@ describe('scormApi', () => {
 
     it('should handle max attempts exceeded error', async () => {
       const mockError = {
+        isAxiosError: true,
         response: {
           status: 403,
           data: {
@@ -789,7 +802,7 @@ describe('scormApi', () => {
         },
       };
 
-      vi.mocked(axios.post).mockRejectedValue(mockError);
+      vi.mocked(apiClient.post).mockRejectedValue(mockError);
 
       await expect(createAttempt(1)).rejects.toThrow();
     });
@@ -858,11 +871,11 @@ describe('scormApi', () => {
         },
       };
 
-      vi.mocked(axios.get).mockResolvedValue({ data: mockResponse });
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockResponse });
 
       const result = await fetchAttempts(1, 100);
 
-      expect(axios.get).toHaveBeenCalledWith('/api/v1/scorm/1/attempts', {
+      expect(apiClient.get).toHaveBeenCalledWith('/scorm/1/attempts', {
         params: { userId: 100 },
       });
       expect(result).toEqual(mockAttempts);
@@ -882,7 +895,7 @@ describe('scormApi', () => {
         },
       };
 
-      vi.mocked(axios.get).mockResolvedValue({ data: mockResponse });
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockResponse });
 
       const result = await fetchAttempts(1, 200);
 
@@ -916,7 +929,7 @@ describe('scormApi', () => {
         meta: {},
       };
 
-      vi.mocked(axios.get).mockResolvedValue({ data: mockResponse });
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockResponse });
 
       const result = await fetchAttempts(1, 100);
 
@@ -957,11 +970,11 @@ describe('scormApi', () => {
         meta: {},
       };
 
-      vi.mocked(axios.get).mockResolvedValue({ data: mockResponse });
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockResponse });
 
       const result = await fetchAttemptTracking(10, 2);
 
-      expect(axios.get).toHaveBeenCalledWith('/api/v1/scorm/attempts/10/tracking', {
+      expect(apiClient.get).toHaveBeenCalledWith('/scorm/attempts/10/tracking', {
         params: { scoId: 2 },
       });
       expect(result).toEqual(mockTrackingData);
@@ -1003,7 +1016,7 @@ describe('scormApi', () => {
         meta: {},
       };
 
-      vi.mocked(axios.get).mockResolvedValue({ data: mockResponse });
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockResponse });
 
       const result = await fetchAttemptTracking(15, 3);
 
@@ -1028,7 +1041,7 @@ describe('scormApi', () => {
         meta: {},
       };
 
-      vi.mocked(axios.get).mockResolvedValue({ data: mockResponse });
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockResponse });
 
       const result = await fetchAttemptTracking(20, 1);
 
@@ -1056,7 +1069,7 @@ describe('scormApi', () => {
         meta: {},
       };
 
-      vi.mocked(axios.get).mockResolvedValue({ data: mockResponse });
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockResponse });
 
       const result = await fetchAttemptTracking(18, 2);
 
@@ -1127,11 +1140,11 @@ describe('scormApi', () => {
         meta: {},
       };
 
-      vi.mocked(axios.get).mockResolvedValue({ data: mockResponse });
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockResponse });
 
-      const result = await fetchAttemptReport({ scormId: 1, userId: 100 });
+      const result = await fetchAttemptReport(1, { userId: 100 });
 
-      expect(axios.get).toHaveBeenCalledWith('/api/v1/scorm/1/report', {
+      expect(apiClient.get).toHaveBeenCalledWith('/scorm/1/report', {
         params: { userId: 100 },
       });
       expect(result).toEqual(mockReport);
@@ -1186,7 +1199,7 @@ describe('scormApi', () => {
         meta: {},
       };
 
-      vi.mocked(axios.get).mockResolvedValue({ data: mockResponse });
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockResponse });
 
       const result = await fetchAttemptReport({ scormId: 1, userId: 100 });
 
@@ -1229,7 +1242,7 @@ describe('scormApi', () => {
         meta: {},
       };
 
-      vi.mocked(axios.get).mockResolvedValue({ data: mockResponse });
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockResponse });
 
       const result = await fetchAttemptReport({ scormId: 1, userId: 100 });
 
@@ -1283,7 +1296,7 @@ describe('scormApi', () => {
         meta: {},
       };
 
-      vi.mocked(axios.get).mockResolvedValue({ data: mockResponse });
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockResponse });
 
       const result = await fetchAttemptReport({ scormId: 1, userId: 100 });
 
@@ -1330,7 +1343,7 @@ describe('scormApi', () => {
         meta: {},
       };
 
-      vi.mocked(axios.get).mockResolvedValue({ data: mockResponse });
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockResponse });
 
       const result = await fetchAttemptReport({ scormId: 1, userId: 100 });
 
@@ -1345,23 +1358,24 @@ describe('scormApi', () => {
       const mockResponse = {
         success: true,
         data: {
-          deleted: true,
-          attemptId: 10,
+          success: true,
+          message: 'Attempt deleted successfully',
         },
         meta: {},
       };
 
-      vi.mocked(axios.delete).mockResolvedValue({ data: mockResponse });
+      vi.mocked(apiClient.delete).mockResolvedValue({ data: mockResponse });
 
-      const result = await deleteAttempt(10);
+      const result = await deleteAttempt(1, 10);
 
-      expect(axios.delete).toHaveBeenCalledWith('/api/v1/scorm/attempts/10');
+      expect(apiClient.delete).toHaveBeenCalledWith('/scorm/1/attempts/10');
       expect(result).toEqual(mockResponse.data);
-      expect(result.deleted).toBe(true);
+      expect(result.success).toBe(true);
     });
 
     it('should handle permission denied error', async () => {
       const mockError = {
+        isAxiosError: true,
         response: {
           status: 403,
           data: {
@@ -1369,18 +1383,20 @@ describe('scormApi', () => {
             error: {
               code: 'PERMISSION_DENIED',
               message: 'You do not have permission to delete this attempt',
+              status: 403,
             },
           },
         },
       };
 
-      vi.mocked(axios.delete).mockRejectedValue(mockError);
+      vi.mocked(apiClient.delete).mockRejectedValue(mockError);
 
-      await expect(deleteAttempt(10)).rejects.toThrow();
+      await expect(deleteAttempt(1, 10)).rejects.toThrow('You do not have permission to delete attempts');
     });
 
     it('should handle attempt not found error', async () => {
       const mockError = {
+        isAxiosError: true,
         response: {
           status: 404,
           data: {
@@ -1388,14 +1404,15 @@ describe('scormApi', () => {
             error: {
               code: 'NOT_FOUND',
               message: 'Attempt not found',
+              status: 404,
             },
           },
         },
       };
 
-      vi.mocked(axios.delete).mockRejectedValue(mockError);
+      vi.mocked(apiClient.delete).mockRejectedValue(mockError);
 
-      await expect(deleteAttempt(999)).rejects.toThrow();
+      await expect(deleteAttempt(1, 999)).rejects.toThrow('Attempt not found');
     });
   });
 
@@ -1413,17 +1430,18 @@ describe('scormApi', () => {
         meta: {},
       };
 
-      vi.mocked(axios.post).mockResolvedValue({ data: mockResponse });
+      vi.mocked(apiClient.post).mockResolvedValue({ data: mockResponse });
 
-      const result = await evaluatePrerequisites({
+      const result = await evaluatePrerequisites(1, {
         scormId: 1,
         scoId: 3,
-        attemptId: 5,
+        attempt: 5,
       });
 
-      expect(axios.post).toHaveBeenCalledWith('/api/v1/scorm/1/prerequisites', {
+      expect(apiClient.post).toHaveBeenCalledWith('/scorm/1/prerequisites', {
+        scormId: 1,
         scoId: 3,
-        attemptId: 5,
+        attempt: 5,
       });
       expect(result).toEqual(mockResponse.data);
       expect(result.prerequisitesMet).toBe(true);
@@ -1444,12 +1462,12 @@ describe('scormApi', () => {
         meta: {},
       };
 
-      vi.mocked(axios.post).mockResolvedValue({ data: mockResponse });
+      vi.mocked(apiClient.post).mockResolvedValue({ data: mockResponse });
 
-      const result = await evaluatePrerequisites({
+      const result = await evaluatePrerequisites(1, {
         scormId: 1,
         scoId: 5,
-        attemptId: 5,
+        attempt: 5,
       });
 
       expect(result.prerequisitesMet).toBe(false);
@@ -1459,6 +1477,7 @@ describe('scormApi', () => {
 
     it('should handle circular prerequisite dependencies', async () => {
       const mockError = {
+        isAxiosError: true,
         response: {
           status: 400,
           data: {
@@ -1474,19 +1493,20 @@ describe('scormApi', () => {
         },
       };
 
-      vi.mocked(axios.post).mockRejectedValue(mockError);
+      vi.mocked(apiClient.post).mockRejectedValue(mockError);
 
       await expect(
-        evaluatePrerequisites({
+        evaluatePrerequisites(1, {
           scormId: 1,
           scoId: 1,
-          attemptId: 5,
+          attempt: 5,
         })
       ).rejects.toThrow();
     });
 
     it('should handle missing prerequisites in manifest', async () => {
       const mockError = {
+        isAxiosError: true,
         response: {
           status: 400,
           data: {
@@ -1502,13 +1522,13 @@ describe('scormApi', () => {
         },
       };
 
-      vi.mocked(axios.post).mockRejectedValue(mockError);
+      vi.mocked(apiClient.post).mockRejectedValue(mockError);
 
       await expect(
-        evaluatePrerequisites({
+        evaluatePrerequisites(1, {
           scormId: 1,
           scoId: 10,
-          attemptId: 5,
+          attempt: 5,
         })
       ).rejects.toThrow();
     });
@@ -1526,7 +1546,7 @@ describe('scormApi', () => {
         meta: {},
       };
 
-      vi.mocked(axios.post).mockResolvedValue({ data: mockResponse });
+      vi.mocked(apiClient.post).mockResolvedValue({ data: mockResponse });
 
       const result = await evaluatePrerequisites({
         scormId: 1,
@@ -1591,7 +1611,7 @@ describe('scormApi', () => {
         },
       };
 
-      vi.mocked(axios.get).mockResolvedValue({ data: mockResponse });
+      vi.mocked(apiClient.get).mockResolvedValue({ data: mockResponse });
 
       const result = await fetchScorm(1);
 
@@ -1600,6 +1620,7 @@ describe('scormApi', () => {
 
     it('should handle error response envelope correctly', async () => {
       const mockError = {
+        isAxiosError: true,
         response: {
           status: 500,
           data: {
@@ -1613,7 +1634,7 @@ describe('scormApi', () => {
         },
       };
 
-      vi.mocked(axios.get).mockRejectedValue(mockError);
+      vi.mocked(apiClient.get).mockRejectedValue(mockError);
 
       await expect(fetchScorm(1)).rejects.toThrow();
     });
@@ -1622,30 +1643,30 @@ describe('scormApi', () => {
   describe('Network error scenarios', () => {
     it('should handle timeout errors', async () => {
       const timeoutError = new Error('timeout of 10000ms exceeded');
-      vi.mocked(axios.get).mockRejectedValue(timeoutError);
+      vi.mocked(apiClient.get).mockRejectedValue(timeoutError);
 
-      await expect(fetchScorm(1)).rejects.toThrow('timeout');
+      await expect(fetchScorm(1)).rejects.toThrow('Failed to fetch SCORM package. Please try again.');
     });
 
     it('should handle connection refused errors', async () => {
       const connectionError = new Error('connect ECONNREFUSED');
-      vi.mocked(axios.post).mockRejectedValue(connectionError);
+      vi.mocked(apiClient.post).mockRejectedValue(connectionError);
 
-      await expect(createAttempt(1)).rejects.toThrow('ECONNREFUSED');
+      await expect(createAttempt(1)).rejects.toThrow('Failed to create new attempt. Please try again.');
     });
 
     it('should handle DNS resolution errors', async () => {
       const dnsError = new Error('getaddrinfo ENOTFOUND');
-      vi.mocked(axios.get).mockRejectedValue(dnsError);
+      vi.mocked(apiClient.get).mockRejectedValue(dnsError);
 
-      await expect(fetchAttempts(1, 100)).rejects.toThrow('ENOTFOUND');
+      await expect(fetchAttempts(1)).rejects.toThrow('Failed to fetch attempt history. Please try again.');
     });
   });
 
   describe('Session persistence and recovery', () => {
     it('should handle session recovery after network interruption', async () => {
       // First call fails
-      vi.mocked(axios.post)
+      vi.mocked(apiClient.post)
         .mockRejectedValueOnce(new Error('Network Error'))
         .mockResolvedValueOnce({
           data: {

@@ -308,12 +308,15 @@ export async function submitTracking(
  * - scorm_get_last_attempt() from locallib.php
  *
  * @param id - SCORM module ID
+ * @param userId - Optional user ID to filter attempts for a specific user
  * @returns Promise resolving to array of attempts
  * @throws Error if attempts cannot be retrieved
  */
-export async function fetchAttempts(id: number): Promise<ScormAttempt[]> {
+export async function fetchAttempts(id: number, userId?: number): Promise<ScormAttempt[]> {
   try {
-    const response = await apiClient.get<ApiResponse<ScormAttempt[]>>(`/scorm/${id}/attempts`);
+    const response = await apiClient.get<ApiResponse<ScormAttempt[]>>(`/scorm/${id}/attempts`, {
+      params: userId !== undefined ? { userId } : undefined,
+    });
 
     if (!response.data.success) {
       throw new Error(response.data.error?.message || 'Failed to fetch attempts');
@@ -386,13 +389,17 @@ export async function createAttempt(id: number): Promise<ScormAttempt> {
  * - scorm_get_tracks() from locallib.php
  *
  * @param attemptId - Attempt ID
+ * @param scoId - Optional SCO ID to filter tracking data for a specific SCO
  * @returns Promise resolving to tracking data collection
  * @throws Error if tracking data cannot be retrieved
  */
-export async function fetchAttemptTracking(attemptId: number): Promise<ScormTrackingData[]> {
+export async function fetchAttemptTracking(attemptId: number, scoId?: number): Promise<ScormTrackingData> {
   try {
-    const response = await apiClient.get<ApiResponse<ScormTrackingData[]>>(
-      `/scorm/attempts/${attemptId}/tracking`
+    const response = await apiClient.get<ApiResponse<ScormTrackingData>>(
+      `/scorm/attempts/${attemptId}/tracking`,
+      {
+        params: scoId !== undefined ? { scoId } : undefined,
+      }
     );
 
     if (!response.data.success) {
