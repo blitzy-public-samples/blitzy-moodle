@@ -127,11 +127,11 @@ const PhaseIconRoot = styled('div')<{
  * Renders the appropriate icon for each phase with proper styling
  */
 function PhaseStepIcon(props: {
-  active: boolean;
-  completed: boolean;
+  active?: boolean;
+  completed?: boolean;
   icon: React.ReactNode;
 }) {
-  const { active, completed, icon } = props;
+  const { active = false, completed = false, icon } = props;
 
   return (
     <PhaseIconRoot ownerState={{ completed, active }}>
@@ -212,9 +212,17 @@ const PhaseIndicator: React.FC<PhaseIndicatorProps> = ({
 
   /**
    * Get the current phase configuration for displaying phase-specific information
+   * Defaults to first phase (Setup) if activeStep is out of bounds
    */
   const currentPhaseConfig = useMemo(() => {
-    return phases[activeStep];
+    const phase = phases[activeStep] ?? phases[0];
+    // Ensure we always have a valid phase (fallback to Setup)
+    return phase ?? {
+      value: WorkshopPhase.SETUP,
+      label: 'Setup',
+      description: 'Configure workshop settings and grading criteria',
+      icon: <SetupIcon />,
+    };
   }, [phases, activeStep]);
 
   return (
@@ -323,9 +331,9 @@ const PhaseIndicator: React.FC<PhaseIndicatorProps> = ({
         <Typography variant="body2" color="text.secondary">
           Phase {activeStep + 1} of {phases.length}
         </Typography>
-        {activeStep < phases.length - 1 && (
+        {activeStep < phases.length - 1 && phases[activeStep + 1] && (
           <Typography variant="body2" color="text.secondary">
-            • Next: {phases[activeStep + 1].label}
+            • Next: {phases[activeStep + 1]?.label}
           </Typography>
         )}
       </Box>
