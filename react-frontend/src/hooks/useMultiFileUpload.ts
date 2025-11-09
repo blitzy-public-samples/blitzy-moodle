@@ -221,7 +221,7 @@ export function useMultiFileUpload(
             size: file.size,
             type: file.type,
             progress: 0,
-            file: file,
+            file,
           });
         } else {
           // Create a file state with error for invalid files
@@ -231,7 +231,7 @@ export function useMultiFileUpload(
             size: file.size,
             type: file.type,
             progress: 0,
-            file: file,
+            file,
             error: validation.error,
           };
           fileStates.push(fileState);
