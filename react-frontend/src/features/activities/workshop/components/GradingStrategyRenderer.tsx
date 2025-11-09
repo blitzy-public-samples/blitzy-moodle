@@ -94,13 +94,13 @@ const AccumulativeStrategyRenderer: React.FC<StrategyRendererProps> = ({
   dimensions,
   readonly = false,
 }) => {
-  const { control, formState } = useFormContext();
+  const { control, formState } = useFormContext<any>();
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       {dimensions.map((dimension, index) => {
-        const gradeError = formState.errors.dimensions?.[index]?.grade;
-        const commentError = formState.errors.dimensions?.[index]?.peerComment;
+        const gradeError = (formState.errors.dimensions as any)?.[index]?.grade;
+        const commentError = (formState.errors.dimensions as any)?.[index]?.peerComment;
 
         return (
           <Box key={dimension.id} sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
@@ -209,13 +209,13 @@ const RubricStrategyRenderer: React.FC<StrategyRendererProps> = ({
   dimensions,
   readonly = false,
 }) => {
-  const { control, formState } = useFormContext();
+  const { control, formState } = useFormContext<any>();
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       {dimensions.map((dimension, index) => {
-        const gradeError = formState.errors.dimensions?.[index]?.grade;
-        const commentError = formState.errors.dimensions?.[index]?.peerComment;
+        const gradeError = (formState.errors.dimensions as any)?.[index]?.grade;
+        const commentError = (formState.errors.dimensions as any)?.[index]?.peerComment;
 
         // Sort levels by grade in descending order (best to worst)
         const sortedLevels = [...(dimension.levels || [])].sort(
@@ -325,11 +325,10 @@ const RubricStrategyRenderer: React.FC<StrategyRendererProps> = ({
  * Displays comment-only fields without numerical grading
  */
 const CommentsStrategyRenderer: React.FC<StrategyRendererProps> = ({
-  workshop,
   dimensions,
   readonly = false,
 }) => {
-  const { control, formState } = useFormContext();
+  const { control, formState } = useFormContext<any>();
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -338,7 +337,7 @@ const CommentsStrategyRenderer: React.FC<StrategyRendererProps> = ({
       </Alert>
 
       {dimensions.map((dimension, index) => {
-        const commentError = formState.errors.dimensions?.[index]?.peerComment;
+        const commentError = (formState.errors.dimensions as any)?.[index]?.peerComment;
 
         return (
           <Box key={dimension.id} sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
@@ -409,7 +408,7 @@ const NumberOfErrorsStrategyRenderer: React.FC<StrategyRendererProps> = ({
   dimensions,
   readonly = false,
 }) => {
-  const { control, formState } = useFormContext();
+  const { control, formState } = useFormContext<any>();
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -419,8 +418,8 @@ const NumberOfErrorsStrategyRenderer: React.FC<StrategyRendererProps> = ({
       </Alert>
 
       {dimensions.map((dimension, index) => {
-        const gradeError = formState.errors.dimensions?.[index]?.grade;
-        const commentError = formState.errors.dimensions?.[index]?.peerComment;
+        const gradeError = (formState.errors.dimensions as any)?.[index]?.grade;
+        const commentError = (formState.errors.dimensions as any)?.[index]?.peerComment;
 
         return (
           <Box key={dimension.id} sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
