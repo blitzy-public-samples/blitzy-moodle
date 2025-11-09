@@ -79,7 +79,8 @@ describe('Breadcrumbs', () => {
     vi.clearAllMocks();
 
     // Default mock implementations
-    mockUseMediaQuery.mockReturnValue(true); // Desktop by default
+    // useMediaQuery(theme.breakpoints.down('sm')) returns false for desktop (not below sm breakpoint)
+    mockUseMediaQuery.mockReturnValue(false); // Desktop by default
     mockUseLocation.mockReturnValue({
       pathname: '/',
       search: '',
@@ -104,13 +105,38 @@ describe('Breadcrumbs', () => {
   });
 
   it('renders Home icon as first breadcrumb', () => {
+    // Mock route matches so Home is NOT the last item (needs at least 2 items)
+    mockUseMatches.mockReturnValue([
+      {
+        id: 'root',
+        pathname: '/',
+        params: {},
+        data: null,
+        handle: null,
+      },
+      {
+        id: 'courses',
+        pathname: '/courses',
+        params: {},
+        data: null,
+        handle: { breadcrumb: () => 'My Courses' },
+      },
+    ]);
+    mockUseLocation.mockReturnValue({
+      pathname: '/courses',
+      search: '',
+      hash: '',
+      state: null,
+      key: 'default',
+    });
+
     render(
       <TestWrapper>
         <Breadcrumbs />
       </TestWrapper>
     );
 
-    // Verify Home link exists and points to root
+    // Verify Home link exists and points to root (when not the last item)
     const homeLink = screen.getByRole('link', { name: /home/i });
     expect(homeLink).toBeDefined();
     expect(homeLink).toHaveAttribute('href', '/');
@@ -215,7 +241,7 @@ describe('Breadcrumbs', () => {
       {
         id: 'assignments',
         pathname: '/courses/123/assignments',
-        params: { courseId: '123' },
+        params: {}, // Remove courseId to avoid overriding "Assignments" label
         data: null,
         handle: {
           breadcrumb: () => 'Assignments',
@@ -224,7 +250,7 @@ describe('Breadcrumbs', () => {
       {
         id: 'assignment-detail',
         pathname: '/courses/123/assignments/456',
-        params: { courseId: '123', assignmentId: '456' },
+        params: { assignmentId: '456' }, // Remove courseId, keep only assignmentId
         data: null,
         handle: {
           breadcrumb: () => 'Assignment Detail',
@@ -446,7 +472,8 @@ describe('Breadcrumbs', () => {
 
   it('shows only last 2 items on mobile', () => {
     // Mock mobile screen
-    mockUseMediaQuery.mockReturnValue(false); // Mobile (down from 'sm')
+    // useMediaQuery(theme.breakpoints.down('sm')) returns true when below sm breakpoint (mobile)
+    mockUseMediaQuery.mockReturnValue(true); // Mobile
 
     mockUseMatches.mockReturnValue([
       {
@@ -514,7 +541,8 @@ describe('Breadcrumbs', () => {
 
   it('shows all items on desktop', () => {
     // Mock desktop screen
-    mockUseMediaQuery.mockReturnValue(true); // Desktop (up from 'md')
+    // useMediaQuery(theme.breakpoints.down('sm')) returns false when NOT below sm breakpoint (desktop)
+    mockUseMediaQuery.mockReturnValue(false); // Desktop
 
     mockUseMatches.mockReturnValue([
       {
@@ -587,7 +615,8 @@ describe('Breadcrumbs', () => {
   });
 
   it('supports custom maxItems prop', () => {
-    mockUseMediaQuery.mockReturnValue(true); // Desktop
+    // useMediaQuery(theme.breakpoints.down('sm')) returns false for desktop
+    mockUseMediaQuery.mockReturnValue(false); // Desktop
 
     mockUseMatches.mockReturnValue([
       {
