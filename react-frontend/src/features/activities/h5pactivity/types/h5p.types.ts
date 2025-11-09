@@ -130,6 +130,32 @@ export interface H5PActivity {
   reviewmode: number;
 }
 
+/**
+ * Payload for updating H5P Activity settings
+ * Partial interface allowing selective field updates
+ * 
+ * Only provided fields will be updated, others remain unchanged
+ * Used in PUT /api/v1/h5p/activity/{id} endpoint
+ */
+export interface H5PActivityUpdatePayload {
+  /** Updated display name of the activity (max length: 1333) */
+  name?: string;
+  /** Updated activity description/introduction text */
+  intro?: string;
+  /** Updated format of the intro field (0=Moodle, 1=HTML, 2=Plain, 4=Markdown) */
+  introformat?: number;
+  /** Updated maximum grade for this activity (0 = no grade, or positive integer) */
+  grade?: number;
+  /** Updated bit flags for H5P button display options (frame, download, embed, copyright, about) */
+  displayoptions?: number;
+  /** Updated xAPI tracking setting (1 = enabled, 0 = disabled) */
+  enabletracking?: number;
+  /** Updated method used to calculate final grade from multiple attempts */
+  grademethod?: number;
+  /** Updated review mode setting (null or 0=none, 1=after completion) */
+  reviewmode?: number;
+}
+
 // ============================================================================
 // Access Information
 // ============================================================================
