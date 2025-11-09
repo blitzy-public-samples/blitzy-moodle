@@ -16,7 +16,7 @@
  * - public/mod/workshop/form/numerrors/lib.php
  */
 
-import React, { useCallback } from 'react';
+import React from 'react';
 import {
   Box,
   TextField,
@@ -86,6 +86,18 @@ interface StrategyRendererProps {
 }
 
 /**
+ * Form data structure for workshop assessment
+ * Used with react-hook-form for grading submissions
+ */
+export interface WorkshopAssessmentFormData {
+  dimensions: Array<{
+    dimensionId: number;
+    grade: number | null | string;
+    peerComment: string;
+  }>;
+}
+
+/**
  * Accumulative Strategy Renderer
  * Displays scoring aspects where reviewer assigns points up to maximum for each dimension
  */
@@ -94,13 +106,13 @@ const AccumulativeStrategyRenderer: React.FC<StrategyRendererProps> = ({
   dimensions,
   readonly = false,
 }) => {
-  const { control, formState } = useFormContext<any>();
+  const { control, formState } = useFormContext<WorkshopAssessmentFormData>();
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       {dimensions.map((dimension, index) => {
-        const gradeError = (formState.errors.dimensions as any)?.[index]?.grade;
-        const commentError = (formState.errors.dimensions as any)?.[index]?.peerComment;
+        const gradeError = formState.errors.dimensions?.[index]?.grade;
+        const commentError = formState.errors.dimensions?.[index]?.peerComment;
 
         return (
           <Box key={dimension.id} sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
@@ -209,13 +221,13 @@ const RubricStrategyRenderer: React.FC<StrategyRendererProps> = ({
   dimensions,
   readonly = false,
 }) => {
-  const { control, formState } = useFormContext<any>();
+  const { control, formState } = useFormContext<WorkshopAssessmentFormData>();
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       {dimensions.map((dimension, index) => {
-        const gradeError = (formState.errors.dimensions as any)?.[index]?.grade;
-        const commentError = (formState.errors.dimensions as any)?.[index]?.peerComment;
+        const gradeError = formState.errors.dimensions?.[index]?.grade;
+        const commentError = formState.errors.dimensions?.[index]?.peerComment;
 
         // Sort levels by grade in descending order (best to worst)
         const sortedLevels = [...(dimension.levels || [])].sort(
@@ -328,7 +340,7 @@ const CommentsStrategyRenderer: React.FC<StrategyRendererProps> = ({
   dimensions,
   readonly = false,
 }) => {
-  const { control, formState } = useFormContext<any>();
+  const { control, formState } = useFormContext<WorkshopAssessmentFormData>();
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -337,7 +349,7 @@ const CommentsStrategyRenderer: React.FC<StrategyRendererProps> = ({
       </Alert>
 
       {dimensions.map((dimension, index) => {
-        const commentError = (formState.errors.dimensions as any)?.[index]?.peerComment;
+        const commentError = formState.errors.dimensions?.[index]?.peerComment;
 
         return (
           <Box key={dimension.id} sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
@@ -390,7 +402,13 @@ const CommentsStrategyRenderer: React.FC<StrategyRendererProps> = ({
               name={`dimensions.${index}.grade`}
               control={control}
               defaultValue={null}
-              render={({ field }) => <input type="hidden" {...field} />}
+              render={({ field }) => (
+                <input 
+                  type="hidden" 
+                  {...field} 
+                  value={field.value ?? ''} 
+                />
+              )}
             />
           </Box>
         );
@@ -408,7 +426,7 @@ const NumberOfErrorsStrategyRenderer: React.FC<StrategyRendererProps> = ({
   dimensions,
   readonly = false,
 }) => {
-  const { control, formState } = useFormContext<any>();
+  const { control, formState } = useFormContext<WorkshopAssessmentFormData>();
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -418,8 +436,8 @@ const NumberOfErrorsStrategyRenderer: React.FC<StrategyRendererProps> = ({
       </Alert>
 
       {dimensions.map((dimension, index) => {
-        const gradeError = (formState.errors.dimensions as any)?.[index]?.grade;
-        const commentError = (formState.errors.dimensions as any)?.[index]?.peerComment;
+        const gradeError = formState.errors.dimensions?.[index]?.grade;
+        const commentError = formState.errors.dimensions?.[index]?.peerComment;
 
         return (
           <Box key={dimension.id} sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
@@ -547,7 +565,7 @@ const GradingStrategyRenderer: React.FC<GradingStrategyRendererProps> = ({
   }
 
   // Factory pattern: Select appropriate strategy renderer based on workshop strategy
-  const renderStrategy = useCallback(() => {
+  const renderStrategy = () => {
     switch (workshop.strategy) {
       case 'accumulative':
         return (
@@ -592,7 +610,7 @@ const GradingStrategyRenderer: React.FC<GradingStrategyRendererProps> = ({
           </Alert>
         );
     }
-  }, [workshop, dimensions, readonly]);
+  };
 
   return (
     <Box>

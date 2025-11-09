@@ -177,7 +177,7 @@ export interface UserListResponse {
     /** Available filter options for dropdowns */
     filterOptions?: FilterOptions;
     /** Additional metadata as needed */
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 

@@ -29,6 +29,7 @@ import {
   styled,
   Typography,
 } from '@mui/material';
+import type { StepIconProps } from '@mui/material/StepIcon';
 import {
   Settings as SetupIcon,
   CloudUpload as SubmissionIcon,
@@ -69,6 +70,7 @@ interface PhaseConfig {
   label: string;
   description: string;
   icon: React.ReactElement;
+  stepIconComponent: React.ComponentType<StepIconProps>;
 }
 
 /**
@@ -141,6 +143,25 @@ function PhaseStepIcon(props: {
 }
 
 /**
+ * Factory function to create a step icon component with a specific icon
+ * Prevents nested component creation during render by returning a stable component reference
+ */
+const createStepIconComponent = (icon: React.ReactNode) => {
+  // This creates a stable component that can be reused
+  // We accept StepIconProps but use the icon from the closure instead of props.icon
+  const StepIconComponent = (props: StepIconProps) => (
+    <PhaseStepIcon 
+      active={props.active} 
+      completed={props.completed} 
+      icon={icon} 
+    />
+  );
+  // Set display name for debugging
+  StepIconComponent.displayName = 'PhaseStepIconComponent';
+  return StepIconComponent;
+};
+
+/**
  * PhaseIndicator Component
  * 
  * Visual display of workshop phase progression using Material-UI Stepper.
@@ -164,41 +185,51 @@ const PhaseIndicator: React.FC<PhaseIndicatorProps> = ({
    * Phase configuration array defining all workshop phases
    * Memoized to prevent recalculation on every render
    */
-  const phases: PhaseConfig[] = useMemo(
-    () => [
+  const phases: PhaseConfig[] = useMemo(() => {
+    const setupIcon = <SetupIcon />;
+    const submissionIcon = <SubmissionIcon />;
+    const assessmentIcon = <AssessmentIcon />;
+    const evaluationIcon = <EvaluationIcon />;
+    const closedIcon = <ClosedIcon />;
+
+    return [
       {
         value: WorkshopPhase.SETUP,
         label: 'Setup',
         description: 'Configure workshop settings and grading criteria',
-        icon: <SetupIcon />,
+        icon: setupIcon,
+        stepIconComponent: createStepIconComponent(setupIcon),
       },
       {
         value: WorkshopPhase.SUBMISSION,
         label: 'Submission',
         description: 'Students submit their work for peer review',
-        icon: <SubmissionIcon />,
+        icon: submissionIcon,
+        stepIconComponent: createStepIconComponent(submissionIcon),
       },
       {
         value: WorkshopPhase.ASSESSMENT,
         label: 'Assessment',
         description: 'Peer review and evaluation of submissions',
-        icon: <AssessmentIcon />,
+        icon: assessmentIcon,
+        stepIconComponent: createStepIconComponent(assessmentIcon),
       },
       {
         value: WorkshopPhase.EVALUATION,
         label: 'Evaluation',
         description: 'Calculate and aggregate final grades',
-        icon: <EvaluationIcon />,
+        icon: evaluationIcon,
+        stepIconComponent: createStepIconComponent(evaluationIcon),
       },
       {
         value: WorkshopPhase.CLOSED,
         label: 'Closed',
         description: 'Workshop completed, all grades finalized',
-        icon: <ClosedIcon />,
+        icon: closedIcon,
+        stepIconComponent: createStepIconComponent(closedIcon),
       },
-    ],
-    []
-  );
+    ];
+  }, []);
 
   /**
    * Calculate the active step index based on current phase
@@ -284,12 +315,7 @@ const PhaseIndicator: React.FC<PhaseIndicatorProps> = ({
         {phases.map((phase, index) => (
           <Step key={phase.value} completed={index < activeStep}>
             <StepLabel
-              StepIconComponent={(props) => (
-                <PhaseStepIcon
-                  {...props}
-                  icon={phase.icon}
-                />
-              )}
+              StepIconComponent={phase.stepIconComponent}
             >
               <Box>
                 <Typography

@@ -497,8 +497,8 @@ export function validateBulkOperationResponse(
   }
 
   const validated: AdminBulkOperationResponse = {
-    successCount: responseData.successCount as number,
-    failureCount: responseData.failureCount as number,
+    successCount: responseData.successCount,
+    failureCount: responseData.failureCount,
     errors: responseData.errors as AdminBulkOperationResponse['errors'],
   };
 
@@ -604,7 +604,7 @@ export function buildSortParams(
   // Validate order parameter
   if (order !== 'asc' && order !== 'desc') {
     console.warn(
-      `Invalid sort order "${order}". Defaulting to "asc". Valid values are "asc" or "desc".`
+      `Invalid sort order "${String(order)}". Defaulting to "asc". Valid values are "asc" or "desc".`
     );
     order = 'asc';
   }
