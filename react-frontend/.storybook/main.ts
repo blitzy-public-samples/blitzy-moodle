@@ -1,4 +1,10 @@
 import type { StorybookConfig } from '@storybook/react-vite';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+// Get directory name in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 /**
  * Storybook Main Configuration
@@ -130,7 +136,7 @@ const config: StorybookConfig = {
        * - Build optimization settings
        */
       builder: {
-        viteConfigPath: '../vite.config.ts',
+        viteConfigPath: join(__dirname, '..', 'vite.config.ts'),
       },
     },
   },
@@ -256,7 +262,7 @@ const config: StorybookConfig = {
    * - public/logo.png is accessible as /logo.png in stories
    * - public/fonts/roboto.woff2 is accessible as /fonts/roboto.woff2
    */
-  staticDirs: ['../public'],
+  staticDirs: [join(__dirname, '..', 'public')],
 };
 
 // Export as default to match Storybook's expected configuration format
