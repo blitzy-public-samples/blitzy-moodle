@@ -56,7 +56,7 @@ function useMediaQuery(query: string): boolean {
   // Handle SSR/SSG scenarios where window is undefined
   // Initialize with false as default for server-side rendering
   const getMatches = (): boolean => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
       return window.matchMedia(query).matches;
     }
     return false;
@@ -66,8 +66,8 @@ function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState<boolean>(getMatches);
 
   useEffect(() => {
-    // Return early if window is not defined (SSR/SSG)
-    if (typeof window === 'undefined') {
+    // Return early if window is not defined (SSR/SSG) or matchMedia is not available
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
       return;
     }
 
