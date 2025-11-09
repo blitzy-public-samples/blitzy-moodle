@@ -29,7 +29,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import React, { useMemo } from 'react';
+import type React from 'react';
+import { useMemo } from 'react';
 import {
   Card,
   CardHeader,
@@ -153,10 +154,18 @@ function getFileTypeIcon(mimetype: string): React.ReactElement {
  * @returns Formatted file size string (e.g., "2.5 MB")
  */
 function formatFileSize(bytes: number): string {
-  if (bytes === 0) return '0 B';
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes === 0) {
+    return '0 B';
+  }
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  }
+  if (bytes < 1024 * 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
 
@@ -241,7 +250,7 @@ export default function ResourceView({ resourceId }: ResourceViewProps): JSX.Ele
     }
 
     try {
-      return resource.displayoptions ? JSON.parse(resource.displayoptions) : {};
+      return resource.displayoptions ? (JSON.parse(resource.displayoptions) as Record<string, unknown>) : {};
     } catch (err) {
       console.error('Failed to parse display options:', err);
       return {};
@@ -296,7 +305,7 @@ export default function ResourceView({ resourceId }: ResourceViewProps): JSX.Ele
           severity="error"
           title="Unable to Load Resource"
           message={
-            error?.message || 'The requested resource could not be loaded. Please try again later.'
+            error?.message ?? 'The requested resource could not be loaded. Please try again later.'
           }
           closeable={false}
         />
@@ -337,7 +346,9 @@ export default function ResourceView({ resourceId }: ResourceViewProps): JSX.Ele
   // Determine action button configuration based on display type
   // Implements click-to-open behavior from resource_get_clicktoopen() in locallib.php line 68
   const getActionButton = (): React.ReactElement | null => {
-    if (!primaryFile) return null;
+    if (!primaryFile) {
+      return null;
+    }
 
     const fileUrl = primaryFile.url;
 
