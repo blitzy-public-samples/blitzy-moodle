@@ -785,6 +785,23 @@ export interface SearchCriteria {
   perPage?: number;
 }
 
+/**
+ * Response structure for paginated database records.
+ *
+ * Used when fetching lists of database records with pagination support.
+ */
+export interface DatabaseRecordsResponse {
+  /**
+   * Array of database records
+   */
+  records: DatabaseRecord[];
+
+  /**
+   * Pagination metadata
+   */
+  pagination: PaginationMeta;
+}
+
 // ============================================================================
 // Permission Interfaces
 // ============================================================================
