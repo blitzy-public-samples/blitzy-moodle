@@ -155,7 +155,7 @@ export function ProfilePage() {
             </Button>
           }
         >
-          {error?.message || 'Failed to load profile. Please try again.'}
+          {error?.message ?? 'Failed to load profile. Please try again.'}
         </Alert>
       </Container>
     );

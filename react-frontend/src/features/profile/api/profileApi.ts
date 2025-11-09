@@ -40,7 +40,7 @@ interface ApiResponse<T> {
 /**
  * API Configuration
  */
-const API_BASE_URL = process.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+const API_BASE_URL = process.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api/v1';
 const REQUEST_TIMEOUT = 30000; // 30 seconds
 const MAX_RETRIES = 3; // 3 retries after initial attempt = 4 total attempts
 const INITIAL_RETRY_DELAY = 1000; // 1 second

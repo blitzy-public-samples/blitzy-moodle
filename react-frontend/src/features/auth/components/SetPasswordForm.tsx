@@ -154,7 +154,7 @@ const calculatePasswordStrength = (
   }
 
   // Digit check
-  const digitCount = (password.match(/\d/g) || []).length;
+  const digitCount = (password.match(/\d/g) ?? []).length;
   if (digitCount >= policy.minDigits) {
     score += 15;
   } else if (policy.minDigits > 0) {
@@ -162,7 +162,7 @@ const calculatePasswordStrength = (
   }
 
   // Lowercase check
-  const lowerCount = (password.match(/[a-z]/g) || []).length;
+  const lowerCount = (password.match(/[a-z]/g) ?? []).length;
   if (lowerCount >= policy.minLower) {
     score += 15;
   } else if (policy.minLower > 0) {
@@ -170,7 +170,7 @@ const calculatePasswordStrength = (
   }
 
   // Uppercase check
-  const upperCount = (password.match(/[A-Z]/g) || []).length;
+  const upperCount = (password.match(/[A-Z]/g) ?? []).length;
   if (upperCount >= policy.minUpper) {
     score += 15;
   } else if (policy.minUpper > 0) {
@@ -178,7 +178,7 @@ const calculatePasswordStrength = (
   }
 
   // Non-alphanumeric check
-  const nonAlphaCount = (password.match(/[^a-zA-Z0-9]/g) || []).length;
+  const nonAlphaCount = (password.match(/[^a-zA-Z0-9]/g) ?? []).length;
   if (nonAlphaCount >= policy.minNonAlphanumeric) {
     score += 15;
   } else if (policy.minNonAlphanumeric > 0) {
@@ -266,11 +266,11 @@ const getStrengthLabel = (strength: PasswordStrength): string => {
  * Features include password strength indicator, policy requirements display,
  * and accessibility compliance.
  */
-const SetPasswordForm: React.FC<SetPasswordFormProps> = ({
+function SetPasswordForm({
   token,
   onSuccess,
   username,
-}) => {
+}: SetPasswordFormProps): React.JSX.Element {
   const [showPassword, setShowPassword] = useState(false);
   const [showPassword2, setShowPassword2] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState<PasswordStrengthResult | null>(
@@ -294,7 +294,7 @@ const SetPasswordForm: React.FC<SetPasswordFormProps> = ({
     retry: false, // Don't retry password policy fetch on failure
   });
 
-  const passwordPolicy = policyData?.data || {
+  const passwordPolicy = useMemo(() => policyData?.data ?? {
     minLength: 8,
     minDigits: 1,
     minLower: 1,
@@ -302,7 +302,7 @@ const SetPasswordForm: React.FC<SetPasswordFormProps> = ({
     minNonAlphanumeric: 1,
     reuseLimit: 5,
     maxLength: 128,
-  };
+  }, [policyData]);
 
   // Create dynamic Zod schema based on password policy
   const createPasswordSchema = (policy: PasswordPolicy) => {
@@ -416,7 +416,7 @@ const SetPasswordForm: React.FC<SetPasswordFormProps> = ({
     },
     onError: (error: ApiError) => {
       const errorMessage =
-        error.response?.data?.error?.message || error.message || 'An error occurred';
+        error.response?.data?.error?.message ?? error.message ?? 'An error occurred';
       const errorCode = error.response?.data?.error?.code;
 
       // Handle specific error cases
@@ -681,8 +681,8 @@ const SetPasswordForm: React.FC<SetPasswordFormProps> = ({
             />
             {passwordStrength.feedback.length > 0 && (
               <Box mt={1}>
-                {passwordStrength.feedback.map((feedback, index) => (
-                  <Box key={index} display="flex" alignItems="center" gap={0.5}>
+                {passwordStrength.feedback.map((feedback) => (
+                  <Box key={feedback} display="flex" alignItems="center" gap={0.5}>
                     <CancelIcon fontSize="small" color="error" />
                     <Typography variant="caption" color="error">
                       {feedback}
@@ -825,6 +825,6 @@ const SetPasswordForm: React.FC<SetPasswordFormProps> = ({
       </Stack>
     </Box>
   );
-};
+}
 
 export default SetPasswordForm;

@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import type React from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -78,7 +79,7 @@ interface LessonNavigationProps {
  * @param props - Component props
  * @returns React component for lesson navigation
  */
-const LessonNavigation: React.FC<LessonNavigationProps> = ({
+function LessonNavigation({
   currentPageId,
   totalPages,
   currentPageNumber,
@@ -90,7 +91,7 @@ const LessonNavigation: React.FC<LessonNavigationProps> = ({
   showPageOverview = false,
   pages = [],
   disabled = false,
-}) => {
+}: LessonNavigationProps): React.ReactElement {
   const [overviewModalOpen, setOverviewModalOpen] = useState(false);
 
   /**
@@ -397,6 +398,6 @@ const LessonNavigation: React.FC<LessonNavigationProps> = ({
       </Modal>
     </>
   );
-};
+}
 
 export default LessonNavigation;

@@ -212,7 +212,7 @@ export function ProfileEditPage() {
         </Breadcrumbs>
 
         <Alert severity="error" action={<button onClick={() => refetch()}>Retry</button>}>
-          {error?.message || 'Failed to load profile. Please try again.'}
+          {error?.message ?? 'Failed to load profile. Please try again.'}
         </Alert>
       </Container>
     );

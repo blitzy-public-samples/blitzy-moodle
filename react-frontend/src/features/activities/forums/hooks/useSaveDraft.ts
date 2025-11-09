@@ -204,9 +204,10 @@ export function useSaveDraft(options: UseSaveDraftOptions): UseSaveDraftReturn {
    * Cleanup auto-save timer on unmount
    */
   useEffect(() => {
+    const timer = autoSaveTimerRef.current;
     return () => {
-      if (autoSaveTimerRef.current) {
-        clearTimeout(autoSaveTimerRef.current);
+      if (timer) {
+        clearTimeout(timer);
       }
     };
   }, []);

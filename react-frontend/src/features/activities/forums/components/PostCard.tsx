@@ -169,7 +169,7 @@ const getInitials = (fullName: string): string => {
  * PostCard component
  * Displays a single forum post with author info, content, attachments, and actions
  */
-const PostCard: React.FC<PostCardProps> = ({
+function PostCard({
   post,
   currentUserRole,
   onReply,
@@ -182,7 +182,7 @@ const PostCard: React.FC<PostCardProps> = ({
   onReject,
   onSplit,
   onMove,
-}) => {
+}: PostCardProps): React.JSX.Element {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
@@ -198,8 +198,8 @@ const PostCard: React.FC<PostCardProps> = ({
   const isModerator = currentUserRole === 'moderator' || currentUserRole === 'teacher';
   
   // Determine the actual liked state (optimistic or real)
-  const isLiked = optimisticLiked !== null ? optimisticLiked : post.userHasLiked;
-  const likeCount = optimisticLikeCount !== null ? optimisticLikeCount : post.likeCount;
+  const isLiked = optimisticLiked ?? post.userHasLiked;
+  const likeCount = optimisticLikeCount ?? post.likeCount;
   
   // Clear optimistic state after successful update
   useEffect(() => {
@@ -406,8 +406,8 @@ const PostCard: React.FC<PostCardProps> = ({
   const handleDownloadAll = useCallback(() => {
     // In a real implementation, this would trigger a server endpoint
     // that creates a ZIP of all attachments and returns it
-    console.log('Download all attachments for post', post.id);
-  }, [post.id]);
+    // Log removed for production - implement actual download logic
+  }, []);
 
   /**
    * Debounced handlers to prevent duplicate actions from rapid clicks
@@ -494,7 +494,7 @@ const PostCard: React.FC<PostCardProps> = ({
       >
         <CardContent>
           <Alert severity="info">
-            This post has been deleted by {post.deletedBy?.fullName || 'Unknown User'}
+            This post has been deleted by {post.deletedBy?.fullName ?? 'Unknown User'}
             {post.deletedAt && ` on ${format(post.deletedAt, 'PPpp')}`}
           </Alert>
         </CardContent>
@@ -577,7 +577,7 @@ const PostCard: React.FC<PostCardProps> = ({
         </CardContent>
 
         {/* Moderator Actions */}
-        {(onApprove || onReject) && (
+        {(onApprove != null || onReject != null) && (
           <CardActions>
             {onApprove && (
               <Button
@@ -1054,7 +1054,7 @@ const PostCard: React.FC<PostCardProps> = ({
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleDeleteCancel} autoFocus>
+          <Button onClick={handleDeleteCancel}>
             Cancel
           </Button>
           <Button onClick={debouncedHandleDeleteConfirm} color="error">
@@ -1081,6 +1081,6 @@ const PostCard: React.FC<PostCardProps> = ({
       )}
     </Card>
   );
-};
+}
 
 export default PostCard;

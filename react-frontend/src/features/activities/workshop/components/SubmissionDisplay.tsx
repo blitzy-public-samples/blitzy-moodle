@@ -10,7 +10,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import React from 'react';
+import type React from 'react';
 import {
   Card,
   CardContent,
@@ -123,22 +123,22 @@ const getFileIcon = (mimetype: string): React.ReactElement => {
     mimetype.includes('text')
   ) {
     return <DocIcon />;
-  } else {
+  } 
     return <FileIcon />;
-  }
+  
 };
 
 /**
  * Format file size in human-readable format
  */
 const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) return '0 Bytes';
+  if (bytes === 0) {return '0 Bytes';}
   
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   
-  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  return `${Math.round(bytes / Math.pow(k, i) * 100) / 100  } ${  sizes[i]}`;
 };
 
 /**
@@ -147,12 +147,12 @@ const formatFileSize = (bytes: number): string => {
  * Renders a complete workshop submission with all metadata, content, and attachments.
  * Supports both regular and example submissions with appropriate styling and indicators.
  */
-const SubmissionDisplay: React.FC<SubmissionDisplayProps> = ({
+function SubmissionDisplay({
   submission,
   showAuthor,
   isExample,
   workshop,
-}) => {
+}: SubmissionDisplayProps): React.ReactElement {
   // Determine if author information should be hidden
   const shouldHideAuthor = workshop.anonymoussubmissions || !showAuthor;
   
@@ -373,7 +373,7 @@ const SubmissionDisplay: React.FC<SubmissionDisplayProps> = ({
             aria-label={`View full size image: ${image.filename}`}
           >
             <img
-              src={image.thumbnailurl || image.downloadurl}
+              src={image.thumbnailurl ?? image.downloadurl}
               alt={image.filename}
               style={{
                 width: '100%',
@@ -574,6 +574,6 @@ const SubmissionDisplay: React.FC<SubmissionDisplayProps> = ({
       </CardContent>
     </Card>
   );
-};
+}
 
 export default SubmissionDisplay;

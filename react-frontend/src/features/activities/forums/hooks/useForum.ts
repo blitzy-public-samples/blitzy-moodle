@@ -229,7 +229,7 @@ export function useForum(
       prevDataRef.current = data;
       onSuccess?.(data);
     }
-  }, [forumQuery.isSuccess, forumQuery.data, onSuccess]);
+  }, [forumQuery, onSuccess]);
 
   // Handle onError callback using useEffect
   const prevErrorRef = useRef<Error | null>(null);
@@ -450,7 +450,7 @@ export function useForum(
     const {data} = forumQuery;
     const currentSubscribed = data?.subscribed ?? false;
     subscriptionMutation.mutate(currentSubscribed);
-  }, [forumQuery.data, subscriptionMutation]);
+  }, [forumQuery, subscriptionMutation]);
 
   /**
    * Mark all discussions as read

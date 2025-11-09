@@ -181,11 +181,11 @@ interface MutationContext {
 // COMPONENT
 // ============================================================================
 
-export const DiscussionList: React.FC<DiscussionListProps> = ({
+export function DiscussionList({
   forumId,
   currentUser,
   permissions,
-}) => {
+}: DiscussionListProps): React.JSX.Element {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
@@ -268,9 +268,9 @@ export const DiscussionList: React.FC<DiscussionListProps> = ({
       // Call appropriate API based on current state
       if (isPinned) {
         return await unpinDiscussion(discussionId);
-      } else {
+      } 
         return await pinDiscussion(discussionId);
-      }
+      
     },
     onMutate: async (discussionId) => {
       // Optimistic update
@@ -326,9 +326,9 @@ export const DiscussionList: React.FC<DiscussionListProps> = ({
       // Call appropriate API based on current state
       if (isLocked) {
         return await unlockDiscussion(discussionId);
-      } else {
+      } 
         return await lockDiscussion(discussionId);
-      }
+      
     },
     onMutate: async (discussionId) => {
       // Optimistic update
@@ -1031,6 +1031,6 @@ export const DiscussionList: React.FC<DiscussionListProps> = ({
       </Menu>
     </Box>
   );
-};
+}
 
 export default DiscussionList;

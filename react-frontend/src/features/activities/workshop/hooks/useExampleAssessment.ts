@@ -12,7 +12,8 @@
  * @module features/activities/workshop/hooks/useExampleAssessment
  */
 
-import { useQuery, useMutation, useQueryClient, UseQueryResult, UseMutationResult } from '@tanstack/react-query';
+import type { UseQueryResult, UseMutationResult } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/services/api/client';
 
 /**
@@ -268,7 +269,7 @@ export function useCreateExampleAssessment(): UseMutationResult<
       }>(`/api/v1/workshop/examples/${input.exampleId}/assessments`, {
         dimensions: input.dimensions,
         feedbackauthor: input.feedbackauthor,
-        feedbackauthorformat: input.feedbackauthorformat || 1,
+        feedbackauthorformat: input.feedbackauthorformat ?? 1,
       });
       
       if (!response.data.success) {
@@ -279,12 +280,12 @@ export function useCreateExampleAssessment(): UseMutationResult<
     },
     onSuccess: (data, variables) => {
       // Invalidate example submission query to reflect new assessment
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ['workshop', 'examples', variables.exampleId],
       });
       
       // Invalidate workshop examples list
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ['workshops', 'examples'],
       });
       
@@ -414,7 +415,7 @@ export function useUpdateExampleAssessment(): UseMutationResult<
       
       // Invalidate example submission to reflect updated assessment
       if (data.submissionid) {
-        queryClient.invalidateQueries({
+        void queryClient.invalidateQueries({
           queryKey: ['workshop', 'examples', data.submissionid],
         });
       }
@@ -476,18 +477,18 @@ export function useSubmitExampleAssessment(): UseMutationResult<
       
       // Invalidate example submission
       if (data.submissionid) {
-        queryClient.invalidateQueries({
+        void queryClient.invalidateQueries({
           queryKey: ['workshop', 'examples', data.submissionid],
         });
       }
       
       // Invalidate workshop examples list to update completion status
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ['workshops', 'examples'],
       });
       
       // Invalidate comparison query as it may now be available
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ['workshop', 'examples', data.submissionid, 'compare', variables.assessmentId],
       });
     },

@@ -131,7 +131,7 @@ function convertToForumPost(post: DiscussionPost): ForumPost {
 /**
  * DiscussionThread Component
  */
-export const DiscussionThread: React.FC<DiscussionThreadProps> = ({ discussionId }) => {
+export function DiscussionThread({ discussionId }: DiscussionThreadProps): React.JSX.Element {
   // State for collapsed threads
   const [collapsedThreads, setCollapsedThreads] = useState<Set<number>>(new Set());
   
@@ -433,7 +433,7 @@ export const DiscussionThread: React.FC<DiscussionThreadProps> = ({ discussionId
           </Button>
         }
       >
-        {error?.message || 'Failed to load discussion. Please try again.'}
+        {error?.message ?? 'Failed to load discussion. Please try again.'}
       </Alert>
     );
   }
@@ -710,6 +710,6 @@ export const DiscussionThread: React.FC<DiscussionThreadProps> = ({ discussionId
       </div>
     </Box>
   );
-};
+}
 
 export default DiscussionThread;

@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from 'react';
 import {
   Card,
   CardHeader,
@@ -90,7 +90,7 @@ interface UserPlanCardProps {
  * @param {UserPlanCardProps} props - Component props
  * @returns {JSX.Element} Rendered UserPlanCard component
  */
-const UserPlanCard: React.FC<UserPlanCardProps> = ({ userPlan, currentPhase }) => {
+function UserPlanCard({ userPlan, currentPhase }: UserPlanCardProps): React.ReactElement {
   const theme = useTheme();
 
   /**
@@ -124,9 +124,9 @@ const UserPlanCard: React.FC<UserPlanCardProps> = ({ userPlan, currentPhase }) =
       return <StarIcon color="primary" />;
     } else if (completedCount === totalCount && totalCount > 0) {
       return <CheckCircleIcon sx={{ color: theme.palette.success.main }} />;
-    } else {
+    } 
       return <RadioButtonUncheckedIcon color="disabled" />;
-    }
+    
   };
 
   /**
@@ -139,9 +139,9 @@ const UserPlanCard: React.FC<UserPlanCardProps> = ({ userPlan, currentPhase }) =
       return <CheckCircleIcon sx={{ color: theme.palette.success.main }} />;
     } else if (task.completed === 'info') {
       return <HelpIcon sx={{ color: theme.palette.info.main }} />;
-    } else {
+    } 
       return <RadioButtonUncheckedIcon color="disabled" />;
-    }
+    
   };
 
   /**
@@ -267,7 +267,7 @@ const UserPlanCard: React.FC<UserPlanCardProps> = ({ userPlan, currentPhase }) =
                           <Button
                             size="small"
                             variant="outlined"
-                            onClick={() => handleTaskAction(task.link!)}
+                            onClick={() => handleTaskAction(task.link)}
                             disabled={task.completed === 'info'}
                             sx={{ minWidth: 80 }}
                           >
@@ -300,6 +300,6 @@ const UserPlanCard: React.FC<UserPlanCardProps> = ({ userPlan, currentPhase }) =
       </Box>
     </Card>
   );
-};
+}
 
 export default UserPlanCard;

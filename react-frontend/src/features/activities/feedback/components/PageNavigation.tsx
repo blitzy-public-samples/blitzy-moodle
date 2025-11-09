@@ -136,7 +136,7 @@ export interface PageNavigationProps {
  * />
  * ```
  */
-export const PageNavigation: React.FC<PageNavigationProps> = ({
+export function PageNavigation({
   currentPage,
   totalPages,
   onPrevious,
@@ -151,7 +151,7 @@ export const PageNavigation: React.FC<PageNavigationProps> = ({
   previousLabel = 'Previous',
   nextLabel = 'Next',
   submitLabel = 'Submit',
-}) => {
+}: PageNavigationProps): React.JSX.Element {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
@@ -439,6 +439,6 @@ export const PageNavigation: React.FC<PageNavigationProps> = ({
       )}
     </Box>
   );
-};
+}
 
 export default PageNavigation;

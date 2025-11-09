@@ -10,7 +10,6 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import React from 'react';
 import { Box, Typography } from '@mui/material';
 import type { Chapter, Book } from './ChapterView';
 
@@ -37,12 +36,12 @@ export interface ChapterContentProps {
  * @param props - Component props
  * @returns Rendered chapter content
  */
-const ChapterContent: React.FC<ChapterContentProps> = ({
+function ChapterContent({
   chapter,
   book,
   canViewHidden,
   shouldDimContent,
-}) => {
+}: ChapterContentProps) {
   /**
    * Generate chapter number prefix based on book numbering style
    * 0 = None, 1 = Numbers, 2 = Bullets, 3 = Indented
@@ -170,6 +169,6 @@ const ChapterContent: React.FC<ChapterContentProps> = ({
       />
     </Box>
   );
-};
+}
 
 export default ChapterContent;

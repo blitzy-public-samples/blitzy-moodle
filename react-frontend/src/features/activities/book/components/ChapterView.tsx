@@ -15,7 +15,6 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import React from 'react';
 import { Box, Paper, useTheme, useMediaQuery } from '@mui/material';
 import ChapterContent from './ChapterContent';
 import ChapterNavigation from './ChapterNavigation';
@@ -110,7 +109,7 @@ export interface ChapterViewProps {
  * @param props - Component props
  * @returns Rendered chapter view
  */
-const ChapterView: React.FC<ChapterViewProps> = ({
+function ChapterView({
   chapter,
   book,
   previousChapterId,
@@ -119,7 +118,7 @@ const ChapterView: React.FC<ChapterViewProps> = ({
   canViewHidden,
   courseModuleId: _courseModuleId, // Received but not used in current implementation
   allChapters: _allChapters, // Received but not used in current implementation
-}) => {
+}: ChapterViewProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
@@ -140,7 +139,7 @@ const ChapterView: React.FC<ChapterViewProps> = ({
    * Handle chapter deletion
    * TODO: Implement API call to delete chapter
    */
-  const handleDelete = async (chapterId: number): Promise<void> => {
+  const handleDelete = (chapterId: number): void => {
     console.warn(`Delete chapter ${chapterId} - API implementation needed`);
     // Future implementation: await deleteChapter(book.id, chapterId);
   };
@@ -149,7 +148,7 @@ const ChapterView: React.FC<ChapterViewProps> = ({
    * Handle chapter visibility toggle
    * TODO: Implement API call to toggle chapter visibility
    */
-  const handleToggleVisibility = async (chapterId: number, currentHiddenState: boolean): Promise<void> => {
+  const handleToggleVisibility = (chapterId: number, currentHiddenState: boolean): void => {
     console.warn(`Toggle visibility for chapter ${chapterId} (currently ${currentHiddenState ? 'hidden' : 'visible'}) - API implementation needed`);
     // Future implementation: await updateChapterVisibility(book.id, chapterId, !currentHiddenState);
   };
@@ -158,7 +157,7 @@ const ChapterView: React.FC<ChapterViewProps> = ({
    * Handle chapter movement (up/down in order)
    * TODO: Implement API call to reorder chapters
    */
-  const handleMove = async (chapterId: number, direction: 'up' | 'down'): Promise<void> => {
+  const handleMove = (chapterId: number, direction: 'up' | 'down'): void => {
     console.warn(`Move chapter ${chapterId} ${direction} - API implementation needed`);
     // Future implementation: await moveChapter(book.id, chapterId, direction);
   };
@@ -243,6 +242,6 @@ const ChapterView: React.FC<ChapterViewProps> = ({
       </Box>
     </Paper>
   );
-};
+}
 
 export default ChapterView;

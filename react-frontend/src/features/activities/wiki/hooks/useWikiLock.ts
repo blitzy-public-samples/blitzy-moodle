@@ -140,7 +140,14 @@ const checkLockStatus = async (pageId: number): Promise<{
     canOverride: boolean;
   };
 }> => {
-  const response = await apiClient.get(`/api/v1/wiki/${pageId}/lock`);
+  const response = await apiClient.get<{
+    success: boolean;
+    data: {
+      hasLock: boolean;
+      lockHolder: LockHolder | null;
+      canOverride: boolean;
+    };
+  }>(`/api/v1/wiki/${pageId}/lock`);
   return response.data;
 };
 
@@ -161,9 +168,22 @@ const acquireLock = async (pageId: number, section?: string, force: boolean = fa
     };
   };
 }> => {
-  const response = await apiClient.post(`/api/v1/wiki/${pageId}/lock`, {
+  const response = await apiClient.post<{
+    success: boolean;
+    data?: {
+      lockAcquired: boolean;
+      lockHolder: LockHolder | null;
+    };
+    error?: {
+      code: string;
+      message: string;
+      details?: {
+        lockHolder: LockHolder;
+      };
+    };
+  }>(`/api/v1/wiki/${pageId}/lock`, {
     pageId,
-    section: section || null,
+    section: section ?? null,
     force,
   });
   return response.data;
@@ -178,7 +198,12 @@ const sendHeartbeat = async (pageId: number): Promise<{
     lockMaintained: boolean;
   };
 }> => {
-  const response = await apiClient.put(`/api/v1/wiki/${pageId}/lock/heartbeat`);
+  const response = await apiClient.put<{
+    success: boolean;
+    data?: {
+      lockMaintained: boolean;
+    };
+  }>(`/api/v1/wiki/${pageId}/lock/heartbeat`);
   return response.data;
 };
 
@@ -191,7 +216,12 @@ const releaseLock = async (pageId: number): Promise<{
     lockReleased: boolean;
   };
 }> => {
-  const response = await apiClient.delete(`/api/v1/wiki/${pageId}/lock`);
+  const response = await apiClient.delete<{
+    success: boolean;
+    data?: {
+      lockReleased: boolean;
+    };
+  }>(`/api/v1/wiki/${pageId}/lock`);
   return response.data;
 };
 
@@ -293,23 +323,26 @@ export function useWikiLock({
         startHeartbeat();
 
         // Invalidate queries to refresh UI
-        queryClient.invalidateQueries({ queryKey: [LOCK_STATUS_QUERY_KEY, pageId] });
+        void queryClient.invalidateQueries({ queryKey: [LOCK_STATUS_QUERY_KEY, pageId] });
       }
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       // Lock conflict - another user has the lock
-      if (error.response?.data?.error?.code === 'LOCK_CONFLICT') {
-        const conflictHolder = error.response.data.error.details?.lockHolder;
-        if (conflictHolder) {
-          // Update cache with conflict information
-          queryClient.setQueryData([LOCK_STATUS_QUERY_KEY, pageId], {
-            success: true,
-            data: {
-              hasLock: false,
-              lockHolder: conflictHolder,
-              canOverride,
-            },
-          });
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: { error?: { code?: string; details?: { lockHolder?: LockHolder } } } } };
+        if (axiosError.response?.data?.error?.code === 'LOCK_CONFLICT') {
+          const conflictHolder: LockHolder | undefined = axiosError.response.data.error.details?.lockHolder;
+          if (conflictHolder) {
+            // Update cache with conflict information
+            queryClient.setQueryData([LOCK_STATUS_QUERY_KEY, pageId], {
+              success: true,
+              data: {
+                hasLock: false,
+                lockHolder: conflictHolder,
+                canOverride,
+              },
+            });
+          }
         }
       }
       console.error('Failed to acquire lock:', error);
@@ -342,7 +375,7 @@ export function useWikiLock({
         });
 
         // Invalidate queries to refresh UI
-        queryClient.invalidateQueries({ queryKey: [LOCK_STATUS_QUERY_KEY, pageId] });
+        void queryClient.invalidateQueries({ queryKey: [LOCK_STATUS_QUERY_KEY, pageId] });
       }
     },
     onError: (error) => {
@@ -357,6 +390,16 @@ export function useWikiLock({
   // ============================================================================
 
   /**
+   * Stop heartbeat interval
+   */
+  const stopHeartbeat = useCallback(() => {
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current);
+      heartbeatIntervalRef.current = null;
+    }
+  }, []);
+
+  /**
    * Start periodic heartbeat to maintain lock
    */
   const startHeartbeat = useCallback(() => {
@@ -366,45 +409,37 @@ export function useWikiLock({
     }
 
     // Set up new heartbeat interval (every 30 seconds)
-    heartbeatIntervalRef.current = setInterval(async () => {
-      try {
-        const response = await sendHeartbeat(pageId);
-        if (!response.success || !response.data?.lockMaintained) {
-          // Lock was lost, stop heartbeat
-          stopHeartbeat();
-          
-          // Update cache to reflect lost lock
-          queryClient.setQueryData([LOCK_STATUS_QUERY_KEY, pageId], {
-            success: true,
-            data: {
-              hasLock: false,
-              lockHolder: null,
-              canOverride,
-            },
-          });
+    heartbeatIntervalRef.current = setInterval(() => {
+      void (async () => {
+        try {
+          const response = await sendHeartbeat(pageId);
+          if (!response.success || !response.data?.lockMaintained) {
+            // Lock was lost, stop heartbeat
+            stopHeartbeat();
+            
+            // Update cache to reflect lost lock
+            queryClient.setQueryData([LOCK_STATUS_QUERY_KEY, pageId], {
+              success: true,
+              data: {
+                hasLock: false,
+                lockHolder: null,
+                canOverride,
+              },
+            });
 
-          // Invalidate queries
-          queryClient.invalidateQueries({ queryKey: [LOCK_STATUS_QUERY_KEY, pageId] });
-          
-          console.warn('Lock heartbeat failed - lock may have been lost');
+            // Invalidate queries
+            void queryClient.invalidateQueries({ queryKey: [LOCK_STATUS_QUERY_KEY, pageId] });
+            
+            console.warn('Lock heartbeat failed - lock may have been lost');
+          }
+        } catch (error) {
+          console.error('Heartbeat error:', error);
+          // On network error, let the interval continue but log the issue
+          // The lock status query will detect if lock is actually lost
         }
-      } catch (error) {
-        console.error('Heartbeat error:', error);
-        // On network error, let the interval continue but log the issue
-        // The lock status query will detect if lock is actually lost
-      }
+      })();
     }, HEARTBEAT_INTERVAL);
-  }, [pageId, queryClient, canOverride]);
-
-  /**
-   * Stop heartbeat interval
-   */
-  const stopHeartbeat = useCallback(() => {
-    if (heartbeatIntervalRef.current) {
-      clearInterval(heartbeatIntervalRef.current);
-      heartbeatIntervalRef.current = null;
-    }
-  }, []);
+  }, [pageId, queryClient, canOverride, stopHeartbeat]);
 
   // ============================================================================
   // EFFECTS
@@ -428,7 +463,7 @@ export function useWikiLock({
       // Only auto-acquire if no one else has the lock
       acquireLockMutation.mutate({ force: false });
     }
-  }, [autoAcquire, hasLock, lockHolder, isCheckingLock]);
+  }, [autoAcquire, hasLock, lockHolder, isCheckingLock, acquireLockMutation]);
 
   /**
    * Effect: Cleanup - release lock and stop heartbeat on unmount
@@ -463,10 +498,15 @@ export function useWikiLock({
   const handleAcquireLock = useCallback(async (): Promise<void> => {
     try {
       await acquireLockMutation.mutateAsync({ force: false });
-    } catch (error: any) {
+    } catch (error: unknown) {
       // If it's a lock conflict, the error is already handled in onError
       // Re-throw other errors
-      if (error.response?.data?.error?.code !== 'LOCK_CONFLICT') {
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: { error?: { code?: string } } } };
+        if (axiosError.response?.data?.error?.code !== 'LOCK_CONFLICT') {
+          throw error;
+        }
+      } else {
         throw error;
       }
     }

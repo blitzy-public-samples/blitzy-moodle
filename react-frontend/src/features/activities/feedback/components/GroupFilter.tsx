@@ -14,8 +14,7 @@
  */
 
 import type React from 'react';
-import type {
-  SelectChangeEvent} from '@mui/material';
+import type { SelectChangeEvent } from '@mui/material';
 import {
   FormControl,
   InputLabel,
@@ -26,105 +25,8 @@ import {
   Box
 } from '@mui/material';
 import { Groups as GroupsIcon } from '@mui/icons-material';
-
-/**
- * Group data structure matching Moodle's group object
- */
-export interface Group {
-  id: number;
-  name: string;
-  courseid: number;
-  description?: string;
-  descriptionformat?: number;
-  enrolmentkey?: string;
-  picture?: number;
-  hidepicture?: number;
-  timecreated?: number;
-  timemodified?: number;
-}
-
-/**
- * Group mode constants from Moodle
- */
-export enum GroupMode {
-  NOGROUPS = 0,
-  SEPARATEGROUPS = 1,
-  VISIBLEGROUPS = 2,
-}
-
-/**
- * Props for the GroupFilter component
- */
-export interface GroupFilterProps {
-  /**
-   * Array of available groups for filtering
-   */
-  groups: Group[];
-
-  /**
-   * Currently selected group ID
-   * 0 means "All participants"
-   * -1 means no selection (loading or error state)
-   */
-  selectedGroupId: number;
-
-  /**
-   * Callback fired when group selection changes
-   */
-  onChange: (groupId: number) => void;
-
-  /**
-   * Whether groups are currently being loaded
-   */
-  isLoading?: boolean;
-
-  /**
-   * Error message if groups failed to load
-   */
-  error?: string | null;
-
-  /**
-   * Group mode for the activity
-   * Determines label text and visibility options
-   */
-  groupMode?: GroupMode;
-
-  /**
-   * Whether to show "All participants" option
-   * Depends on group mode and user capabilities
-   */
-  showAllParticipants?: boolean;
-
-  /**
-   * Optional label override
-   */
-  label?: string;
-
-  /**
-   * Whether the select is disabled
-   */
-  disabled?: boolean;
-
-  /**
-   * Optional CSS class name
-   */
-  className?: string;
-
-  /**
-   * Whether to show the groups icon
-   */
-  showIcon?: boolean;
-
-  /**
-   * Size variant of the select component
-   */
-  size?: 'small' | 'medium';
-
-  /**
-   * Optional grouping name to display with label
-   */
-  groupingName?: string;
-}
+import type { GroupFilterProps } from '../types/feedback.types';
+import { GroupMode } from '../types/feedback.types';
 
 /**
  * GroupFilter Component
@@ -133,13 +35,13 @@ export interface GroupFilterProps {
  * Integrates with Moodle's group system and provides a user-friendly interface
  * for group selection with loading states and error handling.
  */
-export const GroupFilter: React.FC<GroupFilterProps> = ({
+export function GroupFilter({
   groups,
   selectedGroupId,
   onChange,
   isLoading = false,
   error = null,
-  groupMode = GroupMode.NOGROUPS,
+  groupMode,
   showAllParticipants = true,
   label,
   disabled = false,
@@ -147,7 +49,7 @@ export const GroupFilter: React.FC<GroupFilterProps> = ({
   showIcon = true,
   size = 'medium',
   groupingName,
-}) => {
+}: GroupFilterProps): React.JSX.Element {
   /**
    * Handle group selection change
    */
@@ -267,8 +169,12 @@ export const GroupFilter: React.FC<GroupFilterProps> = ({
    * Render single group state (only one option available)
    */
   if (groups.length === 1 && !showAllParticipants) {
-    // Non-null assertion is safe here due to length check above
-    const singleGroup = groups[0]!;
+    // Safe to access first element since we verified length === 1
+    const singleGroup = groups[0];
+    if (!singleGroup) {
+      // Defensive check - should never happen due to length check
+      return null;
+    }
     return (
       <FormControl size={size} className={className} disabled>
         <InputLabel>{getLabel()}</InputLabel>
@@ -336,6 +242,6 @@ export const GroupFilter: React.FC<GroupFilterProps> = ({
       )}
     </FormControl>
   );
-};
+}
 
 export default GroupFilter;

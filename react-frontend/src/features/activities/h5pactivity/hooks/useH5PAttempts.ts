@@ -403,10 +403,10 @@ export default function useH5PAttempts(params: AttemptsQueryParams): AttemptsQue
   });
 
   // Extract and transform data from query result
-  const attempts = query.data?.usersattempts || [];
-  const totalAttempts = query.data?.totalattempts || 0;
-  const activityIdFromResponse = query.data?.activityid || null;
-  const warnings = query.data?.warnings || [];
+  const attempts = query.data?.usersattempts ?? [];
+  const totalAttempts = query.data?.totalattempts ?? 0;
+  const activityIdFromResponse = query.data?.activityid ?? null;
+  const warnings = query.data?.warnings ?? [];
 
   return {
     attempts,

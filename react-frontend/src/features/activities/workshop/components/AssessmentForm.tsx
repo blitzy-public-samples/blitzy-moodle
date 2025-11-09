@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import type React from 'react';
+import { useState, useEffect } from 'react';
+import { useForm, Controller, type Control, type FieldErrors } from 'react-hook-form';
 import {
   Box,
   Card,
@@ -25,6 +26,15 @@ import { ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
 export type GradingStrategyType = 'accumulative' | 'rubric' | 'comments' | 'numerrors';
 
 /**
+ * Assessment level for rubric strategy
+ */
+export interface AssessmentLevel {
+  id: number;
+  definition: string;
+  grade: number;
+}
+
+/**
  * Workshop assessment dimension interface
  */
 export interface AssessmentDimension {
@@ -35,7 +45,7 @@ export interface AssessmentDimension {
   weight: number;
   min?: number;
   max?: number;
-  [key: string]: any;
+  levels?: AssessmentLevel[];
 }
 
 /**
@@ -51,7 +61,6 @@ export interface Workshop {
   overallfeedbackfiles: number;
   overallfeedbackmaxbytes?: number;
   overallfeedbackmaxfiles?: number;
-  [key: string]: any;
 }
 
 /**
@@ -70,7 +79,7 @@ export interface WorkshopAssessment {
   gradinggrade?: number;
   timemodified?: number;
   timecreated?: number;
-  [key: string]: any;
+  [key: `grade_${number}`]: number | string | undefined;
 }
 
 /**
@@ -81,7 +90,6 @@ export interface AssessmentFormData {
   feedbackauthor: string;
   feedbackauthorattachment?: File[];
   weight?: number;
-  [key: string]: any;
 }
 
 /**
@@ -104,8 +112,8 @@ export interface AssessmentFormProps {
 interface GradingStrategyRendererProps {
   strategy: GradingStrategyType;
   dimensions: AssessmentDimension[];
-  control: any;
-  errors: any;
+  control: Control<AssessmentFormData>;
+  errors: FieldErrors<AssessmentFormData>;
   isEditable: boolean;
 }
 
@@ -113,13 +121,13 @@ interface GradingStrategyRendererProps {
  * GradingStrategyRenderer component
  * Renders form fields based on the grading strategy type
  */
-const GradingStrategyRenderer: React.FC<GradingStrategyRendererProps> = ({
+function GradingStrategyRenderer({
   strategy,
   dimensions,
   control,
   errors,
   isEditable,
-}) => {
+}: GradingStrategyRendererProps): React.JSX.Element {
   /**
    * Render accumulative strategy fields
    * Shows text fields for each dimension with min/max validation
@@ -131,7 +139,7 @@ const GradingStrategyRenderer: React.FC<GradingStrategyRendererProps> = ({
           {dimension.description}
         </Typography>
         <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
-          Grade range: {dimension.min || 0} - {dimension.max || dimension.grade}
+          Grade range: {dimension.min ?? 0} - {dimension.max ?? dimension.grade}
         </Typography>
         <Controller
           name={`dimensions.dim_${dimension.id}`}
@@ -140,12 +148,12 @@ const GradingStrategyRenderer: React.FC<GradingStrategyRendererProps> = ({
           rules={{
             required: 'Grade is required',
             min: {
-              value: dimension.min || 0,
-              message: `Minimum grade is ${dimension.min || 0}`,
+              value: dimension.min ?? 0,
+              message: `Minimum grade is ${dimension.min ?? 0}`,
             },
             max: {
-              value: dimension.max || dimension.grade,
-              message: `Maximum grade is ${dimension.max || dimension.grade}`,
+              value: dimension.max ?? dimension.grade,
+              message: `Maximum grade is ${dimension.max ?? dimension.grade}`,
             },
             validate: (value) => {
               const numValue = parseFloat(value);
@@ -164,11 +172,11 @@ const GradingStrategyRenderer: React.FC<GradingStrategyRendererProps> = ({
               error={!!errors?.dimensions?.[`dim_${dimension.id}`]}
               helperText={errors?.dimensions?.[`dim_${dimension.id}`]?.message}
               inputProps={{
-                min: dimension.min || 0,
-                max: dimension.max || dimension.grade,
+                min: dimension.min ?? 0,
+                max: dimension.max ?? dimension.grade,
                 step: 0.01,
               }}
-              placeholder={`Enter grade (${dimension.min || 0}-${dimension.max || dimension.grade})`}
+              placeholder={`Enter grade (${dimension.min ?? 0}-${dimension.max ?? dimension.grade})`}
             />
           )}
         />
@@ -200,7 +208,7 @@ const GradingStrategyRenderer: React.FC<GradingStrategyRendererProps> = ({
             <FormControl fullWidth error={!!errors?.dimensions?.[`dim_${dimension.id}`]} disabled={!isEditable}>
               <InputLabel>Select Level</InputLabel>
               <Select {...field} label="Select Level">
-                {dimension.levels?.map((level: any) => (
+                {dimension.levels?.map((level) => (
                   <MenuItem key={level.id} value={level.id}>
                     {level.definition} ({level.grade} points)
                   </MenuItem>
@@ -246,8 +254,8 @@ const GradingStrategyRenderer: React.FC<GradingStrategyRendererProps> = ({
               disabled={!isEditable}
               error={!!errors?.dimensions?.[`dim_${dimension.id}`]}
               helperText={
-                errors?.dimensions?.[`dim_${dimension.id}`]?.message ||
-                `${field.value?.length || 0} characters`
+                errors?.dimensions?.[`dim_${dimension.id}`]?.message ??
+                `${field.value?.length ?? 0} characters`
               }
               placeholder="Enter your comment..."
             />
@@ -312,7 +320,7 @@ const GradingStrategyRenderer: React.FC<GradingStrategyRendererProps> = ({
         </Alert>
       );
   }
-};
+}
 
 /**
  * RichTextEditor component
@@ -329,7 +337,7 @@ interface RichTextEditorProps {
   required?: boolean;
 }
 
-const RichTextEditor: React.FC<RichTextEditorProps> = ({
+function RichTextEditor({
   value,
   onChange,
   disabled = false,
@@ -337,10 +345,10 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   helperText,
   maxLength,
   required = false,
-}) => {
-  const characterCount = value?.length || 0;
+}: RichTextEditorProps) {
+  const characterCount = value?.length ?? 0;
   const helperTextWithCount = maxLength
-    ? `${helperText || ''} ${characterCount}/${maxLength} characters`
+    ? `${helperText ?? ''} ${characterCount}/${maxLength} characters`
     : helperText;
 
   return (
@@ -360,7 +368,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
       required={required}
     />
   );
-};
+}
 
 /**
  * AssessmentForm Component
@@ -372,7 +380,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
  * @param props - AssessmentFormProps containing workshop, assessment, and callback functions
  * @returns React component for assessment form
  */
-const AssessmentForm: React.FC<AssessmentFormProps> = ({
+function AssessmentForm({
   workshop,
   assessment,
   dimensions,
@@ -381,7 +389,7 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({
   onCancel,
   canSetWeight = false,
   hasPendingAssessments = false,
-}) => {
+}: AssessmentFormProps) {
   // Form state management with React Hook Form
   const {
     control,
@@ -391,8 +399,8 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({
   } = useForm<AssessmentFormData>({
     defaultValues: {
       dimensions: {},
-      feedbackauthor: assessment?.feedbackauthor || '',
-      weight: assessment?.weight || 1,
+      feedbackauthor: assessment?.feedbackauthor ?? '',
+      weight: assessment?.weight ?? 1,
     },
   });
 
@@ -406,7 +414,7 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({
    */
   useEffect(() => {
     if (assessment && dimensions) {
-      const dimensionValues: Record<string, any> = {};
+      const dimensionValues: Record<string, string | number> = {};
       
       // Load existing dimension grades from assessment
       dimensions.forEach((dimension) => {
@@ -418,8 +426,8 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({
 
       reset({
         dimensions: dimensionValues,
-        feedbackauthor: assessment.feedbackauthor || '',
-        weight: assessment.weight || 1,
+        feedbackauthor: assessment.feedbackauthor ?? '',
+        weight: assessment.weight ?? 1,
       });
     }
   }, [assessment, dimensions, reset]);
@@ -449,19 +457,19 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({
    * Handle file upload for overall feedback attachments
    */
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
+    const {files} = event.target;
     if (files) {
       const fileArray = Array.from(files);
       
       // Validate file count
-      const maxFiles = workshop.overallfeedbackmaxfiles || 5;
+      const maxFiles = workshop.overallfeedbackmaxfiles ?? 5;
       if (fileArray.length > maxFiles) {
         alert(`Maximum ${maxFiles} files allowed`);
         return;
       }
 
       // Validate file sizes
-      const maxBytes = workshop.overallfeedbackmaxbytes || 5242880; // 5MB default
+      const maxBytes = workshop.overallfeedbackmaxbytes ?? 5242880; // 5MB default
       const oversizedFiles = fileArray.filter(file => file.size > maxBytes);
       if (oversizedFiles.length > 0) {
         alert(`Some files exceed the maximum size of ${(maxBytes / 1048576).toFixed(2)}MB`);
@@ -579,8 +587,8 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({
                   {uploadedFiles.length} file(s) selected
                 </Typography>
                 <ul style={{ margin: '8px 0', paddingLeft: 20 }}>
-                  {uploadedFiles.map((file, index) => (
-                    <li key={index}>
+                  {uploadedFiles.map((file) => (
+                    <li key={`${file.name}-${file.size}-${file.lastModified}`}>
                       <Typography variant="caption">
                         {file.name} ({(file.size / 1024).toFixed(2)} KB)
                       </Typography>
@@ -754,6 +762,6 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({
       </CardContent>
     </Card>
   );
-};
+}
 
 export default AssessmentForm;

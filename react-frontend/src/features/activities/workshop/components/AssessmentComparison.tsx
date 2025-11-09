@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react';
+import type React from 'react';
+import { useMemo } from 'react';
 import {
   Box,
   Card,
@@ -23,7 +24,7 @@ import {
   Error as ErrorIcon,
   Refresh as RefreshIcon,
 } from '@mui/icons-material';
-import {
+import type {
   Workshop,
   WorkshopAssessment as BaseWorkshopAssessment,
   DimensionGrade,
@@ -100,7 +101,7 @@ const CLOSE_MATCH_TOLERANCE = 10;
 /**
  * Calculate the agreement percentage between two assessments
  */
-export function calculateAgreement(
+function calculateAgreement(
   referenceAssessment: WorkshopAssessment,
   userAssessment: WorkshopAssessment
 ): number {
@@ -143,7 +144,7 @@ export function calculateAgreement(
 /**
  * Calculate dimension-by-dimension comparison
  */
-export function calculateDimensionComparisons(
+function calculateDimensionComparisons(
   referenceAssessment: WorkshopAssessment,
   userAssessment: WorkshopAssessment
 ): DimensionComparison[] {
@@ -173,7 +174,7 @@ export function calculateDimensionComparisons(
 
     return {
       dimensionId: refDim.dimensionId,
-      criterionName: refDim.criterionName || refDim.description || `Criterion ${refDim.dimensionId}`,
+      criterionName: refDim.criterionName ?? refDim.description ?? `Criterion ${refDim.dimensionId}`,
       referenceGrade: refGrade,
       userGrade,
       difference,
@@ -213,14 +214,14 @@ function getAgreementFeedback(agreementPercentage: number): {
       color: 'warning',
       icon: <WarningIcon />,
     };
-  } else {
+  } 
     return {
       level: 'Needs Improvement',
       message: 'Your assessment differs significantly from the reference. Please review the assessment criteria and example more carefully before reassessing.',
       color: 'error',
       icon: <ErrorIcon />,
     };
-  }
+  
 }
 
 /**
@@ -291,14 +292,14 @@ function getImprovementTips(dimensionComparisons: DimensionComparison[]): string
  * for workshop example submissions. Highlights differences and provides feedback
  * on assessment quality to help users improve their assessment skills.
  */
-const AssessmentComparison: React.FC<AssessmentComparisonProps> = ({
+function AssessmentComparison({
   referenceAssessment,
   userAssessment,
   workshop,
   comparisonData,
   onReassess,
   canReassess = false,
-}) => {
+}: AssessmentComparisonProps): React.ReactElement {
   // Calculate comparison if not provided
   const calculatedComparison = useMemo(() => {
     if (comparisonData) {
@@ -534,8 +535,8 @@ const AssessmentComparison: React.FC<AssessmentComparisonProps> = ({
             Tips for Improvement
           </Typography>
           <Box component="ul" sx={{ pl: 2, m: 0 }}>
-            {improvementTips.map((tip, index) => (
-              <Typography component="li" variant="body2" key={index} sx={{ mb: 1 }}>
+            {improvementTips.map((tip) => (
+              <Typography component="li" variant="body2" key={tip} sx={{ mb: 1 }}>
                 {tip}
               </Typography>
             ))}
@@ -552,6 +553,6 @@ const AssessmentComparison: React.FC<AssessmentComparisonProps> = ({
       </Card>
     </Box>
   );
-};
+}
 
 export default AssessmentComparison;

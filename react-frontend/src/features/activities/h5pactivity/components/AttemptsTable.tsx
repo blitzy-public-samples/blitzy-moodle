@@ -108,11 +108,15 @@ interface AttemptsTableProps {
 /**
  * Custom toolbar with export functionality
  */
-const CustomToolbar: React.FC<{
+function CustomToolbar({ 
+  onExportCsv, 
+  onExportJson, 
+  enableExport 
+}: {
   onExportCsv?: () => void;
   onExportJson?: () => void;
   enableExport?: boolean;
-}> = ({ onExportCsv, onExportJson, enableExport }) => {
+}): React.ReactElement {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
 
@@ -168,95 +172,103 @@ const CustomToolbar: React.FC<{
       </Menu>
     </GridToolbarContainer>
   );
-};
+}
 
 /**
  * Empty state component when no attempts exist
  */
-const EmptyState: React.FC = () => (
-  <Box
-    sx={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      height: '100%',
-      py: 8,
-    }}
-  >
-    <Typography variant="h6" color="text.secondary" gutterBottom>
-      No attempts found
-    </Typography>
-    <Typography variant="body2" color="text.secondary">
-      There are no H5P activity attempts to display yet.
-    </Typography>
-  </Box>
-);
+function EmptyState(): React.ReactElement {
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100%',
+        py: 8,
+      }}
+    >
+      <Typography variant="h6" color="text.secondary" gutterBottom>
+        No attempts found
+      </Typography>
+      <Typography variant="body2" color="text.secondary">
+        There are no H5P activity attempts to display yet.
+      </Typography>
+    </Box>
+  );
+}
 
 /**
  * Loading skeleton for table rows
  */
-const LoadingSkeleton: React.FC = () => (
-  <Box sx={{ width: '100%', p: 2 }}>
-    {Array.from({ length: 5 }).map((_, index) => (
-      <Skeleton
-        key={index}
-        variant="rectangular"
-        height={52}
-        sx={{ mb: 1 }}
-        animation="wave"
-      />
-    ))}
-  </Box>
-);
+function LoadingSkeleton(): React.ReactElement {
+  const skeletonIds = ['skeleton-1', 'skeleton-2', 'skeleton-3', 'skeleton-4', 'skeleton-5'];
+  
+  return (
+    <Box sx={{ width: '100%', p: 2 }}>
+      {skeletonIds.map((id) => (
+        <Skeleton
+          key={id}
+          variant="rectangular"
+          height={52}
+          sx={{ mb: 1 }}
+          animation="wave"
+        />
+      ))}
+    </Box>
+  );
+}
 
 /**
  * Factory function to create a custom footer component with statistics
  */
 const createCustomFooter = (statistics: AttemptStatistics) => {
-  const CustomFooterComponent: React.FC = () => (
-    <Box
-      sx={{
-        p: 2,
-        display: 'flex',
-        justifyContent: 'space-around',
-        borderTop: 1,
-        borderColor: 'divider',
-        backgroundColor: 'background.default',
-      }}
-    >
-      <Box sx={{ textAlign: 'center' }}>
-        <Typography variant="caption" color="text.secondary">
-          Total Attempts
-        </Typography>
-        <Typography variant="h6">{statistics.totalAttempts}</Typography>
+  function CustomFooterComponent(): React.ReactElement {
+    return (
+      <Box
+        sx={{
+          p: 2,
+          display: 'flex',
+          justifyContent: 'space-around',
+          borderTop: 1,
+          borderColor: 'divider',
+          backgroundColor: 'background.default',
+        }}
+      >
+        <Box sx={{ textAlign: 'center' }}>
+          <Typography variant="caption" color="text.secondary">
+            Total Attempts
+          </Typography>
+          <Typography variant="h6">{statistics.totalAttempts}</Typography>
+        </Box>
+        <Box sx={{ textAlign: 'center' }}>
+          <Typography variant="caption" color="text.secondary">
+            Average Score
+          </Typography>
+          <Typography variant="h6">
+            {statistics.averageScore.toFixed(1)}%
+          </Typography>
+        </Box>
+        <Box sx={{ textAlign: 'center' }}>
+          <Typography variant="caption" color="text.secondary">
+            Completion Rate
+          </Typography>
+          <Typography variant="h6">
+            {statistics.completionRate.toFixed(1)}%
+          </Typography>
+        </Box>
+        <Box sx={{ textAlign: 'center' }}>
+          <Typography variant="caption" color="text.secondary">
+            Success Rate
+          </Typography>
+          <Typography variant="h6">
+            {statistics.successRate.toFixed(1)}%
+          </Typography>
+        </Box>
       </Box>
-      <Box sx={{ textAlign: 'center' }}>
-        <Typography variant="caption" color="text.secondary">
-          Average Score
-        </Typography>
-        <Typography variant="h6">
-          {statistics.averageScore.toFixed(1)}%
-        </Typography>
-      </Box>
-      <Box sx={{ textAlign: 'center' }}>
-        <Typography variant="caption" color="text.secondary">
-          Completion Rate
-        </Typography>
-        <Typography variant="h6">
-          {statistics.completionRate.toFixed(1)}%
-        </Typography>
-      </Box>
-      <Box sx={{ textAlign: 'center' }}>
-        <Typography variant="caption" color="text.secondary">
-          Success Rate
-        </Typography>
-        <Typography variant="h6">
-          {statistics.successRate.toFixed(1)}%
-        </Typography>
-      </Box>
-    </Box>
-  );
+    );
+  }
   
   return CustomFooterComponent;
 };
@@ -266,7 +278,7 @@ const createCustomFooter = (statistics: AttemptStatistics) => {
  * 
  * Renders H5P attempts in a Material-UI DataGrid with comprehensive features
  */
-const AttemptsTable: React.FC<AttemptsTableProps> = ({
+function AttemptsTable({
   attempts = [],
   loading = false,
   error = null,
@@ -276,7 +288,7 @@ const AttemptsTable: React.FC<AttemptsTableProps> = ({
   enableExport = true,
   onExportCsv,
   onExportJson,
-}) => {
+}: AttemptsTableProps): React.ReactElement {
   // State management
   const [sortModel, setSortModel] = useState<GridSortModel>([
     { field: 'timemodified', sort: 'desc' },
@@ -638,6 +650,6 @@ const AttemptsTable: React.FC<AttemptsTableProps> = ({
       />
     </Box>
   );
-};
+}
 
 export default AttemptsTable;

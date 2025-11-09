@@ -176,11 +176,11 @@ export function useWikiEdit({
   
   // Acquire lock when component mounts
   useEffect(() => {
-    acquireLock();
+    void acquireLock();
     
     // Cleanup: release lock on unmount
     return () => {
-      releaseLock();
+      void releaseLock();
     };
   }, [acquireLock, releaseLock]);
   
@@ -196,7 +196,7 @@ export function useWikiEdit({
    */
   const validate = useCallback((content?: string): ValidationResult => {
     const errors: WikiValidationError[] = [];
-    const contentToValidate = content !== undefined ? content : currentContent;
+    const contentToValidate = content ?? currentContent;
     
     // Check if content is empty
     const trimmedContent = contentToValidate.trim();
@@ -251,7 +251,7 @@ export function useWikiEdit({
       
       // Optimistically update the cache
       queryClient.setQueryData<WikiPage>(['wiki', 'page', pageId], (old) => {
-        if (!old) return old;
+        if (!old) {return old;}
         return {
           ...old,
           content: data.content,
@@ -280,9 +280,9 @@ export function useWikiEdit({
       clearDraft();
       
       // Invalidate queries to refetch fresh data
-      queryClient.invalidateQueries({ queryKey: ['wiki', 'page', pageId] });
-      queryClient.invalidateQueries({ queryKey: ['wiki', 'pages'] });
-      queryClient.invalidateQueries({ queryKey: ['wiki', 'history', pageId] });
+      void queryClient.invalidateQueries({ queryKey: ['wiki', 'page', pageId] });
+      void queryClient.invalidateQueries({ queryKey: ['wiki', 'pages'] });
+      void queryClient.invalidateQueries({ queryKey: ['wiki', 'history', pageId] });
     },
   });
   
@@ -332,22 +332,17 @@ export function useWikiEdit({
       throw new Error('Cannot save: page lock not held. Another user may be editing this page.');
     }
     
-    try {
-      // Perform save
-      await saveMutation.mutateAsync({
-        content: currentContent,
-        contentFormat,
-      });
-      
-      // Release lock after successful save
-      await releaseLock();
-      
-      // Navigate to view page
-      navigate(`/wiki/${pageId}`);
-    } catch (error) {
-      // Re-throw error for handling by caller
-      throw error;
-    }
+    // Perform save
+    await saveMutation.mutateAsync({
+      content: currentContent,
+      contentFormat,
+    });
+    
+    // Release lock after successful save
+    await releaseLock();
+    
+    // Navigate to view page
+    navigate(`/wiki/${pageId}`);
   }, [
     validate,
     hasLock,
@@ -368,12 +363,8 @@ export function useWikiEdit({
    * @returns Promise resolving to preview HTML
    */
   const previewPage = useCallback(async (): Promise<WikiPreviewResponse> => {
-    try {
-      const result = await previewMutation.mutateAsync();
-      return result;
-    } catch (error) {
-      throw error;
-    }
+    const result = await previewMutation.mutateAsync();
+    return result;
   }, [previewMutation]);
   
   /**

@@ -716,3 +716,126 @@ export type FeedbackListResult = {
   /** Whether there are more results */
   hasMore: boolean;
 };
+
+/**
+ * Group mode constants from Moodle.
+ *
+ * Defines how groups are used in activities:
+ * - NOGROUPS: No groups used
+ * - SEPARATEGROUPS: Students can only see their own group
+ * - VISIBLEGROUPS: Students can see all groups but work in their own
+ */
+export enum GroupMode {
+  /** No groups are used in this activity */
+  NOGROUPS = 0,
+  /** Separate groups - students only see their own group */
+  SEPARATEGROUPS = 1,
+  /** Visible groups - students see all groups but work in their own */
+  VISIBLEGROUPS = 2,
+}
+
+/**
+ * Group data structure matching Moodle's group object.
+ *
+ * Represents a course group with all Moodle-specific fields.
+ * Used for filtering feedback responses and other group-based operations.
+ */
+export interface Group {
+  /** Unique group identifier */
+  id: number;
+  /** Group name */
+  name: string;
+  /** Course ID this group belongs to */
+  courseid: number;
+  /** Optional group description */
+  description?: string;
+  /** Text format for description field */
+  descriptionformat?: number;
+  /** Optional enrollment key for self-enrollment */
+  enrolmentkey?: string;
+  /** Group picture file ID */
+  picture?: number;
+  /** Whether to hide the group picture */
+  hidepicture?: number;
+  /** Unix timestamp when group was created */
+  timecreated?: number;
+  /** Unix timestamp when group was last modified */
+  timemodified?: number;
+}
+
+/**
+ * Props for the GroupFilter component.
+ *
+ * Defines the interface for the group filter dropdown component
+ * used in feedback analysis and response viewing.
+ */
+export interface GroupFilterProps {
+  /**
+   * Array of available groups for filtering
+   */
+  groups: Group[];
+
+  /**
+   * Currently selected group ID
+   * 0 means "All participants"
+   * -1 means no selection (loading or error state)
+   */
+  selectedGroupId: number;
+
+  /**
+   * Callback fired when group selection changes
+   */
+  onChange: (groupId: number) => void;
+
+  /**
+   * Whether groups are currently being loaded
+   */
+  isLoading?: boolean;
+
+  /**
+   * Error message if groups failed to load
+   */
+  error?: string | null;
+
+  /**
+   * Group mode for the activity
+   * Determines label text and visibility options
+   */
+  groupMode?: GroupMode;
+
+  /**
+   * Whether to show "All participants" option
+   * Depends on group mode and user capabilities
+   */
+  showAllParticipants?: boolean;
+
+  /**
+   * Optional label override
+   */
+  label?: string;
+
+  /**
+   * Whether the select is disabled
+   */
+  disabled?: boolean;
+
+  /**
+   * Optional CSS class name
+   */
+  className?: string;
+
+  /**
+   * Whether to show the groups icon
+   */
+  showIcon?: boolean;
+
+  /**
+   * Size variant of the select component
+   */
+  size?: 'small' | 'medium';
+
+  /**
+   * Optional grouping name to display with label
+   */
+  groupingName?: string;
+}

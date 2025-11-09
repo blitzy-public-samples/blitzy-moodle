@@ -177,11 +177,11 @@ const parseAdditionals = (additionals: string | null): H5PResultAdditionals | nu
 /**
  * Component for rendering different interaction type responses
  */
-const ResponseRenderer: React.FC<{
+function ResponseRenderer({ interactiontype, response, correctpattern }: {
   interactiontype: string;
   response: string;
   correctpattern: string | null;
-}> = ({ interactiontype, response, correctpattern }) => {
+}): React.ReactElement {
   const decodedResponse = decodeResponse(response);
   const decodedCorrect = correctpattern ? decodeResponse(correctpattern) : null;
 
@@ -229,10 +229,10 @@ const ResponseRenderer: React.FC<{
           Your answer:
         </Typography>
         <Stack spacing={1}>
-          {decodedResponse.map((item, index) => {
+          {decodedResponse.map((item) => {
             const isCorrect = decodedCorrect?.includes(item);
             return (
-              <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box key={`choice-${String(item)}`} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 {isCorrect ? (
                   <CheckBoxIcon color="success" fontSize="small" />
                 ) : (
@@ -249,8 +249,8 @@ const ResponseRenderer: React.FC<{
               Correct answer:
             </Typography>
             <Stack spacing={1}>
-              {decodedCorrect.map((item, index) => (
-                <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {decodedCorrect.map((item) => (
+                <Box key={`correct-${String(item)}`} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <CheckCircleIcon color="success" fontSize="small" />
                   <Typography variant="body2">{String(item)}</Typography>
                 </Box>
@@ -302,7 +302,7 @@ const ResponseRenderer: React.FC<{
               const isCorrect = Array.isArray(correctPair) && correctPair[0] === source && correctPair[1] === target;
               
               return (
-                <Grid item xs={12} key={index}>
+                <Grid item xs={12} key={`match-${String(source)}-${String(target)}`}>
                   <Paper
                     variant="outlined"
                     sx={{
@@ -346,12 +346,12 @@ const ResponseRenderer: React.FC<{
       </Typography>
     </Alert>
   );
-};
+}
 
 /**
  * Component for displaying xAPI statement data
  */
-const XAPIStatementViewer: React.FC<{ additionals: H5PResultAdditionals }> = ({ additionals }) => {
+function XAPIStatementViewer({ additionals }: { additionals: H5PResultAdditionals }): React.ReactElement {
   return (
     <Paper variant="outlined" sx={{ p: 2, mt: 2, backgroundColor: 'grey.50' }}>
       <Typography variant="subtitle2" gutterBottom color="text.secondary">
@@ -375,7 +375,7 @@ const XAPIStatementViewer: React.FC<{ additionals: H5PResultAdditionals }> = ({ 
       </Box>
     </Paper>
   );
-};
+}
 
 /**
  * ResultsDetail Component
@@ -383,7 +383,7 @@ const XAPIStatementViewer: React.FC<{ additionals: H5PResultAdditionals }> = ({ 
  * Displays detailed results of a single H5P activity attempt with question-level breakdown,
  * responses, correctness indicators, and scoring information.
  */
-const ResultsDetail: React.FC<ResultsDetailProps> = ({ data, loading = false }) => {
+function ResultsDetail({ data, loading = false }: ResultsDetailProps): React.ReactElement {
   // Loading state
   if (loading) {
     return (
@@ -623,7 +623,7 @@ const ResultsDetail: React.FC<ResultsDetailProps> = ({ data, loading = false }) 
                       </Typography>
                       
                       <Chip
-                        label={INTERACTION_TYPE_LABELS[result.interactiontype] || result.interactiontype}
+                        label={INTERACTION_TYPE_LABELS[result.interactiontype] ?? result.interactiontype}
                         size="small"
                         color="primary"
                         variant="outlined"
@@ -737,6 +737,6 @@ const ResultsDetail: React.FC<ResultsDetailProps> = ({ data, loading = false }) 
       </Card>
     </Box>
   );
-};
+}
 
 export default ResultsDetail;

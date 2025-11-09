@@ -151,7 +151,7 @@ export async function refreshToken(): Promise<string> {
 
       // Call the refresh endpoint with the refresh token
       const response = await axios.post<ApiResponse<RefreshTokenResponse>>(
-        `${process.env.VITE_API_BASE_URL || ''}${AUTH_ENDPOINTS.REFRESH}`,
+        `${process.env.VITE_API_BASE_URL ?? ''}${AUTH_ENDPOINTS.REFRESH}`,
         { refreshToken: currentRefreshToken },
         {
           headers: {
@@ -174,7 +174,7 @@ export async function refreshToken(): Promise<string> {
       if (axios.isAxiosError(error)) {
         const axiosError = error as AxiosError<{ message?: string }>;
         throw new Error(
-          axiosError.response?.data?.message || 'Token refresh failed'
+          axiosError.response?.data?.message ?? 'Token refresh failed'
         );
       }
       throw error;
@@ -194,7 +194,7 @@ export async function refreshToken(): Promise<string> {
  * @returns User information from the token or null if invalid
  */
 export function getUserFromToken(token?: string): TokenUser | null {
-  const tokenToUse = token || getAccessToken();
+  const tokenToUse = token ?? getAccessToken();
   
   if (!tokenToUse) {
     return null;
@@ -228,7 +228,7 @@ export async function logout(): Promise<void> {
     if (token) {
       // Call the API to blacklist the token on the server
       await axios.post(
-        `${process.env.VITE_API_BASE_URL || ''}${AUTH_ENDPOINTS.LOGOUT}`,
+        `${process.env.VITE_API_BASE_URL ?? ''}${AUTH_ENDPOINTS.LOGOUT}`,
         {},
         {
           headers: {
