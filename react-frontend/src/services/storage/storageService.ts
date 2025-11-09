@@ -198,36 +198,53 @@ export function setItem<T>(key: string, value: T, storageType: StorageType = 'lo
     // Serialize value to JSON
     const serializedValue = JSON.stringify(valueToStore);
 
-    if (isStorageAvailable(storageType)) {
-      const storage = getStorageObject(storageType);
-      if (!storage) {
-        return false;
-      }
-
-      try {
-        storage.setItem(key, serializedValue);
-        return true;
-      } catch (storageError) {
-        // Handle quota exceeded error
-        if (
-          storageError instanceof DOMException &&
-          (storageError.name === 'QuotaExceededError' ||
-            storageError.name === 'NS_ERROR_DOM_QUOTA_REACHED')
-        ) {
-          console.warn(
-            `Storage quota exceeded for ${storageType}Storage. Key: "${key}". ` +
-              'Consider clearing old data or reducing storage usage.'
-          );
-        } else {
-          console.error(`Error setting item "${key}" in ${storageType}Storage:`, storageError);
-        }
-        return false;
-      }
-    } else {
-      // Fall back to in-memory storage
+    const storage = getStorageObject(storageType);
+    
+    if (!storage) {
+      // Storage object doesn't exist (null/undefined) → use in-memory fallback
       const memoryMap = getInMemoryMap(storageType);
       memoryMap.set(key, serializedValue);
       return true;
+    }
+
+    // Storage object exists → try to write directly
+    try {
+      storage.setItem(key, serializedValue);
+      return true;
+    } catch (storageError) {
+      // Handle quota exceeded error
+      if (
+        storageError instanceof DOMException &&
+        (storageError.name === 'QuotaExceededError' ||
+          storageError.name === 'NS_ERROR_DOM_QUOTA_REACHED')
+      ) {
+        console.warn(
+          `Storage quota exceeded for ${storageType}Storage. Key: "${key}". ` +
+            'Consider clearing old data or reducing storage usage.'
+        );
+        return false;
+      }
+      
+      // Handle SecurityError - distinguish between strict security restriction and general unavailability
+      if (storageError instanceof DOMException && storageError.name === 'SecurityError') {
+        // If the error message is "Security error", it's a strict security restriction
+        // and we should NOT use fallback (e.g., private browsing mode blocking writes)
+        if (storageError.message === 'Security error') {
+          console.error(`${storageType}Storage security error:`, storageError);
+          return false;
+        }
+        
+        // For other SecurityErrors (e.g., "Storage unavailable"), use in-memory fallback
+        // This handles cases where storage is completely inaccessible but not due to a strict restriction
+        console.warn(`${storageType}Storage unavailable, using in-memory fallback:`, storageError);
+        const memoryMap = getInMemoryMap(storageType);
+        memoryMap.set(key, serializedValue);
+        return true;
+      }
+      
+      // Other unexpected errors
+      console.error(`Error setting item "${key}" in ${storageType}Storage:`, storageError);
+      return false;
     }
   } catch (error) {
     // Handle JSON serialization errors

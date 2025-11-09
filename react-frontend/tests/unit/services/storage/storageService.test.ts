@@ -13,16 +13,9 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import {
-  getItem,
-  setItem,
-  removeItem,
-  isStorageAvailable,
-  clear,
-  getKeys,
-  addStorageListener,
-  removeStorageListener,
-} from '@/services/storage/storageService';
+
+// Import types for TypeScript
+type StorageService = typeof import('@/services/storage/storageService');
 
 /**
  * Mock Storage class implementing the Storage interface
@@ -71,11 +64,15 @@ class MockStorage implements Storage {
     if (this.isUnavailable) {
       throw new DOMException('Storage unavailable', 'SecurityError');
     }
-    if (this.shouldThrowQuotaError) {
-      throw new DOMException('Quota exceeded', 'QuotaExceededError');
-    }
+    // SecurityError should always throw - it means storage is completely inaccessible
     if (this.shouldThrowSecurityError) {
       throw new DOMException('Security error', 'SecurityError');
+    }
+    // QuotaExceededError should only throw for non-test keys
+    // This allows isStorageAvailable() to succeed (storage is available)
+    // while actual data writes fail (storage is full)
+    if (this.shouldThrowQuotaError && key !== '__storage_test__') {
+      throw new DOMException('Quota exceeded', 'QuotaExceededError');
     }
     this.store.set(key, value);
   }
@@ -106,8 +103,18 @@ describe('storageService', () => {
   let originalSessionStorage: Storage;
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
   let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
+  
+  // Storage service functions (dynamically imported in beforeEach)
+  let getItem: StorageService['getItem'];
+  let setItem: StorageService['setItem'];
+  let removeItem: StorageService['removeItem'];
+  let isStorageAvailable: StorageService['isStorageAvailable'];
+  let clear: StorageService['clear'];
+  let getKeys: StorageService['getKeys'];
+  let addStorageListener: StorageService['addStorageListener'];
+  let removeStorageListener: StorageService['removeStorageListener'];
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Create fresh mock storage instances
     mockLocalStorage = new MockStorage();
     mockSessionStorage = new MockStorage();
@@ -133,14 +140,20 @@ describe('storageService', () => {
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-    // Clear any cached availability results by forcing re-check
-    // This is done by clearing the test key used in isStorageAvailable
-    try {
-      mockLocalStorage.removeItem('__storage_test__');
-      mockSessionStorage.removeItem('__storage_test__');
-    } catch (e) {
-      // Ignore errors during cleanup
-    }
+    // Reset module state to clear any cached availability results
+    // This ensures each test starts with a fresh module state
+    vi.resetModules();
+    
+    // Dynamically import storage service to get fresh module after reset
+    const storageService = await import('@/services/storage/storageService');
+    getItem = storageService.getItem;
+    setItem = storageService.setItem;
+    removeItem = storageService.removeItem;
+    isStorageAvailable = storageService.isStorageAvailable;
+    clear = storageService.clear;
+    getKeys = storageService.getKeys;
+    addStorageListener = storageService.addStorageListener;
+    removeStorageListener = storageService.removeStorageListener;
   });
 
   afterEach(() => {
@@ -559,7 +572,14 @@ describe('storageService', () => {
           'NS_ERROR_DOM_QUOTA_REACHED'
         );
 
-        vi.spyOn(mockLocalStorage, 'setItem').mockImplementation(() => {
+        // Mock setItem to throw only for non-test keys
+        // This allows isStorageAvailable() to succeed while actual data storage fails
+        vi.spyOn(mockLocalStorage, 'setItem').mockImplementation((key: string, value: string) => {
+          if (key === '__storage_test__') {
+            // Allow test key to succeed so storage is considered available
+            mockLocalStorage.getStore().set(key, value);
+            return;
+          }
           throw firefoxQuotaError;
         });
 
