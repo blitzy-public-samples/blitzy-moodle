@@ -280,7 +280,7 @@ const GradeChart: React.FC<GradeChartProps> = ({
               radius={[8, 8, 0, 0]}
               name={yAxisKey === 'count' ? 'Count' : 'Grade (%)'}
             />
-            {yAxisKey === 'percentage' && chartData[0]?.average !== undefined && (
+            {yAxisKey === 'percentage' && chartData[0] && 'average' in chartData[0] && chartData[0].average !== undefined && (
               <Bar
                 dataKey="average"
                 fill={theme.palette.secondary.main}
@@ -322,7 +322,7 @@ const GradeChart: React.FC<GradeChartProps> = ({
               activeDot={{ r: 6 }}
               name={yAxisKey === 'count' ? 'Count' : 'Grade (%)'}
             />
-            {yAxisKey === 'percentage' && chartData[0]?.average !== undefined && (
+            {yAxisKey === 'percentage' && chartData[0] && 'average' in chartData[0] && chartData[0].average !== undefined && (
               <Line
                 type="monotone"
                 dataKey="average"
@@ -366,7 +366,7 @@ const GradeChart: React.FC<GradeChartProps> = ({
               fillOpacity={0.6}
               name={yAxisKey === 'count' ? 'Count' : 'Grade (%)'}
             />
-            {yAxisKey === 'percentage' && chartData[0]?.average !== undefined && (
+            {yAxisKey === 'percentage' && chartData[0] && 'average' in chartData[0] && chartData[0].average !== undefined && (
               <Area
                 type="monotone"
                 dataKey="average"
@@ -380,7 +380,43 @@ const GradeChart: React.FC<GradeChartProps> = ({
         );
 
       default:
-        return null;
+        // Fallback to BAR chart for any unexpected chart type
+        return (
+          <BarChart {...commonChartProps}>
+            {showGrid && <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />}
+            <XAxis
+              dataKey={xAxisKey}
+              {...commonAxisProps}
+              label={{ value: xAxisKey === 'range' ? 'Grade Range' : 'Assignment', position: 'insideBottom', offset: -5 }}
+            />
+            <YAxis
+              {...commonAxisProps}
+              label={{ value: yAxisKey === 'count' ? 'Count' : 'Grade (%)', angle: -90, position: 'insideLeft' }}
+            />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: theme.palette.background.paper,
+                border: `1px solid ${theme.palette.divider}`,
+                borderRadius: theme.shape.borderRadius,
+              }}
+            />
+            {showLegend && <Legend iconType="circle" align="right" />}
+            <Bar
+              dataKey={yAxisKey}
+              fill={theme.palette.primary.main}
+              radius={[8, 8, 0, 0]}
+              name={yAxisKey === 'count' ? 'Count' : 'Grade (%)'}
+            />
+            {yAxisKey === 'percentage' && chartData[0] && 'average' in chartData[0] && chartData[0].average !== undefined && (
+              <Bar
+                dataKey="average"
+                fill={theme.palette.secondary.main}
+                radius={[8, 8, 0, 0]}
+                name="Average (%)"
+              />
+            )}
+          </BarChart>
+        );
     }
   };
 
