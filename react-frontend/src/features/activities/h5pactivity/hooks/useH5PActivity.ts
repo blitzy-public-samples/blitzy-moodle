@@ -316,9 +316,11 @@ export default function useH5PActivity(
   const parseDisplayOptions = (displayoptions: string): H5PDisplayOptions => {
     try {
       const parsed = JSON.parse(displayoptions) as Record<string, unknown>;
+      // Backend uses 'export' property name, but we map it to 'download' in TypeScript
+      // because 'export' is a reserved keyword
       return {
         frame: (parsed.frame as boolean | undefined) ?? true,
-        export: (parsed.export as boolean | undefined) ?? false,
+        download: (parsed['export'] as boolean | undefined) ?? false,
         embed: (parsed.embed as boolean | undefined) ?? false,
         copyright: (parsed.copyright as boolean | undefined) ?? false,
         about: (parsed.about as boolean | undefined) ?? false,
@@ -328,7 +330,7 @@ export default function useH5PActivity(
       console.warn('Failed to parse display options, using defaults:', error);
       return {
         frame: true,
-        export: false,
+        download: false,
         embed: false,
         copyright: false,
         about: false,
