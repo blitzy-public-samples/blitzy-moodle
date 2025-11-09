@@ -60,7 +60,7 @@ import {
 import { useCreatePost } from '../hooks/useCreatePost';
 import { useUpdatePost } from '../hooks/useUpdatePost';
 import { useSaveDraft } from '../hooks/useSaveDraft';
-import { useFileUpload } from '@/hooks/useFileUpload';
+import { useMultiFileUpload } from '@/hooks/useMultiFileUpload';
 import type { Post } from '../types/forum.types';
 
 // ============================================================================
@@ -261,22 +261,84 @@ export function PostForm({
     autoSaveInterval: AUTO_SAVE_INTERVAL,
   });
 
-  // File upload
+  // File management constants
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+  const MAX_FILES = 5;
+
+  // File upload management using custom hook
   const {
     files,
     addFiles,
     removeFile,
     clearFiles,
-    updateProgress: _updateProgress,
-    isMaxFilesReached: _isMaxFilesReached,
     totalSize,
-  } = useFileUpload({
-    maxFileSize: 10 * 1024 * 1024, // 10MB
-    maxFiles: 5,
+  } = useMultiFileUpload({
+    maxFiles: MAX_FILES,
+    maxSize: MAX_FILE_SIZE,
+    maxTotalSize: 50 * 1024 * 1024, // 50MB total
+    allowedTypes: [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain',
+      'application/zip',
+    ],
     onValidationError: (error) => {
       setValidationErrors((prev) => [...prev, error]);
     },
   });
+
+  // Create preview URLs for image files (manage cleanup)
+  const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
+
+  // Generate preview URLs for new image files
+  useEffect(() => {
+    const newPreviews: Record<string, string> = {};
+    const urlsToRevoke: string[] = [];
+
+    files.forEach((file) => {
+      if (file.file.type.startsWith('image/') && !previewUrls[file.id]) {
+        newPreviews[file.id] = URL.createObjectURL(file.file);
+      }
+    });
+
+    // Find URLs to revoke (files that were removed)
+    Object.keys(previewUrls).forEach((fileId) => {
+      if (!files.find((f) => f.id === fileId)) {
+        const url = previewUrls[fileId];
+        if (url) {
+          urlsToRevoke.push(url);
+        }
+      }
+    });
+
+    // Update preview URLs
+    if (Object.keys(newPreviews).length > 0 || urlsToRevoke.length > 0) {
+      setPreviewUrls((prev) => {
+        const updated = { ...prev, ...newPreviews };
+        urlsToRevoke.forEach((url) => {
+          const key = Object.keys(prev).find((k) => prev[k] === url);
+          if (key) {
+            delete updated[key];
+          }
+        });
+        return updated;
+      });
+
+      // Revoke old URLs
+      urlsToRevoke.forEach((url) => URL.revokeObjectURL(url));
+    }
+
+    // Cleanup on unmount
+    return () => {
+      Object.values(previewUrls).forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [files]); // Intentionally omit previewUrls from dependencies to avoid infinite loop
 
   // Create post mutation
   const {
@@ -1247,10 +1309,10 @@ export function PostForm({
                 {files.map((file) => (
                   <Paper key={file.id} variant="outlined" sx={{ p: 1.5, mb: 1 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      {file.preview ? (
+                      {previewUrls[file.id] ? (
                         <Box
                           component="img"
-                          src={file.preview}
+                          src={previewUrls[file.id]}
                           alt={file.name}
                           sx={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 1 }}
                         />
@@ -1271,7 +1333,7 @@ export function PostForm({
                         <Typography variant="caption" color="text.secondary">
                           {formatFileSize(file.size)}
                         </Typography>
-                        {file.progress > 0 && file.progress < 100 && (
+                        {file.progress !== undefined && file.progress > 0 && file.progress < 100 && (
                           <LinearProgress variant="determinate" value={file.progress} />
                         )}
                         {file.error && (
