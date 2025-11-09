@@ -304,6 +304,12 @@ export interface Submission {
   gradingstatus?: string;
   /** Array of submission plugins with their data */
   plugins?: AssignmentPlugin[];
+  /** Grade ID (when fetched with grade data in grading context) */
+  gradeid?: number;
+  /** Numeric grade value (when fetched with grade data in grading context) */
+  grade?: string | number;
+  /** Student name (when fetched with user data) */
+  studentname?: string;
 }
 
 /**
