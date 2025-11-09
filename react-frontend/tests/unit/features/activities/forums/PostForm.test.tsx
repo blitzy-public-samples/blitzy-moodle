@@ -33,8 +33,8 @@ vi.mock('@/features/activities/forums/hooks/useSaveDraft', () => ({
   useSaveDraft: vi.fn(),
 }));
 
-vi.mock('@/hooks/useFileUpload', () => ({
-  useFileUpload: vi.fn(),
+vi.mock('@/hooks/useMultiFileUpload', () => ({
+  useMultiFileUpload: vi.fn(),
 }));
 
 vi.mock('@/components/editor/RichTextEditor', () => ({
@@ -53,7 +53,7 @@ vi.mock('@/components/editor/RichTextEditor', () => ({
 import { useCreatePost } from '@/features/activities/forums/hooks/useCreatePost';
 import { useUpdatePost } from '@/features/activities/forums/hooks/useUpdatePost';
 import { useSaveDraft } from '@/features/activities/forums/hooks/useSaveDraft';
-import { useFileUpload } from '@/hooks/useFileUpload';
+import { useMultiFileUpload } from '@/hooks/useMultiFileUpload';
 
 describe('PostForm Component', () => {
   let queryClient: QueryClient;
@@ -68,8 +68,6 @@ describe('PostForm Component', () => {
   const mockAddFiles = vi.fn();
   const mockRemoveFile = vi.fn();
   const mockClearFiles = vi.fn();
-  const mockUpdateProgress = vi.fn();
-  const mockSetFileError = vi.fn();
 
   beforeEach(() => {
     queryClient = new QueryClient({
@@ -103,13 +101,11 @@ describe('PostForm Component', () => {
       lastSavedAt: null,
     });
 
-    vi.mocked(useFileUpload).mockReturnValue({
+    vi.mocked(useMultiFileUpload).mockReturnValue({
       files: [],
       addFiles: mockAddFiles,
       removeFile: mockRemoveFile,
       clearFiles: mockClearFiles,
-      updateProgress: mockUpdateProgress,
-      setFileError: mockSetFileError,
       isMaxFilesReached: false,
       totalSize: 0,
     });
@@ -398,15 +394,13 @@ describe('PostForm Component', () => {
     });
 
     it('displays uploaded files with preview', async () => {
-      vi.mocked(useFileUpload).mockReturnValue({
+      vi.mocked(useMultiFileUpload).mockReturnValue({
         files: [
           { id: '1', name: 'test.pdf', size: 1024, type: 'application/pdf', progress: 100, file: new File([''], 'test.pdf') },
         ],
         addFiles: mockAddFiles,
         removeFile: mockRemoveFile,
         clearFiles: mockClearFiles,
-        updateProgress: mockUpdateProgress,
-        setFileError: mockSetFileError,
         isMaxFilesReached: false,
         totalSize: 1024,
       });
@@ -418,15 +412,13 @@ describe('PostForm Component', () => {
     });
 
     it('handles file removal', async () => {
-      vi.mocked(useFileUpload).mockReturnValue({
+      vi.mocked(useMultiFileUpload).mockReturnValue({
         files: [
           { id: '1', name: 'test.pdf', size: 1024, type: 'application/pdf', progress: 100, file: new File([''], 'test.pdf') },
         ],
         addFiles: mockAddFiles,
         removeFile: mockRemoveFile,
         clearFiles: mockClearFiles,
-        updateProgress: mockUpdateProgress,
-        setFileError: mockSetFileError,
         isMaxFilesReached: false,
         totalSize: 1024,
       });
@@ -442,16 +434,14 @@ describe('PostForm Component', () => {
     it('validates file type restrictions', async () => {
       const invalidFile = new File(['content'], 'test.exe', { type: 'application/x-msdownload' });
       
-      // Mock useFileUpload to simulate file error
-      vi.mocked(useFileUpload).mockReturnValue({
+      // Mock useMultiFileUpload to simulate file error
+      vi.mocked(useMultiFileUpload).mockReturnValue({
         files: [
           { id: '1', name: 'test.exe', size: 1024, type: 'application/x-msdownload', progress: 0, file: invalidFile, error: 'File type not allowed' },
         ],
         addFiles: mockAddFiles,
         removeFile: mockRemoveFile,
         clearFiles: mockClearFiles,
-        updateProgress: mockUpdateProgress,
-        setFileError: mockSetFileError,
         isMaxFilesReached: false,
         totalSize: 1024,
       });
@@ -466,16 +456,14 @@ describe('PostForm Component', () => {
       const largeFile = new File(['x'.repeat(11 * 1024 * 1024)], 'large.pdf', { type: 'application/pdf' });
       Object.defineProperty(largeFile, 'size', { value: 11 * 1024 * 1024 });
       
-      // Mock useFileUpload to simulate file size error
-      vi.mocked(useFileUpload).mockReturnValue({
+      // Mock useMultiFileUpload to simulate file size error
+      vi.mocked(useMultiFileUpload).mockReturnValue({
         files: [
           { id: '1', name: 'large.pdf', size: 11 * 1024 * 1024, type: 'application/pdf', progress: 0, file: largeFile, error: 'File size exceeds maximum limit of 10 MB' },
         ],
         addFiles: mockAddFiles,
         removeFile: mockRemoveFile,
         clearFiles: mockClearFiles,
-        updateProgress: mockUpdateProgress,
-        setFileError: mockSetFileError,
         isMaxFilesReached: false,
         totalSize: 11 * 1024 * 1024,
       });
@@ -487,15 +475,13 @@ describe('PostForm Component', () => {
     });
 
     it('shows upload progress indicator', () => {
-      vi.mocked(useFileUpload).mockReturnValue({
+      vi.mocked(useMultiFileUpload).mockReturnValue({
         files: [
           { id: '1', name: 'uploading.pdf', size: 2048, type: 'application/pdf', progress: 45, file: new File([''], 'uploading.pdf') },
         ],
         addFiles: mockAddFiles,
         removeFile: mockRemoveFile,
         clearFiles: mockClearFiles,
-        updateProgress: mockUpdateProgress,
-        setFileError: mockSetFileError,
         isMaxFilesReached: false,
         totalSize: 2048,
       });
@@ -1437,13 +1423,11 @@ describe('PostForm Component', () => {
     });
 
     it('handles empty file list gracefully', () => {
-      vi.mocked(useFileUpload).mockReturnValue({
+      vi.mocked(useMultiFileUpload).mockReturnValue({
         files: [],
         addFiles: mockAddFiles,
         removeFile: mockRemoveFile,
         clearFiles: mockClearFiles,
-        updateProgress: mockUpdateProgress,
-        setFileError: mockSetFileError,
         isMaxFilesReached: false,
         totalSize: 0,
       });
