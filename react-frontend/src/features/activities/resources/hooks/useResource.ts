@@ -42,6 +42,9 @@ interface ResourceFile extends BaseResource {
   displayoptions: string;
   filterfiles: number;
   revision: number;
+  tobemigrated?: number;
+  legacyfiles?: number;
+  legacyfileslast?: number;
 }
 
 interface ResourcePage extends BaseResource {
