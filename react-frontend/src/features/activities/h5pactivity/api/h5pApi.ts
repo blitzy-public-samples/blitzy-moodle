@@ -30,6 +30,7 @@ import type {
   H5PAccessInfo,
   H5PActivityUpdatePayload,
   H5PAttempt,
+  H5PDisplayOptions,
 } from '../types/h5p.types';
 
 // ============================================================================
@@ -269,23 +270,19 @@ export async function deleteH5PActivity(activityId: number): Promise<void> {
  * console.log(options);
  * // {
  * //   frame: true,     // Bit 0 is set
- * //   export: false,   // Bit 1 is not set
+ * //   download: false, // Bit 1 is not set (backend 'export' property)
  * //   embed: false,    // Bit 2 is not set
  * //   copyright: true, // Bit 3 is set
  * //   about: true      // Bit 4 is set
  * // }
  * ```
  */
-export function parseDisplayOptions(displayoptions: number): {
-  frame: boolean;
-  export: boolean;
-  embed: boolean;
-  copyright: boolean;
-  about: boolean;
-} {
+export function parseDisplayOptions(displayoptions: number): H5PDisplayOptions {
+  // Backend uses 'export' property name (bit 1), but we map it to 'download' in TypeScript
+  // because 'export' is a reserved keyword
   return {
     frame: (displayoptions & 1) !== 0,
-    export: (displayoptions & 2) !== 0,
+    download: (displayoptions & 2) !== 0,
     embed: (displayoptions & 4) !== 0,
     copyright: (displayoptions & 8) !== 0,
     about: (displayoptions & 16) !== 0,
@@ -305,7 +302,7 @@ export function parseDisplayOptions(displayoptions: number): {
  * ```typescript
  * const bitmask = buildDisplayOptions({
  *   frame: true,
- *   export: false,
+ *   download: false,
  *   embed: false,
  *   copyright: true,
  *   about: true
@@ -313,18 +310,13 @@ export function parseDisplayOptions(displayoptions: number): {
  * console.log(bitmask); // 25 (Binary: 11001)
  * ```
  */
-export function buildDisplayOptions(options: {
-  frame?: boolean;
-  export?: boolean;
-  embed?: boolean;
-  copyright?: boolean;
-  about?: boolean;
-}): number {
+export function buildDisplayOptions(options: Partial<H5PDisplayOptions>): number {
   let bitmask = 0;
   if (options.frame) {
     bitmask |= 1;
   }
-  if (options.export) {
+  // Backend expects 'export' property (bit 1), but frontend uses 'download'
+  if (options.download) {
     bitmask |= 2;
   }
   if (options.embed) {
