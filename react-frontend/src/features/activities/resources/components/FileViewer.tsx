@@ -35,7 +35,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -200,12 +200,82 @@ const getViewerType = (mimetype: string): ViewerType => {
  * @returns Formatted file size string
  */
 const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) return '0 Bytes';
+  if (bytes === 0) {
+    return '0 Bytes';
+  }
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+  return `${Math.round((bytes / Math.pow(k, i)) * 100) / 100} ${sizes[i]}`;
 };
+
+/**
+ * TextViewer Component
+ * 
+ * Separate component for rendering text files to properly use React hooks
+ */
+interface TextViewerProps {
+  file: File;
+  ariaLabel?: string;
+  setIsLoading: (loading: boolean) => void;
+  setError: (error: string | null) => void;
+}
+
+function TextViewer({ file, ariaLabel, setIsLoading, setError }: TextViewerProps) {
+  const [textContent, setTextContent] = useState<string>('');
+
+  useEffect(() => {
+    fetch(file.fileurl)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('Failed to fetch text file');
+        }
+        return response.text();
+      })
+      .then((text) => {
+        setTextContent(text);
+        setIsLoading(false);
+      })
+      .catch((err: Error) => {
+        setError(`Failed to load text file: ${err.message}`);
+        setIsLoading(false);
+      });
+  }, [file.fileurl, setIsLoading, setError]);
+
+  return (
+    <Box
+      sx={{
+        width: '100%',
+        height: '100%',
+        minHeight: 400,
+        overflow: 'auto',
+      }}
+    >
+      <Paper
+        elevation={0}
+        sx={{
+          p: 2,
+          bgcolor: 'background.default',
+          fontFamily: 'monospace',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+        }}
+      >
+        <Typography
+          component="pre"
+          sx={{
+            fontFamily: 'inherit',
+            fontSize: '0.875rem',
+            m: 0,
+          }}
+          aria-label={ariaLabel ?? `Text file: ${file.filename}`}
+        >
+          {textContent}
+        </Typography>
+      </Paper>
+    </Box>
+  );
+}
 
 /**
  * FileViewer Component
@@ -213,7 +283,7 @@ const formatFileSize = (bytes: number): string => {
  * Main component that renders the appropriate viewer based on file type
  * Implements resource_display_embed() equivalent logic (locallib.php lines 65-109)
  */
-const FileViewer: React.FC<FileViewerProps> = ({
+function FileViewer({
   file,
   title,
   showMetadata = true,
@@ -221,7 +291,7 @@ const FileViewer: React.FC<FileViewerProps> = ({
   onDownload,
   className,
   ariaLabel,
-}) => {
+}: FileViewerProps) {
   // State management
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -293,13 +363,11 @@ const FileViewer: React.FC<FileViewerProps> = ({
           });
         }
       }
-    } else {
+    } else if (document.exitFullscreen) {
       // Exit fullscreen
-      if (document.exitFullscreen) {
-        document.exitFullscreen().catch((err) => {
-          console.error('Error attempting to exit fullscreen:', err);
-        });
-      }
+      document.exitFullscreen().catch((err) => {
+        console.error('Error attempting to exit fullscreen:', err);
+      });
     }
   }, []);
 
@@ -390,8 +458,8 @@ const FileViewer: React.FC<FileViewerProps> = ({
     >
       <CardMedia
         component="img"
-        image={file.fileurl}
-        alt={title || file.filename}
+        src={file.fileurl}
+        alt={title ?? file.filename}
         onLoad={() => {
           setImageLoaded(true);
           setIsLoading(false);
@@ -408,7 +476,7 @@ const FileViewer: React.FC<FileViewerProps> = ({
           transition: 'transform 0.2s ease-in-out',
           cursor: zoom > 100 ? 'move' : 'default',
         }}
-        aria-label={ariaLabel || `Image: ${file.filename}`}
+        aria-label={ariaLabel ?? `Image: ${file.filename}`}
       />
       {!imageLoaded && isLoading && (
         <Box
@@ -440,7 +508,7 @@ const FileViewer: React.FC<FileViewerProps> = ({
     >
       <iframe
         src={`${file.fileurl}#view=FitH`}
-        title={title || file.filename}
+        title={title ?? file.filename}
         style={{
           width: '100%',
           height: '100%',
@@ -451,7 +519,7 @@ const FileViewer: React.FC<FileViewerProps> = ({
           setError('Failed to load PDF. Your browser may not support PDF viewing.');
           setIsLoading(false);
         }}
-        aria-label={ariaLabel || `PDF document: ${file.filename}`}
+        aria-label={ariaLabel ?? `PDF document: ${file.filename}`}
       />
       {isLoading && (
         <Box
@@ -496,9 +564,10 @@ const FileViewer: React.FC<FileViewerProps> = ({
           setError('Failed to load video. The format may not be supported by your browser.');
           setIsLoading(false);
         }}
-        aria-label={ariaLabel || `Video: ${file.filename}`}
+        aria-label={ariaLabel ?? `Video: ${file.filename}`}
       >
         <source src={file.fileurl} type={file.mimetype} />
+        <track kind="captions" label="No captions available" />
         <Typography>
           Your browser does not support the video tag. Please{' '}
           <Button onClick={handleDownload} size="small">
@@ -537,9 +606,10 @@ const FileViewer: React.FC<FileViewerProps> = ({
           setError('Failed to load audio. The format may not be supported by your browser.');
           setIsLoading(false);
         }}
-        aria-label={ariaLabel || `Audio: ${file.filename}`}
+        aria-label={ariaLabel ?? `Audio: ${file.filename}`}
       >
         <source src={file.fileurl} type={file.mimetype} />
+        <track kind="captions" label="No captions available" />
         <Typography>
           Your browser does not support the audio tag. Please{' '}
           <Button onClick={handleDownload} size="small">
@@ -572,7 +642,7 @@ const FileViewer: React.FC<FileViewerProps> = ({
       >
         <iframe
           src={viewerUrl}
-          title={title || file.filename}
+          title={title ?? file.filename}
           style={{
             width: '100%',
             height: '100%',
@@ -585,7 +655,7 @@ const FileViewer: React.FC<FileViewerProps> = ({
             );
             setIsLoading(false);
           }}
-          aria-label={ariaLabel || `Office document: ${file.filename}`}
+          aria-label={ariaLabel ?? `Office document: ${file.filename}`}
         />
         {isLoading && (
           <Box
@@ -608,59 +678,7 @@ const FileViewer: React.FC<FileViewerProps> = ({
    * Shows text content with syntax highlighting
    */
   const renderTextViewer = () => {
-    const [textContent, setTextContent] = useState<string>('');
-
-    useEffect(() => {
-      fetch(file.fileurl)
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error('Failed to fetch text file');
-          }
-          return response.text();
-        })
-        .then((text) => {
-          setTextContent(text);
-          setIsLoading(false);
-        })
-        .catch((err) => {
-          setError('Failed to load text file: ' + err.message);
-          setIsLoading(false);
-        });
-    }, []);
-
-    return (
-      <Box
-        sx={{
-          width: '100%',
-          height: '100%',
-          minHeight: 400,
-          overflow: 'auto',
-        }}
-      >
-        <Paper
-          elevation={0}
-          sx={{
-            p: 2,
-            bgcolor: 'background.default',
-            fontFamily: 'monospace',
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-          }}
-        >
-          <Typography
-            component="pre"
-            sx={{
-              fontFamily: 'inherit',
-              fontSize: '0.875rem',
-              m: 0,
-            }}
-            aria-label={ariaLabel || `Text file: ${file.filename}`}
-          >
-            {textContent}
-          </Typography>
-        </Paper>
-      </Box>
-    );
+    return <TextViewer file={file} ariaLabel={ariaLabel} setIsLoading={setIsLoading} setError={setError} />;
   };
 
   /**
@@ -684,7 +702,7 @@ const FileViewer: React.FC<FileViewerProps> = ({
       >
         <iframe
           src={embedUrl.toString()}
-          title={title || file.filename}
+          title={title ?? file.filename}
           style={{
             width: '100%',
             height: '100%',
@@ -695,7 +713,7 @@ const FileViewer: React.FC<FileViewerProps> = ({
             setError('This file type cannot be previewed. Please download to view.');
             setIsLoading(false);
           }}
-          aria-label={ariaLabel || `File: ${file.filename}`}
+          aria-label={ariaLabel ?? `File: ${file.filename}`}
         />
         {isLoading && (
           <Box
@@ -757,7 +775,9 @@ const FileViewer: React.FC<FileViewerProps> = ({
    * Shows file size, type, dimensions (for images), duration (for media)
    */
   const renderMetadata = () => {
-    if (!showMetadata) return null;
+    if (!showMetadata) {
+      return null;
+    }
 
     return (
       <Card variant="outlined" sx={{ mb: 2 }}>
@@ -892,7 +912,7 @@ const FileViewer: React.FC<FileViewerProps> = ({
         width: '100%',
       }}
       role="region"
-      aria-label={ariaLabel || 'File viewer'}
+      aria-label={ariaLabel ?? 'File viewer'}
     >
       {renderMetadata()}
       <Paper
@@ -917,6 +937,6 @@ const FileViewer: React.FC<FileViewerProps> = ({
       </Paper>
     </Box>
   );
-};
+}
 
 export default FileViewer;
