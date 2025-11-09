@@ -1,150 +1,261 @@
 /**
- * File Upload Hook
+ * Custom React hook for handling file upload operations
  *
- * Custom hook for managing file attachments with validation, preview generation,
- * and progress tracking.
+ * Provides comprehensive file upload functionality with progress tracking,
+ * validation, error handling, and cancellation support. Integrates with
+ * axios for HTTP requests and toast notifications for user feedback.
+ *
+ * Features:
+ * - File validation (size, MIME type)
+ * - Upload progress tracking with real-time updates
+ * - Cancellation of in-progress uploads
+ * - Toast notifications for success/error states
+ * - Reusable across assignment submissions, profile avatars, and resources
+ *
+ * @example
+ * ```tsx
+ * function SubmissionForm() {
+ *   const { uploadFile, cancelUpload, state, reset } = useFileUpload({
+ *     maxSize: 10 * 1024 * 1024, // 10MB
+ *     allowedTypes: ['application/pdf', 'image/jpeg', 'image/png'],
+ *     onSuccess: (response) => {
+ *       console.log('File uploaded:', response.data.fileId);
+ *     },
+ *     onError: (error) => {
+ *       console.error('Upload failed:', error.message);
+ *     }
+ *   });
+ *
+ *   const handleFileSelect = async (file: File) => {
+ *     await uploadFile(file, '/api/v1/assignments/123/submit');
+ *   };
+ *
+ *   return (
+ *     <div>
+ *       <input type="file" onChange={(e) => handleFileSelect(e.target.files[0])} />
+ *       {state.status === 'uploading' && (
+ *         <div>
+ *           <progress value={state.progress} max={100} />
+ *           <button onClick={cancelUpload}>Cancel</button>
+ *         </div>
+ *       )}
+ *       {state.status === 'error' && <p>Error: {state.error}</p>}
+ *     </div>
+ *   );
+ * }
+ * ```
  *
  * @module hooks/useFileUpload
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
+import axios, { AxiosRequestConfig, CancelTokenSource } from 'axios';
+import { useToast } from './useToast';
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
 /**
- * File attachment with metadata
+ * Upload status enumeration
  */
-export interface FileAttachment {
-  /** Unique identifier */
-  id: string;
-  /** The actual File object */
-  file: File;
-  /** File name */
-  name: string;
-  /** File size in bytes */
-  size: number;
-  /** MIME type */
-  type: string;
+export type UploadStatus = 'idle' | 'uploading' | 'success' | 'error';
+
+/**
+ * File upload state interface
+ *
+ * Tracks the current state of file upload operation including status,
+ * progress percentage, error messages, and the file being uploaded.
+ */
+export interface FileUploadState {
+  /** Current upload status */
+  status: UploadStatus;
   /** Upload progress percentage (0-100) */
   progress: number;
-  /** Preview URL for image files */
-  preview?: string;
-  /** Error message if validation or upload fails */
-  error?: string;
+  /** Error message if upload fails, null otherwise */
+  error: string | null;
+  /** The file being uploaded, null if no upload in progress */
+  file: File | null;
 }
 
 /**
- * Options for useFileUpload hook
+ * File upload configuration options
+ *
+ * Provides configuration for file validation and callback handlers
+ * for successful uploads and errors.
  */
-export interface UseFileUploadOptions {
-  /** Maximum file size in bytes (default: 10MB) */
-  maxFileSize?: number;
-  /** Maximum number of files allowed (default: 5) */
-  maxFiles?: number;
-  /** Allowed file types (MIME types or extensions) */
+export interface FileUploadOptions {
+  /**
+   * Maximum file size in bytes
+   * Default: 10MB (10 * 1024 * 1024)
+   * Based on Moodle default file upload limits
+   */
+  maxSize?: number;
+  /**
+   * Allowed MIME types for file validation
+   * Examples: ['image/jpeg', 'image/png', 'application/pdf']
+   * Default: All types allowed if not specified
+   */
   allowedTypes?: string[];
-  /** Callback when files are successfully added */
-  onFilesAdded?: (files: FileAttachment[]) => void;
-  /** Callback when a file is removed */
-  onFileRemoved?: (fileId: string) => void;
-  /** Callback when validation error occurs */
-  onValidationError?: (error: string) => void;
+  /**
+   * Callback function executed on successful upload
+   * Receives the axios response object containing server response
+   */
+  onSuccess?: (response: any) => void;
+  /**
+   * Callback function executed on upload error
+   * Receives the Error object with details about the failure
+   */
+  onError?: (error: Error) => void;
 }
 
 /**
  * Return type for useFileUpload hook
+ *
+ * Provides methods for file upload operations and current state
  */
 export interface UseFileUploadReturn {
-  /** List of file attachments */
-  files: FileAttachment[];
-  /** Add files to the attachment list */
-  addFiles: (files: File[]) => void;
-  /** Remove a file from the attachment list */
-  removeFile: (fileId: string) => void;
-  /** Clear all files */
-  clearFiles: () => void;
-  /** Update upload progress for a file */
-  updateProgress: (fileId: string, progress: number) => void;
-  /** Set error message for a file */
-  setFileError: (fileId: string, error: string) => void;
-  /** Whether maximum file limit is reached */
-  isMaxFilesReached: boolean;
-  /** Total size of all files in bytes */
-  totalSize: number;
+  /**
+   * Upload a file to the specified URL
+   *
+   * Validates the file, creates FormData, tracks progress, and handles
+   * success/error states with toast notifications.
+   *
+   * @param file - The File object to upload
+   * @param url - The API endpoint URL for upload
+   * @param options - Optional axios request configuration
+   * @returns Promise that resolves when upload completes or rejects on error
+   */
+  uploadFile: (file: File, url: string, options?: AxiosRequestConfig) => Promise<void>;
+  /**
+   * Cancel the currently in-progress upload
+   *
+   * Aborts the axios request and resets state to idle
+   */
+  cancelUpload: () => void;
+  /**
+   * Current upload state
+   *
+   * Contains status, progress, error message, and file reference
+   */
+  state: FileUploadState;
+  /**
+   * Reset upload state to initial idle state
+   *
+   * Clears progress, error messages, and file reference
+   */
+  reset: () => void;
 }
 
 // ============================================================================
 // CONSTANTS
 // ============================================================================
 
-const DEFAULT_MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-const DEFAULT_MAX_FILES = 5;
+/**
+ * Default maximum file size (10MB)
+ * Aligned with common Moodle file upload limits
+ */
+const DEFAULT_MAX_FILE_SIZE = 10 * 1024 * 1024;
 
-const DEFAULT_ALLOWED_TYPES = [
-  // Images
-  'image/jpeg',
-  'image/jpg',
-  'image/png',
-  'image/gif',
-  'image/webp',
-  // Documents
-  'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'text/plain',
-  'application/zip',
-];
+/**
+ * Initial upload state
+ */
+const INITIAL_STATE: FileUploadState = {
+  status: 'idle',
+  progress: 0,
+  error: null,
+  file: null,
+};
 
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
 
 /**
- * Generate unique ID for file
+ * Format file size for user-friendly display
+ *
+ * @param bytes - File size in bytes
+ * @returns Formatted string (e.g., "2.5 MB", "1.2 GB")
  */
-function generateFileId(): string {
-  return `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 Bytes';
+
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
 }
 
 /**
- * Validate file size
+ * Validate file size against maximum limit
+ *
+ * @param file - File to validate
+ * @param maxSize - Maximum allowed size in bytes
+ * @returns Error message if validation fails, null if valid
  */
 function validateFileSize(file: File, maxSize: number): string | null {
   if (file.size > maxSize) {
-    const maxSizeMB = (maxSize / (1024 * 1024)).toFixed(1);
-    return `File size exceeds maximum allowed size of ${maxSizeMB}MB`;
+    const fileSize = formatFileSize(file.size);
+    const maxSizeFormatted = formatFileSize(maxSize);
+    return `File size (${fileSize}) exceeds maximum allowed size of ${maxSizeFormatted}`;
   }
   return null;
 }
 
 /**
- * Validate file type
+ * Validate file MIME type against allowed types
+ *
+ * @param file - File to validate
+ * @param allowedTypes - Array of allowed MIME types
+ * @returns Error message if validation fails, null if valid
  */
 function validateFileType(file: File, allowedTypes: string[]): string | null {
-  const fileType = file.type;
-  const fileExtension = `.${file.name.split('.').pop()?.toLowerCase()}`;
+  if (!file.type) {
+    return 'File type could not be determined';
+  }
 
-  const isAllowed = allowedTypes.some((type) => fileType === type || fileExtension === type);
+  const isAllowed = allowedTypes.some((type) => {
+    // Support wildcards like "image/*"
+    if (type.endsWith('/*')) {
+      const prefix = type.slice(0, -2);
+      return file.type.startsWith(prefix);
+    }
+    return file.type === type;
+  });
 
   if (!isAllowed) {
-    return `File type "${file.type || fileExtension}" is not allowed`;
+    const fileExtension = file.name.split('.').pop() || 'unknown';
+    return `File type "${file.type}" (${fileExtension}) is not allowed`;
   }
 
   return null;
 }
 
 /**
- * Create preview URL for image files
+ * Validate file against all constraints
+ *
+ * @param file - File to validate
+ * @param options - Validation options (maxSize, allowedTypes)
+ * @returns Error message if validation fails, null if valid
  */
-function createPreviewUrl(file: File): string | undefined {
-  if (file.type.startsWith('image/')) {
-    return URL.createObjectURL(file);
+function validateFile(file: File, options: FileUploadOptions): string | null {
+  // Validate file size
+  const maxSize = options.maxSize ?? DEFAULT_MAX_FILE_SIZE;
+  const sizeError = validateFileSize(file, maxSize);
+  if (sizeError) {
+    return sizeError;
   }
-  return undefined;
+
+  // Validate file type if allowedTypes is specified
+  if (options.allowedTypes && options.allowedTypes.length > 0) {
+    const typeError = validateFileType(file, options.allowedTypes);
+    if (typeError) {
+      return typeError;
+    }
+  }
+
+  return null;
 }
 
 // ============================================================================
@@ -152,157 +263,199 @@ function createPreviewUrl(file: File): string | undefined {
 // ============================================================================
 
 /**
- * Hook for managing file attachments
+ * Custom hook for file upload operations
  *
- * @param options - Configuration options
- * @returns File management functions and state
+ * Manages file upload state, validation, progress tracking, and error handling.
+ * Integrates with axios for HTTP requests and toast notifications for user feedback.
+ * Supports cancellation of in-progress uploads.
+ *
+ * @param options - Configuration options for file validation and callbacks
+ * @returns File upload methods and current state
  *
  * @example
  * ```tsx
- * const {
- *   files,
- *   addFiles,
- *   removeFile,
- *   clearFiles,
- *   isMaxFilesReached,
- * } = useFileUpload({
- *   maxFileSize: 10 * 1024 * 1024,
- *   maxFiles: 5,
- *   onValidationError: (error) => {
- *     alert(error);
- *   },
+ * // Assignment submission
+ * const { uploadFile, state } = useFileUpload({
+ *   maxSize: 50 * 1024 * 1024, // 50MB
+ *   allowedTypes: ['application/pdf', 'application/msword'],
+ *   onSuccess: (response) => {
+ *     console.log('Submission uploaded:', response.data.submissionId);
+ *     navigate('/assignments/123/success');
+ *   }
  * });
  *
- * const handleFilesSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
- *   const selectedFiles = Array.from(event.target.files || []);
- *   addFiles(selectedFiles);
- * };
+ * // Profile avatar upload
+ * const { uploadFile, state, reset } = useFileUpload({
+ *   maxSize: 5 * 1024 * 1024, // 5MB
+ *   allowedTypes: ['image/*'],
+ *   onSuccess: (response) => {
+ *     setAvatarUrl(response.data.avatarUrl);
+ *     reset();
+ *   }
+ * });
  * ```
  */
-export function useFileUpload(options: UseFileUploadOptions = {}): UseFileUploadReturn {
-  const {
-    maxFileSize = DEFAULT_MAX_FILE_SIZE,
-    maxFiles = DEFAULT_MAX_FILES,
-    allowedTypes = DEFAULT_ALLOWED_TYPES,
-    onFilesAdded,
-    onFileRemoved,
-    onValidationError,
-  } = options;
+export default function useFileUpload(options: FileUploadOptions = {}): UseFileUploadReturn {
+  // State management
+  const [state, setState] = useState<FileUploadState>(INITIAL_STATE);
 
-  const [files, setFiles] = useState<FileAttachment[]>([]);
+  // Cancel token for aborting uploads
+  const cancelTokenSourceRef = useRef<CancelTokenSource | null>(null);
+
+  // Toast notifications
+  const { success, error: showError } = useToast();
 
   /**
-   * Add files to the attachment list
+   * Upload file to server with progress tracking
    */
-  const addFiles = useCallback(
-    (newFiles: File[]) => {
-      const validatedFiles: FileAttachment[] = [];
-
-      for (const file of newFiles) {
-        // Check if max files limit is reached
-        if (files.length + validatedFiles.length >= maxFiles) {
-          onValidationError?.(`Maximum of ${maxFiles} files allowed`);
-          break;
+  const uploadFile = useCallback(
+    async (file: File, url: string, axiosOptions?: AxiosRequestConfig): Promise<void> => {
+      try {
+        // Validate file before upload
+        const validationError = validateFile(file, options);
+        if (validationError) {
+          setState({
+            status: 'error',
+            progress: 0,
+            error: validationError,
+            file: null,
+          });
+          showError(validationError);
+          options.onError?.(new Error(validationError));
+          return;
         }
 
-        // Validate file size
-        const sizeError = validateFileSize(file, maxFileSize);
-        if (sizeError) {
-          onValidationError?.(sizeError);
-          continue;
-        }
+        // Create cancel token for this upload
+        cancelTokenSourceRef.current = axios.CancelToken.source();
 
-        // Validate file type
-        const typeError = validateFileType(file, allowedTypes);
-        if (typeError) {
-          onValidationError?.(typeError);
-          continue;
-        }
-
-        // Create file attachment
-        const attachment: FileAttachment = {
-          id: generateFileId(),
-          file,
-          name: file.name,
-          size: file.size,
-          type: file.type,
+        // Set uploading state
+        setState({
+          status: 'uploading',
           progress: 0,
-          preview: createPreviewUrl(file),
+          error: null,
+          file,
+        });
+
+        // Prepare FormData
+        const formData = new FormData();
+        formData.append('file', file);
+
+        // Merge additional form fields from axios options if provided
+        if (axiosOptions?.data) {
+          Object.entries(axiosOptions.data).forEach(([key, value]) => {
+            formData.append(key, value as string | Blob);
+          });
+        }
+
+        // Configure axios request with progress tracking
+        const config: AxiosRequestConfig = {
+          ...axiosOptions,
+          data: formData,
+          cancelToken: cancelTokenSourceRef.current.token,
+          onUploadProgress: (progressEvent) => {
+            const total = progressEvent.total ?? 0;
+            const loaded = progressEvent.loaded ?? 0;
+            const percentCompleted = total > 0 ? Math.round((loaded * 100) / total) : 0;
+
+            setState((prev) => ({
+              ...prev,
+              progress: percentCompleted,
+            }));
+          },
+          headers: {
+            ...axiosOptions?.headers,
+            'Content-Type': 'multipart/form-data',
+          },
         };
 
-        validatedFiles.push(attachment);
-      }
+        // Execute upload request
+        const response = await axios.post(url, formData, config);
 
-      if (validatedFiles.length > 0) {
-        setFiles((prev) => [...prev, ...validatedFiles]);
-        onFilesAdded?.(validatedFiles);
-      }
-    },
-    [files.length, maxFiles, maxFileSize, allowedTypes, onFilesAdded, onValidationError]
-  );
+        // Set success state
+        setState({
+          status: 'success',
+          progress: 100,
+          error: null,
+          file,
+        });
 
-  /**
-   * Remove a file from the attachment list
-   */
-  const removeFile = useCallback(
-    (fileId: string) => {
-      setFiles((prev) => {
-        const file = prev.find((f) => f.id === fileId);
+        // Show success notification
+        success(`File "${file.name}" uploaded successfully`);
 
-        // Revoke preview URL to free memory
-        if (file?.preview) {
-          URL.revokeObjectURL(file.preview);
+        // Call success callback
+        options.onSuccess?.(response);
+      } catch (err) {
+        // Handle cancellation separately (don't treat as error)
+        if (axios.isCancel(err)) {
+          setState({
+            status: 'idle',
+            progress: 0,
+            error: null,
+            file: null,
+          });
+          return;
         }
 
-        return prev.filter((f) => f.id !== fileId);
-      });
+        // Handle upload error
+        const errorMessage =
+          err instanceof Error ? err.message : 'An unexpected error occurred during upload';
 
-      onFileRemoved?.(fileId);
+        setState({
+          status: 'error',
+          progress: 0,
+          error: errorMessage,
+          file: null,
+        });
+
+        // Show error notification
+        showError(`Upload failed: ${errorMessage}`);
+
+        // Call error callback
+        options.onError?.(err instanceof Error ? err : new Error(errorMessage));
+      } finally {
+        // Clean up cancel token
+        cancelTokenSourceRef.current = null;
+      }
     },
-    [onFileRemoved]
+    [options, success, showError]
   );
 
   /**
-   * Clear all files
+   * Cancel in-progress upload
    */
-  const clearFiles = useCallback(() => {
-    // Revoke all preview URLs
-    files.forEach((file) => {
-      if (file.preview) {
-        URL.revokeObjectURL(file.preview);
-      }
-    });
+  const cancelUpload = useCallback(() => {
+    if (cancelTokenSourceRef.current) {
+      cancelTokenSourceRef.current.cancel('Upload cancelled by user');
+      cancelTokenSourceRef.current = null;
 
-    setFiles([]);
-  }, [files]);
+      setState({
+        status: 'idle',
+        progress: 0,
+        error: null,
+        file: null,
+      });
+
+      showError('Upload cancelled');
+    }
+  }, [showError]);
 
   /**
-   * Update upload progress for a file
+   * Reset state to initial values
    */
-  const updateProgress = useCallback((fileId: string, progress: number) => {
-    setFiles((prev) => prev.map((file) => (file.id === fileId ? { ...file, progress } : file)));
+  const reset = useCallback(() => {
+    // Cancel any in-progress upload first
+    if (cancelTokenSourceRef.current) {
+      cancelTokenSourceRef.current.cancel('Upload reset');
+      cancelTokenSourceRef.current = null;
+    }
+
+    setState(INITIAL_STATE);
   }, []);
-
-  /**
-   * Set error for a file
-   */
-  const setFileError = useCallback((fileId: string, error: string) => {
-    setFiles((prev) => prev.map((file) => (file.id === fileId ? { ...file, error } : file)));
-  }, []);
-
-  /**
-   * Calculate total size of all files
-   */
-  const totalSize = files.reduce((sum, file) => sum + file.size, 0);
 
   return {
-    files,
-    addFiles,
-    removeFile,
-    clearFiles,
-    updateProgress,
-    setFileError,
-    isMaxFilesReached: files.length >= maxFiles,
-    totalSize,
+    uploadFile,
+    cancelUpload,
+    state,
+    reset,
   };
 }
