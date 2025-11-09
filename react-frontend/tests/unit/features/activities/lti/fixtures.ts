@@ -19,14 +19,14 @@
 import {
   LaunchContainer,
   LtiTool,
-  LtiToolType,
   LtiToolProxy,
   LtiLaunchData,
   LtiGradeResult,
-  LtiVersion,
-  LtiToolState,
   LtiToolProxyState,
 } from '@/features/activities/lti/types/lti.types';
+import type { User } from '@/features/admin/users/types/user.types';
+import type { Course } from '@/features/admin/courses/types/course.types';
+import type { CourseModule } from '@/features/activities/quizzes/types/quiz.types';
 
 /**
  * Mock LTI 1.1 Tool Configuration
@@ -40,8 +40,8 @@ export const mockLTI11Tool: LtiTool = {
   introformat: 1, // FORMAT_HTML
   timecreated: 1704067200, // 2024-01-01 00:00:00 UTC
   timemodified: 1704067200,
-  toolurl: 'https://example.com/lti/launch',
-  securetoolurl: 'https://example.com/lti/launch',
+  toolurl: 'https://lti-tool.example.com/lti/launch',
+  securetoolurl: 'https://lti-tool.example.com/lti/launch',
   instructorchoicesendname: 1,
   instructorchoicesendemailaddr: 1,
   instructorchoiceallowroster: 1,
@@ -94,6 +94,14 @@ export const mockLTI13Tool: LtiTool = {
   servicesalt: 'xyz789uvw456rst123',
   icon: 'https://lti13-provider.example.com/icon.png',
   secureicon: 'https://lti13-provider.example.com/icon.png',
+  publickeyset: 'https://lti13-provider.example.com/.well-known/jwks.json',
+  accesstokenurl: 'https://lti13-provider.example.com/auth/token',
+  authurl: 'https://lti13-provider.example.com/oidc/login',
+  ltiversion: 'LTI-1p3',
+  initiatelogin: 'https://lti13-provider.example.com/oidc/login',
+  supportsags: true,
+  clientid: 'moodle-client-abc123',
+  deploymentid: 'deployment-1',
 };
 
 /**
@@ -102,7 +110,7 @@ export const mockLTI13Tool: LtiTool = {
  * Based on IMS LTI 1.1 specification parameters
  */
 export const mockLTI11LaunchParams: LtiLaunchData = {
-  endpoint: 'https://example.com/lti/launch',
+  endpoint: 'https://lti-tool.example.com/lti/launch',
   parameters: [
     { name: 'lti_message_type', value: 'basic-lti-launch-request' },
     { name: 'lti_version', value: 'LTI-1p0' },
@@ -131,7 +139,7 @@ export const mockLTI11LaunchParams: LtiLaunchData = {
     { name: 'tool_consumer_info_product_family_code', value: 'moodle' },
     { name: 'tool_consumer_info_version', value: '4.4' },
     { name: 'lis_result_sourcedid', value: 'course-101:lti-1:user-12345' },
-    { name: 'lis_outcome_service_url', value: 'https://moodle.example.com/mod/lti/service.php' },
+    { name: 'lis_outcome_service_url', value: 'https://moodle.example.com/mod/lti/service.php/outcome' },
     { name: 'custom_param1', value: 'value1' },
     { name: 'custom_param2', value: 'value2' },
     { name: 'oauth_callback', value: 'about:blank' },
@@ -142,6 +150,43 @@ export const mockLTI11LaunchParams: LtiLaunchData = {
     { name: 'oauth_signature_method', value: 'HMAC-SHA1' },
     { name: 'oauth_signature', value: 'dGVzdC1zaWduYXR1cmUtaGFzaA==' },
   ],
+  // Direct properties for test access
+  lti_message_type: 'basic-lti-launch-request',
+  lti_version: 'LTI-1p0',
+  resource_link_id: 'lti-instance-1',
+  resource_link_title: 'Sample LTI 1.1 Tool',
+  resource_link_description: 'This is a sample LTI 1.1 external tool for testing purposes',
+  user_id: '12345',
+  user_image: 'https://moodle.example.com/user/pix.php/12345/f1.jpg',
+  roles: 'Learner',
+  lis_person_name_given: 'John',
+  lis_person_name_family: 'Doe',
+  lis_person_name_full: 'John Doe',
+  lis_person_contact_email_primary: 'john.doe@example.com',
+  context_id: 'course-101',
+  context_type: 'CourseSection',
+  context_label: 'CS101',
+  context_title: 'Introduction to Computer Science',
+  launch_presentation_locale: 'en',
+  launch_presentation_document_target: 'iframe',
+  launch_presentation_return_url: 'https://moodle.example.com/mod/lti/return.php?course=101',
+  tool_consumer_instance_guid: 'moodle.example.com',
+  tool_consumer_instance_name: 'Example Moodle Site',
+  tool_consumer_instance_description: 'Example Moodle site for testing',
+  tool_consumer_instance_url: 'https://moodle.example.com',
+  tool_consumer_instance_contact_email: 'admin@moodle.example.com',
+  tool_consumer_info_product_family_code: 'moodle',
+  tool_consumer_info_version: '4.4',
+  lis_result_sourcedid: 'course-101:lti-1:user-12345',
+  lis_outcome_service_url: 'https://moodle.example.com/mod/lti/service.php/outcome',
+  custom_param1: 'value1',
+  custom_param2: 'value2',
+  oauth_callback: 'about:blank',
+  oauth_consumer_key: 'test-consumer-key-12345',
+  oauth_version: '1.0',
+  oauth_nonce: 'a1b2c3d4e5f6g7h8i9j0',
+  oauth_timestamp: '1704067200',
+  oauth_signature_method: 'HMAC-SHA1',
   oauth_signature: 'dGVzdC1zaWduYXR1cmUtaGFzaA==',
 };
 
@@ -152,7 +197,7 @@ export const mockLTI11LaunchParams: LtiLaunchData = {
 export const mockLTI13OIDCParams = {
   iss: 'https://moodle.example.com',
   login_hint: 'user-12345',
-  target_link_uri: 'https://lti13-provider.example.com/launch',
+  target_link_uri: 'https://lti-tool.example.com/lti13/launch',
   lti_message_hint: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjb3Vyc2VfaWQiOjEwMSwibHRpX2lkIjoyLCJ1c2VyX2lkIjoxMjM0NX0.signature',
   client_id: 'moodle-client-abc123',
   lti_deployment_id: 'deployment-1',
@@ -163,76 +208,104 @@ export const mockLTI13OIDCParams = {
  * Mock Student User
  * Represents a student user with learner role for testing
  */
-export const mockStudent = {
-  id: 12345,
-  username: 'john.doe',
+export const mockStudent: User = {
+  id: 1001,
+  username: 'student1',
   firstname: 'John',
-  lastname: 'Doe',
-  fullname: 'John Doe',
-  email: 'john.doe@example.com',
-  role: 'Learner',
+  lastname: 'Student',
+  email: 'john.student@example.com',
+  auth: 'manual',
+  confirmed: true,
+  suspended: false,
+  deleted: false,
+  firstaccess: Math.floor(Date.now() / 1000) - 86400 * 30, // 30 days ago
+  lastaccess: Math.floor(Date.now() / 1000) - 3600, // 1 hour ago
+  lastlogin: Math.floor(Date.now() / 1000) - 3600, // 1 hour ago
+  currentlogin: Math.floor(Date.now() / 1000),
+  lastip: '192.168.1.100',
+  timecreated: Math.floor(Date.now() / 1000) - 86400 * 60, // 60 days ago
+  timemodified: Math.floor(Date.now() / 1000) - 86400, // 1 day ago
   roles: ['Learner'],
-  picture: 'https://moodle.example.com/user/pix.php/12345/f1.jpg',
 };
 
 /**
  * Mock Teacher User
  * Represents a teacher/instructor user with instructor role for testing
  */
-export const mockTeacher = {
-  id: 67890,
-  username: 'jane.smith',
+export const mockTeacher: User = {
+  id: 2001,
+  username: 'teacher1',
   firstname: 'Jane',
   lastname: 'Smith',
-  fullname: 'Jane Smith',
   email: 'jane.smith@example.com',
-  role: 'Instructor',
+  auth: 'manual',
+  confirmed: true,
+  suspended: false,
+  deleted: false,
+  firstaccess: Math.floor(Date.now() / 1000) - 86400 * 90, // 90 days ago
+  lastaccess: Math.floor(Date.now() / 1000) - 1800, // 30 minutes ago
+  lastlogin: Math.floor(Date.now() / 1000) - 1800, // 30 minutes ago
+  currentlogin: Math.floor(Date.now() / 1000),
+  lastip: '192.168.1.200',
+  timecreated: Math.floor(Date.now() / 1000) - 86400 * 180, // 180 days ago
+  timemodified: Math.floor(Date.now() / 1000) - 86400 * 7, // 7 days ago
   roles: ['Instructor'],
-  picture: 'https://moodle.example.com/user/pix.php/67890/f1.jpg',
 };
 
 /**
  * Mock Admin User
  * Represents an administrator user with admin role for testing
  */
-export const mockAdmin = {
-  id: 1,
-  username: 'admin',
+export const mockAdmin: User = {
+  id: 3001,
+  username: 'admin1',
   firstname: 'Admin',
   lastname: 'User',
-  fullname: 'Admin User',
   email: 'admin@moodle.example.com',
-  role: 'Administrator',
-  roles: ['Administrator', 'Instructor', 'Learner'],
-  picture: 'https://moodle.example.com/user/pix.php/1/f1.jpg',
+  auth: 'manual',
+  confirmed: true,
+  suspended: false,
+  deleted: false,
+  firstaccess: Math.floor(Date.now() / 1000) - 86400 * 365, // 1 year ago
+  lastaccess: Math.floor(Date.now() / 1000) - 300, // 5 minutes ago
+  lastlogin: Math.floor(Date.now() / 1000) - 300, // 5 minutes ago
+  currentlogin: Math.floor(Date.now() / 1000),
+  lastip: '192.168.1.1',
+  timecreated: Math.floor(Date.now() / 1000) - 86400 * 730, // 2 years ago
+  timemodified: Math.floor(Date.now() / 1000) - 86400 * 2, // 2 days ago
+  roles: ['Administrator'],
 };
 
 /**
  * Mock Course
  * Represents a course context for LTI tool launches
  */
-export const mockCourse = {
+export const mockCourse: Course = {
   id: 101,
   fullname: 'Introduction to Computer Science',
   shortname: 'CS101',
   idnumber: 'CS-101-2024',
   category: 1,
   visible: 1,
+  format: 'topics',
   startdate: 1704067200, // 2024-01-01
   enddate: 1719792000, // 2024-07-01
+  timecreated: 1701475200, // 2023-12-02 00:00:00 UTC
+  timemodified: 1701475200, // 2023-12-02 00:00:00 UTC
 };
 
 /**
  * Mock Course Module
  * Represents the course module instance containing the LTI activity
  */
-export const mockCourseModule = {
+export const mockCourseModule: CourseModule = {
   id: 501,
   course: 101,
   module: 20, // LTI module type ID
   instance: 1, // LTI instance ID
   section: 1,
   visible: 1,
+  visibleoncoursepage: 1,
   groupmode: 0,
   completion: 0,
   name: 'Sample LTI 1.1 Tool',
@@ -245,14 +318,18 @@ export const mockCourseModule = {
 export const mockGrade: LtiGradeResult = {
   id: 1,
   ltiid: 1,
-  userid: 12345,
-  gradepercent: 85.5,
+  userid: 1001,
+  gradepercent: 85,
   dategraded: 1704153600, // 2024-01-02 00:00:00 UTC
   datesubmitted: 1704067200, // 2024-01-01 00:00:00 UTC
   dateupdated: 1704153600,
-  originalgrade: 85.5,
+  originalgrade: 85,
   launchid: 1,
   state: 1,
+  rawgrade: 85,
+  rawgrademax: 100,
+  rawgrademin: 0,
+  timemodified: 1704153600,
 };
 
 /**
@@ -260,9 +337,10 @@ export const mockGrade: LtiGradeResult = {
  * Represents the data sent in an LTI outcomes service grade passback request
  */
 export const mockGradePassbackRequest = {
+  sourcedId: 'course-101:lti-1:user-12345',
   lis_result_sourcedid: 'course-101:lti-1:user-12345',
   lis_outcome_service_url: 'https://moodle.example.com/mod/lti/service.php',
-  score: 0.855, // Grade as decimal (0-1)
+  score: 0.85, // Grade as decimal (0-1)
   comment: 'Well done! Excellent work on this assignment.',
 };
 
@@ -272,6 +350,7 @@ export const mockGradePassbackRequest = {
  */
 export const mockGradePassbackResponse = {
   success: true,
+  messageIdentifier: 'msg-' + Date.now(),
   message: 'Grade successfully updated',
   grade: 85.5,
   gradepercent: 85.5,
@@ -373,7 +452,7 @@ export const mockAGSLineItem = {
  */
 export const mockAGSScore = {
   userId: '12345',
-  scoreGiven: 85.5,
+  scoreGiven: 85,
   scoreMaximum: 100,
   comment: 'Excellent work on this assignment!',
   timestamp: '2024-01-02T00:00:00Z',
@@ -396,6 +475,7 @@ export const mockCustomParams = {
   custom_lis_person_sourcedid: '$Person.sourcedId',
   custom_static_param: 'static_value_123',
   custom_another_param: 'another_static_value',
+  custom_string_param: 'test_string_value',
 };
 
 /**
@@ -403,7 +483,7 @@ export const mockCustomParams = {
  * LTI 2.0 tool proxy registration data
  */
 export const mockToolProxy: LtiToolProxy = {
-  id: 1,
+  id: 100,
   name: 'Sample LTI 2.0 Tool Provider',
   regurl: 'https://lti2-provider.example.com/registration',
   state: LtiToolProxyState.ACCEPTED,
@@ -439,12 +519,11 @@ export const mockToolProxy: LtiToolProxy = {
  */
 export const mockToolNotFoundError = {
   success: false,
-  error: {
-    code: 'TOOL_NOT_FOUND',
-    message: 'The requested LTI tool could not be found',
-    details: {
-      toolId: 999,
-    },
+  code: 'TOOL_NOT_FOUND',
+  message: 'The requested LTI tool was not found',
+  status: 404,
+  details: {
+    toolId: 999,
   },
 };
 
@@ -454,13 +533,12 @@ export const mockToolNotFoundError = {
  */
 export const mockPermissionDeniedError = {
   success: false,
-  error: {
-    code: 'PERMISSION_DENIED',
-    message: 'You do not have permission to access this LTI tool',
-    details: {
-      required_capability: 'mod/lti:view',
-      context: 'course',
-    },
+  code: 'PERMISSION_DENIED',
+  message: 'You do not have permission to access this LTI tool',
+  status: 403,
+  details: {
+    required_capability: 'mod/lti:view',
+    context: 'course',
   },
 };
 
@@ -470,14 +548,13 @@ export const mockPermissionDeniedError = {
  */
 export const mockOAuthSignatureError = {
   success: false,
-  error: {
-    code: 'OAUTH_SIGNATURE_INVALID',
-    message: 'OAuth signature verification failed',
-    details: {
-      oauth_signature_method: 'HMAC-SHA1',
-      timestamp: '1704067200',
-      nonce: 'a1b2c3d4e5f6g7h8i9j0',
-    },
+  code: 'OAUTH_SIGNATURE_INVALID',
+  message: 'OAuth signature verification failed',
+  status: 401,
+  details: {
+    oauth_signature_method: 'HMAC-SHA1',
+    timestamp: '1704067200',
+    nonce: 'a1b2c3d4e5f6g7h8i9j0',
   },
 };
 
@@ -487,22 +564,21 @@ export const mockOAuthSignatureError = {
  */
 export const mockGradePassbackError = {
   success: false,
-  error: {
-    code: 'GRADE_PASSBACK_FAILED',
-    message: 'Failed to update grade from LTI tool',
-    details: {
-      sourcedid: 'course-101:lti-1:user-12345',
-      score: 0.855,
-      reason: 'Invalid sourcedid format',
-    },
+  code: 'GRADE_PASSBACK_FAILED',
+  message: 'Failed to update grade from LTI tool',
+  status: 500,
+  details: {
+    sourcedid: 'course-101:lti-1:user-12345',
+    score: 0.855,
+    reason: 'Invalid sourcedid format',
   },
 };
 
 /**
- * Mock Iframe Security Attributes
+ * Mock IFrame Security Attributes
  * Security-related attributes for embedding LTI tools in iframes
  */
-export const mockIframeSecurityAttributes = {
+export const mockIFrameSecurityAttributes = {
   sandbox: 'allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox',
   allow: 'camera; microphone; display-capture',
   referrerpolicy: 'no-referrer-when-downgrade',
@@ -531,6 +607,7 @@ export const mockDeepLinkingConfig = {
  */
 export const mockContentItemResponse = {
   '@context': 'http://purl.imsglobal.org/ctx/lti/v1/ContentItem',
+  '@type': 'ContentItemSelection',
   '@graph': [
     {
       '@type': 'LtiLinkItem',
