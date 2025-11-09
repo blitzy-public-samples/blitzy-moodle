@@ -49,7 +49,8 @@
  */
 
 import { useState, useCallback, useRef } from 'react';
-import axios, { AxiosRequestConfig, CancelTokenSource } from 'axios';
+import axios from 'axios';
+import type { AxiosRequestConfig, AxiosResponse, CancelTokenSource } from 'axios';
 import { useToast } from './useToast';
 
 // ============================================================================
@@ -101,7 +102,7 @@ export interface FileUploadOptions {
    * Callback function executed on successful upload
    * Receives the axios response object containing server response
    */
-  onSuccess?: (response: any) => void;
+  onSuccess?: (response: AxiosResponse<unknown>) => void;
   /**
    * Callback function executed on upload error
    * Receives the Error object with details about the failure
@@ -178,7 +179,9 @@ const INITIAL_STATE: FileUploadState = {
  * @returns Formatted string (e.g., "2.5 MB", "1.2 GB")
  */
 function formatFileSize(bytes: number): string {
-  if (bytes === 0) return '0 Bytes';
+  if (bytes === 0) {
+    return '0 Bytes';
+  }
 
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
@@ -225,7 +228,7 @@ function validateFileType(file: File, allowedTypes: string[]): string | null {
   });
 
   if (!isAllowed) {
-    const fileExtension = file.name.split('.').pop() || 'unknown';
+    const fileExtension = file.name.split('.').pop() ?? 'unknown';
     return `File type "${file.type}" (${fileExtension}) is not allowed`;
   }
 
@@ -341,8 +344,8 @@ export default function useFileUpload(options: FileUploadOptions = {}): UseFileU
         formData.append('file', file);
 
         // Merge additional form fields from axios options if provided
-        if (axiosOptions?.data) {
-          Object.entries(axiosOptions.data).forEach(([key, value]) => {
+        if (axiosOptions?.data && typeof axiosOptions.data === 'object' && !Array.isArray(axiosOptions.data)) {
+          Object.entries(axiosOptions.data as Record<string, unknown>).forEach(([key, value]) => {
             formData.append(key, value as string | Blob);
           });
         }
