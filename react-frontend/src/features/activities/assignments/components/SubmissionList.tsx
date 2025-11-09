@@ -14,7 +14,7 @@
  * @module features/activities/assignments/components
  */
 
-import React, { useMemo, useCallback, useState } from 'react';
+import { useMemo, useCallback, useState } from 'react';
 import {
   Table,
   TableBody,
@@ -105,7 +105,7 @@ type SortableColumn = 'studentName' | 'status' | 'formattedDate' | 'gradeDisplay
  * Displays assignment submissions in either table format (teacher view) or
  * card format (student view) with comprehensive submission information.
  */
-const SubmissionList: React.FC<SubmissionListProps> = ({
+function SubmissionList({
   submissions,
   assignment,
   onViewSubmission,
@@ -113,7 +113,7 @@ const SubmissionList: React.FC<SubmissionListProps> = ({
   viewMode,
   loading = false,
   emptyMessage,
-}) => {
+}: SubmissionListProps): React.ReactElement {
   // Pagination state
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -165,10 +165,22 @@ const SubmissionList: React.FC<SubmissionListProps> = ({
    * Get student initials from name
    */
   const getInitials = useCallback((name: string): string => {
-    const parts = name.trim().split(' ');
-    if (parts.length === 0) return '?';
-    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
-    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+    const parts = name.trim().split(' ').filter(part => part.length > 0);
+    if (parts.length === 0) {
+      return '?';
+    }
+    const firstPart = parts[0];
+    if (!firstPart) {
+      return '?';
+    }
+    if (parts.length === 1) {
+      return firstPart.charAt(0).toUpperCase();
+    }
+    const lastPart = parts[parts.length - 1];
+    if (!lastPart) {
+      return firstPart.charAt(0).toUpperCase();
+    }
+    return (firstPart.charAt(0) + lastPart.charAt(0)).toUpperCase();
   }, []);
 
   /**
@@ -176,9 +188,8 @@ const SubmissionList: React.FC<SubmissionListProps> = ({
    */
   const submissionRows: SubmissionRowData[] = useMemo(() => {
     return submissions.map((submission) => {
-      // Extract student name from submission (would typically come from API)
-      // For now, generate placeholder or use userid
-      const studentName = `Student ${submission.userid}`;
+      // Extract student name from submission (comes from API when fetched with user data)
+      const studentName = submission.studentname || `Student ${submission.userid}`;
 
       // Format submission date
       let formattedDate = 'Not submitted';
@@ -211,12 +222,14 @@ const SubmissionList: React.FC<SubmissionListProps> = ({
           statusColor = 'default';
       }
 
-      // Format grade display
+      // Format grade display: Show grade value or '-' if not graded
+      // Reference: public/mod/assign/locallib.php display_grade() function
       let gradeDisplay = '-';
-      if (submission.gradingstatus === 'graded' && submission.plugins) {
-        // Find grade information from plugins or use a placeholder
-        // In production, grade would be passed in submission or fetched separately
-        gradeDisplay = 'Graded';
+      if (submission.grade !== undefined && submission.grade !== null && submission.grade !== '') {
+        const gradeValue = typeof submission.grade === 'number' ? submission.grade : parseFloat(submission.grade);
+        if (!isNaN(gradeValue)) {
+          gradeDisplay = `${gradeValue} / ${assignment.grade}`;
+        }
       }
 
       return {
@@ -304,24 +317,30 @@ const SubmissionList: React.FC<SubmissionListProps> = ({
    * Handle view submission action
    */
   const handleViewSubmission = useCallback(
-    (submission: Submission) => {
+    (submissionId: number) => {
       if (onViewSubmission) {
-        onViewSubmission(submission);
+        const originalSubmission = submissions.find(s => s.id === submissionId);
+        if (originalSubmission) {
+          onViewSubmission(originalSubmission);
+        }
       }
     },
-    [onViewSubmission]
+    [onViewSubmission, submissions]
   );
 
   /**
    * Handle grade submission action
    */
   const handleGradeSubmission = useCallback(
-    (submission: Submission) => {
+    (submissionId: number) => {
       if (onGradeSubmission) {
-        onGradeSubmission(submission);
+        const originalSubmission = submissions.find(s => s.id === submissionId);
+        if (originalSubmission) {
+          onGradeSubmission(originalSubmission);
+        }
       }
     },
-    [onGradeSubmission]
+    [onGradeSubmission, submissions]
   );
 
   /**
@@ -329,7 +348,8 @@ const SubmissionList: React.FC<SubmissionListProps> = ({
    */
   const handleDownloadFiles = useCallback((submission: Submission) => {
     // In production, this would trigger file download via API
-    console.log('Download files for submission:', submission.id);
+    // TODO: Implement actual file download functionality
+    void submission;
   }, []);
 
   /**
@@ -358,25 +378,25 @@ const SubmissionList: React.FC<SubmissionListProps> = ({
     if (viewMode === 'teacher') {
       return (
         <TableBody>
-          {Array.from({ length: rowsPerPage }).map((_, index) => (
-            <TableRow key={`skeleton-${index}`}>
+          {Array.from({ length: rowsPerPage }, (_, index) => `skeleton-row-${index}`).map((key) => (
+            <TableRow key={key}>
               <TableCell>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Skeleton variant="circular" width={40} height={40} />
-                  <Skeleton variant="text" width={120} />
+                  <Skeleton variant="circular" width={40} height={40} data-testid="skeleton-avatar" />
+                  <Skeleton variant="text" width={120} data-testid="skeleton-name" />
                 </Box>
               </TableCell>
               <TableCell>
-                <Skeleton variant="rectangular" width={120} height={24} />
+                <Skeleton variant="rectangular" width={120} height={24} data-testid="skeleton-status" />
               </TableCell>
               <TableCell>
-                <Skeleton variant="text" width={140} />
+                <Skeleton variant="text" width={140} data-testid="skeleton-date" />
               </TableCell>
               <TableCell>
-                <Skeleton variant="text" width={60} />
+                <Skeleton variant="text" width={60} data-testid="skeleton-grade" />
               </TableCell>
               <TableCell>
-                <Skeleton variant="text" width={80} />
+                <Skeleton variant="text" width={80} data-testid="skeleton-actions" />
               </TableCell>
             </TableRow>
           ))}
@@ -387,13 +407,13 @@ const SubmissionList: React.FC<SubmissionListProps> = ({
     // Student view loading
     return (
       <Grid container spacing={2}>
-        {Array.from({ length: 3 }).map((_, index) => (
-          <Grid item xs={12} key={`skeleton-card-${index}`}>
+        {Array.from({ length: 3 }, (_, index) => `skeleton-card-${index}`).map((key) => (
+          <Grid item xs={12} key={key}>
             <Card>
               <CardContent>
-                <Skeleton variant="text" width="60%" />
-                <Skeleton variant="text" width="40%" />
-                <Skeleton variant="rectangular" height={60} sx={{ mt: 2 }} />
+                <Skeleton variant="text" width="60%" data-testid="skeleton-title" />
+                <Skeleton variant="text" width="40%" data-testid="skeleton-subtitle" />
+                <Skeleton variant="rectangular" height={60} sx={{ mt: 2 }} data-testid="skeleton-content" />
               </CardContent>
             </Card>
           </Grid>
@@ -408,7 +428,7 @@ const SubmissionList: React.FC<SubmissionListProps> = ({
   const renderEmptyState = () => {
     const defaultMessage =
       viewMode === 'teacher' ? 'No student submissions yet' : "You haven't submitted yet";
-    const message = emptyMessage || defaultMessage;
+    const message = emptyMessage ?? defaultMessage;
 
     return (
       <Box
@@ -500,7 +520,7 @@ const SubmissionList: React.FC<SubmissionListProps> = ({
                       '&:last-child td, &:last-child th': { border: 0 },
                       cursor: 'pointer',
                     }}
-                    onClick={() => handleViewSubmission(row)}
+                    onClick={() => handleViewSubmission(row.id)}
                   >
                     <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -542,7 +562,7 @@ const SubmissionList: React.FC<SubmissionListProps> = ({
                             size="small"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleViewSubmission(row);
+                              handleViewSubmission(row.id);
                             }}
                             aria-label={`View submission for ${row.studentName}`}
                             sx={{ minWidth: 44, minHeight: 44 }}
@@ -557,7 +577,7 @@ const SubmissionList: React.FC<SubmissionListProps> = ({
                               color="primary"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleGradeSubmission(row);
+                                handleGradeSubmission(row.id);
                               }}
                               aria-label={`Grade submission for ${row.studentName}`}
                               sx={{ minWidth: 44, minHeight: 44 }}
@@ -651,7 +671,7 @@ const SubmissionList: React.FC<SubmissionListProps> = ({
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
                     <Typography variant="h6" component="h3">
                       {assignment.maxattempts > 1
-                        ? `Attempt ${submission.attemptnumber + 1}`
+                        ? `Attempt #${submission.attemptnumber + 1}`
                         : 'Submission'}
                     </Typography>
                     {isLatestAttempt && (
@@ -724,7 +744,7 @@ const SubmissionList: React.FC<SubmissionListProps> = ({
                     size="small"
                     variant="outlined"
                     startIcon={<VisibilityIcon />}
-                    onClick={() => handleViewSubmission(submission)}
+                    onClick={() => handleViewSubmission(submission.id)}
                     aria-label={`View ${
                       assignment.maxattempts > 1 ? `attempt ${submission.attemptnumber + 1}` : 'submission'
                     }`}
@@ -759,6 +779,6 @@ const SubmissionList: React.FC<SubmissionListProps> = ({
       {viewMode === 'teacher' ? renderTeacherView() : renderStudentView()}
     </Box>
   );
-};
+}
 
 export default SubmissionList;
