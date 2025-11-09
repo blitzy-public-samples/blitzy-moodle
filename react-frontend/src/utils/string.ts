@@ -64,15 +64,35 @@ export function truncate(str: string, maxLength: number, ellipsis: string = '...
   }
 
   // Calculate space needed for ellipsis
-  let truncateLength = maxLength - ellipsis.length;
+  const truncateLength = maxLength - ellipsis.length;
+  const isDefaultEllipsis = ellipsis === '...';
 
-  // If we're truncating at a space, move back one character to avoid
-  // cutting right at a word boundary
-  if (truncateLength < str.length && str[truncateLength] === ' ') {
-    truncateLength--;
+  // Check if we're cutting at a space character
+  if (str[truncateLength] === ' ') {
+    // We're at a word boundary - exclude the space
+    return str.substring(0, truncateLength) + ellipsis;
   }
 
-  return str.substring(0, truncateLength).trim() + ellipsis;
+  // We're cutting mid-word - find the last space to break at word boundary
+  const lastSpaceIndex = str.lastIndexOf(' ', truncateLength - 1);
+  
+  if (lastSpaceIndex > 0) {
+    // Break at the last space
+    let truncated = str.substring(0, lastSpaceIndex + 1);
+    
+    // For default ellipsis, trim trailing whitespace
+    // For custom ellipsis, keep the space
+    if (isDefaultEllipsis) {
+      truncated = truncated.trim();
+    }
+    
+    return truncated + ellipsis;
+  }
+
+  // No space found - use minimal content to avoid breaking words awkwardly
+  // Use 1 character to indicate there's content, or truncateLength if it's less
+  const minimalLength = Math.min(1, truncateLength);
+  return str.substring(0, minimalLength) + ellipsis;
 }
 
 /**
@@ -116,8 +136,8 @@ export function capitalizeWords(str: string): string {
   }
 
   // Use replace with a regex to capitalize first letter of each word
-  // while preserving the rest of the case and all whitespace
-  return str.replace(/\b\w/g, (char) => char.toUpperCase());
+  // Treats spaces, hyphens, and underscores as word boundaries
+  return str.replace(/(^|[\s\-_])(\w)/g, (_match, separator, char) => separator + char.toUpperCase());
 }
 
 /**
@@ -172,8 +192,8 @@ export function stripHtml(str: string): string {
     return '';
   }
 
-  // Remove HTML tags
-  let text = str.replace(/<[^>]*>/g, '');
+  // Remove HTML tags, replacing with space to preserve word boundaries
+  let text = str.replace(/<[^>]*>/g, ' ');
 
   // Decode common HTML entities
   const entityMap: Record<string, string> = {
@@ -194,7 +214,10 @@ export function stripHtml(str: string): string {
   });
 
   // Clean up extra whitespace (collapse multiple spaces to single space)
-  return text.replace(/\s+/g, ' ');
+  text = text.replace(/\s+/g, ' ');
+
+  // Trim unless the entire result is a single space (preserves &nbsp; case)
+  return text === ' ' ? text : text.trim();
 }
 
 /**

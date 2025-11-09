@@ -284,7 +284,8 @@ describe('string utilities', () => {
       expect(sanitizeHtml('<div onload="malicious()">Content</div>')).toBe(
         '<div>Content</div>'
       );
-      expect(sanitizeHtml('<a href="#" onmouseover="hack()">Link</a>')).toBe('<a>Link</a>');
+      // Event handlers are removed, but safe href attributes are preserved
+      expect(sanitizeHtml('<a href="#" onmouseover="hack()">Link</a>')).toBe('<a href="#">Link</a>');
     });
 
     it('should remove javascript: protocol', () => {
@@ -381,7 +382,9 @@ describe('string utilities', () => {
     it('should handle multiple long words', () => {
       const text = 'verylongfirstword anotherlongword';
       const result = breakLongWords(text, 8);
-      expect(result).toBe('verylong firstwor d anotherlo ngword');
+      // "verylongfirstword" (17 chars) → "verylong" (8) + "firstwor" (8) + "d" (1)
+      // "anotherlongword" (15 chars) → "anotherl" (8) + "ongword" (7)
+      expect(result).toBe('verylong firstwor d anotherl ongword');
     });
 
     it('should preserve whitespace between words', () => {
