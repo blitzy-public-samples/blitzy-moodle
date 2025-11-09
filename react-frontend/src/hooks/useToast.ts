@@ -178,10 +178,13 @@ export function useToast(): UseToastReturn {
       // Add toast to the queue
       setToasts((prev) => [...prev, newToast]);
 
-      // Set up auto-dismissal
-      setTimeout(() => {
-        setToasts((prev) => prev.filter((toast) => toast.id !== id));
-      }, duration);
+      // Set up auto-dismissal only if duration > 0
+      // duration === 0 means manual dismiss only
+      if (duration > 0) {
+        setTimeout(() => {
+          setToasts((prev) => prev.filter((toast) => toast.id !== id));
+        }, duration);
+      }
 
       return id;
     },
