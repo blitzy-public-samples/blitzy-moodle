@@ -17,6 +17,7 @@ export type {
   Feedback,
   FeedbackItem,
   FeedbackCompleted,
+  FeedbackCompletedTmp,
   FeedbackValue,
   FeedbackTemplate,
   FeedbackAnalysis,
@@ -26,7 +27,18 @@ export type {
   FeedbackStatistics,
   CourseResponseCount,
   GroupResponseCount,
+  FeedbackSiteCourseMap,
+  SubmitResponseOptions,
+  SaveProgressOptions,
+  FeedbackDisplayConfig,
+  FeedbackPermissions,
+  FeedbackItemValidation,
+  FeedbackExportOptions,
+  FeedbackListFilter,
+  FeedbackListResult,
+  Group,
+  GroupFilterProps,
 } from './feedback.types';
 
 // Re-export enums
-export { FeedbackQuestionType } from './feedback.types';
+export { FeedbackQuestionType, GroupMode } from './feedback.types';
