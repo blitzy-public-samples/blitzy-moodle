@@ -306,7 +306,7 @@ export const Modal: FC<ModalProps> = ({
    * Prevents closing if backdrop click or escape key is disabled
    */
   const handleClose = useCallback(
-    (event: object, reason: 'backdropClick' | 'escapeKeyDown') => {
+    (_event: object, reason: 'backdropClick' | 'escapeKeyDown') => {
       // Prevent close on backdrop click if disabled
       if (reason === 'backdropClick' && disableBackdropClick) {
         return;
