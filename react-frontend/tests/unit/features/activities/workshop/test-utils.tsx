@@ -11,7 +11,7 @@
  * - Helper functions for complex test scenarios
  */
 
-import React, { ReactElement, ReactNode } from 'react';
+import { ReactElement, ReactNode } from 'react';
 import { render, RenderResult, RenderOptions } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Provider as ReduxProvider } from 'react-redux';
@@ -33,7 +33,6 @@ import type {
   AllocationResult,
   WorkshopPhase,
   GradingStrategy,
-  ExamplesMode,
 } from '@/features/activities/workshop/types/workshop.types';
 
 /**
