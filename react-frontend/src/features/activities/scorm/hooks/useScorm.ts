@@ -23,7 +23,7 @@
  * @module features/activities/scorm/hooks/useScorm
  */
 
-import { useQuery, useQueries, type UseQueryResult } from '@tanstack/react-query';
+import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import type { ScormAttempt } from '../types/scorm.types';
 import {
   fetchScorm,
