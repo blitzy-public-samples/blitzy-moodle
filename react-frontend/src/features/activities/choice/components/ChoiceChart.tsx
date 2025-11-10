@@ -229,6 +229,7 @@ const ChoiceChart: React.FC<ChoiceChartProps> = ({
             placement={isVertical ? 'top' : 'right'}
           >
             <Box
+              data-testid={`chart-option-${option.optionid}`}
               sx={{
                 display: 'flex',
                 flexDirection: isVertical ? 'column' : 'row',
