@@ -726,6 +726,3 @@ export function ScormReportCard({
     </Stack>
   );
 }
-
-// Named export as specified in schema (no default export)
-export default ScormReportCard;
