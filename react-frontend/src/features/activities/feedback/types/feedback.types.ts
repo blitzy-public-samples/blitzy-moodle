@@ -401,8 +401,8 @@ export type FeedbackItemPresentation = {
 
   /** Configuration for multichoice questions */
   multichoice?: {
-    /** Display as radio buttons ('r') or dropdown ('d') */
-    subtype: 'r' | 'd';
+    /** Display as checkbox ('c'), radio buttons ('r'), or dropdown ('d') */
+    subtype: 'c' | 'r' | 'd';
     /** Whether to randomize options */
     randomize: boolean;
     /** Whether to hide the "Not selected" option */

@@ -11,7 +11,7 @@
  * @see public/mod/feedback/item/numeric/lib.php - Numeric implementation
  */
 
-import React from 'react';
+import type React from 'react';
 import {
   TextField,
   RadioGroup,
@@ -25,7 +25,7 @@ import {
   Rating,
   Box,
 } from '@mui/material';
-import { FeedbackItemPresentation } from '../types';
+import type { FeedbackItemPresentation } from '../types';
 
 /**
  * Props interface for QuestionRenderer component.
@@ -99,12 +99,12 @@ export interface QuestionRendererProps {
  * />
  * ```
  */
-export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
+export function QuestionRenderer({
   id,
   type,
   presentation,
   required,
-  position,
+  position: _position, // Prop reserved for future use (e.g., display order)
   label,
   value,
   onChange,
@@ -112,7 +112,7 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
   touched = false,
   className,
   disabled = false,
-}) => {
+}: QuestionRendererProps): React.JSX.Element {
   // Generate unique IDs for accessibility
   const fieldId = `feedback-item-${id}`;
   const errorId = `${fieldId}-error`;
@@ -120,70 +120,6 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
   
   // Determine if error should be shown (only after field is touched)
   const showError = touched && !!error;
-  
-  /**
-   * Validates numeric input against range constraints.
-   * 
-   * @param numValue - The numeric value to validate
-   * @returns Validation error message or empty string if valid
-   */
-  const validateNumeric = (numValue: number): string => {
-    if (required === 1 && (numValue === null || numValue === undefined || isNaN(numValue))) {
-      return 'This field is required';
-    }
-    
-    if (presentation.numeric) {
-      const { rangeFrom, rangeTo } = presentation.numeric;
-      
-      if (!isNaN(numValue)) {
-        if (numValue < rangeFrom) {
-          return `Value must be at least ${rangeFrom}`;
-        }
-        if (numValue > rangeTo) {
-          return `Value must be at most ${rangeTo}`;
-        }
-      }
-    }
-    
-    return '';
-  };
-  
-  /**
-   * Validates text input against length constraints.
-   * 
-   * @param textValue - The text value to validate
-   * @returns Validation error message or empty string if valid
-   */
-  const validateText = (textValue: string): string => {
-    if (required === 1 && (!textValue || textValue.trim() === '')) {
-      return 'This field is required';
-    }
-    
-    if (presentation.text?.maxLength && textValue && textValue.length > presentation.text.maxLength) {
-      return `Maximum length is ${presentation.text.maxLength} characters`;
-    }
-    
-    return '';
-  };
-  
-  /**
-   * Validates multichoice selection.
-   * 
-   * @param choiceValue - The selected value(s)
-   * @returns Validation error message or empty string if valid
-   */
-  const validateMultichoice = (choiceValue: string | string[]): string => {
-    if (required === 1) {
-      if (Array.isArray(choiceValue) && choiceValue.length === 0) {
-        return 'Please select at least one option';
-      }
-      if (!Array.isArray(choiceValue) && (!choiceValue || choiceValue === '')) {
-        return 'Please select an option';
-      }
-    }
-    
-    return '';
-  };
   
   /**
    * Renders a multichoice question as radio buttons or checkboxes.
@@ -225,7 +161,7 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
               
               return (
                 <FormControlLabel
-                  key={`${id}-option-${index}`}
+                  key={`${id}-option-${optionValue}-${option}`}
                   control={
                     <Checkbox
                       checked={isChecked}
@@ -293,7 +229,7 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
             
             return (
               <FormControlLabel
-                key={`${id}-option-${index}`}
+                key={`${id}-option-${optionValue}-${option}`}
                 value={optionValue}
                 control={
                   <Radio
@@ -353,9 +289,9 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
           value={selectedValue}
           onChange={(e) => onChange(e.target.value)}
         >
-          {options.map((option, index) => (
+          {options.map((option) => (
             <Box
-              key={`${id}-rated-${index}`}
+              key={`${id}-rated-${option.value}-${option.text}`}
               sx={{
                 display: 'flex',
                 alignItems: 'center',
@@ -454,7 +390,7 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
    * Based on public/mod/feedback/item/textarea/lib.php
    */
   const renderTextarea = () => {
-    const rows = presentation.text?.rows || 4;
+    const rows = presentation.text?.rows ?? 4;
     const maxLength = presentation.text?.maxLength;
     const textValue = typeof value === 'string' ? value : '';
     
@@ -479,7 +415,7 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
         rows={rows}
         className={className}
         inputProps={{
-          maxLength: maxLength,
+          maxLength,
           'aria-describedby': showError ? errorId : helperId,
           'aria-invalid': showError,
           'aria-required': required === 1,
@@ -521,7 +457,7 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
         fullWidth={!width}
         className={className}
         inputProps={{
-          maxLength: maxLength,
+          maxLength,
           size: width,
           'aria-describedby': showError ? errorId : helperId,
           'aria-invalid': showError,
@@ -544,7 +480,7 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
    * Based on public/mod/feedback/item/info/lib.php
    */
   const renderInfo = () => {
-    const content = presentation.info?.content || label;
+    const content = presentation.info?.content ?? label;
     
     return (
       <Box
@@ -653,4 +589,4 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
       {renderQuestion()}
     </Box>
   );
-};
+}
