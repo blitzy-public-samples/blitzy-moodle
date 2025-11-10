@@ -28,7 +28,6 @@ import {
   DataGrid,
   GridColDef,
   GridRowSelectionModel,
-  GridFilterModel,
   GridSortModel,
 } from '@mui/x-data-grid';
 import {
@@ -49,7 +48,7 @@ import {
   Info,
 } from '@mui/icons-material';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 
 import { FeedbackCompleted } from '@/features/activities/feedback/types';
 import { Alert } from '@/components/feedback/Alert';
@@ -124,7 +123,7 @@ export const ResponseList: React.FC<ResponseListProps> = ({
   const [selectedRows, setSelectedRows] = useState<GridRowSelectionModel>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [responseToDelete, setResponseToDelete] = useState<number[]>([]);
-  const [filterState, setFilterState] = useState<ResponseFilterState>({});
+  const [filterState, _setFilterState] = useState<ResponseFilterState>({});
   const [paginationModel, setPaginationModel] = useState({
     page: 0,
     pageSize: 25,
@@ -223,9 +222,13 @@ export const ResponseList: React.FC<ResponseListProps> = ({
    * Get user initials for avatar fallback
    */
   const getUserInitials = useCallback((userName: string) => {
-    const names = userName.trim().split(' ');
+    const names = userName.trim().split(' ').filter(n => n.length > 0);
     if (names.length >= 2) {
-      return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
+      const firstName = names[0];
+      const lastName = names[names.length - 1];
+      if (firstName && lastName && firstName[0] && lastName[0]) {
+        return `${firstName[0]}${lastName[0]}`.toUpperCase();
+      }
     }
     return userName.substring(0, 2).toUpperCase();
   }, []);
