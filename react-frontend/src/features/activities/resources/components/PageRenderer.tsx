@@ -27,11 +27,29 @@ import {
 import DOMPurify from 'dompurify';
 
 // Internal imports
-import type { Page } from '../types/resource.types';
 import { useResourcePage } from '../hooks/useResource';
-import { LoadingSpinner } from '@/components/feedback/LoadingSpinner';
 import { Alert } from '@/components/feedback/Alert';
 import { formatDate } from '@/utils/date';
+
+/**
+ * Local interface for page data used internally in this component
+ * Matches the structure returned from the API via useResourcePage hook
+ */
+interface PageData {
+  id: number;
+  coursemodule: number;
+  course: number;
+  name: string;
+  intro: string;
+  introformat: number;
+  content: string;
+  contentformat: number;
+  display: number;
+  displayoptions: string | Record<string, unknown>;
+  timemodified: number;
+  legacyfiles?: number;
+  legacyfileslast?: number;
+}
 
 /**
  * Props interface for PageRenderer component
@@ -98,12 +116,27 @@ const PageRenderer: React.FC<PageRendererProps> = ({
     isLoading,
     isError,
     error,
-  } = useResourcePage(pageId, 'page');
+  } = useResourcePage(pageId);
 
   // Extract page content and metadata from API response or props
-  const page = useMemo<Page | null>(() => {
+  const page = useMemo<PageData | null>(() => {
     if (pageData) {
-      return pageData as Page;
+      // Map the API response to our PageData structure
+      return {
+        id: pageData.id,
+        coursemodule: pageData.coursemodule,
+        course: pageData.course,
+        name: pageData.name,
+        intro: pageData.intro,
+        introformat: pageData.introformat,
+        content: pageData.content,
+        contentformat: pageData.contentformat,
+        display: pageData.display,
+        displayoptions: pageData.displayoptions,
+        timemodified: pageData.timemodified,
+        legacyfiles: pageData.legacyfiles,
+        legacyfileslast: pageData.legacyfileslast,
+      };
     }
     
     // Fallback to provided props if no API data
@@ -114,9 +147,9 @@ const PageRenderer: React.FC<PageRendererProps> = ({
         course: 0,
         name: '',
         intro: introduction || '',
+        introformat: 1,
         content: providedContent,
         contentformat: mapContentFormatToNumber(contentFormat),
-        contentfiles: [],
         display: 0,
         displayoptions: displayOptions,
         timemodified: lastModified || Date.now() / 1000,
@@ -239,12 +272,32 @@ const PageRenderer: React.FC<PageRendererProps> = ({
     return sanitizeContent(page.content, page.contentformat || ContentFormat.HTML);
   }, [page]);
 
+  // Parse displayoptions to determine if intro should be shown
+  const shouldShowIntro = useMemo(() => {
+    // Priority: explicit prop > displayoptions.printintro > default
+    if (showIntroduction === false) return false;
+    
+    if (page?.displayoptions) {
+      const opts = typeof page.displayoptions === 'string' 
+        ? JSON.parse(page.displayoptions || '{}')
+        : page.displayoptions;
+      
+      // printintro can be string '0'/'1' or boolean
+      if ('printintro' in opts) {
+        const printintro = opts.printintro;
+        return printintro === '1' || printintro === 1 || printintro === true;
+      }
+    }
+    
+    return showIntroduction;
+  }, [page, showIntroduction]);
+
   // Process introduction text with sanitization
   const processedIntroduction = useMemo(() => {
-    if (!page?.intro || !showIntroduction) return '';
+    if (!page?.intro || !shouldShowIntro) return '';
     
     return sanitizeContent(page.intro, ContentFormat.HTML);
-  }, [page, showIntroduction]);
+  }, [page, shouldShowIntro]);
 
   // Add target="_blank" and rel attributes to external links for security
   useEffect(() => {
@@ -311,11 +364,12 @@ const PageRenderer: React.FC<PageRendererProps> = ({
         <Alert
           severity="error"
           title="Failed to Load Page"
-        >
-          {error instanceof Error
-            ? error.message
-            : 'Unable to load page content. Please try again later.'}
-        </Alert>
+          message={
+            error instanceof Error
+              ? error.message
+              : 'Unable to load page content. Please try again later.'
+          }
+        />
       </Container>
     );
   }
@@ -331,6 +385,18 @@ const PageRenderer: React.FC<PageRendererProps> = ({
       role="main"
       aria-label="Page content"
     >
+      {/* Page title */}
+      {page?.name && (
+        <Typography
+          variant="h4"
+          component="h1"
+          gutterBottom
+          sx={{ mb: 3 }}
+        >
+          {page.name}
+        </Typography>
+      )}
+
       <Paper
         elevation={inPopup ? 0 : 1}
         sx={{
