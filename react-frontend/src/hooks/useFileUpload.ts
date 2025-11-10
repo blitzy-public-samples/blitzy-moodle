@@ -400,8 +400,19 @@ export default function useFileUpload(options: FileUploadOptions = {}): UseFileU
         }
 
         // Handle upload error
-        const errorMessage =
-          err instanceof Error ? err.message : 'An unexpected error occurred during upload';
+        // Extract error message from various error structures
+        let errorMessage = 'An unexpected error occurred during upload';
+        
+        // Check if it's an Axios error with response data
+        // Check for response property (indicates Axios error structure)
+        if (err && typeof err === 'object' && 'response' in err && err.response?.data) {
+          // Try to extract error from response.data.error or response.data.message
+          const responseData = (err as any).response.data;
+          errorMessage = responseData.error || responseData.message || errorMessage;
+        } else if (err instanceof Error) {
+          // Use error message from Error instance
+          errorMessage = err.message;
+        }
 
         setState({
           status: 'error',
