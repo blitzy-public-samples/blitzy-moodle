@@ -212,7 +212,8 @@ parse_arguments() {
                 ;;
             *)
                 log_error "Unknown option: $1"
-                usage
+                echo "Use --help to see available options"
+                exit 1
                 ;;
         esac
         shift
@@ -328,51 +329,53 @@ generate_coverage() {
     cd "$PROJECT_ROOT"
     
     log_info "Running tests with coverage..."
-    if ! npm run coverage; then
-        log_error "Coverage generation failed"
-        return 1
-    fi
+    # Run coverage and capture exit code, but don't exit immediately
+    npm run coverage
+    local npm_exit_code=$?
     
     # Check if coverage directory exists
     if [ ! -d "$PROJECT_ROOT/coverage" ]; then
-        log_warning "Coverage directory not found"
-        return 0
+        log_error "Coverage directory not found"
+        return 1
     fi
     
     # Parse coverage summary (if available)
     local coverage_file="$PROJECT_ROOT/coverage/coverage-summary.json"
-    if [ -f "$coverage_file" ]; then
-        log_info "Validating coverage thresholds (${COVERAGE_THRESHOLD}% required)..."
+    if [ ! -f "$coverage_file" ]; then
+        log_error "Coverage summary file not found: $coverage_file"
+        return 1
+    fi
+    
+    log_info "Validating coverage thresholds (${COVERAGE_THRESHOLD}% required)..."
+    
+    # Extract coverage percentages using node to parse JSON
+    # Temporarily disable set -e to capture exit code without terminating script
+    set +e
+    node -e "
+        const fs = require('fs');
+        const coverage = JSON.parse(fs.readFileSync('$coverage_file', 'utf8'));
+        const total = coverage.total;
+        const lines = total.lines.pct;
+        const functions = total.functions.pct;
+        const branches = total.branches.pct;
+        const statements = total.statements.pct;
         
-        # Extract coverage percentages using node to parse JSON
-        local coverage_check=$(node -e "
-            const fs = require('fs');
-            const coverage = JSON.parse(fs.readFileSync('$coverage_file', 'utf8'));
-            const total = coverage.total;
-            const lines = total.lines.pct;
-            const functions = total.functions.pct;
-            const branches = total.branches.pct;
-            const statements = total.statements.pct;
-            
-            console.log('Lines: ' + lines + '%');
-            console.log('Functions: ' + functions + '%');
-            console.log('Branches: ' + branches + '%');
-            console.log('Statements: ' + statements + '%');
-            
-            const threshold = $COVERAGE_THRESHOLD;
-            if (lines < threshold || functions < threshold || branches < threshold || statements < threshold) {
-                process.exit(1);
-            }
-        " 2>/dev/null)
+        console.log('Lines: ' + lines + '%');
+        console.log('Functions: ' + functions + '%');
+        console.log('Branches: ' + branches + '%');
+        console.log('Statements: ' + statements + '%');
         
-        if [ $? -eq 0 ]; then
-            echo "$coverage_check"
-            log_success "Coverage thresholds met (>= ${COVERAGE_THRESHOLD}%)"
-        else
-            echo "$coverage_check"
-            log_error "Coverage below ${COVERAGE_THRESHOLD}% threshold"
-            return 2
-        fi
+        const threshold = $COVERAGE_THRESHOLD;
+        if (lines < threshold || functions < threshold || branches < threshold || statements < threshold) {
+            process.exit(1);
+        }
+    " 2>/dev/null
+    
+    local node_exit_code=$?
+    set -e  # Re-enable set -e
+    
+    if [ $node_exit_code -eq 0 ]; then
+        log_success "Coverage thresholds met (>= ${COVERAGE_THRESHOLD}%)"
         
         local html_report="$PROJECT_ROOT/coverage/index.html"
         if [ -f "$html_report" ]; then
@@ -384,12 +387,12 @@ generate_coverage() {
             log_info "LCOV coverage report: coverage/lcov.info"
         fi
         
-        log_success "Coverage reports generated (text, HTML, LCOV)"
+        log_success "Coverage reports generated (text, HTML, LCOV, JSON)"
+        return 0
     else
-        log_warning "Coverage summary not found, skipping threshold validation"
+        log_error "Coverage below ${COVERAGE_THRESHOLD}% threshold"
+        return 2
     fi
-    
-    return 0
 }
 
 # Main execution
@@ -442,8 +445,12 @@ main() {
     # Generate coverage report (only if unit or integration tests ran)
     if [ "$RUN_UNIT" = true ] || [ "$RUN_INTEGRATION" = true ]; then
         if [ "$WATCH_MODE" = false ] && [ "$UI_MODE" = false ]; then
-            if ! generate_coverage; then
-                coverage_exit_code=$?
+            # Temporarily disable set -e since generate_coverage may return non-zero
+            set +e
+            generate_coverage
+            coverage_exit_code=$?
+            set -e
+            if [ $coverage_exit_code -ne 0 ]; then
                 if [ $coverage_exit_code -eq 2 ]; then
                     log_warning "Coverage below threshold"
                     # Only set exit code to 2 if tests passed

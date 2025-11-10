@@ -86,9 +86,10 @@ export default defineConfig({
       
       // Coverage reporters
       reporter: [
-        'text',      // Console output
-        'html',      // HTML report in coverage/index.html
-        'lcov'       // LCOV format for CI/CD integration
+        'text',          // Console output
+        'html',          // HTML report in coverage/index.html
+        'lcov',          // LCOV format for CI/CD integration
+        'json-summary'   // JSON summary for automated threshold checking
       ],
       
       // Files to exclude from coverage
