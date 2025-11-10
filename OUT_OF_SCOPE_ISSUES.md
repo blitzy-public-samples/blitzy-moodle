@@ -295,3 +295,88 @@ npm run type-check 2>&1 | grep -E "(workshop|error)"
 # Result: Zero workshop errors, only 3 profile errors confirmed
 ```
 
+---
+
+## ESLint Warnings in Multiple Modules (Out of Scope)
+**Documented by**: Storybook preview.ts validator
+**Date**: 2024-11-10
+**Module**: Storybook Configuration
+**Assigned File**: `react-frontend/.storybook/preview.ts` (renamed to `.storybook/preview.tsx`)
+
+### Overview
+During the validation of the Storybook preview configuration, ESLint was run on the entire project. The Storybook files (`.storybook/preview.tsx` and related config) pass linting with zero errors and zero warnings. However, 61 ESLint warnings exist in various out-of-scope modules throughout the project.
+
+### Warning Summary
+**Total**: 61 warnings (0 errors)
+**Status**: Project's standard `npm run lint` command PASSES ✅
+**Impact**: These warnings do NOT prevent the project from building or running
+
+### Affected Modules (Out of Scope)
+The warnings are distributed across multiple feature modules that are out of scope for Storybook validation:
+
+1. **Workshop Module** - `src/features/activities/workshop/components/PhaseIndicator.tsx`
+   - Warning: `react/function-component-definition` - Function component is not a function declaration
+
+2. **Admin Module** - `src/features/admin/api/shared.ts`
+   - Warnings include:
+     - `@typescript-eslint/consistent-type-imports` - Should use `import type` for type-only imports
+     - `@typescript-eslint/prefer-nullish-coalescing` - Should use `??` instead of `||`
+     - `prefer-destructuring` - Should use object destructuring
+
+3. **Gradebook Module** - `src/features/gradebook/components/GradeChart.tsx`
+   - Warnings include:
+     - `@typescript-eslint/consistent-type-imports` - Should use `import type` for React import
+     - `react-refresh/only-export-components` - Should export only components for fast refresh
+     - `@typescript-eslint/no-non-null-assertion` - Forbidden non-null assertion
+     - `react/function-component-definition` - Function component is not a function declaration
+
+### Warning Details
+```
+✖ 61 problems (0 errors, 61 warnings)
+  0 errors and 12 warnings potentially fixable with the `--fix` option.
+```
+
+### Reason Out of Scope
+These files are in different feature modules (workshop, admin, gradebook) and are not:
+- My assigned file (`.storybook/preview.tsx`)
+- Listed in the Agent Action Plan for this validation
+- Dependencies of the Storybook configuration
+- Part of the Storybook directory structure
+
+### Storybook Module Status
+**Status**: ✅ ALL STORYBOOK FILES LINT SUCCESSFULLY
+
+**In-Scope Files Validated**:
+- `.storybook/preview.tsx` - Zero ESLint errors, zero warnings ✅
+- `.storybook/main.js` - Properly ignored in ESLint config ✅
+- `.storybook/theme.ts` - Zero ESLint errors, zero warnings ✅
+- All Storybook configuration files pass linting ✅
+
+**Linting Results**:
+- Storybook directory: 0 errors, 0 warnings ✅
+- Standard lint command: PASSES ✅
+- With `--max-warnings 0`: 61 warnings in out-of-scope files
+
+**Compilation**:
+- TypeScript type-check: PASSES ✅
+- Storybook build: SUCCESS ✅
+- Main project build: SUCCESS ✅
+- All 1537 tests: PASSING (1 skipped) ✅
+
+### Recommendation
+These ESLint warnings should be addressed by the validators responsible for the respective modules:
+- Workshop module validator should fix PhaseIndicator.tsx warnings
+- Admin module validator should fix shared.ts warnings (many auto-fixable with `--fix`)
+- Gradebook module validator should fix GradeChart.tsx warnings
+
+**Auto-fixable**: 12 of the 61 warnings can be automatically fixed with `eslint --fix`
+
+### Impact
+- ✅ No impact on Storybook functionality
+- ✅ No impact on project build or runtime
+- ✅ Standard lint command passes (project allows warnings by default)
+- ✅ All in-scope Storybook files are lint-clean
+- ℹ️ The `--max-warnings 0` flag would require fixing these 61 warnings across multiple modules
+
+**Note**: The project's ESLint configuration does not enforce zero warnings by default. The standard `npm run lint` command passes, indicating these warnings are acceptable at the project level. However, for stricter CI/CD pipelines using `--max-warnings 0`, these warnings would need to be addressed by the respective module validators.
+
