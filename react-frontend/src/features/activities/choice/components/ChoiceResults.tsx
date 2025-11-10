@@ -24,6 +24,7 @@ import {
   TableBody,
   TableRow,
   TableCell,
+  TableContainer,
   Checkbox,
   Button,
   Select,
@@ -36,8 +37,7 @@ import {
   Alert,
 } from '@mui/material';
 import { Delete, DriveFileMove } from '@mui/icons-material';
-import { ChoiceChart, type ChartOption } from './ChoiceChart';
-import type { ChoiceResultsData } from '../types/choice.types';
+import ChoiceChart, { type ChartOption } from './ChoiceChart';
 import useDeleteResponses from '../hooks/useDeleteResponses';
 import useModifyResponses from '../hooks/useModifyResponses';
 
@@ -253,7 +253,6 @@ const ChoiceResults: React.FC<ChoiceResultsProps> = ({
   }, [options]);
 
   const isAllSelected = totalSelected > 0 && totalSelected === allResponsesCount;
-  const isIndeterminate = totalSelected > 0 && totalSelected < allResponsesCount;
 
   /**
    * Handle select/deselect all checkbox toggle.
@@ -466,7 +465,7 @@ const ChoiceResults: React.FC<ChoiceResultsProps> = ({
           )}
 
           {/* Results table (lines 151-299) */}
-          <Paper elevation={2} sx={{ mt: 2 }}>
+          <TableContainer component={Paper} elevation={2} sx={{ mt: 2 }}>
             <Table className="results names table-bordered" sx={{ minWidth: 650 }}>
               <TableHead>
                 {/* Header row with option names and select-all checkboxes (lines 162-232) */}
@@ -663,7 +662,7 @@ const ChoiceResults: React.FC<ChoiceResultsProps> = ({
                 </TableRow>
               </TableBody>
             </Table>
-          </Paper>
+          </TableContainer>
 
           {/* Action buttons section (lines 301-336) */}
           {canModify && (
@@ -696,6 +695,7 @@ const ChoiceResults: React.FC<ChoiceResultsProps> = ({
                 startIcon={<Delete />}
                 onClick={handleDeleteSelected}
                 disabled={totalSelected === 0 || isDeleting}
+                data-testid="delete-selected-button"
               >
                 Delete Selected ({totalSelected})
               </Button>
@@ -732,6 +732,7 @@ const ChoiceResults: React.FC<ChoiceResultsProps> = ({
                   disabled={
                     totalSelected === 0 || !selectedOptionForMove || isModifying
                   }
+                  data-testid="move-selected-button"
                 >
                   Move
                 </Button>
