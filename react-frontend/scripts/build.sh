@@ -95,11 +95,12 @@ version_ge() {
 }
 
 # Get human-readable file size
+# shellcheck disable=SC2317  # Function is called in bundle analysis section
 human_readable_size() {
     local size=$1
-    if [ $size -lt 1024 ]; then
+    if [ "$size" -lt 1024 ]; then
         echo "${size}B"
-    elif [ $size -lt 1048576 ]; then
+    elif [ "$size" -lt 1048576 ]; then
         echo "$((size / 1024))KB"
     else
         echo "$((size / 1048576))MB"
@@ -280,6 +281,7 @@ print_info "Validating required environment variables..."
 
 # Source the environment file
 set -a  # Automatically export all variables
+# shellcheck disable=SC1090  # Dynamic source file based on build type
 source "$ENV_FILE" 2>/dev/null || true
 set +a
 
@@ -573,7 +575,7 @@ for js_file in $JS_FILES; do
     echo "    Gzipped: ${size_gzipped_kb}KB"
     
     # Identify main bundle (largest file or file with "index" in name)
-    if [[ "$filename" == *"index"* ]] || [ $size_gzipped -gt $MAIN_BUNDLE_SIZE_GZIPPED ]; then
+    if [[ "$filename" == *"index"* ]] || [ "$size_gzipped" -gt "$MAIN_BUNDLE_SIZE_GZIPPED" ]; then
         MAIN_BUNDLE_SIZE_GZIPPED=$size_gzipped
         MAIN_BUNDLE_FILE="$filename"
     fi
@@ -600,7 +602,7 @@ print_info "Verifying main bundle size constraint (<300KB gzipped)..."
 # Main bundle size limit: 300KB = 307200 bytes
 MAIN_BUNDLE_SIZE_LIMIT=307200
 
-if [ $MAIN_BUNDLE_SIZE_GZIPPED -le $MAIN_BUNDLE_SIZE_LIMIT ]; then
+if [ "$MAIN_BUNDLE_SIZE_GZIPPED" -le "$MAIN_BUNDLE_SIZE_LIMIT" ]; then
     print_success "Main bundle ($MAIN_BUNDLE_FILE): ${MAIN_BUNDLE_SIZE_GZIPPED_KB}KB gzipped (<300KB)"
 else
     print_error "Main bundle ($MAIN_BUNDLE_FILE) exceeds size limit"
@@ -623,7 +625,7 @@ print_info "Checking for source maps..."
 
 SOURCE_MAPS=$(find dist/assets -name "*.map" -type f 2>/dev/null | wc -l | tr -d ' ')
 
-if [ $SOURCE_MAPS -gt 0 ]; then
+if [ "$SOURCE_MAPS" -gt 0 ]; then
     print_success "Found $SOURCE_MAPS source map files for production debugging"
 else
     print_warning "No source maps found"

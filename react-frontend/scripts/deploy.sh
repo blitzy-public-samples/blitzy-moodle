@@ -252,8 +252,10 @@ validate_environment() {
     log_success "package.json found"
 
     # Extract version information
-    local version=$(jq -r '.version' package.json)
-    local app_name=$(jq -r '.name' package.json)
+    local version
+    version=$(jq -r '.version' package.json)
+    local app_name
+    app_name=$(jq -r '.name' package.json)
     log_info "Application: ${app_name} v${version}"
 }
 
@@ -270,7 +272,8 @@ validate_git_repository() {
     log_success "Git working directory is clean"
 
     # Get current branch
-    local current_branch=$(git rev-parse --abbrev-ref HEAD)
+    local current_branch
+    current_branch=$(git rev-parse --abbrev-ref HEAD)
     log_info "Current branch: ${current_branch}"
 
     # Validate branch for production deployments
@@ -289,9 +292,12 @@ validate_git_repository() {
     fi
 
     # Get commit information
-    local commit_hash=$(git rev-parse HEAD)
-    local commit_short=$(git rev-parse --short HEAD)
-    local commit_message=$(git log -1 --pretty=format:"%s")
+    local commit_hash
+    commit_hash=$(git rev-parse HEAD)
+    local commit_short
+    commit_short=$(git rev-parse --short HEAD)
+    local commit_message
+    commit_message=$(git log -1 --pretty=format:"%s")
     
     log_info "Commit: ${commit_short} - ${commit_message}"
     
@@ -369,7 +375,7 @@ execute_build() {
 
     # Execute build script
     if [ "${DRY_RUN}" = false ]; then
-        if ! bash "${SCRIPT_DIR}/build.sh" ${build_options}; then
+        if ! bash "${SCRIPT_DIR}/build.sh" "${build_options}"; then
             log_error "Build failed"
             exit 2
         fi
@@ -390,7 +396,8 @@ execute_build() {
             exit 2
         fi
 
-        local file_count=$(find dist -type f | wc -l)
+        local file_count
+        file_count=$(find dist -type f | wc -l)
         log_success "dist/ directory contains ${file_count} files"
     fi
 }
@@ -435,11 +442,13 @@ prepare_deployment_artifact() {
         local artifact_path="${PROJECT_ROOT}/${ARTIFACT_NAME}"
         tar -czf "${artifact_path}" -C "$(dirname "${DEPLOY_DIR}")" "$(basename "${DEPLOY_DIR}")"
         
-        local artifact_size=$(du -h "${artifact_path}" | cut -f1)
+        local artifact_size
+        artifact_size=$(du -h "${artifact_path}" | cut -f1)
         log_success "Created deployment artifact: ${ARTIFACT_NAME} (${artifact_size})"
         
         # Calculate checksum
-        local checksum=$(sha256sum "${artifact_path}" | cut -d' ' -f1)
+        local checksum
+        checksum=$(sha256sum "${artifact_path}" | cut -d' ' -f1)
         log_info "Artifact checksum (SHA-256): ${checksum}"
         
         # Export for later use
@@ -454,8 +463,10 @@ generate_deployment_manifest() {
     local manifest_file="${DEPLOY_DIR}/deployment-manifest.json"
     
     if [ "${DRY_RUN}" = false ]; then
-        local version=$(jq -r '.version' package.json)
-        local app_name=$(jq -r '.name' package.json)
+        local version
+        version=$(jq -r '.version' package.json)
+        local app_name
+        app_name=$(jq -r '.name' package.json)
         
         cat > "${manifest_file}" << EOF
 {
@@ -572,7 +583,9 @@ determine_deployment_slots() {
 
     if [ "${DRY_RUN}" = false ]; then
         # Check which slot is currently active
-        local current_target=$(ssh "${remote}" "readlink -f '${current_link}' 2>/dev/null || echo 'none'")
+        local current_target
+        # shellcheck disable=SC2029  # Client-side expansion is intentional
+        current_target=$(ssh "${remote}" "readlink -f '${current_link}' 2>/dev/null || echo 'none'")
         
         if [ "${current_target}" = "${blue_path}" ]; then
             export CURRENT_SLOT="blue"
@@ -606,8 +619,11 @@ backup_deployment() {
         log_info "Backing up previous deployment"
         
         # Check if deployment directory exists
+        # shellcheck disable=SC2029  # Client-side expansion is intentional
         if ssh "${remote}" "[ -d '${deploy_path}' ]"; then
-            local backup_name="backup-$(date +%Y%m%d_%H%M%S)"
+            local backup_name
+            backup_name="backup-$(date +%Y%m%d_%H%M%S)"
+            # shellcheck disable=SC2029  # Client-side expansion is intentional
             ssh "${remote}" "cp -r '${deploy_path}' '${deploy_path}.${backup_name}'"
             log_success "Created backup: ${deploy_path}.${backup_name}"
         else
@@ -626,6 +642,7 @@ transfer_artifact() {
         log_info "Transferring artifact to server"
         
         # Create deployment directory on remote server
+        # shellcheck disable=SC2029  # Client-side expansion is intentional
         ssh "${remote}" "mkdir -p '${deploy_path}'"
         
         # Transfer artifact using rsync
@@ -645,6 +662,7 @@ extract_and_deploy() {
         log_info "Extracting and deploying artifact"
         
         # Extract artifact on remote server
+        # shellcheck disable=SC2087  # Client-side variable expansion is intentional
         ssh "${remote}" << EOF
             cd /tmp
             tar -xzf '${ARTIFACT_NAME}'
@@ -673,6 +691,7 @@ set_permissions() {
     if [ "${DRY_RUN}" = false ]; then
         log_info "Setting file permissions"
         
+        # shellcheck disable=SC2087  # Client-side variable expansion is intentional
         ssh "${remote}" << EOF
             # Set proper ownership (www-data is common for nginx/apache)
             sudo chown -R www-data:www-data '${deploy_path}'
@@ -698,6 +717,7 @@ switch_deployment() {
     if [ "${DRY_RUN}" = false ]; then
         log_info "Switching deployment symlink"
         
+        # shellcheck disable=SC2087  # Client-side variable expansion is intentional
         ssh "${remote}" << EOF
             # Remove old symlink
             rm -f '${current_link}'
@@ -745,6 +765,7 @@ health_check_deployment() {
         local required_files=("index.html" "deployment-manifest.json" ".env")
         
         for file in "${required_files[@]}"; do
+            # shellcheck disable=SC2029  # Client-side expansion is intentional
             if ! ssh "${remote}" "[ -f '${deploy_path}/${file}' ]"; then
                 log_error "Required file not found: ${file}"
                 return 1
@@ -823,6 +844,7 @@ rollback_failed_deployment() {
         log_info "Rolling back to ${rollback_slot} slot"
         
         if [ "${DRY_RUN}" = false ]; then
+            # shellcheck disable=SC2087  # Client-side variable expansion is intentional
             ssh "${remote}" << EOF
                 rm -f '${current_link}'
                 ln -s '${rollback_path}' '${current_link}'
@@ -835,12 +857,15 @@ EOF
     else
         # Staging rollback
         local deploy_path="${STAGING_CONFIG[deploy_path]}"
-        local backup_path=$(ssh "${remote}" "ls -td '${deploy_path}'.backup-* 2>/dev/null | head -1" || echo "")
+        local backup_path
+        # shellcheck disable=SC2029  # Client-side expansion is intentional
+        backup_path=$(ssh "${remote}" "ls -td '${deploy_path}'.backup-* 2>/dev/null | head -1" || echo "")
         
         if [ -n "${backup_path}" ]; then
             log_info "Rolling back to: ${backup_path}"
             
             if [ "${DRY_RUN}" = false ]; then
+                # shellcheck disable=SC2087  # Client-side variable expansion is intentional
                 ssh "${remote}" << EOF
                     rm -rf '${deploy_path}'
                     cp -r '${backup_path}' '${deploy_path}'
@@ -919,7 +944,8 @@ cleanup() {
 # ============================================================================
 
 main() {
-    local start_time=$(date +%s)
+    local start_time
+    start_time=$(date +%s)
     
     # Log deployment start
     log_step "Moodle React Frontend Deployment"
@@ -955,7 +981,8 @@ main() {
     cleanup
     
     # Calculate deployment duration
-    local end_time=$(date +%s)
+    local end_time
+    end_time=$(date +%s)
     local duration=$((end_time - start_time))
     
     # Log deployment completion
