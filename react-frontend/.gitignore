@@ -75,7 +75,7 @@ storybook-static/
 
 # Optional: Ignore build info
 .turbo/
-tsconfig.tsbuildinfo
+*.tsbuildinfo
 
 # Optional: Ignore local configuration
 .env

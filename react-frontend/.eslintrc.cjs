@@ -33,7 +33,7 @@ module.exports = {
       jsx: true,
     },
     // Required for @typescript-eslint/recommended-requiring-type-checking
-    project: ['./tsconfig.json', './tsconfig.node.json'],
+    project: ['./tsconfig.json', './tsconfig.node.json', './tsconfig.storybook.json'],
     tsconfigRootDir: __dirname,
   },
 
@@ -76,6 +76,7 @@ module.exports = {
     'tests/setup.ts',
     'tests/**/*',
     '**/blitzy_adhoc_test_*',
+    '.storybook/main.js', // CommonJS workaround for Storybook 7.6 ESM compatibility - main.ts is the canonical config
   ],
 
   // Custom rules

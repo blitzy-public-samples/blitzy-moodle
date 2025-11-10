@@ -52,6 +52,9 @@
   "references": [
     {
       "path": "./tsconfig.node.json"
+    },
+    {
+      "path": "./tsconfig.storybook.json"
     }
   ]
 }
