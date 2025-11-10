@@ -38,16 +38,15 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+// Standard Moodle internal check - ensures this file is loaded from proper context
+defined('MOODLE_INTERNAL') || die();
+
 // Import firebase/php-jwt library classes
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use Firebase\JWT\ExpiredException;
 use Firebase\JWT\SignatureInvalidException;
 use Firebase\JWT\BeforeValidException;
-
-// Load Moodle configuration and required libraries
-require_once(__DIR__ . '/../../config.php');
-require_once($CFG->dirroot . '/lib/accesslib.php');
 
 // Import API exception classes
 require_once(__DIR__ . '/api_exception.php');
