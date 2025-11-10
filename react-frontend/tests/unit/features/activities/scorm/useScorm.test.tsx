@@ -17,6 +17,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactNode } from 'react';
 import { useScorm } from '@/features/activities/scorm/hooks/useScorm';
 import type { Scorm, ScormSco, ScormAttempt, ScormUserData } from '@/features/activities/scorm/types/scorm.types';
 import * as scormApi from '@/features/activities/scorm/api/scormApi';
@@ -33,7 +34,7 @@ vi.mock('@/features/activities/scorm/api/scormApi', () => ({
  * Create a wrapper component with QueryClientProvider for hook testing
  */
 const createWrapper = (queryClient: QueryClient) => {
-  return ({ children }: { children: React.ReactNode }) => (
+  return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
 };
@@ -48,12 +49,45 @@ describe('useScorm Hook', () => {
         queries: {
           retry: false,
           gcTime: 0,
+          staleTime: 0,
         },
+        mutations: {
+          retry: false,
+        },
+      },
+      logger: {
+        log: () => {},
+        warn: () => {},
+        error: () => {},
       },
     });
 
     // Clear all mocks before each test
     vi.clearAllMocks();
+    
+    // Set up default mock implementations to prevent undefined behavior
+    vi.mocked(scormApi.fetchScorm).mockResolvedValue({
+      id: 1,
+      name: 'Default SCORM',
+      intro: 'Default intro',
+      version: 'SCORM_12',
+      grademethod: 0,
+      maxattempt: 0,
+      displaycoursestructure: 1,
+      popup: 0,
+      width: 100,
+      height: 100,
+      whatgrade: 0,
+    } as Scorm);
+    
+    vi.mocked(scormApi.fetchScormScos).mockResolvedValue([]);
+    vi.mocked(scormApi.fetchAttempts).mockResolvedValue([]);
+    vi.mocked(scormApi.fetchAttemptTracking).mockResolvedValue({
+      attempt: 1,
+      scormId: 1,
+      userId: 1,
+      scoes: [],
+    } as ScormUserData);
   });
 
   afterEach(() => {
@@ -119,7 +153,7 @@ describe('useScorm Hook', () => {
       });
 
       expect(result.current.scorm).toEqual(mockScormPackage);
-      expect(result.current.isError).toBe(false);
+      expect(result.current.error).toBe(null);
       expect(scormApi.fetchScorm).toHaveBeenCalledWith(1);
       expect(scormApi.fetchScorm).toHaveBeenCalledTimes(1);
     });
@@ -191,11 +225,12 @@ describe('useScorm Hook', () => {
         wrapper: createWrapper(queryClient),
       });
 
+      // Wait longer for retries to complete (hook has retry: 2 configured)
       await waitFor(() => {
-        expect(result.current.isLoading).toBe(false);
-      });
+        expect(result.current.error).not.toBe(null);
+      }, { timeout: 10000 });
 
-      expect(result.current.isError).toBe(true);
+      expect(result.current.isLoading).toBe(false);
       expect(result.current.error).toBeDefined();
       expect(result.current.scorm).toBeUndefined();
     });
@@ -210,11 +245,12 @@ describe('useScorm Hook', () => {
         wrapper: createWrapper(queryClient),
       });
 
+      // Wait longer for retries to complete (hook has retry: 2 configured)
       await waitFor(() => {
-        expect(result.current.isLoading).toBe(false);
-      });
+        expect(result.current.error).not.toBe(null);
+      }, { timeout: 10000 });
 
-      expect(result.current.isError).toBe(true);
+      expect(result.current.isLoading).toBe(false);
       expect(result.current.error).toBeDefined();
     });
   });
@@ -582,7 +618,7 @@ describe('useScorm Hook', () => {
       });
 
       // Verify cache contains data with correct query key
-      const cachedData = queryClient.getQueryData(['scorm', 1]);
+      const cachedData = queryClient.getQueryData(['scorm', 'detail', 1]);
       expect(cachedData).toEqual(mockScorm);
     });
 
@@ -615,7 +651,7 @@ describe('useScorm Hook', () => {
         expect(result.current.isLoading).toBe(false);
       });
 
-      const cachedScos = queryClient.getQueryData(['scorm', 1, 'scos']);
+      const cachedScos = queryClient.getQueryData(['scorm', 'scoes', 1]);
       expect(cachedScos).toEqual(mockScos);
     });
 
@@ -645,7 +681,7 @@ describe('useScorm Hook', () => {
         expect(result.current.isLoading).toBe(false);
       });
 
-      const cachedAttempts = queryClient.getQueryData(['scorm', 1, 'attempts']);
+      const cachedAttempts = queryClient.getQueryData(['scorm', 'attempts', 1]);
       expect(cachedAttempts).toEqual(mockAttempts);
     });
 
@@ -753,8 +789,8 @@ describe('useScorm Hook', () => {
 
       expect(result.current.scorm?.name).toBe('Initial');
 
-      // Invalidate queries
-      await queryClient.invalidateQueries({ queryKey: ['scorm', 1] });
+      // Invalidate queries - use base key to match all scorm queries
+      await queryClient.invalidateQueries({ queryKey: ['scorm'] });
 
       await waitFor(() => {
         expect(result.current.scorm?.name).toBe('Updated');
@@ -781,7 +817,7 @@ describe('useScorm Hook', () => {
       });
     });
 
-    it('should set isError to true when any query fails', async () => {
+    it('should set error when any query fails', async () => {
       vi.mocked(scormApi.fetchScorm).mockRejectedValue(new Error('Failed'));
       vi.mocked(scormApi.fetchScormScos).mockResolvedValue([]);
       vi.mocked(scormApi.fetchAttempts).mockResolvedValue([]);
@@ -790,11 +826,12 @@ describe('useScorm Hook', () => {
         wrapper: createWrapper(queryClient),
       });
 
+      // Wait longer for retries to complete (hook has retry: 2 configured)
       await waitFor(() => {
-        expect(result.current.isLoading).toBe(false);
-      });
+        expect(result.current.error).not.toBe(null);
+      }, { timeout: 10000 });
 
-      expect(result.current.isError).toBe(true);
+      expect(result.current.isLoading).toBe(false);
       expect(result.current.error).toBeDefined();
     });
 
@@ -808,9 +845,10 @@ describe('useScorm Hook', () => {
         wrapper: createWrapper(queryClient),
       });
 
+      // Wait longer for retries to complete (hook has retry: 2 configured)
       await waitFor(() => {
-        expect(result.current.isError).toBe(true);
-      });
+        expect(result.current.error).not.toBe(null);
+      }, { timeout: 10000 });
 
       expect(result.current.error).toBeDefined();
       expect(result.current.error?.message).toContain(errorMessage);
@@ -825,12 +863,14 @@ describe('useScorm Hook', () => {
         wrapper: createWrapper(queryClient),
       });
 
+      // Wait longer for retries to complete (hook has retry: 2 configured)
       await waitFor(() => {
-        expect(result.current.isLoading).toBe(false);
-      });
+        expect(result.current.error).not.toBe(null);
+      }, { timeout: 10000 });
 
       // Should still show error even if some queries succeeded
-      expect(result.current.isError).toBe(true);
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.error).not.toBe(null);
     });
   });
 
@@ -868,6 +908,9 @@ describe('useScorm Hook', () => {
     it('should handle refetch errors gracefully', async () => {
       vi.mocked(scormApi.fetchScorm)
         .mockResolvedValueOnce({ id: 1 } as Scorm)
+        // Mock rejection for initial refetch call + 2 retries (retry: 2 in hook)
+        .mockRejectedValueOnce(new Error('Refetch failed'))
+        .mockRejectedValueOnce(new Error('Refetch failed'))
         .mockRejectedValueOnce(new Error('Refetch failed'));
       vi.mocked(scormApi.fetchScormScos).mockResolvedValue([]);
       vi.mocked(scormApi.fetchAttempts).mockResolvedValue([]);
@@ -880,14 +923,16 @@ describe('useScorm Hook', () => {
         expect(result.current.isLoading).toBe(false);
       });
 
-      expect(result.current.isError).toBe(false);
+      expect(result.current.error).toBe(null);
 
-      await result.current.refetch();
+      // Trigger refetch (don't await - let it run in background)
+      result.current.refetch();
 
+      // Wait longer for retries to complete (hook has retry: 2 configured)
       await waitFor(() => {
-        expect(result.current.isError).toBe(true);
-      });
-    });
+        expect(result.current.error).not.toBe(null);
+      }, { timeout: 10000 });
+    }, { timeout: 15000 });
   });
 
   describe('TypeScript Type Safety', () => {
@@ -1181,9 +1226,10 @@ describe('useScorm Hook', () => {
         wrapper: createWrapper(queryClient),
       });
 
+      // Wait longer for retries to complete (hook has retry: 2 configured)
       await waitFor(() => {
-        expect(result.current.isError).toBe(true);
-      });
+        expect(result.current.error).not.toBe(null);
+      }, { timeout: 10000 });
 
       expect(result.current.error?.message).toContain('not found');
     });
