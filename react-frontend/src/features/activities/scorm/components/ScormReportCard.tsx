@@ -45,8 +45,8 @@ import {
   Divider,
   Stack,
   Grid,
+  Chip,
 } from '@mui/material';
-import { Chip } from '@mui/material';
 import {
   CheckCircle as CheckCircleIcon,
   Cancel as CancelIcon,
@@ -57,10 +57,10 @@ import {
 } from '@mui/icons-material';
 
 // Internal imports from depends_on_files
-import type { ScormUserData } from '../types/scorm.types';
+import type { ScormAttemptSummary, ScormCMIInteraction, ScormCMIObjective, ScormScoProgress } from '../types/scorm.types';
 import { fetchAttemptReport } from '../api/scormApi';
 import { Alert } from '../../../../components/feedback/Alert';
-import { Card } from '../../../../components/data-display/Card';
+import Card from '../../../../components/data-display/Card';
 import { LoadingSpinner } from '../../../../components/feedback/LoadingSpinner';
 import { scormQueryKeys } from '../hooks/useScorm';
 
@@ -207,7 +207,7 @@ function formatScore(score: number | string | undefined, maxScore?: number): str
   }
 
   if (maxScore !== undefined && maxScore > 0) {
-    return `${numScore.toFixed(1)} / ${maxScore}`;
+    return `${numScore.toFixed(1)} / ${maxScore.toFixed(1)}`;
   }
 
   return numScore.toFixed(1);
@@ -232,41 +232,52 @@ export function ScormReportCard({
   // Fetch report data using React Query
   // Uses scormQueryKeys.report for consistent caching
   const {
-    data: reportData,
+    data: report,
     isLoading,
     error,
   } = useQuery({
     queryKey: scormQueryKeys.report(scormId, userId, attemptNumber),
-    queryFn: () => fetchAttemptReport(scormId, userId, attemptNumber),
+    queryFn: () => fetchAttemptReport(scormId, {
+      scormId,
+      userId,
+      attempt: attemptNumber,
+      includeInteractions: showDetailed,
+    }),
     // Cache report data for 5 minutes
     staleTime: 5 * 60 * 1000,
     // Keep in cache for 10 minutes
-    cacheTime: 10 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
     // Don't retry on failure - report permissions are strict
     retry: false,
   });
 
   // Memoize calculated statistics to prevent recalculation on every render
   const statistics = useMemo(() => {
-    if (!reportData) {
+    if (!report) {
       return null;
     }
 
-    const { attempts, scoProgress, interactions, objectives } = reportData;
+    const { attempts = [], scoProgress = [], interactions = [], objectives = [] } = report;
 
     // Calculate overall completion percentage from SCO progress
     let totalScos = scoProgress.length;
     let completedScos = 0;
     let totalTimeSeconds = 0;
 
-    scoProgress.forEach((sco) => {
+    scoProgress.forEach((sco: ScormScoProgress) => {
       const status = sco.status?.toLowerCase() || '';
       if (status === 'completed' || status === 'passed') {
         completedScos++;
       }
-      // Sum up session time from tracking data
-      if (sco.timeModified) {
-        totalTimeSeconds += sco.timeModified;
+      // Parse timeSpent string (format: HH:MM:SS or total seconds)
+      if (sco.timeSpent) {
+        const timeMatch = sco.timeSpent.match(/(\d+):(\d+):(\d+)/);
+        if (timeMatch && timeMatch[1] && timeMatch[2] && timeMatch[3]) {
+          totalTimeSeconds += parseInt(timeMatch[1], 10) * 3600 + parseInt(timeMatch[2], 10) * 60 + parseInt(timeMatch[3], 10);
+        } else {
+          // Assume it's already in seconds
+          totalTimeSeconds += parseInt(sco.timeSpent, 10) || 0;
+        }
       }
     });
 
@@ -275,16 +286,16 @@ export function ScormReportCard({
 
     // Get current attempt data
     const currentAttemptData = attempts.find(
-      (att) => att.attempt === reportData.currentAttempt
+      (att: ScormAttemptSummary) => att.attemptNumber === report.currentAttempt
     ) || attempts[attempts.length - 1];
 
     // Calculate average score across all attempts
     const attemptsWithScores = attempts.filter(
-      (att) => att.scoreRaw !== undefined && att.scoreRaw !== null
+      (att: ScormAttemptSummary) => att.score !== undefined && att.score !== null
     );
     const averageScore =
       attemptsWithScores.length > 0
-        ? attemptsWithScores.reduce((sum, att) => sum + (att.scoreRaw || 0), 0) /
+        ? attemptsWithScores.reduce((sum: number, att: ScormAttemptSummary) => sum + (att.score || 0), 0) /
           attemptsWithScores.length
         : undefined;
 
@@ -297,12 +308,12 @@ export function ScormReportCard({
       totalInteractions: interactions.length,
       totalObjectives: objectives.length,
       completedObjectives: objectives.filter(
-        (obj) =>
+        (obj: ScormCMIObjective) =>
           obj.status?.toLowerCase() === 'completed' ||
           obj.status?.toLowerCase() === 'passed'
       ).length,
     };
-  }, [reportData]);
+  }, [report]);
 
   // Loading state
   if (isLoading) {
@@ -317,22 +328,24 @@ export function ScormReportCard({
   if (error) {
     return (
       <Card>
-        <Alert severity="error">
-          {error instanceof Error
+        <Alert 
+          severity="error"
+          message={error instanceof Error
             ? error.message
             : 'Failed to load SCORM report. Please check your permissions and try again.'}
-        </Alert>
+        />
       </Card>
     );
   }
 
   // No data state
-  if (!reportData || !statistics) {
+  if (!report || !statistics) {
     return (
       <Card>
-        <Alert severity="info">
-          No report data available. The learner may not have started this SCORM activity yet.
-        </Alert>
+        <Alert 
+          severity="info"
+          message="No report data available. The learner may not have started this SCORM activity yet."
+        />
       </Card>
     );
   }
@@ -350,17 +363,16 @@ export function ScormReportCard({
     <Stack spacing={3}>
       {/* Warning Alert for Failed or Incomplete Attempts */}
       {showWarning && (
-        <Alert severity="warning">
-          <strong>Attention:</strong> This attempt is marked as{' '}
-          <strong>{statusDisplay?.label || 'incomplete'}</strong>. The learner may need to
-          complete additional requirements or retake the activity.
-        </Alert>
+        <Alert 
+          severity="warning"
+          message={`Attention: This attempt is marked as ${statusDisplay?.label || 'incomplete'}. The learner may need to complete additional requirements or retake the activity.`}
+        />
       )}
 
       {/* Summary Card - Overall Statistics */}
       <Card
         title="SCORM Activity Report"
-        subtitle={`Attempt ${reportData.currentAttempt} of ${statistics.totalAttempts}`}
+        subtitle={`Attempt ${report.currentAttempt} of ${statistics.totalAttempts}`}
       >
         <Grid container spacing={3}>
           {/* Current Attempt Status */}
@@ -388,18 +400,10 @@ export function ScormReportCard({
                 Current Score
               </Typography>
               <Typography variant="h6">
-                {currentAttemptData?.scoreRaw !== undefined
-                  ? formatScore(
-                      currentAttemptData.scoreRaw,
-                      currentAttemptData.scoreMax
-                    )
+                {currentAttemptData?.score !== undefined
+                  ? formatScore(currentAttemptData.score)
                   : 'N/A'}
               </Typography>
-              {currentAttemptData?.scoreScaled !== undefined && (
-                <Typography variant="body2" color="text.secondary">
-                  ({(currentAttemptData.scoreScaled * 100).toFixed(1)}%)
-                </Typography>
-              )}
             </Box>
           </Grid>
 
@@ -471,21 +475,21 @@ export function ScormReportCard({
               </TableRow>
             </TableHead>
             <TableBody>
-              {reportData.attempts.map((attempt) => {
+              {report.attempts.map((attempt: ScormAttemptSummary) => {
                 const attemptStatus = getStatusDisplay(attempt.status || 'unknown');
                 return (
                   <TableRow
-                    key={attempt.attempt}
+                    key={attempt.attemptNumber}
                     sx={{
                       backgroundColor:
-                        attempt.attempt === reportData.currentAttempt
+                        attempt.attemptNumber === report.currentAttempt
                           ? 'action.selected'
                           : 'inherit',
                     }}
                   >
                     <TableCell>
-                      {attempt.attempt}
-                      {attempt.attempt === reportData.currentAttempt && (
+                      {attempt.attemptNumber}
+                      {attempt.attemptNumber === report.currentAttempt && (
                         <Chip label="Current" size="small" sx={{ ml: 1 }} />
                       )}
                     </TableCell>
@@ -498,19 +502,16 @@ export function ScormReportCard({
                       />
                     </TableCell>
                     <TableCell align="right">
-                      {formatScore(attempt.scoreRaw, attempt.scoreMax)}
-                      {attempt.scoreScaled !== undefined && (
-                        <Typography variant="caption" display="block" color="text.secondary">
-                          {(attempt.scoreScaled * 100).toFixed(1)}%
-                        </Typography>
-                      )}
+                      {formatScore(attempt.score)}
                     </TableCell>
                     <TableCell align="right">
-                      {attempt.timeModified ? formatDuration(attempt.timeModified) : 'N/A'}
+                      {attempt.timeSpent || 'N/A'}
                     </TableCell>
                     <TableCell>
-                      {attempt.timeModified
-                        ? new Date(attempt.timeModified * 1000).toLocaleString()
+                      {attempt.timeCompleted
+                        ? new Date(attempt.timeCompleted * 1000).toLocaleString()
+                        : attempt.timeStarted
+                        ? new Date(attempt.timeStarted * 1000).toLocaleString()
                         : 'N/A'}
                     </TableCell>
                   </TableRow>
@@ -522,7 +523,7 @@ export function ScormReportCard({
       </Card>
 
       {/* SCO Progress Details */}
-      {reportData.scoProgress.length > 0 && (
+      {report.scoProgress && report.scoProgress.length > 0 && (
         <Card title="SCO Progress Details" subtitle="Progress for each Sharable Content Object">
           <TableContainer>
             <Table size="small">
@@ -543,7 +544,7 @@ export function ScormReportCard({
                 </TableRow>
               </TableHead>
               <TableBody>
-                {reportData.scoProgress.map((sco) => {
+                {report.scoProgress.map((sco: ScormScoProgress) => {
                   const scoStatus = getStatusDisplay(sco.status || 'unknown');
                   return (
                     <TableRow key={sco.scoid}>
@@ -557,12 +558,12 @@ export function ScormReportCard({
                         />
                       </TableCell>
                       <TableCell align="right">
-                        {sco.scoreRaw !== undefined
-                          ? formatScore(sco.scoreRaw, sco.scoreMax)
+                        {sco.score?.raw !== undefined
+                          ? formatScore(sco.score.raw, sco.score.max)
                           : 'N/A'}
                       </TableCell>
                       <TableCell align="right">
-                        {sco.timeModified ? formatDuration(sco.timeModified) : 'N/A'}
+                        {sco.timeSpent || 'N/A'}
                       </TableCell>
                     </TableRow>
                   );
@@ -577,10 +578,10 @@ export function ScormReportCard({
       {showDetailed && (
         <>
           {/* Interactions Table */}
-          {reportData.interactions.length > 0 && (
+          {report.interactions && report.interactions.length > 0 && (
             <Card
               title="Interaction Tracking"
-              subtitle={`${reportData.interactions.length} interactions recorded`}
+              subtitle={`${report.interactions.length} interactions recorded`}
             >
               <TableContainer>
                 <Table size="small">
@@ -607,7 +608,7 @@ export function ScormReportCard({
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {reportData.interactions.map((interaction, index) => (
+                    {report.interactions.map((interaction: ScormCMIInteraction, index: number) => (
                       <TableRow key={`interaction-${index}`}>
                         <TableCell>{interaction.id || `Int ${index + 1}`}</TableCell>
                         <TableCell>
@@ -622,7 +623,7 @@ export function ScormReportCard({
                         </TableCell>
                         <TableCell>
                           <Typography variant="body2" sx={{ maxWidth: 200 }}>
-                            {interaction.learnerResponse || 'N/A'}
+                            {interaction.learner_response || 'N/A'}
                           </Typography>
                         </TableCell>
                         <TableCell>
@@ -630,9 +631,9 @@ export function ScormReportCard({
                             <Chip
                               label={interaction.result}
                               color={
-                                interaction.result.toLowerCase() === 'correct'
+                                typeof interaction.result === 'string' && interaction.result.toLowerCase() === 'correct'
                                   ? 'success'
-                                  : interaction.result.toLowerCase() === 'incorrect'
+                                  : typeof interaction.result === 'string' && interaction.result.toLowerCase() === 'incorrect'
                                   ? 'error'
                                   : 'default'
                               }
@@ -654,7 +655,7 @@ export function ScormReportCard({
           )}
 
           {/* Objectives Table */}
-          {reportData.objectives.length > 0 && (
+          {report.objectives && report.objectives.length > 0 && (
             <Card
               title="Learning Objectives"
               subtitle={`${statistics.completedObjectives} of ${statistics.totalObjectives} objectives completed`}
@@ -678,7 +679,7 @@ export function ScormReportCard({
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {reportData.objectives.map((objective, index) => {
+                    {report.objectives.map((objective: ScormCMIObjective, index: number) => {
                       const objStatus = getStatusDisplay(objective.status || 'unknown');
                       return (
                         <TableRow key={`objective-${index}`}>
@@ -697,8 +698,8 @@ export function ScormReportCard({
                             />
                           </TableCell>
                           <TableCell align="right">
-                            {objective.scoreRaw !== undefined
-                              ? formatScore(objective.scoreRaw, objective.scoreMax)
+                            {objective.score?.raw !== undefined
+                              ? formatScore(objective.score.raw, objective.score.max)
                               : 'N/A'}
                           </TableCell>
                         </TableRow>
@@ -714,13 +715,13 @@ export function ScormReportCard({
 
       {/* No Detailed Data Message */}
       {showDetailed &&
-        reportData.interactions.length === 0 &&
-        reportData.objectives.length === 0 && (
+        (!report.interactions || report.interactions.length === 0) &&
+        (!report.objectives || report.objectives.length === 0) && (
           <Card>
-            <Alert severity="info">
-              No detailed interaction or objective data available for this attempt. This may be
-              normal depending on the SCORM package configuration.
-            </Alert>
+            <Alert 
+              severity="info"
+              message="No detailed interaction or objective data available for this attempt. This may be normal depending on the SCORM package configuration."
+            />
           </Card>
         )}
     </Stack>
