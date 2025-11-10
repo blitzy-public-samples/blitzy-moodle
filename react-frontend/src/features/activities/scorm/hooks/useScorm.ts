@@ -99,6 +99,26 @@ export const scormQueryKeys = {
     }
     return [...scormQueryKeys.all, 'report', id] as const;
   },
+
+  /**
+   * Key for SCORM table of contents query
+   * @param id - SCORM module ID
+   * @param attempt - Attempt number (optional)
+   * @param organization - Organization identifier (optional)
+   */
+  toc: (id: number, attempt?: number, organization?: string) => {
+    const baseKey = [...scormQueryKeys.all, 'toc', id] as const;
+    if (attempt !== undefined && organization) {
+      return [...baseKey, attempt, organization] as const;
+    }
+    if (attempt !== undefined) {
+      return [...baseKey, attempt] as const;
+    }
+    if (organization) {
+      return [...baseKey, organization] as const;
+    }
+    return baseKey;
+  },
 };
 
 // ============================================================================
