@@ -22,7 +22,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import React, { useMemo } from 'react';
+import type React from 'react';
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { TreeView } from '@mui/x-tree-view/TreeView';
@@ -48,7 +49,7 @@ import { fetchScormToc } from '@/features/activities/scorm/api/scormApi';
 import { scormQueryKeys } from '@/features/activities/scorm/hooks/useScorm';
 import { LoadingSpinner } from '@/components/feedback/LoadingSpinner';
 import { Alert } from '@/components/feedback/Alert';
-import { ScormStatus } from '@/features/activities/scorm/types/scorm.types';
+import { ScormStatus, ScormTocDisplay } from '@/features/activities/scorm/types/scorm.types';
 import type { 
   Scorm, 
   ScormTOCNode,
@@ -78,7 +79,7 @@ interface ScormTOCProps {
  * Convert ScormScore object to display string
  */
 const formatScore = (score?: ScormScore): string | undefined => {
-  if (!score) return undefined;
+  if (!score) {return undefined;}
   
   // Prefer scaled score for SCORM 2004 (displayed as percentage)
   if (score.scaled !== undefined) {
@@ -167,11 +168,11 @@ interface ScormTreeItemProps {
   onScoSelect: (scoId: number) => void;
 }
 
-const ScormTreeItem: React.FC<ScormTreeItemProps> = ({
+function ScormTreeItem({
   node,
   currentScoId,
   onScoSelect,
-}) => {
+}: ScormTreeItemProps): JSX.Element {
   const theme = useTheme();
   const isActive = currentScoId === node.id;
   const statusChip = getStatusChip(node.status, formatScore(node.score), node.isEnabled);
@@ -283,7 +284,7 @@ const ScormTreeItem: React.FC<ScormTreeItemProps> = ({
       {renderChildren()}
     </TreeItem>
   );
-};
+}
 
 /**
  * Main ScormTOC Component
@@ -291,14 +292,14 @@ const ScormTreeItem: React.FC<ScormTreeItemProps> = ({
  * Displays the hierarchical table of contents for a SCORM package with
  * navigation, status indicators, and prerequisite checking.
  */
-const ScormTOC: React.FC<ScormTOCProps> = ({
+function ScormTOC({
   scormId,
   attempt,
   currentScoId,
   scorm,
   organization,
   onScoSelect,
-}) => {
+}: ScormTOCProps): JSX.Element | null {
   const navigate = useNavigate();
   const theme = useTheme();
 
@@ -331,7 +332,7 @@ const ScormTOC: React.FC<ScormTOCProps> = ({
    * This ensures the tree is fully expanded by default
    */
   const defaultExpandedItems = useMemo(() => {
-    if (!tocResponse?.scoes) return [];
+    if (!tocResponse?.scoes) {return [];}
 
     const expandedIds: string[] = [];
     
@@ -376,7 +377,7 @@ const ScormTOC: React.FC<ScormTOCProps> = ({
     const launchableNodes = allNodes.filter((node) => node.launch);
     const total = launchableNodes.length;
     const completed = launchableNodes.filter(
-      (node) => node.status === 'completed' || node.status === 'passed'
+      (node) => node.status === ScormStatus.COMPLETED || node.status === ScormStatus.PASSED
     ).length;
     const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
 
@@ -462,7 +463,7 @@ const ScormTOC: React.FC<ScormTOCProps> = ({
   }
 
   // Empty state
-  if (!tocResponse || !tocResponse.scoes || tocResponse.scoes.length === 0) {
+  if (!tocResponse?.scoes || tocResponse.scoes.length === 0) {
     return (
       <Box sx={{ p: 2 }}>
         <Alert
@@ -475,7 +476,7 @@ const ScormTOC: React.FC<ScormTOCProps> = ({
   }
 
   // Check if TOC should be hidden based on SCORM settings
-  const shouldHideTOC = scorm?.hidetoc === 3; // SCORM_TOC_HIDDEN = 3
+  const shouldHideTOC = scorm?.hidetoc === ScormTocDisplay.DISABLED;
 
   if (shouldHideTOC) {
     return null;
@@ -503,7 +504,7 @@ const ScormTOC: React.FC<ScormTOCProps> = ({
       >
         <Stack spacing={1}>
           <Typography variant="h6" component="h2">
-            {scorm?.name || 'Table of Contents'}
+            {scorm?.name ?? 'Table of Contents'}
           </Typography>
 
           {/* Completion progress */}
@@ -595,6 +596,6 @@ const ScormTOC: React.FC<ScormTOCProps> = ({
       </Box>
     </Box>
   );
-};
+}
 
 export default ScormTOC;

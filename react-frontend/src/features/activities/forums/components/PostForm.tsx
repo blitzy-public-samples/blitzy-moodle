@@ -295,50 +295,61 @@ export function PostForm({
 
   // Create preview URLs for image files (manage cleanup)
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
+  // Track all created URLs for cleanup using ref to avoid circular dependency
+  const createdUrlsRef = useRef<Set<string>>(new Set());
 
   // Generate preview URLs for new image files
   useEffect(() => {
     const newPreviews: Record<string, string> = {};
     const urlsToRevoke: string[] = [];
 
-    files.forEach((file) => {
-      if (file.file.type.startsWith('image/') && !previewUrls[file.id]) {
-        newPreviews[file.id] = URL.createObjectURL(file.file);
-      }
-    });
-
-    // Find URLs to revoke (files that were removed)
-    Object.keys(previewUrls).forEach((fileId) => {
-      if (!files.find((f) => f.id === fileId)) {
-        const url = previewUrls[fileId];
-        if (url) {
-          urlsToRevoke.push(url);
+    // Create previews for new files
+    setPreviewUrls((prevUrls) => {
+      files.forEach((file) => {
+        if (file.file.type.startsWith('image/') && !prevUrls[file.id]) {
+          const url = URL.createObjectURL(file.file);
+          newPreviews[file.id] = url;
+          createdUrlsRef.current.add(url); // Track created URL
         }
-      }
-    });
+      });
 
-    // Update preview URLs
-    if (Object.keys(newPreviews).length > 0 || urlsToRevoke.length > 0) {
-      setPreviewUrls((prev) => {
-        const updated = { ...prev, ...newPreviews };
+      // Find URLs to revoke (files that were removed)
+      Object.keys(prevUrls).forEach((fileId) => {
+        if (!files.find((f) => f.id === fileId)) {
+          const url = prevUrls[fileId];
+          if (url) {
+            urlsToRevoke.push(url);
+            createdUrlsRef.current.delete(url); // Remove from tracking
+          }
+        }
+      });
+
+      // Update preview URLs
+      if (Object.keys(newPreviews).length > 0 || urlsToRevoke.length > 0) {
+        const updated = { ...prevUrls, ...newPreviews };
         urlsToRevoke.forEach((url) => {
-          const key = Object.keys(prev).find((k) => prev[k] === url);
+          const key = Object.keys(prevUrls).find((k) => prevUrls[k] === url);
           if (key) {
             delete updated[key];
           }
         });
         return updated;
-      });
+      }
 
-      // Revoke old URLs
-      urlsToRevoke.forEach((url) => URL.revokeObjectURL(url));
-    }
+      return prevUrls;
+    });
 
-    // Cleanup on unmount
+    // Revoke old URLs
+    urlsToRevoke.forEach((url) => URL.revokeObjectURL(url));
+
+    // Cleanup on unmount: capture current URLs to revoke at effect run time
+    // We only revoke URLs that exist at the time this effect runs, which is correct
+    // because the next effect run will handle newly created URLs
+    const urlsToCleanup = Array.from(createdUrlsRef.current);
     return () => {
-      Object.values(previewUrls).forEach((url) => URL.revokeObjectURL(url));
+      urlsToCleanup.forEach((url) => URL.revokeObjectURL(url));
     };
-  }, [files]); // Intentionally omit previewUrls from dependencies to avoid infinite loop
+  }, [files]);
 
   // Create post mutation
   const {

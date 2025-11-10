@@ -9,7 +9,7 @@
  * @module features/gradebook/components/GradeChart
  */
 
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Box, Typography, Skeleton, useTheme, Alert } from '@mui/material';
 import {
   ResponsiveContainer,
@@ -34,8 +34,9 @@ import type { GradeSummary } from '../types/grade.types';
 /**
  * Chart type enumeration.
  * Defines the available chart visualization types.
+ * Internal to this component - not exported to comply with react-refresh requirements.
  */
-export enum ChartType {
+enum ChartType {
   /** Bar chart for discrete data comparison */
   BAR = 'bar',
   /** Line chart for trends and continuous data */
@@ -113,7 +114,8 @@ const calculateGradeDistribution = (grades: GradeSummary[]): GradeDistributionDa
   // Count grades in each range
   const distribution = ranges.map((rangeConfig) => {
     const count = validGrades.filter((grade) => {
-      const percentage = grade.percentage!;
+      // Type narrowing: we know percentage is not null/undefined due to validGrades filter
+      const percentage = grade.percentage as number;
       return percentage >= rangeConfig.min && percentage <= rangeConfig.max;
     }).length;
 
@@ -162,7 +164,7 @@ const formatTooltipValue = (value: number, name: string): string => {
  * @param props - Component props
  * @returns Rendered chart component
  */
-const GradeChart: React.FC<GradeChartProps> = ({
+function GradeChart({
   grades,
   chartType,
   title,
@@ -171,7 +173,7 @@ const GradeChart: React.FC<GradeChartProps> = ({
   showLegend = true,
   showGrid = true,
   dataKey = 'itemname',
-}) => {
+}: GradeChartProps): JSX.Element {
   const theme = useTheme();
   const [isLoading] = useState<boolean>(false);
   const [hasError] = useState<boolean>(false);
@@ -444,7 +446,7 @@ const GradeChart: React.FC<GradeChartProps> = ({
       </ResponsiveContainer>
     </Box>
   );
-};
+}
 
 // Export component as default and named export for flexibility
 export default GradeChart;

@@ -16,7 +16,7 @@
  * @module features/admin/api/shared
  */
 
-import { AxiosError } from 'axios';
+import type { AxiosError } from 'axios';
 import type {
   AdminPaginationParams,
   AdminFilterParams,
@@ -26,7 +26,8 @@ import type {
   AdminSortParams,
   AdminErrorResponse,
 } from './types';
-import { DEFAULT_FILTERS, ADMIN_API_BASE, DEFAULT_PAGE_SIZE } from './constants';
+import type { DEFAULT_FILTERS} from './constants';
+import { ADMIN_API_BASE, DEFAULT_PAGE_SIZE } from './constants';
 
 /**
  * Constructs a full admin API URL with query parameters
@@ -108,8 +109,8 @@ export function buildPaginationParams(
   return {
     page: Math.max(1, page), // Ensure page is at least 1
     perPage: Math.max(1, Math.min(perPage, 100)), // Clamp between 1 and 100
-    sort: sort || 'id', // Default to sorting by ID
-    order: order || 'asc', // Default to ascending order
+    sort: sort ?? 'id', // Default to sorting by ID
+    order: order ?? 'asc', // Default to ascending order
   };
 }
 
@@ -344,15 +345,15 @@ export function handleAdminError(error: unknown): AdminErrorResponse {
     }>;
 
     if (axiosError.response?.data) {
-      const data = axiosError.response.data;
+      const {data} = axiosError.response;
 
       // Check if response already has error structure
       if (data.error && typeof data.error === 'object') {
         return {
           success: false,
           error: {
-            code: data.error.code || 'UNKNOWN_ERROR',
-            message: data.error.message || 'An unknown error occurred',
+            code: data.error.code ?? 'UNKNOWN_ERROR',
+            message: data.error.message ?? 'An unknown error occurred',
             details: data.error.details,
           },
           code: data.error.code,
@@ -362,12 +363,12 @@ export function handleAdminError(error: unknown): AdminErrorResponse {
       }
 
       // Handle legacy error format
-      if (data.code || data.message) {
+      if (data.code ?? data.message) {
         return {
           success: false,
           error: {
-            code: data.code || 'UNKNOWN_ERROR',
-            message: data.message || 'An unknown error occurred',
+            code: data.code ?? 'UNKNOWN_ERROR',
+            message: data.message ?? 'An unknown error occurred',
           },
           code: data.code,
           message: data.message,
@@ -404,8 +405,8 @@ export function handleAdminError(error: unknown): AdminErrorResponse {
     return {
       success: false,
       error: {
-        code: axiosError.code || 'AXIOS_ERROR',
-        message: axiosError.message || 'An error occurred with the request',
+        code: axiosError.code ?? 'AXIOS_ERROR',
+        message: axiosError.message ?? 'An error occurred with the request',
       },
       code: axiosError.code,
       message: axiosError.message,
@@ -647,10 +648,10 @@ export function mergeAdminFilters(
 ): AdminFilterParams {
   // Start with base filters as foundation
   const merged: AdminFilterParams = {
-    search: baseFilters.search || '',
-    role: baseFilters.role || undefined,
-    status: baseFilters.status || undefined,
-    suspended: baseFilters.suspended !== null ? baseFilters.suspended : undefined,
+    search: baseFilters.search ?? '',
+    role: baseFilters.role ?? undefined,
+    status: baseFilters.status ?? undefined,
+    suspended: baseFilters.suspended ?? undefined,
   };
 
   // Override with user-provided filters

@@ -55,12 +55,13 @@
  * @module components/forms/FormFileUpload
  */
 
-import React, { useState, useCallback, useRef, useMemo } from 'react';
-import {
-  Controller,
+import type React from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
+import type {
   Control,
-  FieldError,
-  FieldValues,
+  FieldValues} from 'react-hook-form';
+import {
+  Controller
 } from 'react-hook-form';
 import {
   Box,
@@ -362,7 +363,7 @@ function generateFileId(file: File): string {
  * @param props - Component props as defined in FormFileUploadProps
  * @returns React component
  */
-export const FormFileUpload: React.FC<FormFileUploadProps> = ({
+export function FormFileUpload({
   name,
   label,
   required = false,
@@ -374,7 +375,7 @@ export const FormFileUpload: React.FC<FormFileUploadProps> = ({
   helperText,
   disabled = false,
   uploadUrl,
-}) => {
+}: FormFileUploadProps): JSX.Element {
   // ============================================================================
   // STATE & REFS
   // ============================================================================
@@ -403,7 +404,7 @@ export const FormFileUpload: React.FC<FormFileUploadProps> = ({
    * Handles both MIME types and file extensions
    */
   const acceptAttribute = useMemo(() => {
-    return accept || undefined;
+    return accept ?? undefined;
   }, [accept]);
 
   /**
@@ -508,10 +509,11 @@ export const FormFileUpload: React.FC<FormFileUploadProps> = ({
         const dataTransfer = new DataTransfer();
         updatedFiles.forEach(f => dataTransfer.items.add(f.file));
         onChange(dataTransfer.files);
-      } else {
+      } else if (newFilesWithMetadata.length > 0) {
         // Single file mode - replace existing file
-        if (newFilesWithMetadata.length > 0) {
-          const firstFile = newFilesWithMetadata[0]!;
+        const firstFile = newFilesWithMetadata[0];
+        // We know firstFile exists because we checked length > 0
+        if (firstFile) {
           setFilesWithMetadata([firstFile]);
           onChange(firstFile.file);
         }
@@ -538,9 +540,9 @@ export const FormFileUpload: React.FC<FormFileUploadProps> = ({
       event: React.ChangeEvent<HTMLInputElement>,
       onChange: (value: File | FileList | null) => void
     ) => {
-      const files = event.target.files;
+      const {files} = event.target;
       if (files && files.length > 0) {
-        processFiles(files, onChange);
+        void processFiles(files, onChange);
       }
       // Reset input value to allow selecting the same file again
       event.target.value = '';
@@ -638,9 +640,9 @@ export const FormFileUpload: React.FC<FormFileUploadProps> = ({
         return;
       }
 
-      const files = e.dataTransfer.files;
+      const {files} = e.dataTransfer;
       if (files && files.length > 0) {
-        processFiles(files, onChange);
+        void processFiles(files, onChange);
       }
     },
     [disabled, processFiles]
@@ -659,7 +661,7 @@ export const FormFileUpload: React.FC<FormFileUploadProps> = ({
       }}
       render={({ field: { onChange }, fieldState: { error } }) => {
         // Type-safe error handling
-        const fieldError = error as FieldError | undefined;
+        const fieldError = error;
 
         return (
           <Box sx={{ width: '100%' }}>
@@ -937,4 +939,4 @@ export const FormFileUpload: React.FC<FormFileUploadProps> = ({
       }}
     />
   );
-};
+}

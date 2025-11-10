@@ -191,7 +191,7 @@ function SubmissionList({
   const submissionRows: SubmissionRowData[] = useMemo(() => {
     return submissions.map((submission) => {
       // Extract student name from submission (comes from API when fetched with user data)
-      const studentName = submission.studentname || `Student ${submission.userid}`;
+      const studentName = submission.studentname ?? `Student ${submission.userid}`;
 
       // Format submission date
       let formattedDate = 'Not submitted';
@@ -244,7 +244,7 @@ function SubmissionList({
         studentInitials: getInitials(studentName),
       };
     });
-  }, [submissions, assignment.duedate, getInitials]);
+  }, [submissions, assignment.duedate, assignment.grade, getInitials]);
 
   /**
    * Sort comparison function

@@ -16,7 +16,6 @@
  * - public/mod/workshop/form/numerrors/lib.php
  */
 
-import React from 'react';
 import {
   Box,
   TextField,
@@ -101,11 +100,11 @@ export interface WorkshopAssessmentFormData {
  * Accumulative Strategy Renderer
  * Displays scoring aspects where reviewer assigns points up to maximum for each dimension
  */
-const AccumulativeStrategyRenderer: React.FC<StrategyRendererProps> = ({
+function AccumulativeStrategyRenderer({
   workshop,
   dimensions,
   readonly = false,
-}) => {
+}: StrategyRendererProps): JSX.Element {
   const { control, formState } = useFormContext<WorkshopAssessmentFormData>();
 
   return (
@@ -192,7 +191,7 @@ const AccumulativeStrategyRenderer: React.FC<StrategyRendererProps> = ({
                   fullWidth
                   disabled={readonly || formState.isSubmitting}
                   error={!!commentError}
-                  helperText={commentError?.message || 'Provide feedback for this aspect'}
+                  helperText={commentError?.message ?? 'Provide feedback for this aspect'}
                   placeholder="Enter your feedback and justification for the grade..."
                 />
               )}
@@ -210,17 +209,17 @@ const AccumulativeStrategyRenderer: React.FC<StrategyRendererProps> = ({
       })}
     </Box>
   );
-};
+}
 
 /**
  * Rubric Strategy Renderer
  * Displays criteria matrix where reviewer selects predefined performance level for each criterion
  */
-const RubricStrategyRenderer: React.FC<StrategyRendererProps> = ({
+function RubricStrategyRenderer({
   workshop,
   dimensions,
   readonly = false,
-}) => {
+}: StrategyRendererProps): JSX.Element {
   const { control, formState } = useFormContext<WorkshopAssessmentFormData>();
 
   return (
@@ -230,7 +229,7 @@ const RubricStrategyRenderer: React.FC<StrategyRendererProps> = ({
         const commentError = formState.errors.dimensions?.[index]?.peerComment;
 
         // Sort levels by grade in descending order (best to worst)
-        const sortedLevels = [...(dimension.levels || [])].sort(
+        const sortedLevels = [...(dimension.levels ?? [])].sort(
           (a, b) => b.grade - a.grade
         );
 
@@ -312,7 +311,7 @@ const RubricStrategyRenderer: React.FC<StrategyRendererProps> = ({
                   fullWidth
                   disabled={readonly || formState.isSubmitting}
                   error={!!commentError}
-                  helperText={commentError?.message || 'Explain your level selection'}
+                  helperText={commentError?.message ?? 'Explain your level selection'}
                   placeholder="Provide feedback explaining why you selected this level..."
                 />
               )}
@@ -330,16 +329,16 @@ const RubricStrategyRenderer: React.FC<StrategyRendererProps> = ({
       })}
     </Box>
   );
-};
+}
 
 /**
  * Comments Strategy Renderer
  * Displays comment-only fields without numerical grading
  */
-const CommentsStrategyRenderer: React.FC<StrategyRendererProps> = ({
+function CommentsStrategyRenderer({
   dimensions,
   readonly = false,
-}) => {
+}: StrategyRendererProps): JSX.Element {
   const { control, formState } = useFormContext<WorkshopAssessmentFormData>();
 
   return (
@@ -381,7 +380,7 @@ const CommentsStrategyRenderer: React.FC<StrategyRendererProps> = ({
                   disabled={readonly || formState.isSubmitting}
                   error={!!commentError}
                   helperText={
-                    commentError?.message ||
+                    commentError?.message ??
                     'Provide detailed qualitative feedback for this aspect'
                   }
                   placeholder="Enter comprehensive feedback addressing this aspect..."
@@ -415,17 +414,17 @@ const CommentsStrategyRenderer: React.FC<StrategyRendererProps> = ({
       })}
     </Box>
   );
-};
+}
 
 /**
  * Number of Errors Strategy Renderer
  * Displays yes/no assertions where reviewer indicates presence of errors
  */
-const NumberOfErrorsStrategyRenderer: React.FC<StrategyRendererProps> = ({
+function NumberOfErrorsStrategyRenderer({
   workshop,
   dimensions,
   readonly = false,
-}) => {
+}: StrategyRendererProps): JSX.Element {
   const { control, formState } = useFormContext<WorkshopAssessmentFormData>();
 
   return (
@@ -478,12 +477,12 @@ const NumberOfErrorsStrategyRenderer: React.FC<StrategyRendererProps> = ({
                     }}
                   >
                     <FormControlLabel
-                      value={dimension.grade0 || 1}
+                      value={dimension.grade0 ?? 1}
                       control={<Radio />}
                       label="No (error not present)"
                     />
                     <FormControlLabel
-                      value={dimension.grade1 || 0}
+                      value={dimension.grade1 ?? 0}
                       control={<Radio />}
                       label="Yes (error present)"
                     />
@@ -516,7 +515,7 @@ const NumberOfErrorsStrategyRenderer: React.FC<StrategyRendererProps> = ({
                   disabled={readonly || formState.isSubmitting}
                   error={!!commentError}
                   helperText={
-                    commentError?.message || 'Optional: Explain or provide examples'
+                    commentError?.message ?? 'Optional: Explain or provide examples'
                   }
                   placeholder="Provide specific examples or explanation if needed..."
                   sx={{ mt: 2 }}
@@ -536,7 +535,7 @@ const NumberOfErrorsStrategyRenderer: React.FC<StrategyRendererProps> = ({
       })}
     </Box>
   );
-};
+}
 
 /**
  * Main GradingStrategyRenderer Component
@@ -549,11 +548,11 @@ const NumberOfErrorsStrategyRenderer: React.FC<StrategyRendererProps> = ({
  * @param dimensions - Array of grading dimensions/criteria for the assessment
  * @param readonly - Whether the form should be displayed in read-only mode
  */
-const GradingStrategyRenderer: React.FC<GradingStrategyRendererProps> = ({
+function GradingStrategyRenderer({
   workshop,
   dimensions,
   readonly = false,
-}) => {
+}: GradingStrategyRendererProps): JSX.Element {
   // Validate that dimensions exist
   if (!dimensions || dimensions.length === 0) {
     return (
@@ -630,6 +629,6 @@ const GradingStrategyRenderer: React.FC<GradingStrategyRendererProps> = ({
       {renderStrategy()}
     </Box>
   );
-};
+}
 
 export default GradingStrategyRenderer;

@@ -49,7 +49,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import React, { useState, useCallback, useMemo } from 'react';
+import type React from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
   Box,
   Grid,
@@ -132,7 +133,7 @@ export interface QuizNavigationProps {
  * @param props - QuizNavigationProps configuration object
  * @returns React functional component
  */
-const QuizNavigation: React.FC<QuizNavigationProps> = ({
+function QuizNavigation({
   questions,
   currentQuestionIndex,
   onQuestionClick,
@@ -140,7 +141,7 @@ const QuizNavigation: React.FC<QuizNavigationProps> = ({
   onFinishAttempt,
   navigationMode = 'free',
   isSequential = false,
-}) => {
+}: QuizNavigationProps): JSX.Element {
   // State for finish attempt confirmation modal
   const [showFinishModal, setShowFinishModal] = useState<boolean>(false);
 
@@ -598,6 +599,6 @@ const QuizNavigation: React.FC<QuizNavigationProps> = ({
       </Modal>
     </Box>
   );
-};
+}
 
 export default QuizNavigation;

@@ -346,7 +346,7 @@ export function useScorm(scormId: number): UseScormReturn {
    * - If SCOs can't be loaded, can't display content
    * - Attempts errors are least critical (can still show package info)
    */
-  const error = scormQuery.error || scoesQuery.error || attemptsQuery.error || null;
+  const error = scormQuery.error ?? scoesQuery.error ?? attemptsQuery.error ?? null;
 
   // ============================================================================
   // REFETCH FUNCTION

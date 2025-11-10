@@ -12,7 +12,6 @@
  * @module features/activities/choice/components/ChoiceChart
  */
 
-import React from 'react';
 import { Box, Paper, Typography, Tooltip, useTheme } from '@mui/material';
 import { useIsMobile } from '../../../../hooks/useMediaQuery';
 
@@ -80,11 +79,11 @@ export interface ChoiceChartProps {
  * />
  * ```
  */
-const ChoiceChart: React.FC<ChoiceChartProps> = ({
+function ChoiceChart({
   options,
   displayLayout,
   showPercentages,
-}) => {
+}: ChoiceChartProps): JSX.Element {
   const theme = useTheme();
   const isMobile = useIsMobile();
 
@@ -165,10 +164,10 @@ const ChoiceChart: React.FC<ChoiceChartProps> = ({
     if (isVertical) {
       // Vertical gradient: light at top, dark at bottom
       return `linear-gradient(to bottom, ${primaryLight}, ${primaryColor}, ${primaryDark})`;
-    } else {
+    } 
       // Horizontal gradient: light at left, dark at right
       return `linear-gradient(to right, ${primaryLight}, ${primaryColor}, ${primaryDark})`;
-    }
+    
   };
 
   // Container accessibility label
@@ -475,6 +474,6 @@ const ChoiceChart: React.FC<ChoiceChartProps> = ({
       )}
     </Paper>
   );
-};
+}
 
 export default ChoiceChart;

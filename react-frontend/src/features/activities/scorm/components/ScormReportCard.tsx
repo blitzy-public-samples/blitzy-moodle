@@ -112,9 +112,9 @@ function formatDuration(seconds: number): string {
   const secs = Math.floor(seconds % 60);
 
   const parts: string[] = [];
-  if (hours > 0) parts.push(`${hours}h`);
-  if (minutes > 0) parts.push(`${minutes}m`);
-  if (secs > 0 || parts.length === 0) parts.push(`${secs}s`);
+  if (hours > 0) {parts.push(`${hours}h`);}
+  if (minutes > 0) {parts.push(`${minutes}m`);}
+  if (secs > 0 || parts.length === 0) {parts.push(`${secs}s`);}
 
   return parts.join(' ');
 }
@@ -164,7 +164,7 @@ function getStatusDisplay(status: string): {
     default:
       return {
         color: 'default',
-        label: status || 'Unknown',
+        label: status ?? 'Unknown',
         icon: <RadioButtonUncheckedIcon />,
       };
   }
@@ -260,23 +260,23 @@ export function ScormReportCard({
     const { attempts = [], scoProgress = [], interactions = [], objectives = [] } = report;
 
     // Calculate overall completion percentage from SCO progress
-    let totalScos = scoProgress.length;
+    const totalScos = scoProgress.length;
     let completedScos = 0;
     let totalTimeSeconds = 0;
 
     scoProgress.forEach((sco: ScormScoProgress) => {
-      const status = sco.status?.toLowerCase() || '';
+      const status = sco.status?.toLowerCase() ?? '';
       if (status === 'completed' || status === 'passed') {
         completedScos++;
       }
       // Parse timeSpent string (format: HH:MM:SS or total seconds)
       if (sco.timeSpent) {
         const timeMatch = sco.timeSpent.match(/(\d+):(\d+):(\d+)/);
-        if (timeMatch && timeMatch[1] && timeMatch[2] && timeMatch[3]) {
+        if (timeMatch?.[1] && timeMatch[2] && timeMatch[3]) {
           totalTimeSeconds += parseInt(timeMatch[1], 10) * 3600 + parseInt(timeMatch[2], 10) * 60 + parseInt(timeMatch[3], 10);
         } else {
           // Assume it's already in seconds
-          totalTimeSeconds += parseInt(sco.timeSpent, 10) || 0;
+          totalTimeSeconds += parseInt(sco.timeSpent, 10) ?? 0;
         }
       }
     });
@@ -287,7 +287,7 @@ export function ScormReportCard({
     // Get current attempt data
     const currentAttemptData = attempts.find(
       (att: ScormAttemptSummary) => att.attemptNumber === report.currentAttempt
-    ) || attempts[attempts.length - 1];
+    ) ?? attempts[attempts.length - 1];
 
     // Calculate average score across all attempts
     const attemptsWithScores = attempts.filter(
@@ -295,7 +295,7 @@ export function ScormReportCard({
     );
     const averageScore =
       attemptsWithScores.length > 0
-        ? attemptsWithScores.reduce((sum: number, att: ScormAttemptSummary) => sum + (att.score || 0), 0) /
+        ? attemptsWithScores.reduce((sum: number, att: ScormAttemptSummary) => sum + (att.score ?? 0), 0) /
           attemptsWithScores.length
         : undefined;
 
@@ -354,9 +354,9 @@ export function ScormReportCard({
 
   // Determine if current attempt has issues
   const showWarning =
-    currentAttemptData && isFailedOrIncomplete(currentAttemptData.status || '');
+    currentAttemptData && isFailedOrIncomplete(currentAttemptData.status ?? '');
   const statusDisplay = currentAttemptData
-    ? getStatusDisplay(currentAttemptData.status || 'unknown')
+    ? getStatusDisplay(currentAttemptData.status ?? 'unknown')
     : null;
 
   return (
@@ -365,7 +365,7 @@ export function ScormReportCard({
       {showWarning && (
         <Alert 
           severity="warning"
-          message={`Attention: This attempt is marked as ${statusDisplay?.label || 'incomplete'}. The learner may need to complete additional requirements or retake the activity.`}
+          message={`Attention: This attempt is marked as ${statusDisplay?.label ?? 'incomplete'}. The learner may need to complete additional requirements or retake the activity.`}
         />
       )}
 
@@ -505,7 +505,7 @@ export function ScormReportCard({
                       {formatScore(attempt.score)}
                     </TableCell>
                     <TableCell align="right">
-                      {attempt.timeSpent || 'N/A'}
+                      {attempt.timeSpent ?? 'N/A'}
                     </TableCell>
                     <TableCell>
                       {attempt.timeCompleted
@@ -545,10 +545,10 @@ export function ScormReportCard({
               </TableHead>
               <TableBody>
                 {report.scoProgress.map((sco: ScormScoProgress) => {
-                  const scoStatus = getStatusDisplay(sco.status || 'unknown');
+                  const scoStatus = getStatusDisplay(sco.status ?? 'unknown');
                   return (
                     <TableRow key={sco.scoid}>
-                      <TableCell>{sco.title || `SCO ${sco.scoid}`}</TableCell>
+                      <TableCell>{sco.title ?? `SCO ${sco.scoid}`}</TableCell>
                       <TableCell>
                         <Chip
                           icon={scoStatus.icon}
@@ -563,7 +563,7 @@ export function ScormReportCard({
                           : 'N/A'}
                       </TableCell>
                       <TableCell align="right">
-                        {sco.timeSpent || 'N/A'}
+                        {sco.timeSpent ?? 'N/A'}
                       </TableCell>
                     </TableRow>
                   );
@@ -609,21 +609,21 @@ export function ScormReportCard({
                   </TableHead>
                   <TableBody>
                     {report.interactions.map((interaction: ScormCMIInteraction, index: number) => (
-                      <TableRow key={`interaction-${index}`}>
-                        <TableCell>{interaction.id || `Int ${index + 1}`}</TableCell>
+                      <TableRow key={interaction.id}>
+                        <TableCell>{interaction.id ?? `Int ${index + 1}`}</TableCell>
                         <TableCell>
                           <Typography variant="body2" sx={{ textTransform: 'capitalize' }}>
-                            {interaction.type || 'N/A'}
+                            {interaction.type ?? 'N/A'}
                           </Typography>
                         </TableCell>
                         <TableCell>
                           <Typography variant="body2" sx={{ maxWidth: 300 }}>
-                            {interaction.description || 'N/A'}
+                            {interaction.description ?? 'N/A'}
                           </Typography>
                         </TableCell>
                         <TableCell>
                           <Typography variant="body2" sx={{ maxWidth: 200 }}>
-                            {interaction.learner_response || 'N/A'}
+                            {interaction.learner_response ?? 'N/A'}
                           </Typography>
                         </TableCell>
                         <TableCell>
@@ -680,13 +680,13 @@ export function ScormReportCard({
                   </TableHead>
                   <TableBody>
                     {report.objectives.map((objective: ScormCMIObjective, index: number) => {
-                      const objStatus = getStatusDisplay(objective.status || 'unknown');
+                      const objStatus = getStatusDisplay(objective.status ?? 'unknown');
                       return (
-                        <TableRow key={`objective-${index}`}>
-                          <TableCell>{objective.id || `Obj ${index + 1}`}</TableCell>
+                        <TableRow key={objective.id}>
+                          <TableCell>{objective.id ?? `Obj ${index + 1}`}</TableCell>
                           <TableCell>
                             <Typography variant="body2" sx={{ maxWidth: 400 }}>
-                              {objective.description || 'N/A'}
+                              {objective.description ?? 'N/A'}
                             </Typography>
                           </TableCell>
                           <TableCell>

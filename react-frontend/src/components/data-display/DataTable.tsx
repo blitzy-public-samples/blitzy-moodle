@@ -418,17 +418,17 @@ function CustomToolbar<T extends GridValidRowModel>({ selectedRows, selectedRowD
           >
             {selectedCount} {selectedCount === 1 ? 'row' : 'rows'} selected
           </Typography>
-          {bulkActions.map((action, index) => {
+          {bulkActions.map((action) => {
             const isDisabled = action.disabled ? action.disabled(selectedRowData) : false;
             return (
-              <Tooltip key={index} title={action.label}>
+              <Tooltip key={action.label} title={action.label}>
                 <span>
                   <Button
                     size="small"
                     startIcon={action.icon}
                     onClick={() => action.onClick(selectedRowData)}
                     disabled={isDisabled}
-                    color={action.color || 'primary'}
+                    color={action.color ?? 'primary'}
                     aria-label={action.label}
                   >
                     {action.label}
@@ -524,7 +524,7 @@ function RowActionsMenu<T extends GridValidRowModel>({ row, actions }: RowAction
           horizontal: 'right',
         }}
       >
-        {visibleActions.map((action, index) => {
+        {visibleActions.map((action) => {
           const isDisabled =
             action.disabled !== undefined
               ? typeof action.disabled === 'function'
@@ -534,7 +534,7 @@ function RowActionsMenu<T extends GridValidRowModel>({ row, actions }: RowAction
 
           return (
             <MenuItem
-              key={index}
+              key={action.label}
               onClick={() => handleActionClick(action)}
               disabled={isDisabled}
               sx={{ color: action.color ? `${action.color}.main` : 'inherit' }}
@@ -602,24 +602,26 @@ function NoRowsOverlay({ emptyMessage }: NoRowsOverlayProps): JSX.Element {
  * Factory function to create a toolbar component with bound props
  */
 function createToolbarComponent<T extends GridValidRowModel>(props: ToolbarSlotProps<T>): FC {
-  return function BoundToolbar() {
+  function BoundToolbar(): JSX.Element {
     return <ToolbarSlot<T> {...props} />;
-  };
+  }
+  return BoundToolbar;
 }
 
 /**
  * Factory function to create a no rows overlay component with bound props
  */
 function createNoRowsComponent(emptyMessage: string): FC {
-  return function BoundNoRowsOverlay() {
+  function BoundNoRowsOverlay(): JSX.Element {
     return <NoRowsOverlay emptyMessage={emptyMessage} />;
-  };
+  }
+  return BoundNoRowsOverlay;
 }
 
 /**
  * DataTable component implementation
  */
-export const DataTable = <T extends { id: string | number }>({
+export function DataTable<T extends { id: string | number }>({
   columns,
   rows,
   mode = 'client',
@@ -653,13 +655,13 @@ export const DataTable = <T extends { id: string | number }>({
   hideFooterSelectedRowCount = false,
   className,
   ariaLabel = 'Data table',
-}: DataTableProps<T>): ReturnType<FC> => {
+}: DataTableProps<T>): ReturnType<FC> {
   // Internal state for controlled components
   const [internalSortModel, setInternalSortModel] = useState<GridSortModel>([]);
   const [internalFilterModel, setInternalFilterModel] = useState<GridFilterModel>({ items: [] });
   const [internalPaginationModel, setInternalPaginationModel] = useState<GridPaginationModel>({
-    page: page,
-    pageSize: pageSize,
+    page,
+    pageSize,
   });
   const [internalSelectedRows, setInternalSelectedRows] = useState<GridRowSelectionModel>(selectedRows);
 
@@ -690,7 +692,7 @@ export const DataTable = <T extends { id: string | number }>({
       ...col,
       field: String(col.field),
       headerName: col.headerName,
-      width: col.width || 150,
+      width: col.width ?? 150,
       sortable: col.sortable !== false,
       filterable: col.filterable !== false,
     }));
@@ -717,7 +719,7 @@ export const DataTable = <T extends { id: string | number }>({
       setInternalSortModel(model);
 
       if (onSortChange) {
-        if (model.length > 0 && model[0] && model[0].sort) {
+        if (model.length > 0 && model[0]?.sort) {
           const sortItem = model[0];
           onSortChange({
             field: sortItem.field as keyof T,
@@ -893,7 +895,7 @@ export const DataTable = <T extends { id: string | number }>({
       />
     </Box>
   );
-};
+}
 
 // Set display name for debugging
 DataTable.displayName = 'DataTable';

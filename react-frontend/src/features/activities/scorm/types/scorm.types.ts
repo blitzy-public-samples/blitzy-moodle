@@ -1003,7 +1003,7 @@ export interface ScormToc {
   scoes: ScormTOCNode[];
   
   /** User tracking data for current attempt */
-  usertracks: Record<string, any>;
+  usertracks: Record<string, unknown>;
   
   /** Current/active SCO ID */
   scoid: number | null;

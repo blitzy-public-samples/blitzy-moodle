@@ -149,13 +149,13 @@ function PhaseStepIcon(props: {
 const createStepIconComponent = (icon: React.ReactNode) => {
   // This creates a stable component that can be reused
   // We accept StepIconProps but use the icon from the closure instead of props.icon
-  const StepIconComponent = (props: StepIconProps) => (
-    <PhaseStepIcon 
+  function StepIconComponent(props: StepIconProps) {
+  return <PhaseStepIcon 
       active={props.active} 
       completed={props.completed} 
       icon={icon} 
     />
-  );
+}
   // Set display name for debugging
   StepIconComponent.displayName = 'PhaseStepIconComponent';
   return StepIconComponent;
@@ -176,11 +176,11 @@ const createStepIconComponent = (icon: React.ReactNode) => {
  * />
  * ```
  */
-const PhaseIndicator: React.FC<PhaseIndicatorProps> = ({
+function PhaseIndicator({
   currentPhase,
   showDescriptions = false,
   orientation = 'horizontal',
-}) => {
+}: PhaseIndicatorProps): JSX.Element {
   /**
    * Phase configuration array defining all workshop phases
    * Memoized to prevent recalculation on every render
@@ -365,6 +365,6 @@ const PhaseIndicator: React.FC<PhaseIndicatorProps> = ({
       </Box>
     </Box>
   );
-};
+}
 
 export default PhaseIndicator;

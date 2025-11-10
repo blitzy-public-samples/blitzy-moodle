@@ -23,12 +23,13 @@
  * @module features/activities/feedback/components/ResponseList
  */
 
-import React, { useState, useCallback, useMemo } from 'react';
-import {
-  DataGrid,
+import { useState, useCallback, useMemo } from 'react';
+import type {
   GridColDef,
   GridRowSelectionModel,
-  GridSortModel,
+  GridSortModel} from '@mui/x-data-grid';
+import {
+  DataGrid
 } from '@mui/x-data-grid';
 import {
   Avatar,
@@ -50,7 +51,7 @@ import {
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 
-import { FeedbackCompleted } from '@/features/activities/feedback/types';
+import type { FeedbackCompleted } from '@/features/activities/feedback/types';
 import { Alert } from '@/components/feedback/Alert';
 import { Modal } from '@/components/feedback/Modal';
 import { useToast } from '@/hooks/useToast';
@@ -110,7 +111,7 @@ export interface ResponseListProps {
  * Renders a comprehensive table of feedback response entries with
  * full CRUD operations, filtering, sorting, and accessibility support.
  */
-export const ResponseList: React.FC<ResponseListProps> = ({
+export function ResponseList({
   feedbackId,
   responses,
   onDelete,
@@ -118,7 +119,7 @@ export const ResponseList: React.FC<ResponseListProps> = ({
   loading = false,
   error = null,
   onViewDetails,
-}) => {
+}: ResponseListProps): JSX.Element {
   // State management
   const [selectedRows, setSelectedRows] = useState<GridRowSelectionModel>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -143,7 +144,7 @@ export const ResponseList: React.FC<ResponseListProps> = ({
     },
     onSuccess: (_, deletedIds) => {
       // Invalidate feedback responses query
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ['feedback', feedbackId, 'responses'],
       });
       
@@ -549,6 +550,6 @@ export const ResponseList: React.FC<ResponseListProps> = ({
       </Modal>
     </Box>
   );
-};
+}
 
 export default ResponseList;

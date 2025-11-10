@@ -64,7 +64,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import React, { useState, useCallback, type ReactNode, type FC } from 'react';
+import React, { useState, useCallback, type ReactNode } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -281,7 +281,7 @@ export interface ModalProps {
  * @param props - Modal configuration props
  * @returns Modal dialog component
  */
-export const Modal: FC<ModalProps> = ({
+export function Modal({
   open,
   onClose,
   title,
@@ -300,7 +300,7 @@ export const Modal: FC<ModalProps> = ({
   ariaDescribedBy,
   className,
   PaperProps,
-}) => {
+}: ModalProps): JSX.Element {
   /**
    * Handle dialog close event
    * Prevents closing if backdrop click or escape key is disabled
@@ -336,11 +336,13 @@ export const Modal: FC<ModalProps> = ({
     if (Array.isArray(actions)) {
       return actions.map((action, index) => (
         <Button
-          key={index}
+          key={action.label}
           onClick={action.onClick}
-          color={action.color || 'primary'}
-          variant={action.variant || (index === actions.length - 1 ? 'contained' : 'text')}
-          disabled={action.disabled || loading}
+          color={action.color ?? 'primary'}
+          variant={action.variant ?? (index === actions.length - 1 ? 'contained' : 'text')}
+          disabled={action.disabled ?? loading}
+          // AutoFocus is intentionally supported for modal primary actions to improve keyboard navigation
+          // eslint-disable-next-line jsx-a11y/no-autofocus
           autoFocus={action.autoFocus}
           sx={{ minWidth: 80 }}
         >
@@ -355,8 +357,8 @@ export const Modal: FC<ModalProps> = ({
   /**
    * Generate unique IDs for accessibility attributes
    */
-  const titleId = ariaLabelledBy || 'modal-title';
-  const descriptionId = ariaDescribedBy || 'modal-description';
+  const titleId = ariaLabelledBy ?? 'modal-title';
+  const descriptionId = ariaDescribedBy ?? 'modal-description';
 
   return (
     <Dialog
@@ -461,7 +463,7 @@ export const Modal: FC<ModalProps> = ({
       )}
     </Dialog>
   );
-};
+}
 
 /**
  * Return type for the useModal hook
@@ -561,7 +563,11 @@ export interface UseModalReturn {
  * ```
  *
  * @returns Object with modal state and control functions
+ * 
+ * This hook is part of the Modal component's public API, allowing consumers to manage modal state.
+ * Exporting hooks alongside components is intentional for utility purposes.
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export const useModal = (): UseModalReturn => {
   // Modal open state
   const [open, setOpen] = useState<boolean>(false);

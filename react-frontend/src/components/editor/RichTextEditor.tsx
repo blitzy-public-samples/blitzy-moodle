@@ -65,7 +65,8 @@ import {
   forwardRef,
 } from 'react';
 import { Editor as TinyMCEEditor } from '@tinymce/tinymce-react';
-import { Controller, Control } from 'react-hook-form';
+import { Controller } from 'react-hook-form';
+import type { Control, FieldValues } from 'react-hook-form';
 import {
   Box,
   FormHelperText,
@@ -75,7 +76,23 @@ import {
   Skeleton,
 } from '@mui/material';
 import type { Theme } from '@mui/material/styles';
-import type { Editor, EditorEvent } from 'tinymce';
+import type { Editor, EditorEvent, RawEditorOptions } from 'tinymce';
+
+// TinyMCE callback types
+interface BlobInfo {
+  id: () => string;
+  name: () => string;
+  filename: () => string;
+  blob: () => Blob;
+  base64: () => string;
+  blobUri: () => string;
+  uri: () => string | undefined;
+}
+
+interface FilePickerMeta {
+  filetype: 'image' | 'media' | 'file';
+  [key: string]: unknown;
+}
 import useFileUpload from '@/hooks/useFileUpload';
 
 // ============================================================================
@@ -129,10 +146,12 @@ export interface EditorConfig {
   skin?: string;
   /** CSS file URLs for content styling */
   content_css?: string | string[];
-  /** Custom format definitions */
-  formats?: Record<string, unknown>;
-  /** Style format definitions for style dropdown */
-  style_formats?: Array<Record<string, unknown>>;
+  /** Custom format definitions (TinyMCE Formats type - using any for compatibility) */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  formats?: Record<string, any>;
+  /** Style format definitions for style dropdown (using any for TinyMCE compatibility) */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  style_formats?: Array<any>;
   /** Block format options (p, h1, h2, etc.) */
   block_formats?: string;
   /** Font size format options */
@@ -140,7 +159,7 @@ export interface EditorConfig {
   /** Whether to show TinyMCE branding */
   branding?: boolean;
   /** Whether editor is resizable */
-  resize?: boolean | string;
+  resize?: boolean | 'both';
   /** Whether to show status bar */
   statusbar?: boolean;
   /** Additional raw editor options */
@@ -153,7 +172,7 @@ export interface EditorConfig {
  * Configuration props for the RichTextEditor component including
  * form integration, validation, appearance, and behavior settings.
  */
-export interface RichTextEditorProps {
+export interface RichTextEditorProps<TFieldValues extends FieldValues = FieldValues> {
   /** Form field name for React Hook Form integration */
   name: string;
   /** Label text displayed above the editor */
@@ -173,11 +192,11 @@ export interface RichTextEditorProps {
   /** Placeholder text shown in empty editor */
   placeholder?: string;
   /** Toolbar configuration preset or custom string */
-  toolbar?: ToolbarConfig | string;
+  toolbar?: string;
   /** Array of TinyMCE plugin names to enable */
   plugins?: string[];
   /** React Hook Form control object */
-  control?: Control<any>;
+  control?: Control<TFieldValues>;
   /** Helper text displayed below the editor */
   helperText?: string;
   /** Whether the field has a validation error */
@@ -318,7 +337,7 @@ const FULL_PLUGINS = [
  * @returns Toolbar configuration string
  */
 function getToolbarConfig(
-  preset: ToolbarConfig | string,
+  preset: string,
   customToolbar?: string
 ): string {
   switch (preset) {
@@ -329,7 +348,7 @@ function getToolbarConfig(
     case 'full':
       return FULL_TOOLBAR;
     case 'custom':
-      return customToolbar || BASIC_TOOLBAR;
+      return customToolbar ?? BASIC_TOOLBAR;
     default:
       // If a custom string is provided directly
       return preset;
@@ -344,7 +363,7 @@ function getToolbarConfig(
  * @returns Array of plugin names
  */
 function getDefaultPlugins(
-  preset: ToolbarConfig | string,
+  preset: string,
   customPlugins?: string[]
 ): string[] {
   if (customPlugins && customPlugins.length > 0) {
@@ -510,13 +529,108 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
         'audio/mpeg',
         'audio/ogg',
       ],
-      onSuccess: (response) => {
-        console.log('File uploaded successfully:', response.data);
+      onSuccess: () => {
+        // File uploaded successfully - callback for future enhancement
       },
       onError: (error) => {
         console.error('File upload failed:', error.message);
       },
     });
+
+    // ========================================================================
+    // FILE UPLOAD HANDLERS
+    // ========================================================================
+
+    /**
+     * Handle image upload from editor
+     *
+     * Called by TinyMCE when user uploads an image via drag-drop or
+     * paste. Uploads the image to Moodle API and returns the URL.
+     *
+     * @param blob - Image blob data
+     * @param filename - Original filename
+     * @returns Promise resolving to the uploaded image URL
+     */
+    const handleImageUpload = useCallback(
+      async (blob: Blob, filename: string): Promise<string> => {
+        try {
+          // Create File object from Blob
+          const file = new File([blob], filename, { type: blob.type });
+
+          // Upload file using the hook
+          await uploadFile(file, '/api/v1/files/upload');
+
+          // In a real implementation, the uploadFile hook would return the
+          // file URL from the API response. For now, we simulate this.
+          // The actual implementation would extract the URL from the response.
+          const fileUrl = `${window.location.origin}/pluginfile.php/${Math.random()}/${filename}`;
+
+          return fileUrl;
+        } catch (error) {
+          console.error('Image upload failed:', error);
+          throw new Error('Failed to upload image');
+        } finally {
+          resetUpload();
+        }
+      },
+      [uploadFile, resetUpload]
+    );
+
+    /**
+     * Handle file picker dialog
+     *
+     * Opens a file picker dialog for selecting images or media files.
+     *
+     * @param callback - Callback to invoke with selected file URL
+     * @param value - Current field value
+     * @param meta - Metadata about the picker type
+     */
+    const handleFilePicker = useCallback(
+      (
+        callback: (value: string, meta?: Record<string, any>) => void,
+        _value: string,
+        meta: FilePickerMeta
+      ) => {
+        // Create file input
+        const input = document.createElement('input');
+        input.setAttribute('type', 'file');
+
+        // Set accepted file types based on picker type
+        if (meta.filetype === 'image') {
+          input.setAttribute('accept', 'image/*');
+        } else if (meta.filetype === 'media') {
+          input.setAttribute('accept', 'video/*,audio/*');
+        }
+
+        // Handle file selection
+        input.addEventListener('change', async (e) => {
+          const target = e.target as HTMLInputElement;
+          const file = target.files?.[0];
+
+          if (file) {
+            try {
+              await uploadFile(file, '/api/v1/files/upload');
+
+              // Simulate file URL response
+              const fileUrl = `${window.location.origin}/pluginfile.php/${Math.random()}/${file.name}`;
+
+              callback(fileUrl, {
+                title: file.name,
+                alt: file.name,
+              });
+            } catch (error) {
+              console.error('File upload failed:', error);
+            } finally {
+              resetUpload();
+            }
+          }
+        });
+
+        // Trigger file picker
+        input.click();
+      },
+      [uploadFile, resetUpload]
+    );
 
     // ========================================================================
     // MEMOIZED VALUES
@@ -549,8 +663,8 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
     /**
      * Complete TinyMCE editor configuration
      */
-    const editorConfiguration: EditorConfig = useMemo(() => {
-      const baseConfig: EditorConfig = {
+    const editorConfiguration = useMemo(() => {
+      const baseConfig: RawEditorOptions = {
         // Core settings
         height,
         menubar: toolbar === 'full',
@@ -604,12 +718,12 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
 
         // File upload handling
         automatic_uploads: true,
-        images_upload_handler: async (blobInfo: any) => {
+        images_upload_handler: async (blobInfo: BlobInfo) => {
           return handleImageUpload(blobInfo.blob(), blobInfo.filename());
         },
         file_picker_types: 'image media',
-        file_picker_callback: (callback: any, value: any, meta: any) => {
-          handleFilePicker(callback, value, meta);
+        file_picker_callback: (callback, value, meta) => {
+          handleFilePicker(callback, value, meta as FilePickerMeta);
         },
 
         // Link behavior
@@ -670,10 +784,24 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
       };
 
       // Merge with custom editor config if provided
-      return {
+      // Filter out properties not allowed in TinyMCE React component's init prop
+      // TypeScript: Cast to omit disallowed properties
+      const filteredEditorConfig = editorConfig 
+        ? (Object.fromEntries(
+            Object.entries(editorConfig).filter(
+              ([key]) => key !== 'selector' && key !== 'target'
+            )
+          ) as Omit<typeof editorConfig, 'selector' | 'target'>)
+        : {};
+      
+      // Return configuration without disallowed properties
+      const finalConfig = {
         ...baseConfig,
-        ...editorConfig,
+        ...filteredEditorConfig,
       };
+      
+      // Type assertion: explicitly tell TypeScript that selector and target are not present
+      return finalConfig as Omit<typeof finalConfig, 'selector' | 'target'>;
     }, [
       height,
       toolbar,
@@ -683,102 +811,9 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
       theme.palette.mode,
       contentStyle,
       editorConfig,
+      handleImageUpload,
+      handleFilePicker,
     ]);
-
-    // ========================================================================
-    // FILE UPLOAD HANDLERS
-    // ========================================================================
-
-    /**
-     * Handle image upload from editor
-     *
-     * Called by TinyMCE when user uploads an image via drag-drop or
-     * paste. Uploads the image to Moodle API and returns the URL.
-     *
-     * @param blob - Image blob data
-     * @param filename - Original filename
-     * @returns Promise resolving to the uploaded image URL
-     */
-    const handleImageUpload = useCallback(
-      async (blob: Blob, filename: string): Promise<string> => {
-        try {
-          // Create File object from Blob
-          const file = new File([blob], filename, { type: blob.type });
-
-          // Upload file using the hook
-          await uploadFile(file, '/api/v1/files/upload');
-
-          // In a real implementation, the uploadFile hook would return the
-          // file URL from the API response. For now, we simulate this.
-          // The actual implementation would extract the URL from the response.
-          const fileUrl = `${window.location.origin}/pluginfile.php/${Math.random()}/${filename}`;
-
-          return fileUrl;
-        } catch (error) {
-          console.error('Image upload failed:', error);
-          throw new Error('Failed to upload image');
-        } finally {
-          resetUpload();
-        }
-      },
-      [uploadFile, resetUpload]
-    );
-
-    /**
-     * Handle file picker dialog
-     *
-     * Opens a file picker dialog for selecting images or media files.
-     *
-     * @param callback - Callback to invoke with selected file URL
-     * @param value - Current field value
-     * @param meta - Metadata about the picker type
-     */
-    const handleFilePicker = useCallback(
-      (
-        callback: (url: string, meta?: Record<string, unknown>) => void,
-        _value: string,
-        meta: Record<string, unknown>
-      ) => {
-        // Create file input
-        const input = document.createElement('input');
-        input.setAttribute('type', 'file');
-
-        // Set accepted file types based on picker type
-        if (meta.filetype === 'image') {
-          input.setAttribute('accept', 'image/*');
-        } else if (meta.filetype === 'media') {
-          input.setAttribute('accept', 'video/*,audio/*');
-        }
-
-        // Handle file selection
-        input.addEventListener('change', async (e) => {
-          const target = e.target as HTMLInputElement;
-          const file = target.files?.[0];
-
-          if (file) {
-            try {
-              await uploadFile(file, '/api/v1/files/upload');
-
-              // Simulate file URL response
-              const fileUrl = `${window.location.origin}/pluginfile.php/${Math.random()}/${file.name}`;
-
-              callback(fileUrl, {
-                title: file.name,
-                alt: file.name,
-              });
-            } catch (error) {
-              console.error('File upload failed:', error);
-            } finally {
-              resetUpload();
-            }
-          }
-        });
-
-        // Trigger file picker
-        input.click();
-      },
-      [uploadFile, resetUpload]
-    );
 
     // ========================================================================
     // EVENT HANDLERS
@@ -896,7 +931,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
           value={value}
           onEditorChange={onChange}
           onInit={handleEditorInit}
-          init={editorConfiguration as any}
+          init={editorConfiguration}
           disabled={disabled}
         />
       </Box>
@@ -931,10 +966,10 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
             defaultValue={defaultValue}
             render={({ field, fieldState }) => (
               <>
-                {renderEditor(field.value || '', (content: string, _editor: Editor) => field.onChange(content))}
-                {(fieldState.error?.message || helperText) && (
+                {renderEditor(field.value ?? '', (content: string, _editor: Editor) => field.onChange(content))}
+                {(fieldState.error?.message ?? helperText) && (
                   <FormHelperText error={!!fieldState.error}>
-                    {fieldState.error?.message || helperText}
+                    {fieldState.error?.message ?? helperText}
                   </FormHelperText>
                 )}
               </>
@@ -965,7 +1000,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
             {label}
           </FormLabel>
         )}
-        {renderEditor(value || defaultValue, handleEditorChange)}
+        {renderEditor(value ?? defaultValue, handleEditorChange)}
         {helperText && (
           <FormHelperText error={error}>{helperText}</FormHelperText>
         )}

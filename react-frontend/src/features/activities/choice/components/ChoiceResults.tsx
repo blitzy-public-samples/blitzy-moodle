@@ -17,7 +17,8 @@
  * @module features/activities/choice/components/ChoiceResults
  */
 
-import React, { useState, useMemo } from 'react';
+import type React from 'react';
+import { useState, useMemo } from 'react';
 import {
   Table,
   TableHead,
@@ -304,7 +305,7 @@ const ChoiceResults: React.FC<ChoiceResultsProps> = ({
    */
   const handleSelectAllForOption = (optionId: number) => {
     const option = options[optionId];
-    if (!option?.user) return;
+    if (!option?.user) {return;}
 
     const optionAttemptIds = option.user
       .filter((user) => user.answerid)
@@ -333,7 +334,7 @@ const ChoiceResults: React.FC<ChoiceResultsProps> = ({
    * Based on action=delete from public/mod/choice/renderer.php lines 316-317.
    */
   const handleDeleteSelected = () => {
-    if (totalSelected === 0) return;
+    if (totalSelected === 0) {return;}
 
     const attemptIds = Array.from(selectedAttempts);
 
@@ -358,7 +359,7 @@ const ChoiceResults: React.FC<ChoiceResultsProps> = ({
    * Based on action='choose_' from public/mod/choice/renderer.php lines 318-321.
    */
   const handleModifySelected = () => {
-    if (totalSelected === 0 || !selectedOptionForMove) return;
+    if (totalSelected === 0 || !selectedOptionForMove) {return;}
 
     const attemptIds = Array.from(selectedAttempts);
 
@@ -377,7 +378,7 @@ const ChoiceResults: React.FC<ChoiceResultsProps> = ({
         choiceId: coursemoduleid,
         userIds,
         attemptIds,
-        newOptionId: selectedOptionForMove as number,
+        newOptionId: selectedOptionForMove,
       },
       {
         onSuccess: () => {
@@ -420,7 +421,7 @@ const ChoiceResults: React.FC<ChoiceResultsProps> = ({
         <ChoiceChart
           options={chartData}
           displayLayout={displayLayout}
-          showPercentages={true}
+          showPercentages
         />
       </Box>
     );
@@ -478,7 +479,7 @@ const ChoiceResults: React.FC<ChoiceResultsProps> = ({
                   {/* Option columns with select-all checkboxes (lines 179-232) */}
                   {sortedOptionIds.map((optionId) => {
                     const option = options[optionId];
-                    if (!option) return null;
+                    if (!option) {return null;}
 
                     // Skip "Not answered" if not showing (lines 183-184)
                     if (optionId === 0 && !showunanswered) {
@@ -545,7 +546,7 @@ const ChoiceResults: React.FC<ChoiceResultsProps> = ({
 
                   {sortedOptionIds.map((optionId) => {
                     const option = options[optionId];
-                    if (!option) return null;
+                    if (!option) {return null;}
 
                     if (optionId === 0 && !showunanswered) {
                       return null;
@@ -582,7 +583,7 @@ const ChoiceResults: React.FC<ChoiceResultsProps> = ({
                   {/* User lists for each option (lines 247-296) */}
                   {sortedOptionIds.map((optionId) => {
                     const option = options[optionId];
-                    if (!option) return null;
+                    if (!option) {return null;}
 
                     if (optionId === 0 && !showunanswered) {
                       return null;
@@ -717,7 +718,7 @@ const ChoiceResults: React.FC<ChoiceResultsProps> = ({
                       .filter((id) => id > 0) // Exclude "Not answered" option
                       .map((optionId) => (
                         <MenuItem key={optionId} value={optionId}>
-                          {options[optionId]?.text || `Option ${optionId}`}
+                          {options[optionId]?.text ?? `Option ${optionId}`}
                         </MenuItem>
                       ))}
                   </Select>
