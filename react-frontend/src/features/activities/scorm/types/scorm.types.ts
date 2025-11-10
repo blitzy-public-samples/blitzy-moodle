@@ -872,11 +872,12 @@ export interface SaveTrackingResponse {
 
 /**
  * Request to get table of contents
+ * Note: scormId is passed as URL parameter, not in request body
  */
 export interface GetTOCRequest {
-  scormId: number;
   attempt?: number;
   includeStatus?: boolean;
+  organization?: string;
 }
 
 /**
@@ -989,9 +990,24 @@ export interface ScormListResponse<T> {
 // ============================================================================
 
 /**
- * Type alias for table of contents node (API compatibility)
+ * SCORM Table of Contents Response
+ * Matches the structure returned by scorm_get_toc_object() PHP function
+ * 
+ * Contains:
+ * - scoes: Hierarchical array of SCO nodes with children
+ * - usertracks: User tracking data for the current attempt
+ * - scoid: Current SCO ID (active node)
  */
-export type ScormToc = ScormTOCNode;
+export interface ScormToc {
+  /** Array of hierarchical SCO nodes (already structured with children) */
+  scoes: ScormTOCNode[];
+  
+  /** User tracking data for current attempt */
+  usertracks: Record<string, any>;
+  
+  /** Current/active SCO ID */
+  scoid: number | null;
+}
 
 /**
  * Type alias for SCORM report (API compatibility)
