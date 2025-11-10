@@ -168,6 +168,11 @@ const QuizNavigation: React.FC<QuizNavigationProps> = ({
     (index: number) => {
       const question = questions[index];
 
+      // Guard against invalid index
+      if (!question) {
+        return;
+      }
+
       // Check if navigation to this question is allowed
       if (isSequential && !question.canNavigate) {
         // In sequential mode, don't allow navigation to future questions
@@ -312,7 +317,7 @@ const QuizNavigation: React.FC<QuizNavigationProps> = ({
    * In sequential mode, only current and previous questions are enabled
    */
   const isQuestionDisabled = useCallback(
-    (question: QuestionNavigationState, index: number) => {
+    (question: QuestionNavigationState, _index: number) => {
       if (navigationMode === 'free') {
         return false; // All questions accessible in free mode
       }
