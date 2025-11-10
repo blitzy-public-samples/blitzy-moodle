@@ -935,8 +935,8 @@ export function DiscussionList({
                       </Stack>
                     }
                     secondary={
-                      <Stack spacing={0.5} sx={{ mt: 0.5 }}>
-                        <Typography variant="body2" color="text.secondary">
+                      <Box component="span" sx={{ display: 'block' }}>
+                        <Typography component="span" variant="body2" color="text.secondary" sx={{ display: 'block', mb: 0.5, mt: 0.5 }}>
                           Started by{' '}
                           <Typography
                             component="span"
@@ -962,7 +962,7 @@ export function DiscussionList({
                         </Typography>
 
                         {!isMobile && discussion.lastPost && (
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography component="span" variant="caption" color="text.secondary" sx={{ display: 'block' }}>
                             Last post by {discussion.lastPost.author}{' '}
                             {formatDate(discussion.lastPost.timestamp)}
                             {discussion.lastPost.preview && (
@@ -972,12 +972,12 @@ export function DiscussionList({
                         )}
 
                         {isMobile && (
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography component="span" variant="caption" color="text.secondary" sx={{ display: 'block' }}>
                             {discussion.replyCount}{' '}
                             {discussion.replyCount === 1 ? 'reply' : 'replies'}
                           </Typography>
                         )}
-                      </Stack>
+                      </Box>
                     }
                   />
                 </ListItemButton>
