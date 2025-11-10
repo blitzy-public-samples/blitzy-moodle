@@ -151,8 +151,8 @@ export async function login(page: Page, credentials: LoginCredentials): Promise<
   await waitForPageLoad(page);
 
   // Wait for login form to be visible
-  await waitForElement(page, 'input[name="username"]', { timeout: 5000 });
-  await waitForElement(page, 'input[name="password"]', { timeout: 5000 });
+  await waitForElement(page, 'input[name="username"]', 'visible', { timeout: 5000 });
+  await waitForElement(page, 'input[name="password"]', 'visible', { timeout: 5000 });
 
   // Fill in credentials
   await page.fill('input[name="username"]', credentials.username);
@@ -196,7 +196,7 @@ export async function login(page: Page, credentials: LoginCredentials): Promise<
   }
 
   // Verify successful authentication by checking for authenticated UI elements
-  await waitForElement(page, '[data-testid="user-menu"]', { timeout: 5000 });
+  await waitForElement(page, '[data-testid="user-menu"]', 'visible', { timeout: 5000 });
 
   return page;
 }
@@ -319,7 +319,7 @@ export async function logout(page: Page): Promise<void> {
   await page.click('[data-testid="user-menu"]');
   
   // Wait for menu to expand
-  await waitForElement(page, '[data-testid="logout-button"]', { timeout: 3000 });
+  await waitForElement(page, '[data-testid="logout-button"]', 'visible', { timeout: 3000 });
 
   // Click logout button and wait for navigation
   await Promise.all([
@@ -347,7 +347,7 @@ export async function logout(page: Page): Promise<void> {
   await clearAuthenticationState(page);
 
   // Verify unauthenticated state by checking for login form
-  await waitForElement(page, 'input[name="username"]', { timeout: 5000 });
+  await waitForElement(page, 'input[name="username"]', 'visible', { timeout: 5000 });
 }
 
 // ============================================================================
