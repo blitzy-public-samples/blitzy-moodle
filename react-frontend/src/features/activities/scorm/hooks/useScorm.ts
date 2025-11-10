@@ -83,6 +83,22 @@ export const scormQueryKeys = {
     attemptNumber
       ? ([...scormQueryKeys.all, 'userData', id, attemptNumber] as const)
       : ([...scormQueryKeys.all, 'userData', id] as const),
+
+  /**
+   * Key for user report query
+   * @param id - SCORM module ID
+   * @param userId - User ID (optional)
+   * @param attemptNumber - Specific attempt number (optional)
+   */
+  report: (id: number, userId?: number, attemptNumber?: number) => {
+    if (attemptNumber !== undefined) {
+      return [...scormQueryKeys.all, 'report', id, userId, attemptNumber] as const;
+    }
+    if (userId !== undefined) {
+      return [...scormQueryKeys.all, 'report', id, userId] as const;
+    }
+    return [...scormQueryKeys.all, 'report', id] as const;
+  },
 };
 
 // ============================================================================
