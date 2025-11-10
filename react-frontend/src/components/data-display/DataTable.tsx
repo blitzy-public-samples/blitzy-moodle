@@ -43,16 +43,17 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import React, { useState, useCallback, useMemo, useEffect, type FC, type ReactNode, type MouseEvent } from 'react';
+import { useState, useCallback, useMemo, useEffect, type FC, type ReactNode, type MouseEvent } from 'react';
 import {
   DataGrid,
   type GridColDef,
-  type GridRowsProp,
   type GridRowSelectionModel,
   type GridSortModel,
   type GridFilterModel,
   type GridPaginationModel,
   type GridCallbackDetails,
+  type GridRenderCellParams,
+  type GridValidRowModel,
   GridToolbarContainer,
   GridToolbarColumnsButton,
   GridToolbarFilterButton,
@@ -70,7 +71,6 @@ import {
   MenuItem,
 } from '@mui/material';
 import { MoreVert } from '@mui/icons-material';
-import { Pagination } from './Pagination';
 import { LoadingSpinner } from '../feedback/LoadingSpinner';
 import { Alert } from '../feedback/Alert';
 import type { SortParams } from '../../types/common';
@@ -78,7 +78,7 @@ import type { SortParams } from '../../types/common';
 /**
  * Row action definition for context menu
  */
-export interface RowAction<T = unknown> {
+export interface RowAction<T extends GridValidRowModel = GridValidRowModel> {
   /**
    * Action label displayed in menu
    */
@@ -115,7 +115,7 @@ export interface RowAction<T = unknown> {
 /**
  * Bulk action definition for selected rows
  */
-export interface BulkAction<T = unknown> {
+export interface BulkAction<T extends GridValidRowModel = GridValidRowModel> {
   /**
    * Action label displayed in toolbar
    */
@@ -152,7 +152,7 @@ export type DataMode = 'client' | 'server';
 /**
  * Column definition extending MUI GridColDef
  */
-export interface DataTableColumn<T = unknown> extends Omit<GridColDef, 'field'> {
+export interface DataTableColumn<T extends GridValidRowModel = GridValidRowModel> extends Omit<GridColDef, 'field' | 'renderCell' | 'valueGetter' | 'valueFormatter'> {
   /**
    * Column field name (must be a key of row data type)
    */
@@ -182,14 +182,14 @@ export interface DataTableColumn<T = unknown> extends Omit<GridColDef, 'field'> 
   filterable?: boolean;
 
   /**
-   * Custom cell renderer
+   * Custom cell renderer - uses MUI's GridRenderCellParams for full compatibility
    */
-  renderCell?: (params: { row: T; value: unknown }) => ReactNode;
+  renderCell?: (params: GridRenderCellParams<T>) => ReactNode;
 
   /**
-   * Value getter for computed values
+   * Value getter for computed values - uses MUI's params structure
    */
-  valueGetter?: (params: { row: T }) => unknown;
+  valueGetter?: (params: GridRenderCellParams<T>) => unknown;
 
   /**
    * Value formatter for display
@@ -200,7 +200,7 @@ export interface DataTableColumn<T = unknown> extends Omit<GridColDef, 'field'> 
 /**
  * Props interface for DataTable component
  */
-export interface DataTableProps<T = unknown> {
+export interface DataTableProps<T extends GridValidRowModel = GridValidRowModel> {
   /**
    * Array of column definitions
    */
@@ -387,14 +387,14 @@ export interface DataTableProps<T = unknown> {
 /**
  * Custom toolbar component with bulk actions
  */
-interface CustomToolbarProps<T> {
+interface CustomToolbarProps<T extends GridValidRowModel> {
   selectedRows: GridRowSelectionModel;
   selectedRowData: T[];
   bulkActions?: BulkAction<T>[];
   exportable?: boolean;
 }
 
-function CustomToolbar<T>({ selectedRows, selectedRowData, bulkActions, exportable }: CustomToolbarProps<T>) {
+function CustomToolbar<T extends GridValidRowModel>({ selectedRows, selectedRowData, bulkActions, exportable }: CustomToolbarProps<T>) {
   const selectedCount = selectedRows.length;
 
   return (
@@ -453,12 +453,12 @@ function CustomToolbar<T>({ selectedRows, selectedRowData, bulkActions, exportab
 /**
  * Row actions menu component
  */
-interface RowActionsMenuProps<T> {
+interface RowActionsMenuProps<T extends GridValidRowModel> {
   row: T;
   actions: RowAction<T>[];
 }
 
-function RowActionsMenu<T>({ row, actions }: RowActionsMenuProps<T>) {
+function RowActionsMenu<T extends GridValidRowModel>({ row, actions }: RowActionsMenuProps<T>) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
 
@@ -607,6 +607,18 @@ export const DataTable = <T extends { id: string | number }>({
     setInternalPaginationModel({ page, pageSize });
   }, [page, pageSize]);
 
+  useEffect(() => {
+    if (sortModel) {
+      setInternalSortModel([{ field: String(sortModel.field), sort: sortModel.order }]);
+    }
+  }, [sortModel]);
+
+  useEffect(() => {
+    if (filterModel) {
+      setInternalFilterModel(filterModel);
+    }
+  }, [filterModel]);
+
   // Convert columns to GridColDef format with row actions
   const gridColumns = useMemo<GridColDef[]>(() => {
     const cols: GridColDef[] = columns.map((col) => ({
@@ -636,11 +648,11 @@ export const DataTable = <T extends { id: string | number }>({
 
   // Handle sort changes
   const handleSortModelChange = useCallback(
-    (model: GridSortModel, details: GridCallbackDetails) => {
+    (model: GridSortModel, _details: GridCallbackDetails) => {
       setInternalSortModel(model);
 
       if (onSortChange) {
-        if (model.length > 0) {
+        if (model.length > 0 && model[0] && model[0].sort) {
           const sortItem = model[0];
           onSortChange({
             field: sortItem.field as keyof T,
@@ -656,7 +668,7 @@ export const DataTable = <T extends { id: string | number }>({
 
   // Handle filter changes
   const handleFilterModelChange = useCallback(
-    (model: GridFilterModel, details: GridCallbackDetails) => {
+    (model: GridFilterModel, _details: GridCallbackDetails) => {
       setInternalFilterModel(model);
 
       if (onFilterChange) {
@@ -668,7 +680,7 @@ export const DataTable = <T extends { id: string | number }>({
 
   // Handle pagination changes
   const handlePaginationModelChange = useCallback(
-    (model: GridPaginationModel, details: GridCallbackDetails) => {
+    (model: GridPaginationModel, _details: GridCallbackDetails) => {
       setInternalPaginationModel(model);
 
       if (onPageChange && model.page !== internalPaginationModel.page) {
@@ -684,7 +696,7 @@ export const DataTable = <T extends { id: string | number }>({
 
   // Handle selection changes
   const handleSelectionChange = useCallback(
-    (newSelection: GridRowSelectionModel, details: GridCallbackDetails) => {
+    (newSelection: GridRowSelectionModel, _details: GridCallbackDetails) => {
       setInternalSelectedRows(newSelection);
 
       if (onSelectionChange) {
@@ -762,7 +774,7 @@ export const DataTable = <T extends { id: string | number }>({
         onPaginationModelChange={handlePaginationModelChange}
         pageSizeOptions={pageSizeOptions}
         rowCount={rowCount}
-        pagination={pagination}
+        {...(pagination && { pagination: true })}
         density={density}
         autoHeight={autoHeight}
         hideFooter={hideFooter}
@@ -793,12 +805,6 @@ export const DataTable = <T extends { id: string | number }>({
               </Typography>
             </Box>
           ),
-        }}
-        slotProps={{
-          loadingOverlay: {
-            variant: 'skeleton',
-            noRowsVariant: 'skeleton',
-          },
         }}
         sx={{
           border: 1,
