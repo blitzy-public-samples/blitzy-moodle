@@ -38,17 +38,23 @@ vi.mock('axios', () => {
     })),
   };
 
+  const isCancelImpl = vi.fn((err: unknown) => {
+    return err && typeof err === 'object' && 'message' in err && err.message === 'Upload cancelled by user';
+  });
+
+  const isAxiosErrorImpl = vi.fn((err: unknown) => {
+    return err && typeof err === 'object' && 'response' in err;
+  });
+
   return {
     default: {
       post: vi.fn(),
       CancelToken: mockCancelToken,
-      isCancel: vi.fn((err: unknown) => {
-        return err && typeof err === 'object' && 'message' in err && err.message === 'Upload cancelled by user';
-      }),
+      isCancel: isCancelImpl,
+      isAxiosError: isAxiosErrorImpl,
     },
-    isCancel: vi.fn((err: unknown) => {
-      return err && typeof err === 'object' && 'message' in err && err.message === 'Upload cancelled by user';
-    }),
+    isCancel: isCancelImpl,
+    isAxiosError: isAxiosErrorImpl,
     CancelToken: mockCancelToken,
   };
 });
