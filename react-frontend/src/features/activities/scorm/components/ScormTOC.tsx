@@ -25,7 +25,7 @@
 import React, { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { SimpleTreeView } from '@mui/x-tree-view/SimpleTreeView';
+import { TreeView } from '@mui/x-tree-view/TreeView';
 import { TreeItem } from '@mui/x-tree-view/TreeItem';
 import {
   Box,
@@ -44,16 +44,17 @@ import {
   PlayCircleOutline as PlayIcon,
 } from '@mui/icons-material';
 
-import { fetchScormToc } from '../api/scormApi';
-import { scormQueryKeys } from '../hooks/useScorm';
-import { LoadingSpinner } from '../../../../components/feedback/LoadingSpinner';
-import { Alert } from '../../../../components/feedback/Alert';
+import { fetchScormToc } from '@/features/activities/scorm/api/scormApi';
+import { scormQueryKeys } from '@/features/activities/scorm/hooks/useScorm';
+import { LoadingSpinner } from '@/components/feedback/LoadingSpinner';
+import { Alert } from '@/components/feedback/Alert';
+import { ScormStatus } from '@/features/activities/scorm/types/scorm.types';
 import type { 
   Scorm, 
-  ScormTOCNode, 
-  ScormStatus,
-  GetTOCResponse,
-} from '../types/scorm.types';
+  ScormTOCNode,
+  ScormToc,
+  ScormScore,
+} from '@/features/activities/scorm/types/scorm.types';
 
 /**
  * Props for ScormTOC component
@@ -67,28 +68,57 @@ interface ScormTOCProps {
   currentScoId?: number;
   /** SCORM activity configuration */
   scorm?: Scorm;
+  /** Organization identifier for SCORM packages with multiple organizations */
+  organization?: string;
   /** Callback when SCO is selected */
   onScoSelect?: (scoId: number) => void;
 }
 
 /**
+ * Convert ScormScore object to display string
+ */
+const formatScore = (score?: ScormScore): string | undefined => {
+  if (!score) return undefined;
+  
+  // Prefer scaled score for SCORM 2004 (displayed as percentage)
+  if (score.scaled !== undefined) {
+    return `${Math.round(score.scaled * 100)}%`;
+  }
+  
+  // Fall back to raw score
+  if (score.raw !== undefined) {
+    // If we have max, show as fraction
+    if (score.max !== undefined) {
+      return `${score.raw}/${score.max}`;
+    }
+    return `${score.raw}`;
+  }
+  
+  return undefined;
+};
+
+/**
  * Get status icon component based on SCO status
  */
-const getStatusIcon = (status: ScormStatus, isEnabled: boolean): React.ReactNode => {
+const getStatusIcon = (status: ScormStatus | undefined, isEnabled: boolean): React.ReactNode => {
   if (!isEnabled) {
     return <LockIcon fontSize="small" color="disabled" />;
   }
 
+  if (!status) {
+    return <NotAttemptedIcon fontSize="small" color="action" />;
+  }
+
   switch (status) {
-    case 'completed':
-    case 'passed':
+    case ScormStatus.COMPLETED:
+    case ScormStatus.PASSED:
       return <CheckCircleIcon fontSize="small" color="success" />;
-    case 'failed':
+    case ScormStatus.FAILED:
       return <CancelIcon fontSize="small" color="error" />;
-    case 'incomplete':
-    case 'browsed':
+    case ScormStatus.INCOMPLETE:
+    case ScormStatus.BROWSED:
       return <PlayIcon fontSize="small" color="primary" />;
-    case 'not_attempted':
+    case ScormStatus.NOT_ATTEMPTED:
     default:
       return <NotAttemptedIcon fontSize="small" color="action" />;
   }
@@ -98,7 +128,7 @@ const getStatusIcon = (status: ScormStatus, isEnabled: boolean): React.ReactNode
  * Get status chip configuration based on SCO status
  */
 const getStatusChip = (
-  status: ScormStatus,
+  status: ScormStatus | undefined,
   score?: string,
   isEnabled: boolean = true
 ): { label: string; color: 'default' | 'primary' | 'success' | 'error' | 'warning' } | null => {
@@ -106,18 +136,22 @@ const getStatusChip = (
     return { label: 'Locked', color: 'default' };
   }
 
+  if (!status) {
+    return null; // No status available
+  }
+
   switch (status) {
-    case 'completed':
+    case ScormStatus.COMPLETED:
       return { label: score ? `Completed (${score})` : 'Completed', color: 'success' };
-    case 'passed':
+    case ScormStatus.PASSED:
       return { label: score ? `Passed (${score})` : 'Passed', color: 'success' };
-    case 'failed':
+    case ScormStatus.FAILED:
       return { label: score ? `Failed (${score})` : 'Failed', color: 'error' };
-    case 'incomplete':
+    case ScormStatus.INCOMPLETE:
       return { label: 'Incomplete', color: 'warning' };
-    case 'browsed':
+    case ScormStatus.BROWSED:
       return { label: 'Browsed', color: 'primary' };
-    case 'not_attempted':
+    case ScormStatus.NOT_ATTEMPTED:
       return null; // Don't show chip for not attempted
     default:
       return null;
@@ -140,7 +174,7 @@ const ScormTreeItem: React.FC<ScormTreeItemProps> = ({
 }) => {
   const theme = useTheme();
   const isActive = currentScoId === node.id;
-  const statusChip = getStatusChip(node.status, node.score, node.isEnabled);
+  const statusChip = getStatusChip(node.status, formatScore(node.score), node.isEnabled);
 
   const handleClick = (event: React.MouseEvent) => {
     // Only allow navigation if enabled and is a leaf node (has launch URL)
@@ -151,7 +185,7 @@ const ScormTreeItem: React.FC<ScormTreeItemProps> = ({
   };
 
   // Build label with status indicators
-  const label = (
+  const labelContent = (
     <Box
       sx={{
         display: 'flex',
@@ -190,7 +224,7 @@ const ScormTreeItem: React.FC<ScormTreeItemProps> = ({
             : isActive
             ? theme.palette.primary.main
             : theme.palette.text.primary,
-          fontWeight: isActive ? 600 : 400,
+          fontWeight: isActive ? 'bold' : 400,
         }}
       >
         {node.title}
@@ -206,13 +240,20 @@ const ScormTreeItem: React.FC<ScormTreeItemProps> = ({
         />
       )}
 
-      {/* Prerequisite warning tooltip */}
-      {!node.isEnabled && node.prereqMessage && (
-        <Tooltip title={node.prereqMessage} arrow>
-          <LockIcon fontSize="small" color="disabled" />
-        </Tooltip>
+      {/* Prerequisite warning icon */}
+      {!node.isEnabled && node.prerequisite && (
+        <LockIcon fontSize="small" color="disabled" />
       )}
     </Box>
+  );
+
+  // Wrap label with tooltip if there's a prerequisite message
+  const label = !node.isEnabled && node.prerequisite ? (
+    <Tooltip title={node.prerequisite} arrow>
+      {labelContent}
+    </Tooltip>
+  ) : (
+    labelContent
   );
 
   // Recursively render children
@@ -232,7 +273,13 @@ const ScormTreeItem: React.FC<ScormTreeItemProps> = ({
   };
 
   return (
-    <TreeItem itemId={node.id.toString()} label={label}>
+    <TreeItem 
+      nodeId={node.id.toString()} 
+      label={label}
+      style={{
+        fontWeight: isActive ? 'bold' : 400,
+      }}
+    >
       {renderChildren()}
     </TreeItem>
   );
@@ -249,6 +296,7 @@ const ScormTOC: React.FC<ScormTOCProps> = ({
   attempt,
   currentScoId,
   scorm,
+  organization,
   onScoSelect,
 }) => {
   const navigate = useNavigate();
@@ -260,86 +308,112 @@ const ScormTOC: React.FC<ScormTOCProps> = ({
     isLoading,
     isError,
     error,
-  } = useQuery<GetTOCResponse, Error>({
-    queryKey: scormQueryKeys.toc(scormId, attempt),
+  } = useQuery<ScormToc, Error>({
+    queryKey: scormQueryKeys.toc(scormId, attempt, organization),
     queryFn: () =>
-      fetchScormToc({
-        scormId,
+      fetchScormToc(scormId, {
         attempt,
-        includeStatus: true,
+        organization,
       }),
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes (previously cacheTime)
-    retry: 2,
+    retry: false, // Disable retries for faster error display
     refetchOnWindowFocus: false,
   });
 
   /**
-   * Transform flat TOC array into hierarchical tree structure
-   * Memoized to prevent recalculation on every render
+   * Tree data is already hierarchical from the backend (scorm_get_toc_object)
+   * No transformation needed - just use tocResponse.scoes directly
    */
-  const treeData = useMemo(() => {
-    if (!tocResponse?.nodes || tocResponse.nodes.length === 0) {
-      return [];
-    }
-
-    // Create a map of all nodes by ID for quick lookup
-    const nodeMap = new Map<number, ScormTOCNode>();
-    tocResponse.nodes.forEach((node) => {
-      nodeMap.set(node.id, { ...node, children: [] });
-    });
-
-    // Build the tree structure by assigning children to parents
-    const rootNodes: ScormTOCNode[] = [];
-
-    tocResponse.nodes.forEach((node) => {
-      const treeNode = nodeMap.get(node.id);
-      if (!treeNode) return;
-
-      if (node.parent === null || node.parent === 0 || node.parent === '0') {
-        // This is a root node
-        rootNodes.push(treeNode);
-      } else {
-        // This is a child node, add it to its parent
-        const parentId = typeof node.parent === 'string' ? parseInt(node.parent, 10) : node.parent;
-        const parentNode = nodeMap.get(parentId);
-        if (parentNode) {
-          if (!parentNode.children) {
-            parentNode.children = [];
-          }
-          parentNode.children.push(treeNode);
-        } else {
-          // Parent not found, treat as root
-          rootNodes.push(treeNode);
-        }
-      }
-    });
-
-    return rootNodes;
-  }, [tocResponse]);
 
   /**
    * Get list of expanded items (all parent nodes with children)
    * This ensures the tree is fully expanded by default
    */
   const defaultExpandedItems = useMemo(() => {
-    if (!tocResponse?.nodes) return [];
+    if (!tocResponse?.scoes) return [];
 
-    return tocResponse.nodes
-      .filter((node) => {
-        // Check if this node has children
-        const hasChildren = tocResponse.nodes.some(
-          (n) => n.parent === node.id || n.parent === node.id.toString()
-        );
-        return hasChildren;
-      })
-      .map((node) => node.id.toString());
+    const expandedIds: string[] = [];
+    
+    // Recursive function to collect all nodes with children
+    const collectExpandedNodes = (nodes: ScormTOCNode[]) => {
+      nodes.forEach((node) => {
+        if (node.children && node.children.length > 0) {
+          expandedIds.push(node.id.toString());
+          collectExpandedNodes(node.children);
+        }
+      });
+    };
+
+    collectExpandedNodes(tocResponse.scoes);
+    return expandedIds;
   }, [tocResponse]);
+
+  /**
+   * Calculate completion statistics for display
+   * NOTE: This must be before any early returns to comply with Rules of Hooks
+   */
+  const stats = useMemo(() => {
+    if (!tocResponse?.scoes) {
+      return { total: 0, completed: 0, percentage: 0 };
+    }
+
+    // Recursively flatten the tree to get all nodes
+    const flattenNodes = (nodes: ScormTOCNode[]): ScormTOCNode[] => {
+      const result: ScormTOCNode[] = [];
+      nodes.forEach((node) => {
+        result.push(node);
+        if (node.children && node.children.length > 0) {
+          result.push(...flattenNodes(node.children));
+        }
+      });
+      return result;
+    };
+
+    const allNodes = flattenNodes(tocResponse.scoes);
+    
+    // Only count leaf nodes (SCOs with launch URLs)
+    const launchableNodes = allNodes.filter((node) => node.launch);
+    const total = launchableNodes.length;
+    const completed = launchableNodes.filter(
+      (node) => node.status === 'completed' || node.status === 'passed'
+    ).length;
+    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    return { total, completed, percentage };
+  }, [tocResponse]);
+
+  /**
+   * Helper function to find a node by ID in the tree
+   */
+  const findNodeById = (nodes: ScormTOCNode[], id: number): ScormTOCNode | null => {
+    for (const node of nodes) {
+      if (node.id === id) {
+        return node;
+      }
+      if (node.children && node.children.length > 0) {
+        const found = findNodeById(node.children, id);
+        if (found) {
+          return found;
+        }
+      }
+    }
+    return null;
+  };
 
   /**
    * Handle SCO selection and navigation
    */
   const handleScoSelect = (scoId: number) => {
+    // Find the node to check if it's enabled
+    if (tocResponse?.scoes) {
+      const node = findNodeById(tocResponse.scoes, scoId);
+      if (node && !node.isEnabled) {
+        // Don't navigate if node is disabled
+        return;
+      }
+    }
+
     // Call optional callback
     if (onScoSelect) {
       onScoSelect(scoId);
@@ -388,7 +462,7 @@ const ScormTOC: React.FC<ScormTOCProps> = ({
   }
 
   // Empty state
-  if (!tocResponse || !treeData || treeData.length === 0) {
+  if (!tocResponse || !tocResponse.scoes || tocResponse.scoes.length === 0) {
     return (
       <Box sx={{ p: 2 }}>
         <Alert
@@ -406,25 +480,6 @@ const ScormTOC: React.FC<ScormTOCProps> = ({
   if (shouldHideTOC) {
     return null;
   }
-
-  /**
-   * Calculate completion statistics for display
-   */
-  const stats = useMemo(() => {
-    if (!tocResponse?.nodes) {
-      return { total: 0, completed: 0, percentage: 0 };
-    }
-
-    // Only count leaf nodes (SCOs with launch URLs)
-    const launchableNodes = tocResponse.nodes.filter((node) => node.launch);
-    const total = launchableNodes.length;
-    const completed = launchableNodes.filter(
-      (node) => node.status === 'completed' || node.status === 'passed'
-    ).length;
-    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
-
-    return { total, completed, percentage };
-  }, [tocResponse]);
 
   return (
     <Box
@@ -448,7 +503,7 @@ const ScormTOC: React.FC<ScormTOCProps> = ({
       >
         <Stack spacing={1}>
           <Typography variant="h6" component="h2">
-            {tocResponse.title || 'Table of Contents'}
+            {scorm?.name || 'Table of Contents'}
           </Typography>
 
           {/* Completion progress */}
@@ -464,13 +519,6 @@ const ScormTOC: React.FC<ScormTOCProps> = ({
                 variant={stats.percentage > 0 ? 'filled' : 'outlined'}
               />
             </Box>
-          )}
-
-          {/* Organization selector (for SCORM 2004 packages with multiple orgs) */}
-          {tocResponse.organizations && tocResponse.organizations.length > 1 && (
-            <Typography variant="caption" color="text.secondary">
-              Organization: {tocResponse.currentOrganization || 'Default'}
-            </Typography>
           )}
         </Stack>
       </Box>
@@ -489,11 +537,18 @@ const ScormTOC: React.FC<ScormTOCProps> = ({
           },
         }}
       >
-        <SimpleTreeView
-          defaultExpandedItems={defaultExpandedItems}
-          selectedItems={currentScoId?.toString()}
+        <TreeView
+          defaultExpanded={defaultExpandedItems}
+          defaultSelected={currentScoId?.toString()}
+          onNodeSelect={(_event: React.SyntheticEvent, nodeId: string) => {
+            // nodeId comes as string from TreeView
+            const numericId = parseInt(nodeId, 10);
+            if (!isNaN(numericId)) {
+              handleScoSelect(numericId);
+            }
+          }}
         >
-          {treeData.map((node) => (
+          {tocResponse.scoes.map((node) => (
             <ScormTreeItem
               key={node.id}
               node={node}
@@ -501,7 +556,7 @@ const ScormTOC: React.FC<ScormTOCProps> = ({
               onScoSelect={handleScoSelect}
             />
           ))}
-        </SimpleTreeView>
+        </TreeView>
       </Box>
 
       {/* Footer with legend */}
