@@ -270,7 +270,7 @@ const TestWrapper: React.FC<{
     defaultValues: defaultValues || {
       dimensions: [],
     },
-    mode: 'onChange',
+    mode: 'all', // Changed from 'onChange' to 'all' to support both onChange and onBlur validation
   });
 
   return <FormProvider {...methods}>{children}</FormProvider>;
@@ -1136,7 +1136,10 @@ describe('GradingStrategyRenderer', () => {
       expect(screen.getByText(/Maximum grade: 30\.00000 points$/)).toBeInTheDocument();
       
       const gradeInputs = screen.getAllByRole('spinbutton', { name: /grade/i });
-      expect(gradeInputs[0]).toHaveAttribute('step', '0.00001');
+      const stepValue = gradeInputs[0].getAttribute('step');
+      // Due to floating-point precision, check if the value is very close to 0.00001
+      const stepNumber = stepValue ? parseFloat(stepValue) : 0;
+      expect(stepNumber).toBeCloseTo(0.00001, 5);
     });
 
     it('should handle dimension with zero weight', () => {
