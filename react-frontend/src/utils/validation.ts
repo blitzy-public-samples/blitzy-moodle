@@ -189,7 +189,7 @@ export function isValidPassword(password: string): PasswordValidationResult {
   }
 
   // Check for special character
-  if (PASSWORD_REQUIRES_SPECIAL && !/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+  if (PASSWORD_REQUIRES_SPECIAL && !/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password)) {
     errors.push('Password must contain at least one special character');
   }
 
@@ -253,7 +253,7 @@ export function isValidUrl(url: string): boolean {
  * isValidInteger(null);      // false
  * ```
  */
-export function isValidInteger(value: any): boolean {
+export function isValidInteger(value: unknown): boolean {
   if (value === null || value === undefined || value === '') {
     return false;
   }
@@ -280,7 +280,7 @@ export function isValidInteger(value: any): boolean {
  * isValidFloat(NaN);         // false
  * ```
  */
-export function isValidFloat(value: any): boolean {
+export function isValidFloat(value: unknown): boolean {
   if (value === null || value === undefined || value === '') {
     return false;
   }
@@ -410,7 +410,7 @@ export function isValidFileSize(fileSize: number, maxSize: number = MAX_FILE_SIZ
  * validateRequired([1, 2]);       // true
  * ```
  */
-export function validateRequired(value: any): boolean {
+export function validateRequired(value: unknown): boolean {
   // Handle null and undefined
   if (value === null || value === undefined) {
     return false;
@@ -438,7 +438,7 @@ export function validateRequired(value: any): boolean {
 
   // Handle objects
   if (typeof value === 'object') {
-    return Object.keys(value).length > 0;
+    return Object.keys(value as Record<string, unknown>).length > 0;
   }
 
   return false;

@@ -137,7 +137,7 @@ export function capitalizeWords(str: string): string {
 
   // Use replace with a regex to capitalize first letter of each word
   // Treats spaces, hyphens, and underscores as word boundaries
-  return str.replace(/(^|[\s\-_])(\w)/g, (_match, separator, char) => separator + char.toUpperCase());
+  return str.replace(/(^|[\s\-_])(\w)/g, (_match: string, separator: string, char: string) => separator + char.toUpperCase());
 }
 
 /**

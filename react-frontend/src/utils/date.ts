@@ -243,7 +243,7 @@ export function parseDate(dateString: string): Date | null {
  * isValidDate(undefined) // false
  * isValidDate(1704067200000) // false (number, not Date object)
  */
-export function isValidDate(date: any): date is Date {
+export function isValidDate(date: unknown): date is Date {
   return date instanceof Date && isValid(date);
 }
 

@@ -23,9 +23,9 @@
 
 import { Page, Download } from '@playwright/test';
 import { writeFile, readFile, unlink, readdir, stat, mkdir } from 'fs/promises';
-import { join, resolve, extname, basename, dirname } from 'path';
-import { randomBytes, randomUUID } from 'crypto';
-import { pollUntil, waitForElement, waitForCondition } from './wait-helpers';
+import { join, resolve, extname, basename } from 'path';
+import { randomBytes } from 'crypto';
+import { waitForElement, waitForCondition } from './wait-helpers';
 
 // ============================================================================
 // Type Definitions
@@ -244,7 +244,7 @@ export async function uploadFile(
 
   try {
     // Ensure file input exists
-    await waitForElement(page, fileSelector, { timeout: 5000 });
+    await waitForElement(page, fileSelector, 'visible', { timeout: 5000 });
 
     // Get file properties before upload
     const fileStats = await stat(filePath);
@@ -349,13 +349,13 @@ export async function uploadFileDragDrop(
     const fileContent = await readFile(filePath);
 
     // Wait for drop zone to be ready
-    await waitForElement(page, dropZoneSelector, { timeout: 5000 });
+    await waitForElement(page, dropZoneSelector, 'visible', { timeout: 5000 });
 
     // Create DataTransfer with file
     const dataTransfer = await page.evaluateHandle(
       ({ fileName, fileContent, mimeType }) => {
         const dt = new DataTransfer();
-        const file = new File([fileContent], fileName, { type: mimeType });
+        const file = new File([new Uint8Array(fileContent)], fileName, { type: mimeType });
         dt.items.add(file);
         return dt;
       },
@@ -451,7 +451,7 @@ export async function uploadMultipleFiles(
 
   try {
     // Ensure file input exists
-    await waitForElement(page, fileSelector, { timeout: 5000 });
+    await waitForElement(page, fileSelector, 'visible', { timeout: 5000 });
 
     // Get file properties for all files
     const fileProperties = await Promise.all(
@@ -817,7 +817,7 @@ export async function verifyFileProperties(
       if (sizeText) {
         // Parse size from text (e.g., "1.5 MB" -> bytes)
         const sizeMatch = sizeText.match(/([\d.]+)\s*(KB|MB|GB)/i);
-        if (sizeMatch) {
+        if (sizeMatch && sizeMatch[1] && sizeMatch[2]) {
           const value = parseFloat(sizeMatch[1]);
           const unit = sizeMatch[2].toUpperCase();
           let displayedSize = value;
@@ -962,7 +962,7 @@ export async function getUploadProgress(
     const text = await progressBar.textContent();
     if (text) {
       const match = text.match(/(\d+)%/);
-      if (match) {
+      if (match && match[1]) {
         return parseFloat(match[1]);
       }
     }

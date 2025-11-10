@@ -23,12 +23,12 @@ import type {
   ScormTOCNode,
   ScormPlayerConfig,
   ScormReport,
-  ScormAttemptSummary,
   ScormVersion,
+} from '@/features/activities/scorm/types/scorm.types';
+import {
   ScormGradeMethod,
   ScormStatus,
-  ScormAttemptStatus,
-  ScormScoType,
+  ScoType,
 } from '@/features/activities/scorm/types/scorm.types';
 
 // Mock apiClient
@@ -56,44 +56,46 @@ describe('scormApi', () => {
     it('should fetch SCORM package metadata successfully', async () => {
       const mockScorm: Scorm = {
         id: 1,
-        courseId: 10,
+        course: 10,
         name: 'Introduction to E-Learning',
         intro: 'Welcome to the SCORM course',
-        introFormat: 1,
-        version: 'SCORM_2004' as ScormVersion,
-        maxGrade: 100,
-        gradeMethod: 'highest' as ScormGradeMethod,
-        maxAttempt: 3,
-        whatGrade: 0,
-        displayCourseStructure: true,
-        displayActivityName: true,
+        introformat: 1,
+        version: 'SCORM_2004',
+        maxgrade: 100,
+        grademethod: ScormGradeMethod.HIGHEST,
+        maxattempt: 3,
+        whatgrade: 0,
+        displaycoursestructure: true,
         popup: true,
         width: 800,
         height: 600,
-        skipView: 0,
-        hideBrowse: false,
+        skipview: 0,
+        hidebrowse: false,
         hidetoc: 0,
         nav: 1,
-        navPositionLeft: 100,
-        navPositionTop: 100,
+        navpositionleft: 100,
+        navpositiontop: 100,
         auto: false,
-        updateFreq: 0,
-        scormType: 'local',
+        updatefreq: 0,
+        scormtype: 'local',
         reference: 'scorm_package.zip',
-        sha1Hash: 'abc123def456',
+        sha1hash: 'abc123def456',
+        md5hash: '',
         revision: 1,
         launch: 0,
-        timeOpen: null,
-        timeClose: null,
-        timeModified: 1640000000,
-        completionStatusRequired: null,
-        completionStatusAllScos: null,
-        displayAttemptstatus: 1,
+        timeopen: 0,
+        timeclose: 0,
+        timemodified: 1640000000,
+        completionstatusrequired: null,
+        completionscorerequired: null,
+        completionstatusallscos: null,
+        displayattemptstatus: 1,
         forcecompleted: false,
-        forceNewAttempt: 'off',
+        forcenewattempt: 0,
         lastattemptlock: false,
-        masteryOverride: false,
-        autoCommit: false,
+        masteryoverride: false,
+        autocommit: false,
+        options: '',
       };
 
       const mockResponse = {
@@ -143,37 +145,27 @@ describe('scormApi', () => {
       const mockScos: ScormSco[] = [
         {
           id: 1,
-          scormId: 1,
+          scorm: 1,
           manifest: 'imsmanifest.xml',
           organization: 'org1',
           parent: '/',
           identifier: 'item_1',
           launch: 'index.html',
-          scormType: 'sco' as ScormScoType,
+          scormtype: ScoType.SCO,
           title: 'Introduction',
-          sortOrder: 1,
-          prerequisite: '',
-          maxTimeAllowed: null,
-          timeLimitAction: null,
-          completionThreshold: null,
-          masteryScore: null,
+          sortorder: 1,
         },
         {
           id: 2,
-          scormId: 1,
+          scorm: 1,
           manifest: 'imsmanifest.xml',
           organization: 'org1',
           parent: '/',
           identifier: 'item_2',
           launch: 'lesson1.html',
-          scormType: 'sco' as ScormScoType,
+          scormtype: ScoType.SCO,
           title: 'Lesson 1',
-          sortOrder: 2,
-          prerequisite: 'item_1',
-          maxTimeAllowed: null,
-          timeLimitAction: null,
-          completionThreshold: null,
-          masteryScore: 80,
+          sortorder: 2,
         },
       ];
 
@@ -192,44 +184,34 @@ describe('scormApi', () => {
       expect(apiClient.get).toHaveBeenCalledWith('/scorm/1/scos');
       expect(result).toEqual(mockScos);
       expect(result).toHaveLength(2);
-      expect(result[0].sortOrder).toBeLessThan(result[1].sortOrder);
+      expect(result[0].sortorder).toBeLessThan(result[1].sortorder);
     });
 
     it('should fetch SCORM 2004 SCO structure with organization hierarchy', async () => {
       const mockScos: ScormSco[] = [
         {
           id: 1,
-          scormId: 2,
+          scorm: 2,
           manifest: 'imsmanifest.xml',
           organization: 'org_default',
           parent: '/',
           identifier: 'item_root',
           launch: '',
-          scormType: 'asset' as ScormScoType,
+          scormtype: ScoType.ASSET,
           title: 'Course Root',
-          sortOrder: 1,
-          prerequisite: '',
-          maxTimeAllowed: null,
-          timeLimitAction: 'exit,message',
-          completionThreshold: 0.8,
-          masteryScore: null,
+          sortorder: 1,
         },
         {
           id: 2,
-          scormId: 2,
+          scorm: 2,
           manifest: 'imsmanifest.xml',
           organization: 'org_default',
           parent: '/item_root',
           identifier: 'item_module1',
           launch: 'module1/index.html',
-          scormType: 'sco' as ScormScoType,
+          scormtype: ScoType.SCO,
           title: 'Module 1',
-          sortOrder: 2,
-          prerequisite: '',
-          maxTimeAllowed: 'PT1H30M',
-          timeLimitAction: 'continue,no message',
-          completionThreshold: 0.75,
-          masteryScore: 85,
+          sortorder: 2,
         },
       ];
 
@@ -715,19 +697,11 @@ describe('scormApi', () => {
     it('should create new attempt with maxattempt validation', async () => {
       const mockAttempt: ScormAttempt = {
         id: 20,
-        scormId: 1,
-        userId: 100,
+        scormid: 1,
+        userid: 100,
         attempt: 1,
-        startTime: 1640000000,
-        finishTime: null,
-        status: 'incomplete' as ScormAttemptStatus,
-        scoreRaw: null,
-        scoreMin: null,
-        scoreMax: null,
-        totalTime: '00:00:00',
-        sessionTime: null,
-        suspendData: null,
-        timeModified: 1640000000,
+        status: ScormStatus.INCOMPLETE,
+        timemodified: 1640000000,
       };
 
       const mockResponse = {
@@ -752,19 +726,11 @@ describe('scormApi', () => {
     it('should assign correct attempt number for multiple attempts', async () => {
       const mockAttempt: ScormAttempt = {
         id: 25,
-        scormId: 1,
-        userId: 100,
+        scormid: 1,
+        userid: 100,
         attempt: 2,
-        startTime: 1640000100,
-        finishTime: null,
-        status: 'incomplete' as ScormAttemptStatus,
-        scoreRaw: null,
-        scoreMin: null,
-        scoreMax: null,
-        totalTime: '00:00:00',
-        sessionTime: null,
-        suspendData: null,
-        timeModified: 1640000100,
+        status: ScormStatus.INCOMPLETE,
+        timemodified: 1640000100,
       };
 
       const mockResponse = {
@@ -813,51 +779,27 @@ describe('scormApi', () => {
       const mockAttempts: ScormAttempt[] = [
         {
           id: 10,
-          scormId: 1,
-          userId: 100,
+          scormid: 1,
+          userid: 100,
           attempt: 1,
-          startTime: 1640000000,
-          finishTime: 1640001800,
-          status: 'completed' as ScormAttemptStatus,
-          scoreRaw: 80,
-          scoreMin: 0,
-          scoreMax: 100,
-          totalTime: '00:30:00',
-          sessionTime: '00:30:00',
-          suspendData: null,
-          timeModified: 1640001800,
+          status: ScormStatus.COMPLETED,
+          timemodified: 1640001800,
         },
         {
           id: 15,
-          scormId: 1,
-          userId: 100,
+          scormid: 1,
+          userid: 100,
           attempt: 2,
-          startTime: 1640100000,
-          finishTime: 1640102400,
-          status: 'completed' as ScormAttemptStatus,
-          scoreRaw: 95,
-          scoreMin: 0,
-          scoreMax: 100,
-          totalTime: '00:40:00',
-          sessionTime: '00:40:00',
-          suspendData: null,
-          timeModified: 1640102400,
+          status: ScormStatus.COMPLETED,
+          timemodified: 1640102400,
         },
         {
           id: 18,
-          scormId: 1,
-          userId: 100,
+          scormid: 1,
+          userid: 100,
           attempt: 3,
-          startTime: 1640200000,
-          finishTime: null,
-          status: 'incomplete' as ScormAttemptStatus,
-          scoreRaw: null,
-          scoreMin: null,
-          scoreMax: null,
-          totalTime: '00:10:00',
-          sessionTime: '00:10:00',
-          suspendData: '{"checkpoint":"page_3"}',
-          timeModified: 1640200600,
+          status: ScormStatus.INCOMPLETE,
+          timemodified: 1640200600,
         },
       ];
 
@@ -942,11 +884,9 @@ describe('scormApi', () => {
   describe('fetchAttemptTracking', () => {
     it('should fetch all CMI elements for SCORM 1.2 attempt', async () => {
       const mockTrackingData: ScormTrackingData = {
-        attemptId: 10,
-        scoId: 2,
-        userId: 100,
-        scormVersion: 'SCORM_12' as ScormVersion,
-        cmiData: {
+        scoid: 2,
+        attempt: 1,
+        tracks: {
           'cmi.core.lesson_status': 'completed',
           'cmi.core.score.raw': '85',
           'cmi.core.score.min': '0',
@@ -961,7 +901,6 @@ describe('scormApi', () => {
           'cmi.comments': 'Good progress',
           'cmi.interactions._count': '3',
         },
-        lastModified: 1640001800,
       };
 
       const mockResponse = {
@@ -978,17 +917,15 @@ describe('scormApi', () => {
         params: { scoId: 2 },
       });
       expect(result).toEqual(mockTrackingData);
-      expect(result.cmiData['cmi.core.lesson_status']).toBe('completed');
-      expect(result.cmiData['cmi.suspend_data']).toBeDefined();
+      expect(result.tracks['cmi.core.lesson_status']).toBe('completed');
+      expect(result.tracks['cmi.suspend_data']).toBeDefined();
     });
 
     it('should fetch all CMI elements for SCORM 2004 attempt', async () => {
       const mockTrackingData: ScormTrackingData = {
-        attemptId: 15,
-        scoId: 3,
-        userId: 100,
-        scormVersion: 'SCORM_2004' as ScormVersion,
-        cmiData: {
+        scoid: 3,
+        attempt: 1,
+        tracks: {
           'cmi.completion_status': 'completed',
           'cmi.success_status': 'passed',
           'cmi.score.scaled': '0.90',
@@ -1007,7 +944,6 @@ describe('scormApi', () => {
           'cmi.learner_name': 'John Doe',
           'cmi.max_time_allowed': 'PT2H',
         },
-        lastModified: 1640102400,
       };
 
       const mockResponse = {
@@ -1020,19 +956,15 @@ describe('scormApi', () => {
 
       const result = await fetchAttemptTracking(15, 3);
 
-      expect(result.scormVersion).toBe('SCORM_2004');
-      expect(result.cmiData['cmi.completion_status']).toBe('completed');
-      expect(result.cmiData['cmi.success_status']).toBe('passed');
+      expect(result.tracks['cmi.completion_status']).toBe('completed');
+      expect(result.tracks['cmi.success_status']).toBe('passed');
     });
 
     it('should handle attempt with no tracking data', async () => {
       const mockTrackingData: ScormTrackingData = {
-        attemptId: 20,
-        scoId: 1,
-        userId: 100,
-        scormVersion: 'SCORM_12' as ScormVersion,
-        cmiData: {},
-        lastModified: 1640000000,
+        scoid: 1,
+        attempt: 1,
+        tracks: {},
       };
 
       const mockResponse = {
@@ -1045,22 +977,19 @@ describe('scormApi', () => {
 
       const result = await fetchAttemptTracking(20, 1);
 
-      expect(result.cmiData).toEqual({});
+      expect(result.tracks).toEqual({});
     });
 
     it('should handle incomplete attempt with suspend data', async () => {
       const mockTrackingData: ScormTrackingData = {
-        attemptId: 18,
-        scoId: 2,
-        userId: 100,
-        scormVersion: 'SCORM_12' as ScormVersion,
-        cmiData: {
+        scoid: 2,
+        attempt: 1,
+        tracks: {
           'cmi.core.lesson_status': 'incomplete',
           'cmi.core.lesson_location': 'page_5',
           'cmi.suspend_data': 'saved_progress=40,last_page=5',
           'cmi.core.session_time': '00:15:00',
         },
-        lastModified: 1640200600,
       };
 
       const mockResponse = {
@@ -1073,8 +1002,8 @@ describe('scormApi', () => {
 
       const result = await fetchAttemptTracking(18, 2);
 
-      expect(result.cmiData['cmi.core.lesson_status']).toBe('incomplete');
-      expect(result.cmiData['cmi.suspend_data']).toBeDefined();
+      expect(result.tracks['cmi.core.lesson_status']).toBe('incomplete');
+      expect(result.tracks['cmi.suspend_data']).toBeDefined();
     });
   });
 
@@ -1086,25 +1015,23 @@ describe('scormApi', () => {
         attempts: [
           {
             attemptNumber: 1,
-            startTime: 1640000000,
-            finishTime: 1640001800,
-            status: 'completed' as ScormAttemptStatus,
+            timeStarted: 1640000000,
+            timeCompleted: 1640001800,
+            status: ScormStatus.COMPLETED,
             score: 80,
-            grade: 80,
-            totalTime: '00:30:00',
-            completionStatus: 'completed',
-            successStatus: 'passed',
+            timeSpent: '00:30:00',
+            scosCompleted: 2,
+            scosTotal: 2,
           },
           {
             attemptNumber: 2,
-            startTime: 1640100000,
-            finishTime: 1640102400,
-            status: 'completed' as ScormAttemptStatus,
+            timeStarted: 1640100000,
+            timeCompleted: 1640102400,
+            status: ScormStatus.COMPLETED,
             score: 95,
-            grade: 95,
-            totalTime: '00:40:00',
-            completionStatus: 'completed',
-            successStatus: 'passed',
+            timeSpent: '00:40:00',
+            scosCompleted: 2,
+            scosTotal: 2,
           },
         ],
         currentAttempt: 2,
@@ -1116,18 +1043,20 @@ describe('scormApi', () => {
         objectives: [],
         scoProgress: [
           {
-            scoId: 1,
+            scoid: 1,
             title: 'Introduction',
-            status: 'completed',
-            score: 90,
+            status: ScormStatus.COMPLETED,
+            score: { raw: 90 },
             timeSpent: '00:15:00',
+            attempts: 1,
           },
           {
-            scoId: 2,
+            scoid: 2,
             title: 'Main Content',
-            status: 'completed',
-            score: 95,
+            status: ScormStatus.COMPLETED,
+            score: { raw: 95 },
             timeSpent: '00:25:00',
+            attempts: 1,
           },
         ],
         gradingMethod: 'highest' as ScormGradeMethod,
@@ -1160,25 +1089,23 @@ describe('scormApi', () => {
         attempts: [
           {
             attemptNumber: 1,
-            startTime: 1640000000,
-            finishTime: 1640001800,
-            status: 'completed' as ScormAttemptStatus,
+            timeStarted: 1640000000,
+            timeCompleted: 1640001800,
+            status: ScormStatus.COMPLETED,
             score: 70,
-            grade: 70,
-            totalTime: '00:30:00',
-            completionStatus: 'completed',
-            successStatus: 'passed',
+            timeSpent: '00:30:00',
+            scosCompleted: 2,
+            scosTotal: 2,
           },
           {
             attemptNumber: 2,
-            startTime: 1640100000,
-            finishTime: 1640102400,
-            status: 'completed' as ScormAttemptStatus,
+            timeStarted: 1640100000,
+            timeCompleted: 1640102400,
+            status: ScormStatus.COMPLETED,
             score: 90,
-            grade: 90,
-            totalTime: '00:35:00',
-            completionStatus: 'completed',
-            successStatus: 'passed',
+            timeSpent: '00:35:00',
+            scosCompleted: 2,
+            scosTotal: 2,
           },
         ],
         currentAttempt: 2,
@@ -1214,14 +1141,13 @@ describe('scormApi', () => {
         attempts: [
           {
             attemptNumber: 1,
-            startTime: 1640000000,
-            finishTime: 1640001800,
-            status: 'completed' as ScormAttemptStatus,
+            timeStarted: 1640000000,
+            timeCompleted: 1640001800,
+            status: ScormStatus.COMPLETED,
             score: 85,
-            grade: 85,
-            totalTime: '00:30:00',
-            completionStatus: 'completed',
-            successStatus: 'passed',
+            timeSpent: '00:30:00',
+            scosCompleted: 2,
+            scosTotal: 2,
           },
         ],
         currentAttempt: 1,
@@ -1257,25 +1183,23 @@ describe('scormApi', () => {
         attempts: [
           {
             attemptNumber: 1,
-            startTime: 1640000000,
-            finishTime: 1640001800,
-            status: 'completed' as ScormAttemptStatus,
+            timeStarted: 1640000000,
+            timeCompleted: 1640001800,
+            status: ScormStatus.COMPLETED,
             score: 90,
-            grade: 90,
-            totalTime: '00:30:00',
-            completionStatus: 'completed',
-            successStatus: 'passed',
+            timeSpent: '00:30:00',
+            scosCompleted: 2,
+            scosTotal: 2,
           },
           {
             attemptNumber: 2,
-            startTime: 1640100000,
-            finishTime: 1640102400,
-            status: 'completed' as ScormAttemptStatus,
+            timeStarted: 1640100000,
+            timeCompleted: 1640102400,
+            status: ScormStatus.COMPLETED,
             score: 75,
-            grade: 75,
-            totalTime: '00:25:00',
-            completionStatus: 'completed',
-            successStatus: 'passed',
+            timeSpent: '00:25:00',
+            scosCompleted: 2,
+            scosTotal: 2,
           },
         ],
         currentAttempt: 2,
@@ -1563,44 +1487,46 @@ describe('scormApi', () => {
     it('should handle success response envelope correctly', async () => {
       const mockScorm: Scorm = {
         id: 1,
-        courseId: 10,
+        course: 10,
         name: 'Test SCORM',
         intro: '',
-        introFormat: 1,
-        version: 'SCORM_12' as ScormVersion,
-        maxGrade: 100,
-        gradeMethod: 'highest' as ScormGradeMethod,
-        maxAttempt: 0,
-        whatGrade: 0,
-        displayCourseStructure: true,
-        displayActivityName: true,
+        introformat: 1,
+        version: 'SCORM_12',
+        maxgrade: 100,
+        grademethod: ScormGradeMethod.HIGHEST,
+        maxattempt: 0,
+        whatgrade: 0,
+        displaycoursestructure: true,
         popup: false,
         width: 0,
         height: 0,
-        skipView: 0,
-        hideBrowse: false,
+        skipview: 0,
+        hidebrowse: false,
         hidetoc: 0,
         nav: 1,
-        navPositionLeft: 0,
-        navPositionTop: 0,
+        navpositionleft: 0,
+        navpositiontop: 0,
         auto: false,
-        updateFreq: 0,
-        scormType: 'local',
+        updatefreq: 0,
+        scormtype: 'local',
         reference: '',
-        sha1Hash: '',
+        sha1hash: '',
+        md5hash: '',
         revision: 1,
         launch: 0,
-        timeOpen: null,
-        timeClose: null,
-        timeModified: 0,
-        completionStatusRequired: null,
-        completionStatusAllScos: null,
-        displayAttemptstatus: 1,
+        timeopen: 0,
+        timeclose: 0,
+        timemodified: 0,
+        completionstatusrequired: null,
+        completionscorerequired: null,
+        completionstatusallscos: null,
+        displayattemptstatus: 1,
         forcecompleted: false,
-        forceNewAttempt: 'off',
+        forcenewattempt: 0,
         lastattemptlock: false,
-        masteryOverride: false,
-        autoCommit: false,
+        masteryoverride: false,
+        autocommit: false,
+        options: '',
       };
 
       const mockResponse = {
@@ -1700,49 +1626,51 @@ describe('scormApi', () => {
     it('should validate Scorm interface structure', async () => {
       const mockScorm: Scorm = {
         id: 1,
-        courseId: 10,
+        course: 10,
         name: 'Test',
         intro: '',
-        introFormat: 1,
-        version: 'SCORM_12' as ScormVersion,
-        maxGrade: 100,
-        gradeMethod: 'highest' as ScormGradeMethod,
-        maxAttempt: 0,
-        whatGrade: 0,
-        displayCourseStructure: true,
-        displayActivityName: true,
+        introformat: 1,
+        version: 'SCORM_12',
+        maxgrade: 100,
+        grademethod: ScormGradeMethod.HIGHEST,
+        maxattempt: 0,
+        whatgrade: 0,
+        displaycoursestructure: true,
         popup: false,
         width: 0,
         height: 0,
-        skipView: 0,
-        hideBrowse: false,
+        skipview: 0,
+        hidebrowse: false,
         hidetoc: 0,
         nav: 1,
-        navPositionLeft: 0,
-        navPositionTop: 0,
+        navpositionleft: 0,
+        navpositiontop: 0,
         auto: false,
-        updateFreq: 0,
-        scormType: 'local',
+        updatefreq: 0,
+        scormtype: 'local',
         reference: '',
-        sha1Hash: '',
+        sha1hash: '',
+        md5hash: '',
         revision: 1,
         launch: 0,
-        timeOpen: null,
-        timeClose: null,
-        timeModified: 0,
-        completionStatusRequired: null,
-        completionStatusAllScos: null,
-        displayAttemptstatus: 1,
+        timeopen: 0,
+        timeclose: 0,
+        timemodified: 0,
+        completionstatusrequired: null,
+        completionscorerequired: null,
+        completionstatusallscos: null,
+        displayattemptstatus: 1,
         forcecompleted: false,
-        forceNewAttempt: 'off',
+        forcenewattempt: 0,
         lastattemptlock: false,
-        masteryOverride: false,
-        autoCommit: false,
+        masteryoverride: false,
+        autocommit: false,
+        options: '',
       };
 
       expect(mockScorm).toHaveProperty('id');
       expect(mockScorm).toHaveProperty('version');
-      expect(mockScorm).toHaveProperty('gradeMethod');
+      expect(mockScorm).toHaveProperty('grademethod');
     });
 
     it('should validate ScormAttempt interface structure', () => {

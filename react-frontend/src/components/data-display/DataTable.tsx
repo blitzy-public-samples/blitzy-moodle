@@ -482,7 +482,9 @@ function RowActionsMenu<T extends GridValidRowModel>({ row, actions }: RowAction
   // Filter visible actions
   const visibleActions = useMemo(() => {
     return actions.filter((action) => {
-      if (action.visible === undefined) return true;
+      if (action.visible === undefined) {
+        return true;
+      }
       return typeof action.visible === 'function' ? action.visible(row) : action.visible;
     });
   }, [actions, row]);
@@ -549,6 +551,69 @@ function RowActionsMenu<T extends GridValidRowModel>({ row, actions }: RowAction
       </Menu>
     </>
   );
+}
+
+/**
+ * Toolbar slot component to avoid inline component definitions
+ */
+interface ToolbarSlotProps<T extends GridValidRowModel> {
+  selectedRows: GridRowSelectionModel;
+  selectedRowData: T[];
+  bulkActions?: BulkAction<T>[];
+  exportable?: boolean;
+}
+
+function ToolbarSlot<T extends GridValidRowModel>({ selectedRows, selectedRowData, bulkActions, exportable }: ToolbarSlotProps<T>): JSX.Element {
+  return (
+    <CustomToolbar<T>
+      selectedRows={selectedRows}
+      selectedRowData={selectedRowData}
+      bulkActions={bulkActions}
+      exportable={exportable}
+    />
+  );
+}
+
+/**
+ * No rows overlay component to avoid inline component definitions
+ */
+interface NoRowsOverlayProps {
+  emptyMessage: string;
+}
+
+function NoRowsOverlay({ emptyMessage }: NoRowsOverlayProps): JSX.Element {
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100%',
+      }}
+    >
+      <Typography variant="body1" color="text.secondary" role="status">
+        {emptyMessage}
+      </Typography>
+    </Box>
+  );
+}
+
+/**
+ * Factory function to create a toolbar component with bound props
+ */
+function createToolbarComponent<T extends GridValidRowModel>(props: ToolbarSlotProps<T>): FC {
+  return function BoundToolbar() {
+    return <ToolbarSlot<T> {...props} />;
+  };
+}
+
+/**
+ * Factory function to create a no rows overlay component with bound props
+ */
+function createNoRowsComponent(emptyMessage: string): FC {
+  return function BoundNoRowsOverlay() {
+    return <NoRowsOverlay emptyMessage={emptyMessage} />;
+  };
 }
 
 /**
@@ -715,6 +780,22 @@ export const DataTable = <T extends { id: string | number }>({
   // Calculate row count for pagination
   const rowCount = mode === 'server' && totalRows !== undefined ? totalRows : rows.length;
 
+  // Create stable slot components using useMemo to avoid recreation on every render
+  const ToolbarComponent = useMemo(
+    () =>
+      toolbar
+        ? createToolbarComponent<T>({
+            selectedRows: internalSelectedRows,
+            selectedRowData,
+            bulkActions,
+            exportable,
+          })
+        : undefined,
+    [toolbar, internalSelectedRows, selectedRowData, bulkActions, exportable]
+  );
+
+  const NoRowsComponent = useMemo(() => createNoRowsComponent(emptyMessage), [emptyMessage]);
+
   // Render loading state
   if (loading && rows.length === 0) {
     return (
@@ -781,30 +862,8 @@ export const DataTable = <T extends { id: string | number }>({
         hideFooterPagination={hideFooterPagination}
         hideFooterSelectedRowCount={hideFooterSelectedRowCount}
         slots={{
-          toolbar: toolbar
-            ? () => (
-                <CustomToolbar
-                  selectedRows={internalSelectedRows}
-                  selectedRowData={selectedRowData}
-                  bulkActions={bulkActions}
-                  exportable={exportable}
-                />
-              )
-            : undefined,
-          noRowsOverlay: () => (
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '100%',
-              }}
-            >
-              <Typography variant="body1" color="text.secondary" role="status">
-                {emptyMessage}
-              </Typography>
-            </Box>
-          ),
+          toolbar: ToolbarComponent,
+          noRowsOverlay: NoRowsComponent,
         }}
         sx={{
           border: 1,

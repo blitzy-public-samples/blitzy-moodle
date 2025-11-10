@@ -35,12 +35,7 @@ export enum EnrollmentStatus {
  * Common formats: 'topics', 'weeks', 'singleactivity', 'social'
  * Can also be custom format from plugins
  */
-export type CourseFormat =
-  | 'topics'
-  | 'weeks'
-  | 'singleactivity'
-  | 'social'
-  | string;
+export type CourseFormat = string;
 
 /**
  * Sort order for course listing

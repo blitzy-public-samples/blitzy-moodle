@@ -565,18 +565,14 @@ export type ContactListProps = {
  * Type guard to check if a value is a valid ConversationType
  */
 export function isConversationType(value: number): value is ConversationType {
-  return (
-    value === ConversationType.INDIVIDUAL ||
-    value === ConversationType.GROUP ||
-    value === ConversationType.SELF
-  );
+  return Object.values(ConversationType).includes(value as ConversationType);
 }
 
 /**
  * Type guard to check if a value is a valid MessageAction
  */
 export function isMessageAction(value: number): value is MessageAction {
-  return value === MessageAction.READ || value === MessageAction.DELETED;
+  return Object.values(MessageAction).includes(value as MessageAction);
 }
 
 /**
