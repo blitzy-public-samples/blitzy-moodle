@@ -998,7 +998,7 @@ describe('validateMinLength', () => {
     });
 
     it('should count Unicode characters correctly', () => {
-      expect(validateMinLength('😀😀😀', 3)).toBe(false); // Emoji may count differently
+      expect(validateMinLength('😀😀😀', 3)).toBe(true); // Emoji count as 3 characters with proper handling
       expect(validateMinLength('hello', 5)).toBe(true);
     });
   });

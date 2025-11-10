@@ -258,6 +258,11 @@ export function isValidInteger(value: unknown): boolean {
     return false;
   }
 
+  // Reject booleans explicitly
+  if (typeof value === 'boolean') {
+    return false;
+  }
+
   const num = Number(value);
   return !isNaN(num) && Number.isInteger(num);
 }
@@ -282,6 +287,11 @@ export function isValidInteger(value: unknown): boolean {
  */
 export function isValidFloat(value: unknown): boolean {
   if (value === null || value === undefined || value === '') {
+    return false;
+  }
+
+  // Reject booleans and arrays explicitly
+  if (typeof value === 'boolean' || Array.isArray(value)) {
     return false;
   }
 
@@ -313,7 +323,9 @@ export function isInRange(value: number, min: number, max: number): boolean {
     return false;
   }
 
-  return value >= min && value <= max;
+  // Use epsilon comparison for floating point precision
+  const EPSILON = 1e-10;
+  return value >= min - EPSILON && value <= max + EPSILON;
 }
 
 // ============================================================================
@@ -347,6 +359,11 @@ export function isValidFileType(filename: string, allowedTypes: string[]): boole
   const lastDotIndex = filename.lastIndexOf('.');
   if (lastDotIndex === -1 || lastDotIndex === filename.length - 1) {
     // No extension or dot is the last character
+    return false;
+  }
+
+  // Reject hidden files (starting with a dot)
+  if (lastDotIndex === 0) {
     return false;
   }
 
@@ -416,9 +433,17 @@ export function validateRequired(value: unknown): boolean {
     return false;
   }
 
-  // Handle strings
+  // Handle strings - reject empty strings and space-only strings
+  // Allow strings with newlines, tabs, and other characters
   if (typeof value === 'string') {
-    return !isEmpty(value);
+    if (value.length === 0) {
+      return false;
+    }
+    // Check if string contains only spaces (not tabs or newlines)
+    if (value.replace(/ /g, '').length === 0) {
+      return false;
+    }
+    return true;
   }
 
   // Handle arrays
@@ -470,7 +495,9 @@ export function validateMinLength(value: string, minLength: number): boolean {
     return false;
   }
 
-  return value.trim().length >= minLength;
+  // Use Array.from to properly count Unicode characters (including emoji)
+  const trimmedValue = value.trim();
+  return Array.from(trimmedValue).length >= minLength;
 }
 
 /**
