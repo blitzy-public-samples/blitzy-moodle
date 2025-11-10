@@ -55,7 +55,7 @@
  * @module components/editor/RichTextEditor
  */
 
-import React, {
+import {
   useState,
   useEffect,
   useRef,
@@ -63,10 +63,9 @@ import React, {
   useMemo,
   useImperativeHandle,
   forwardRef,
-  ReactNode,
 } from 'react';
 import { Editor as TinyMCEEditor } from '@tinymce/tinymce-react';
-import { Controller, Control, FieldError, FieldValues } from 'react-hook-form';
+import { Controller, Control } from 'react-hook-form';
 import {
   Box,
   FormHelperText,
@@ -75,8 +74,9 @@ import {
   FormLabel,
   Skeleton,
 } from '@mui/material';
-import type { Editor, EditorEvent, RawEditorOptions } from 'tinymce';
-import { useFileUpload } from '@/hooks/useFileUpload';
+import type { Theme } from '@mui/material/styles';
+import type { Editor, EditorEvent } from 'tinymce';
+import useFileUpload from '@/hooks/useFileUpload';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -114,7 +114,7 @@ export interface ContentChangeEvent {
  * Comprehensive TinyMCE configuration object with all settings
  * for plugins, toolbar, appearance, and behavior.
  */
-export interface EditorConfig extends RawEditorOptions {
+export interface EditorConfig {
   /** Array of TinyMCE plugin names to enable */
   plugins?: string | string[];
   /** Toolbar configuration string or array */
@@ -143,6 +143,8 @@ export interface EditorConfig extends RawEditorOptions {
   resize?: boolean | string;
   /** Whether to show status bar */
   statusbar?: boolean;
+  /** Additional raw editor options */
+  [key: string]: unknown;
 }
 
 /**
@@ -175,7 +177,7 @@ export interface RichTextEditorProps {
   /** Array of TinyMCE plugin names to enable */
   plugins?: string[];
   /** React Hook Form control object */
-  control?: Control<FieldValues>;
+  control?: Control<any>;
   /** Helper text displayed below the editor */
   helperText?: string;
   /** Whether the field has a validation error */
@@ -367,7 +369,7 @@ function getDefaultPlugins(
  * @param theme - MUI theme object
  * @returns CSS string for editor content styling
  */
-function generateContentStyle(theme: ReturnType<typeof useTheme>): string {
+function generateContentStyle(theme: Theme): string {
   return `
     body {
       font-family: ${theme.typography.fontFamily};
@@ -491,11 +493,10 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
 
     const theme = useTheme();
     const editorRef = useRef<Editor | null>(null);
-    const [isInitialized, setIsInitialized] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
     // File upload hook for image/media uploads
-    const { uploadFile, state: uploadState, reset: resetUpload } = useFileUpload({
+    const { uploadFile, reset: resetUpload } = useFileUpload({
       maxSize: 10 * 1024 * 1024, // 10MB
       allowedTypes: [
         'image/jpeg',
@@ -603,11 +604,11 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
 
         // File upload handling
         automatic_uploads: true,
-        images_upload_handler: async (blobInfo) => {
+        images_upload_handler: async (blobInfo: any) => {
           return handleImageUpload(blobInfo.blob(), blobInfo.filename());
         },
         file_picker_types: 'image media',
-        file_picker_callback: (callback, value, meta) => {
+        file_picker_callback: (callback: any, value: any, meta: any) => {
           handleFilePicker(callback, value, meta);
         },
 
@@ -735,7 +736,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
     const handleFilePicker = useCallback(
       (
         callback: (url: string, meta?: Record<string, unknown>) => void,
-        value: string,
+        _value: string,
         meta: Record<string, unknown>
       ) => {
         // Create file input
@@ -787,9 +788,8 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
      * Handle editor initialization
      */
     const handleEditorInit = useCallback(
-      (evt: EditorEvent<unknown>, editor: Editor) => {
+      (_evt: EditorEvent<unknown>, editor: Editor) => {
         editorRef.current = editor;
-        setIsInitialized(true);
         setIsLoading(false);
 
         // Call custom onInit callback if provided
@@ -804,7 +804,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
      * Handle content change
      */
     const handleEditorChange = useCallback(
-      (content: string, editor: Editor) => {
+      (content: string, _editor: Editor) => {
         if (onChange) {
           onChange(content);
         }
@@ -861,7 +861,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
      */
     const renderEditor = (
       value: string,
-      onChange: (content: string) => void
+      onChange: (content: string, editor: Editor) => void
     ) => (
       <Box
         sx={{
@@ -896,7 +896,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
           value={value}
           onEditorChange={onChange}
           onInit={handleEditorInit}
-          init={editorConfiguration}
+          init={editorConfiguration as any}
           disabled={disabled}
         />
       </Box>
@@ -931,7 +931,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
             defaultValue={defaultValue}
             render={({ field, fieldState }) => (
               <>
-                {renderEditor(field.value || '', field.onChange)}
+                {renderEditor(field.value || '', (content: string, _editor: Editor) => field.onChange(content))}
                 {(fieldState.error?.message || helperText) && (
                   <FormHelperText error={!!fieldState.error}>
                     {fieldState.error?.message || helperText}
@@ -982,4 +982,3 @@ RichTextEditor.displayName = 'RichTextEditor';
 // ============================================================================
 
 export default RichTextEditor;
-export type { RichTextEditorProps, EditorConfig, ToolbarConfig, ContentChangeEvent, RichTextEditorRef };
