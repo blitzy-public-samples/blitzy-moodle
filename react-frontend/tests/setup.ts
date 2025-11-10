@@ -227,9 +227,12 @@ beforeAll(() => {
   // Mock the system time to use UTC timezone
   process.env.TZ = 'UTC';
   
+  // Save original Intl before stubbing
+  const originalIntl = global.Intl;
+  
   // Set default locale for date formatting
   vi.stubGlobal('Intl', {
-    ...Intl,
+    ...originalIntl,
     DateTimeFormat: vi.fn(() => ({
       format: vi.fn(),
       formatToParts: vi.fn(),
@@ -238,6 +241,31 @@ beforeAll(() => {
         timeZone: 'UTC',
       })),
     })),
+    // Mock NumberFormat for locale-aware number formatting in tests
+    NumberFormat: vi.fn((locale?: string | string[], options?: Intl.NumberFormatOptions) => {
+      // Use the original NumberFormat if available (Node.js has full Intl support)
+      if (originalIntl && originalIntl.NumberFormat) {
+        return new originalIntl.NumberFormat(locale, options);
+      }
+      // Fallback mock for environments without Intl.NumberFormat
+      return {
+        format: (value: number) => {
+          if (options?.style === 'percent') {
+            return `${value.toFixed(options?.maximumFractionDigits ?? 0)}%`;
+          }
+          return value.toLocaleString('en-US', options);
+        },
+        formatToParts: vi.fn(),
+        resolvedOptions: vi.fn(() => ({
+          locale: locale || 'en-US',
+          numberingSystem: 'latn',
+          style: options?.style || 'decimal',
+          minimumIntegerDigits: options?.minimumIntegerDigits || 1,
+          minimumFractionDigits: options?.minimumFractionDigits || 0,
+          maximumFractionDigits: options?.maximumFractionDigits || 3,
+        })),
+      };
+    }) as any,
   });
 });
 

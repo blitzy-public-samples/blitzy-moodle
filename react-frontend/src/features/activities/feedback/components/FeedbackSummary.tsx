@@ -35,7 +35,7 @@ import {
   Schedule,
   TrendingUp,
 } from '@mui/icons-material';
-import { format, parseISO, formatDistanceToNow } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import type { FeedbackStatistics } from '../types';
 
 /**
@@ -85,7 +85,7 @@ interface FeedbackSummaryProps {
  * ```
  */
 export const FeedbackSummary: React.FC<FeedbackSummaryProps> = ({
-  feedbackId,
+  feedbackId: _feedbackId,
   statistics,
   isLoading = false,
 }) => {
@@ -147,11 +147,32 @@ export const FeedbackSummary: React.FC<FeedbackSummaryProps> = ({
               <Card elevation={2}>
                 <CardContent>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <Skeleton variant="circular" width={40} height={40} sx={{ mr: 2 }} />
-                    <Skeleton variant="text" width="60%" height={32} />
+                    <Skeleton 
+                      variant="circular" 
+                      width={40} 
+                      height={40} 
+                      sx={{ mr: 2 }}
+                      data-testid={`skeleton-circular-${index}`}
+                    />
+                    <Skeleton 
+                      variant="text" 
+                      width="60%" 
+                      height={32}
+                      data-testid={`skeleton-text-heading-${index}`}
+                    />
                   </Box>
-                  <Skeleton variant="text" width="80%" height={48} />
-                  <Skeleton variant="text" width="40%" height={24} />
+                  <Skeleton 
+                    variant="text" 
+                    width="80%" 
+                    height={48}
+                    data-testid={`skeleton-text-value-${index}`}
+                  />
+                  <Skeleton 
+                    variant="text" 
+                    width="40%" 
+                    height={24}
+                    data-testid={`skeleton-text-caption-${index}`}
+                  />
                 </CardContent>
               </Card>
             </Grid>
@@ -342,12 +363,14 @@ export const FeedbackSummary: React.FC<FeedbackSummaryProps> = ({
                       </Typography>
                     </Box>
                     <Box>
-                      <Typography variant="h4" component="p" sx={{ fontWeight: 'bold', color: 'warning.main' }}>
+                      <Typography variant="h4" component="p" sx={{ fontWeight: 'bold', color: nonRespondentCount > 0 ? 'warning.main' : 'text.secondary' }}>
                         {nonRespondentCount}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Pending
-                      </Typography>
+                      {nonRespondentCount > 0 && (
+                        <Typography variant="caption" color="text.secondary">
+                          Pending
+                        </Typography>
+                      )}
                     </Box>
                   </Box>
                   {nonRespondentCount > 0 && (
