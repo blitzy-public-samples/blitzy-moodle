@@ -18,7 +18,6 @@
  * @see public/mod/feedback/show_nonrespondents.php - Non-respondent tracking
  */
 
-import React from 'react';
 import {
   Grid,
   Card,
@@ -84,11 +83,11 @@ interface FeedbackSummaryProps {
  * />
  * ```
  */
-export const FeedbackSummary: React.FC<FeedbackSummaryProps> = ({
+export function FeedbackSummary({
   feedbackId: _feedbackId,
   statistics,
   isLoading = false,
-}) => {
+}: FeedbackSummaryProps): JSX.Element {
   // Initialize locale-aware number formatter
   const numberFormatter = new Intl.NumberFormat(undefined, {
     maximumFractionDigits: 1,
@@ -110,11 +109,11 @@ export const FeedbackSummary: React.FC<FeedbackSummaryProps> = ({
 
     if (hours > 0 && minutes > 0) {
       return `${hours}h ${minutes}m`;
-    } else if (hours > 0) {
-      return `${hours}h`;
-    } else {
-      return `${minutes}m`;
     }
+    if (hours > 0) {
+      return `${hours}h`;
+    }
+    return `${minutes}m`;
   };
 
   /**
@@ -462,4 +461,4 @@ export const FeedbackSummary: React.FC<FeedbackSummaryProps> = ({
       )}
     </Box>
   );
-};
+}
