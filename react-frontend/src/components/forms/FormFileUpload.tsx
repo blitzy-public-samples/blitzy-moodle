@@ -77,12 +77,11 @@ import {
 import {
   CloudUpload,
   Delete,
-  AttachFile,
   InsertDriveFile,
   Image as ImageIcon,
   PictureAsPdf,
 } from '@mui/icons-material';
-import { useFileUpload } from '../../hooks/useFileUpload';
+import useFileUpload from '../../hooks/useFileUpload';
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -199,7 +198,7 @@ const DEFAULT_MAX_SIZE = 10 * 1024 * 1024;
  * File type icon mapping
  * Maps MIME type prefixes to Material-UI icons
  */
-const FILE_TYPE_ICONS: Record<string, React.ReactElement> = {
+const FILE_TYPE_ICONS: Record<string, React.ReactElement> & { default: React.ReactElement } = {
   'image/': <ImageIcon />,
   'application/pdf': <PictureAsPdf />,
   'default': <InsertDriveFile />,
@@ -390,7 +389,7 @@ export const FormFileUpload: React.FC<FormFileUploadProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // File upload hook for handling upload operations
-  const { uploadFile, cancelUpload, state: uploadState, reset: resetUpload } = useFileUpload({
+  const { uploadFile, cancelUpload, state: uploadState } = useFileUpload({
     maxSize,
     allowedTypes: accept?.split(',').map(t => t.trim()),
   });
@@ -512,8 +511,9 @@ export const FormFileUpload: React.FC<FormFileUploadProps> = ({
       } else {
         // Single file mode - replace existing file
         if (newFilesWithMetadata.length > 0) {
-          setFilesWithMetadata([newFilesWithMetadata[0]]);
-          onChange(newFilesWithMetadata[0].file);
+          const firstFile = newFilesWithMetadata[0]!;
+          setFilesWithMetadata([firstFile]);
+          onChange(firstFile.file);
         }
       }
     },
@@ -657,7 +657,7 @@ export const FormFileUpload: React.FC<FormFileUploadProps> = ({
       rules={{
         required: required ? `${label} is required` : false,
       }}
-      render={({ field: { onChange, value }, fieldState: { error } }) => {
+      render={({ field: { onChange }, fieldState: { error } }) => {
         // Type-safe error handling
         const fieldError = error as FieldError | undefined;
 
