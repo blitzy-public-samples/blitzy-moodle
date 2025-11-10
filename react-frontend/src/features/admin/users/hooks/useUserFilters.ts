@@ -26,10 +26,8 @@
 
 import { useState, useMemo } from 'react';
 import useDebounce from '@/hooks/useDebounce';
-import type {
-  UserListQueryParams,
-  UserFilterStatus,
-} from '../types/user-list.types';
+import type { UserListQueryParams } from '../types/user-list.types';
+import { UserFilterStatus } from '../types/user-list.types';
 
 /**
  * Return type for the useUserFilters hook
