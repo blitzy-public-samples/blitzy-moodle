@@ -87,6 +87,8 @@ export interface SubmissionRowData extends Submission {
   isLate: boolean;
   /** Student initials for avatar */
   studentInitials: string;
+  /** Feedback text extracted from feedback plugins (optional) */
+  feedbacktext?: string;
 }
 
 /**
@@ -459,7 +461,9 @@ function SubmissionList({
           <Table sx={{ minWidth: 650 }} aria-label="submission list table">
             <TableHead>
               <TableRow>
-                <TableCell>
+                <TableCell
+                  aria-sort={orderBy === 'studentName' ? (order === 'asc' ? 'ascending' : 'descending') : undefined}
+                >
                   <TableSortLabel
                     active={orderBy === 'studentName'}
                     direction={orderBy === 'studentName' ? order : 'asc'}
@@ -469,7 +473,9 @@ function SubmissionList({
                     Student
                   </TableSortLabel>
                 </TableCell>
-                <TableCell>
+                <TableCell
+                  aria-sort={orderBy === 'status' ? (order === 'asc' ? 'ascending' : 'descending') : undefined}
+                >
                   <TableSortLabel
                     active={orderBy === 'status'}
                     direction={orderBy === 'status' ? order : 'asc'}
@@ -479,7 +485,9 @@ function SubmissionList({
                     Status
                   </TableSortLabel>
                 </TableCell>
-                <TableCell>
+                <TableCell
+                  aria-sort={orderBy === 'formattedDate' ? (order === 'asc' ? 'ascending' : 'descending') : undefined}
+                >
                   <TableSortLabel
                     active={orderBy === 'formattedDate'}
                     direction={orderBy === 'formattedDate' ? order : 'asc'}
@@ -489,7 +497,9 @@ function SubmissionList({
                     Submitted Date
                   </TableSortLabel>
                 </TableCell>
-                <TableCell>
+                <TableCell
+                  aria-sort={orderBy === 'gradeDisplay' ? (order === 'asc' ? 'ascending' : 'descending') : undefined}
+                >
                   <TableSortLabel
                     active={orderBy === 'gradeDisplay'}
                     direction={orderBy === 'gradeDisplay' ? order : 'asc'}
@@ -525,6 +535,7 @@ function SubmissionList({
                     <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Avatar
+                          data-testid="student-avatar"
                           sx={{
                             width: 40,
                             height: 40,
@@ -612,7 +623,7 @@ function SubmissionList({
         {!loading && sortedRows.length > 0 && (
           <TablePagination
             rowsPerPageOptions={[10, 25, 50]}
-            component="div"
+            component="nav"
             count={sortedRows.length}
             rowsPerPage={rowsPerPage}
             page={page}
@@ -637,10 +648,12 @@ function SubmissionList({
       return renderEmptyState();
     }
 
-    // Sort by attempt number descending (latest first) for student view
-    const sortedSubmissions = [...submissionRows].sort(
-      (a, b) => b.attemptnumber - a.attemptnumber
-    );
+    // Sort by submission date descending (most recent first) for student view
+    const sortedSubmissions = [...submissionRows].sort((a, b) => {
+      const aTime = a.timemodified || 0;
+      const bTime = b.timemodified || 0;
+      return bTime - aTime;
+    });
 
     return (
       <Grid container spacing={2}>
@@ -656,6 +669,8 @@ function SubmissionList({
           return (
             <Grid item xs={12} key={submission.id}>
               <Card
+                data-testid="submission-card"
+                data-submission-id={String(submission.id)}
                 elevation={isLatestAttempt ? 4 : 2}
                 sx={{
                   border: isLatestAttempt ? 2 : 0,
@@ -719,6 +734,19 @@ function SubmissionList({
                           size="small"
                           icon={<CheckCircleIcon />}
                         />
+                      </Box>
+                    )}
+
+                    {submission.gradingstatus === 'graded' && submission.feedbacktext && (
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          Feedback:
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontStyle: 'italic' }}>
+                          {submission.feedbacktext.length > 100
+                            ? `${submission.feedbacktext.substring(0, 100)}...`
+                            : submission.feedbacktext}
+                        </Typography>
                       </Box>
                     )}
 
