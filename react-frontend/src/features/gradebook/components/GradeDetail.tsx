@@ -19,7 +19,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import React, { useMemo } from 'react';
+import type React from 'react';
+import { useMemo } from 'react';
 import {
   Card,
   CardHeader,
@@ -209,10 +210,11 @@ function formatGradeValue(
   }
 
   switch (gradetype) {
-    case GradeType.VALUE:
+    case GradeType.VALUE: {
       // Numeric grade - show as fraction and percentage
       const percentage = max > 0 ? ((grade / max) * 100).toFixed(1) : '0.0';
       return `${grade.toFixed(2)} / ${max.toFixed(2)} (${percentage}%)`;
+    }
 
     case GradeType.SCALE:
       // Scale grade - show scale option name
@@ -220,7 +222,7 @@ function formatGradeValue(
         const option = scale.options.find((opt) => opt.value === scaleid);
         return option ? option.name : `Scale value: ${scaleid}`;
       }
-      return `Scale value: ${scaleid || 'N/A'}`;
+      return `Scale value: ${scaleid ?? 'N/A'}`;
 
     case GradeType.TEXT:
       // Text grade - no numeric value
@@ -323,7 +325,9 @@ export default function GradeDetail({ gradeItem, loading = false }: GradeDetailP
    * Formatted grade display string
    */
   const gradeDisplay = useMemo(() => {
-    if (!gradeItem) return '';
+    if (!gradeItem) {
+      return '';
+    }
     return formatGradeValue(
       gradeItem.finalgrade,
       gradeItem.grademax,
@@ -337,7 +341,9 @@ export default function GradeDetail({ gradeItem, loading = false }: GradeDetailP
    * Sanitized feedback HTML
    */
   const sanitizedFeedback = useMemo(() => {
-    if (!gradeItem?.feedback) return '';
+    if (!gradeItem?.feedback) {
+      return '';
+    }
     return sanitizeHTML(gradeItem.feedback);
   }, [gradeItem?.feedback]);
 
@@ -345,41 +351,53 @@ export default function GradeDetail({ gradeItem, loading = false }: GradeDetailP
    * Hidden status display string
    */
   const hiddenStatus = useMemo(() => {
-    if (!gradeItem) return '';
+    if (!gradeItem) {
+      return '';
+    }
     return formatHiddenStatus(gradeItem.hidden);
-  }, [gradeItem?.hidden]);
+  }, [gradeItem]);
 
   /**
    * Locked status display string
    */
   const lockedStatus = useMemo(() => {
-    if (!gradeItem) return '';
+    if (!gradeItem) {
+      return '';
+    }
     return formatLockedStatus(gradeItem.locked);
-  }, [gradeItem?.locked]);
+  }, [gradeItem]);
 
   /**
    * Whether the grade is currently hidden
    */
   const isHidden = useMemo(() => {
-    if (!gradeItem) return false;
-    if (typeof gradeItem.hidden === 'boolean') return gradeItem.hidden;
+    if (!gradeItem) {
+      return false;
+    }
+    if (typeof gradeItem.hidden === 'boolean') {
+      return gradeItem.hidden;
+    }
     if (typeof gradeItem.hidden === 'number' && gradeItem.hidden > 0) {
       return Date.now() < gradeItem.hidden * 1000;
     }
     return false;
-  }, [gradeItem?.hidden]);
+  }, [gradeItem]);
 
   /**
    * Whether the grade is currently locked
    */
   const isLocked = useMemo(() => {
-    if (!gradeItem) return false;
-    if (typeof gradeItem.locked === 'boolean') return gradeItem.locked;
+    if (!gradeItem) {
+      return false;
+    }
+    if (typeof gradeItem.locked === 'boolean') {
+      return gradeItem.locked;
+    }
     if (typeof gradeItem.locked === 'number' && gradeItem.locked > 0) {
       return Date.now() < gradeItem.locked * 1000;
     }
     return false;
-  }, [gradeItem?.locked]);
+  }, [gradeItem]);
 
   // ============================================================================
   // Loading State
