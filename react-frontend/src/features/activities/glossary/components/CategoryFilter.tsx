@@ -10,15 +10,16 @@
  * @module features/activities/glossary/components
  */
 
-import React from 'react';
+import type React from 'react';
+import type {
+  SelectChangeEvent} from '@mui/material';
 import {
   Box,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
-  Chip,
-  SelectChangeEvent,
+  Chip
 } from '@mui/material';
 import type { GlossaryCategory } from '../types/glossary.types';
 

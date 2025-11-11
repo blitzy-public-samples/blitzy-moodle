@@ -121,10 +121,10 @@ function createTextSchema(field: Extract<DatabaseField, { type: 'text' }>): z.Zo
   // Handle required constraint
   if (field.required) {
     return schema.min(1, { message: 'This field is required' }) as z.ZodTypeAny;
-  } else {
+  } 
     // Allow empty string for optional fields
     return schema.optional().or(z.literal('')) as z.ZodTypeAny;
-  }
+  
 }
 
 /**
@@ -143,9 +143,9 @@ function createTextAreaSchema(field: Extract<DatabaseField, { type: 'textarea' }
   // Handle required constraint
   if (field.required) {
     return schema.min(1, { message: 'This field is required' }) as z.ZodTypeAny;
-  } else {
+  } 
     return schema.optional().or(z.literal('')) as z.ZodTypeAny;
-  }
+  
 }
 
 /**
@@ -174,7 +174,7 @@ function createNumberSchema(field: Extract<DatabaseField, { type: 'number' }>): 
       (val) => {
         const str = val.toString();
         const decimalIndex = str.indexOf('.');
-        if (decimalIndex === -1) return true; // Integer is valid
+        if (decimalIndex === -1) {return true;} // Integer is valid
         const actualDecimals = str.length - decimalIndex - 1;
         return actualDecimals <= decimals;
       },
@@ -186,17 +186,17 @@ function createNumberSchema(field: Extract<DatabaseField, { type: 'number' }>): 
     // Handle required constraint
     if (field.required) {
       return refinedSchema as z.ZodTypeAny;
-    } else {
+    } 
       return refinedSchema.optional() as z.ZodTypeAny;
-    }
-  } else {
+    
+  } 
     // No decimal constraint
     if (field.required) {
       return baseSchema as z.ZodTypeAny;
-    } else {
+    } 
       return baseSchema.optional() as z.ZodTypeAny;
-    }
-  }
+    
+  
 }
 
 /**
@@ -218,9 +218,9 @@ function createDateSchema(field: Extract<DatabaseField, { type: 'date' }>): z.Zo
   // Handle required constraint
   if (field.required) {
     return schema as z.ZodTypeAny;
-  } else {
+  } 
     return schema.optional() as z.ZodTypeAny;
-  }
+  
 }
 
 /**
@@ -243,9 +243,9 @@ function createCheckboxSchema(field: Extract<DatabaseField, { type: 'checkbox' }
     return schema.refine((val: boolean) => val === true, {
       message: 'This checkbox must be checked',
     }) as z.ZodTypeAny;
-  } else {
+  } 
     return schema.optional() as z.ZodTypeAny;
-  }
+  
 }
 
 /**
@@ -257,7 +257,7 @@ function createCheckboxSchema(field: Extract<DatabaseField, { type: 'checkbox' }
  * @returns Array of valid option values
  */
 function parseMenuOptions(param1: string | undefined): string[] {
-  if (!param1) return [];
+  if (!param1) {return [];}
   return param1
     .split('\n')
     .map((option) => option.trim())
@@ -286,19 +286,19 @@ function createMenuSchema(field: Extract<DatabaseField, { type: 'menu' }>): z.Zo
     // Handle required constraint
     if (field.required) {
       return enumSchema as z.ZodTypeAny;
-    } else {
+    } 
       return enumSchema.optional().or(z.literal('')) as z.ZodTypeAny;
-    }
-  } else {
+    
+  } 
     // Fallback to string if no options defined
     const stringSchema = z.string();
     
     if (field.required) {
       return stringSchema.min(1, { message: 'This field is required' }) as z.ZodTypeAny;
-    } else {
+    } 
       return stringSchema.optional().or(z.literal('')) as z.ZodTypeAny;
-    }
-  }
+    
+  
 }
 
 /**
@@ -328,7 +328,7 @@ function createMultiMenuSchema(field: Extract<DatabaseField, { type: 'multimenu'
           message: 'All selections must be valid options',
         }
       ) as z.ZodTypeAny;
-    } else {
+    } 
       // For optional, apply refine then make optional
       const refinedSchema = baseSchema.refine(
         (values: string[]) => values.every((val) => options.includes(val)),
@@ -337,15 +337,15 @@ function createMultiMenuSchema(field: Extract<DatabaseField, { type: 'multimenu'
         }
       );
       return refinedSchema.optional() as z.ZodTypeAny;
-    }
-  } else {
+    
+  } 
     // No options validation
     if (field.required) {
       return baseSchema.min(1, { message: 'At least one option must be selected' }) as z.ZodTypeAny;
-    } else {
+    } 
       return baseSchema.optional() as z.ZodTypeAny;
-    }
-  }
+    
+  
 }
 
 /**
@@ -370,19 +370,19 @@ function createRadioButtonSchema(field: Extract<DatabaseField, { type: 'radiobut
     // Handle required constraint
     if (field.required) {
       return enumSchema as z.ZodTypeAny;
-    } else {
+    } 
       return enumSchema.optional().or(z.literal('')) as z.ZodTypeAny;
-    }
-  } else {
+    
+  } 
     // Fallback to string if no options defined
     const stringSchema = z.string();
     
     if (field.required) {
       return stringSchema.min(1, { message: 'This field is required' }) as z.ZodTypeAny;
-    } else {
+    } 
       return stringSchema.optional().or(z.literal('')) as z.ZodTypeAny;
-    }
-  }
+    
+  
 }
 
 /**
@@ -416,9 +416,9 @@ function createFileSchema(field: Extract<DatabaseField, { type: 'file' }>): z.Zo
   // Handle required constraint
   if (field.required) {
     return schema as z.ZodTypeAny;
-  } else {
+  } 
     return schema.optional() as z.ZodTypeAny;
-  }
+  
 }
 
 /**
@@ -459,9 +459,9 @@ function createPictureSchema(field: Extract<DatabaseField, { type: 'picture' }>)
   // Handle required constraint
   if (field.required) {
     return schema as z.ZodTypeAny;
-  } else {
+  } 
     return schema.optional() as z.ZodTypeAny;
-  }
+  
 }
 
 /**
@@ -480,9 +480,9 @@ function createURLSchema(field: Extract<DatabaseField, { type: 'url' }>): z.ZodT
   // Handle required constraint
   if (field.required) {
     return schema.min(1, { message: 'This field is required' }) as z.ZodTypeAny;
-  } else {
+  } 
     return schema.optional().or(z.literal('')) as z.ZodTypeAny;
-  }
+  
 }
 
 /**
@@ -531,9 +531,10 @@ function createLatLongSchema(field: Extract<DatabaseField, { type: 'latlong' }>)
         return z.NEVER;
       }
       
-      // Parse to numbers (non-null assertion safe because we validated length === 2)
-      const lat = parseFloat(parts[0]!);
-      const lng = parseFloat(parts[1]!);
+      // Parse to numbers using array destructuring (safe because we validated length === 2)
+      const [latStr, lngStr] = parts as [string, string];
+      const lat = parseFloat(latStr);
+      const lng = parseFloat(lngStr);
       
       // Check if parsing was successful
       if (isNaN(lat) || isNaN(lng)) {
@@ -554,9 +555,9 @@ function createLatLongSchema(field: Extract<DatabaseField, { type: 'latlong' }>)
   // Handle required constraint
   if (field.required) {
     return schema as z.ZodTypeAny;
-  } else {
+  } 
     return schema.optional() as z.ZodTypeAny;
-  }
+  
 }
 
 // ============================================================================
@@ -648,10 +649,11 @@ export default function useFieldValidation(): FieldValidationResult {
         case FieldType.LatLong:
           schema = createLatLongSchema(field);
           break;
-        default:
+        default: {
           // Exhaustive check - TypeScript will error if a case is missing
           const _exhaustiveCheck: never = field;
           throw new Error(`Unknown field type: ${(_exhaustiveCheck as DatabaseField).type}`);
+        }
       }
 
       // Perform validation
