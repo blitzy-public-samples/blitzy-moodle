@@ -15,7 +15,7 @@
  * @module features/activities/resources/components/PageRenderer
  */
 
-import React, { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useCallback } from 'react';
 import {
   Box,
   Container,
@@ -100,7 +100,7 @@ enum ContentFormat {
  * @param {PageRendererProps} props - Component properties
  * @returns {JSX.Element} Rendered page content with loading/error states
  */
-const PageRenderer: React.FC<PageRendererProps> = ({
+function PageRenderer({
   pageId,
   content: providedContent,
   contentFormat = 'html',
@@ -109,7 +109,7 @@ const PageRenderer: React.FC<PageRendererProps> = ({
   introduction,
   showIntroduction = true,
   inPopup = false,
-}) => {
+}: PageRendererProps): JSX.Element {
   // Fetch page data via React Query hook (wraps GET /api/v1/resources/pages/{id})
   const {
     data: pageData,
@@ -146,13 +146,13 @@ const PageRenderer: React.FC<PageRendererProps> = ({
         coursemodule: 0,
         course: 0,
         name: '',
-        intro: introduction || '',
+        intro: introduction ?? '',
         introformat: 1,
         content: providedContent,
         contentformat: mapContentFormatToNumber(contentFormat),
         display: 0,
         displayoptions: displayOptions,
-        timemodified: lastModified || Date.now() / 1000,
+        timemodified: lastModified ?? Date.now() / 1000,
       };
     }
     
@@ -160,8 +160,10 @@ const PageRenderer: React.FC<PageRendererProps> = ({
   }, [pageData, providedContent, pageId, contentFormat, displayOptions, lastModified, introduction]);
 
   // Rewrite pluginfile URLs for secure file access via context-based file API
-  const rewritePluginFileUrls = (content: string): string => {
-    if (!content) return '';
+  const rewritePluginFileUrls = useCallback((content: string): string => {
+    if (!content) {
+      return '';
+    }
     
     // Replace @@PLUGINFILE@@ placeholder with actual API endpoint
     // Equivalent to file_rewrite_pluginfile_urls() in Moodle
@@ -172,11 +174,33 @@ const PageRenderer: React.FC<PageRendererProps> = ({
       pluginFilePattern,
       `${apiBaseUrl}/files/pluginfile/mod_page/content/${pageId}/`
     );
-  };
+  }, [pageId]);
+
+  // Basic markdown processing (simplified for demonstration)
+  const processBasicMarkdown = useCallback((markdown: string): string => {
+    return markdown
+      // Headers
+      .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+      .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+      .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+      // Bold
+      .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+      .replace(/__(.*?)__/gim, '<strong>$1</strong>')
+      // Italic
+      .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+      .replace(/_(.*?)_/gim, '<em>$1</em>')
+      // Links
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/gim, '<a href="$2">$1</a>')
+      // Line breaks
+      .replace(/\n\n/gim, '</p><p>')
+      .replace(/\n/gim, '<br />');
+  }, []);
 
   // Sanitize and format HTML content with XSS protection
-  const sanitizeContent = (rawContent: string, format: number): string => {
-    if (!rawContent) return '';
+  const sanitizeContent = useCallback((rawContent: string, format: ContentFormat): string => {
+    if (!rawContent) {
+      return '';
+    }
     
     // Rewrite file URLs first
     let processedContent = rewritePluginFileUrls(rawContent);
@@ -243,48 +267,32 @@ const PageRenderer: React.FC<PageRendererProps> = ({
     }
     
     return processedContent;
-  };
-
-  // Basic markdown processing (simplified for demonstration)
-  const processBasicMarkdown = (markdown: string): string => {
-    return markdown
-      // Headers
-      .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-      .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-      .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-      // Bold
-      .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
-      .replace(/__(.*?)__/gim, '<strong>$1</strong>')
-      // Italic
-      .replace(/\*(.*?)\*/gim, '<em>$1</em>')
-      .replace(/_(.*?)_/gim, '<em>$1</em>')
-      // Links
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/gim, '<a href="$2">$1</a>')
-      // Line breaks
-      .replace(/\n\n/gim, '</p><p>')
-      .replace(/\n/gim, '<br />');
-  };
+  }, [rewritePluginFileUrls, processBasicMarkdown]);
 
   // Process and sanitize page content
   const processedContent = useMemo(() => {
-    if (!page?.content) return '';
+    if (!page?.content) {
+      return '';
+    }
     
-    return sanitizeContent(page.content, page.contentformat || ContentFormat.HTML);
-  }, [page]);
+    return sanitizeContent(page.content, (page.contentformat ?? ContentFormat.HTML) as ContentFormat);
+  }, [page, sanitizeContent]);
 
   // Parse displayoptions to determine if intro should be shown
   const shouldShowIntro = useMemo(() => {
     // Priority: explicit prop > displayoptions.printintro > default
-    if (showIntroduction === false) return false;
+    if (showIntroduction === false) {
+      return false;
+    }
     
     if (page?.displayoptions) {
-      const opts = typeof page.displayoptions === 'string' 
-        ? JSON.parse(page.displayoptions || '{}')
+      const opts: Record<string, unknown> = typeof page.displayoptions === 'string' 
+        ? JSON.parse(page.displayoptions || '{}') as Record<string, unknown>
         : page.displayoptions;
       
       // printintro can be string '0'/'1' or boolean
       if ('printintro' in opts) {
-        const printintro = opts.printintro;
+        const { printintro }: { printintro: unknown } = opts as { printintro: unknown };
         return printintro === '1' || printintro === 1 || printintro === true;
       }
     }
@@ -294,17 +302,23 @@ const PageRenderer: React.FC<PageRendererProps> = ({
 
   // Process introduction text with sanitization
   const processedIntroduction = useMemo(() => {
-    if (!page?.intro || !shouldShowIntro) return '';
+    if (!page?.intro || !shouldShowIntro) {
+      return '';
+    }
     
     return sanitizeContent(page.intro, ContentFormat.HTML);
-  }, [page, shouldShowIntro]);
+  }, [page, shouldShowIntro, sanitizeContent]);
 
   // Add target="_blank" and rel attributes to external links for security
   useEffect(() => {
-    if (!page) return;
+    if (!page) {
+      return;
+    }
     
     const contentElement = document.getElementById(`page-content-${pageId}`);
-    if (!contentElement) return;
+    if (!contentElement) {
+      return;
+    }
     
     const links = contentElement.querySelectorAll('a[href]');
     links.forEach((link) => {
@@ -318,7 +332,9 @@ const PageRenderer: React.FC<PageRendererProps> = ({
 
   // Format last modified timestamp
   const formattedLastModified = useMemo(() => {
-    if (!page?.timemodified) return '';
+    if (!page?.timemodified) {
+      return '';
+    }
     
     return formatDate(page.timemodified * 1000); // Convert Unix timestamp to milliseconds
   }, [page]);
@@ -583,7 +599,7 @@ const PageRenderer: React.FC<PageRendererProps> = ({
       </Paper>
     </Container>
   );
-};
+}
 
 /**
  * Helper function to map string content format to Moodle numeric constant

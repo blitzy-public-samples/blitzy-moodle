@@ -8,7 +8,8 @@
  * @module features/courses/components/SectionList
  */
 
-import React, { useState } from 'react';
+import type React from 'react';
+import { useState } from 'react';
 import {
   Accordion,
   AccordionSummary,
@@ -213,13 +214,8 @@ export default function SectionList({
 }: SectionListProps): React.ReactElement {
   // Track which sections are expanded
   const [expandedSections, setExpandedSections] = useState<Record<number, boolean>>(() => {
-    // Initialize with all visible sections expanded by default
+    // Initialize with all sections collapsed - user must click to expand
     const initialExpanded: Record<number, boolean> = {};
-    sections.forEach((section) => {
-      if (section.visible) {
-        initialExpanded[section.id] = true;
-      }
-    });
     return initialExpanded;
   });
 
@@ -293,8 +289,10 @@ export default function SectionList({
       role="list"
       aria-label="Course sections"
     >
-      {sections.map((section) => {
-        const isExpanded = expandedSections[section.id] || false;
+      {sections
+        .filter((section) => isTeacher || section.visible)
+        .map((section) => {
+        const isExpanded = expandedSections[section.id] ?? false;
         const sectionOpacity = !section.visible && isTeacher ? 0.6 : 1;
 
         return (

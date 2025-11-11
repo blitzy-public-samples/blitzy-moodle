@@ -111,6 +111,18 @@ export interface FileUploadOptions {
 }
 
 /**
+ * API error response structure
+ *
+ * Represents the structure of error responses from the Moodle API
+ */
+interface ApiErrorResponse {
+  /** Error message from the API */
+  error?: string;
+  /** Alternative error message field */
+  message?: string;
+}
+
+/**
  * Return type for useFileUpload hook
  *
  * Provides methods for file upload operations and current state
@@ -406,8 +418,8 @@ export default function useFileUpload(options: FileUploadOptions = {}): UseFileU
         // Check if it's an Axios error with response data
         if (axios.isAxiosError(err) && err.response?.data) {
           // Try to extract error from response.data.error or response.data.message
-          const responseData = err.response.data as any;
-          errorMessage = responseData.error || responseData.message || errorMessage;
+          const responseData = err.response.data as ApiErrorResponse;
+          errorMessage = responseData.error ?? responseData.message ?? errorMessage;
         } else if (err instanceof Error) {
           // Use error message from Error instance
           errorMessage = err.message;

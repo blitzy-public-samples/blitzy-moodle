@@ -16,6 +16,7 @@
 
 import { CONTEXT_MODULE } from './constants';
 import type { Role } from '@/features/auth/types/auth.types';
+import { RoleArchetype } from '@/features/auth/types/auth.types';
 
 // ============================================================================
 // Capability Name Constants
@@ -142,31 +143,31 @@ export { CONTEXT_MODULE };
  * Student role archetype
  * Typically has view permissions but limited editing capabilities
  */
-export const ROLE_ARCHETYPE_STUDENT = 'student';
+export const ROLE_ARCHETYPE_STUDENT = RoleArchetype.STUDENT;
 
 /**
  * Teacher role archetype (non-editing)
  * Can view and interact but not modify course content
  */
-export const ROLE_ARCHETYPE_TEACHER = 'teacher';
+export const ROLE_ARCHETYPE_TEACHER = RoleArchetype.TEACHER;
 
 /**
  * Editing teacher role archetype
  * Full course management capabilities
  */
-export const ROLE_ARCHETYPE_EDITINGTEACHER = 'editingteacher';
+export const ROLE_ARCHETYPE_EDITINGTEACHER = RoleArchetype.EDITINGTEACHER;
 
 /**
  * Manager role archetype
  * Administrative capabilities at course category level
  */
-export const ROLE_ARCHETYPE_MANAGER = 'manager';
+export const ROLE_ARCHETYPE_MANAGER = RoleArchetype.MANAGER;
 
 /**
  * Course creator role archetype
  * Can create new courses
  */
-export const ROLE_ARCHETYPE_COURSECREATOR = 'coursecreator';
+export const ROLE_ARCHETYPE_COURSECREATOR = RoleArchetype.COURSECREATOR;
 
 // ============================================================================
 // Types
@@ -208,17 +209,40 @@ interface CurrentUserData {
  * @private
  * @returns Current user data or null if not authenticated
  */
+// Type definition for global user data
+interface MoodleWindowGlobal {
+  __MOODLE_USER__?: {
+    id: number;
+    roles?: string[];
+    capabilities?: string[];
+  };
+}
+
 function getCurrentUser(): CurrentUserData | null {
   // Attempt to access Redux store if available
   // In production, this would import the store and select from authSlice
   if (typeof window !== 'undefined') {
     // Check for global user data (set by provider or auth hook)
-    const globalUser = (window as any).__MOODLE_USER__;
-    if (globalUser && globalUser.id) {
+    const globalUser = (window as unknown as MoodleWindowGlobal).__MOODLE_USER__;
+    if (globalUser?.id) {
+      // Transform simple string arrays into proper Role and UserPermission objects
+      const roles: Role[] = (globalUser.roles ?? []).map((roleShortname, index) => ({
+        id: index, // Placeholder ID since we don't have actual role IDs
+        shortname: roleShortname,
+        name: roleShortname,
+        archetype: roleShortname as unknown as RoleArchetype, // Best effort mapping
+      }));
+
+      const capabilities: UserPermission[] = (globalUser.capabilities ?? []).map(cap => ({
+        capability: cap,
+        contextId: 1, // Placeholder context ID (system context)
+        granted: true, // If it's in the list, it's granted
+      }));
+
       return {
         id: globalUser.id,
-        roles: globalUser.roles || [],
-        capabilities: globalUser.capabilities || [],
+        roles,
+        capabilities,
       };
     }
   }
@@ -270,7 +294,7 @@ function hasCapabilityInContext(
  * @param archetype - Role archetype to check
  * @returns true if user has the role archetype
  */
-function hasRoleArchetype(roles: Role[], archetype: string): boolean {
+function hasRoleArchetype(roles: Role[], archetype: RoleArchetype): boolean {
   return roles.some((role) => role.archetype === archetype);
 }
 
@@ -643,8 +667,8 @@ export function getUserRole(_contextId?: number): string | null {
   let highestPriority = -1; // Start at -1 to allow roles with priority 0 (custom roles) to be selected
 
   for (const role of user.roles) {
-    const archetype = role.archetype || role.shortname;
-    const priority = rolePriority[archetype] || 0;
+    const archetype = role.archetype ?? role.shortname;
+    const priority = rolePriority[archetype] ?? 0;
 
     if (priority > highestPriority) {
       highestPriority = priority;

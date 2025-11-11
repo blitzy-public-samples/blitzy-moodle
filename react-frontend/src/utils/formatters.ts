@@ -103,7 +103,7 @@ export function formatCurrency(
   } catch (error) {
     // Fallback if currency code is invalid or Intl fails
     const symbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : currency === 'GBP' ? '£' : currency;
-    const decimalsToUse = decimals !== undefined ? decimals : 2;
+    const decimalsToUse = decimals ?? 2;
     return `${symbol}${formatNumber(value, decimalsToUse)}`;
   }
 }
@@ -433,16 +433,18 @@ export function formatList(
   }
 
   if (filteredItems.length === 1) {
-    return filteredItems[0]!;
+    const [first] = filteredItems;
+    return first ?? '';
   }
 
   if (filteredItems.length === 2) {
-    return `${filteredItems[0]!} ${conjunction} ${filteredItems[1]!}`;
+    const [first, second] = filteredItems;
+    return `${first ?? ''} ${conjunction} ${second ?? ''}`;
   }
 
   // Oxford comma style for 3+ items
   const allButLast = filteredItems.slice(0, -1).join(', ');
-  const lastItem = filteredItems[filteredItems.length - 1]!;
+  const lastItem = filteredItems.at(-1) ?? '';
 
   return `${allButLast}, ${conjunction} ${lastItem}`;
 }
@@ -478,7 +480,7 @@ export function pluralize(
     throw new TypeError('Invalid singular form provided to pluralize');
   }
 
-  const pluralForm = plural || `${singular}s`;
+  const pluralForm = plural ?? `${singular}s`;
   const word = count === 1 ? singular : pluralForm;
 
   return `${count} ${word}`;

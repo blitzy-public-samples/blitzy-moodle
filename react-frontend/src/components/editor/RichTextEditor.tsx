@@ -93,6 +93,13 @@ interface FilePickerMeta {
   filetype: 'image' | 'media' | 'file';
   [key: string]: unknown;
 }
+
+interface FilePickerCallbackMeta {
+  title?: string;
+  alt?: string;
+  [key: string]: unknown;
+}
+
 import useFileUpload from '@/hooks/useFileUpload';
 
 // ============================================================================
@@ -587,7 +594,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
      */
     const handleFilePicker = useCallback(
       (
-        callback: (value: string, meta?: Record<string, any>) => void,
+        callback: (value: string, meta?: FilePickerCallbackMeta) => void,
         _value: string,
         meta: FilePickerMeta
       ) => {
@@ -966,7 +973,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
             defaultValue={defaultValue}
             render={({ field, fieldState }) => (
               <>
-                {renderEditor(field.value ?? '', (content: string, _editor: Editor) => field.onChange(content))}
+                {renderEditor(String(field.value ?? ''), (content: string, _editor: Editor) => field.onChange(content))}
                 {(fieldState.error?.message ?? helperText) && (
                   <FormHelperText error={!!fieldState.error}>
                     {fieldState.error?.message ?? helperText}
