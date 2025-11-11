@@ -48,6 +48,7 @@ import {
   Visibility as VisibilityIcon,
   VisibilityOff as VisibilityOffIcon,
   Lock as LockIcon,
+  LockOpen as LockOpenIcon,
   Info as InfoIcon,
   Warning as WarningIcon,
 } from '@mui/icons-material';
@@ -499,7 +500,10 @@ export default function GradeDetail({ gradeItem, loading = false }: GradeDetailP
 
                 {isHidden && (
                   <Tooltip title={hiddenStatus}>
-                    <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+                    <Box 
+                      sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
+                      aria-label={`This grade is currently hidden. ${hiddenStatus}`}
+                    >
                       <VisibilityOffIcon fontSize="small" color="action" />
                       <Typography variant="body2" color="text.secondary">
                         {hiddenStatus}
@@ -510,7 +514,10 @@ export default function GradeDetail({ gradeItem, loading = false }: GradeDetailP
 
                 {!isHidden && gradeItem.hidden !== false && (
                   <Tooltip title={hiddenStatus}>
-                    <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+                    <Box 
+                      sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
+                      aria-label={hiddenStatus}
+                    >
                       <VisibilityIcon fontSize="small" color="success" />
                       <Typography variant="body2" color="text.secondary">
                         {hiddenStatus}
@@ -521,10 +528,27 @@ export default function GradeDetail({ gradeItem, loading = false }: GradeDetailP
 
                 {isLocked && (
                   <Tooltip title={lockedStatus}>
-                    <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+                    <Box 
+                      sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
+                      aria-label={`This grade is locked. ${lockedStatus} - Cannot be modified`}
+                    >
                       <LockIcon fontSize="small" color="action" />
                       <Typography variant="body2" color="text.secondary">
                         {lockedStatus} - Cannot be modified
+                      </Typography>
+                    </Box>
+                  </Tooltip>
+                )}
+
+                {!isLocked && gradeItem.locked !== false && (
+                  <Tooltip title={lockedStatus}>
+                    <Box 
+                      sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
+                      aria-label={lockedStatus}
+                    >
+                      <LockOpenIcon fontSize="small" color="success" />
+                      <Typography variant="body2" color="text.secondary">
+                        {lockedStatus}
                       </Typography>
                     </Box>
                   </Tooltip>
