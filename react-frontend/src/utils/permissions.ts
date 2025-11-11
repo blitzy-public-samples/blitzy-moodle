@@ -621,7 +621,7 @@ export function isAdmin(): boolean {
  * @param contextId - Optional context ID to get role for specific context
  * @returns Role shortname or null if user has no roles
  */
-export function getUserRole(contextId?: number): string | null {
+export function getUserRole(_contextId?: number): string | null {
   const user = getCurrentUser();
   if (!user || user.roles.length === 0) {
     return null;
@@ -637,10 +637,10 @@ export function getUserRole(contextId?: number): string | null {
   };
 
   // Filter roles by context if specified
-  // Note: In a full implementation, this would filter by contextId
+  // Note: In a full implementation, this would filter by _contextId
   // For now, we return the highest priority role
   let highestRole: Role | null = null;
-  let highestPriority = 0;
+  let highestPriority = -1; // Start at -1 to allow roles with priority 0 (custom roles) to be selected
 
   for (const role of user.roles) {
     const archetype = role.archetype || role.shortname;
