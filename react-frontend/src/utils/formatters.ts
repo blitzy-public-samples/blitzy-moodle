@@ -433,16 +433,16 @@ export function formatList(
   }
 
   if (filteredItems.length === 1) {
-    return filteredItems[0];
+    return filteredItems[0]!;
   }
 
   if (filteredItems.length === 2) {
-    return `${filteredItems[0]} ${conjunction} ${filteredItems[1]}`;
+    return `${filteredItems[0]!} ${conjunction} ${filteredItems[1]!}`;
   }
 
   // Oxford comma style for 3+ items
   const allButLast = filteredItems.slice(0, -1).join(', ');
-  const lastItem = filteredItems[filteredItems.length - 1];
+  const lastItem = filteredItems[filteredItems.length - 1]!;
 
   return `${allButLast}, ${conjunction} ${lastItem}`;
 }
