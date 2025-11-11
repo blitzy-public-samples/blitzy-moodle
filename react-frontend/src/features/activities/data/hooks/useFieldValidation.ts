@@ -29,6 +29,7 @@
 import { useCallback, useState } from 'react';
 import { z } from 'zod';
 import type { DatabaseField } from '../types/data.types';
+import { FieldType } from '../types/data.types';
 
 // ============================================================================
 // Type Definitions
@@ -106,7 +107,7 @@ export interface FieldValidationResult {
  * @param field - Text field definition
  * @returns Zod schema for validation
  */
-function createTextSchema(field: Extract<DatabaseField, { type: 'text' }>) {
+function createTextSchema(field: Extract<DatabaseField, { type: 'text' }>): z.ZodTypeAny {
   let schema = z.string();
 
   // Apply max length constraint from param1
@@ -119,13 +120,11 @@ function createTextSchema(field: Extract<DatabaseField, { type: 'text' }>) {
 
   // Handle required constraint
   if (field.required) {
-    schema = schema.min(1, { message: 'This field is required' });
+    return schema.min(1, { message: 'This field is required' }) as z.ZodTypeAny;
   } else {
     // Allow empty string for optional fields
-    schema = schema.optional().or(z.literal(''));
+    return schema.optional().or(z.literal('')) as z.ZodTypeAny;
   }
-
-  return schema;
 }
 
 /**
@@ -138,17 +137,15 @@ function createTextSchema(field: Extract<DatabaseField, { type: 'text' }>) {
  * @param field - Textarea field definition
  * @returns Zod schema for validation
  */
-function createTextAreaSchema(field: Extract<DatabaseField, { type: 'textarea' }>) {
-  let schema = z.string();
+function createTextAreaSchema(field: Extract<DatabaseField, { type: 'textarea' }>): z.ZodTypeAny {
+  const schema = z.string();
 
   // Handle required constraint
   if (field.required) {
-    schema = schema.min(1, { message: 'This field is required' });
+    return schema.min(1, { message: 'This field is required' }) as z.ZodTypeAny;
   } else {
-    schema = schema.optional().or(z.literal(''));
+    return schema.optional().or(z.literal('')) as z.ZodTypeAny;
   }
-
-  return schema;
 }
 
 /**
@@ -162,17 +159,18 @@ function createTextAreaSchema(field: Extract<DatabaseField, { type: 'textarea' }
  * @param field - Number field definition
  * @returns Zod schema for validation
  */
-function createNumberSchema(field: Extract<DatabaseField, { type: 'number' }>) {
+function createNumberSchema(field: Extract<DatabaseField, { type: 'number' }>): z.ZodTypeAny {
   // Coerce string input to number for validation
-  let schema = z.coerce.number({
+  const baseSchema = z.coerce.number({
     invalid_type_error: 'Must be a valid number',
   });
 
   // Apply decimal places constraint from param1
   const decimals = field.param1 ? parseInt(field.param1, 10) : undefined;
+  
   if (decimals !== undefined && !isNaN(decimals) && decimals >= 0) {
     // Refine to check decimal places
-    schema = schema.refine(
+    const refinedSchema = baseSchema.refine(
       (val) => {
         const str = val.toString();
         const decimalIndex = str.indexOf('.');
@@ -184,16 +182,21 @@ function createNumberSchema(field: Extract<DatabaseField, { type: 'number' }>) {
         message: `Number must have at most ${decimals} decimal places`,
       }
     );
-  }
-
-  // Handle required constraint
-  if (field.required) {
-    // Schema already requires a number
+    
+    // Handle required constraint
+    if (field.required) {
+      return refinedSchema as z.ZodTypeAny;
+    } else {
+      return refinedSchema.optional() as z.ZodTypeAny;
+    }
   } else {
-    schema = schema.optional();
+    // No decimal constraint
+    if (field.required) {
+      return baseSchema as z.ZodTypeAny;
+    } else {
+      return baseSchema.optional() as z.ZodTypeAny;
+    }
   }
-
-  return schema;
 }
 
 /**
@@ -206,20 +209,18 @@ function createNumberSchema(field: Extract<DatabaseField, { type: 'number' }>) {
  * @param field - Date field definition
  * @returns Zod schema for validation
  */
-function createDateSchema(field: Extract<DatabaseField, { type: 'date' }>) {
+function createDateSchema(field: Extract<DatabaseField, { type: 'date' }>): z.ZodTypeAny {
   // Accept either ISO date string or Date object
-  let schema = z.coerce.date({
+  const schema = z.coerce.date({
     invalid_type_error: 'Must be a valid date',
   });
 
   // Handle required constraint
   if (field.required) {
-    // Schema already requires a date
+    return schema as z.ZodTypeAny;
   } else {
-    schema = schema.optional();
+    return schema.optional() as z.ZodTypeAny;
   }
-
-  return schema;
 }
 
 /**
@@ -232,21 +233,19 @@ function createDateSchema(field: Extract<DatabaseField, { type: 'date' }>) {
  * @param field - Checkbox field definition
  * @returns Zod schema for validation
  */
-function createCheckboxSchema(field: Extract<DatabaseField, { type: 'checkbox' }>) {
-  let schema = z.boolean({
+function createCheckboxSchema(field: Extract<DatabaseField, { type: 'checkbox' }>): z.ZodTypeAny {
+  const schema = z.boolean({
     invalid_type_error: 'Must be a boolean value',
   });
 
   // Handle required constraint - checkbox must be checked
   if (field.required) {
-    schema = schema.refine((val) => val === true, {
+    return schema.refine((val: boolean) => val === true, {
       message: 'This checkbox must be checked',
-    });
+    }) as z.ZodTypeAny;
   } else {
-    schema = schema.optional();
+    return schema.optional() as z.ZodTypeAny;
   }
-
-  return schema;
 }
 
 /**
@@ -275,26 +274,31 @@ function parseMenuOptions(param1: string | undefined): string[] {
  * @param field - Menu field definition
  * @returns Zod schema for validation
  */
-function createMenuSchema(field: Extract<DatabaseField, { type: 'menu' }>) {
+function createMenuSchema(field: Extract<DatabaseField, { type: 'menu' }>): z.ZodTypeAny {
   const options = parseMenuOptions(field.param1);
-
-  let schema = z.string();
 
   if (options.length > 0) {
     // Create enum schema from available options
-    schema = z.enum(options as [string, ...string[]], {
+    const enumSchema = z.enum(options as [string, ...string[]], {
       errorMap: () => ({ message: 'Must select a valid option' }),
     });
-  }
-
-  // Handle required constraint
-  if (field.required) {
-    schema = schema.min(1, { message: 'This field is required' });
+    
+    // Handle required constraint
+    if (field.required) {
+      return enumSchema as z.ZodTypeAny;
+    } else {
+      return enumSchema.optional().or(z.literal('')) as z.ZodTypeAny;
+    }
   } else {
-    schema = schema.optional().or(z.literal(''));
+    // Fallback to string if no options defined
+    const stringSchema = z.string();
+    
+    if (field.required) {
+      return stringSchema.min(1, { message: 'This field is required' }) as z.ZodTypeAny;
+    } else {
+      return stringSchema.optional().or(z.literal('')) as z.ZodTypeAny;
+    }
   }
-
-  return schema;
 }
 
 /**
@@ -307,30 +311,41 @@ function createMenuSchema(field: Extract<DatabaseField, { type: 'menu' }>) {
  * @param field - Multi-menu field definition
  * @returns Zod schema for validation
  */
-function createMultiMenuSchema(field: Extract<DatabaseField, { type: 'multimenu' }>) {
+function createMultiMenuSchema(field: Extract<DatabaseField, { type: 'multimenu' }>): z.ZodTypeAny {
   const options = parseMenuOptions(field.param1);
 
   // Accept array of strings
-  let schema = z.array(z.string());
+  const baseSchema = z.array(z.string());
 
   if (options.length > 0) {
-    // Validate each item is a valid option
-    schema = schema.refine(
-      (values) => values.every((val) => options.includes(val)),
-      {
-        message: 'All selections must be valid options',
-      }
-    );
-  }
-
-  // Handle required constraint
-  if (field.required) {
-    schema = schema.min(1, { message: 'At least one option must be selected' });
+    // Handle required constraint first, then add options validation
+    if (field.required) {
+      const minSchema = baseSchema.min(1, { message: 'At least one option must be selected' });
+      // Validate each item is a valid option
+      return minSchema.refine(
+        (values: string[]) => values.every((val) => options.includes(val)),
+        {
+          message: 'All selections must be valid options',
+        }
+      ) as z.ZodTypeAny;
+    } else {
+      // For optional, apply refine then make optional
+      const refinedSchema = baseSchema.refine(
+        (values: string[]) => values.every((val) => options.includes(val)),
+        {
+          message: 'All selections must be valid options',
+        }
+      );
+      return refinedSchema.optional() as z.ZodTypeAny;
+    }
   } else {
-    schema = schema.optional();
+    // No options validation
+    if (field.required) {
+      return baseSchema.min(1, { message: 'At least one option must be selected' }) as z.ZodTypeAny;
+    } else {
+      return baseSchema.optional() as z.ZodTypeAny;
+    }
   }
-
-  return schema;
 }
 
 /**
@@ -343,26 +358,31 @@ function createMultiMenuSchema(field: Extract<DatabaseField, { type: 'multimenu'
  * @param field - Radio button field definition
  * @returns Zod schema for validation
  */
-function createRadioButtonSchema(field: Extract<DatabaseField, { type: 'radiobutton' }>) {
+function createRadioButtonSchema(field: Extract<DatabaseField, { type: 'radiobutton' }>): z.ZodTypeAny {
   const options = parseMenuOptions(field.param1);
-
-  let schema = z.string();
 
   if (options.length > 0) {
     // Create enum schema from available options
-    schema = z.enum(options as [string, ...string[]], {
+    const enumSchema = z.enum(options as [string, ...string[]], {
       errorMap: () => ({ message: 'Must select a valid option' }),
     });
-  }
-
-  // Handle required constraint
-  if (field.required) {
-    schema = schema.min(1, { message: 'This field is required' });
+    
+    // Handle required constraint
+    if (field.required) {
+      return enumSchema as z.ZodTypeAny;
+    } else {
+      return enumSchema.optional().or(z.literal('')) as z.ZodTypeAny;
+    }
   } else {
-    schema = schema.optional().or(z.literal(''));
+    // Fallback to string if no options defined
+    const stringSchema = z.string();
+    
+    if (field.required) {
+      return stringSchema.min(1, { message: 'This field is required' }) as z.ZodTypeAny;
+    } else {
+      return stringSchema.optional().or(z.literal('')) as z.ZodTypeAny;
+    }
   }
-
-  return schema;
 }
 
 /**
@@ -376,9 +396,9 @@ function createRadioButtonSchema(field: Extract<DatabaseField, { type: 'radiobut
  * @param field - File field definition
  * @returns Zod schema for validation
  */
-function createFileSchema(field: Extract<DatabaseField, { type: 'file' }>) {
+function createFileSchema(field: Extract<DatabaseField, { type: 'file' }>): z.ZodTypeAny {
   // File validation - expect File object or file metadata
-  let schema = z.object({
+  const schema = z.object({
     name: z.string(),
     size: z.number(),
     type: z.string(),
@@ -395,12 +415,10 @@ function createFileSchema(field: Extract<DatabaseField, { type: 'file' }>) {
 
   // Handle required constraint
   if (field.required) {
-    // Schema already requires an object
+    return schema as z.ZodTypeAny;
   } else {
-    schema = schema.optional();
+    return schema.optional() as z.ZodTypeAny;
   }
-
-  return schema;
 }
 
 /**
@@ -415,10 +433,10 @@ function createFileSchema(field: Extract<DatabaseField, { type: 'file' }>) {
  * @param field - Picture field definition
  * @returns Zod schema for validation
  */
-function createPictureSchema(field: Extract<DatabaseField, { type: 'picture' }>) {
+function createPictureSchema(field: Extract<DatabaseField, { type: 'picture' }>): z.ZodTypeAny {
   const validImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
 
-  let schema = z.object({
+  const schema = z.object({
     name: z.string(),
     size: z.number(),
     type: z.string(),
@@ -440,12 +458,10 @@ function createPictureSchema(field: Extract<DatabaseField, { type: 'picture' }>)
 
   // Handle required constraint
   if (field.required) {
-    // Schema already requires an object
+    return schema as z.ZodTypeAny;
   } else {
-    schema = schema.optional();
+    return schema.optional() as z.ZodTypeAny;
   }
-
-  return schema;
 }
 
 /**
@@ -458,17 +474,15 @@ function createPictureSchema(field: Extract<DatabaseField, { type: 'picture' }>)
  * @param field - URL field definition
  * @returns Zod schema for validation
  */
-function createURLSchema(field: Extract<DatabaseField, { type: 'url' }>) {
-  let schema = z.string().url({ message: 'Must be a valid URL' });
+function createURLSchema(field: Extract<DatabaseField, { type: 'url' }>): z.ZodTypeAny {
+  const schema = z.string().url({ message: 'Must be a valid URL' });
 
   // Handle required constraint
   if (field.required) {
-    schema = schema.min(1, { message: 'This field is required' });
+    return schema.min(1, { message: 'This field is required' }) as z.ZodTypeAny;
   } else {
-    schema = schema.optional().or(z.literal(''));
+    return schema.optional().or(z.literal('')) as z.ZodTypeAny;
   }
-
-  return schema;
 }
 
 /**
@@ -483,8 +497,9 @@ function createURLSchema(field: Extract<DatabaseField, { type: 'url' }>) {
  * @param field - LatLong field definition
  * @returns Zod schema for validation
  */
-function createLatLongSchema(field: Extract<DatabaseField, { type: 'latlong' }>) {
-  let schema = z.object({
+function createLatLongSchema(field: Extract<DatabaseField, { type: 'latlong' }>): z.ZodTypeAny {
+  // Base coordinate validation schema
+  const coordinateSchema = z.object({
     lat: z.number({
       invalid_type_error: 'Latitude must be a number',
     }).min(-90, { message: 'Latitude must be between -90 and 90' })
@@ -495,14 +510,53 @@ function createLatLongSchema(field: Extract<DatabaseField, { type: 'latlong' }>)
       .max(180, { message: 'Longitude must be between -180 and 180' }),
   });
 
+  // Schema that accepts string (comma or space separated) or object format
+  const schema = z.union([
+    // Accept string format: "lat,lng" or "lat lng"
+    z.string().transform((val, ctx) => {
+      // Try comma-separated format first (frontend standard)
+      let parts = val.split(',').map(s => s.trim());
+      
+      // If no comma found, try space-separated format (import format)
+      if (parts.length !== 2) {
+        parts = val.split(/\s+/).filter(s => s.length > 0);
+      }
+      
+      // Validate we have exactly 2 parts
+      if (parts.length !== 2) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Coordinates must be in format "latitude,longitude" or "latitude longitude"',
+        });
+        return z.NEVER;
+      }
+      
+      // Parse to numbers (non-null assertion safe because we validated length === 2)
+      const lat = parseFloat(parts[0]!);
+      const lng = parseFloat(parts[1]!);
+      
+      // Check if parsing was successful
+      if (isNaN(lat) || isNaN(lng)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Latitude and longitude must be valid numbers',
+        });
+        return z.NEVER;
+      }
+      
+      return { lat, lng };
+    }).pipe(coordinateSchema),
+    
+    // Also accept object format directly
+    coordinateSchema,
+  ]);
+
   // Handle required constraint
   if (field.required) {
-    // Schema already requires an object
+    return schema as z.ZodTypeAny;
   } else {
-    schema = schema.optional();
+    return schema.optional() as z.ZodTypeAny;
   }
-
-  return schema;
 }
 
 // ============================================================================
@@ -558,40 +612,40 @@ export default function useFieldValidation(): FieldValidationResult {
 
       // Create appropriate schema based on field type
       switch (field.type) {
-        case 'text':
+        case FieldType.Text:
           schema = createTextSchema(field);
           break;
-        case 'textarea':
+        case FieldType.Textarea:
           schema = createTextAreaSchema(field);
           break;
-        case 'number':
+        case FieldType.Number:
           schema = createNumberSchema(field);
           break;
-        case 'date':
+        case FieldType.Date:
           schema = createDateSchema(field);
           break;
-        case 'checkbox':
+        case FieldType.Checkbox:
           schema = createCheckboxSchema(field);
           break;
-        case 'menu':
+        case FieldType.Menu:
           schema = createMenuSchema(field);
           break;
-        case 'multimenu':
+        case FieldType.MultiMenu:
           schema = createMultiMenuSchema(field);
           break;
-        case 'radiobutton':
+        case FieldType.RadioButton:
           schema = createRadioButtonSchema(field);
           break;
-        case 'file':
+        case FieldType.File:
           schema = createFileSchema(field);
           break;
-        case 'picture':
+        case FieldType.Picture:
           schema = createPictureSchema(field);
           break;
-        case 'url':
+        case FieldType.URL:
           schema = createURLSchema(field);
           break;
-        case 'latlong':
+        case FieldType.LatLong:
           schema = createLatLongSchema(field);
           break;
         default:
