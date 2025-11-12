@@ -342,12 +342,15 @@ export function useForum(forumId: number, options: UseForumOptions = {}): UseFor
       const discussionsData = queryClient.getQueryData<PaginatedResponse<Discussion>>(
         forumKeys.discussions(forumId, discussionOptions)
       );
-      if (discussionsData && Array.isArray(discussionsData.data)) {
+      if (discussionsData && discussionsData.data && Array.isArray(discussionsData.data.items)) {
         const updatedData = {
           ...discussionsData,
-          data: discussionsData.data.map((d) =>
-            d.id === response.discussion.id ? response.discussion : d
-          ),
+          data: {
+            ...discussionsData.data,
+            items: discussionsData.data.items.map((d) =>
+              d.id === response.discussion.id ? response.discussion : d
+            ),
+          },
         };
         queryClient.setQueryData(forumKeys.discussions(forumId, discussionOptions), updatedData);
       }
@@ -364,12 +367,15 @@ export function useForum(forumId: number, options: UseForumOptions = {}): UseFor
       const discussionsData = queryClient.getQueryData<PaginatedResponse<Discussion>>(
         forumKeys.discussions(forumId, discussionOptions)
       );
-      if (discussionsData && Array.isArray(discussionsData.data)) {
+      if (discussionsData && discussionsData.data && Array.isArray(discussionsData.data.items)) {
         const updatedData = {
           ...discussionsData,
-          data: discussionsData.data.map((d) =>
-            d.id === response.discussion.id ? response.discussion : d
-          ),
+          data: {
+            ...discussionsData.data,
+            items: discussionsData.data.items.map((d) =>
+              d.id === response.discussion.id ? response.discussion : d
+            ),
+          },
         };
         queryClient.setQueryData(forumKeys.discussions(forumId, discussionOptions), updatedData);
       }
@@ -386,12 +392,15 @@ export function useForum(forumId: number, options: UseForumOptions = {}): UseFor
       const discussionsData = queryClient.getQueryData<PaginatedResponse<Discussion>>(
         forumKeys.discussions(forumId, discussionOptions)
       );
-      if (discussionsData && Array.isArray(discussionsData.data)) {
+      if (discussionsData && discussionsData.data && Array.isArray(discussionsData.data.items)) {
         const updatedData = {
           ...discussionsData,
-          data: discussionsData.data.map((d) =>
-            d.id === response.discussion.id ? response.discussion : d
-          ),
+          data: {
+            ...discussionsData.data,
+            items: discussionsData.data.items.map((d) =>
+              d.id === response.discussion.id ? response.discussion : d
+            ),
+          },
         };
         queryClient.setQueryData(forumKeys.discussions(forumId, discussionOptions), updatedData);
       }
@@ -408,12 +417,15 @@ export function useForum(forumId: number, options: UseForumOptions = {}): UseFor
       const discussionsData = queryClient.getQueryData<PaginatedResponse<Discussion>>(
         forumKeys.discussions(forumId, discussionOptions)
       );
-      if (discussionsData && Array.isArray(discussionsData.data)) {
+      if (discussionsData && discussionsData.data && Array.isArray(discussionsData.data.items)) {
         const updatedData = {
           ...discussionsData,
-          data: discussionsData.data.map((d) =>
-            d.id === response.discussion.id ? response.discussion : d
-          ),
+          data: {
+            ...discussionsData.data,
+            items: discussionsData.data.items.map((d) =>
+              d.id === response.discussion.id ? response.discussion : d
+            ),
+          },
         };
         queryClient.setQueryData(forumKeys.discussions(forumId, discussionOptions), updatedData);
       }
@@ -532,8 +544,8 @@ export function useForum(forumId: number, options: UseForumOptions = {}): UseFor
     error: forumQuery.error,
 
     // Discussions data
-    discussions: discussionsQuery.data?.data,
-    pagination: discussionsQuery.data?.meta?.pagination,
+    discussions: discussionsQuery.data?.data.items,
+    pagination: discussionsQuery.data?.meta.pagination,
 
     // Mutation states
     isSubscribing: subscriptionMutation.isPending,
