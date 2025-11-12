@@ -19,7 +19,7 @@
  * @module features/activities/book/components
  */
 
-import React, { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { Box, Button } from '@mui/material';
 import { NavigateBefore, NavigateNext } from '@mui/icons-material';
 import type { Chapter } from '../types/book.types';
@@ -75,11 +75,11 @@ export interface BookNavigationProps {
  * />
  * ```
  */
-const BookNavigation: React.FC<BookNavigationProps> = ({
+function BookNavigation({
   currentChapterId,
   chapters,
   onNavigate,
-}) => {
+}: BookNavigationProps): JSX.Element {
   // ==========================================================================
   // Navigation State Computation
   // ==========================================================================
@@ -124,22 +124,24 @@ const BookNavigation: React.FC<BookNavigationProps> = ({
   /**
    * Handle navigation to previous chapter
    * Calls onNavigate callback with previous chapter ID
+   * Memoized with useCallback to prevent unnecessary re-renders
    */
-  const handlePrevious = (): void => {
+  const handlePrevious = useCallback((): void => {
     if (previousChapter) {
       onNavigate(previousChapter.id);
     }
-  };
+  }, [previousChapter, onNavigate]);
 
   /**
    * Handle navigation to next chapter
    * Calls onNavigate callback with next chapter ID
+   * Memoized with useCallback to prevent unnecessary re-renders
    */
-  const handleNext = (): void => {
+  const handleNext = useCallback((): void => {
     if (nextChapter) {
       onNavigate(nextChapter.id);
     }
-  };
+  }, [nextChapter, onNavigate]);
 
   // ==========================================================================
   // Keyboard Navigation
@@ -194,7 +196,7 @@ const BookNavigation: React.FC<BookNavigationProps> = ({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [currentIndex, chapters, onNavigate]); // Re-setup when navigation state changes
+  }, [isPreviousDisabled, isNextDisabled, handlePrevious, handleNext]); // Re-setup when navigation state changes
 
   // ==========================================================================
   // Render
@@ -260,7 +262,7 @@ const BookNavigation: React.FC<BookNavigationProps> = ({
       </Box>
     </Box>
   );
-};
+}
 
 // ============================================================================
 // Exports
