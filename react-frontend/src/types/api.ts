@@ -118,6 +118,112 @@ export interface ApiResponse<T> {
  */
 export type ApiResult<T> = ApiResponse<T> | ErrorResponse;
 
+/**
+ * Alias for ErrorResponse for backward compatibility
+ *
+ * Some parts of the codebase use ApiErrorResponse instead of ErrorResponse.
+ * This type alias provides compatibility while maintaining a single source of truth.
+ */
+export type ApiErrorResponse = ErrorResponse;
+
+/**
+ * Paginated API response
+ *
+ * Standard response structure for list endpoints that return paginated results.
+ * Contains an array of items along with pagination metadata.
+ *
+ * @template T - Type of the items in the paginated list
+ *
+ * @example
+ * ```typescript
+ * const coursesResponse: PaginatedResponse<Course> = {
+ *   success: true,
+ *   data: {
+ *     items: [
+ *       { id: 1, fullname: "Course 1", ... },
+ *       { id: 2, fullname: "Course 2", ... }
+ *     ],
+ *     total: 150
+ *   },
+ *   meta: {
+ *     pagination: {
+ *       page: 1,
+ *       perPage: 20,
+ *       totalPages: 8
+ *     }
+ *   }
+ * };
+ * ```
+ */
+export interface PaginatedResponse<T> {
+  /**
+   * Indicates successful response (always true for success responses)
+   */
+  success: true;
+
+  /**
+   * Paginated data payload
+   */
+  data: {
+    /**
+     * Array of items for the current page
+     */
+    items: T[];
+
+    /**
+     * Total number of items across all pages
+     */
+    total: number;
+  };
+
+  /**
+   * Response metadata including pagination information
+   */
+  meta: ApiResponseMeta & {
+    /**
+     * Pagination metadata (required for paginated responses)
+     */
+    pagination: PaginationMeta;
+  };
+}
+
+/**
+ * Simplified API error type for component use
+ *
+ * A simplified version of ErrorResponse for use in React components and hooks
+ * where the full error structure is not needed. Contains only the essential
+ * error information for display and handling.
+ *
+ * @example
+ * ```typescript
+ * const handleError = (error: ApiError) => {
+ *   toast.error(error.message);
+ *   console.error('Error code:', error.code);
+ * };
+ * ```
+ */
+export interface ApiError {
+  /**
+   * Error code for programmatic error handling
+   */
+  code: string;
+
+  /**
+   * Human-readable error message
+   */
+  message: string;
+
+  /**
+   * HTTP status code
+   */
+  status?: number;
+
+  /**
+   * Additional error details
+   */
+  details?: Record<string, unknown>;
+}
+
 // ============================================================================
 // Authentication Token Types (JWT Implementation from Section 0.1)
 // ============================================================================
