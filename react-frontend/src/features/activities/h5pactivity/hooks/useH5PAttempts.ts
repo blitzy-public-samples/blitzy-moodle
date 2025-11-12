@@ -260,12 +260,6 @@ async function fetchH5PAttempts(
     // apiClient already handles HTTP errors via interceptors, so we get data directly
     const apiResponse = response.data;
 
-    if (!apiResponse.success) {
-      // Handle API error responses
-      const errorMessage = apiResponse.error?.message || 'Failed to fetch H5P attempts';
-      throw new Error(errorMessage);
-    }
-
     if (!apiResponse.data) {
       throw new Error('Failed to fetch H5P attempts: No data returned');
     }
