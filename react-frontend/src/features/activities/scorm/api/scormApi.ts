@@ -59,11 +59,6 @@ function isAxiosError(
 export async function fetchScorm(id: number): Promise<Scorm> {
   try {
     const response = await apiClient.get<ApiResponse<Scorm>>(`/scorm/${id}`);
-
-    if (!response.data.success) {
-      throw new Error(response.data.error?.message || 'Failed to fetch SCORM package');
-    }
-
     return response.data.data;
   } catch (error: unknown) {
     // Transform backend errors into user-friendly messages
@@ -97,11 +92,6 @@ export async function fetchScorm(id: number): Promise<Scorm> {
 export async function fetchScormScos(id: number): Promise<ScormSco[]> {
   try {
     const response = await apiClient.get<ApiResponse<ScormSco[]>>(`/scorm/${id}/scos`);
-
-    if (!response.data.success) {
-      throw new Error(response.data.error?.message || 'Failed to fetch SCOs');
-    }
-
     return response.data.data;
   } catch (error: unknown) {
     if (isAxiosError(error) && error.response?.data?.error) {
@@ -137,11 +127,6 @@ export async function fetchScormScos(id: number): Promise<ScormSco[]> {
 export async function fetchScormToc(id: number, params?: FetchScormTocParams): Promise<ScormToc> {
   try {
     const response = await apiClient.get<ApiResponse<ScormToc>>(`/scorm/${id}/toc`, { params });
-
-    if (!response.data.success) {
-      throw new Error(response.data.error?.message || 'Failed to fetch table of contents');
-    }
-
     return response.data.data;
   } catch (error: unknown) {
     if (isAxiosError(error) && error.response?.data?.error) {
@@ -173,11 +158,6 @@ export async function fetchScormToc(id: number, params?: FetchScormTocParams): P
 export async function fetchPlayerConfig(id: number): Promise<ScormPlayerConfig> {
   try {
     const response = await apiClient.get<ApiResponse<ScormPlayerConfig>>(`/scorm/${id}/player`);
-
-    if (!response.data.success) {
-      throw new Error(response.data.error?.message || 'Failed to fetch player configuration');
-    }
-
     return response.data.data;
   } catch (error: unknown) {
     if (isAxiosError(error) && error.response?.data?.error) {
@@ -219,11 +199,6 @@ export async function launchSco(
     const response = await apiClient.post<
       ApiResponse<{ launchUrl: string; attemptId: number; scoId: number }>
     >(`/scorm/${id}/launch`, params);
-
-    if (!response.data.success) {
-      throw new Error(response.data.error?.message || 'Failed to launch SCO');
-    }
-
     return response.data.data;
   } catch (error: unknown) {
     if (isAxiosError(error) && error.response?.data?.error) {
@@ -276,11 +251,6 @@ export async function submitTracking(
       `/scorm/${id}/track`,
       params
     );
-
-    if (!response.data.success) {
-      throw new Error(response.data.error?.message || 'Failed to save tracking data');
-    }
-
     return response.data.data;
   } catch (error: unknown) {
     if (isAxiosError(error) && error.response?.data?.error) {
@@ -317,11 +287,6 @@ export async function fetchAttempts(id: number, userId?: number): Promise<ScormA
     const response = await apiClient.get<ApiResponse<ScormAttempt[]>>(`/scorm/${id}/attempts`, {
       params: userId !== undefined ? { userId } : undefined,
     });
-
-    if (!response.data.success) {
-      throw new Error(response.data.error?.message || 'Failed to fetch attempts');
-    }
-
     return response.data.data;
   } catch (error: unknown) {
     if (isAxiosError(error) && error.response?.data?.error) {
@@ -354,11 +319,6 @@ export async function fetchAttempts(id: number, userId?: number): Promise<ScormA
 export async function createAttempt(id: number): Promise<ScormAttempt> {
   try {
     const response = await apiClient.post<ApiResponse<ScormAttempt>>(`/scorm/${id}/attempt`);
-
-    if (!response.data.success) {
-      throw new Error(response.data.error?.message || 'Failed to create attempt');
-    }
-
     return response.data.data;
   } catch (error: unknown) {
     if (isAxiosError(error) && error.response?.data?.error) {
@@ -401,11 +361,6 @@ export async function fetchAttemptTracking(attemptId: number, scoId?: number): P
         params: scoId !== undefined ? { scoId } : undefined,
       }
     );
-
-    if (!response.data.success) {
-      throw new Error(response.data.error?.message || 'Failed to fetch tracking data');
-    }
-
     return response.data.data;
   } catch (error: unknown) {
     if (isAxiosError(error) && error.response?.data?.error) {
@@ -447,11 +402,6 @@ export async function fetchAttemptReport(
     const response = await apiClient.get<ApiResponse<ScormAttemptReport>>(`/scorm/${id}/report`, {
       params,
     });
-
-    if (!response.data.success) {
-      throw new Error(response.data.error?.message || 'Failed to generate report');
-    }
-
     return response.data.data;
   } catch (error: unknown) {
     if (isAxiosError(error) && error.response?.data?.error) {
@@ -490,11 +440,6 @@ export async function deleteAttempt(
     const response = await apiClient.delete<ApiResponse<{ success: boolean; message: string }>>(
       `/scorm/${id}/attempts/${attemptId}`
     );
-
-    if (!response.data.success) {
-      throw new Error(response.data.error?.message || 'Failed to delete attempt');
-    }
-
     return response.data.data;
   } catch (error: unknown) {
     if (isAxiosError(error) && error.response?.data?.error) {
@@ -536,11 +481,6 @@ export async function evaluatePrerequisites(
       `/scorm/${id}/prerequisites`,
       params
     );
-
-    if (!response.data.success) {
-      throw new Error(response.data.error?.message || 'Failed to evaluate prerequisites');
-    }
-
     return response.data.data;
   } catch (error: unknown) {
     if (isAxiosError(error) && error.response?.data?.error) {
