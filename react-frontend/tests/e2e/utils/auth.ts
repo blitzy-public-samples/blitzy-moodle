@@ -306,6 +306,27 @@ export async function loginAsAdmin(page: Page): Promise<Page> {
  * await logout(page);
  */
 export async function logout(page: Page): Promise<void> {
+  // Check if user is authenticated before attempting logout
+  const authenticated = await isAuthenticated(page);
+  
+  if (!authenticated) {
+    // Not logged in, just clear any residual state and return
+    await clearAuthenticationState(page);
+    return;
+  }
+
+  // Check if user menu is visible (indicates user is on a page with auth UI)
+  const userMenuVisible = await page.locator('[data-testid="user-menu"]').isVisible().catch(() => false);
+  
+  if (!userMenuVisible) {
+    // User is authenticated but not on a page with the user menu
+    // Just clear auth state and navigate to login
+    await clearAuthenticationState(page);
+    await page.goto(LOGIN_PAGE_URL);
+    await waitForPageLoad(page);
+    return;
+  }
+
   // Open user menu
   await page.click('[data-testid="user-menu"]');
   
@@ -362,9 +383,16 @@ export async function logout(page: Page): Promise<void> {
  */
 export async function getAuthToken(page: Page): Promise<string | null> {
   // Try to get token from localStorage first
-  const localStorageToken = await page.evaluate((key) => {
-    return localStorage.getItem(key);
-  }, ACCESS_TOKEN_KEY);
+  // Wrap in try-catch to handle SecurityError when page context doesn't have localStorage access
+  let localStorageToken: string | null = null;
+  try {
+    localStorageToken = await page.evaluate((key) => {
+      return localStorage.getItem(key);
+    }, ACCESS_TOKEN_KEY);
+  } catch (error) {
+    // SecurityError when localStorage is not accessible (e.g., on about:blank)
+    // This is expected and we'll fall back to checking cookies
+  }
 
   if (localStorageToken) {
     return localStorageToken;
@@ -680,19 +708,25 @@ export async function setupAuthenticationState(
  */
 export async function clearAuthenticationState(page: Page): Promise<void> {
   // Clear tokens from localStorage
-  await page.evaluate(
-    ({ accessKey, refreshKey }) => {
-      localStorage.removeItem(accessKey);
-      localStorage.removeItem(refreshKey);
-      // Also clear any user-related data
-      localStorage.removeItem('user');
-      localStorage.removeItem('userPreferences');
-    },
-    {
-      accessKey: ACCESS_TOKEN_KEY,
-      refreshKey: REFRESH_TOKEN_KEY,
-    }
-  );
+  // Wrap in try-catch to handle SecurityError when localStorage is not accessible
+  try {
+    await page.evaluate(
+      ({ accessKey, refreshKey }) => {
+        localStorage.removeItem(accessKey);
+        localStorage.removeItem(refreshKey);
+        // Also clear any user-related data
+        localStorage.removeItem('user');
+        localStorage.removeItem('userPreferences');
+      },
+      {
+        accessKey: ACCESS_TOKEN_KEY,
+        refreshKey: REFRESH_TOKEN_KEY,
+      }
+    );
+  } catch (error) {
+    // SecurityError when localStorage is not accessible (e.g., on about:blank)
+    // This is acceptable as it means there's no auth state to clear
+  }
 
   // Clear JWT cookies
   const context = page.context();

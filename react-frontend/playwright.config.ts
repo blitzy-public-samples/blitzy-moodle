@@ -88,5 +88,10 @@ export default defineConfig({
     command: 'npm run dev',
     url: 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,
+    // Set environment variable to disable Vite proxy during E2E tests
+    // This allows MSW to intercept API requests
+    env: {
+      E2E_TEST: 'true',
+    },
   },
 });

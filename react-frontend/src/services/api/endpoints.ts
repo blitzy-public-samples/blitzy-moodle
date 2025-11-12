@@ -44,19 +44,21 @@ export const API_VERSION = 'v1';
  * - LOGOUT: POST
  * - REFRESH: POST
  * - ME: GET
+ * 
+ * NOTE: Endpoints are relative paths since apiClient already has baseURL set to /api/v1
  */
 export const AUTH_ENDPOINTS = {
   /** POST - User login with username/password credentials */
-  LOGIN: `${API_BASE_URL}/auth/login`,
+  LOGIN: '/auth/login',
 
   /** POST - Logout user and invalidate JWT token (adds to blacklist) */
-  LOGOUT: `${API_BASE_URL}/auth/logout`,
+  LOGOUT: '/auth/logout',
 
   /** POST - Refresh expired access token using refresh token */
-  REFRESH: `${API_BASE_URL}/auth/refresh`,
+  REFRESH: '/auth/refresh',
 
   /** GET - Retrieve current user profile from JWT token */
-  ME: `${API_BASE_URL}/auth/me`,
+  ME: '/auth/me',
 } as const;
 
 /**
@@ -76,25 +78,25 @@ export const AUTH_ENDPOINTS = {
  */
 export const COURSE_ENDPOINTS = {
   /** GET - Retrieve paginated list of courses with optional filters */
-  LIST: `${API_BASE_URL}/courses`,
+  LIST: '/courses',
 
   /** GET - Retrieve detailed information for a specific course */
-  DETAIL: (id: number) => `${API_BASE_URL}/courses/${id}`,
+  DETAIL: (id: number) => `/courses/${id}`,
 
   /** POST - Create a new course (requires admin/teacher capability) */
-  CREATE: `${API_BASE_URL}/courses`,
+  CREATE: '/courses',
 
   /** PUT - Update course settings and metadata */
-  UPDATE: (id: number) => `${API_BASE_URL}/courses/${id}`,
+  UPDATE: (id: number) => `/courses/${id}`,
 
   /** DELETE - Delete a course (requires admin capability) */
-  DELETE: (id: number) => `${API_BASE_URL}/courses/${id}`,
+  DELETE: (id: number) => `/courses/${id}`,
 
   /** POST - Enroll current user in a course */
-  ENROLL: (id: number) => `${API_BASE_URL}/courses/${id}/enroll`,
+  ENROLL: (id: number) => `/courses/${id}/enroll`,
 
   /** GET - Retrieve course contents (sections, activities, resources) */
-  CONTENTS: (id: number) => `${API_BASE_URL}/courses/${id}/contents`,
+  CONTENTS: (id: number) => `/courses/${id}/contents`,
 } as const;
 
 /**
@@ -112,22 +114,22 @@ export const COURSE_ENDPOINTS = {
  */
 export const USER_ENDPOINTS = {
   /** GET - Retrieve paginated list of users (requires appropriate capability) */
-  LIST: `${API_BASE_URL}/users`,
+  LIST: '/users',
 
   /** GET - Retrieve detailed user profile information */
-  DETAIL: (id: number) => `${API_BASE_URL}/users/${id}`,
+  DETAIL: (id: number) => `/users/${id}`,
 
   /** PUT - Update user profile information */
-  UPDATE: (id: number) => `${API_BASE_URL}/users/${id}`,
+  UPDATE: (id: number) => `/users/${id}`,
 
   /** GET - Retrieve user's personalized dashboard data */
-  DASHBOARD: (id: number) => `${API_BASE_URL}/users/${id}/dashboard`,
+  DASHBOARD: (id: number) => `/users/${id}/dashboard`,
 
   /** GET - Retrieve list of courses user is enrolled in */
-  COURSES: (id: number) => `${API_BASE_URL}/users/${id}/courses`,
+  COURSES: (id: number) => `/users/${id}/courses`,
 
   /** PUT - Update user preferences and settings */
-  PREFERENCES: (id: number) => `${API_BASE_URL}/users/${id}/preferences`,
+  PREFERENCES: (id: number) => `/users/${id}/preferences`,
 } as const;
 
 /**
@@ -145,22 +147,22 @@ export const USER_ENDPOINTS = {
  */
 export const ASSIGNMENT_ENDPOINTS = {
   /** GET - Retrieve assignment details and requirements */
-  DETAIL: (id: number) => `${API_BASE_URL}/assignments/${id}`,
+  DETAIL: (id: number) => `/assignments/${id}`,
 
   /** POST - Submit assignment work (with optional file uploads) */
-  SUBMIT: (id: number) => `${API_BASE_URL}/assignments/${id}/submit`,
+  SUBMIT: (id: number) => `/assignments/${id}/submit`,
 
   /** POST - Grade a student's assignment submission (teacher only) */
-  GRADE: (id: number) => `${API_BASE_URL}/assignments/${id}/grade`,
+  GRADE: (id: number) => `/assignments/${id}/grade`,
 
   /** GET - Retrieve list of submissions for an assignment (teacher view) */
-  SUBMISSIONS: (id: number) => `${API_BASE_URL}/assignments/${id}/submissions`,
+  SUBMISSIONS: (id: number) => `/assignments/${id}/submissions`,
 
   /** POST - Provide feedback on a submission */
-  FEEDBACK: (id: number) => `${API_BASE_URL}/assignments/${id}/feedback`,
+  FEEDBACK: (id: number) => `/assignments/${id}/feedback`,
 
   /** GET - Retrieve list of files associated with assignment */
-  FILES: (id: number) => `${API_BASE_URL}/assignments/${id}/files`,
+  FILES: (id: number) => `/assignments/${id}/files`,
 } as const;
 
 /**
@@ -180,28 +182,28 @@ export const ASSIGNMENT_ENDPOINTS = {
  */
 export const QUIZ_ENDPOINTS = {
   /** GET - Retrieve quiz details and settings */
-  DETAIL: (id: number) => `${API_BASE_URL}/quizzes/${id}`,
+  DETAIL: (id: number) => `/quizzes/${id}`,
 
   /** POST - Start a new quiz attempt */
-  ATTEMPT: (id: number) => `${API_BASE_URL}/quizzes/${id}/attempt`,
+  ATTEMPT: (id: number) => `/quizzes/${id}/attempt`,
 
   /** POST - Submit quiz answers for grading */
-  SUBMIT: (id: number) => `${API_BASE_URL}/quizzes/${id}/submit`,
+  SUBMIT: (id: number) => `/quizzes/${id}/submit`,
 
   /** GET - Retrieve results for a specific quiz attempt */
-  RESULTS: (attemptId: number) => `${API_BASE_URL}/quizzes/attempts/${attemptId}`,
+  RESULTS: (attemptId: number) => `/quizzes/attempts/${attemptId}`,
 
   /** GET - Retrieve list of user's quiz attempts */
-  ATTEMPTS: (id: number) => `${API_BASE_URL}/quizzes/${id}/attempts`,
+  ATTEMPTS: (id: number) => `/quizzes/${id}/attempts`,
 
   /** GET - Retrieve quiz questions for an attempt */
-  QUESTIONS: (id: number) => `${API_BASE_URL}/quizzes/${id}/questions`,
+  QUESTIONS: (id: number) => `/quizzes/${id}/questions`,
 
   /** GET - Review a completed quiz attempt with correct answers */
-  REVIEW: (attemptId: number) => `${API_BASE_URL}/quizzes/attempts/${attemptId}/review`,
+  REVIEW: (attemptId: number) => `/quizzes/attempts/${attemptId}/review`,
 
   /** GET - Retrieve attempt summary before submission */
-  SUMMARY: (attemptId: number) => `${API_BASE_URL}/quizzes/attempts/${attemptId}/summary`,
+  SUMMARY: (attemptId: number) => `/quizzes/attempts/${attemptId}/summary`,
 } as const;
 
 /**
@@ -222,31 +224,31 @@ export const QUIZ_ENDPOINTS = {
  */
 export const FORUM_ENDPOINTS = {
   /** GET - Retrieve forum details and settings */
-  DETAIL: (id: number) => `${API_BASE_URL}/forums/${id}`,
+  DETAIL: (id: number) => `/forums/${id}`,
 
   /** GET - Retrieve list of discussions in a forum */
-  DISCUSSIONS: (id: number) => `${API_BASE_URL}/forums/${id}/discussions`,
+  DISCUSSIONS: (id: number) => `/forums/${id}/discussions`,
 
   /** POST - Create a new discussion thread in a forum */
-  CREATE_DISCUSSION: (id: number) => `${API_BASE_URL}/forums/${id}/discussions`,
+  CREATE_DISCUSSION: (id: number) => `/forums/${id}/discussions`,
 
   /** GET - Retrieve posts in a specific discussion thread */
-  POSTS: (discussionId: number) => `${API_BASE_URL}/forums/discussions/${discussionId}/posts`,
+  POSTS: (discussionId: number) => `/forums/discussions/${discussionId}/posts`,
 
   /** POST - Create a new post in a discussion thread */
-  CREATE_POST: (discussionId: number) => `${API_BASE_URL}/forums/discussions/${discussionId}/posts`,
+  CREATE_POST: (discussionId: number) => `/forums/discussions/${discussionId}/posts`,
 
   /** PUT - Update an existing forum post */
-  UPDATE_POST: (postId: number) => `${API_BASE_URL}/forums/posts/${postId}`,
+  UPDATE_POST: (postId: number) => `/forums/posts/${postId}`,
 
   /** DELETE - Delete a forum post */
-  DELETE_POST: (postId: number) => `${API_BASE_URL}/forums/posts/${postId}`,
+  DELETE_POST: (postId: number) => `/forums/posts/${postId}`,
 
   /** POST - Subscribe to forum notifications */
-  SUBSCRIBE: (id: number) => `${API_BASE_URL}/forums/${id}/subscribe`,
+  SUBSCRIBE: (id: number) => `/forums/${id}/subscribe`,
 
   /** POST - Mark a discussion as read */
-  MARK_READ: (discussionId: number) => `${API_BASE_URL}/forums/discussions/${discussionId}/read`,
+  MARK_READ: (discussionId: number) => `/forums/discussions/${discussionId}/read`,
 } as const;
 
 /**
@@ -265,25 +267,25 @@ export const FORUM_ENDPOINTS = {
  */
 export const GRADEBOOK_ENDPOINTS = {
   /** GET - Retrieve all grades for a specific course */
-  COURSE: (courseId: number) => `${API_BASE_URL}/gradebook/course/${courseId}`,
+  COURSE: (courseId: number) => `/gradebook/course/${courseId}`,
 
   /** GET - Retrieve all grades for a specific user */
-  USER: (userId: number) => `${API_BASE_URL}/gradebook/user/${userId}`,
+  USER: (userId: number) => `/gradebook/user/${userId}`,
 
   /** GET - Retrieve list of grade items */
-  ITEMS: `${API_BASE_URL}/gradebook/items`,
+  ITEMS: '/gradebook/items',
 
   /** PUT - Update a grade item */
-  UPDATE_GRADE: (itemId: number) => `${API_BASE_URL}/gradebook/items/${itemId}`,
+  UPDATE_GRADE: (itemId: number) => `/gradebook/items/${itemId}`,
 
   /** GET - Retrieve grade categories */
-  CATEGORIES: `${API_BASE_URL}/gradebook/categories`,
+  CATEGORIES: '/gradebook/categories',
 
   /** GET - Export gradebook data (CSV, Excel, etc.) */
-  EXPORT: `${API_BASE_URL}/gradebook/export`,
+  EXPORT: '/gradebook/export',
 
   /** GET - Generate gradebook report */
-  REPORT: `${API_BASE_URL}/gradebook/report`,
+  REPORT: '/gradebook/report',
 } as const;
 
 /**
@@ -302,26 +304,26 @@ export const GRADEBOOK_ENDPOINTS = {
  */
 export const MESSAGE_ENDPOINTS = {
   /** GET - Retrieve list of user's messages */
-  LIST: `${API_BASE_URL}/messages`,
+  LIST: '/messages',
 
   /** POST - Send a new message to another user */
-  SEND: `${API_BASE_URL}/messages`,
+  SEND: '/messages',
 
   /** GET - Retrieve conversation thread with a specific user */
   CONVERSATION: (conversationId: number) =>
-    `${API_BASE_URL}/messages/conversation/${conversationId}`,
+    `/messages/conversation/${conversationId}`,
 
   /** PUT - Mark a message as read */
-  MARK_READ: (messageId: number) => `${API_BASE_URL}/messages/${messageId}/read`,
+  MARK_READ: (messageId: number) => `/messages/${messageId}/read`,
 
   /** DELETE - Delete a message */
-  DELETE: (messageId: number) => `${API_BASE_URL}/messages/${messageId}`,
+  DELETE: (messageId: number) => `/messages/${messageId}`,
 
   /** GET - Retrieve list of user's contacts */
-  CONTACTS: `${API_BASE_URL}/messages/contacts`,
+  CONTACTS: '/messages/contacts',
 
   /** GET - Retrieve user's notifications */
-  NOTIFICATIONS: `${API_BASE_URL}/notifications`,
+  NOTIFICATIONS: '/notifications',
 } as const;
 
 /**
@@ -339,19 +341,19 @@ export const ADMIN_ENDPOINTS = {
    */
   USERS: {
     /** GET - Retrieve list of all users in the system */
-    LIST: `${API_BASE_URL}/admin/users`,
+    LIST: '/admin/users',
 
     /** POST - Create a new user account */
-    CREATE: `${API_BASE_URL}/admin/users`,
+    CREATE: '/admin/users',
 
     /** PUT - Update user account details */
-    UPDATE: (id: number) => `${API_BASE_URL}/admin/users/${id}`,
+    UPDATE: (id: number) => `/admin/users/${id}`,
 
     /** DELETE - Delete a user account */
-    DELETE: (id: number) => `${API_BASE_URL}/admin/users/${id}`,
+    DELETE: (id: number) => `/admin/users/${id}`,
 
     /** POST - Perform bulk user operations (create, update, delete) */
-    BULK: `${API_BASE_URL}/admin/users/bulk`,
+    BULK: '/admin/users/bulk',
   },
 
   /**
@@ -359,13 +361,13 @@ export const ADMIN_ENDPOINTS = {
    */
   COURSES: {
     /** GET - Retrieve list of all courses in the system */
-    LIST: `${API_BASE_URL}/admin/courses`,
+    LIST: '/admin/courses',
 
     /** GET - Retrieve course categories */
-    CATEGORIES: `${API_BASE_URL}/admin/courses/categories`,
+    CATEGORIES: '/admin/courses/categories',
 
     /** POST - Perform bulk course operations */
-    BULK: `${API_BASE_URL}/admin/courses/bulk`,
+    BULK: '/admin/courses/bulk',
   },
 
   /**
@@ -373,13 +375,13 @@ export const ADMIN_ENDPOINTS = {
    */
   ROLES: {
     /** GET - Retrieve list of all roles in the system */
-    LIST: `${API_BASE_URL}/admin/roles`,
+    LIST: '/admin/roles',
 
     /** POST - Assign a role to a user in a context */
-    ASSIGN: `${API_BASE_URL}/admin/roles/assign`,
+    ASSIGN: '/admin/roles/assign',
 
     /** GET - Retrieve capabilities for a role */
-    CAPABILITIES: `${API_BASE_URL}/admin/roles/capabilities`,
+    CAPABILITIES: '/admin/roles/capabilities',
   },
 
   /**
@@ -387,10 +389,10 @@ export const ADMIN_ENDPOINTS = {
    */
   SETTINGS: {
     /** GET - Retrieve system settings */
-    LIST: `${API_BASE_URL}/admin/settings`,
+    LIST: '/admin/settings',
 
     /** PUT - Update system settings */
-    UPDATE: `${API_BASE_URL}/admin/settings`,
+    UPDATE: '/admin/settings',
   },
 
   /**
@@ -398,10 +400,10 @@ export const ADMIN_ENDPOINTS = {
    */
   PLUGINS: {
     /** GET - Retrieve list of installed plugins */
-    LIST: `${API_BASE_URL}/admin/plugins`,
+    LIST: '/admin/plugins',
 
     /** PUT - Configure plugin settings */
-    CONFIGURE: (id: string) => `${API_BASE_URL}/admin/plugins/${id}`,
+    CONFIGURE: (id: string) => `/admin/plugins/${id}`,
   },
 } as const;
 
@@ -420,22 +422,22 @@ export const ADMIN_ENDPOINTS = {
  */
 export const FILE_ENDPOINTS = {
   /** POST - Upload a file (multipart/form-data) */
-  UPLOAD: `${API_BASE_URL}/files/upload`,
+  UPLOAD: '/files/upload',
 
   /** GET - Download a file by ID */
-  DOWNLOAD: (id: number) => `${API_BASE_URL}/files/download/${id}`,
+  DOWNLOAD: (id: number) => `/files/download/${id}`,
 
   /** DELETE - Delete a file */
-  DELETE: (id: number) => `${API_BASE_URL}/files/${id}`,
+  DELETE: (id: number) => `/files/${id}`,
 
   /** GET - Retrieve list of user's files */
-  LIST: `${API_BASE_URL}/files`,
+  LIST: '/files',
 
   /** GET - Browse file repository */
-  REPOSITORY: `${API_BASE_URL}/files/repository`,
+  REPOSITORY: '/files/repository',
 
   /** GET - Retrieve file thumbnail/preview */
-  THUMBNAIL: (id: number) => `${API_BASE_URL}/files/thumbnail/${id}`,
+  THUMBNAIL: (id: number) => `/files/thumbnail/${id}`,
 } as const;
 
 /**
@@ -448,28 +450,28 @@ export const FILE_ENDPOINTS = {
  */
 export const BLOCK_ENDPOINTS = {
   /** GET - Retrieve calendar events data */
-  CALENDAR: `${API_BASE_URL}/blocks/calendar`,
+  CALENDAR: '/blocks/calendar',
 
   /** GET - Retrieve upcoming events and deadlines */
-  UPCOMING: `${API_BASE_URL}/blocks/upcoming`,
+  UPCOMING: '/blocks/upcoming',
 
   /** GET - Retrieve recent activity in user's courses */
-  RECENT_ACTIVITY: `${API_BASE_URL}/blocks/recent`,
+  RECENT_ACTIVITY: '/blocks/recent',
 
   /** GET - Retrieve list of online users */
-  ONLINE_USERS: `${API_BASE_URL}/blocks/online`,
+  ONLINE_USERS: '/blocks/online',
 
   /** GET - Retrieve timeline of upcoming activities */
-  TIMELINE: `${API_BASE_URL}/blocks/timeline`,
+  TIMELINE: '/blocks/timeline',
 
   /** GET - Retrieve course overview data */
-  OVERVIEW: `${API_BASE_URL}/blocks/overview`,
+  OVERVIEW: '/blocks/overview',
 
   /** GET - Retrieve user's badges */
-  BADGES: `${API_BASE_URL}/blocks/badges`,
+  BADGES: '/blocks/badges',
 
   /** GET - Retrieve recent comments */
-  COMMENTS: `${API_BASE_URL}/blocks/comments`,
+  COMMENTS: '/blocks/comments',
 } as const;
 
 /**
@@ -487,19 +489,19 @@ export const BLOCK_ENDPOINTS = {
  */
 export const ENROLLMENT_ENDPOINTS = {
   /** GET - Retrieve available enrollment methods for a course */
-  METHODS: `${API_BASE_URL}/enrollment/methods`,
+  METHODS: '/enrollment/methods',
 
   /** POST - Enroll a user in a course (admin/teacher) */
-  ENROLL: `${API_BASE_URL}/enrollment/enroll`,
+  ENROLL: '/enrollment/enroll',
 
   /** POST - Unenroll a user from a course */
-  UNENROLL: `${API_BASE_URL}/enrollment/unenroll`,
+  UNENROLL: '/enrollment/unenroll',
 
   /** GET - Retrieve list of enrolled users in a course */
-  ENROLLED_USERS: (courseId: number) => `${API_BASE_URL}/enrollment/${courseId}/users`,
+  ENROLLED_USERS: (courseId: number) => `/enrollment/${courseId}/users`,
 
   /** POST - Self-enroll in a course */
-  SELF_ENROLL: (courseId: number) => `${API_BASE_URL}/enrollment/self/${courseId}`,
+  SELF_ENROLL: (courseId: number) => `/enrollment/self/${courseId}`,
 } as const;
 
 /**
@@ -512,13 +514,13 @@ export const ENROLLMENT_ENDPOINTS = {
  */
 export const SEARCH_ENDPOINTS = {
   /** GET - Search for courses */
-  COURSES: `${API_BASE_URL}/search/courses`,
+  COURSES: '/search/courses',
 
   /** GET - Search for users */
-  USERS: `${API_BASE_URL}/search/users`,
+  USERS: '/search/users',
 
   /** GET - Global search across all content */
-  GLOBAL: `${API_BASE_URL}/search`,
+  GLOBAL: '/search',
 } as const;
 
 /**
@@ -530,19 +532,19 @@ export const SEARCH_ENDPOINTS = {
  */
 export const RESOURCE_ENDPOINTS = {
   /** GET - Retrieve resource details */
-  DETAIL: (id: number) => `${API_BASE_URL}/resources/${id}`,
+  DETAIL: (id: number) => `/resources/${id}`,
 
   /** GET - Retrieve files associated with a resource */
-  FILES: (id: number) => `${API_BASE_URL}/resources/${id}/files`,
+  FILES: (id: number) => `/resources/${id}/files`,
 
   /** GET - Retrieve page resource content */
-  PAGES: (id: number) => `${API_BASE_URL}/resources/pages/${id}`,
+  PAGES: (id: number) => `/resources/pages/${id}`,
 
   /** GET - Retrieve URL resource details */
-  URLS: (id: number) => `${API_BASE_URL}/resources/urls/${id}`,
+  URLS: (id: number) => `/resources/urls/${id}`,
 
   /** GET - Retrieve folder resource contents */
-  FOLDERS: (id: number) => `${API_BASE_URL}/resources/folders/${id}`,
+  FOLDERS: (id: number) => `/resources/folders/${id}`,
 } as const;
 
 /**
@@ -559,43 +561,43 @@ export const RESOURCE_ENDPOINTS = {
  */
 export const WIKI_ENDPOINTS = {
   /** GET - Retrieve wiki details and configuration */
-  DETAIL: (id: number) => `${API_BASE_URL}/wiki/${id}`,
+  DETAIL: (id: number) => `/wiki/${id}`,
 
   /** GET - Retrieve wiki page by title */
   BY_TITLE: (wikiId: number, title: string) =>
-    `${API_BASE_URL}/wiki/${wikiId}/page/${encodeURIComponent(title)}`,
+    `/wiki/${wikiId}/page/${encodeURIComponent(title)}`,
 
   /** GET - Retrieve first/main page of a wiki */
-  FIRST_PAGE: (id: number) => `${API_BASE_URL}/wiki/${id}/firstpage`,
+  FIRST_PAGE: (id: number) => `/wiki/${id}/firstpage`,
 
   /** POST - Save wiki page content */
-  SAVE: (id: number) => `${API_BASE_URL}/wiki/${id}/save`,
+  SAVE: (id: number) => `/wiki/${id}/save`,
 
   /** POST - Save a specific section of a wiki page */
-  SAVE_SECTION: (id: number) => `${API_BASE_URL}/wiki/${id}/savesection`,
+  SAVE_SECTION: (id: number) => `/wiki/${id}/savesection`,
 
   /** POST - Create a new wiki page */
-  CREATE: (id: number) => `${API_BASE_URL}/wiki/${id}/create`,
+  CREATE: (id: number) => `/wiki/${id}/create`,
 
   /** GET - Retrieve version history of a wiki page */
-  HISTORY: (pageId: number) => `${API_BASE_URL}/wiki/page/${pageId}/history`,
+  HISTORY: (pageId: number) => `/wiki/page/${pageId}/history`,
 
   /** GET - Retrieve specific version of a wiki page */
   VERSION: (pageId: number, versionId: number) =>
-    `${API_BASE_URL}/wiki/page/${pageId}/version/${versionId}`,
+    `/wiki/page/${pageId}/version/${versionId}`,
 
   /** POST - Restore a previous version of a wiki page */
   RESTORE: (pageId: number, versionId: number) =>
-    `${API_BASE_URL}/wiki/page/${pageId}/restore/${versionId}`,
+    `/wiki/page/${pageId}/restore/${versionId}`,
 
   /** GET - Retrieve list of all wiki pages */
-  LIST: (id: number) => `${API_BASE_URL}/wiki/${id}/pages`,
+  LIST: (id: number) => `/wiki/${id}/pages`,
 
   /** GET - Search wiki pages */
-  SEARCH: (id: number) => `${API_BASE_URL}/wiki/${id}/search`,
+  SEARCH: (id: number) => `/wiki/${id}/search`,
 
   /** GET - Retrieve links within wiki pages */
-  LINKS: (pageId: number) => `${API_BASE_URL}/wiki/page/${pageId}/links`,
+  LINKS: (pageId: number) => `/wiki/page/${pageId}/links`,
 } as const;
 
 /**
@@ -610,37 +612,37 @@ export const WIKI_ENDPOINTS = {
  */
 export const LESSON_ENDPOINTS = {
   /** GET - Retrieve lesson details and settings */
-  DETAIL: (id: number) => `${API_BASE_URL}/lesson/${id}`,
+  DETAIL: (id: number) => `/lesson/${id}`,
 
   /** POST - Start a new lesson attempt */
-  START: (id: number) => `${API_BASE_URL}/lesson/${id}/start`,
+  START: (id: number) => `/lesson/${id}/start`,
 
   /** POST - Submit answer for a lesson page */
-  SUBMIT: (id: number) => `${API_BASE_URL}/lesson/${id}/submit`,
+  SUBMIT: (id: number) => `/lesson/${id}/submit`,
 
   /** GET - Retrieve specific lesson page content */
-  PAGE: (id: number, pageId: number) => `${API_BASE_URL}/lesson/${id}/page/${pageId}`,
+  PAGE: (id: number, pageId: number) => `/lesson/${id}/page/${pageId}`,
 
   /** POST - Navigate to next lesson page */
-  NEXT_PAGE: (id: number) => `${API_BASE_URL}/lesson/${id}/nextpage`,
+  NEXT_PAGE: (id: number) => `/lesson/${id}/nextpage`,
 
   /** POST - Finish lesson attempt */
-  FINISH: (id: number) => `${API_BASE_URL}/lesson/${id}/finish`,
+  FINISH: (id: number) => `/lesson/${id}/finish`,
 
   /** POST - Restart lesson from beginning */
-  RESTART: (id: number) => `${API_BASE_URL}/lesson/${id}/restart`,
+  RESTART: (id: number) => `/lesson/${id}/restart`,
 
   /** GET - Retrieve list of lesson pages */
-  PAGES: (id: number) => `${API_BASE_URL}/lesson/${id}/pages`,
+  PAGES: (id: number) => `/lesson/${id}/pages`,
 
   /** GET - Retrieve user's progress in lesson */
-  PROGRESS: (id: number) => `${API_BASE_URL}/lesson/${id}/progress`,
+  PROGRESS: (id: number) => `/lesson/${id}/progress`,
 
   /** POST - Update lesson timer */
-  UPDATE_TIMER: (id: number) => `${API_BASE_URL}/lesson/${id}/timer`,
+  UPDATE_TIMER: (id: number) => `/lesson/${id}/timer`,
 
   /** GET - Retrieve lesson attempt information */
-  ATTEMPT: (id: number) => `${API_BASE_URL}/lesson/${id}/attempt`,
+  ATTEMPT: (id: number) => `/lesson/${id}/attempt`,
 } as const;
 
 /**
@@ -653,51 +655,51 @@ export const LESSON_ENDPOINTS = {
  */
 export const WORKSHOP_ENDPOINTS = {
   /** GET - Retrieve workshop details and current phase */
-  DETAIL: (id: number) => `${API_BASE_URL}/workshop/${id}`,
+  DETAIL: (id: number) => `/workshop/${id}`,
 
   /** GET - Retrieve workshop submissions */
-  SUBMISSIONS: (id: number) => `${API_BASE_URL}/workshop/${id}/submissions`,
+  SUBMISSIONS: (id: number) => `/workshop/${id}/submissions`,
 
   /** POST - Create a new workshop submission */
-  CREATE_SUBMISSION: (id: number) => `${API_BASE_URL}/workshop/${id}/submissions`,
+  CREATE_SUBMISSION: (id: number) => `/workshop/${id}/submissions`,
 
   /** PUT - Update workshop submission */
   UPDATE_SUBMISSION: (submissionId: number) =>
-    `${API_BASE_URL}/workshop/submissions/${submissionId}`,
+    `/workshop/submissions/${submissionId}`,
 
   /** DELETE - Delete workshop submission */
   DELETE_SUBMISSION: (submissionId: number) =>
-    `${API_BASE_URL}/workshop/submissions/${submissionId}`,
+    `/workshop/submissions/${submissionId}`,
 
   /** GET - Retrieve peer assessments for a submission */
   ASSESSMENTS: (submissionId: number) =>
-    `${API_BASE_URL}/workshop/submissions/${submissionId}/assessments`,
+    `/workshop/submissions/${submissionId}/assessments`,
 
   /** POST - Create a new peer assessment */
   CREATE_ASSESSMENT: (submissionId: number) =>
-    `${API_BASE_URL}/workshop/submissions/${submissionId}/assessments`,
+    `/workshop/submissions/${submissionId}/assessments`,
 
   /** PUT - Update peer assessment */
   UPDATE_ASSESSMENT: (assessmentId: number) =>
-    `${API_BASE_URL}/workshop/assessments/${assessmentId}`,
+    `/workshop/assessments/${assessmentId}`,
 
   /** POST - Switch workshop to next phase */
-  SWITCH_PHASE: (id: number) => `${API_BASE_URL}/workshop/${id}/switchphase`,
+  SWITCH_PHASE: (id: number) => `/workshop/${id}/switchphase`,
 
   /** POST - Allocate submissions for peer assessment */
-  ALLOCATE: (id: number) => `${API_BASE_URL}/workshop/${id}/allocate`,
+  ALLOCATE: (id: number) => `/workshop/${id}/allocate`,
 
   /** GET - Retrieve workshop grades */
-  GRADES: (id: number) => `${API_BASE_URL}/workshop/${id}/grades`,
+  GRADES: (id: number) => `/workshop/${id}/grades`,
 
   /** PUT - Update workshop grade */
-  UPDATE_GRADE: (id: number) => `${API_BASE_URL}/workshop/${id}/grade`,
+  UPDATE_GRADE: (id: number) => `/workshop/${id}/grade`,
 
   /** GET - Retrieve user's assessment plan */
-  USER_PLAN: (id: number) => `${API_BASE_URL}/workshop/${id}/userplan`,
+  USER_PLAN: (id: number) => `/workshop/${id}/userplan`,
 
   /** GET - Retrieve example submissions */
-  EXAMPLES: (id: number) => `${API_BASE_URL}/workshop/${id}/examples`,
+  EXAMPLES: (id: number) => `/workshop/${id}/examples`,
 } as const;
 
 /**
@@ -713,28 +715,28 @@ export const WORKSHOP_ENDPOINTS = {
  */
 export const GLOSSARY_ENDPOINTS = {
   /** GET - Retrieve glossary details and settings */
-  DETAIL: (id: number) => `${API_BASE_URL}/glossary/${id}`,
+  DETAIL: (id: number) => `/glossary/${id}`,
 
   /** GET - Retrieve all entries in a glossary */
-  ENTRIES: (id: number) => `${API_BASE_URL}/glossary/${id}/entries`,
+  ENTRIES: (id: number) => `/glossary/${id}/entries`,
 
   /** GET - Retrieve specific glossary entry */
-  ENTRY: (entryId: number) => `${API_BASE_URL}/glossary/entries/${entryId}`,
+  ENTRY: (entryId: number) => `/glossary/entries/${entryId}`,
 
   /** POST - Create a new glossary entry */
-  CREATE_ENTRY: (id: number) => `${API_BASE_URL}/glossary/${id}/entries`,
+  CREATE_ENTRY: (id: number) => `/glossary/${id}/entries`,
 
   /** PUT - Update a glossary entry */
-  UPDATE_ENTRY: (entryId: number) => `${API_BASE_URL}/glossary/entries/${entryId}`,
+  UPDATE_ENTRY: (entryId: number) => `/glossary/entries/${entryId}`,
 
   /** DELETE - Delete a glossary entry */
-  DELETE_ENTRY: (entryId: number) => `${API_BASE_URL}/glossary/entries/${entryId}`,
+  DELETE_ENTRY: (entryId: number) => `/glossary/entries/${entryId}`,
 
   /** GET - Retrieve glossary categories */
-  CATEGORIES: (id: number) => `${API_BASE_URL}/glossary/${id}/categories`,
+  CATEGORIES: (id: number) => `/glossary/${id}/categories`,
 
   /** GET - Search glossary entries */
-  SEARCH: (id: number) => `${API_BASE_URL}/glossary/${id}/search`,
+  SEARCH: (id: number) => `/glossary/${id}/search`,
 } as const;
 
 /**
@@ -748,19 +750,19 @@ export const GLOSSARY_ENDPOINTS = {
  */
 export const SCORM_ENDPOINTS = {
   /** GET - Retrieve SCORM package details */
-  DETAIL: (id: number) => `${API_BASE_URL}/scorm/${id}`,
+  DETAIL: (id: number) => `/scorm/${id}`,
 
   /** POST - Launch SCORM package and create attempt */
-  LAUNCH: (id: number) => `${API_BASE_URL}/scorm/${id}/launch`,
+  LAUNCH: (id: number) => `/scorm/${id}/launch`,
 
   /** GET - Retrieve SCORM player interface */
-  PLAYER: (id: number) => `${API_BASE_URL}/scorm/${id}/player`,
+  PLAYER: (id: number) => `/scorm/${id}/player`,
 
   /** POST - Track SCORM activity and progress */
-  TRACK: (id: number) => `${API_BASE_URL}/scorm/${id}/track`,
+  TRACK: (id: number) => `/scorm/${id}/track`,
 
   /** GET - Retrieve SCORM attempt results */
-  RESULTS: (id: number) => `${API_BASE_URL}/scorm/${id}/results`,
+  RESULTS: (id: number) => `/scorm/${id}/results`,
 } as const;
 
 /**
@@ -772,16 +774,16 @@ export const SCORM_ENDPOINTS = {
  */
 export const BOOK_ENDPOINTS = {
   /** GET - Retrieve book details and settings */
-  DETAIL: (id: number) => `${API_BASE_URL}/book/${id}`,
+  DETAIL: (id: number) => `/book/${id}`,
 
   /** GET - Retrieve list of book chapters */
-  CHAPTERS: (id: number) => `${API_BASE_URL}/book/${id}/chapters`,
+  CHAPTERS: (id: number) => `/book/${id}/chapters`,
 
   /** GET - Retrieve specific book chapter content */
-  CHAPTER: (id: number, chapterId: number) => `${API_BASE_URL}/book/${id}/chapter/${chapterId}`,
+  CHAPTER: (id: number, chapterId: number) => `/book/${id}/chapter/${chapterId}`,
 
   /** GET - Retrieve book table of contents */
-  TOC: (id: number) => `${API_BASE_URL}/book/${id}/toc`,
+  TOC: (id: number) => `/book/${id}/toc`,
 } as const;
 
 /**
@@ -795,14 +797,14 @@ export const BOOK_ENDPOINTS = {
  */
 export const H5P_ENDPOINTS = {
   /** GET - Retrieve H5P activity details */
-  DETAIL: (id: number) => `${API_BASE_URL}/h5p/${id}`,
+  DETAIL: (id: number) => `/h5p/${id}`,
 
   /** POST - Launch H5P content and track interaction */
-  LAUNCH: (id: number) => `${API_BASE_URL}/h5p/${id}/launch`,
+  LAUNCH: (id: number) => `/h5p/${id}/launch`,
 
   /** GET - Retrieve H5P activity results */
-  RESULTS: (id: number) => `${API_BASE_URL}/h5p/${id}/results`,
+  RESULTS: (id: number) => `/h5p/${id}/results`,
 
   /** GET - Retrieve user's H5P attempts */
-  ATTEMPTS: (id: number) => `${API_BASE_URL}/h5p/${id}/attempts`,
+  ATTEMPTS: (id: number) => `/h5p/${id}/attempts`,
 } as const;

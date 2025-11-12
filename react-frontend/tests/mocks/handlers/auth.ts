@@ -56,10 +56,10 @@ interface User {
  * JWT tokens returned on successful authentication
  */
 interface AuthTokens {
-  access_token: string;
-  refresh_token: string;
-  token_type: string;
-  expires_in: number;
+  accessToken: string;
+  refreshToken: string;
+  tokenType: string;
+  expiresIn: number;
 }
 
 /**
@@ -74,7 +74,7 @@ interface LoginRequest {
  * Token refresh request payload
  */
 interface RefreshRequest {
-  refresh_token: string;
+  refreshToken: string;
 }
 
 // ============================================================================
@@ -86,9 +86,9 @@ interface RefreshRequest {
  */
 const MOCK_USERS: Record<string, User & { password: string; status: 'active' | 'suspended' | 'locked' }> = {
   student1: {
-    id: 101,
+    id: 1001,
     username: 'student1',
-    password: 'Student123!',
+    password: 'TestPassword123!',
     email: 'student1@example.com',
     firstname: 'John',
     lastname: 'Student',
@@ -110,9 +110,9 @@ const MOCK_USERS: Record<string, User & { password: string; status: 'active' | '
     profileimageurl: 'https://via.placeholder.com/150',
   },
   teacher1: {
-    id: 201,
+    id: 2001,
     username: 'teacher1',
-    password: 'Teacher123!',
+    password: 'TestPassword123!',
     email: 'teacher1@example.com',
     firstname: 'Jane',
     lastname: 'Teacher',
@@ -136,9 +136,9 @@ const MOCK_USERS: Record<string, User & { password: string; status: 'active' | '
     profileimageurl: 'https://via.placeholder.com/150',
   },
   admin1: {
-    id: 301,
+    id: 5001,
     username: 'admin',
-    password: 'Admin123!',
+    password: 'TestPassword123!',
     email: 'admin@example.com',
     firstname: 'Admin',
     lastname: 'Administrator',
@@ -164,7 +164,7 @@ const MOCK_USERS: Record<string, User & { password: string; status: 'active' | '
   suspended1: {
     id: 401,
     username: 'suspended1',
-    password: 'Suspended123!',
+    password: 'TestPassword123!',
     email: 'suspended1@example.com',
     firstname: 'Suspended',
     lastname: 'User',
@@ -182,7 +182,7 @@ const MOCK_USERS: Record<string, User & { password: string; status: 'active' | '
   locked1: {
     id: 501,
     username: 'locked1',
-    password: 'Locked123!',
+    password: 'TestPassword123!',
     email: 'locked1@example.com',
     firstname: 'Locked',
     lastname: 'Account',
@@ -292,7 +292,7 @@ function sanitizeUser(user: User & { password: string; status: string }): User {
  * {
  *   success: true,
  *   data: {
- *     tokens: { access_token, refresh_token, token_type, expires_in },
+ *     tokens: { accessToken, refreshToken, tokenType, expiresIn },
  *     user: { id, username, email, firstname, lastname, roles, ... }
  *   }
  * }
@@ -386,10 +386,10 @@ const loginHandler = http.post('*/api/v1/auth/login', async ({ request }) => {
 
     // Generate tokens
     const tokens: AuthTokens = {
-      access_token: generateMockToken(user.id, 'access'),
-      refresh_token: generateMockToken(user.id, 'refresh'),
-      token_type: 'Bearer',
-      expires_in: 3600, // 1 hour
+      accessToken: generateMockToken(user.id, 'access'),
+      refreshToken: generateMockToken(user.id, 'refresh'),
+      tokenType: 'Bearer',
+      expiresIn: 3600, // 1 hour
     };
 
     // Return success response
@@ -529,10 +529,10 @@ const logoutHandler = http.post('*/api/v1/auth/logout', async ({ request }) => {
  * {
  *   success: true,
  *   data: {
- *     access_token: string,
- *     refresh_token: string,
- *     token_type: 'Bearer',
- *     expires_in: 3600
+ *     accessToken: string,
+ *     refreshToken: string,
+ *     tokenType: 'Bearer',
+ *     expiresIn: 3600
  *   }
  * }
  * 
@@ -545,10 +545,10 @@ const refreshHandler = http.post('*/api/v1/auth/refresh', async ({ request }) =>
 
   try {
     const body = await request.json() as RefreshRequest;
-    const { refresh_token } = body;
+    const { refreshToken } = body;
 
     // Validate required field
-    if (!refresh_token) {
+    if (!refreshToken) {
       return HttpResponse.json(
         {
           success: false,
@@ -556,7 +556,7 @@ const refreshHandler = http.post('*/api/v1/auth/refresh', async ({ request }) =>
             code: 'MISSING_REFRESH_TOKEN',
             message: 'Refresh token is required',
             details: {
-              field: 'refresh_token',
+              field: 'refreshToken',
             },
           },
         },
@@ -565,7 +565,7 @@ const refreshHandler = http.post('*/api/v1/auth/refresh', async ({ request }) =>
     }
 
     // Validate token format and extract user ID
-    const userId = extractUserIdFromToken(refresh_token);
+    const userId = extractUserIdFromToken(refreshToken);
     
     if (!userId) {
       return HttpResponse.json(
@@ -621,10 +621,10 @@ const refreshHandler = http.post('*/api/v1/auth/refresh', async ({ request }) =>
 
     // Generate new tokens
     const tokens: AuthTokens = {
-      access_token: generateMockToken(userId, 'access'),
-      refresh_token: generateMockToken(userId, 'refresh'),
-      token_type: 'Bearer',
-      expires_in: 3600, // 1 hour
+      accessToken: generateMockToken(userId, 'access'),
+      refreshToken: generateMockToken(userId, 'refresh'),
+      tokenType: 'Bearer',
+      expiresIn: 3600, // 1 hour
     };
 
     return HttpResponse.json(
@@ -677,6 +677,10 @@ const meHandler = http.get('*/api/v1/auth/me', async ({ request }) => {
   try {
     // Extract token from Authorization header
     const authHeader = request.headers.get('Authorization');
+    
+    // Debug logging
+    console.log('[meHandler] Called with URL:', request.url);
+    console.log('[meHandler] Authorization header:', authHeader);
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return HttpResponse.json(

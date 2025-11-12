@@ -1,4 +1,5 @@
-import { test, expect, describe, beforeEach, afterEach, Page } from '@playwright/test';
+import { test, expect } from './setup/msw';
+import type { Page } from '@playwright/test';
 import { jwtDecode } from 'jwt-decode';
 import { LoginPage } from './pages/LoginPage';
 import {
@@ -30,14 +31,14 @@ import { testStudent, testTeacher, testAdmin, TEST_PASSWORD } from './fixtures/u
  * - Performance requirements (<2 seconds login)
  * - SSO integration and password reset workflows
  */
-describe('Authentication E2E Tests', () => {
+test.describe('Authentication E2E Tests', () => {
   let loginPage: LoginPage;
 
   /**
    * Setup before each test
    * Ensures clean authentication state and navigates to login page
    */
-  beforeEach(async ({ page }: { page: Page }) => {
+  test.beforeEach(async ({ page }: { page: Page }) => {
     loginPage = new LoginPage(page);
 
     // Ensure clean state - clear any existing authentication
@@ -52,7 +53,7 @@ describe('Authentication E2E Tests', () => {
    * Cleanup after each test
    * Logs out user to ensure clean state for subsequent tests
    */
-  afterEach(async ({ page }: { page: Page }) => {
+  test.afterEach(async ({ page }: { page: Page }) => {
     // Logout user to prepare for next test
     try {
       await logout(page);
@@ -625,10 +626,17 @@ describe('Authentication E2E Tests', () => {
     // Attempt API call without authentication
     const response = await page.request.get('/api/v1/auth/me');
 
+    // Debug logging
+    console.log('[TEST] Response status:', response.status());
+    console.log('[TEST] Response headers:', response.headers());
+    const text = await response.text();
+    console.log('[TEST] Response body:', text);
+    
+    // Parse response back to JSON
+    const data = JSON.parse(text);
+
     // Verify 401 Unauthorized response
     expect(response.status()).toBe(401);
-
-    const data = await response.json();
     expect(data.success).toBe(false);
     expect(data.error).toBeTruthy();
   });

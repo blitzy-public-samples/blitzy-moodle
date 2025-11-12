@@ -33,7 +33,8 @@ export default defineConfig({
     // Listen on all local IPs (useful for mobile testing)
     host: true,
     // API proxy configuration to forward /api requests to Moodle backend
-    proxy: {
+    // Disabled during E2E tests to allow MSW to intercept requests
+    proxy: process.env.E2E_TEST ? undefined : {
       '/api': {
         target: 'http://localhost',
         changeOrigin: true,

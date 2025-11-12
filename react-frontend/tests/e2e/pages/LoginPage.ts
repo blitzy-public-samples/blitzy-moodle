@@ -64,13 +64,13 @@ export class LoginPage {
     this.page = page;
     
     // Initialize all locators using data-testid attributes for stability
-    this.usernameInput = page.locator('[data-testid="login-username-input"]');
-    this.passwordInput = page.locator('[data-testid="login-password-input"]');
-    this.rememberMeCheckbox = page.locator('[data-testid="login-remember-me-checkbox"]');
-    this.submitButton = page.locator('[data-testid="login-submit-button"]');
-    this.errorMessage = page.locator('[data-testid="login-error-message"]');
-    this.forgotPasswordLink = page.locator('[data-testid="login-forgot-password-link"]');
-    this.ssoButtons = page.locator('[data-testid^="login-sso-button-"]');
+    this.usernameInput = page.locator('[data-testid="username-input"]');
+    this.passwordInput = page.locator('[data-testid="password-input"]');
+    this.rememberMeCheckbox = page.locator('[data-testid="remember-me-checkbox"]');
+    this.submitButton = page.locator('[data-testid="submit-button"]');
+    this.errorMessage = page.locator('[data-testid="error-message"]');
+    this.forgotPasswordLink = page.locator('[data-testid="forgot-password-link"]');
+    this.ssoButtons = page.locator('[data-testid^="sso-button-"]');
   }
 
   /**
