@@ -37,8 +37,8 @@ import type {
   Grade,
   GradeItem,
   Message,
-  Conversation,
 } from '@/types/entities';
+import type { Conversation } from '@/features/messaging/types/message.types';
 import type { Question } from '@/features/activities/quizzes/types/quiz.types';
 import type { Resource } from '@/features/activities/resources/types/resource.types';
 
@@ -138,6 +138,8 @@ export function createMockUser(overrides: Partial<User> = {}): User {
     currentlogin: overrides.currentlogin ?? generateMockDate(0),
     picture: overrides.picture,
     imagealt: overrides.imagealt,
+    profileimageurl: overrides.profileimageurl,
+    profileimageurlsmall: overrides.profileimageurlsmall,
     suspended: overrides.suspended ?? false,
     confirmed: overrides.confirmed ?? true,
     auth: overrides.auth ?? 'manual',
@@ -174,7 +176,10 @@ export function createMockUser(overrides: Partial<User> = {}): User {
  * ```
  */
 export function createMockStudent(overrides: Partial<User> = {}): User {
+  const id = overrides.id ?? generateMockId();
   return createMockUser({
+    id,
+    username: `student${id}`,
     firstname: 'Student',
     lastname: 'User',
     roles: [
@@ -205,7 +210,10 @@ export function createMockStudent(overrides: Partial<User> = {}): User {
  * ```
  */
 export function createMockTeacher(overrides: Partial<User> = {}): User {
+  const id = overrides.id ?? generateMockId();
   return createMockUser({
+    id,
+    username: `teacher${id}`,
     firstname: 'Teacher',
     lastname: 'User',
     roles: [
@@ -236,7 +244,10 @@ export function createMockTeacher(overrides: Partial<User> = {}): User {
  * ```
  */
 export function createMockAdmin(overrides: Partial<User> = {}): User {
+  const id = overrides.id ?? generateMockId();
   return createMockUser({
+    id,
+    username: `admin${id}`,
     firstname: 'Admin',
     lastname: 'User',
     roles: [
@@ -840,21 +851,19 @@ export function createMockConversation(overrides: Partial<Conversation> = {}): C
     id,
     type: overrides.type ?? 1,
     name: overrides.name ?? null,
+    subname: overrides.subname ?? null,
+    imageurl: overrides.imageurl ?? null,
+    membercount: overrides.membercount ?? 2,
+    isfavourite: overrides.isfavourite ?? false,
+    isread: overrides.isread ?? true,
+    unreadcount: overrides.unreadcount ?? 0,
+    ismuted: overrides.ismuted ?? false,
     enabled: overrides.enabled ?? 1,
     timecreated: overrides.timecreated ?? generateMockDate(-14),
     timemodified: overrides.timemodified ?? generateMockDate(-1),
-    component: overrides.component ?? null,
-    itemtype: overrides.itemtype ?? null,
-    itemid: overrides.itemid ?? null,
-    contextid: overrides.contextid ?? null,
     members: overrides.members ?? [],
     messages: overrides.messages ?? [],
-    unreadcount: overrides.unreadcount ?? 0,
-    isfavourite: overrides.isfavourite ?? false,
-    isread: overrides.isread ?? true,
-    ismuted: overrides.ismuted ?? false,
-    subname: overrides.subname ?? null,
-    imageurl: overrides.imageurl ?? null,
+    candeletemessagesforallusers: overrides.candeletemessagesforallusers ?? false,
   };
 }
 
