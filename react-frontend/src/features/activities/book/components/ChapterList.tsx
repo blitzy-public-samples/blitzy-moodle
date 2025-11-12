@@ -23,7 +23,7 @@ import {
   ListItemButton,
   ListItemText,
 } from '@mui/material';
-import type { Chapter, Book, BookNumbering } from '../types/book.types';
+import type { Chapter, Book } from '../types/book.types';
 
 /**
  * Props interface for ChapterList component
@@ -99,7 +99,7 @@ const ChapterList: React.FC<ChapterListProps> = ({
   book,
   onChapterClick,
   canViewHidden,
-  isEditing = false,
+  isEditing: _isEditing = false,
 }) => {
   /**
    * Process chapters to compute display numbers and visibility
@@ -118,7 +118,7 @@ const ChapterList: React.FC<ChapterListProps> = ({
 
     // Build parent lookup map for subchapter numbering logic
     const chapterParentMap: Map<number, Chapter | null> = new Map();
-    chapters.forEach((ch, index) => {
+    chapters.forEach((ch) => {
       if (!ch.subchapter) {
         // Main chapter - it's its own parent reference
         currentParentChapter = ch;
@@ -152,29 +152,32 @@ const ChapterList: React.FC<ChapterListProps> = ({
           }
         } else {
           // Hidden main chapter
+          subchapterNumber = 0; // Reset subchapter counter for hidden main chapters
           if (book.numbering === 1) {
             displayNumber = 'x.';
           }
         }
       } else {
         // Subchapter processing
+        const parentChapter = chapterParentMap.get(ch.id);
+        const isParentHidden = parentChapter && parentChapter.hidden;
+
         if (!isHidden) {
           subchapterNumber++;
 
           if (book.numbering === 1) {
             // BookNumbering.NUMBERS
-            displayNumber = `${chapterNumber}.${subchapterNumber}.`;
+            // Use 'x' as parent number if parent is hidden, otherwise use chapterNumber
+            const parentNumber = isParentHidden ? 'x' : chapterNumber;
+            displayNumber = `${parentNumber}.${subchapterNumber}`;
           }
         } else {
           // Hidden subchapter
           if (book.numbering === 1) {
-            const parentChapter = chapterParentMap.get(ch.id);
-            const isParentHidden = parentChapter && parentChapter.hidden;
-
             if (isParentHidden) {
-              displayNumber = 'x.x.';
+              displayNumber = 'x.x';
             } else {
-              displayNumber = `${chapterNumber}.x.`;
+              displayNumber = `${chapterNumber}.x`;
             }
           }
         }
@@ -216,7 +219,7 @@ const ChapterList: React.FC<ChapterListProps> = ({
    */
   const renderChapter = (
     processedChapter: ProcessedChapter,
-    index: number
+    _index: number
   ): React.ReactNode => {
     const { chapter, displayNumber, isDimmed, level } = processedChapter;
     const isCurrentChapter = chapter.id === currentChapterId;
@@ -247,6 +250,7 @@ const ChapterList: React.FC<ChapterListProps> = ({
         ) : (
           // Other chapters - render as clickable buttons
           <ListItemButton
+            component="button"
             onClick={() => onChapterClick(chapter.id)}
             selected={false}
             sx={{
@@ -280,13 +284,12 @@ const ChapterList: React.FC<ChapterListProps> = ({
    * The structure mirrors the ul/li nesting in book_get_toc()
    */
   const renderChapterHierarchy = (): React.ReactNode => {
-    const elements: React.ReactNode[] = [];
     let currentMainChapterItems: React.ReactNode[] = [];
     let subchapterElements: React.ReactNode[] = [];
     let inSubchapterGroup = false;
 
     processedChapters.forEach((processedChapter, index) => {
-      const { chapter, level } = processedChapter;
+      const { level } = processedChapter;
 
       if (level === 0) {
         // Main chapter
@@ -329,8 +332,9 @@ const ChapterList: React.FC<ChapterListProps> = ({
     return currentMainChapterItems;
   };
 
-  // Empty state handling
-  if (chapters.length === 0) {
+  // Empty state handling - check processedChapters instead of chapters
+  // because chapters may be filtered out based on visibility permissions
+  if (processedChapters.length === 0) {
     return (
       <Box className={getTocClassName()}>
         <List>
