@@ -169,7 +169,10 @@ const handlers = [
     // Return PaginatedResponse<Discussion> structure
     return HttpResponse.json({
       success: true,
-      data: discussions,
+      data: {
+        items: discussions,
+        total: mockDiscussionsData.pagination.total,
+      },
       meta: {
         pagination: {
           ...mockDiscussionsData.pagination,
