@@ -1,339 +1,492 @@
 /**
- * Common API Type Definitions
+ * API Type Definitions for Moodle React Frontend
  *
- * Provides standard interfaces for API requests and responses across all modules.
- * All API endpoints follow a consistent response envelope structure for error handling
- * and data transmission.
+ * TypeScript types for API request and response structures including the standard
+ * API response envelope, pagination metadata, authentication tokens, and request
+ * configuration. Defines the shape of all data exchanged between the React frontend
+ * and Moodle backend API, ensuring type safety for API calls and responses.
  *
- * Based on API response standards defined in Agent Action Plan section 0.2:
- * - Success responses include data payload and optional metadata
- * - Error responses include error code, message, and details
- * - Paginated responses include pagination metadata
+ * Aligns with the API response standard envelope defined in Section 0.3 of the
+ * Agent Action Plan.
  *
- * @package react-frontend
- * @subpackage types
+ * @module types/api
  */
 
+import type {
+  Id,
+  UserId,
+  Timestamp,
+  PaginationParams,
+  PaginationMeta,
+  SortParams,
+  FileSize,
+  MimeType,
+} from './common';
+import type { ErrorResponse } from './errors';
+import type { User } from './entities';
+
 // ============================================================================
-// API RESPONSE ENVELOPES
+// Standard API Response Envelope
 // ============================================================================
 
 /**
- * Standard success response envelope
- * All successful API responses follow this structure
+ * Standard API response metadata
+ *
+ * Contains optional pagination information, timestamps, and additional metadata
+ * returned by API endpoints.
  */
-export interface ApiSuccessResponse<T = unknown> {
-  /** Indicates successful response */
+export interface ApiResponseMeta {
+  /**
+   * Pagination metadata for list responses
+   */
+  pagination?: PaginationMeta;
+
+  /**
+   * Response timestamp (Unix timestamp)
+   */
+  timestamp?: Timestamp;
+
+  /**
+   * Request duration in milliseconds
+   */
+  duration?: number;
+
+  /**
+   * Additional metadata fields
+   */
+  [key: string]: unknown;
+}
+
+/**
+ * Standard API success response envelope (from Section 0.3)
+ *
+ * All successful API responses follow this structure to provide consistency
+ * across all endpoints.
+ *
+ * @template T - Type of the response data payload
+ *
+ * @example
+ * ```typescript
+ * const response: ApiResponse<Course> = {
+ *   success: true,
+ *   data: {
+ *     id: 5,
+ *     fullname: "Introduction to TypeScript",
+ *     // ...
+ *   },
+ *   meta: {
+ *     timestamp: 1705327200
+ *   }
+ * };
+ * ```
+ */
+export interface ApiResponse<T> {
+  /**
+   * Indicates successful response (always true for success responses)
+   */
   success: true;
 
-  /** Response payload data */
+  /**
+   * Response payload data
+   */
   data: T;
 
-  /** Optional metadata (pagination, etc.) */
-  meta?: ResponseMetadata;
+  /**
+   * Optional metadata (pagination, timestamps, etc.)
+   */
+  meta?: ApiResponseMeta;
 }
 
 /**
- * Standard error response envelope
- * All error responses follow this structure
+ * Union type for all API responses (success or error)
+ *
+ * Combines ApiResponse (success) and ErrorResponse (failure) to represent
+ * any possible API response outcome.
+ *
+ * @template T - Type of the success response data payload
+ *
+ * @example
+ * ```typescript
+ * function handleResponse<T>(result: ApiResult<T>) {
+ *   if (result.success) {
+ *     console.log('Data:', result.data);
+ *   } else {
+ *     console.error('Error:', result.error.message);
+ *   }
+ * }
+ * ```
  */
-export interface ApiErrorResponse {
-  /** Indicates error response */
-  success: false;
-
-  /** Error details */
-  error: ApiError;
-}
-
-/**
- * Union type for all API responses
- */
-export type ApiResponse<T = unknown> = ApiSuccessResponse<T> | ApiErrorResponse;
+export type ApiResult<T> = ApiResponse<T> | ErrorResponse;
 
 // ============================================================================
-// ERROR TYPES
-// ============================================================================
-
-/**
- * Standardized API error structure
- */
-export interface ApiError {
-  /** Error code identifier (e.g., "PERMISSION_DENIED", "NOT_FOUND") */
-  code: string;
-
-  /** Human-readable error message */
-  message: string;
-
-  /** Optional additional error details */
-  details?: Record<string, unknown>;
-
-  /** HTTP status code */
-  status?: number;
-
-  /** Stack trace (development only) */
-  stack?: string;
-}
-
-/**
- * Common API error codes
- */
-export enum ApiErrorCode {
-  // Authentication errors
-  UNAUTHORIZED = 'UNAUTHORIZED',
-  TOKEN_EXPIRED = 'TOKEN_EXPIRED',
-  TOKEN_INVALID = 'TOKEN_INVALID',
-
-  // Authorization errors
-  PERMISSION_DENIED = 'PERMISSION_DENIED',
-  FORBIDDEN = 'FORBIDDEN',
-
-  // Resource errors
-  NOT_FOUND = 'NOT_FOUND',
-  ALREADY_EXISTS = 'ALREADY_EXISTS',
-  CONFLICT = 'CONFLICT',
-
-  // Validation errors
-  VALIDATION_ERROR = 'VALIDATION_ERROR',
-  INVALID_INPUT = 'INVALID_INPUT',
-  MISSING_PARAMETER = 'MISSING_PARAMETER',
-
-  // Server errors
-  INTERNAL_ERROR = 'INTERNAL_ERROR',
-  SERVICE_UNAVAILABLE = 'SERVICE_UNAVAILABLE',
-  TIMEOUT = 'TIMEOUT',
-
-  // Rate limiting
-  RATE_LIMIT_EXCEEDED = 'RATE_LIMIT_EXCEEDED',
-
-  // Business logic errors
-  BUSINESS_RULE_VIOLATION = 'BUSINESS_RULE_VIOLATION',
-  OPERATION_NOT_ALLOWED = 'OPERATION_NOT_ALLOWED',
-}
-
-// ============================================================================
-// PAGINATION TYPES
+// Authentication Token Types (JWT Implementation from Section 0.1)
 // ============================================================================
 
 /**
- * Pagination metadata for list responses
+ * JWT token pair returned upon successful authentication
+ *
+ * Contains access token (1-hour expiration) and refresh token (7-day expiration)
+ * as specified in Section 0.1 of the Agent Action Plan.
  */
-export interface PaginationMetadata {
-  /** Current page number (1-based) */
-  page: number;
+export interface JwtTokens {
+  /**
+   * JWT access token with 1-hour expiration
+   *
+   * Used for authenticating API requests via Authorization header.
+   */
+  accessToken: string;
 
-  /** Number of items per page */
-  perPage: number;
+  /**
+   * JWT refresh token with 7-day expiration
+   *
+   * Used to obtain new access token when current token expires.
+   */
+  refreshToken: string;
 
-  /** Total number of items across all pages */
-  total: number;
+  /**
+   * Access token expiration duration in seconds (typically 3600 for 1 hour)
+   */
+  expiresIn: number;
 
-  /** Total number of pages */
-  totalPages: number;
-
-  /** Whether there is a next page */
-  hasNext?: boolean;
-
-  /** Whether there is a previous page */
-  hasPrevious?: boolean;
+  /**
+   * Token type (always 'Bearer' for JWT)
+   */
+  tokenType: 'Bearer';
 }
 
 /**
- * Response metadata (pagination, sorting, filtering, etc.)
+ * Decoded JWT token payload
+ *
+ * Structure of claims contained within a JWT token after decoding.
+ * Used for client-side token validation and extracting user information.
  */
-export interface ResponseMetadata {
-  /** Pagination information */
-  pagination?: PaginationMetadata;
+export interface DecodedJwt {
+  /**
+   * Subject - user ID
+   */
+  sub: UserId;
 
-  /** Sorting information */
-  sort?: SortMetadata;
+  /**
+   * Issuer - Moodle site URL
+   */
+  iss: string;
 
-  /** Applied filters */
-  filters?: Record<string, unknown>;
+  /**
+   * Issued at timestamp (Unix timestamp)
+   */
+  iat: Timestamp;
 
-  /** Timestamp when response was generated */
-  timestamp?: number;
+  /**
+   * Expiration timestamp (Unix timestamp)
+   */
+  exp: Timestamp;
+
+  /**
+   * User role identifiers (e.g., ['student', 'teacher'])
+   */
+  roles: string[];
+
+  /**
+   * Additional custom claims
+   */
+  [key: string]: unknown;
 }
 
 /**
- * Sorting metadata
+ * Login response containing tokens and user information
+ *
+ * Returned by the /api/v1/auth/login endpoint after successful authentication.
  */
-export interface SortMetadata {
-  /** Field being sorted */
-  field: string;
+export interface LoginResponse {
+  /**
+   * JWT token pair (access and refresh tokens)
+   */
+  tokens: JwtTokens;
 
-  /** Sort direction */
-  order: 'asc' | 'desc';
-}
-
-/**
- * Paginated response with data array
- */
-export interface PaginatedResponse<T = unknown> {
-  /** Indicates successful response */
-  success: true;
-
-  /** Array of items for current page */
-  data: T[];
-
-  /** Pagination and other metadata */
-  meta: ResponseMetadata & {
-    pagination: PaginationMetadata;
-  };
+  /**
+   * Authenticated user profile information
+   */
+  user: User;
 }
 
 // ============================================================================
-// REQUEST TYPES
+// List and Pagination Request Parameters
 // ============================================================================
 
 /**
- * Common pagination request parameters
+ * Parameters for list/collection API requests
+ *
+ * Supports pagination, sorting, filtering, and search across list endpoints.
+ *
+ * @template T - Type of the entity being listed (for type-safe sorting)
+ *
+ * @example
+ * ```typescript
+ * const params: ListParams<Course> = {
+ *   pagination: { page: 1, perPage: 20 },
+ *   sort: { field: 'fullname', order: 'asc' },
+ *   filter: { category: 5 },
+ *   search: 'introduction'
+ * };
+ * ```
  */
-export interface PaginationParams {
-  /** Page number (1-based) */
-  page?: number;
+export interface ListParams<T> {
+  /**
+   * Pagination parameters (page number and items per page)
+   */
+  pagination?: PaginationParams;
 
-  /** Number of items per page */
-  perPage?: number;
+  /**
+   * Sorting parameters (field and order)
+   */
+  sort?: SortParams<T>;
 
-  /** Alternative parameter name for page size */
-  limit?: number;
+  /**
+   * Filter parameters (field-value pairs)
+   */
+  filter?: Record<string, unknown>;
 
-  /** Offset for cursor-based pagination */
-  offset?: number;
-}
-
-/**
- * Common sorting request parameters
- */
-export interface SortParams {
-  /** Field to sort by */
-  sortBy?: string;
-
-  /** Sort direction */
-  sortOrder?: 'asc' | 'desc';
-}
-
-/**
- * Common filtering request parameters
- */
-export interface FilterParams {
-  /** Search query string */
+  /**
+   * Search query string
+   */
   search?: string;
-
-  /** Additional filters as key-value pairs */
-  filters?: Record<string, unknown>;
-}
-
-/**
- * Combined list request parameters
- */
-export interface ListRequestParams extends PaginationParams, SortParams, FilterParams {
-  /** Include soft-deleted items */
-  includeDeleted?: boolean;
-
-  /** Include related entities */
-  include?: string[];
 }
 
 // ============================================================================
-// HTTP METHOD TYPES
+// Request Configuration
 // ============================================================================
 
 /**
- * Supported HTTP methods
- */
-export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
-
-/**
- * HTTP headers type
- */
-export type HttpHeaders = Record<string, string>;
-
-/**
- * API request configuration
+ * API request configuration options
+ *
+ * Additional options that can be passed to API client methods for
+ * customizing request behavior.
  */
 export interface ApiRequestConfig {
-  /** Request method */
-  method: HttpMethod;
+  /**
+   * Custom HTTP headers
+   */
+  headers?: Record<string, string>;
 
-  /** Request URL (relative or absolute) */
-  url: string;
+  /**
+   * URL query parameters
+   */
+  params?: Record<string, string | number | boolean>;
 
-  /** Request headers */
-  headers?: HttpHeaders;
-
-  /** Request body data */
-  data?: unknown;
-
-  /** URL query parameters */
-  params?: Record<string, unknown>;
-
-  /** Request timeout in milliseconds */
+  /**
+   * Request timeout in milliseconds
+   */
   timeout?: number;
 
-  /** Whether to include credentials (cookies) */
+  /**
+   * AbortSignal for request cancellation
+   */
+  signal?: AbortSignal;
+
+  /**
+   * Include credentials (cookies) in cross-origin requests
+   */
   withCredentials?: boolean;
 }
 
 // ============================================================================
-// VALIDATION TYPES
+// Batch Operation Types
 // ============================================================================
 
 /**
- * Field validation error
+ * Batch request for performing multiple operations
+ *
+ * Allows executing multiple API operations in a single request,
+ * optionally in sequential or parallel execution mode.
+ *
+ * @template T - Type of the operation data
+ *
+ * @example
+ * ```typescript
+ * const batchRequest: BatchRequest<EnrollmentData> = {
+ *   operations: [
+ *     { userId: 1, courseId: 5 },
+ *     { userId: 2, courseId: 5 },
+ *     { userId: 3, courseId: 5 }
+ *   ],
+ *   sequential: false
+ * };
+ * ```
  */
-export interface FieldError {
-  /** Field name */
-  field: string;
+export interface BatchRequest<T> {
+  /**
+   * Array of operations to perform
+   */
+  operations: T[];
 
-  /** Error message */
-  message: string;
-
-  /** Validation rule that failed */
-  rule?: string;
-
-  /** Additional context */
-  context?: Record<string, unknown>;
+  /**
+   * Execute operations sequentially (true) vs parallel (false)
+   * Default: false (parallel execution)
+   */
+  sequential?: boolean;
 }
 
 /**
- * Validation error response
+ * Batch response containing results of multiple operations
+ *
+ * Returns individual results for each operation along with success/failure counts.
+ *
+ * @template T - Type of the individual operation result data
  */
-export interface ValidationErrorResponse extends ApiErrorResponse {
-  error: ApiError & {
-    code: 'VALIDATION_ERROR';
-    details: {
-      /** Array of field-specific errors */
-      fields: FieldError[];
-    };
-  };
+export interface BatchResponse<T> {
+  /**
+   * Array of results for each operation (success or error)
+   */
+  results: Array<ApiResult<T>>;
+
+  /**
+   * Number of successful operations
+   */
+  successCount: number;
+
+  /**
+   * Number of failed operations
+   */
+  failureCount: number;
 }
 
 // ============================================================================
-// UTILITY TYPES
+// File Upload Types
 // ============================================================================
 
 /**
- * Extract data type from ApiResponse
+ * File upload response
+ *
+ * Returned by file upload endpoints after successful file upload and processing.
+ * Contains file metadata and access URLs.
  */
-export type ExtractData<T> = T extends ApiResponse<infer D> ? D : never;
+export interface FileUploadResponse {
+  /**
+   * Unique file identifier
+   */
+  fileId: Id;
+
+  /**
+   * Original filename
+   */
+  filename: string;
+
+  /**
+   * File size in bytes
+   */
+  size: FileSize;
+
+  /**
+   * MIME type (e.g., 'application/pdf', 'image/jpeg')
+   */
+  mimeType: MimeType;
+
+  /**
+   * Download URL for the file
+   */
+  url: string;
+
+  /**
+   * Thumbnail URL (optional, for images)
+   */
+  thumbnailUrl?: string;
+}
+
+// ============================================================================
+// Search Types
+// ============================================================================
 
 /**
- * Extract data type from PaginatedResponse
+ * Search request parameters
+ *
+ * Parameters for performing search operations across entities.
  */
-export type ExtractPaginatedData<T> = T extends PaginatedResponse<infer D> ? D : never;
+export interface SearchParams {
+  /**
+   * Search query string
+   */
+  query: string;
+
+  /**
+   * Fields to search in (optional, server determines default fields)
+   */
+  fields?: string[];
+
+  /**
+   * Maximum number of results to return
+   */
+  limit?: number;
+
+  /**
+   * Result offset for pagination
+   */
+  offset?: number;
+}
 
 /**
- * Make all API response properties optional (for partial updates)
+ * Search result response
+ *
+ * Generic search result structure containing matched items and metadata.
+ *
+ * @template T - Type of the search result items
  */
-export type PartialApiResponse<T> = Partial<T>;
+export interface SearchResult<T> {
+  /**
+   * Array of matching items
+   */
+  items: T[];
+
+  /**
+   * Total number of matching items (before limit/offset)
+   */
+  total: number;
+
+  /**
+   * Original search query
+   */
+  query: string;
+}
+
+// ============================================================================
+// API Endpoint Path Types
+// ============================================================================
 
 /**
- * API endpoint path type
+ * Base type for API endpoint paths
  */
 export type ApiEndpoint = string;
 
 /**
- * API version type
+ * Authentication endpoint paths
+ *
+ * Type-safe literal union for authentication-related API endpoints.
  */
-export type ApiVersion = 'v1' | 'v2';
+export type AuthEndpoints =
+  | '/auth/login'
+  | '/auth/logout'
+  | '/auth/refresh'
+  | '/auth/me';
+
+/**
+ * Course endpoint paths
+ *
+ * Type-safe literal union for course-related API endpoints.
+ */
+export type CourseEndpoints =
+  | '/courses'
+  | '/courses/:id'
+  | '/courses/:id/enroll'
+  | '/courses/:id/unenroll'
+  | '/courses/:id/contents'
+  | '/courses/:id/users';
+
+// ============================================================================
+// HTTP Method Types
+// ============================================================================
+
+/**
+ * HTTP request method types
+ *
+ * Standard HTTP methods used in API requests.
+ */
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
