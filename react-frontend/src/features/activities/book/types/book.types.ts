@@ -268,6 +268,14 @@ export interface Chapter {
    * Empty array or undefined for subchapters
    */
   subchapters?: Id[];
+
+  /**
+   * Tags associated with this chapter
+   * Computed property: populated from core_tag_tag::get_item_tags()
+   * Array of tag objects with id, name, and displayname properties
+   * Rendered as MUI Chip components in the chapter view
+   */
+  tags?: Tag[];
 }
 
 /**
@@ -296,6 +304,38 @@ export interface ChapterNavigation {
    * null for main chapters
    */
   parent: Id | null;
+}
+
+/**
+ * Tag entity for chapter content
+ *
+ * Represents a tag associated with a book chapter, retrieved from
+ * Moodle's core tagging system via core_tag_tag::get_item_tags().
+ * Tags enable categorization and discovery of learning content.
+ *
+ * @interface Tag
+ */
+export interface Tag {
+  /**
+   * Unique tag identifier
+   * Database: mdl_tag.id (int 10, primary key)
+   */
+  id: Id;
+
+  /**
+   * Tag name (normalized, lowercase)
+   * Database: mdl_tag.name (char 255)
+   * Used as the canonical tag identifier
+   */
+  name: string;
+
+  /**
+   * Display name for the tag
+   * Database: mdl_tag.rawname (char 255)
+   * Preserves original capitalization and formatting
+   * Shown to users in the UI
+   */
+  displayname: string;
 }
 
 /**

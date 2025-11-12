@@ -17,7 +17,7 @@
 
 import React, { useMemo } from 'react';
 import { Box, Typography, Chip } from '@mui/material';
-import DOMPurify from 'isomorphic-dompurify';
+import DOMPurify from 'dompurify';
 import type { Chapter } from '../types/book.types';
 
 // ============================================================================

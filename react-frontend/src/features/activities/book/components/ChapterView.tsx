@@ -19,64 +19,7 @@ import { Box, Paper, useTheme, useMediaQuery } from '@mui/material';
 import ChapterContent from './ChapterContent';
 import ChapterNavigation from './ChapterNavigation';
 import ChapterActionMenu from './ChapterActionMenu';
-
-/**
- * Chapter interface representing a book chapter
- */
-export interface Chapter {
-  /** Unique chapter identifier */
-  id: number;
-  /** Book identifier this chapter belongs to */
-  bookid: number;
-  /** Page number/sequence */
-  pagenum: number;
-  /** Whether this is a subchapter */
-  subchapter: boolean;
-  /** Chapter title */
-  title: string;
-  /** Chapter HTML content */
-  content: string;
-  /** Content format (HTML, Markdown, etc.) */
-  contentformat: number;
-  /** Whether chapter is hidden from students */
-  hidden: boolean;
-  /** Timestamp when created */
-  timecreated: number;
-  /** Timestamp when last modified */
-  timemodified: number;
-  /** Import reference (for imported books) */
-  importsrc: string;
-  /** Parent chapter ID if this is a subchapter */
-  parent?: number;
-  /** Tags associated with this chapter */
-  tags?: string[];
-}
-
-/**
- * Book interface representing a book activity
- */
-export interface Book {
-  /** Unique book identifier */
-  id: number;
-  /** Course this book belongs to */
-  course: number;
-  /** Book name/title */
-  name: string;
-  /** Book introduction/description */
-  intro: string;
-  /** Introduction format */
-  introformat: number;
-  /** Numbering style (0=none, 1=numbers, 2=bullets, 3=indented) */
-  numbering: number;
-  /** Whether to use custom titles */
-  customtitles: boolean;
-  /** Revision number */
-  revision: number;
-  /** Timestamp when created */
-  timecreated: number;
-  /** Timestamp when last modified */
-  timemodified: number;
-}
+import type { Chapter, Book } from '../types/book.types';
 
 /**
  * Props for ChapterView component
@@ -199,7 +142,7 @@ function ChapterView({
               chapterId={chapter.id}
               bookId={book.id}
               canEdit={canEdit}
-              isHidden={chapter.hidden}
+              isHidden={Boolean(chapter.hidden)}
               onDelete={handleDelete}
               onToggleVisibility={handleToggleVisibility}
               onMove={handleMove}
@@ -218,9 +161,9 @@ function ChapterView({
         >
           <ChapterContent
             chapter={chapter}
-            book={book}
-            canViewHidden={canViewHidden}
-            shouldDimContent={shouldDimContent}
+            customTitles={Boolean(book.customtitles)}
+            chapters={_allChapters}
+            tags={chapter.tags}
           />
         </Box>
 
