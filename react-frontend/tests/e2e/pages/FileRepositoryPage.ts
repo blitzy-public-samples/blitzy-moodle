@@ -134,7 +134,7 @@ export class FileRepositoryPage {
    * @returns Array of file information objects
    */
   async getFiles(): Promise<FileInfo[]> {
-    await this.fileList.waitFor({ state: 'visible' });
+    await this.fileList.waitFor({ state: 'visible', timeout: 2000 });
     
     const fileElements = await this.fileList.locator('[data-file-item]').all();
     const files: FileInfo[] = [];
@@ -177,8 +177,8 @@ export class FileRepositoryPage {
     // Start waiting for the file chooser before clicking
     const fileChooserPromise = this.page.waitForEvent('filechooser', { timeout });
     
-    // Click upload button
-    await this.uploadButton.click();
+    // Click upload button with short timeout
+    await this.uploadButton.click({ timeout: 2000 });
     
     // Wait for file chooser and set files
     const fileChooser = await fileChooserPromise;
@@ -238,8 +238,8 @@ export class FileRepositoryPage {
     // Start waiting for the file chooser before clicking
     const fileChooserPromise = this.page.waitForEvent('filechooser', { timeout });
     
-    // Click upload button
-    await this.uploadButton.click();
+    // Click upload button with short timeout
+    await this.uploadButton.click({ timeout: 2000 });
     
     // Wait for file chooser and set multiple files
     const fileChooser = await fileChooserPromise;
@@ -257,18 +257,18 @@ export class FileRepositoryPage {
   async downloadFile(fileId: string): Promise<void> {
     // Locate the file and click its download button
     const fileItem = this.fileList.locator(`[data-file-id="${fileId}"]`);
-    await fileItem.waitFor({ state: 'visible' });
+    await fileItem.waitFor({ state: 'visible', timeout: 2000 });
     
-    // Open file actions menu
+    // Open file actions menu with short timeout
     const actionsButton = fileItem.getByRole('button', { name: /actions|more/i });
-    await actionsButton.click();
+    await actionsButton.click({ timeout: 2000 });
     
-    // Click download button in the menu
+    // Click download button in the menu with short timeout
     const downloadLink = this.fileActionsMenu.getByRole('menuitem', { name: /download/i });
     
     // Start waiting for download before clicking
     const downloadPromise = this.page.waitForEvent('download');
-    await downloadLink.click();
+    await downloadLink.click({ timeout: 2000 });
     
     // Wait for download to start
     await downloadPromise;
@@ -280,14 +280,14 @@ export class FileRepositoryPage {
    */
   async previewFile(fileId: string): Promise<void> {
     const fileItem = this.fileList.locator(`[data-file-id="${fileId}"]`);
-    await fileItem.waitFor({ state: 'visible' });
+    await fileItem.waitFor({ state: 'visible', timeout: 2000 });
     
     // Click on the file thumbnail or name to open preview
     const previewTrigger = fileItem.locator('[data-preview-trigger]').first();
-    await previewTrigger.click();
+    await previewTrigger.click({ timeout: 2000 });
     
     // Wait for preview modal to appear
-    await this.filePreviewModal.waitFor({ state: 'visible' });
+    await this.filePreviewModal.waitFor({ state: 'visible', timeout: 2000 });
   }
 
   /**
@@ -295,16 +295,16 @@ export class FileRepositoryPage {
    * @param folderName - Name of the folder to create
    */
   async createFolder(folderName: string): Promise<void> {
-    await this.createFolderButton.click();
-    await this.folderNameInput.waitFor({ state: 'visible' });
-    await this.folderNameInput.fill(folderName);
+    await this.createFolderButton.click({ timeout: 2000 });
+    await this.folderNameInput.waitFor({ state: 'visible', timeout: 2000 });
+    await this.folderNameInput.fill(folderName, { timeout: 2000 });
     
     // Submit the form (press Enter or click OK button)
     const submitButton = this.page.getByRole('button', { name: /create|ok|confirm/i });
-    await submitButton.click();
+    await submitButton.click({ timeout: 2000 });
     
     // Wait for folder to appear in the list
-    await this.page.waitForSelector(`[data-file-name="${folderName}"][data-is-folder="true"]`);
+    await this.page.waitForSelector(`[data-file-name="${folderName}"][data-is-folder="true"]`, { timeout: 2000 });
   }
 
   /**
@@ -319,11 +319,11 @@ export class FileRepositoryPage {
       const folderItem = this.fileList.locator(
         `[data-file-name="${segment}"][data-is-folder="true"]`
       );
-      await folderItem.waitFor({ state: 'visible' });
-      await folderItem.dblclick();
+      await folderItem.waitFor({ state: 'visible', timeout: 2000 });
+      await folderItem.dblclick({ timeout: 2000 });
       
       // Wait for navigation to complete
-      await this.page.waitForLoadState('networkidle');
+      await this.page.waitForLoadState('networkidle', { timeout: 2000 });
     }
   }
 
@@ -334,27 +334,27 @@ export class FileRepositoryPage {
    */
   async renameFile(fileId: string, newName: string): Promise<void> {
     const fileItem = this.fileList.locator(`[data-file-id="${fileId}"]`);
-    await fileItem.waitFor({ state: 'visible' });
+    await fileItem.waitFor({ state: 'visible', timeout: 2000 });
     
-    // Open file actions menu
+    // Open file actions menu with short timeout
     const actionsButton = fileItem.getByRole('button', { name: /actions|more/i });
-    await actionsButton.click();
+    await actionsButton.click({ timeout: 2000 });
     
-    // Click rename option
+    // Click rename option with short timeout
     const renameMenuItem = this.fileActionsMenu.getByRole('menuitem', { name: /rename/i });
-    await renameMenuItem.click();
+    await renameMenuItem.click({ timeout: 2000 });
     
     // Wait for rename input and enter new name
-    await this.renameInput.waitFor({ state: 'visible' });
+    await this.renameInput.waitFor({ state: 'visible', timeout: 2000 });
     await this.renameInput.clear();
-    await this.renameInput.fill(newName);
+    await this.renameInput.fill(newName, { timeout: 2000 });
     
     // Submit rename
     const confirmButton = this.page.getByRole('button', { name: /save|confirm|ok/i });
-    await confirmButton.click();
+    await confirmButton.click({ timeout: 2000 });
     
     // Wait for the file list to update
-    await this.page.waitForSelector(`[data-file-name="${newName}"]`);
+    await this.page.waitForSelector(`[data-file-name="${newName}"]`, { timeout: 2000 });
   }
 
   /**
@@ -363,23 +363,23 @@ export class FileRepositoryPage {
    */
   async deleteFile(fileId: string): Promise<void> {
     const fileItem = this.fileList.locator(`[data-file-id="${fileId}"]`);
-    await fileItem.waitFor({ state: 'visible' });
+    await fileItem.waitFor({ state: 'visible', timeout: 2000 });
     
-    // Open file actions menu
+    // Open file actions menu with short timeout
     const actionsButton = fileItem.getByRole('button', { name: /actions|more/i });
-    await actionsButton.click();
+    await actionsButton.click({ timeout: 2000 });
     
-    // Click delete option
+    // Click delete option with short timeout
     const deleteMenuItem = this.fileActionsMenu.getByRole('menuitem', { name: /delete/i });
-    await deleteMenuItem.click();
+    await deleteMenuItem.click({ timeout: 2000 });
     
     // Wait for confirmation modal and confirm
-    await this.confirmDeleteModal.waitFor({ state: 'visible' });
+    await this.confirmDeleteModal.waitFor({ state: 'visible', timeout: 2000 });
     const confirmDeleteButton = this.confirmDeleteModal.getByRole('button', { name: /delete|confirm/i });
-    await confirmDeleteButton.click();
+    await confirmDeleteButton.click({ timeout: 2000 });
     
     // Wait for file to be removed from list
-    await this.page.waitForSelector(`[data-file-id="${fileId}"]`, { state: 'detached' });
+    await this.page.waitForSelector(`[data-file-id="${fileId}"]`, { state: 'detached', timeout: 2000 });
   }
 
   /**
@@ -389,29 +389,29 @@ export class FileRepositoryPage {
    */
   async moveFile(fileId: string, targetFolderId: string): Promise<void> {
     const fileItem = this.fileList.locator(`[data-file-id="${fileId}"]`);
-    await fileItem.waitFor({ state: 'visible' });
+    await fileItem.waitFor({ state: 'visible', timeout: 2000 });
     
-    // Open file actions menu
+    // Open file actions menu with short timeout
     const actionsButton = fileItem.getByRole('button', { name: /actions|more/i });
-    await actionsButton.click();
+    await actionsButton.click({ timeout: 2000 });
     
-    // Click move option
+    // Click move option with short timeout
     const moveMenuItem = this.fileActionsMenu.getByRole('menuitem', { name: /move/i });
-    await moveMenuItem.click();
+    await moveMenuItem.click({ timeout: 2000 });
     
     // Wait for move destination selector
-    await this.moveDestinationSelector.waitFor({ state: 'visible' });
+    await this.moveDestinationSelector.waitFor({ state: 'visible', timeout: 2000 });
     
     // Select target folder
     const targetFolder = this.moveDestinationSelector.locator(`[data-folder-id="${targetFolderId}"]`);
-    await targetFolder.click();
+    await targetFolder.click({ timeout: 2000 });
     
     // Confirm move
     const confirmMoveButton = this.page.getByRole('button', { name: /move|confirm/i });
-    await confirmMoveButton.click();
+    await confirmMoveButton.click({ timeout: 2000 });
     
     // Wait for file to be removed from current view
-    await this.page.waitForSelector(`[data-file-id="${fileId}"]`, { state: 'detached' });
+    await this.page.waitForSelector(`[data-file-id="${fileId}"]`, { state: 'detached', timeout: 2000 });
   }
 
   /**
@@ -421,18 +421,18 @@ export class FileRepositoryPage {
    */
   async getFilePermissions(fileId: string): Promise<FilePermissions> {
     const fileItem = this.fileList.locator(`[data-file-id="${fileId}"]`);
-    await fileItem.waitFor({ state: 'visible' });
+    await fileItem.waitFor({ state: 'visible', timeout: 2000 });
     
-    // Open file actions menu
+    // Open file actions menu with short timeout (fail fast if not implemented)
     const actionsButton = fileItem.getByRole('button', { name: /actions|more/i });
-    await actionsButton.click();
+    await actionsButton.click({ timeout: 2000 });
     
-    // Click permissions option
+    // Click permissions option with short timeout
     const permissionsMenuItem = this.fileActionsMenu.getByRole('menuitem', { name: /permissions|sharing/i });
-    await permissionsMenuItem.click();
+    await permissionsMenuItem.click({ timeout: 2000 });
     
-    // Wait for permissions modal
-    await this.permissionsModal.waitFor({ state: 'visible' });
+    // Wait for permissions modal with short timeout
+    await this.permissionsModal.waitFor({ state: 'visible', timeout: 2000 });
     
     // Extract permissions data
     const canRead = await this.permissionsModal.locator('[data-permission="read"]').isChecked();
@@ -449,7 +449,7 @@ export class FileRepositoryPage {
     
     // Close modal
     const closeButton = this.permissionsModal.getByRole('button', { name: /close|cancel/i });
-    await closeButton.click();
+    await closeButton.click({ timeout: 2000 });
     
     return {
       canRead,
@@ -468,39 +468,39 @@ export class FileRepositoryPage {
    */
   async setFilePermissions(fileId: string, permissions: Partial<FilePermissions>): Promise<void> {
     const fileItem = this.fileList.locator(`[data-file-id="${fileId}"]`);
-    await fileItem.waitFor({ state: 'visible' });
+    await fileItem.waitFor({ state: 'visible', timeout: 2000 });
     
-    // Open file actions menu
+    // Open file actions menu with short timeout
     const actionsButton = fileItem.getByRole('button', { name: /actions|more/i });
-    await actionsButton.click();
+    await actionsButton.click({ timeout: 2000 });
     
-    // Click permissions option
+    // Click permissions option with short timeout
     const permissionsMenuItem = this.fileActionsMenu.getByRole('menuitem', { name: /permissions|sharing/i });
-    await permissionsMenuItem.click();
+    await permissionsMenuItem.click({ timeout: 2000 });
     
     // Wait for permissions modal
-    await this.permissionsModal.waitFor({ state: 'visible' });
+    await this.permissionsModal.waitFor({ state: 'visible', timeout: 2000 });
     
     // Set permissions checkboxes if provided
     if (permissions.canRead !== undefined) {
-      await this.permissionsModal.locator('[data-permission="read"]').setChecked(permissions.canRead);
+      await this.permissionsModal.locator('[data-permission="read"]').setChecked(permissions.canRead, { timeout: 2000 });
     }
     if (permissions.canWrite !== undefined) {
-      await this.permissionsModal.locator('[data-permission="write"]').setChecked(permissions.canWrite);
+      await this.permissionsModal.locator('[data-permission="write"]').setChecked(permissions.canWrite, { timeout: 2000 });
     }
     if (permissions.canDelete !== undefined) {
-      await this.permissionsModal.locator('[data-permission="delete"]').setChecked(permissions.canDelete);
+      await this.permissionsModal.locator('[data-permission="delete"]').setChecked(permissions.canDelete, { timeout: 2000 });
     }
     if (permissions.canShare !== undefined) {
-      await this.permissionsModal.locator('[data-permission="share"]').setChecked(permissions.canShare);
+      await this.permissionsModal.locator('[data-permission="share"]').setChecked(permissions.canShare, { timeout: 2000 });
     }
     
     // Save permissions
     const saveButton = this.permissionsModal.getByRole('button', { name: /save|apply|ok/i });
-    await saveButton.click();
+    await saveButton.click({ timeout: 2000 });
     
     // Wait for modal to close
-    await this.permissionsModal.waitFor({ state: 'hidden' });
+    await this.permissionsModal.waitFor({ state: 'hidden', timeout: 2000 });
   }
 
   /**
@@ -555,7 +555,7 @@ export class FileRepositoryPage {
    */
   async getFileInfo(fileId: string): Promise<FileInfo> {
     const fileItem = this.fileList.locator(`[data-file-id="${fileId}"]`);
-    await fileItem.waitFor({ state: 'visible' });
+    await fileItem.waitFor({ state: 'visible', timeout: 2000 });
     
     const id = fileId;
     const name = await fileItem.getAttribute('data-file-name') || '';
@@ -595,15 +595,15 @@ export class FileRepositoryPage {
    * @param sortBy - Sort criteria (name, date, size, type)
    */
   async sortFiles(sortBy: SortOption): Promise<void> {
-    await this.sortDropdown.waitFor({ state: 'visible' });
-    await this.sortDropdown.click();
+    await this.sortDropdown.waitFor({ state: 'visible', timeout: 2000 });
+    await this.sortDropdown.click({ timeout: 2000 });
     
     // Select sort option from dropdown
     const sortOption = this.page.getByRole('option', { name: new RegExp(sortBy, 'i') });
-    await sortOption.click();
+    await sortOption.click({ timeout: 2000 });
     
     // Wait for list to re-render
-    await this.page.waitForLoadState('networkidle');
+    await this.page.waitForLoadState('networkidle', { timeout: 2000 });
   }
 
   /**
@@ -611,15 +611,15 @@ export class FileRepositoryPage {
    * @param query - Search query string
    */
   async searchFiles(query: string): Promise<void> {
-    await this.searchInput.waitFor({ state: 'visible' });
+    await this.searchInput.waitFor({ state: 'visible', timeout: 2000 });
     await this.searchInput.clear();
-    await this.searchInput.fill(query);
+    await this.searchInput.fill(query, { timeout: 2000 });
     
     // Wait for search to execute (either on Enter or auto-search)
     await this.searchInput.press('Enter');
     
     // Wait for search results to load
-    await this.page.waitForLoadState('networkidle');
+    await this.page.waitForLoadState('networkidle', { timeout: 2000 });
   }
 
   /**
@@ -627,7 +627,7 @@ export class FileRepositoryPage {
    * @returns Current folder path
    */
   async getCurrentPath(): Promise<string> {
-    await this.breadcrumbs.waitFor({ state: 'visible' });
+    await this.breadcrumbs.waitFor({ state: 'visible', timeout: 2000 });
     const breadcrumbItems = await this.breadcrumbs.locator('[data-breadcrumb-item]').all();
     
     const pathSegments = await Promise.all(
@@ -654,11 +654,11 @@ export class FileRepositoryPage {
    * Cancel an ongoing upload
    */
   async cancelUpload(): Promise<void> {
-    await this.uploadProgress.waitFor({ state: 'visible' });
-    await this.uploadCancelButton.click();
+    await this.uploadProgress.waitFor({ state: 'visible', timeout: 2000 });
+    await this.uploadCancelButton.click({ timeout: 2000 });
     
     // Wait for progress to disappear
-    await this.uploadProgress.waitFor({ state: 'hidden' });
+    await this.uploadProgress.waitFor({ state: 'hidden', timeout: 2000 });
   }
 
   /**
@@ -666,7 +666,7 @@ export class FileRepositoryPage {
    * @returns Progress percentage (0-100)
    */
   async getUploadProgress(): Promise<number> {
-    await this.uploadProgressBar.waitFor({ state: 'visible' });
+    await this.uploadProgressBar.waitFor({ state: 'visible', timeout: 2000 });
     const ariaValueNow = await this.uploadProgressBar.getAttribute('aria-valuenow');
     return parseInt(ariaValueNow || '0', 10);
   }
@@ -676,8 +676,8 @@ export class FileRepositoryPage {
    */
   async navigateUp(): Promise<void> {
     const upButton = this.folderNavigation.getByRole('button', { name: /up|parent|back/i });
-    await upButton.click();
-    await this.page.waitForLoadState('networkidle');
+    await upButton.click({ timeout: 2000 });
+    await this.page.waitForLoadState('networkidle', { timeout: 2000 });
   }
 
   /**
@@ -688,7 +688,7 @@ export class FileRepositoryPage {
     for (const fileId of fileIds) {
       const fileItem = this.fileList.locator(`[data-file-id="${fileId}"]`);
       const checkbox = fileItem.locator('input[type="checkbox"]');
-      await checkbox.check();
+      await checkbox.check({ timeout: 2000 });
     }
   }
 
@@ -699,18 +699,18 @@ export class FileRepositoryPage {
   async deleteMultipleFiles(fileIds: string[]): Promise<void> {
     await this.selectMultipleFiles(fileIds);
     
-    // Click bulk delete button
+    // Click bulk delete button with short timeout
     const bulkDeleteButton = this.page.getByRole('button', { name: /delete selected/i });
-    await bulkDeleteButton.click();
+    await bulkDeleteButton.click({ timeout: 2000 });
     
     // Confirm deletion
-    await this.confirmDeleteModal.waitFor({ state: 'visible' });
+    await this.confirmDeleteModal.waitFor({ state: 'visible', timeout: 2000 });
     const confirmButton = this.confirmDeleteModal.getByRole('button', { name: /delete|confirm/i });
-    await confirmButton.click();
+    await confirmButton.click({ timeout: 2000 });
     
     // Wait for files to be removed
     for (const fileId of fileIds) {
-      await this.page.waitForSelector(`[data-file-id="${fileId}"]`, { state: 'detached' });
+      await this.page.waitForSelector(`[data-file-id="${fileId}"]`, { state: 'detached', timeout: 2000 });
     }
   }
 }

@@ -80,10 +80,10 @@ export type UserRole = 'student' | 'teacher' | 'admin' | 'guest';
 const LOGIN_PAGE_URL = '/login';
 
 /** LocalStorage key for access token */
-const ACCESS_TOKEN_KEY = 'auth_token';
+const ACCESS_TOKEN_KEY = 'accessToken';
 
 /** LocalStorage key for refresh token */
-const REFRESH_TOKEN_KEY = 'refresh_token';
+const REFRESH_TOKEN_KEY = 'refreshToken';
 
 /** Cookie name for JWT token (if using httpOnly cookies) */
 const JWT_COOKIE_NAME = 'jwt_token';
@@ -188,8 +188,12 @@ export async function login(page: Page, credentials: LoginCredentials): Promise<
     throw new Error('Token is already expired');
   }
 
-  // Verify successful authentication by checking for authenticated UI elements
-  await waitForElement(page, '[data-testid="user-menu"]', 'visible', { timeout: 5000 });
+  // Verify successful authentication by checking the redirect to dashboard
+  // Note: User menu may not be implemented yet, so we check for the dashboard heading
+  await page.waitForURL(/\/dashboard/, { timeout: 5000 });
+  
+  // Wait for the dashboard page to load
+  await waitForElement(page, 'h1:has-text("Dashboard")', 'visible', { timeout: 5000 });
 
   return page;
 }
