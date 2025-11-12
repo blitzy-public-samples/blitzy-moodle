@@ -23,19 +23,17 @@
  * @module tests/e2e/profile.spec
  */
 
-import { test, expect, describe, beforeEach, afterEach, Page } from '@playwright/test';
+import { test, expect } from './setup/msw';
+import type { Page } from '@playwright/test';
 import { ProfilePage } from './pages/ProfilePage';
 import { 
   login, 
   loginAsStudent, 
   logout, 
   isAuthenticated, 
-  getAuthToken, 
   clearAuthenticationState 
 } from './utils/auth';
 import { 
-  uploadFile, 
-  verifyFileUploaded, 
   generateTestFile, 
   createImageFile 
 } from './utils/file-helpers';
@@ -67,7 +65,7 @@ let originalProfileData: OriginalProfileData | null = null;
 /**
  * Main test suite for profile management
  */
-describe('User Profile Management', () => {
+test.describe('User Profile Management', () => {
   let page: Page;
   let profilePage: ProfilePage;
 
@@ -75,7 +73,7 @@ describe('User Profile Management', () => {
    * Setup: Login as student user and navigate to profile page
    * Captures original profile data for cleanup after tests
    */
-  beforeEach(async ({ browser }) => {
+  test.beforeEach(async ({ browser }) => {
     // Create new browser context and page
     const context = await browser.newContext();
     page = await context.newPage();
@@ -112,7 +110,12 @@ describe('User Profile Management', () => {
   /**
    * Cleanup: Revert profile changes to original values and logout
    */
-  afterEach(async () => {
+  test.afterEach(async () => {
+    // Skip cleanup if page was never initialized
+    if (!page) {
+      return;
+    }
+
     // Take screenshot on test failure
     if (SCREENSHOT_ON_FAILURE && test.info().status === 'failed') {
       await page.screenshot({
@@ -194,11 +197,7 @@ describe('User Profile Management', () => {
     const newLastName = 'UpdatedStudent';
     const newEmail = 'updated.student1@example.com';
 
-    await profilePage.updateBasicInfo({
-      firstName: newFirstName,
-      lastName: newLastName,
-      email: newEmail,
-    });
+    await profilePage.updateBasicInfo(newFirstName, newLastName, newEmail);
 
     // Save profile
     await profilePage.saveProfile();
@@ -340,7 +339,7 @@ describe('User Profile Management', () => {
 
     // Change email to new address
     const newEmail = 'newemail.student1@example.com';
-    await profilePage.updateBasicInfo({ email: newEmail });
+    await profilePage.updateBasicInfo(testStudent.firstname, testStudent.lastname, newEmail);
 
     // Save profile
     await profilePage.saveProfile();
@@ -372,11 +371,7 @@ describe('User Profile Management', () => {
     const oldPassword = TEST_PASSWORD;
     const newPassword = 'NewTestPassword456!';
 
-    await profilePage.changePassword({
-      oldPassword,
-      newPassword,
-      confirmPassword: newPassword,
-    });
+    await profilePage.changePassword(oldPassword, newPassword);
 
     // Verify success message
     await profilePage.waitForSaveSuccess();
@@ -385,7 +380,7 @@ describe('User Profile Management', () => {
     await logout(page);
 
     // Attempt login with new password
-    await login(page, testStudent.username, newPassword);
+    await login(page, { username: testStudent.username, password: newPassword });
 
     // Verify login succeeded
     const authenticated = await isAuthenticated(page);
@@ -393,15 +388,11 @@ describe('User Profile Management', () => {
 
     // Logout and change password back to original
     await logout(page);
-    await login(page, testStudent.username, newPassword);
+    await login(page, { username: testStudent.username, password: newPassword });
     await page.goto('/profile');
     await profilePage.waitForProfile();
     await profilePage.clickEditProfile();
-    await profilePage.changePassword({
-      oldPassword: newPassword,
-      newPassword: TEST_PASSWORD,
-      confirmPassword: TEST_PASSWORD,
-    });
+    await profilePage.changePassword(newPassword, TEST_PASSWORD);
     await profilePage.waitForSaveSuccess();
   });
 
@@ -417,11 +408,9 @@ describe('User Profile Management', () => {
     // Update preferences
     await profilePage.setLanguage('es'); // Spanish
     await profilePage.setTimezone('Europe/Madrid');
-    await profilePage.toggleEmailNotifications({
-      forumPosts: true,
-      assignments: true,
-      messages: false,
-    });
+    await profilePage.toggleEmailNotifications('forumPosts', true);
+    await profilePage.toggleEmailNotifications('assignments', true);
+    await profilePage.toggleEmailNotifications('messages', false);
 
     // Save profile
     await profilePage.saveProfile();
@@ -501,7 +490,7 @@ describe('User Profile Management', () => {
     await logout(page);
 
     // Login as different student (testStudent2)
-    await login(page, testStudent2.username, TEST_PASSWORD);
+    await login(page, { username: testStudent2.username, password: TEST_PASSWORD });
 
     // Attempt to view testStudent's profile
     await page.goto(`/profile/${testStudent.id}`);
@@ -541,10 +530,7 @@ describe('User Profile Management', () => {
       bio: 'Testing data persistence across sessions',
     };
 
-    await profilePage.updateBasicInfo({
-      firstName: testChanges.firstName,
-      lastName: testChanges.lastName,
-    });
+    await profilePage.updateBasicInfo(testChanges.firstName, testChanges.lastName, testStudent.email);
     await profilePage.updateBio(testChanges.bio);
     await profilePage.saveProfile();
     await profilePage.waitForSaveSuccess();
@@ -581,9 +567,7 @@ describe('User Profile Management', () => {
     await profilePage.clickEditProfile();
 
     // Enter invalid email
-    await profilePage.updateBasicInfo({
-      email: 'invalid-email-format',
-    });
+    await profilePage.updateBasicInfo(testStudent.firstname, testStudent.lastname, 'invalid-email-format');
 
     // Attempt to save
     await profilePage.saveProfile();
@@ -607,11 +591,7 @@ describe('User Profile Management', () => {
     await profilePage.clickEditProfile();
 
     // Attempt to change password to short password
-    await profilePage.changePassword({
-      oldPassword: TEST_PASSWORD,
-      newPassword: 'short',
-      confirmPassword: 'short',
-    });
+    await profilePage.changePassword(TEST_PASSWORD, 'short');
 
     // Verify validation error appears
     const errors = await profilePage.verifyValidationErrors();
@@ -632,9 +612,7 @@ describe('User Profile Management', () => {
     await profilePage.clickEditProfile();
 
     // Attempt to change email to another existing user's email
-    await profilePage.updateBasicInfo({
-      email: testStudent2.email, // Use testStudent2's email
-    });
+    await profilePage.updateBasicInfo(testStudent.firstname, testStudent.lastname, testStudent2.email);
 
     // Attempt to save
     await profilePage.saveProfile();
@@ -658,11 +636,7 @@ describe('User Profile Management', () => {
     await profilePage.clickEditProfile();
 
     // Enter mismatched passwords
-    await profilePage.changePassword({
-      oldPassword: TEST_PASSWORD,
-      newPassword: 'NewPassword123!',
-      confirmPassword: 'DifferentPassword123!',
-    });
+    await profilePage.changePassword(TEST_PASSWORD, 'NewPassword123!', 'DifferentPassword123!');
 
     // Verify validation error appears
     const errors = await profilePage.verifyValidationErrors();
@@ -688,10 +662,7 @@ describe('User Profile Management', () => {
     await profilePage.clickEditProfile();
 
     // Make changes
-    await profilePage.updateBasicInfo({
-      firstName: 'ShouldBeDiscarded',
-      lastName: 'NotSaved',
-    });
+    await profilePage.updateBasicInfo('ShouldBeDiscarded', 'NotSaved', testStudent.email);
 
     // Click cancel instead of save
     await profilePage.cancelEdit();
@@ -756,11 +727,11 @@ test.afterAll(async ({ browser }) => {
 
       // Restore original profile data
       await cleanupProfilePage.clickEditProfile();
-      await cleanupProfilePage.updateBasicInfo({
-        firstName: originalProfileData.firstName,
-        lastName: originalProfileData.lastName,
-        email: originalProfileData.email,
-      });
+      await cleanupProfilePage.updateBasicInfo(
+        originalProfileData.firstName,
+        originalProfileData.lastName,
+        originalProfileData.email
+      );
       await cleanupProfilePage.updateBio(originalProfileData.bio);
       await cleanupProfilePage.setPrivacy(originalProfileData.privacy);
       await cleanupProfilePage.saveProfile();

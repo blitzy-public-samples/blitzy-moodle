@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe, toHaveNoViolations } from 'jest-axe';
 import PostCard from '@/features/activities/forums/components/PostCard';
@@ -872,21 +872,21 @@ describe('PostCard Component', () => {
   describe('Permission-Based Visibility', () => {
     it('should show Edit button only for post owner', () => {
       const post = createMockPost({ canEdit: true });
-      render(<PostCard post={post} currentUserId={42} {...mockHandlers} />);
+      render(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByRole('button', { name: /edit/i })).toBeInTheDocument();
     });
 
     it('should not show Edit button for other users', () => {
       const post = createMockPost({ canEdit: false });
-      render(<PostCard post={post} currentUserId={99} {...mockHandlers} />);
+      render(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.queryByRole('button', { name: /edit/i })).not.toBeInTheDocument();
     });
 
     it('should show Delete button for moderators even if not owner', () => {
       const post = createMockPost({ canDelete: true });
-      render(<PostCard post={post} currentUserRole="moderator" currentUserId={99} {...mockHandlers} />);
+      render(<PostCard post={post} currentUserRole="moderator" {...mockHandlers} />);
       
       expect(screen.getByRole('button', { name: /delete/i })).toBeInTheDocument();
     });

@@ -96,7 +96,7 @@ describe('useFileUpload', () => {
 
     // Setup cancel token mock
     mockCancelTokenSource = {
-      token: 'mock-cancel-token',
+      token: 'mock-cancel-token' as any,
       cancel: vi.fn(),
     };
     (axios.CancelToken.source as ReturnType<typeof vi.fn>).mockReturnValue(mockCancelTokenSource);
@@ -421,7 +421,7 @@ describe('useFileUpload', () => {
     });
 
     // Verify FormData was passed to axios
-    const callArgs = mockAxiosPost.mock.calls[0];
+    const callArgs = mockAxiosPost.mock.calls[0]!;
     const formData = callArgs[1];
 
     expect(formData).toBeInstanceOf(FormData);
@@ -724,7 +724,7 @@ describe('useFileUpload', () => {
     const cancelError = { message: 'Upload cancelled by user' };
     
     mockAxiosPost.mockRejectedValue(cancelError);
-    (axios.isCancel as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    vi.mocked(axios.isCancel).mockReturnValue(true);
 
     const mockOnError = vi.fn();
 

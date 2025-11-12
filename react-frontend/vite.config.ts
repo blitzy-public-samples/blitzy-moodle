@@ -1,9 +1,10 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  return {
   // React plugin configuration with automatic JSX runtime for React 18
   plugins: [
     react({
@@ -131,7 +132,8 @@ export default defineConfig({
   },
 
   // Environment variable configuration
-  envPrefix: 'VITE_',
+  // Allow VITE_ prefixed variables to be exposed to the client
+  envPrefix: ['VITE_'],
 
   // Preview server configuration (for testing production builds locally)
   preview: {
@@ -140,4 +142,5 @@ export default defineConfig({
     host: true,
     cors: true,
   },
+  };
 });

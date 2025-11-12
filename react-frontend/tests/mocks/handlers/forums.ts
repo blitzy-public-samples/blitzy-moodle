@@ -390,8 +390,9 @@ const getDiscussionsHandler = http.get('*/api/v1/forums/:id/discussions', async 
   const url = new URL(request.url);
   const page = Number(url.searchParams.get('page')) || 1;
   const perPage = Number(url.searchParams.get('perPage')) || 20;
-  const sortBy = url.searchParams.get('sortBy') || 'modified';
-  const sortOrder = url.searchParams.get('sortOrder') || 'desc';
+  // sortBy and sortOrder are available but not implemented in mock
+  // const sortBy = url.searchParams.get('sortBy') || 'modified';
+  // const sortOrder = url.searchParams.get('sortOrder') || 'desc';
   
   const discussions = Object.values(MOCK_DISCUSSIONS).filter(d => d.forumId === id);
   
@@ -757,7 +758,7 @@ const deletePostHandler = http.delete('*/api/v1/forums/posts/:id', async ({ para
  * POST /api/v1/forums/:id/subscribe
  * Subscribe to forum notifications
  */
-const subscribeForumHandler = http.post('*/api/v1/forums/:id/subscribe', async ({ params, request }) => {
+const subscribeForumHandler = http.post('*/api/v1/forums/:id/subscribe', async ({ params, request: _request }) => {
   await simulateNetworkDelay();
   
   const id = Number(params.id);

@@ -534,7 +534,7 @@ describe('useResourceFiles hook', () => {
 
       expect(result.current.data).toEqual(mockResourceFile);
       expect(result.current.data?.files).toHaveLength(1);
-      expect(result.current.data?.files[0].filename).toBe('document.pdf');
+      expect(result.current.data?.files[0]?.filename).toBe('document.pdf');
       expect(apiClient.get).toHaveBeenCalledWith('/api/v1/resources/1/files');
     });
 
@@ -823,8 +823,8 @@ describe('useResourceFolder hook', () => {
 
       const files = result.current.data?.files;
       expect(files).toBeDefined();
-      expect(files?.[0].filename).toBe('file1.pdf');
-      expect(files?.[1].filename).toBe('file2.docx');
+      expect(files?.[0]?.filename).toBe('file1.pdf');
+      expect(files?.[1]?.filename).toBe('file2.docx');
     });
 
     it('should include folder display options', async () => {

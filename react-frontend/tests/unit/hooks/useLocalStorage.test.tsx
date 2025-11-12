@@ -630,7 +630,7 @@ describe('useLocalStorage', () => {
     // Should restore the array from localStorage
     expect(result.current[0]).toEqual(items);
     expect(result.current[0].length).toBe(2);
-    expect(result.current[0][0].name).toBe('Item 1');
+    expect(result.current[0][0]?.name).toBe('Item 1');
   });
 
   /**

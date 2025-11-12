@@ -1,108 +1,81 @@
 /**
  * MSW (Mock Service Worker) Setup for Playwright E2E Tests
  * 
- * This module configures request interception for Playwright E2E tests using MSW's Node.js server.
- * It intercepts HTTP requests made by both the browser and the test runner (page.request),
- * enabling fast and reliable E2E tests without depending on a real backend.
+ * This module configures request interception for Playwright E2E tests.
+ * For E2E tests, we use the MSW browser worker which runs as a service worker
+ * in the actual browser, allowing it to intercept real browser HTTP requests.
  * 
- * Strategy: Use MSW's setupServer() to intercept all HTTP requests at the Node.js level,
- * which works for both browser page requests AND direct API calls from page.request.
+ * Strategy: The browser worker is initialized in main.tsx when E2E_TEST=true.
+ * This setup file provides test fixtures and utilities for working with the
+ * MSW browser worker in Playwright tests.
  * 
  * @module e2e/setup/msw
  */
 
 import { test as base, expect } from '@playwright/test';
-import type { Page, BrowserContext } from '@playwright/test';
-import { setupServer } from 'msw/node';
-
-// Import all our mock handlers from the central barrel export
-import { handlers } from '../../mocks/handlers';
 
 /**
- * Create MSW server for Node.js-level HTTP interception
+ * No server setup needed - MSW browser worker is initialized in main.tsx
+ * when E2E_TEST environment variable is set to 'true'.
  * 
- * This server intercepts ALL HTTP requests (including page.request calls)
- * and handles them with our mock handlers.
+ * The Playwright config sets E2E_TEST=true before starting the dev server,
+ * and Vite exposes it to the browser via import.meta.env.E2E_TEST.
  */
-export const server = setupServer(...handlers);
 
 /**
- * Start the MSW server
+ * Start the MSW server (no-op for browser worker)
  * 
- * This should be called once before all tests in the test suite.
+ * The browser worker is automatically started when the app loads.
+ * This function is kept for backwards compatibility with existing tests.
  */
 export function startMockServer(): void {
-  server.listen({
-    onUnhandledRequest: 'warn', // Warn about unhandled requests
-  });
-  console.log('[MSW] Mock server started');
+  console.log('[MSW] Browser worker will be started by the application');
 }
 
 /**
- * Stop the MSW server
+ * Stop the MSW server (no-op for browser worker)
  * 
- * This should be called once after all tests in the test suite.
+ * The browser worker is managed by the browser and doesn't need explicit cleanup.
+ * This function is kept for backwards compatibility with existing tests.
  */
 export function stopMockServer(): void {
-  server.close();
-  console.log('[MSW] Mock server stopped');
+  console.log('[MSW] Browser worker will be stopped by the browser');
 }
 
 /**
- * Reset handlers between tests
+ * Reset handlers between tests (no-op for browser worker)
  * 
- * This resets the server to its initial handlers, clearing any runtime
- * modifications made during individual tests.
+ * The browser worker maintains its handlers across navigations.
+ * This function is kept for backwards compatibility with existing tests.
  */
 export function resetMockServer(): void {
-  server.resetHandlers();
+  // No action needed for browser worker
 }
 
 /**
- * Extended Playwright test with API mocking fixtures
+ * Extended Playwright test for E2E tests with MSW browser worker
  * 
- * This extends the base Playwright test with automatic MSW server management.
- * The MSW server is started once before all tests and stopped after all tests.
- * Between individual tests, handlers are reset to their initial state.
+ * This extends the base Playwright test but doesn't need special fixtures
+ * because the MSW browser worker is automatically started by the application
+ * when E2E_TEST=true (set by playwright.config.ts).
  * 
- * This approach ensures that ALL HTTP requests (including page.request API calls)
- * are intercepted and mocked properly.
+ * The browser worker intercepts all HTTP requests made by the browser
+ * and returns mock responses based on our handlers.
  * 
- * Use this instead of the base `test` import in your E2E tests.
+ * Use this instead of the base `test` import in your E2E tests for consistency.
  * 
  * @example
  * ```typescript
  * import { test, expect } from './setup/msw';
  * 
  * test('should mock API calls', async ({ page }) => {
- *   // API mocking is automatically set up
+ *   // MSW browser worker is automatically active
  *   await page.goto('/login');
- *   // Both page navigation and page.request calls are mocked
+ *   // All browser HTTP requests are mocked
  * });
  * ```
  */
-export const test = base.extend({
-  // Run once before all tests in the worker
-  // eslint-disable-next-line no-empty-pattern
-  workerStorageState: [async ({}, use) => {
-    // Start MSW server once per worker (each worker gets its own server)
-    startMockServer();
-    
-    await use(undefined);
-    
-    // Stop MSW server after all tests in worker complete
-    stopMockServer();
-  }, { scope: 'worker', auto: true }],
-  
-  // Reset handlers before each test
-  // eslint-disable-next-line no-empty-pattern
-  autoMockReset: [async ({}, use) => {
-    // Reset handlers to initial state before each test
-    resetMockServer();
-    
-    await use(undefined);
-  }, { auto: true }],
-});
+export const test = base;
 
 // Re-export expect for convenience
 export { expect };

@@ -16,7 +16,7 @@
  * @module tests/unit/services/api/endpoints
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   API_BASE_URL,
   API_VERSION,
@@ -76,27 +76,27 @@ describe('API Base Configuration', () => {
 describe('AUTH_ENDPOINTS', () => {
   it('should define LOGIN endpoint', () => {
     expect(AUTH_ENDPOINTS.LOGIN).toBeDefined();
-    expect(AUTH_ENDPOINTS.LOGIN).toBe(`${API_BASE_URL}/auth/login`);
+    expect(AUTH_ENDPOINTS.LOGIN).toBe('/auth/login');
   });
 
   it('should define LOGOUT endpoint', () => {
     expect(AUTH_ENDPOINTS.LOGOUT).toBeDefined();
-    expect(AUTH_ENDPOINTS.LOGOUT).toBe(`${API_BASE_URL}/auth/logout`);
+    expect(AUTH_ENDPOINTS.LOGOUT).toBe('/auth/logout');
   });
 
   it('should define REFRESH endpoint', () => {
     expect(AUTH_ENDPOINTS.REFRESH).toBeDefined();
-    expect(AUTH_ENDPOINTS.REFRESH).toBe(`${API_BASE_URL}/auth/refresh`);
+    expect(AUTH_ENDPOINTS.REFRESH).toBe('/auth/refresh');
   });
 
   it('should define ME endpoint', () => {
     expect(AUTH_ENDPOINTS.ME).toBeDefined();
-    expect(AUTH_ENDPOINTS.ME).toBe(`${API_BASE_URL}/auth/me`);
+    expect(AUTH_ENDPOINTS.ME).toBe('/auth/me');
   });
 
-  it('should have all auth endpoints start with base URL', () => {
+  it('should have all auth endpoints start with forward slash', () => {
     Object.values(AUTH_ENDPOINTS).forEach((endpoint) => {
-      expect(endpoint).toMatch(new RegExp(`^${API_BASE_URL}`));
+      expect(endpoint).toMatch(/^\//);
     });
   });
 
@@ -116,54 +116,54 @@ describe('AUTH_ENDPOINTS', () => {
 describe('COURSE_ENDPOINTS', () => {
   it('should define LIST endpoint for course list', () => {
     expect(COURSE_ENDPOINTS.LIST).toBeDefined();
-    expect(COURSE_ENDPOINTS.LIST).toBe(`${API_BASE_URL}/courses`);
+    expect(COURSE_ENDPOINTS.LIST).toBe('/courses');
   });
 
   it('should define CREATE endpoint for course creation', () => {
     expect(COURSE_ENDPOINTS.CREATE).toBeDefined();
-    expect(COURSE_ENDPOINTS.CREATE).toBe(`${API_BASE_URL}/courses`);
+    expect(COURSE_ENDPOINTS.CREATE).toBe('/courses');
   });
 
   it('should generate correct DETAIL path with ID', () => {
     const courseId = 1;
     const detailPath = COURSE_ENDPOINTS.DETAIL(courseId);
-    expect(detailPath).toBe(`${API_BASE_URL}/courses/${courseId}`);
+    expect(detailPath).toBe(`/courses/${courseId}`);
   });
 
   it('should generate correct UPDATE path with ID', () => {
     const courseId = 42;
     const updatePath = COURSE_ENDPOINTS.UPDATE(courseId);
-    expect(updatePath).toBe(`${API_BASE_URL}/courses/${courseId}`);
+    expect(updatePath).toBe(`/courses/${courseId}`);
   });
 
   it('should generate correct DELETE path with ID', () => {
     const courseId = 99;
     const deletePath = COURSE_ENDPOINTS.DELETE(courseId);
-    expect(deletePath).toBe(`${API_BASE_URL}/courses/${courseId}`);
+    expect(deletePath).toBe(`/courses/${courseId}`);
   });
 
   it('should generate correct ENROLL path with ID', () => {
     const courseId = 5;
     const enrollPath = COURSE_ENDPOINTS.ENROLL(courseId);
-    expect(enrollPath).toBe(`${API_BASE_URL}/courses/${courseId}/enroll`);
+    expect(enrollPath).toBe(`/courses/${courseId}/enroll`);
   });
 
   it('should generate correct CONTENTS path with ID', () => {
     const courseId = 10;
     const contentsPath = COURSE_ENDPOINTS.CONTENTS(courseId);
-    expect(contentsPath).toBe(`${API_BASE_URL}/courses/${courseId}/contents`);
+    expect(contentsPath).toBe(`/courses/${courseId}/contents`);
   });
 
   it('should handle different IDs correctly', () => {
     const ids = [1, 100, 999, 1234567];
     ids.forEach((id) => {
-      expect(COURSE_ENDPOINTS.DETAIL(id)).toBe(`${API_BASE_URL}/courses/${id}`);
+      expect(COURSE_ENDPOINTS.DETAIL(id)).toBe(`/courses/${id}`);
     });
   });
 
   it('should handle edge case ID = 0', () => {
     const detailPath = COURSE_ENDPOINTS.DETAIL(0);
-    expect(detailPath).toBe(`${API_BASE_URL}/courses/0`);
+    expect(detailPath).toBe('/courses/0');
   });
 });
 
@@ -175,32 +175,32 @@ describe('COURSE_ENDPOINTS', () => {
 describe('USER_ENDPOINTS', () => {
   it('should define LIST endpoint', () => {
     expect(USER_ENDPOINTS.LIST).toBeDefined();
-    expect(USER_ENDPOINTS.LIST).toBe(`${API_BASE_URL}/users`);
+    expect(USER_ENDPOINTS.LIST).toBe('/users');
   });
 
   it('should generate correct DETAIL path with user ID', () => {
     const userId = 123;
-    expect(USER_ENDPOINTS.DETAIL(userId)).toBe(`${API_BASE_URL}/users/${userId}`);
+    expect(USER_ENDPOINTS.DETAIL(userId)).toBe(`/users/${userId}`);
   });
 
   it('should generate correct UPDATE path with user ID', () => {
     const userId = 456;
-    expect(USER_ENDPOINTS.UPDATE(userId)).toBe(`${API_BASE_URL}/users/${userId}`);
+    expect(USER_ENDPOINTS.UPDATE(userId)).toBe(`/users/${userId}`);
   });
 
   it('should generate correct DASHBOARD path with user ID', () => {
     const userId = 789;
-    expect(USER_ENDPOINTS.DASHBOARD(userId)).toBe(`${API_BASE_URL}/users/${userId}/dashboard`);
+    expect(USER_ENDPOINTS.DASHBOARD(userId)).toBe(`/users/${userId}/dashboard`);
   });
 
   it('should generate correct COURSES path with user ID', () => {
     const userId = 321;
-    expect(USER_ENDPOINTS.COURSES(userId)).toBe(`${API_BASE_URL}/users/${userId}/courses`);
+    expect(USER_ENDPOINTS.COURSES(userId)).toBe(`/users/${userId}/courses`);
   });
 
   it('should generate correct PREFERENCES path with user ID', () => {
     const userId = 654;
-    expect(USER_ENDPOINTS.PREFERENCES(userId)).toBe(`${API_BASE_URL}/users/${userId}/preferences`);
+    expect(USER_ENDPOINTS.PREFERENCES(userId)).toBe(`/users/${userId}/preferences`);
   });
 
   it('should follow consistent pattern for all user endpoints', () => {
@@ -222,42 +222,42 @@ describe('ASSIGNMENT_ENDPOINTS', () => {
   it('should generate correct DETAIL path', () => {
     const assignmentId = 50;
     expect(ASSIGNMENT_ENDPOINTS.DETAIL(assignmentId)).toBe(
-      `${API_BASE_URL}/assignments/${assignmentId}`
+      `/assignments/${assignmentId}`
     );
   });
 
   it('should generate correct SUBMIT path', () => {
     const assignmentId = 25;
     expect(ASSIGNMENT_ENDPOINTS.SUBMIT(assignmentId)).toBe(
-      `${API_BASE_URL}/assignments/${assignmentId}/submit`
+      `/assignments/${assignmentId}/submit`
     );
   });
 
   it('should generate correct GRADE path', () => {
     const assignmentId = 75;
     expect(ASSIGNMENT_ENDPOINTS.GRADE(assignmentId)).toBe(
-      `${API_BASE_URL}/assignments/${assignmentId}/grade`
+      `/assignments/${assignmentId}/grade`
     );
   });
 
   it('should generate correct SUBMISSIONS path', () => {
     const assignmentId = 88;
     expect(ASSIGNMENT_ENDPOINTS.SUBMISSIONS(assignmentId)).toBe(
-      `${API_BASE_URL}/assignments/${assignmentId}/submissions`
+      `/assignments/${assignmentId}/submissions`
     );
   });
 
   it('should generate correct FEEDBACK path', () => {
     const assignmentId = 33;
     expect(ASSIGNMENT_ENDPOINTS.FEEDBACK(assignmentId)).toBe(
-      `${API_BASE_URL}/assignments/${assignmentId}/feedback`
+      `/assignments/${assignmentId}/feedback`
     );
   });
 
   it('should generate correct FILES path', () => {
     const assignmentId = 44;
     expect(ASSIGNMENT_ENDPOINTS.FILES(assignmentId)).toBe(
-      `${API_BASE_URL}/assignments/${assignmentId}/files`
+      `/assignments/${assignmentId}/files`
     );
   });
 });
@@ -270,45 +270,45 @@ describe('ASSIGNMENT_ENDPOINTS', () => {
 describe('QUIZ_ENDPOINTS', () => {
   it('should generate correct DETAIL path', () => {
     const quizId = 10;
-    expect(QUIZ_ENDPOINTS.DETAIL(quizId)).toBe(`${API_BASE_URL}/quizzes/${quizId}`);
+    expect(QUIZ_ENDPOINTS.DETAIL(quizId)).toBe(`/quizzes/${quizId}`);
   });
 
   it('should generate correct ATTEMPT path', () => {
     const quizId = 20;
-    expect(QUIZ_ENDPOINTS.ATTEMPT(quizId)).toBe(`${API_BASE_URL}/quizzes/${quizId}/attempt`);
+    expect(QUIZ_ENDPOINTS.ATTEMPT(quizId)).toBe(`/quizzes/${quizId}/attempt`);
   });
 
   it('should generate correct SUBMIT path', () => {
     const quizId = 30;
-    expect(QUIZ_ENDPOINTS.SUBMIT(quizId)).toBe(`${API_BASE_URL}/quizzes/${quizId}/submit`);
+    expect(QUIZ_ENDPOINTS.SUBMIT(quizId)).toBe(`/quizzes/${quizId}/submit`);
   });
 
   it('should generate correct RESULTS path with attempt ID', () => {
     const attemptId = 555;
-    expect(QUIZ_ENDPOINTS.RESULTS(attemptId)).toBe(`${API_BASE_URL}/quizzes/attempts/${attemptId}`);
+    expect(QUIZ_ENDPOINTS.RESULTS(attemptId)).toBe(`/quizzes/attempts/${attemptId}`);
   });
 
   it('should generate correct ATTEMPTS path', () => {
     const quizId = 40;
-    expect(QUIZ_ENDPOINTS.ATTEMPTS(quizId)).toBe(`${API_BASE_URL}/quizzes/${quizId}/attempts`);
+    expect(QUIZ_ENDPOINTS.ATTEMPTS(quizId)).toBe(`/quizzes/${quizId}/attempts`);
   });
 
   it('should generate correct QUESTIONS path', () => {
     const quizId = 50;
-    expect(QUIZ_ENDPOINTS.QUESTIONS(quizId)).toBe(`${API_BASE_URL}/quizzes/${quizId}/questions`);
+    expect(QUIZ_ENDPOINTS.QUESTIONS(quizId)).toBe(`/quizzes/${quizId}/questions`);
   });
 
   it('should generate correct REVIEW path with attempt ID', () => {
     const attemptId = 666;
     expect(QUIZ_ENDPOINTS.REVIEW(attemptId)).toBe(
-      `${API_BASE_URL}/quizzes/attempts/${attemptId}/review`
+      `/quizzes/attempts/${attemptId}/review`
     );
   });
 
   it('should generate correct SUMMARY path with attempt ID', () => {
     const attemptId = 777;
     expect(QUIZ_ENDPOINTS.SUMMARY(attemptId)).toBe(
-      `${API_BASE_URL}/quizzes/attempts/${attemptId}/summary`
+      `/quizzes/attempts/${attemptId}/summary`
     );
   });
 });
@@ -321,56 +321,56 @@ describe('QUIZ_ENDPOINTS', () => {
 describe('FORUM_ENDPOINTS', () => {
   it('should generate correct DETAIL path', () => {
     const forumId = 15;
-    expect(FORUM_ENDPOINTS.DETAIL(forumId)).toBe(`${API_BASE_URL}/forums/${forumId}`);
+    expect(FORUM_ENDPOINTS.DETAIL(forumId)).toBe(`/forums/${forumId}`);
   });
 
   it('should generate correct DISCUSSIONS path', () => {
     const forumId = 25;
     expect(FORUM_ENDPOINTS.DISCUSSIONS(forumId)).toBe(
-      `${API_BASE_URL}/forums/${forumId}/discussions`
+      `/forums/${forumId}/discussions`
     );
   });
 
   it('should generate correct CREATE_DISCUSSION path', () => {
     const forumId = 35;
     expect(FORUM_ENDPOINTS.CREATE_DISCUSSION(forumId)).toBe(
-      `${API_BASE_URL}/forums/${forumId}/discussions`
+      `/forums/${forumId}/discussions`
     );
   });
 
   it('should generate correct POSTS path with discussion ID', () => {
     const discussionId = 100;
     expect(FORUM_ENDPOINTS.POSTS(discussionId)).toBe(
-      `${API_BASE_URL}/forums/discussions/${discussionId}/posts`
+      `/forums/discussions/${discussionId}/posts`
     );
   });
 
   it('should generate correct CREATE_POST path with discussion ID', () => {
     const discussionId = 200;
     expect(FORUM_ENDPOINTS.CREATE_POST(discussionId)).toBe(
-      `${API_BASE_URL}/forums/discussions/${discussionId}/posts`
+      `/forums/discussions/${discussionId}/posts`
     );
   });
 
   it('should generate correct UPDATE_POST path with post ID', () => {
     const postId = 300;
-    expect(FORUM_ENDPOINTS.UPDATE_POST(postId)).toBe(`${API_BASE_URL}/forums/posts/${postId}`);
+    expect(FORUM_ENDPOINTS.UPDATE_POST(postId)).toBe(`/forums/posts/${postId}`);
   });
 
   it('should generate correct DELETE_POST path with post ID', () => {
     const postId = 400;
-    expect(FORUM_ENDPOINTS.DELETE_POST(postId)).toBe(`${API_BASE_URL}/forums/posts/${postId}`);
+    expect(FORUM_ENDPOINTS.DELETE_POST(postId)).toBe(`/forums/posts/${postId}`);
   });
 
   it('should generate correct SUBSCRIBE path', () => {
     const forumId = 45;
-    expect(FORUM_ENDPOINTS.SUBSCRIBE(forumId)).toBe(`${API_BASE_URL}/forums/${forumId}/subscribe`);
+    expect(FORUM_ENDPOINTS.SUBSCRIBE(forumId)).toBe(`/forums/${forumId}/subscribe`);
   });
 
   it('should generate correct MARK_READ path with discussion ID', () => {
     const discussionId = 500;
     expect(FORUM_ENDPOINTS.MARK_READ(discussionId)).toBe(
-      `${API_BASE_URL}/forums/discussions/${discussionId}/read`
+      `/forums/discussions/${discussionId}/read`
     );
   });
 });
@@ -384,36 +384,36 @@ describe('GRADEBOOK_ENDPOINTS', () => {
   it('should generate correct COURSE path with course ID', () => {
     const courseId = 12;
     expect(GRADEBOOK_ENDPOINTS.COURSE(courseId)).toBe(
-      `${API_BASE_URL}/gradebook/course/${courseId}`
+      `/gradebook/course/${courseId}`
     );
   });
 
   it('should generate correct USER path with user ID', () => {
     const userId = 34;
-    expect(GRADEBOOK_ENDPOINTS.USER(userId)).toBe(`${API_BASE_URL}/gradebook/user/${userId}`);
+    expect(GRADEBOOK_ENDPOINTS.USER(userId)).toBe(`/gradebook/user/${userId}`);
   });
 
   it('should define ITEMS endpoint', () => {
-    expect(GRADEBOOK_ENDPOINTS.ITEMS).toBe(`${API_BASE_URL}/gradebook/items`);
+    expect(GRADEBOOK_ENDPOINTS.ITEMS).toBe('/gradebook/items');
   });
 
   it('should generate correct UPDATE_GRADE path with item ID', () => {
     const itemId = 56;
     expect(GRADEBOOK_ENDPOINTS.UPDATE_GRADE(itemId)).toBe(
-      `${API_BASE_URL}/gradebook/items/${itemId}`
+      `/gradebook/items/${itemId}`
     );
   });
 
   it('should define CATEGORIES endpoint', () => {
-    expect(GRADEBOOK_ENDPOINTS.CATEGORIES).toBe(`${API_BASE_URL}/gradebook/categories`);
+    expect(GRADEBOOK_ENDPOINTS.CATEGORIES).toBe('/gradebook/categories');
   });
 
   it('should define EXPORT endpoint', () => {
-    expect(GRADEBOOK_ENDPOINTS.EXPORT).toBe(`${API_BASE_URL}/gradebook/export`);
+    expect(GRADEBOOK_ENDPOINTS.EXPORT).toBe('/gradebook/export');
   });
 
   it('should define REPORT endpoint', () => {
-    expect(GRADEBOOK_ENDPOINTS.REPORT).toBe(`${API_BASE_URL}/gradebook/report`);
+    expect(GRADEBOOK_ENDPOINTS.REPORT).toBe('/gradebook/report');
   });
 });
 
@@ -424,38 +424,38 @@ describe('GRADEBOOK_ENDPOINTS', () => {
  */
 describe('MESSAGE_ENDPOINTS', () => {
   it('should define LIST endpoint', () => {
-    expect(MESSAGE_ENDPOINTS.LIST).toBe(`${API_BASE_URL}/messages`);
+    expect(MESSAGE_ENDPOINTS.LIST).toBe('/messages');
   });
 
   it('should define SEND endpoint', () => {
-    expect(MESSAGE_ENDPOINTS.SEND).toBe(`${API_BASE_URL}/messages`);
+    expect(MESSAGE_ENDPOINTS.SEND).toBe('/messages');
   });
 
   it('should generate correct CONVERSATION path with conversation ID', () => {
     const conversationId = 88;
     expect(MESSAGE_ENDPOINTS.CONVERSATION(conversationId)).toBe(
-      `${API_BASE_URL}/messages/conversation/${conversationId}`
+      `/messages/conversation/${conversationId}`
     );
   });
 
   it('should generate correct MARK_READ path with message ID', () => {
     const messageId = 99;
     expect(MESSAGE_ENDPOINTS.MARK_READ(messageId)).toBe(
-      `${API_BASE_URL}/messages/${messageId}/read`
+      `/messages/${messageId}/read`
     );
   });
 
   it('should generate correct DELETE path with message ID', () => {
     const messageId = 111;
-    expect(MESSAGE_ENDPOINTS.DELETE(messageId)).toBe(`${API_BASE_URL}/messages/${messageId}`);
+    expect(MESSAGE_ENDPOINTS.DELETE(messageId)).toBe(`/messages/${messageId}`);
   });
 
   it('should define CONTACTS endpoint', () => {
-    expect(MESSAGE_ENDPOINTS.CONTACTS).toBe(`${API_BASE_URL}/messages/contacts`);
+    expect(MESSAGE_ENDPOINTS.CONTACTS).toBe('/messages/contacts');
   });
 
   it('should define NOTIFICATIONS endpoint', () => {
-    expect(MESSAGE_ENDPOINTS.NOTIFICATIONS).toBe(`${API_BASE_URL}/notifications`);
+    expect(MESSAGE_ENDPOINTS.NOTIFICATIONS).toBe('/notifications');
   });
 });
 
@@ -467,75 +467,75 @@ describe('MESSAGE_ENDPOINTS', () => {
 describe('ADMIN_ENDPOINTS', () => {
   describe('USERS', () => {
     it('should define LIST endpoint', () => {
-      expect(ADMIN_ENDPOINTS.USERS.LIST).toBe(`${API_BASE_URL}/admin/users`);
+      expect(ADMIN_ENDPOINTS.USERS.LIST).toBe('/admin/users');
     });
 
     it('should define CREATE endpoint', () => {
-      expect(ADMIN_ENDPOINTS.USERS.CREATE).toBe(`${API_BASE_URL}/admin/users`);
+      expect(ADMIN_ENDPOINTS.USERS.CREATE).toBe('/admin/users');
     });
 
     it('should generate correct UPDATE path with user ID', () => {
       const userId = 22;
-      expect(ADMIN_ENDPOINTS.USERS.UPDATE(userId)).toBe(`${API_BASE_URL}/admin/users/${userId}`);
+      expect(ADMIN_ENDPOINTS.USERS.UPDATE(userId)).toBe(`/admin/users/${userId}`);
     });
 
     it('should generate correct DELETE path with user ID', () => {
       const userId = 33;
-      expect(ADMIN_ENDPOINTS.USERS.DELETE(userId)).toBe(`${API_BASE_URL}/admin/users/${userId}`);
+      expect(ADMIN_ENDPOINTS.USERS.DELETE(userId)).toBe(`/admin/users/${userId}`);
     });
 
     it('should define BULK endpoint', () => {
-      expect(ADMIN_ENDPOINTS.USERS.BULK).toBe(`${API_BASE_URL}/admin/users/bulk`);
+      expect(ADMIN_ENDPOINTS.USERS.BULK).toBe('/admin/users/bulk');
     });
   });
 
   describe('COURSES', () => {
     it('should define LIST endpoint', () => {
-      expect(ADMIN_ENDPOINTS.COURSES.LIST).toBe(`${API_BASE_URL}/admin/courses`);
+      expect(ADMIN_ENDPOINTS.COURSES.LIST).toBe('/admin/courses');
     });
 
     it('should define CATEGORIES endpoint', () => {
-      expect(ADMIN_ENDPOINTS.COURSES.CATEGORIES).toBe(`${API_BASE_URL}/admin/courses/categories`);
+      expect(ADMIN_ENDPOINTS.COURSES.CATEGORIES).toBe('/admin/courses/categories');
     });
 
     it('should define BULK endpoint', () => {
-      expect(ADMIN_ENDPOINTS.COURSES.BULK).toBe(`${API_BASE_URL}/admin/courses/bulk`);
+      expect(ADMIN_ENDPOINTS.COURSES.BULK).toBe('/admin/courses/bulk');
     });
   });
 
   describe('ROLES', () => {
     it('should define LIST endpoint', () => {
-      expect(ADMIN_ENDPOINTS.ROLES.LIST).toBe(`${API_BASE_URL}/admin/roles`);
+      expect(ADMIN_ENDPOINTS.ROLES.LIST).toBe('/admin/roles');
     });
 
     it('should define ASSIGN endpoint', () => {
-      expect(ADMIN_ENDPOINTS.ROLES.ASSIGN).toBe(`${API_BASE_URL}/admin/roles/assign`);
+      expect(ADMIN_ENDPOINTS.ROLES.ASSIGN).toBe('/admin/roles/assign');
     });
 
     it('should define CAPABILITIES endpoint', () => {
-      expect(ADMIN_ENDPOINTS.ROLES.CAPABILITIES).toBe(`${API_BASE_URL}/admin/roles/capabilities`);
+      expect(ADMIN_ENDPOINTS.ROLES.CAPABILITIES).toBe('/admin/roles/capabilities');
     });
   });
 
   describe('SETTINGS', () => {
     it('should define LIST endpoint', () => {
-      expect(ADMIN_ENDPOINTS.SETTINGS.LIST).toBe(`${API_BASE_URL}/admin/settings`);
+      expect(ADMIN_ENDPOINTS.SETTINGS.LIST).toBe('/admin/settings');
     });
 
     it('should define UPDATE endpoint', () => {
-      expect(ADMIN_ENDPOINTS.SETTINGS.UPDATE).toBe(`${API_BASE_URL}/admin/settings`);
+      expect(ADMIN_ENDPOINTS.SETTINGS.UPDATE).toBe('/admin/settings');
     });
   });
 
   describe('PLUGINS', () => {
     it('should define LIST endpoint', () => {
-      expect(ADMIN_ENDPOINTS.PLUGINS.LIST).toBe(`${API_BASE_URL}/admin/plugins`);
+      expect(ADMIN_ENDPOINTS.PLUGINS.LIST).toBe('/admin/plugins');
     });
 
     it('should generate correct CONFIGURE path with plugin ID', () => {
       const pluginId = 'mod_forum';
       expect(ADMIN_ENDPOINTS.PLUGINS.CONFIGURE(pluginId)).toBe(
-        `${API_BASE_URL}/admin/plugins/${pluginId}`
+        `/admin/plugins/${pluginId}`
       );
     });
   });
@@ -548,30 +548,30 @@ describe('ADMIN_ENDPOINTS', () => {
  */
 describe('FILE_ENDPOINTS', () => {
   it('should define UPLOAD endpoint', () => {
-    expect(FILE_ENDPOINTS.UPLOAD).toBe(`${API_BASE_URL}/files/upload`);
+    expect(FILE_ENDPOINTS.UPLOAD).toBe('/files/upload');
   });
 
   it('should generate correct DOWNLOAD path with file ID', () => {
     const fileId = 123;
-    expect(FILE_ENDPOINTS.DOWNLOAD(fileId)).toBe(`${API_BASE_URL}/files/download/${fileId}`);
+    expect(FILE_ENDPOINTS.DOWNLOAD(fileId)).toBe(`/files/download/${fileId}`);
   });
 
   it('should generate correct DELETE path with file ID', () => {
     const fileId = 456;
-    expect(FILE_ENDPOINTS.DELETE(fileId)).toBe(`${API_BASE_URL}/files/${fileId}`);
+    expect(FILE_ENDPOINTS.DELETE(fileId)).toBe(`/files/${fileId}`);
   });
 
   it('should define LIST endpoint', () => {
-    expect(FILE_ENDPOINTS.LIST).toBe(`${API_BASE_URL}/files`);
+    expect(FILE_ENDPOINTS.LIST).toBe('/files');
   });
 
   it('should define REPOSITORY endpoint', () => {
-    expect(FILE_ENDPOINTS.REPOSITORY).toBe(`${API_BASE_URL}/files/repository`);
+    expect(FILE_ENDPOINTS.REPOSITORY).toBe('/files/repository');
   });
 
   it('should generate correct THUMBNAIL path with file ID', () => {
     const fileId = 789;
-    expect(FILE_ENDPOINTS.THUMBNAIL(fileId)).toBe(`${API_BASE_URL}/files/thumbnail/${fileId}`);
+    expect(FILE_ENDPOINTS.THUMBNAIL(fileId)).toBe(`/files/thumbnail/${fileId}`);
   });
 });
 
@@ -582,35 +582,35 @@ describe('FILE_ENDPOINTS', () => {
  */
 describe('BLOCK_ENDPOINTS', () => {
   it('should define CALENDAR endpoint', () => {
-    expect(BLOCK_ENDPOINTS.CALENDAR).toBe(`${API_BASE_URL}/blocks/calendar`);
+    expect(BLOCK_ENDPOINTS.CALENDAR).toBe('/blocks/calendar');
   });
 
   it('should define UPCOMING endpoint', () => {
-    expect(BLOCK_ENDPOINTS.UPCOMING).toBe(`${API_BASE_URL}/blocks/upcoming`);
+    expect(BLOCK_ENDPOINTS.UPCOMING).toBe('/blocks/upcoming');
   });
 
   it('should define RECENT_ACTIVITY endpoint', () => {
-    expect(BLOCK_ENDPOINTS.RECENT_ACTIVITY).toBe(`${API_BASE_URL}/blocks/recent`);
+    expect(BLOCK_ENDPOINTS.RECENT_ACTIVITY).toBe('/blocks/recent');
   });
 
   it('should define ONLINE_USERS endpoint', () => {
-    expect(BLOCK_ENDPOINTS.ONLINE_USERS).toBe(`${API_BASE_URL}/blocks/online`);
+    expect(BLOCK_ENDPOINTS.ONLINE_USERS).toBe('/blocks/online');
   });
 
   it('should define TIMELINE endpoint', () => {
-    expect(BLOCK_ENDPOINTS.TIMELINE).toBe(`${API_BASE_URL}/blocks/timeline`);
+    expect(BLOCK_ENDPOINTS.TIMELINE).toBe('/blocks/timeline');
   });
 
   it('should define OVERVIEW endpoint', () => {
-    expect(BLOCK_ENDPOINTS.OVERVIEW).toBe(`${API_BASE_URL}/blocks/overview`);
+    expect(BLOCK_ENDPOINTS.OVERVIEW).toBe('/blocks/overview');
   });
 
   it('should define BADGES endpoint', () => {
-    expect(BLOCK_ENDPOINTS.BADGES).toBe(`${API_BASE_URL}/blocks/badges`);
+    expect(BLOCK_ENDPOINTS.BADGES).toBe('/blocks/badges');
   });
 
   it('should define COMMENTS endpoint', () => {
-    expect(BLOCK_ENDPOINTS.COMMENTS).toBe(`${API_BASE_URL}/blocks/comments`);
+    expect(BLOCK_ENDPOINTS.COMMENTS).toBe('/blocks/comments');
   });
 });
 
@@ -621,28 +621,28 @@ describe('BLOCK_ENDPOINTS', () => {
  */
 describe('ENROLLMENT_ENDPOINTS', () => {
   it('should define METHODS endpoint', () => {
-    expect(ENROLLMENT_ENDPOINTS.METHODS).toBe(`${API_BASE_URL}/enrollment/methods`);
+    expect(ENROLLMENT_ENDPOINTS.METHODS).toBe('/enrollment/methods');
   });
 
   it('should define ENROLL endpoint', () => {
-    expect(ENROLLMENT_ENDPOINTS.ENROLL).toBe(`${API_BASE_URL}/enrollment/enroll`);
+    expect(ENROLLMENT_ENDPOINTS.ENROLL).toBe('/enrollment/enroll');
   });
 
   it('should define UNENROLL endpoint', () => {
-    expect(ENROLLMENT_ENDPOINTS.UNENROLL).toBe(`${API_BASE_URL}/enrollment/unenroll`);
+    expect(ENROLLMENT_ENDPOINTS.UNENROLL).toBe('/enrollment/unenroll');
   });
 
   it('should generate correct ENROLLED_USERS path with course ID', () => {
     const courseId = 55;
     expect(ENROLLMENT_ENDPOINTS.ENROLLED_USERS(courseId)).toBe(
-      `${API_BASE_URL}/enrollment/${courseId}/users`
+      `/enrollment/${courseId}/users`
     );
   });
 
   it('should generate correct SELF_ENROLL path with course ID', () => {
     const courseId = 66;
     expect(ENROLLMENT_ENDPOINTS.SELF_ENROLL(courseId)).toBe(
-      `${API_BASE_URL}/enrollment/self/${courseId}`
+      `/enrollment/self/${courseId}`
     );
   });
 });
@@ -654,15 +654,15 @@ describe('ENROLLMENT_ENDPOINTS', () => {
  */
 describe('SEARCH_ENDPOINTS', () => {
   it('should define COURSES endpoint', () => {
-    expect(SEARCH_ENDPOINTS.COURSES).toBe(`${API_BASE_URL}/search/courses`);
+    expect(SEARCH_ENDPOINTS.COURSES).toBe('/search/courses');
   });
 
   it('should define USERS endpoint', () => {
-    expect(SEARCH_ENDPOINTS.USERS).toBe(`${API_BASE_URL}/search/users`);
+    expect(SEARCH_ENDPOINTS.USERS).toBe('/search/users');
   });
 
   it('should define GLOBAL endpoint', () => {
-    expect(SEARCH_ENDPOINTS.GLOBAL).toBe(`${API_BASE_URL}/search`);
+    expect(SEARCH_ENDPOINTS.GLOBAL).toBe('/search');
   });
 });
 
@@ -674,30 +674,30 @@ describe('SEARCH_ENDPOINTS', () => {
 describe('RESOURCE_ENDPOINTS', () => {
   it('should generate correct DETAIL path', () => {
     const resourceId = 77;
-    expect(RESOURCE_ENDPOINTS.DETAIL(resourceId)).toBe(`${API_BASE_URL}/resources/${resourceId}`);
+    expect(RESOURCE_ENDPOINTS.DETAIL(resourceId)).toBe(`/resources/${resourceId}`);
   });
 
   it('should generate correct FILES path', () => {
     const resourceId = 88;
     expect(RESOURCE_ENDPOINTS.FILES(resourceId)).toBe(
-      `${API_BASE_URL}/resources/${resourceId}/files`
+      `/resources/${resourceId}/files`
     );
   });
 
   it('should generate correct PAGES path', () => {
     const pageId = 99;
-    expect(RESOURCE_ENDPOINTS.PAGES(pageId)).toBe(`${API_BASE_URL}/resources/pages/${pageId}`);
+    expect(RESOURCE_ENDPOINTS.PAGES(pageId)).toBe(`/resources/pages/${pageId}`);
   });
 
   it('should generate correct URLS path', () => {
     const urlId = 111;
-    expect(RESOURCE_ENDPOINTS.URLS(urlId)).toBe(`${API_BASE_URL}/resources/urls/${urlId}`);
+    expect(RESOURCE_ENDPOINTS.URLS(urlId)).toBe(`/resources/urls/${urlId}`);
   });
 
   it('should generate correct FOLDERS path', () => {
     const folderId = 222;
     expect(RESOURCE_ENDPOINTS.FOLDERS(folderId)).toBe(
-      `${API_BASE_URL}/resources/folders/${folderId}`
+      `/resources/folders/${folderId}`
     );
   });
 });
@@ -710,14 +710,14 @@ describe('RESOURCE_ENDPOINTS', () => {
 describe('WIKI_ENDPOINTS', () => {
   it('should generate correct DETAIL path', () => {
     const wikiId = 10;
-    expect(WIKI_ENDPOINTS.DETAIL(wikiId)).toBe(`${API_BASE_URL}/wiki/${wikiId}`);
+    expect(WIKI_ENDPOINTS.DETAIL(wikiId)).toBe(`/wiki/${wikiId}`);
   });
 
   it('should generate correct BY_TITLE path with encoded title', () => {
     const wikiId = 20;
     const title = 'Test Page';
     const path = WIKI_ENDPOINTS.BY_TITLE(wikiId, title);
-    expect(path).toBe(`${API_BASE_URL}/wiki/${wikiId}/page/${encodeURIComponent(title)}`);
+    expect(path).toBe(`/wiki/${wikiId}/page/${encodeURIComponent(title)}`);
   });
 
   it('should generate correct BY_TITLE path with special characters', () => {
@@ -729,34 +729,34 @@ describe('WIKI_ENDPOINTS', () => {
 
   it('should generate correct FIRST_PAGE path', () => {
     const wikiId = 40;
-    expect(WIKI_ENDPOINTS.FIRST_PAGE(wikiId)).toBe(`${API_BASE_URL}/wiki/${wikiId}/firstpage`);
+    expect(WIKI_ENDPOINTS.FIRST_PAGE(wikiId)).toBe(`/wiki/${wikiId}/firstpage`);
   });
 
   it('should generate correct SAVE path', () => {
     const wikiId = 50;
-    expect(WIKI_ENDPOINTS.SAVE(wikiId)).toBe(`${API_BASE_URL}/wiki/${wikiId}/save`);
+    expect(WIKI_ENDPOINTS.SAVE(wikiId)).toBe(`/wiki/${wikiId}/save`);
   });
 
   it('should generate correct SAVE_SECTION path', () => {
     const wikiId = 60;
-    expect(WIKI_ENDPOINTS.SAVE_SECTION(wikiId)).toBe(`${API_BASE_URL}/wiki/${wikiId}/savesection`);
+    expect(WIKI_ENDPOINTS.SAVE_SECTION(wikiId)).toBe(`/wiki/${wikiId}/savesection`);
   });
 
   it('should generate correct CREATE path', () => {
     const wikiId = 70;
-    expect(WIKI_ENDPOINTS.CREATE(wikiId)).toBe(`${API_BASE_URL}/wiki/${wikiId}/create`);
+    expect(WIKI_ENDPOINTS.CREATE(wikiId)).toBe(`/wiki/${wikiId}/create`);
   });
 
   it('should generate correct HISTORY path', () => {
     const pageId = 80;
-    expect(WIKI_ENDPOINTS.HISTORY(pageId)).toBe(`${API_BASE_URL}/wiki/page/${pageId}/history`);
+    expect(WIKI_ENDPOINTS.HISTORY(pageId)).toBe(`/wiki/page/${pageId}/history`);
   });
 
   it('should generate correct VERSION path', () => {
     const pageId = 90;
     const versionId = 5;
     expect(WIKI_ENDPOINTS.VERSION(pageId, versionId)).toBe(
-      `${API_BASE_URL}/wiki/page/${pageId}/version/${versionId}`
+      `/wiki/page/${pageId}/version/${versionId}`
     );
   });
 
@@ -764,23 +764,23 @@ describe('WIKI_ENDPOINTS', () => {
     const pageId = 100;
     const versionId = 3;
     expect(WIKI_ENDPOINTS.RESTORE(pageId, versionId)).toBe(
-      `${API_BASE_URL}/wiki/page/${pageId}/restore/${versionId}`
+      `/wiki/page/${pageId}/restore/${versionId}`
     );
   });
 
   it('should generate correct LIST path', () => {
     const wikiId = 110;
-    expect(WIKI_ENDPOINTS.LIST(wikiId)).toBe(`${API_BASE_URL}/wiki/${wikiId}/pages`);
+    expect(WIKI_ENDPOINTS.LIST(wikiId)).toBe(`/wiki/${wikiId}/pages`);
   });
 
   it('should generate correct SEARCH path', () => {
     const wikiId = 120;
-    expect(WIKI_ENDPOINTS.SEARCH(wikiId)).toBe(`${API_BASE_URL}/wiki/${wikiId}/search`);
+    expect(WIKI_ENDPOINTS.SEARCH(wikiId)).toBe(`/wiki/${wikiId}/search`);
   });
 
   it('should generate correct LINKS path', () => {
     const pageId = 130;
-    expect(WIKI_ENDPOINTS.LINKS(pageId)).toBe(`${API_BASE_URL}/wiki/page/${pageId}/links`);
+    expect(WIKI_ENDPOINTS.LINKS(pageId)).toBe(`/wiki/page/${pageId}/links`);
   });
 });
 
@@ -792,62 +792,62 @@ describe('WIKI_ENDPOINTS', () => {
 describe('LESSON_ENDPOINTS', () => {
   it('should generate correct DETAIL path', () => {
     const lessonId = 15;
-    expect(LESSON_ENDPOINTS.DETAIL(lessonId)).toBe(`${API_BASE_URL}/lesson/${lessonId}`);
+    expect(LESSON_ENDPOINTS.DETAIL(lessonId)).toBe(`/lesson/${lessonId}`);
   });
 
   it('should generate correct START path', () => {
     const lessonId = 25;
-    expect(LESSON_ENDPOINTS.START(lessonId)).toBe(`${API_BASE_URL}/lesson/${lessonId}/start`);
+    expect(LESSON_ENDPOINTS.START(lessonId)).toBe(`/lesson/${lessonId}/start`);
   });
 
   it('should generate correct SUBMIT path', () => {
     const lessonId = 35;
-    expect(LESSON_ENDPOINTS.SUBMIT(lessonId)).toBe(`${API_BASE_URL}/lesson/${lessonId}/submit`);
+    expect(LESSON_ENDPOINTS.SUBMIT(lessonId)).toBe(`/lesson/${lessonId}/submit`);
   });
 
   it('should generate correct PAGE path with lesson and page IDs', () => {
     const lessonId = 45;
     const pageId = 10;
     expect(LESSON_ENDPOINTS.PAGE(lessonId, pageId)).toBe(
-      `${API_BASE_URL}/lesson/${lessonId}/page/${pageId}`
+      `/lesson/${lessonId}/page/${pageId}`
     );
   });
 
   it('should generate correct NEXT_PAGE path', () => {
     const lessonId = 55;
-    expect(LESSON_ENDPOINTS.NEXT_PAGE(lessonId)).toBe(`${API_BASE_URL}/lesson/${lessonId}/nextpage`);
+    expect(LESSON_ENDPOINTS.NEXT_PAGE(lessonId)).toBe(`/lesson/${lessonId}/nextpage`);
   });
 
   it('should generate correct FINISH path', () => {
     const lessonId = 65;
-    expect(LESSON_ENDPOINTS.FINISH(lessonId)).toBe(`${API_BASE_URL}/lesson/${lessonId}/finish`);
+    expect(LESSON_ENDPOINTS.FINISH(lessonId)).toBe(`/lesson/${lessonId}/finish`);
   });
 
   it('should generate correct RESTART path', () => {
     const lessonId = 75;
-    expect(LESSON_ENDPOINTS.RESTART(lessonId)).toBe(`${API_BASE_URL}/lesson/${lessonId}/restart`);
+    expect(LESSON_ENDPOINTS.RESTART(lessonId)).toBe(`/lesson/${lessonId}/restart`);
   });
 
   it('should generate correct PAGES path', () => {
     const lessonId = 85;
-    expect(LESSON_ENDPOINTS.PAGES(lessonId)).toBe(`${API_BASE_URL}/lesson/${lessonId}/pages`);
+    expect(LESSON_ENDPOINTS.PAGES(lessonId)).toBe(`/lesson/${lessonId}/pages`);
   });
 
   it('should generate correct PROGRESS path', () => {
     const lessonId = 95;
-    expect(LESSON_ENDPOINTS.PROGRESS(lessonId)).toBe(`${API_BASE_URL}/lesson/${lessonId}/progress`);
+    expect(LESSON_ENDPOINTS.PROGRESS(lessonId)).toBe(`/lesson/${lessonId}/progress`);
   });
 
   it('should generate correct UPDATE_TIMER path', () => {
     const lessonId = 105;
     expect(LESSON_ENDPOINTS.UPDATE_TIMER(lessonId)).toBe(
-      `${API_BASE_URL}/lesson/${lessonId}/timer`
+      `/lesson/${lessonId}/timer`
     );
   });
 
   it('should generate correct ATTEMPT path', () => {
     const lessonId = 115;
-    expect(LESSON_ENDPOINTS.ATTEMPT(lessonId)).toBe(`${API_BASE_URL}/lesson/${lessonId}/attempt`);
+    expect(LESSON_ENDPOINTS.ATTEMPT(lessonId)).toBe(`/lesson/${lessonId}/attempt`);
   });
 });
 
@@ -859,97 +859,97 @@ describe('LESSON_ENDPOINTS', () => {
 describe('WORKSHOP_ENDPOINTS', () => {
   it('should generate correct DETAIL path', () => {
     const workshopId = 11;
-    expect(WORKSHOP_ENDPOINTS.DETAIL(workshopId)).toBe(`${API_BASE_URL}/workshop/${workshopId}`);
+    expect(WORKSHOP_ENDPOINTS.DETAIL(workshopId)).toBe(`/workshop/${workshopId}`);
   });
 
   it('should generate correct SUBMISSIONS path', () => {
     const workshopId = 22;
     expect(WORKSHOP_ENDPOINTS.SUBMISSIONS(workshopId)).toBe(
-      `${API_BASE_URL}/workshop/${workshopId}/submissions`
+      `/workshop/${workshopId}/submissions`
     );
   });
 
   it('should generate correct CREATE_SUBMISSION path', () => {
     const workshopId = 33;
     expect(WORKSHOP_ENDPOINTS.CREATE_SUBMISSION(workshopId)).toBe(
-      `${API_BASE_URL}/workshop/${workshopId}/submissions`
+      `/workshop/${workshopId}/submissions`
     );
   });
 
   it('should generate correct UPDATE_SUBMISSION path', () => {
     const submissionId = 44;
     expect(WORKSHOP_ENDPOINTS.UPDATE_SUBMISSION(submissionId)).toBe(
-      `${API_BASE_URL}/workshop/submissions/${submissionId}`
+      `/workshop/submissions/${submissionId}`
     );
   });
 
   it('should generate correct DELETE_SUBMISSION path', () => {
     const submissionId = 55;
     expect(WORKSHOP_ENDPOINTS.DELETE_SUBMISSION(submissionId)).toBe(
-      `${API_BASE_URL}/workshop/submissions/${submissionId}`
+      `/workshop/submissions/${submissionId}`
     );
   });
 
   it('should generate correct ASSESSMENTS path', () => {
     const submissionId = 66;
     expect(WORKSHOP_ENDPOINTS.ASSESSMENTS(submissionId)).toBe(
-      `${API_BASE_URL}/workshop/submissions/${submissionId}/assessments`
+      `/workshop/submissions/${submissionId}/assessments`
     );
   });
 
   it('should generate correct CREATE_ASSESSMENT path', () => {
     const submissionId = 77;
     expect(WORKSHOP_ENDPOINTS.CREATE_ASSESSMENT(submissionId)).toBe(
-      `${API_BASE_URL}/workshop/submissions/${submissionId}/assessments`
+      `/workshop/submissions/${submissionId}/assessments`
     );
   });
 
   it('should generate correct UPDATE_ASSESSMENT path', () => {
     const assessmentId = 88;
     expect(WORKSHOP_ENDPOINTS.UPDATE_ASSESSMENT(assessmentId)).toBe(
-      `${API_BASE_URL}/workshop/assessments/${assessmentId}`
+      `/workshop/assessments/${assessmentId}`
     );
   });
 
   it('should generate correct SWITCH_PHASE path', () => {
     const workshopId = 99;
     expect(WORKSHOP_ENDPOINTS.SWITCH_PHASE(workshopId)).toBe(
-      `${API_BASE_URL}/workshop/${workshopId}/switchphase`
+      `/workshop/${workshopId}/switchphase`
     );
   });
 
   it('should generate correct ALLOCATE path', () => {
     const workshopId = 111;
     expect(WORKSHOP_ENDPOINTS.ALLOCATE(workshopId)).toBe(
-      `${API_BASE_URL}/workshop/${workshopId}/allocate`
+      `/workshop/${workshopId}/allocate`
     );
   });
 
   it('should generate correct GRADES path', () => {
     const workshopId = 222;
     expect(WORKSHOP_ENDPOINTS.GRADES(workshopId)).toBe(
-      `${API_BASE_URL}/workshop/${workshopId}/grades`
+      `/workshop/${workshopId}/grades`
     );
   });
 
   it('should generate correct UPDATE_GRADE path', () => {
     const workshopId = 333;
     expect(WORKSHOP_ENDPOINTS.UPDATE_GRADE(workshopId)).toBe(
-      `${API_BASE_URL}/workshop/${workshopId}/grade`
+      `/workshop/${workshopId}/grade`
     );
   });
 
   it('should generate correct USER_PLAN path', () => {
     const workshopId = 444;
     expect(WORKSHOP_ENDPOINTS.USER_PLAN(workshopId)).toBe(
-      `${API_BASE_URL}/workshop/${workshopId}/userplan`
+      `/workshop/${workshopId}/userplan`
     );
   });
 
   it('should generate correct EXAMPLES path', () => {
     const workshopId = 555;
     expect(WORKSHOP_ENDPOINTS.EXAMPLES(workshopId)).toBe(
-      `${API_BASE_URL}/workshop/${workshopId}/examples`
+      `/workshop/${workshopId}/examples`
     );
   });
 });
@@ -962,53 +962,53 @@ describe('WORKSHOP_ENDPOINTS', () => {
 describe('GLOSSARY_ENDPOINTS', () => {
   it('should generate correct DETAIL path', () => {
     const glossaryId = 12;
-    expect(GLOSSARY_ENDPOINTS.DETAIL(glossaryId)).toBe(`${API_BASE_URL}/glossary/${glossaryId}`);
+    expect(GLOSSARY_ENDPOINTS.DETAIL(glossaryId)).toBe(`/glossary/${glossaryId}`);
   });
 
   it('should generate correct ENTRIES path', () => {
     const glossaryId = 23;
     expect(GLOSSARY_ENDPOINTS.ENTRIES(glossaryId)).toBe(
-      `${API_BASE_URL}/glossary/${glossaryId}/entries`
+      `/glossary/${glossaryId}/entries`
     );
   });
 
   it('should generate correct ENTRY path', () => {
     const entryId = 34;
-    expect(GLOSSARY_ENDPOINTS.ENTRY(entryId)).toBe(`${API_BASE_URL}/glossary/entries/${entryId}`);
+    expect(GLOSSARY_ENDPOINTS.ENTRY(entryId)).toBe(`/glossary/entries/${entryId}`);
   });
 
   it('should generate correct CREATE_ENTRY path', () => {
     const glossaryId = 45;
     expect(GLOSSARY_ENDPOINTS.CREATE_ENTRY(glossaryId)).toBe(
-      `${API_BASE_URL}/glossary/${glossaryId}/entries`
+      `/glossary/${glossaryId}/entries`
     );
   });
 
   it('should generate correct UPDATE_ENTRY path', () => {
     const entryId = 56;
     expect(GLOSSARY_ENDPOINTS.UPDATE_ENTRY(entryId)).toBe(
-      `${API_BASE_URL}/glossary/entries/${entryId}`
+      `/glossary/entries/${entryId}`
     );
   });
 
   it('should generate correct DELETE_ENTRY path', () => {
     const entryId = 67;
     expect(GLOSSARY_ENDPOINTS.DELETE_ENTRY(entryId)).toBe(
-      `${API_BASE_URL}/glossary/entries/${entryId}`
+      `/glossary/entries/${entryId}`
     );
   });
 
   it('should generate correct CATEGORIES path', () => {
     const glossaryId = 78;
     expect(GLOSSARY_ENDPOINTS.CATEGORIES(glossaryId)).toBe(
-      `${API_BASE_URL}/glossary/${glossaryId}/categories`
+      `/glossary/${glossaryId}/categories`
     );
   });
 
   it('should generate correct SEARCH path', () => {
     const glossaryId = 89;
     expect(GLOSSARY_ENDPOINTS.SEARCH(glossaryId)).toBe(
-      `${API_BASE_URL}/glossary/${glossaryId}/search`
+      `/glossary/${glossaryId}/search`
     );
   });
 });
@@ -1021,27 +1021,27 @@ describe('GLOSSARY_ENDPOINTS', () => {
 describe('SCORM_ENDPOINTS', () => {
   it('should generate correct DETAIL path', () => {
     const scormId = 13;
-    expect(SCORM_ENDPOINTS.DETAIL(scormId)).toBe(`${API_BASE_URL}/scorm/${scormId}`);
+    expect(SCORM_ENDPOINTS.DETAIL(scormId)).toBe(`/scorm/${scormId}`);
   });
 
   it('should generate correct LAUNCH path', () => {
     const scormId = 24;
-    expect(SCORM_ENDPOINTS.LAUNCH(scormId)).toBe(`${API_BASE_URL}/scorm/${scormId}/launch`);
+    expect(SCORM_ENDPOINTS.LAUNCH(scormId)).toBe(`/scorm/${scormId}/launch`);
   });
 
   it('should generate correct PLAYER path', () => {
     const scormId = 35;
-    expect(SCORM_ENDPOINTS.PLAYER(scormId)).toBe(`${API_BASE_URL}/scorm/${scormId}/player`);
+    expect(SCORM_ENDPOINTS.PLAYER(scormId)).toBe(`/scorm/${scormId}/player`);
   });
 
   it('should generate correct TRACK path', () => {
     const scormId = 46;
-    expect(SCORM_ENDPOINTS.TRACK(scormId)).toBe(`${API_BASE_URL}/scorm/${scormId}/track`);
+    expect(SCORM_ENDPOINTS.TRACK(scormId)).toBe(`/scorm/${scormId}/track`);
   });
 
   it('should generate correct RESULTS path', () => {
     const scormId = 57;
-    expect(SCORM_ENDPOINTS.RESULTS(scormId)).toBe(`${API_BASE_URL}/scorm/${scormId}/results`);
+    expect(SCORM_ENDPOINTS.RESULTS(scormId)).toBe(`/scorm/${scormId}/results`);
   });
 });
 
@@ -1053,25 +1053,25 @@ describe('SCORM_ENDPOINTS', () => {
 describe('BOOK_ENDPOINTS', () => {
   it('should generate correct DETAIL path', () => {
     const bookId = 14;
-    expect(BOOK_ENDPOINTS.DETAIL(bookId)).toBe(`${API_BASE_URL}/book/${bookId}`);
+    expect(BOOK_ENDPOINTS.DETAIL(bookId)).toBe(`/book/${bookId}`);
   });
 
   it('should generate correct CHAPTERS path', () => {
     const bookId = 25;
-    expect(BOOK_ENDPOINTS.CHAPTERS(bookId)).toBe(`${API_BASE_URL}/book/${bookId}/chapters`);
+    expect(BOOK_ENDPOINTS.CHAPTERS(bookId)).toBe(`/book/${bookId}/chapters`);
   });
 
   it('should generate correct CHAPTER path', () => {
     const bookId = 36;
     const chapterId = 7;
     expect(BOOK_ENDPOINTS.CHAPTER(bookId, chapterId)).toBe(
-      `${API_BASE_URL}/book/${bookId}/chapter/${chapterId}`
+      `/book/${bookId}/chapter/${chapterId}`
     );
   });
 
   it('should generate correct TOC path', () => {
     const bookId = 47;
-    expect(BOOK_ENDPOINTS.TOC(bookId)).toBe(`${API_BASE_URL}/book/${bookId}/toc`);
+    expect(BOOK_ENDPOINTS.TOC(bookId)).toBe(`/book/${bookId}/toc`);
   });
 });
 
@@ -1083,22 +1083,22 @@ describe('BOOK_ENDPOINTS', () => {
 describe('H5P_ENDPOINTS', () => {
   it('should generate correct DETAIL path', () => {
     const h5pId = 16;
-    expect(H5P_ENDPOINTS.DETAIL(h5pId)).toBe(`${API_BASE_URL}/h5p/${h5pId}`);
+    expect(H5P_ENDPOINTS.DETAIL(h5pId)).toBe(`/h5p/${h5pId}`);
   });
 
   it('should generate correct LAUNCH path', () => {
     const h5pId = 27;
-    expect(H5P_ENDPOINTS.LAUNCH(h5pId)).toBe(`${API_BASE_URL}/h5p/${h5pId}/launch`);
+    expect(H5P_ENDPOINTS.LAUNCH(h5pId)).toBe(`/h5p/${h5pId}/launch`);
   });
 
   it('should generate correct RESULTS path', () => {
     const h5pId = 38;
-    expect(H5P_ENDPOINTS.RESULTS(h5pId)).toBe(`${API_BASE_URL}/h5p/${h5pId}/results`);
+    expect(H5P_ENDPOINTS.RESULTS(h5pId)).toBe(`/h5p/${h5pId}/results`);
   });
 
   it('should generate correct ATTEMPTS path', () => {
     const h5pId = 49;
-    expect(H5P_ENDPOINTS.ATTEMPTS(h5pId)).toBe(`${API_BASE_URL}/h5p/${h5pId}/attempts`);
+    expect(H5P_ENDPOINTS.ATTEMPTS(h5pId)).toBe(`/h5p/${h5pId}/attempts`);
   });
 });
 
@@ -1109,20 +1109,20 @@ describe('H5P_ENDPOINTS', () => {
  */
 describe('Edge Cases and Validation', () => {
   it('should handle ID = 0 for parameterized functions', () => {
-    expect(COURSE_ENDPOINTS.DETAIL(0)).toBe(`${API_BASE_URL}/courses/0`);
-    expect(USER_ENDPOINTS.DETAIL(0)).toBe(`${API_BASE_URL}/users/0`);
-    expect(QUIZ_ENDPOINTS.DETAIL(0)).toBe(`${API_BASE_URL}/quizzes/0`);
+    expect(COURSE_ENDPOINTS.DETAIL(0)).toBe('/courses/0');
+    expect(USER_ENDPOINTS.DETAIL(0)).toBe('/users/0');
+    expect(QUIZ_ENDPOINTS.DETAIL(0)).toBe('/quizzes/0');
   });
 
   it('should handle very large IDs', () => {
     const largeId = 999999999;
-    expect(COURSE_ENDPOINTS.DETAIL(largeId)).toBe(`${API_BASE_URL}/courses/${largeId}`);
-    expect(USER_ENDPOINTS.DETAIL(largeId)).toBe(`${API_BASE_URL}/users/${largeId}`);
+    expect(COURSE_ENDPOINTS.DETAIL(largeId)).toBe(`/courses/${largeId}`);
+    expect(USER_ENDPOINTS.DETAIL(largeId)).toBe(`/users/${largeId}`);
   });
 
   it('should handle negative IDs (edge case)', () => {
     const negativeId = -1;
-    expect(COURSE_ENDPOINTS.DETAIL(negativeId)).toBe(`${API_BASE_URL}/courses/${negativeId}`);
+    expect(COURSE_ENDPOINTS.DETAIL(negativeId)).toBe(`/courses/${negativeId}`);
   });
 
   it('should return strings for all parameterized functions', () => {
@@ -1198,16 +1198,16 @@ describe('Structure and Consistency', () => {
     expect(GRADEBOOK_ENDPOINTS.ITEMS.length).toBeGreaterThan(0);
   });
 
-  it('should have all endpoints start with API_BASE_URL', () => {
+  it('should have all endpoints start with forward slash (relative paths)', () => {
     // Sample static endpoints
-    expect(AUTH_ENDPOINTS.LOGIN).toMatch(new RegExp(`^${API_BASE_URL}`));
-    expect(COURSE_ENDPOINTS.LIST).toMatch(new RegExp(`^${API_BASE_URL}`));
-    expect(USER_ENDPOINTS.LIST).toMatch(new RegExp(`^${API_BASE_URL}`));
+    expect(AUTH_ENDPOINTS.LOGIN).toMatch(/^\//);
+    expect(COURSE_ENDPOINTS.LIST).toMatch(/^\//);
+    expect(USER_ENDPOINTS.LIST).toMatch(/^\//);
 
     // Sample dynamic endpoints
-    expect(COURSE_ENDPOINTS.DETAIL(1)).toMatch(new RegExp(`^${API_BASE_URL}`));
-    expect(USER_ENDPOINTS.DASHBOARD(1)).toMatch(new RegExp(`^${API_BASE_URL}`));
-    expect(QUIZ_ENDPOINTS.RESULTS(1)).toMatch(new RegExp(`^${API_BASE_URL}`));
+    expect(COURSE_ENDPOINTS.DETAIL(1)).toMatch(/^\//);
+    expect(USER_ENDPOINTS.DASHBOARD(1)).toMatch(/^\//);
+    expect(QUIZ_ENDPOINTS.RESULTS(1)).toMatch(/^\//);
   });
 
   it('should follow consistent naming for DETAIL endpoints', () => {

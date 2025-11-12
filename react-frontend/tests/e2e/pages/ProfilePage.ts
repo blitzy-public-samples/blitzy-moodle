@@ -298,8 +298,9 @@ export class ProfilePage {
    * 
    * @param oldPassword - Current password
    * @param newPassword - New password
+   * @param confirmPassword - Confirm password (defaults to newPassword if not provided)
    */
-  async changePassword(oldPassword: string, newPassword: string): Promise<void> {
+  async changePassword(oldPassword: string, newPassword: string, confirmPassword?: string): Promise<void> {
     await this.changePasswordButton.click();
 
     // Wait for password change form to appear
@@ -308,7 +309,7 @@ export class ProfilePage {
     // Fill password fields
     await this.oldPasswordInput.fill(oldPassword);
     await this.newPasswordInput.fill(newPassword);
-    await this.confirmPasswordInput.fill(newPassword);
+    await this.confirmPasswordInput.fill(confirmPassword ?? newPassword);
   }
 
   /**

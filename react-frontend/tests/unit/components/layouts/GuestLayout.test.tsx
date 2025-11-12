@@ -22,7 +22,7 @@
  * @module tests/unit/components/layouts/GuestLayout.test
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { render, screen, within, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
@@ -238,7 +238,7 @@ describe('GuestLayout', () => {
     // Only h1 (site branding) should exist, no h4 (title)
     expect(headings).toHaveLength(1);
     // Semantic HTML h1 element has implicit level 1
-    expect(headings[0].tagName).toBe('H1');
+    expect(headings[0]?.tagName).toBe('H1');
   });
 
   /**

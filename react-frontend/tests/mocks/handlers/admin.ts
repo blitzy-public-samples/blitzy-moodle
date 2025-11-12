@@ -96,23 +96,6 @@ interface AdminUser {
   profileImageUrl: string;
 }
 
-interface AdminCourse {
-  id: number;
-  fullName: string;
-  shortName: string;
-  categoryId: number;
-  categoryName: string;
-  idNumber: string;
-  summary: string;
-  format: string;
-  visible: boolean;
-  startDate: number;
-  endDate: number;
-  enrolledUsers: number;
-  timeCreated: number;
-  timeModified: number;
-}
-
 interface Role {
   id: number;
   name: string;

@@ -20,7 +20,6 @@ import { http, HttpResponse } from 'msw';
 import { FeedbackQuestionType } from '../../../src/features/activities/feedback/types/feedback.types';
 import type {
   Feedback,
-  FeedbackItem,
   FeedbackAnalysis
 } from '../../../src/features/activities/feedback/types/feedback.types';
 
@@ -202,17 +201,16 @@ const MOCK_ANALYSIS: Record<number, FeedbackAnalysis> = {
   1: {
     feedbackId: 1,
     totalResponses: 45,
-    completionRate: 90.0,
     meetAnonymousThreshold: true,
     items: [
       {
         itemId: 1,
-        question: 'How would you rate this course?',
+        name: 'How would you rate this course?',
         type: FeedbackQuestionType.MULTICHOICE,
         position: 1,
-        required: true,
-        totalResponses: 45,
-        responses: [
+        hasValue: true,
+        responseCount: 45,
+        distribution: [
           { value: '5', count: 20, percentage: 44.4 },
           { value: '4', count: 15, percentage: 33.3 },
           { value: '3', count: 8, percentage: 17.8 },
@@ -224,17 +222,18 @@ const MOCK_ANALYSIS: Record<number, FeedbackAnalysis> = {
           median: 5,
           mode: 5,
           standardDeviation: 0.85,
-          variance: 0.72
+          minimum: 1,
+          maximum: 5
         }
       },
       {
         itemId: 3,
-        question: 'Would you recommend this course?',
+        name: 'Would you recommend this course?',
         type: FeedbackQuestionType.MULTICHOICE,
         position: 3,
-        required: false,
-        totalResponses: 45,
-        responses: [
+        hasValue: true,
+        responseCount: 45,
+        distribution: [
           { value: 'Yes', count: 42, percentage: 93.3 },
           { value: 'No', count: 3, percentage: 6.7 }
         ],
@@ -243,58 +242,67 @@ const MOCK_ANALYSIS: Record<number, FeedbackAnalysis> = {
           median: 1,
           mode: 1,
           standardDeviation: 0.25,
-          variance: 0.06
+          minimum: 0,
+          maximum: 1
         }
       }
     ],
     statistics: {
       totalResponses: 45,
       completionRate: 90.0,
-      averageCompletionTime: 240,
+      averageTime: 240,
       responsesByCourse: [
-        { courseId: 1, courseName: 'Introduction to Computer Science', responseCount: 45 }
+        { courseId: 1, courseName: 'Introduction to Computer Science', count: 45 }
       ],
       responsesByGroup: [
-        { groupId: 1, groupName: 'Group A', responseCount: 25 },
-        { groupId: 2, groupName: 'Group B', responseCount: 20 }
-      ]
-    }
+        { groupId: 1, groupName: 'Group A', count: 25 },
+        { groupId: 2, groupName: 'Group B', count: 20 }
+      ],
+      respondents: [1, 2, 3, 4, 5],
+      nonRespondents: [6, 7],
+      lastSubmissionDate: 1702483200
+    },
+    generatedAt: 1702483200
   },
   2: {
     feedbackId: 2,
     totalResponses: 30,
-    completionRate: 75.0,
     meetAnonymousThreshold: false,
     groupId: 1,
     items: [
       {
         itemId: 5,
-        question: 'What did you learn from this module?',
+        name: 'What did you learn from this module?',
         type: FeedbackQuestionType.TEXTAREA,
         position: 1,
-        required: true,
-        totalResponses: 30,
-        responses: [],
+        hasValue: true,
+        responseCount: 30,
+        textResponses: [],
         statistics: {
           mean: 0,
           median: 0,
           mode: 0,
           standardDeviation: 0,
-          variance: 0
+          minimum: 0,
+          maximum: 0
         }
       }
     ],
     statistics: {
       totalResponses: 30,
       completionRate: 75.0,
-      averageCompletionTime: 180,
+      averageTime: 180,
       responsesByCourse: [
-        { courseId: 1, courseName: 'Introduction to Computer Science', responseCount: 30 }
+        { courseId: 1, courseName: 'Introduction to Computer Science', count: 30 }
       ],
       responsesByGroup: [
-        { groupId: 1, groupName: 'Group A', responseCount: 30 }
-      ]
-    }
+        { groupId: 1, groupName: 'Group A', count: 30 }
+      ],
+      respondents: [1, 2, 3],
+      nonRespondents: [4, 5, 6, 7],
+      lastSubmissionDate: 1702396800
+    },
+    generatedAt: 1702396800
   }
 };
 
@@ -575,15 +583,11 @@ const getAnalysisHandler = http.get('*/api/v1/feedback/:id/analysis', async ({ p
  * GET /api/v1/feedback/:id/export
  * Export feedback analysis to Excel format
  */
-const exportAnalysisHandler = http.get('*/api/v1/feedback/:id/export', async ({ params, request }) => {
+const exportAnalysisHandler = http.get('*/api/v1/feedback/:id/export', async ({ params }) => {
   await simulateNetworkDelay();
   
   const id = Number(params.id);
   const feedback = MOCK_FEEDBACK[id];
-  
-  // Parse query parameters
-  const url = new URL(request.url);
-  const courseId = url.searchParams.get('courseid');
   
   if (!feedback) {
     return HttpResponse.json(

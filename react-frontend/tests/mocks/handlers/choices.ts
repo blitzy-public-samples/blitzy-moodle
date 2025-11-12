@@ -215,16 +215,6 @@ const MOCK_CHOICE_RESULTS: Record<number, ChoiceResultsResponse> = {
 // ============================================================================
 
 /**
- * Simulates network delay for realistic testing
- * @param min - Minimum delay in milliseconds (default: 100)
- * @param max - Maximum delay in milliseconds (default: 300)
- */
-async function simulateNetworkDelay(min = 100, max = 300): Promise<void> {
-  const delay = Math.floor(Math.random() * (max - min + 1)) + min;
-  return new Promise((resolve) => setTimeout(resolve, delay));
-}
-
-/**
  * Filters responses by group ID
  * @param responses - Array of user responses
  * @param groupId - Group ID to filter by
@@ -244,7 +234,7 @@ function filterByGroup(responses: UserResponseData[], groupId: number): UserResp
  * @param includeinactive - Whether to include inactive users
  * @returns Filtered array of responses
  */
-function filterByActiveStatus(responses: UserResponseData[], includeinactive: boolean): UserResponseData[] {
+function filterByActiveStatus(responses: UserResponseData[], _includeinactive: boolean): UserResponseData[] {
   // In mock data, we'll assume all users are active
   // If we wanted to test inactive users, we could add a property to UserResponseData
   return responses;

@@ -554,11 +554,9 @@ describe('profileApi', () => {
           return HttpResponse.json({
             success: true,
             data: {
-              fileId: 456,
-              url: 'https://example.com/avatar/456.jpg',
-              filename: 'avatar.jpg',
-              filesize: 12345,
-              mimetype: 'image/jpeg',
+              success: true,
+              profileimageurl: 'https://example.com/avatar/456.jpg',
+              profileimageurlsmall: 'https://example.com/avatar/456_small.jpg',
             },
           });
         })
@@ -566,11 +564,11 @@ describe('profileApi', () => {
 
       const result = await uploadAvatar(userId, mockFile);
 
-      expect(result).toHaveProperty('fileId');
-      expect(result).toHaveProperty('url');
-      expect(result).toHaveProperty('filename');
-      expect(result.url).toBe('https://example.com/avatar/456.jpg');
-      expect(result.filename).toBe('avatar.jpg');
+      expect(result).toHaveProperty('success');
+      expect(result).toHaveProperty('profileimageurl');
+      expect(result).toHaveProperty('profileimageurlsmall');
+      expect(result.profileimageurl).toBe('https://example.com/avatar/456.jpg');
+      expect(result.profileimageurlsmall).toBe('https://example.com/avatar/456_small.jpg');
     });
 
     it('should handle file validation errors', async () => {

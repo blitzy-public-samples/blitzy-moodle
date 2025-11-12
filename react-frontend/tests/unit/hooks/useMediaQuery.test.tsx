@@ -152,7 +152,7 @@ describe('useMediaQuery', () => {
       // Simulate viewport change that now matches the media query
       act(() => {
         // Get the registered event handler
-        const changeHandler = mockMediaQueryList.addEventListener.mock.calls[0][1];
+        const changeHandler = mockMediaQueryList.addEventListener.mock.calls[0]![1];
 
         // Simulate media query match change event
         changeHandler({ matches: true } as MediaQueryListEvent);
@@ -170,7 +170,7 @@ describe('useMediaQuery', () => {
       // Initial state
       expect(result.current).toBe(false);
 
-      const changeHandler = mockMediaQueryList.addEventListener.mock.calls[0][1];
+      const changeHandler = mockMediaQueryList.addEventListener.mock.calls[0]![1];
 
       // First change: viewport now matches
       act(() => {
@@ -203,7 +203,7 @@ describe('useMediaQuery', () => {
       // Re-render to trigger effect
       act(() => {
         // The effect should sync the state with current matches value
-        const changeHandler = mockMediaQueryList.addEventListener.mock.calls[0][1];
+        const changeHandler = mockMediaQueryList.addEventListener.mock.calls[0]![1];
         changeHandler({ matches: true } as MediaQueryListEvent);
       });
 

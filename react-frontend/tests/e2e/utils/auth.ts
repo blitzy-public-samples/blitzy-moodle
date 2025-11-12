@@ -79,9 +79,6 @@ export type UserRole = 'student' | 'teacher' | 'admin' | 'guest';
 /** Login page URL path */
 const LOGIN_PAGE_URL = '/login';
 
-/** Dashboard URL after successful login */
-const DASHBOARD_URL = '/dashboard';
-
 /** LocalStorage key for access token */
 const ACCESS_TOKEN_KEY = 'auth_token';
 
@@ -150,10 +147,15 @@ export async function login(page: Page, credentials: LoginCredentials): Promise<
   await page.fill('input[name="password"]', credentials.password);
 
   // Submit the form and wait for navigation
-  await Promise.all([
-    page.waitForURL(`**${DASHBOARD_URL}`, { timeout: 10000 }),
-    page.click('button[type="submit"]'),
-  ]);
+  // Set up navigation expectation before clicking
+  // Use a regex pattern to match the dashboard URL reliably
+  const navigationPromise = page.waitForURL(/\/dashboard/, { timeout: 10000 });
+  
+  // Click submit button to trigger form submission
+  await page.click('button[type="submit"]');
+  
+  // Now wait for the navigation to complete
+  await navigationPromise;
 
   // Wait for page to fully load after login
   await waitForPageLoad(page);

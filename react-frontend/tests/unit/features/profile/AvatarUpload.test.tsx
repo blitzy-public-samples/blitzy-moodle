@@ -14,7 +14,7 @@
  */
 
 import React from 'react';
-import { render, screen, waitFor, within, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
 import { axe, toHaveNoViolations } from 'jest-axe';
@@ -22,7 +22,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // Import the actual component
 import { AvatarUpload } from '../../../../src/features/profile/components/AvatarUpload';
-import type { AvatarUploadResponse } from '../../../../src/features/profile/types/profile.types';
 
 // Mock the hooks
 vi.mock('../../../../src/features/profile/hooks/useUpdateProfile', () => ({
@@ -178,7 +177,7 @@ describe('AvatarUpload Component', () => {
 
     it('should have accessible "Choose File" button', async () => {
       const Wrapper = createWrapper();
-      const { container } = render(
+      render(
         <Wrapper>
           <AvatarUpload userId={1} />
         </Wrapper>
@@ -358,7 +357,7 @@ describe('AvatarUpload Component', () => {
 
     it('should display maximum file size in the UI', () => {
       const Wrapper = createWrapper();
-      const { container } = render(
+      render(
         <Wrapper>
           <AvatarUpload userId={1} />
         </Wrapper>
@@ -614,7 +613,7 @@ describe('AvatarUpload Component', () => {
 
     it('should have appropriate ARIA label for drag and drop zone', () => {
       const Wrapper = createWrapper();
-      const { container } = render(
+      render(
         <Wrapper>
           <AvatarUpload userId={1} />
         </Wrapper>
@@ -773,7 +772,7 @@ describe('AvatarUpload Component', () => {
       });
 
       const Wrapper = createWrapper();
-      const { container } = render(
+      render(
         <Wrapper>
           <AvatarUpload userId={1} />
         </Wrapper>
@@ -857,7 +856,7 @@ describe('AvatarUpload Component', () => {
       const onUploadSuccess = vi.fn();
       
       (useUploadAvatar as Mock).mockReturnValue({
-        mutate: vi.fn((file: File) => {
+        mutate: vi.fn(() => {
           // Simulate successful upload
           onUploadSuccess('https://example.com/avatar.jpg');
         }),
@@ -936,7 +935,7 @@ describe('AvatarUpload Component', () => {
       vi.spyOn(window, 'confirm').mockReturnValue(true);
       
       const Wrapper = createWrapper();
-      const { container } = render(
+      render(
         <Wrapper>
           <AvatarUpload 
             userId={1} 
@@ -1037,7 +1036,7 @@ describe('AvatarUpload Component', () => {
 
     it('should support keyboard navigation', async () => {
       const Wrapper = createWrapper();
-      const { container } = render(
+      render(
         <Wrapper>
           <AvatarUpload userId={1} />
         </Wrapper>

@@ -1,14 +1,11 @@
 import { test, expect } from './setup/msw';
 import type { Page } from '@playwright/test';
-import { jwtDecode } from 'jwt-decode';
 import { LoginPage } from './pages/LoginPage';
 import {
-  login,
   getAuthToken,
   decodeToken,
   isAuthenticated,
   logout,
-  refreshToken,
   waitForTokenRefresh
 } from './utils/auth';
 import { testStudent, testTeacher, testAdmin, TEST_PASSWORD } from './fixtures/users';
@@ -101,7 +98,7 @@ test.describe('Authentication E2E Tests', () => {
     // Verify validation errors shown
     const errorMessage = await loginPage.getErrorMessage();
     expect(errorMessage).toBeTruthy();
-    expect(errorMessage.toLowerCase()).toMatch(/username|password|required/);
+    expect(errorMessage!.toLowerCase()).toMatch(/username|password|required/);
   });
 
   /**
@@ -122,7 +119,7 @@ test.describe('Authentication E2E Tests', () => {
     // Verify error message displayed
     const errorMessage = await loginPage.getErrorMessage();
     expect(errorMessage).toBeTruthy();
-    expect(errorMessage.toLowerCase()).toMatch(/invalid|incorrect|wrong/);
+    expect(errorMessage!.toLowerCase()).toMatch(/invalid|incorrect|wrong/);
   });
 
   /**
@@ -144,7 +141,7 @@ test.describe('Authentication E2E Tests', () => {
     // Verify account lockout message
     const errorMessage = await loginPage.getErrorMessage();
     expect(errorMessage).toBeTruthy();
-    expect(errorMessage.toLowerCase()).toMatch(/locked|blocked|temporarily|too many/);
+    expect(errorMessage!.toLowerCase()).toMatch(/locked|blocked|temporarily|too many/);
   });
 
   /**
@@ -192,7 +189,7 @@ test.describe('Authentication E2E Tests', () => {
     expect(typeof token).toBe('string');
 
     // Verify token format (JWT has 3 parts separated by dots)
-    const tokenParts = token.split('.');
+    const tokenParts = token!.split('.');
     expect(tokenParts).toHaveLength(3);
   });
 
@@ -218,7 +215,7 @@ test.describe('Authentication E2E Tests', () => {
     expect(isValid).toBe(true);
 
     // Decode and verify payload fields
-    const decoded = decodeToken(token);
+    const decoded = decodeToken(token!);
     expect(decoded).toBeTruthy();
 
     // Verify user ID (sub claim)
@@ -326,7 +323,7 @@ test.describe('Authentication E2E Tests', () => {
     // Verify token was refreshed (tokens should be different)
     if (originalToken !== newToken) {
       // Token was refreshed
-      const decoded = decodeToken(newToken);
+      const decoded = decodeToken(newToken!);
       expect(decoded.exp).toBeGreaterThan(Math.floor(Date.now() / 1000));
     }
 
@@ -384,7 +381,7 @@ test.describe('Authentication E2E Tests', () => {
 
     // Decode token and verify role
     const token = await getAuthToken(page);
-    const decoded = decodeToken(token);
+    const decoded = decodeToken(token!);
 
     expect(decoded.roles).toContain('student');
     expect(decoded.roles).not.toContain('teacher');
@@ -406,7 +403,7 @@ test.describe('Authentication E2E Tests', () => {
 
     // Decode token and verify role
     const token = await getAuthToken(page);
-    const decoded = decodeToken(token);
+    const decoded = decodeToken(token!);
 
     expect(decoded.roles).toContain('teacher');
     // Teacher may also have editingteacher role
@@ -427,7 +424,7 @@ test.describe('Authentication E2E Tests', () => {
 
     // Decode token and verify role
     const token = await getAuthToken(page);
-    const decoded = decodeToken(token);
+    const decoded = decodeToken(token!);
 
     expect(decoded.roles).toContain('admin');
   });

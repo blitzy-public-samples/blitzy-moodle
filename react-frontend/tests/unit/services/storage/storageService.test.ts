@@ -101,8 +101,8 @@ describe('storageService', () => {
   let mockSessionStorage: MockStorage;
   let originalLocalStorage: Storage;
   let originalSessionStorage: Storage;
-  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
-  let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
+  let consoleErrorSpy: any;
+  let consoleWarnSpy: any;
   
   // Storage service functions (dynamically imported in beforeEach)
   let getItem: StorageService['getItem'];
@@ -848,8 +848,8 @@ describe('storageService', () => {
   });
 
   describe('addStorageListener and removeStorageListener', () => {
-    let addEventListenerSpy: ReturnType<typeof vi.spyOn>;
-    let removeEventListenerSpy: ReturnType<typeof vi.spyOn>;
+    let addEventListenerSpy: any;
+    let removeEventListenerSpy: any;
 
     beforeEach(() => {
       addEventListenerSpy = vi.spyOn(window, 'addEventListener');
@@ -869,7 +869,7 @@ describe('storageService', () => {
       addStorageListener(callback);
 
       // Get the registered listener
-      const registeredListener = addEventListenerSpy.mock.calls[0][1] as EventListener;
+      const registeredListener = addEventListenerSpy.mock.calls[0]![1] as EventListener;
 
       // Create a mock StorageEvent
       const storageEvent = new StorageEvent('storage', {
@@ -925,7 +925,7 @@ describe('storageService', () => {
       const callback = vi.fn();
 
       addStorageListener(callback);
-      const registeredListener = addEventListenerSpy.mock.calls[0][1] as EventListener;
+      const registeredListener = addEventListenerSpy.mock.calls[0]![1] as EventListener;
 
       removeStorageListener(registeredListener);
 
@@ -967,7 +967,7 @@ describe('storageService', () => {
       const callback = vi.fn();
       addStorageListener(callback);
 
-      const registeredListener = addEventListenerSpy.mock.calls[0][1] as EventListener;
+      const registeredListener = addEventListenerSpy.mock.calls[0]![1] as EventListener;
 
       // Create a regular Event (not StorageEvent)
       const regularEvent = new Event('storage');

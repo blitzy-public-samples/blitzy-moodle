@@ -21,10 +21,10 @@ const countPostsInHierarchy = (posts: DiscussionPost[]): number => {
 
 const createMockDiscussion = (overrides = {}) => ({
   id: 1,
-  course: 1,
-  forum: 1,
+  courseid: 1,
+  forumid: 1,
   name: 'Test Discussion',
-  firstpost: 1,
+  firstpostid: 1,
   userid: 1,
   groupid: 0,
   assessed: false,
@@ -33,7 +33,7 @@ const createMockDiscussion = (overrides = {}) => ({
   timestart: 0,
   timeend: 0,
   pinned: false,
-  locked: false,
+  timelocked: 0,
   ...overrides,
 });
 
@@ -135,7 +135,7 @@ describe('Concurrent Reply Test', () => {
     // Create ONE reply WITHOUT awaiting to test optimistic updates
     act(() => {
       result.current.createReply({
-        postData: { message: 'Message 1' },
+        postData: { forumId: 1, message: 'Message 1' },
         parentId: 1,
       });
     });

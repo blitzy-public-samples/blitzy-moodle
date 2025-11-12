@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, within, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ProfileEditForm } from '@/features/profile/components/ProfileEditForm';
 import type { User } from '@/features/profile/types/profile.types';
@@ -40,6 +40,7 @@ describe('ProfileEditForm', () => {
     id: 1,
     firstname: 'John',
     lastname: 'Doe',
+    fullname: 'John Doe',
     email: 'john.doe@example.com',
     city: 'New York',
     country: 'US',
@@ -47,7 +48,8 @@ describe('ProfileEditForm', () => {
     description: 'Software developer with 5 years of experience',
     interests: 'programming, testing, react',
     username: 'johndoe',
-    imageUrl: 'https://example.com/avatar.jpg',
+    profileimageurl: 'https://example.com/avatar.jpg',
+    profileimageurlsmall: 'https://example.com/avatar-small.jpg',
   };
 
   const defaultProps = {
@@ -396,8 +398,6 @@ describe('ProfileEditForm', () => {
     });
 
     it('clears error when user makes changes', async () => {
-      const user = userEvent.setup();
-      
       // Start with error state
       mockUseUpdateProfile.mockReturnValue({
         mutate: mockUpdateProfile,

@@ -303,11 +303,13 @@ function sanitizeUser(user: User & { password: string; status: string }): User {
  * - 403: Account suspended or locked
  */
 const loginHandler = http.post('*/api/v1/auth/login', async ({ request }) => {
+  console.log('[MSW Handler] Login handler called for:', request.url);
   await simulateNetworkDelay();
 
   try {
     const body = await request.json() as LoginRequest;
     const { username, password } = body;
+    console.log('[MSW Handler] Login attempt for user:', username);
 
     // Validate required fields
     if (!username || !password) {
