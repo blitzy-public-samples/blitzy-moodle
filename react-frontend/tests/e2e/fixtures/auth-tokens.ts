@@ -14,7 +14,7 @@
  */
 
 import { jwtDecode } from 'jwt-decode';
-import { testStudent, testTeacher, testAdmin, testStudent2 } from './users';
+import { testStudent } from './users';
 import type { User } from './users';
 
 /**

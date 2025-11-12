@@ -310,6 +310,8 @@ export function createMockCourse(overrides: Partial<Course> = {}): Course {
     enablecompletion: overrides.enablecompletion ?? true,
     completionnotify: overrides.completionnotify ?? false,
     category: overrides.category ?? 1,
+    sortorder: overrides.sortorder ?? 0,
+    showactivitydates: overrides.showactivitydates ?? true,
     enrollmentmethods: overrides.enrollmentmethods ?? [],
     modules: overrides.modules ?? [],
     sections: overrides.sections ?? [],

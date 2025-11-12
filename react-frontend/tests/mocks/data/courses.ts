@@ -13,10 +13,6 @@
 import type { Course, CourseModule, CourseCategory } from '@/types/entities';
 import type {
   CourseId,
-  CategoryId,
-  ModuleId,
-  ActivityId,
-  UserId,
   LanguageCode,
   Timestamp,
 } from '@/types/common';
@@ -40,16 +36,6 @@ type DeepPartial<T> = {
  * Course ID counter for generating unique sequential IDs
  */
 let courseIdCounter = 1;
-
-/**
- * Module ID counter for generating unique sequential IDs
- */
-let moduleIdCounter = 1;
-
-/**
- * Category ID counter for generating unique sequential IDs
- */
-let categoryIdCounter = 1;
 
 /**
  * Generates a unique sequential course ID
@@ -78,8 +64,9 @@ export function generateTimestamp(daysFromNow: number = 0): Timestamp {
  * @returns {string} Course format name
  */
 export function getCourseFormat(): string {
-  const formats = ['topics', 'weeks', 'social'];
-  return formats[Math.floor(Math.random() * formats.length)];
+  const formats = ['topics', 'weeks', 'social'] as const;
+  const index = Math.floor(Math.random() * formats.length);
+  return formats[index] as string;
 }
 
 // ============================================================================

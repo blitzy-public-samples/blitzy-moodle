@@ -1,7 +1,7 @@
 {
   "extends": "../tsconfig.json",
   "compilerOptions": {
-    "types": ["@playwright/test", "node", "vitest/globals", "@testing-library/jest-dom"]
+    "types": ["vite/client", "@playwright/test", "node", "vitest/globals", "@testing-library/jest-dom"]
   },
   "include": [
     "**/*.ts",

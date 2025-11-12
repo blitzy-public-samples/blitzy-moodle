@@ -105,6 +105,41 @@ export interface User {
   profileimageurl?: string;
   /** URL to small profile image thumbnail */
   profileimageurlsmall?: string;
+  /** User profile description */
+  description?: string;
+  /** Description format (1=HTML, 2=plain text, etc.) */
+  descriptionformat?: number;
+  /** Email format preference (0=plain text, 1=HTML) */
+  mailformat?: number;
+  /** Mail digest type (0=no digest, 1=complete, 2=subjects) */
+  maildigest?: number;
+  /** Email display setting (0=hide, 1=course, 2=all) */
+  maildisplay?: number;
+  /** Whether to auto-subscribe to forum posts */
+  autosubscribe?: boolean;
+  /** Whether to track unread forum posts */
+  trackforums?: boolean;
+  /** Timestamp when user account was created */
+  timecreated?: Timestamp;
+  /** Timestamp when user account was last modified */
+  timemodified?: Timestamp;
+  /** Trust bitmask for external content */
+  trustbitmask?: number;
+  /** Whether user account has been deleted */
+  deleted?: boolean;
+  /** User preferences as key-value pairs */
+  preferences?: Record<string, string | number | boolean>;
+  /** Custom profile fields */
+  customfields?: Array<{ name: string; value: string }>;
+  /** User roles across contexts */
+  roles?: Array<{
+    id: RoleId;
+    name: string;
+    shortname: string;
+    description?: string;
+    sortorder?: number;
+    archetype?: string;
+  }>;
 }
 
 /**
@@ -166,6 +201,32 @@ export interface Course {
   courseimage?: string;
   /** User's progress percentage (0-100, optional) */
   progress?: number;
+  /** Display name for course (can differ from fullname) */
+  displayname?: string;
+  /** Number of news items to show */
+  newsitems?: number;
+  /** Course marker (for highlighting sections) */
+  marker?: number;
+  /** Maximum upload file size in bytes */
+  maxbytes?: FileSize;
+  /** Legacy files setting (0=disabled, 1=enabled) */
+  legacyfiles?: number;
+  /** Whether to show course reports */
+  showreports?: boolean;
+  /** Default grouping ID for activities */
+  defaultgroupingid?: number;
+  /** Whether course was requested (pending approval) */
+  requested?: boolean;
+  /** Available enrollment methods */
+  enrollmentmethods?: Array<{ id: EnrolmentId; type: string; name: string }>;
+  /** Course modules/activities */
+  modules?: CourseModule[];
+  /** Course sections */
+  sections?: CourseSection[];
+  /** Whether current user is enrolled */
+  isenrolled?: boolean;
+  /** Whether current user can access course */
+  canaccess?: boolean;
 }
 
 /**
@@ -207,6 +268,37 @@ export interface CourseModule {
   url: string;
   /** URL to module icon */
   iconurl?: string;
+}
+
+/**
+ * Course Section Entity
+ * 
+ * Represents a section within a course (topic, week, etc.).
+ * Maps to the 'course_sections' table in Moodle database.
+ */
+export interface CourseSection {
+  /** Unique section identifier */
+  id: number;
+  /** Course ID this section belongs to */
+  course: CourseId;
+  /** Section number (0 for general section) */
+  section: number;
+  /** Section name/title */
+  name?: string;
+  /** Section summary/description (HTML) */
+  summary?: string;
+  /** Summary format (1=HTML, 2=plain text, etc.) */
+  summaryformat: number;
+  /** Comma-separated list of module IDs in this section */
+  sequence?: string;
+  /** Whether section is visible to students */
+  visible: boolean;
+  /** Availability restrictions (JSON) */
+  availability?: string;
+  /** Timestamp when section was modified */
+  timemodified?: Timestamp;
+  /** Array of modules in this section */
+  modules?: CourseModule[];
 }
 
 /**
@@ -262,6 +354,24 @@ export interface Assignment {
   markingworkflow: boolean;
   /** Whether marking allocation is enabled */
   markingallocation: boolean;
+  /** Whether submissions are disabled (no submissions allowed) */
+  nosubmissions?: boolean;
+  /** Whether to send notifications to students when graded */
+  sendstudentnotifications?: boolean;
+  /** Grading due date timestamp */
+  gradingduedate?: Timestamp;
+  /** Timestamp when assignment was created */
+  timecreated?: Timestamp;
+  /** Team submission grouping ID */
+  teamsubmissiongroupingid?: number;
+  /** Whether to hide grader identity (blind marking) */
+  blindmarking?: boolean;
+  /** Whether to hide grader from students */
+  hidegrader?: boolean;
+  /** When to reveal grader identities (timestamp or never) */
+  revealidentities?: number;
+  /** Whether to prevent submissions if user not in group */
+  preventsubmissionnotingroup?: boolean;
 }
 
 /**
@@ -289,6 +399,20 @@ export interface AssignmentSubmission {
   attemptnumber: number;
   /** Whether this is the latest attempt */
   latest: boolean;
+  /** Grade awarded (numerical value) */
+  grade?: number;
+  /** User ID of grader */
+  grader?: UserId;
+  /** Time remaining until due date (seconds) */
+  timeremaining?: number;
+  /** Grading status */
+  gradingstatus?: 'graded' | 'notgraded' | 'markedinworkflow';
+  /** Feedback text/comments */
+  feedback?: string;
+  /** Submitted files */
+  files?: Array<{ filename: string; fileurl: string; filesize: number }>;
+  /** Submission plugins data */
+  plugins?: Array<{ type: string; name: string; data: any }>;
 }
 
 /**
@@ -334,6 +458,58 @@ export interface Quiz {
   sumgrades: number;
   /** Decimal points for question grades */
   questiondecimalpoints: number;
+  /** Whether grading is based on last attempt only */
+  attemptonlast?: boolean;
+  /** Decimal points for displaying grades */
+  decimalpoints?: number;
+  /** Review option: allow reviewing attempt */
+  reviewattempt?: number;
+  /** Review option: show correctness */
+  reviewcorrectness?: number;
+  /** Review option: show marks */
+  reviewmarks?: number;
+  /** Review option: show specific feedback */
+  reviewspecificfeedback?: number;
+  /** Review option: show general feedback */
+  reviewgeneralfeedback?: number;
+  /** Review option: show right answer */
+  reviewrightanswer?: number;
+  /** Review option: show overall feedback */
+  reviewoverallfeedback?: number;
+  /** Number of questions per page (0=all on one page) */
+  questionsperpage?: number;
+  /** Navigation method (free or sequential) */
+  navmethod?: string;
+  /** Whether to shuffle answers within questions */
+  shuffleanswers?: boolean;
+  /** Timestamp when quiz was created */
+  timecreated?: Timestamp;
+  /** Timestamp when quiz was last modified */
+  timemodified?: Timestamp;
+  /** Password required to access quiz */
+  password?: string;
+  /** IP subnet restriction */
+  subnet?: string;
+  /** Browser security setting */
+  browsersecurity?: string;
+  /** Delay between first and second attempt (seconds) */
+  delay1?: number;
+  /** Delay between later attempts (seconds) */
+  delay2?: number;
+  /** Whether to show user picture */
+  showuserpicture?: boolean;
+  /** Whether to show blocks during attempt */
+  showblocks?: boolean;
+  /** Whether completion requires all attempts exhausted */
+  completionattemptsexhausted?: boolean;
+  /** Whether completion requires passing grade */
+  completionpass?: boolean;
+  /** Whether completion requires minimum attempts */
+  completionminattemptsenabled?: boolean;
+  /** Minimum number of attempts for completion */
+  completionminattempts?: number;
+  /** Allow offline attempts (for mobile app) */
+  allowofflineattempts?: boolean;
 }
 
 /**
@@ -369,6 +545,12 @@ export interface QuizAttempt {
   timemodified: Timestamp;
   /** Sum of all grades for this attempt */
   sumgrades?: number;
+  /** Timestamp when attempt was modified offline */
+  timemodifiedoffline?: Timestamp;
+  /** Timestamp when attempt state was checked */
+  timecheckstate?: Timestamp;
+  /** Timestamp when graded notification was sent */
+  gradednotificationsenttime?: Timestamp;
 }
 
 /**
@@ -412,6 +594,34 @@ export interface Forum {
   rsstype: number;
   /** Number of RSS articles */
   rssarticles: number;
+  /** Due date for forum posting (timestamp) */
+  duedate?: Timestamp;
+  /** Cut-off date for forum posting (timestamp) */
+  cutoffdate?: Timestamp;
+  /** Grade for forum participation */
+  grade_forum?: number;
+  /** Timestamp when forum was last modified */
+  timemodified?: Timestamp;
+  /** Completion view setting (0=disabled, 1=enabled) */
+  completionview?: number;
+  /** Completion requires discussions (number required) */
+  completiondiscussions?: number;
+  /** Completion requires replies (number required) */
+  completionreplies?: number;
+  /** Completion requires posts (number required) */
+  completionposts?: number;
+  /** Display word count for posts */
+  displaywordcount?: boolean;
+  /** Lock discussions after period (seconds) */
+  lockdiscussionafter?: number;
+  /** Blocking threshold warning (number of posts) */
+  blockperiod?: number;
+  /** Blocking threshold for post (number of posts) */
+  blockafter?: number;
+  /** Warning threshold for posts (number of posts) */
+  warnafter?: number;
+  /** Course module ID */
+  cmid?: ModuleId;
 }
 
 /**
@@ -447,6 +657,20 @@ export interface ForumDiscussion {
   timeend?: Timestamp;
   /** Whether discussion is pinned to top */
   pinned: boolean;
+  /** Timestamp when discussion is locked */
+  timelocked?: Timestamp;
+  /** Array of posts in this discussion */
+  posts?: ForumPost[];
+  /** Full name of discussion creator */
+  userfullname?: string;
+  /** URL to user's profile picture */
+  userpictureurl?: string;
+  /** Number of unread posts */
+  numunread?: number;
+  /** Number of replies in discussion */
+  numreplies?: number;
+  /** Whether user can reply to this discussion */
+  canreply?: boolean;
 }
 
 /**
@@ -482,6 +706,26 @@ export interface ForumPost {
   totalscore: number;
   /** Whether to email post immediately */
   mailnow: boolean;
+  /** Whether post has been mailed */
+  mailed?: boolean;
+  /** Whether post is deleted */
+  deleted?: boolean;
+  /** User ID for private reply */
+  privatereplyto?: UserId;
+  /** Whether post has a parent */
+  hasparent?: boolean;
+  /** Array of tags associated with post */
+  tags?: string[];
+  /** Full name of post author */
+  userfullname?: string;
+  /** URL to author's profile picture */
+  userpictureurl?: string;
+  /** Whether user can edit this post */
+  canedit?: boolean;
+  /** Whether user can delete this post */
+  candelete?: boolean;
+  /** Whether user can reply to this post */
+  canreply?: boolean;
 }
 
 /**
@@ -590,6 +834,18 @@ export interface GradeItem {
   locked: boolean;
   /** Timestamp when item will be locked */
   locktime?: Timestamp;
+  /** Item information text */
+  iteminfo?: string;
+  /** Item ID number (for external reference) */
+  idnumber?: string;
+  /** Calculation formula for grade */
+  calculation?: string;
+  /** Whether grade needs update */
+  needsupdate?: boolean;
+  /** Timestamp when item was created */
+  timecreated?: Timestamp;
+  /** Timestamp when item was last modified */
+  timemodified?: Timestamp;
 }
 
 /**
@@ -635,6 +891,14 @@ export interface Message {
   component?: string;
   /** Event type that triggered message */
   eventtype?: string;
+  /** Custom data as JSON string */
+  customdata?: string;
+  /** Full name of sender */
+  userfromfullname?: string;
+  /** Full name of recipient */
+  usertofullname?: string;
+  /** Conversation ID this message belongs to */
+  conversationid?: Id;
 }
 
 /**

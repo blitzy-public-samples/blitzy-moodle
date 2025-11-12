@@ -14,7 +14,7 @@
  * @module e2e/utils/auth
  */
 
-import { Page, BrowserContext, expect } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { jwtDecode } from 'jwt-decode';
 import { 
   waitForPageLoad, 
@@ -94,17 +94,8 @@ const JWT_COOKIE_NAME = 'jwt_token';
 /** API endpoint for login */
 const LOGIN_API_ENDPOINT = '/api/v1/auth/login';
 
-/** API endpoint for logout */
-const LOGOUT_API_ENDPOINT = '/api/v1/auth/logout';
-
 /** API endpoint for token refresh */
 const REFRESH_API_ENDPOINT = '/api/v1/auth/refresh';
-
-/** Access token expiration time in seconds (1 hour) */
-const ACCESS_TOKEN_EXPIRATION = 3600;
-
-/** Refresh token expiration time in seconds (7 days) */
-const REFRESH_TOKEN_EXPIRATION = 604800;
 
 /** Test user credentials */
 const TEST_USERS = {
