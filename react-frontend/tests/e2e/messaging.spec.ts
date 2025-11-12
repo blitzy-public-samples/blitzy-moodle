@@ -18,26 +18,26 @@
  * - Captures screenshots on test failure for debugging
  */
 
-import { test, expect, describe, beforeAll, afterAll, beforeEach, afterEach, Page } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { MessagingPage } from './pages/MessagingPage';
 import { login, logout, isAuthenticated, getAuthToken, clearAuthenticationState } from './utils/auth';
 import { testStudent, testStudent2, testStudent3, TEST_PASSWORD } from './fixtures/users';
 import { handleNewTab, switchToTab, clearBrowserStorage } from './utils/browser-helpers';
 
-describe('Private Messaging System E2E Tests', () => {
+test.describe('Private Messaging System E2E Tests', () => {
   let user1Page: Page;
   let user2Page: Page;
   let user1MessagingPage: MessagingPage;
   let user2MessagingPage: MessagingPage;
   let testConversationIds: string[] = [];
 
-  beforeAll(async ({ browser }) => {
+  test.beforeAll(async ({ browser }) => {
     // Setup: Login as user1 (testStudent) in first browser context
     const user1Context = await browser.newContext();
     user1Page = await user1Context.newPage();
     
     // Authenticate user1
-    await login(user1Page, testStudent.username, TEST_PASSWORD);
+    await login(user1Page, { username: testStudent.username, password: TEST_PASSWORD });
     await expect(await isAuthenticated(user1Page)).toBe(true);
     
     // Initialize MessagingPage for user1
@@ -52,7 +52,7 @@ describe('Private Messaging System E2E Tests', () => {
     user2Page = await user2Context.newPage();
     
     // Authenticate user2
-    await login(user2Page, testStudent2.username, TEST_PASSWORD);
+    await login(user2Page, { username: testStudent2.username, password: TEST_PASSWORD });
     await expect(await isAuthenticated(user2Page)).toBe(true);
     
     // Initialize MessagingPage for user2
@@ -63,13 +63,13 @@ describe('Private Messaging System E2E Tests', () => {
     await user2MessagingPage.waitForMessaging();
   });
 
-  beforeEach(async () => {
+  test.beforeEach(async () => {
     // Reset to messaging page before each test
     await user1Page.goto('/messaging');
     await user1MessagingPage.waitForMessaging();
   });
 
-  afterEach(async ({ page }, testInfo) => {
+  test.afterEach(async ({ page }, testInfo) => {
     // Capture screenshot on failure
     if (testInfo.status !== testInfo.expectedStatus) {
       const screenshot = await user1Page.screenshot();
@@ -80,7 +80,7 @@ describe('Private Messaging System E2E Tests', () => {
     }
   });
 
-  afterAll(async () => {
+  test.afterAll(async () => {
     // Cleanup: Delete test conversations
     for (const conversationId of testConversationIds) {
       try {
@@ -99,7 +99,7 @@ describe('Private Messaging System E2E Tests', () => {
     await user2Page.close();
   });
 
-  describe('Step 1: Setup and Navigation', () => {
+  test.describe('Step 1: Setup and Navigation', () => {
     test('should verify user1 is logged in and messaging center is accessible', async () => {
       // Verify authentication state
       const authenticated = await isAuthenticated(user1Page);
@@ -127,7 +127,7 @@ describe('Private Messaging System E2E Tests', () => {
     });
   });
 
-  describe('Step 2: Message Composition', () => {
+  test.describe('Step 2: Message Composition', () => {
     test('should open compose dialog and select user2 as recipient', async () => {
       // Click compose button
       await user1MessagingPage.composeMessage();
@@ -155,7 +155,7 @@ describe('Private Messaging System E2E Tests', () => {
     });
   });
 
-  describe('Step 3: Message Sending', () => {
+  test.describe('Step 3: Message Sending', () => {
     test('should send message and verify sent confirmation', async () => {
       // Open compose dialog
       await user1MessagingPage.composeMessage();
@@ -187,8 +187,8 @@ describe('Private Messaging System E2E Tests', () => {
       // Click on conversation with user2
       const conversations = await user1MessagingPage.getConversations();
       const user2Conversation = conversations.find(conv => 
-        conv.participant === testStudent2.username || 
-        conv.participantName?.includes(testStudent2.firstname)
+        conv.participantIds.includes(testStudent2.id.toString()) || 
+        conv.participantNames.some(name => name.includes(testStudent2.firstname))
       );
       
       expect(user2Conversation).toBeDefined();
@@ -203,11 +203,11 @@ describe('Private Messaging System E2E Tests', () => {
       
       expect(sentMessage).toBeDefined();
       expect(sentMessage!.content).toBe(messageContent);
-      expect(sentMessage!.sender).toBe(testStudent.username);
+      expect(sentMessage!.senderId).toBe(testStudent.id.toString());
     });
   });
 
-  describe('Step 4: Message Receiving', () => {
+  test.describe('Step 4: Message Receiving', () => {
     test('should verify notification badge shows unread count for user2', async () => {
       // User1 sends a message to user2
       await user1MessagingPage.composeMessage();
@@ -243,16 +243,16 @@ describe('Private Messaging System E2E Tests', () => {
       
       // Find conversation with user1
       const user1Conversation = conversations.find(conv => 
-        conv.participant === testStudent.username || 
-        conv.participantName?.includes(testStudent.firstname)
+        conv.participantIds.includes(testStudent.id.toString()) || 
+        conv.participantNames.some(name => name.includes(testStudent.firstname))
       );
       
       expect(user1Conversation).toBeDefined();
-      expect(user1Conversation!.hasUnread).toBe(true);
+      expect(user1Conversation!.unreadCount).toBeGreaterThan(0);
     });
   });
 
-  describe('Step 5: Conversation View', () => {
+  test.describe('Step 5: Conversation View', () => {
     test('should open conversation and verify message thread displays chronologically', async () => {
       // Navigate to user2's messaging page
       await user2Page.goto('/messaging');
@@ -261,7 +261,8 @@ describe('Private Messaging System E2E Tests', () => {
       // Get and open conversation with user1
       const conversations = await user2MessagingPage.getConversations();
       const user1Conversation = conversations.find(conv => 
-        conv.participant === testStudent.username
+        conv.participantIds.includes(testStudent.id.toString()) || 
+        conv.participantNames.some(name => name.includes(testStudent.firstname))
       );
       
       expect(user1Conversation).toBeDefined();
@@ -288,7 +289,8 @@ describe('Private Messaging System E2E Tests', () => {
       
       const conversations = await user2MessagingPage.getConversations();
       const user1Conversation = conversations.find(conv => 
-        conv.participant === testStudent.username
+        conv.participantIds.includes(testStudent.id.toString()) || 
+        conv.participantNames.some(name => name.includes(testStudent.firstname))
       );
       
       await user2MessagingPage.clickConversation(user1Conversation!.id);
@@ -298,13 +300,13 @@ describe('Private Messaging System E2E Tests', () => {
       
       // Verify each message has correct sender information
       messages.forEach(message => {
-        expect(message.sender).toBeDefined();
-        expect(message.sender).toMatch(new RegExp(`${testStudent.username}|${testStudent2.username}`));
+        expect(message.senderId).toBeDefined();
+        expect([testStudent.id.toString(), testStudent2.id.toString()]).toContain(message.senderId);
       });
     });
   });
 
-  describe('Step 6: Message Reply', () => {
+  test.describe('Step 6: Message Reply', () => {
     test('should reply to message and verify reply appears in thread', async () => {
       // Navigate to user2's messaging and open conversation
       await user2Page.goto('/messaging');
@@ -312,7 +314,8 @@ describe('Private Messaging System E2E Tests', () => {
       
       const conversations = await user2MessagingPage.getConversations();
       const user1Conversation = conversations.find(conv => 
-        conv.participant === testStudent.username
+        conv.participantIds.includes(testStudent.id.toString()) || 
+        conv.participantNames.some(name => name.includes(testStudent.firstname))
       );
       
       await user2MessagingPage.clickConversation(user1Conversation!.id);
@@ -323,7 +326,8 @@ describe('Private Messaging System E2E Tests', () => {
       
       // Reply to the message
       const replyContent = 'This is a reply from user2 at ' + new Date().toISOString();
-      await user2MessagingPage.replyToMessage(replyContent);
+      const firstMessageId = initialMessages[0]?.id || '';
+      await user2MessagingPage.replyToMessage(firstMessageId, replyContent);
       
       // Wait for reply to be sent
       await user2Page.waitForTimeout(1000);
@@ -335,11 +339,11 @@ describe('Private Messaging System E2E Tests', () => {
       // Verify the last message is the reply
       const lastMessage = updatedMessages[updatedMessages.length - 1];
       expect(lastMessage.content).toBe(replyContent);
-      expect(lastMessage.sender).toBe(testStudent2.username);
+      expect(lastMessage.senderId).toBe(testStudent2.id.toString());
     });
   });
 
-  describe('Step 7: Real-Time Updates', () => {
+  test.describe('Step 7: Real-Time Updates', () => {
     test('should verify message appears in user2 conversation without refresh when user1 sends', async () => {
       // User2: Open conversation with user1
       await user2Page.goto('/messaging');
@@ -347,7 +351,8 @@ describe('Private Messaging System E2E Tests', () => {
       
       const conversations = await user2MessagingPage.getConversations();
       const user1Conversation = conversations.find(conv => 
-        conv.participant === testStudent.username
+        conv.participantIds.includes(testStudent.id.toString()) || 
+        conv.participantNames.some(name => name.includes(testStudent.firstname))
       );
       
       await user2MessagingPage.clickConversation(user1Conversation!.id);
@@ -362,7 +367,8 @@ describe('Private Messaging System E2E Tests', () => {
       
       const user1Conversations = await user1MessagingPage.getConversations();
       const user2ConversationForUser1 = user1Conversations.find(conv => 
-        conv.participant === testStudent2.username
+        conv.participantIds.includes(testStudent2.id.toString()) || 
+        conv.participantNames.some(name => name.includes(testStudent2.firstname))
       );
       
       await user1MessagingPage.clickConversation(user2ConversationForUser1!.id);
@@ -387,11 +393,11 @@ describe('Private Messaging System E2E Tests', () => {
       // Verify the new message appears
       const newMessage = updatedMessages.find(msg => msg.content === realTimeMessageContent);
       expect(newMessage).toBeDefined();
-      expect(newMessage!.sender).toBe(testStudent.username);
+      expect(newMessage!.senderId).toBe(testStudent.id.toString());
     });
   });
 
-  describe('Step 8: Message Search', () => {
+  test.describe('Step 8: Message Search', () => {
     test('should search for keyword and verify matching results', async () => {
       // Navigate to messaging page
       await user1Page.goto('/messaging');
@@ -411,7 +417,10 @@ describe('Private Messaging System E2E Tests', () => {
       await user1Page.waitForTimeout(1000);
       
       // Perform search
-      const searchResults = await user1MessagingPage.searchMessages(searchKeyword);
+      await user1MessagingPage.searchMessages(searchKeyword);
+      
+      // Get search results
+      const searchResults = await user1MessagingPage.getMessages();
       
       // Verify search results contain messages with the keyword
       expect(searchResults.length).toBeGreaterThan(0);
@@ -425,14 +434,17 @@ describe('Private Messaging System E2E Tests', () => {
     test('should verify empty search results for non-existent keyword', async () => {
       // Search for non-existent keyword
       const nonExistentKeyword = 'nonexistent_keyword_xyz_' + Date.now();
-      const searchResults = await user1MessagingPage.searchMessages(nonExistentKeyword);
+      await user1MessagingPage.searchMessages(nonExistentKeyword);
+      
+      // Get search results
+      const searchResults = await user1MessagingPage.getMessages();
       
       // Verify no results found
       expect(searchResults.length).toBe(0);
     });
   });
 
-  describe('Step 9: Conversation List', () => {
+  test.describe('Step 9: Conversation List', () => {
     test('should verify conversation list shows recent messages and participants', async () => {
       // Navigate to messaging page
       await user1Page.goto('/messaging');
@@ -447,15 +459,16 @@ describe('Private Messaging System E2E Tests', () => {
       // Verify each conversation has required information
       conversations.forEach(conversation => {
         expect(conversation.id).toBeDefined();
-        expect(conversation.participant || conversation.participantName).toBeDefined();
+        expect(conversation.participantIds.length).toBeGreaterThan(0);
+        expect(conversation.participantNames.length).toBeGreaterThan(0);
         expect(conversation.lastMessage).toBeDefined();
-        expect(conversation.timestamp).toBeDefined();
+        expect(conversation.lastMessageTime).toBeDefined();
       });
       
       // Verify conversation with user2 exists
       const user2Conversation = conversations.find(conv => 
-        conv.participant === testStudent2.username ||
-        conv.participantName?.includes(testStudent2.firstname)
+        conv.participantIds.includes(testStudent2.id.toString()) ||
+        conv.participantNames.some(name => name.includes(testStudent2.firstname))
       );
       
       expect(user2Conversation).toBeDefined();
@@ -467,14 +480,14 @@ describe('Private Messaging System E2E Tests', () => {
       
       // Verify conversations are sorted by timestamp (most recent first)
       for (let i = 1; i < conversations.length; i++) {
-        const prevTimestamp = new Date(conversations[i - 1].timestamp).getTime();
-        const currTimestamp = new Date(conversations[i].timestamp).getTime();
+        const prevTimestamp = new Date(conversations[i - 1].lastMessageTime).getTime();
+        const currTimestamp = new Date(conversations[i].lastMessageTime).getTime();
         expect(prevTimestamp).toBeGreaterThanOrEqual(currTimestamp);
       }
     });
   });
 
-  describe('Step 10: Message Notifications', () => {
+  test.describe('Step 10: Message Notifications', () => {
     test('should verify notification appears when message is received', async () => {
       // User1 sends a message to user2
       await user1Page.goto('/messaging');
@@ -506,7 +519,7 @@ describe('Private Messaging System E2E Tests', () => {
     });
   });
 
-  describe('Step 11: Mark as Read', () => {
+  test.describe('Step 11: Mark as Read', () => {
     test('should mark conversation as read and verify unread count decreases', async () => {
       // Navigate to user2's messaging page
       await user2Page.goto('/messaging');
@@ -518,15 +531,19 @@ describe('Private Messaging System E2E Tests', () => {
       // Open conversation with user1
       const conversations = await user2MessagingPage.getConversations();
       const user1Conversation = conversations.find(conv => 
-        conv.participant === testStudent.username
+        conv.participantIds.includes(testStudent.id.toString()) ||
+        conv.participantNames.some(name => name.includes(testStudent.firstname))
       );
       
-      if (user1Conversation && user1Conversation.hasUnread) {
+      if (user1Conversation && user1Conversation.unreadCount > 0) {
         // Click conversation to mark as read
         await user2MessagingPage.clickConversation(user1Conversation.id);
         
-        // Mark as read
-        await user2MessagingPage.markAsRead();
+        // Get messages and mark the first one as read
+        const messages = await user2MessagingPage.getMessages();
+        if (messages.length > 0) {
+          await user2MessagingPage.markAsRead(messages[0].id);
+        }
         
         // Wait for mark as read to process
         await user2Page.waitForTimeout(1000);
@@ -544,7 +561,7 @@ describe('Private Messaging System E2E Tests', () => {
     });
   });
 
-  describe('Step 12: Delete Conversation', () => {
+  test.describe('Step 12: Delete Conversation', () => {
     test('should delete conversation and verify it is removed from list', async () => {
       // Create a new conversation for deletion test with user3
       await user1Page.goto('/messaging');
@@ -564,8 +581,8 @@ describe('Private Messaging System E2E Tests', () => {
       // Get conversations and find the one with user3
       const conversations = await user1MessagingPage.getConversations();
       const user3Conversation = conversations.find(conv => 
-        conv.participant === testStudent3.username ||
-        conv.participantName?.includes(testStudent3.firstname)
+        conv.participantIds.includes(testStudent3.id.toString()) ||
+        conv.participantNames.some(name => name.includes(testStudent3.firstname))
       );
       
       expect(user3Conversation).toBeDefined();
@@ -585,7 +602,7 @@ describe('Private Messaging System E2E Tests', () => {
     });
   });
 
-  describe('Step 13: Assertions - Data Persistence and Accuracy', () => {
+  test.describe('Step 13: Assertions - Data Persistence and Accuracy', () => {
     test('should verify messages persist after page refresh', async () => {
       // Navigate to messaging and open a conversation
       await user1Page.goto('/messaging');
@@ -593,7 +610,7 @@ describe('Private Messaging System E2E Tests', () => {
       
       const conversations = await user1MessagingPage.getConversations();
       const user2Conversation = conversations.find(conv => 
-        conv.participant === testStudent2.username
+        conv.participantIds.includes(testStudent2.id.toString())
       );
       
       if (user2Conversation) {
@@ -621,7 +638,7 @@ describe('Private Messaging System E2E Tests', () => {
         messagesBeforeRefresh.forEach((msgBefore, index) => {
           const msgAfter = messagesAfterRefresh[index];
           expect(msgAfter.content).toBe(msgBefore.content);
-          expect(msgAfter.sender).toBe(msgBefore.sender);
+          expect(msgAfter.senderId).toBe(msgBefore.senderId);
         });
       }
     });
@@ -633,7 +650,7 @@ describe('Private Messaging System E2E Tests', () => {
       
       const conversations = await user1MessagingPage.getConversations();
       const user2Conversation = conversations.find(conv => 
-        conv.participant === testStudent2.username
+        conv.participantIds.includes(testStudent2.id.toString())
       );
       
       if (user2Conversation) {
@@ -643,7 +660,7 @@ describe('Private Messaging System E2E Tests', () => {
         const messages = await user1MessagingPage.getMessages();
         
         // Verify timestamps are valid dates
-        messages.forEach(message => {
+        for (const message of messages) {
           const timestamp = await user1MessagingPage.getMessageTimestamp(message.id);
           expect(timestamp).toBeDefined();
           
@@ -653,7 +670,7 @@ describe('Private Messaging System E2E Tests', () => {
           
           // Verify timestamp is not in the future
           expect(date.getTime()).toBeLessThanOrEqual(Date.now());
-        });
+        }
       }
     });
 
@@ -690,7 +707,7 @@ describe('Private Messaging System E2E Tests', () => {
     });
   });
 
-  describe('Step 14: Error Scenarios', () => {
+  test.describe('Step 14: Error Scenarios', () => {
     test('should handle empty message submission gracefully', async () => {
       // Navigate to messaging
       await user1Page.goto('/messaging');
@@ -732,7 +749,7 @@ describe('Private Messaging System E2E Tests', () => {
     });
   });
 
-  describe('Additional Validation Tests', () => {
+  test.describe('Additional Validation Tests', () => {
     test('should verify conversation list updates after sending a message', async () => {
       // Get initial conversation list
       await user1Page.goto('/messaging');
@@ -760,7 +777,7 @@ describe('Private Messaging System E2E Tests', () => {
       
       // Find user2 conversation in updated list
       const user2ConversationAfter = conversationsAfterSend.find(conv => 
-        conv.participant === testStudent2.username
+        conv.participantIds.includes(testStudent2.id.toString())
       );
       
       expect(user2ConversationAfter).toBeDefined();
@@ -774,7 +791,7 @@ describe('Private Messaging System E2E Tests', () => {
       
       const conversations = await user1MessagingPage.getConversations();
       const user2Conversation = conversations.find(conv => 
-        conv.participant === testStudent2.username
+        conv.participantIds.includes(testStudent2.id.toString())
       );
       
       if (user2Conversation) {
@@ -786,7 +803,7 @@ describe('Private Messaging System E2E Tests', () => {
         // Verify all messages belong to the same conversation
         messages.forEach(message => {
           // Messages should alternate between user1 and user2 or be consecutive from same sender
-          expect([testStudent.username, testStudent2.username]).toContain(message.sender);
+          expect([testStudent.username, testStudent2.username]).toContain(message.senderName);
         });
       }
     });
