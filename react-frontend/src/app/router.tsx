@@ -9,6 +9,7 @@
 
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
+import { FileRepositoryPage } from '@/features/courses/pages/FileRepositoryPage';
 import App from '@/App';
 
 // ============================================================================
@@ -41,6 +42,10 @@ export const router = createBrowserRouter([
         <p>Dashboard implementation coming soon...</p>
       </div>
     ),
+  },
+  {
+    path: '/courses/:id/files',
+    element: <FileRepositoryPage />,
   },
   {
     path: '/demo',

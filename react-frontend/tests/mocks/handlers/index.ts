@@ -42,6 +42,7 @@ import { choicesHandlers } from './choices';
 import { feedbackHandlers } from './feedback';
 import { h5pHandlers } from './h5p';
 import { adminHandlers } from './admin';
+import { filesHandlers } from './files';
 
 /**
  * Combined array of all MSW request handlers
@@ -74,6 +75,7 @@ export const handlers = [
   ...feedbackHandlers,
   ...h5pHandlers,
   ...adminHandlers,
+  ...filesHandlers,
 ];
 
 /**
@@ -99,4 +101,5 @@ export {
   feedbackHandlers,
   h5pHandlers,
   adminHandlers,
+  filesHandlers,
 };

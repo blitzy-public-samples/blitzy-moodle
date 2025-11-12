@@ -85,11 +85,13 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    // Explicitly set E2E_TEST environment variable before running dev server
-    // This disables the Vite proxy to allow MSW to intercept API requests
+    // Set both E2E_TEST and VITE_E2E_TEST environment variables
+    // E2E_TEST: Disables Vite proxy in server config (Node.js side)
+    // VITE_E2E_TEST: Enables MSW browser worker (browser side)
+    // Note: VITE_ prefix is required for Vite to expose env vars to the browser
     command: process.platform === 'win32' 
-      ? 'set E2E_TEST=true && npm run dev'
-      : 'E2E_TEST=true npm run dev',
+      ? 'set E2E_TEST=true && set VITE_E2E_TEST=true && npm run dev'
+      : 'E2E_TEST=true VITE_E2E_TEST=true npm run dev',
     url: 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,
   },

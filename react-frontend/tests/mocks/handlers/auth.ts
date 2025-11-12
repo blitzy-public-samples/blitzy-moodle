@@ -88,7 +88,7 @@ const MOCK_USERS: Record<string, User & { password: string; status: 'active' | '
   student1: {
     id: 1001,
     username: 'student1',
-    password: 'TestPassword123!',
+    password: 'Student@123',
     email: 'student1@example.com',
     firstname: 'John',
     lastname: 'Student',
@@ -112,7 +112,7 @@ const MOCK_USERS: Record<string, User & { password: string; status: 'active' | '
   teacher1: {
     id: 2001,
     username: 'teacher1',
-    password: 'TestPassword123!',
+    password: 'Teacher@123',
     email: 'teacher1@example.com',
     firstname: 'Jane',
     lastname: 'Teacher',
@@ -138,7 +138,7 @@ const MOCK_USERS: Record<string, User & { password: string; status: 'active' | '
   admin1: {
     id: 5001,
     username: 'admin',
-    password: 'TestPassword123!',
+    password: 'Admin@123',
     email: 'admin@example.com',
     firstname: 'Admin',
     lastname: 'Administrator',
@@ -211,10 +211,26 @@ const MOCK_USERS: Record<string, User & { password: string; status: 'active' | '
  * @returns Mock JWT token string
  */
 function generateMockToken(userId: number, type: 'access' | 'refresh'): string {
-  const timestamp = Date.now();
-  const random = Math.random().toString(36).substring(2, 15);
-  const payload = btoa(JSON.stringify({ userId, type, timestamp }));
-  return `mock.${payload}.${random}`;
+  const user = findUserById(userId);
+  const now = Math.floor(Date.now() / 1000); // Unix timestamp in seconds
+  const expiresIn = type === 'access' ? 3600 : 604800; // 1 hour for access, 7 days for refresh
+  
+  // Create JWT-compliant payload
+  const payload = {
+    sub: userId,
+    roles: user?.roles || [],
+    iat: now,
+    exp: now + expiresIn,
+    iss: 'http://localhost:5173',
+    type,
+  };
+  
+  // Create a simple mock JWT (header.payload.signature)
+  const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+  const encodedPayload = btoa(JSON.stringify(payload));
+  const signature = Math.random().toString(36).substring(2, 15);
+  
+  return `${header}.${encodedPayload}.${signature}`;
 }
 
 /**
