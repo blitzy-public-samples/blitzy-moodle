@@ -24,9 +24,9 @@ import { http, HttpResponse } from 'msw';
 // ============================================================================
 
 /**
- * File interface representing an uploaded file
+ * StoredFile interface representing an uploaded file in storage
  */
-interface File {
+interface StoredFile {
   id: string;
   name: string;
   size: number;
@@ -35,44 +35,107 @@ interface File {
   createdDate: string;
   modifiedDate: string;
   author: string;
-}
-
-/**
- * API Response envelope for success responses
- */
-interface ApiSuccessResponse<T> {
-  success: true;
-  data: T;
-  meta?: {
-    pagination?: {
-      page: number;
-      perPage: number;
-      total: number;
-      totalPages: number;
-    };
-  };
-}
-
-/**
- * API Response envelope for error responses
- */
-interface ApiErrorResponse {
-  success: false;
-  error: {
-    code: string;
-    message: string;
-    details?: Record<string, unknown>;
-  };
+  path: string; // Folder path where file is located, e.g., "/" or "/folder1/"
 }
 
 // ============================================================================
-// Mock Data
+// Mock Data Storage (persisted across page reloads via sessionStorage)
 // ============================================================================
 
 /**
- * Mock storage for uploaded files (in-memory during test execution)
+ * SessionStorage key for persisting mock file data across page reloads
  */
-const mockFileStorage: Map<string, File> = new Map();
+const STORAGE_KEY = 'msw_mock_file_storage';
+
+/**
+ * Load file storage from sessionStorage
+ * 
+ * This ensures mock file data persists across page reloads during E2E tests.
+ * When the page reloads (e.g., via page.goto()), the handlers are re-initialized,
+ * but we restore the previous state from sessionStorage.
+ * 
+ * @returns Map of stored files, loaded from sessionStorage if available
+ */
+function loadFileStorage(): Map<string, StoredFile> {
+  try {
+    const stored = sessionStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      console.log('[MSW Files] Loaded file storage from sessionStorage:', Object.keys(parsed).length, 'files');
+      return new Map(Object.entries(parsed));
+    }
+  } catch (error) {
+    console.warn('[MSW Files] Failed to load file storage from sessionStorage:', error);
+  }
+  console.log('[MSW Files] No existing storage found, initializing empty Map');
+  return new Map<string, StoredFile>();
+}
+
+/**
+ * Save file storage to sessionStorage
+ * 
+ * Persists the current file storage state to sessionStorage so it survives
+ * page reloads during E2E tests.
+ * 
+ * @param storage - The file storage Map to persist
+ */
+function saveFileStorage(storage: Map<string, StoredFile>): void {
+  try {
+    const obj = Object.fromEntries(storage.entries());
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
+    console.log('[MSW Files] Saved file storage to sessionStorage:', Object.keys(obj).length, 'files');
+  } catch (error) {
+    console.warn('[MSW Files] Failed to save file storage to sessionStorage:', error);
+  }
+}
+
+/**
+ * In-memory storage for uploaded files during E2E tests
+ * 
+ * This Map stores file metadata (not actual file contents) and persists across
+ * page reloads via sessionStorage. Each page reload restores the previous state.
+ * 
+ * Key: file ID (string)
+ * Value: StoredFile metadata object
+ */
+const mockFileStorage = loadFileStorage();
+
+/**
+ * Get the current mock file storage.
+ * 
+ * @returns Map of file ID to StoredFile objects
+ */
+function getFileStorage(): Map<string, StoredFile> {
+  return mockFileStorage;
+}
+
+/**
+ * Update the mock file storage and persist to sessionStorage
+ * 
+ * This ensures that changes to the file storage are saved and will be
+ * available after page reloads.
+ * 
+ * @param storage - Map of file ID to StoredFile objects
+ */
+function updateFileStorage(storage: Map<string, StoredFile>): void {
+  saveFileStorage(storage);
+}
+
+/**
+ * Clear all mock file storage
+ * 
+ * This function clears both the in-memory Map and the sessionStorage,
+ * providing a clean slate for tests.
+ */
+export function clearMockFileStorage(): void {
+  mockFileStorage.clear();
+  try {
+    sessionStorage.removeItem(STORAGE_KEY);
+    console.log('[MSW Files] Cleared all mock file storage');
+  } catch (error) {
+    console.warn('[MSW Files] Failed to clear sessionStorage:', error);
+  }
+}
 
 // ============================================================================
 // Request Handlers
@@ -109,10 +172,10 @@ const handleFileUpload = http.post('*/api/v1/files/upload', async ({ request }) 
   try {
     // Parse multipart form data
     const formData = await request.formData();
-    const file = formData.get('file') as File;
+    const file = formData.get('file') as globalThis.File;
     
     if (!file) {
-      return HttpResponse.json<ApiErrorResponse>(
+      return HttpResponse.json(
         {
           success: false,
           error: {
@@ -124,9 +187,19 @@ const handleFileUpload = http.post('*/api/v1/files/upload', async ({ request }) 
       );
     }
 
+    // Simulate upload delay for large files (>10MB) to allow E2E tests to observe progress bar
+    // This delay is only for testing purposes to simulate real-world network conditions
+    const LARGE_FILE_THRESHOLD = 10 * 1024 * 1024; // 10MB
+    const UPLOAD_DELAY_MS = 1500; // 1.5 seconds for large files
+    
+    if (file.size > LARGE_FILE_THRESHOLD) {
+      console.log(`[MSW Files] Simulating upload delay for large file: ${file.name} (${file.size} bytes)`);
+      await new Promise(resolve => setTimeout(resolve, UPLOAD_DELAY_MS));
+    }
+
     // Create file metadata
     const now = new Date().toISOString();
-    const fileData: File = {
+    const fileData: StoredFile = {
       id: file.name,
       name: file.name,
       size: file.size,
@@ -135,13 +208,16 @@ const handleFileUpload = http.post('*/api/v1/files/upload', async ({ request }) 
       createdDate: now,
       modifiedDate: now,
       author: 'Test User',
+      path: '/', // New files are placed in root directory by default
     };
 
-    // Store in mock storage
-    mockFileStorage.set(file.name, fileData);
+    // Store in mock storage (shared across contexts via service worker)
+    const storage = getFileStorage();
+    storage.set(file.name, fileData);
+    updateFileStorage(storage);
 
     // Return success response
-    return HttpResponse.json<ApiSuccessResponse<File>>(
+    return HttpResponse.json(
       {
         success: true,
         data: fileData,
@@ -149,7 +225,7 @@ const handleFileUpload = http.post('*/api/v1/files/upload', async ({ request }) 
       { status: 201 }
     );
   } catch (error) {
-    return HttpResponse.json<ApiErrorResponse>(
+    return HttpResponse.json(
       {
         success: false,
         error: {
@@ -196,14 +272,16 @@ const handleGetFiles = http.get('*/api/v1/files', ({ request }) => {
   const page = parseInt(url.searchParams.get('page') || '1', 10);
   const perPage = parseInt(url.searchParams.get('perPage') || '20', 10);
 
-  const files = Array.from(mockFileStorage.values());
+  // Load files from persistent storage
+  const storage = getFileStorage();
+  const files = Array.from(storage.values());
   const total = files.length;
   const totalPages = Math.ceil(total / perPage);
   const start = (page - 1) * perPage;
   const end = start + perPage;
   const paginatedFiles = files.slice(start, end);
 
-  return HttpResponse.json<ApiSuccessResponse<File[]>>(
+  return HttpResponse.json(
     {
       success: true,
       data: paginatedFiles,
@@ -239,8 +317,11 @@ const handleDeleteFile = http.delete('*/api/v1/files/:id', ({ params }) => {
   const { id } = params;
   const fileId = String(id);
 
-  if (!mockFileStorage.has(fileId)) {
-    return HttpResponse.json<ApiErrorResponse>(
+  // Load files from persistent storage
+  const storage = getFileStorage();
+  
+  if (!storage.has(fileId)) {
+    return HttpResponse.json(
       {
         success: false,
         error: {
@@ -252,9 +333,11 @@ const handleDeleteFile = http.delete('*/api/v1/files/:id', ({ params }) => {
     );
   }
 
-  mockFileStorage.delete(fileId);
+  // Delete file and persist changes
+  storage.delete(fileId);
+  updateFileStorage(storage);
 
-  return HttpResponse.json<ApiSuccessResponse<{ message: string }>>(
+  return HttpResponse.json(
     {
       success: true,
       data: {
@@ -275,9 +358,12 @@ const handleDownloadFile = http.get('*/api/v1/files/download/:id', ({ params }) 
   const { id } = params;
   const fileId = String(id);
 
-  const file = mockFileStorage.get(fileId);
+  // Load files from persistent storage
+  const storage = getFileStorage();
+  const file = storage.get(fileId);
+  
   if (!file) {
-    return HttpResponse.json<ApiErrorResponse>(
+    return HttpResponse.json(
       {
         success: false,
         error: {
@@ -300,6 +386,182 @@ const handleDownloadFile = http.get('*/api/v1/files/download/:id', ({ params }) 
   });
 });
 
+/**
+ * POST /api/v1/files/:id/move
+ * 
+ * Moves a file to a different folder location.
+ * 
+ * Request body:
+ * - destination: string (folder path, e.g., "/" or "/folder1/")
+ * 
+ * Success Response (200):
+ * ```json
+ * {
+ *   "success": true,
+ *   "data": { "id": "test.pdf", "name": "test.pdf", "path": "/folder1/", ... }
+ * }
+ * ```
+ * 
+ * Error Response (404):
+ * ```json
+ * {
+ *   "success": false,
+ *   "error": {
+ *     "code": "FILE_NOT_FOUND",
+ *     "message": "File not found"
+ *   }
+ * }
+ * ```
+ */
+const handleMoveFile = http.post('*/api/v1/files/:id/move', async ({ request, params }) => {
+  const { id } = params;
+  const fileId = String(id);
+  
+  try {
+    // Parse request body
+    const body = await request.json() as { destination: string };
+    const { destination } = body;
+    
+    // Load files from persistent storage
+    const storage = getFileStorage();
+    const file = storage.get(fileId);
+    
+    if (!file) {
+      return HttpResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'FILE_NOT_FOUND',
+            message: 'File not found',
+          },
+        },
+        { status: 404 }
+      );
+    }
+    
+    // Update file path
+    file.path = destination;
+    file.modifiedDate = new Date().toISOString();
+    
+    // Save to storage
+    storage.set(fileId, file);
+    updateFileStorage(storage);
+    
+    console.log(`[MSW Files] Moved file ${fileId} to ${destination}`);
+    
+    return HttpResponse.json(
+      {
+        success: true,
+        data: file,
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    return HttpResponse.json(
+      {
+        success: false,
+        error: {
+          code: 'MOVE_FAILED',
+          message: 'Failed to move file',
+          details: { error: String(error) },
+        },
+      },
+      { status: 500 }
+    );
+  }
+});
+
+/**
+ * PUT /api/v1/files/:id
+ * 
+ * Updates a file (currently supports renaming).
+ * 
+ * Request body:
+ * - name: string (new file name)
+ * 
+ * Success Response (200):
+ * ```json
+ * {
+ *   "success": true,
+ *   "data": {
+ *     "file": { "id": "test.pdf", "name": "renamed.pdf", ... }
+ *   }
+ * }
+ * ```
+ * 
+ * Error Response (404):
+ * ```json
+ * {
+ *   "success": false,
+ *   "error": {
+ *     "code": "FILE_NOT_FOUND",
+ *     "message": "File not found"
+ *   }
+ * }
+ * ```
+ */
+const handleRenameFile = http.put('*/api/v1/files/:id', async ({ request, params }) => {
+  const { id } = params;
+  const fileId = String(id);
+  
+  try {
+    // Parse request body
+    const body = await request.json() as { name: string };
+    const { name } = body;
+    
+    // Load files from persistent storage
+    const storage = getFileStorage();
+    const file = storage.get(fileId);
+    
+    if (!file) {
+      return HttpResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'FILE_NOT_FOUND',
+            message: 'File not found',
+          },
+        },
+        { status: 404 }
+      );
+    }
+    
+    // Update file name and modified date
+    const oldName = file.name;
+    file.name = name;
+    file.modifiedDate = new Date().toISOString();
+    
+    // If the file ID was based on the old name, we may need to update the ID
+    // For simplicity, we'll keep the same ID but update the name
+    storage.set(fileId, file);
+    updateFileStorage(storage);
+    
+    console.log(`[MSW Files] Renamed file ${fileId} from ${oldName} to ${name}`);
+    
+    return HttpResponse.json(
+      {
+        success: true,
+        data: {
+          file: file,
+        },
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    return HttpResponse.json(
+      {
+        success: false,
+        error: {
+          code: 'RENAME_FAILED',
+          message: 'Failed to rename file',
+          details: { error: String(error) },
+        },
+      },
+      { status: 500 }
+    );
+  }
+});
+
 // ============================================================================
 // Export Handlers Array
 // ============================================================================
@@ -315,4 +577,6 @@ export const filesHandlers = [
   handleGetFiles,
   handleDeleteFile,
   handleDownloadFile,
+  handleMoveFile,
+  handleRenameFile,
 ];

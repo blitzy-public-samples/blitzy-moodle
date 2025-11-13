@@ -168,6 +168,24 @@ function generateUniqueFilename(extension: string): string {
 }
 
 /**
+ * Get MIME type from filename
+ * @param filename - Name of the file including extension
+ * @returns MIME type string, defaults to 'application/octet-stream' if unknown
+ */
+export function getMimeTypeFromFilename(filename: string): string {
+  // Extract extension from filename
+  const extensionMatch = filename.match(/\.([^.]+)$/);
+  if (!extensionMatch) {
+    return 'application/octet-stream';
+  }
+  
+  const extension = extensionMatch[1].toLowerCase();
+  
+  // Map to FileType if it exists in our MIME_TYPES
+  return MIME_TYPES[extension as FileType] || 'application/octet-stream';
+}
+
+/**
  * Get file size in bytes based on size category
  */
 function getFileSizeBytes(sizeCategory: FileSize): number {

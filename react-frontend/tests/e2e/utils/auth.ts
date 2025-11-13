@@ -17,7 +17,6 @@
 import { Page } from '@playwright/test';
 import { jwtDecode } from 'jwt-decode';
 import { 
-  waitForPageLoad, 
   waitForElement, 
   retryOperation, 
   pollUntil 
@@ -136,7 +135,7 @@ const TEST_USERS = {
 export async function login(page: Page, credentials: LoginCredentials): Promise<Page> {
   // Navigate to login page
   await page.goto(LOGIN_PAGE_URL);
-  await waitForPageLoad(page);
+  // Removed waitForPageLoad - the form element waits below are more reliable
 
   // Wait for login form to be visible
   await waitForElement(page, 'input[name="username"]', 'visible', { timeout: 5000 });
@@ -157,8 +156,9 @@ export async function login(page: Page, credentials: LoginCredentials): Promise<
   // Now wait for the navigation to complete
   await navigationPromise;
 
-  // Wait for page to fully load after login
-  await waitForPageLoad(page);
+  // Navigation is complete - the more specific URL and element waits below are sufficient
+  // Note: Removed waitForPageLoad here as it waits for networkidle which is too strict
+  // for React apps with background API activity (React Query, etc.)
 
   // Extract JWT token from storage with retry logic
   const token = await retryOperation(
@@ -329,7 +329,7 @@ export async function logout(page: Page): Promise<void> {
     // Just clear auth state and navigate to login
     await clearAuthenticationState(page);
     await page.goto(LOGIN_PAGE_URL);
-    await waitForPageLoad(page);
+    // Removed waitForPageLoad - navigation is sufficient here
     return;
   }
 
@@ -345,8 +345,7 @@ export async function logout(page: Page): Promise<void> {
     page.click('[data-testid="logout-button"]'),
   ]);
 
-  // Wait for login page to load
-  await waitForPageLoad(page);
+  // Removed waitForPageLoad - URL wait above is sufficient
 
   // Verify token removed from storage
   await pollUntil(
