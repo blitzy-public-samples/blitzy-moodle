@@ -171,6 +171,77 @@ interface EnrollmentResponse {
 /**
  * Mock course database
  */
+/**
+ * Helper function to generate additional mock courses for pagination testing
+ */
+function generateMockCourse(id: number, baseIndex: number): CourseDetail {
+  const courseNames = [
+    'Introduction to Computer Science',
+    'Advanced Database Systems',
+    'Web Development Fundamentals',
+    'Machine Learning and AI',
+    'Data Structures and Algorithms',
+    'Software Engineering Principles',
+    'Network Security',
+    'Cloud Computing',
+    'Mobile App Development',
+    'DevOps and CI/CD',
+  ];
+  
+  const categories = [
+    { id: 1, name: 'Computer Science' },
+    { id: 2, name: 'Web Development' },
+    { id: 3, name: 'Training' },
+    { id: 4, name: 'Data Science' },
+  ];
+  
+  const formats: CourseFormat[] = ['topics', 'weeks', 'social', 'singleactivity'];
+  
+  const nameIndex = baseIndex % courseNames.length;
+  const categoryIndex = baseIndex % categories.length;
+  const formatIndex = baseIndex % formats.length;
+  
+  const category = categories[categoryIndex];
+  const courseName = `${courseNames[nameIndex]} ${Math.floor(baseIndex / courseNames.length) + 1}`;
+  const shortname = `COURSE${id}`;
+  
+  return {
+    id,
+    fullname: courseName,
+    shortname,
+    summary: `<p>Comprehensive course covering ${courseName.toLowerCase()} with practical examples and hands-on projects.</p>`,
+    summaryformat: 1,
+    categoryid: category.id,
+    categoryname: category.name,
+    format: formats[formatIndex],
+    startdate: Math.floor(Date.now() / 1000) - 86400 * (30 + (baseIndex * 5)),
+    enddate: Math.floor(Date.now() / 1000) + 86400 * (60 - (baseIndex * 2)),
+    visible: 1,
+    enrolledusers: 10 + (baseIndex * 3),
+    imageurl: `https://images.unsplash.com/photo-${1516116216624 + baseIndex}`,
+    progress: baseIndex % 100,
+    hasprogress: true,
+    idnumber: `${shortname}-2024`,
+    lang: 'en',
+    numsections: 10 + (baseIndex % 5),
+    maxbytes: 52428800,
+    showreports: 1,
+    newsitems: 5,
+    groupmode: baseIndex % 3,
+    groupmodeforce: 0,
+    defaultgroupingid: 0,
+    enablecompletion: 1,
+    completionnotify: 1,
+    showgrades: 1,
+    showactivitydates: 1,
+    coursedisplay: 0,
+    enrolled: baseIndex % 3 === 0,
+    role: baseIndex % 3 === 0 ? 'student' : undefined,
+    canupdate: false,
+    canviewhiddencontent: false,
+  };
+}
+
 const mockCourses: CourseDetail[] = [
   {
     id: 1,
@@ -374,6 +445,8 @@ const mockCourses: CourseDetail[] = [
     canupdate: false,
     canviewhiddencontent: false,
   },
+  // Generate additional courses for pagination testing (need 50 total for robust testing)
+  ...Array.from({ length: 44 }, (_, i) => generateMockCourse(i + 7, i)),
 ];
 
 /**
@@ -611,7 +684,8 @@ const listCoursesHandler = http.get('http://*/api/v1/courses', async ({ request 
   const enrolled = url.searchParams.get('enrolled');
   const search = url.searchParams.get('search');
   const visible = url.searchParams.get('visible');
-  const sortby = url.searchParams.get('sortby') || 'fullname';
+  const sort = url.searchParams.get('sort') || url.searchParams.get('sortby') || 'fullname';
+  const order = url.searchParams.get('order') || 'asc';
 
   // Filter courses
   let filteredCourses = [...mockCourses];
@@ -643,17 +717,26 @@ const listCoursesHandler = http.get('http://*/api/v1/courses', async ({ request 
 
   // Sort courses
   filteredCourses.sort((a, b) => {
-    switch (sortby) {
+    let comparison = 0;
+    
+    switch (sort) {
       case 'shortname':
-        return a.shortname.localeCompare(b.shortname);
+        comparison = a.shortname.localeCompare(b.shortname);
+        break;
       case 'startdate':
-        return b.startdate - a.startdate;
+        comparison = a.startdate - b.startdate;
+        break;
       case 'enrolledusers':
-        return b.enrolledusers - a.enrolledusers;
+        comparison = a.enrolledusers - b.enrolledusers;
+        break;
       case 'fullname':
       default:
-        return a.fullname.localeCompare(b.fullname);
+        comparison = a.fullname.localeCompare(b.fullname);
+        break;
     }
+    
+    // Apply sort order (ascending or descending)
+    return order === 'desc' ? -comparison : comparison;
   });
 
   // Calculate pagination

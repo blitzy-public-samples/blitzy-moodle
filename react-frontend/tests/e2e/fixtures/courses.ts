@@ -231,8 +231,8 @@ export const testCourse1: Course = {
   summaryformat: 1, // HTML
   category: programmingCategory.id,
   visible: true,
-  startdate: Date.now() - 86400000 * 30, // 30 days ago
-  enddate: Date.now() + 86400000 * 90, // 90 days from now
+  startdate: Math.floor(Date.now() / 1000) - 86400 * 30, // 30 days ago (Unix timestamp in seconds)
+  enddate: Math.floor(Date.now() / 1000) + 86400 * 90, // 90 days from now (Unix timestamp in seconds)
   format: COURSE_FORMATS.TOPICS,
   enrollmentmethods: [
     {
@@ -252,8 +252,8 @@ export const testCourse1: Course = {
     lastname: testTeacher.lastname,
     fullname: `${testTeacher.firstname} ${testTeacher.lastname}`,
   },
-  timecreated: Date.now() - 86400000 * 60, // 60 days ago
-  timemodified: Date.now() - 86400000 * 5, // 5 days ago
+  timecreated: Math.floor(Date.now() / 1000) - 86400 * 60, // 60 days ago (Unix timestamp in seconds)
+  timemodified: Math.floor(Date.now() / 1000) - 86400 * 5, // 5 days ago (Unix timestamp in seconds)
 };
 
 /**
@@ -268,8 +268,8 @@ export const testCourse2: Course = {
   summaryformat: 1, // HTML
   category: programmingCategory.id,
   visible: true,
-  startdate: Date.now() - 86400000 * 15, // 15 days ago
-  enddate: Date.now() + 86400000 * 105, // 105 days from now
+  startdate: Math.floor(Date.now() / 1000) - 86400 * 15, // 15 days ago (Unix timestamp in seconds)
+  enddate: Math.floor(Date.now() / 1000) + 86400 * 105, // 105 days from now (Unix timestamp in seconds)
   format: COURSE_FORMATS.TOPICS,
   enrollmentmethods: [
     {
@@ -290,8 +290,8 @@ export const testCourse2: Course = {
     lastname: testTeacher.lastname,
     fullname: `${testTeacher.firstname} ${testTeacher.lastname}`,
   },
-  timecreated: Date.now() - 86400000 * 45, // 45 days ago
-  timemodified: Date.now() - 86400000 * 2, // 2 days ago
+  timecreated: Math.floor(Date.now() / 1000) - 86400 * 45, // 45 days ago (Unix timestamp in seconds)
+  timemodified: Math.floor(Date.now() / 1000) - 86400 * 2, // 2 days ago (Unix timestamp in seconds)
 };
 
 /**
@@ -306,8 +306,8 @@ export const testCourse3: Course = {
   summaryformat: 1, // HTML
   category: mathematicsCategory.id,
   visible: false, // Hidden from catalog
-  startdate: Date.now() + 86400000 * 7, // Starts in 7 days
-  enddate: Date.now() + 86400000 * 127, // Ends in 127 days
+  startdate: Math.floor(Date.now() / 1000) + 86400 * 7, // Starts in 7 days (Unix timestamp in seconds)
+  enddate: Math.floor(Date.now() / 1000) + 86400 * 127, // Ends in 127 days (Unix timestamp in seconds)
   format: COURSE_FORMATS.WEEKS,
   enrollmentmethods: [
     {
@@ -322,8 +322,8 @@ export const testCourse3: Course = {
     lastname: testTeacher.lastname,
     fullname: `${testTeacher.firstname} ${testTeacher.lastname}`,
   },
-  timecreated: Date.now() - 86400000 * 20, // 20 days ago
-  timemodified: Date.now() - 86400000 * 1, // 1 day ago
+  timecreated: Math.floor(Date.now() / 1000) - 86400 * 20, // 20 days ago (Unix timestamp in seconds)
+  timemodified: Math.floor(Date.now() / 1000) - 86400 * 1, // 1 day ago (Unix timestamp in seconds)
 };
 
 /**
@@ -338,8 +338,8 @@ export const testCourse4: Course = {
   summaryformat: 1, // HTML
   category: programmingCategory.id,
   visible: true,
-  startdate: Date.now() - 86400000 * 45, // 45 days ago
-  enddate: Date.now() + 86400000 * 75, // 75 days from now
+  startdate: Math.floor(Date.now() / 1000) - 86400 * 45, // 45 days ago (Unix timestamp in seconds)
+  enddate: Math.floor(Date.now() / 1000) + 86400 * 75, // 75 days from now (Unix timestamp in seconds)
   format: COURSE_FORMATS.TOPICS,
   sections: [
     {
@@ -539,8 +539,8 @@ export const testCourse4: Course = {
     lastname: testTeacher.lastname,
     fullname: `${testTeacher.firstname} ${testTeacher.lastname}`,
   },
-  timecreated: Date.now() - 86400000 * 90, // 90 days ago
-  timemodified: Date.now() - 86400000 * 3, // 3 days ago
+  timecreated: Math.floor(Date.now() / 1000) - 86400 * 90, // 90 days ago (Unix timestamp in seconds)
+  timemodified: Math.floor(Date.now() / 1000) - 86400 * 3, // 3 days ago (Unix timestamp in seconds)
 };
 
 /**

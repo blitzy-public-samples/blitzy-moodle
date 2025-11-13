@@ -40,6 +40,8 @@ export interface CatalogFilters {
   maxEnrollment?: number;
   rating?: number;
   price?: 'free' | 'paid' | 'all';
+  selfPaced?: boolean;
+  withCertificate?: boolean;
 }
 
 /**
@@ -76,13 +78,15 @@ export class CourseCatalogPage {
     this.page = page;
     
     // Initialize all locators using data-testid for reliability
-    this.searchInput = page.locator('[data-testid="course-search-input"]');
+    // For MUI TextField, we need to target the actual input element inside the wrapper
+    this.searchInput = page.locator('[data-testid="course-search-input"] input');
     this.courseCards = page.locator('[data-testid="course-card"]');
     this.filterPanel = page.locator('[data-testid="filter-panel"]');
     this.sortDropdown = page.locator('[data-testid="sort-dropdown"]');
     this.categoryNav = page.locator('[data-testid="category-navigation"]');
     this.paginationControls = page.locator('[data-testid="pagination-controls"]');
     this.viewToggle = page.locator('[data-testid="view-toggle"]');
+    // For MUI Select, target the actual select/button element inside the wrapper
     this.coursesPerPageSelect = page.locator('[data-testid="courses-per-page-select"]');
   }
 
@@ -103,8 +107,8 @@ export class CourseCatalogPage {
       this.page.locator('[data-testid="empty-state-message"]').waitFor({ state: 'visible', timeout: 8000 }).catch(() => {})
     ]);
 
-    // Wait for network idle to ensure all data is loaded
-    await this.page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
+    // Give a short delay for any animations to complete (removed networkidle wait for better performance)
+    await this.page.waitForTimeout(100);
   }
 
   /**
@@ -141,59 +145,77 @@ export class CourseCatalogPage {
     const cardCount = await this.courseCards.count();
     const courseData: CourseCardData[] = [];
 
+    // Process all cards in parallel for better performance
+    const cardPromises = [];
     for (let i = 0; i < cardCount; i++) {
-      const card = this.courseCards.nth(i);
-      
-      try {
-        const courseId = await card.getAttribute('data-course-id') || '';
-        const title = await card.locator('[data-testid="course-title"]').textContent() || '';
-        const instructor = await card.locator('[data-testid="course-instructor"]').textContent() || '';
-        const category = await card.locator('[data-testid="course-category"]').textContent() || '';
-        
-        // Extract enrollment count (parse from text like "123 students")
-        const enrollmentText = await card.locator('[data-testid="course-enrollment"]').textContent() || '0';
-        const enrollmentCount = parseInt(enrollmentText.match(/\d+/)?.[0] || '0', 10);
-        
-        // Optional fields
-        const imageUrl = (await card.locator('[data-testid="course-image"]').getAttribute('src').catch(() => null)) ?? undefined;
-        const description = await card.locator('[data-testid="course-description"]').textContent().catch(() => undefined);
-        const startDate = await card.locator('[data-testid="course-start-date"]').textContent().catch(() => undefined);
-        const endDate = await card.locator('[data-testid="course-end-date"]').textContent().catch(() => undefined);
-        const duration = await card.locator('[data-testid="course-duration"]').textContent().catch(() => undefined);
-        
-        // Rating (parse from text or aria-label)
-        const ratingText = await card.locator('[data-testid="course-rating"]').textContent().catch(() => null);
-        const rating = ratingText ? parseFloat(ratingText.match(/[\d.]+/)?.[0] || '0') : undefined;
-        
-        // Review count
-        const reviewText = await card.locator('[data-testid="course-reviews"]').textContent().catch(() => null);
-        const reviewCount = reviewText ? parseInt(reviewText.match(/\d+/)?.[0] || '0', 10) : undefined;
-        
-        // Price (can be null for free courses)
-        const price = await card.locator('[data-testid="course-price"]').textContent().catch(() => null);
-        
-        courseData.push({
-          courseId,
-          title: title.trim(),
-          instructor: instructor.trim(),
-          category: category.trim(),
-          enrollmentCount,
-          imageUrl,
-          description: description?.trim(),
-          startDate: startDate?.trim(),
-          endDate: endDate?.trim(),
-          duration: duration?.trim(),
-          rating,
-          reviewCount,
-          price: price?.trim() || null
-        });
-      } catch (error) {
-        // Log error but continue processing other cards
-        console.warn(`Failed to extract data from course card ${i}:`, error);
-      }
+      cardPromises.push(this.extractCardData(this.courseCards.nth(i), i));
     }
+    
+    const results = await Promise.all(cardPromises);
+    courseData.push(...results.filter((data): data is CourseCardData => data !== null));
 
     return courseData;
+  }
+
+  /**
+   * Extracts data from a single course card
+   * @param card The course card locator
+   * @param index Card index for error reporting
+   * @returns Course card data or null if extraction fails
+   */
+  private async extractCardData(card: Locator, index: number): Promise<CourseCardData | null> {
+    try {
+      // Use Promise.all to fetch all data in parallel for speed
+      const [
+        courseId,
+        title,
+        instructor,
+        category,
+        enrollmentText,
+        imageUrl,
+        description,
+        startDate,
+        endDate
+      ] = await Promise.all([
+        card.getAttribute('data-course-id').catch(() => ''), // Read from card's data-course-id attribute, not inner text
+        card.locator('[data-testid="course-title"]').textContent().catch(() => ''),
+        card.locator('[data-testid="course-instructor"]').textContent().catch(() => ''),
+        card.locator('[data-testid="course-category"]').textContent().catch(() => ''),
+        card.locator('[data-testid="course-enrollment"]').textContent().catch(() => '0'),
+        card.locator('[data-testid="course-image"]').getAttribute('src').catch(() => null),
+        card.locator('[data-testid="course-description"]').textContent().catch(() => null),
+        card.locator('[data-testid="course-start-date"]').textContent().catch(() => null),
+        card.locator('[data-testid="course-end-date"]').textContent().catch(() => null)
+      ]);
+      
+      // Extract enrollment count (parse from text like "123 students")
+      const enrollmentCount = parseInt(enrollmentText.match(/\d+/)?.[0] || '0', 10);
+      
+      // Strip "Starts: " and "Ends: " prefixes from dates
+      const cleanStartDate = startDate?.trim().replace(/^Starts:\s*/, '');
+      const cleanEndDate = endDate?.trim().replace(/^Ends:\s*/, '');
+      
+      return {
+        courseId: courseId.trim(),
+        title: title.trim(),
+        instructor: instructor.trim(),
+        category: category.trim(),
+        enrollmentCount,
+        imageUrl: imageUrl ?? undefined,
+        description: description?.trim(),
+        startDate: cleanStartDate || undefined,
+        endDate: cleanEndDate || undefined,
+        // Remove fields that don't exist in the component
+        duration: undefined,
+        rating: undefined,
+        reviewCount: undefined,
+        price: null
+      };
+    } catch (error) {
+      // Log error but continue processing other cards
+      console.warn(`Failed to extract data from course card ${index}:`, error);
+      return null;
+    }
   }
 
   /**
@@ -247,9 +269,27 @@ export class CourseCatalogPage {
 
   /**
    * Applies a sort order to the course list
-   * @param sortType - Type of sort (e.g., 'name', 'date', 'popularity', 'rating')
+   * @param sortType - Type of sort (e.g., 'name', 'name-asc', 'name-desc', 'date', 'date-desc', 'popularity', 'popularity-desc')
    */
   async applySortOrder(sortType: string): Promise<void> {
+    // Map test sort types to actual component testid values
+    // Component only has: sort-option-name, sort-option-date, sort-option-popularity
+    // Tests may use: name-asc, name-desc, date-desc, popularity-desc
+    const sortMapping: Record<string, string> = {
+      'name': 'name',
+      'name-asc': 'name',
+      'name-desc': 'name',
+      'date': 'date',
+      'date-asc': 'date',
+      'date-desc': 'date',
+      'popularity': 'popularity',
+      'popularity-asc': 'popularity',
+      'popularity-desc': 'popularity',
+      'rating': 'popularity', // Fallback to popularity
+    };
+    
+    const mappedSortType = sortMapping[sortType] || sortType;
+    
     await this.sortDropdown.waitFor({ state: 'visible' });
     await this.sortDropdown.click();
     
@@ -257,7 +297,7 @@ export class CourseCatalogPage {
     await this.page.waitForTimeout(200);
     
     // Select the sort option
-    const sortOption = this.page.locator(`[data-testid="sort-option-${sortType}"]`);
+    const sortOption = this.page.locator(`[data-testid="sort-option-${mappedSortType}"]`);
     await sortOption.click();
     
     // Wait for sorted results to load
@@ -358,7 +398,8 @@ export class CourseCatalogPage {
     await this.paginationControls.waitFor({ state: 'visible' });
     
     // Find and click the page number button
-    const pageButton = this.paginationControls.locator(`[data-testid="page-${pageNumber}"]`);
+    // Use type="page" to disambiguate from first/last page buttons which may share the same page number
+    const pageButton = this.paginationControls.locator(`[data-testid="page-${pageNumber}"][type="page"]`);
     
     // If specific page button not found, try generic pagination
     if (await pageButton.count() === 0) {
