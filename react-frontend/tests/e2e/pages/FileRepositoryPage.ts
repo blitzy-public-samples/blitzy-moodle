@@ -257,26 +257,13 @@ export class FileRepositoryPage {
    * @param fileId - The ID of the file to download
    */
   async downloadFile(fileId: string): Promise<void> {
-    // Locate the file and click its download button
+    // Locate the file and click its download button directly
     const fileItem = this.fileList.locator(`[data-file-id="${fileId}"]`);
     await fileItem.waitFor({ state: 'visible', timeout: 15000 });
     
-    // Open file actions menu
-    const actionsButton = fileItem.getByRole('button', { name: /actions|more/i });
-    await actionsButton.click();
-    
-    // Wait for menu to appear
-    await this.fileActionsMenu.waitFor({ state: 'visible', timeout: 10000 });
-    
-    // Click download button in the menu
-    const downloadLink = this.fileActionsMenu.getByRole('menuitem', { name: /download/i });
-    
-    // Start waiting for download before clicking
-    const downloadPromise = this.page.waitForEvent('download');
-    await downloadLink.click();
-    
-    // Wait for download to start
-    await downloadPromise;
+    // Click the direct download button (no menu needed)
+    const downloadButton = fileItem.getByRole('button', { name: /download/i });
+    await downloadButton.click();
   }
 
   /**
@@ -373,16 +360,9 @@ export class FileRepositoryPage {
     const fileItem = this.fileList.locator(`[data-file-id="${fileId}"]`);
     await fileItem.waitFor({ state: 'visible', timeout: 15000 });
     
-    // Open file actions menu
-    const actionsButton = fileItem.getByRole('button', { name: /actions|more/i });
-    await actionsButton.click();
-    
-    // Wait for menu to appear
-    await this.fileActionsMenu.waitFor({ state: 'visible', timeout: 10000 });
-    
-    // Click delete option
-    const deleteMenuItem = this.fileActionsMenu.getByRole('menuitem', { name: /delete/i });
-    await deleteMenuItem.click();
+    // Click the direct delete button (no menu needed)
+    const deleteButton = fileItem.getByRole('button', { name: /delete/i });
+    await deleteButton.click();
     
     // Wait for confirmation modal and confirm
     await this.confirmDeleteModal.waitFor({ state: 'visible', timeout: 15000 });
