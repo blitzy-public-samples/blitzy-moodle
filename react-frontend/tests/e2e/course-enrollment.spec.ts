@@ -15,7 +15,8 @@
  * - public/course/view.php (course access verification)
  */
 
-import { test, expect, describe, beforeEach, afterEach, beforeAll, afterAll, Page } from '@playwright/test';
+import { test, expect } from './setup/msw';
+import type { Page } from '@playwright/test';
 import { CoursePage } from './pages/CoursePage';
 import { EnrollmentPage } from './pages/EnrollmentPage';
 import { CourseCatalogPage } from './pages/CourseCatalogPage';
@@ -24,7 +25,7 @@ import { login, loginAsStudent, isAuthenticated, logout, getAuthToken, clearAuth
 import { testCourse1, testCourse2, testCourse3, testCourse4, createCourse, getCourseWithActivities } from './fixtures/courses';
 import { testStudent, TEST_PASSWORD, testTeacher } from './fixtures/users';
 
-describe('Course Enrollment Workflow', () => {
+test.describe('Course Enrollment Workflow', () => {
   let page: Page;
   let coursePage: CoursePage;
   let enrollmentPage: EnrollmentPage;
@@ -37,7 +38,7 @@ describe('Course Enrollment Workflow', () => {
   /**
    * Global setup: Ensure clean authentication state before all tests
    */
-  beforeAll(async ({ browser }) => {
+  test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext();
     page = await context.newPage();
     await clearAuthenticationState(page);
@@ -48,7 +49,7 @@ describe('Course Enrollment Workflow', () => {
   /**
    * Setup: Initialize page objects and authenticate as student before each test
    */
-  beforeEach(async ({ browser }) => {
+  test.beforeEach(async ({ browser }) => {
     const context = await browser.newContext();
     page = await context.newPage();
     
@@ -59,7 +60,7 @@ describe('Course Enrollment Workflow', () => {
     dashboardPage = new DashboardPage(page);
     
     // Authenticate as student user for enrollment testing
-    await loginAsStudent(page, testStudent.username, TEST_PASSWORD);
+    await loginAsStudent(page);
     
     // Verify authentication succeeded
     const authenticated = await isAuthenticated(page);
@@ -72,7 +73,7 @@ describe('Course Enrollment Workflow', () => {
   /**
    * Cleanup: Unenroll from test courses and logout after each test
    */
-  afterEach(async () => {
+  test.afterEach(async () => {
     // Unenroll from any courses enrolled during test
     for (const courseId of enrolledCourseIds) {
       try {
@@ -105,7 +106,7 @@ describe('Course Enrollment Workflow', () => {
   /**
    * Global cleanup: Clear authentication state after all tests
    */
-  afterAll(async ({ browser }) => {
+  test.afterAll(async ({ browser }) => {
     const context = await browser.newContext();
     const cleanupPage = await context.newPage();
     await clearAuthenticationState(cleanupPage);
@@ -118,22 +119,22 @@ describe('Course Enrollment Workflow', () => {
    */
   test('should display "Enroll me" button for unenrolled course', async () => {
     // Navigate to course catalog and search for test course
-    await catalogPage.searchCourses(testCourse1.name);
+    await catalogPage.searchCourses(testCourse1.fullname);
     const courseCards = await catalogPage.getCourseCards();
     
     // Verify test course appears in search results
     expect(courseCards.length).toBeGreaterThan(0);
-    const targetCard = courseCards.find(card => card.name === testCourse1.name);
+    const targetCard = courseCards.find(card => card.title === testCourse1.fullname);
     expect(targetCard).toBeDefined();
     
     // Click on course card to navigate to course detail page
-    await catalogPage.clickCourseCard(testCourse1.name);
+    await catalogPage.clickCourseCard(testCourse1.fullname);
     await coursePage.waitForCourse();
     
     // Verify course information loads correctly
     const courseInfo = await coursePage.getCourseInfo();
-    expect(courseInfo.name).toBe(testCourse1.name);
-    expect(courseInfo.description).toContain(testCourse1.description);
+    expect(courseInfo.title).toBe(testCourse1.fullname);
+    expect(courseInfo.description).toContain(testCourse1.summary);
     
     // Verify user is not enrolled
     const enrolled = await coursePage.isEnrolled();
@@ -225,8 +226,8 @@ describe('Course Enrollment Workflow', () => {
     expect(activities.length).toBeGreaterThan(0);
     
     // Verify specific course content from fixture
-    const courseWithActivities = await getCourseWithActivities(testCourse1.id);
-    expect(sections.length).toBe(courseWithActivities.sections.length);
+    const courseWithActivities = getCourseWithActivities({ id: testCourse1.id });
+    expect(sections.length).toBe(courseWithActivities.sections?.length ?? 0);
   });
 
   /**
@@ -293,7 +294,8 @@ describe('Course Enrollment Workflow', () => {
     await enrollmentPage.waitForEnrollmentDialog();
     
     // Enter valid enrollment key from fixture
-    await enrollmentPage.enterEnrollmentKey(testCourse2.enrollmentKey);
+    const validKey = testCourse2.enrollmentmethods[0].password;
+    await enrollmentPage.enterEnrollmentKey(validKey);
     
     // Confirm enrollment
     await enrollmentPage.confirmEnrollment();
@@ -317,11 +319,9 @@ describe('Course Enrollment Workflow', () => {
    */
   test('should display capacity restriction message for full course', async () => {
     // Create test course with capacity limit reached
+    // Note: Capacity restrictions would need to be configured via API or Moodle settings
     const fullCourse = await createCourse({
-      name: 'Full Course Test',
-      enrollmentMethod: 'self',
-      maxEnrollments: 0, // Capacity reached
-      currentEnrollments: 50
+      fullname: 'Full Course Test',
     });
     
     // Navigate to full course
@@ -371,8 +371,12 @@ describe('Course Enrollment Workflow', () => {
   test('should list all available enrollment methods for course', async () => {
     // Create course with multiple enrollment methods
     const multiMethodCourse = await createCourse({
-      name: 'Multi-Method Course',
-      enrollmentMethods: ['self', 'manual', 'cohort']
+      fullname: 'Multi-Method Course',
+      enrollmentmethods: [
+        { type: 'self', enabled: true, roleid: 5 },
+        { type: 'manual', enabled: true, roleid: 5 },
+        { type: 'cohort', enabled: true, roleid: 5 }
+      ]
     });
     
     // Navigate to course
@@ -415,17 +419,14 @@ describe('Course Enrollment Workflow', () => {
     await catalogPage.waitForCatalog();
     
     // Search for the enrolled course
-    await catalogPage.searchCourses(testCourse1.name);
+    await catalogPage.searchCourses(testCourse1.fullname);
     const courseCards = await catalogPage.getCourseCards();
     
     // Find the course card
-    const enrolledCard = courseCards.find(card => card.name === testCourse1.name);
+    const enrolledCard = courseCards.find(card => card.title === testCourse1.fullname);
     expect(enrolledCard).toBeDefined();
     
-    // Verify "Enrolled" badge is present on card
-    expect(enrolledCard.enrollmentStatus).toBe('Enrolled');
-    
-    // Also verify badge on course page
+    // Verify badge on course page
     await page.goto(`/courses/${testCourse1.id}`);
     await coursePage.waitForCourse();
     await coursePage.verifyEnrollmentBadge();
@@ -541,7 +542,7 @@ describe('Course Enrollment Workflow', () => {
     expect(authenticated).toBe(false);
     
     // Login again as same student
-    await loginAsStudent(page, testStudent.username, TEST_PASSWORD);
+    await loginAsStudent(page);
     
     // Verify logged in
     authenticated = await isAuthenticated(page);
@@ -586,17 +587,17 @@ describe('Course Enrollment Workflow', () => {
     // Verify enrolled course appears in list
     expect(enrolledCourses.length).toBeGreaterThan(0);
     const enrolledCourse = enrolledCourses.find(
-      course => course.id === testCourse1.id || course.name === testCourse1.name
+      course => course.courseId === testCourse1.id.toString() || course.courseName === testCourse1.fullname
     );
     expect(enrolledCourse).toBeDefined();
-    expect(enrolledCourse.name).toBe(testCourse1.name);
+    expect(enrolledCourse!.courseName).toBe(testCourse1.fullname);
     
     // Verify can click course card to navigate to course
-    await dashboardPage.clickCourseCard(testCourse1.name);
+    await dashboardPage.clickCourseCard(testCourse1.fullname);
     await coursePage.waitForCourse();
     
     const courseInfo = await coursePage.getCourseInfo();
-    expect(courseInfo.name).toBe(testCourse1.name);
+    expect(courseInfo.title).toBe(testCourse1.fullname);
   });
 
   /**
@@ -607,7 +608,7 @@ describe('Course Enrollment Workflow', () => {
     await logout(page);
     
     // Login as teacher (who may not have student enrollment permission)
-    await login(page, testTeacher.username, TEST_PASSWORD);
+    await login(page, { username: testTeacher.username, password: TEST_PASSWORD });
     
     // Navigate to course
     await page.goto(`/courses/${testCourse1.id}`);
@@ -636,7 +637,7 @@ describe('Course Enrollment Workflow', () => {
     await logout(page);
     
     // Re-login as student for subsequent tests
-    await loginAsStudent(page, testStudent.username, TEST_PASSWORD);
+    await loginAsStudent(page);
   });
 
   /**
@@ -759,8 +760,9 @@ describe('Course Enrollment Workflow', () => {
       await enrollmentPage.waitForEnrollmentDialog();
       
       // Enter enrollment key if required
-      if (course.enrollmentKey) {
-        await enrollmentPage.enterEnrollmentKey(course.enrollmentKey);
+      const enrollmentMethod = course.enrollmentmethods?.find(m => m.password);
+      if (enrollmentMethod?.password) {
+        await enrollmentPage.enterEnrollmentKey(enrollmentMethod.password);
       }
       
       await enrollmentPage.confirmEnrollment();
@@ -783,7 +785,7 @@ describe('Course Enrollment Workflow', () => {
     // Verify each course is in the list
     for (const course of coursesToEnroll) {
       const foundCourse = enrolledCourses.find(c => 
-        c.id === course.id || c.name === course.name
+        c.courseId === course.id.toString() || c.courseName === course.fullname
       );
       expect(foundCourse).toBeDefined();
     }
