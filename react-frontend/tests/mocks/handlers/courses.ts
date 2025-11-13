@@ -201,7 +201,7 @@ function generateMockCourse(id: number, baseIndex: number): CourseDetail {
   const categoryIndex = baseIndex % categories.length;
   const formatIndex = baseIndex % formats.length;
   
-  const category = categories[categoryIndex];
+  const category = categories[categoryIndex]!; // Safe: categoryIndex uses modulo
   const courseName = `${courseNames[nameIndex]} ${Math.floor(baseIndex / courseNames.length) + 1}`;
   const shortname = `COURSE${id}`;
   
@@ -213,7 +213,7 @@ function generateMockCourse(id: number, baseIndex: number): CourseDetail {
     summaryformat: 1,
     categoryid: category.id,
     categoryname: category.name,
-    format: formats[formatIndex],
+    format: formats[formatIndex]!,  // Safe: formatIndex uses modulo
     startdate: Math.floor(Date.now() / 1000) - 86400 * (30 + (baseIndex * 5)),
     enddate: Math.floor(Date.now() / 1000) + 86400 * (60 - (baseIndex * 2)),
     visible: 1,
