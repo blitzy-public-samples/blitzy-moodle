@@ -18,8 +18,6 @@
  * @module e2e/utils/api-helpers
  */
 
-import type { APIResponse } from '@playwright/test';
-import { getAuthToken } from './auth';
 import { retryOperation } from './wait-helpers';
 
 // ============================================================================
@@ -1096,7 +1094,7 @@ export async function cleanupTestEnvironment(token?: string): Promise<void> {
   if (errors.length > 0) {
     console.error(`[Test Cleanup] Cleanup completed with ${errors.length} error(s)`);
     throw new Error(
-      `Test cleanup failed with ${errors.length} error(s). First error: ${errors[0].message}`
+      `Test cleanup failed with ${errors.length} error(s). First error: ${errors[0]?.message ?? 'Unknown error'}`
     );
   }
 
