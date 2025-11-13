@@ -94,6 +94,11 @@ interface AdminUser {
   language: string;
   description: string;
   profileImageUrl: string;
+  roles: Array<{
+    roleid: number;
+    shortname: string;
+    name: string;
+  }>;
 }
 
 interface Role {
@@ -181,7 +186,14 @@ const MOCK_ADMIN_USERS: Record<number, AdminUser> = {
     timezone: 'America/Los_Angeles',
     language: 'en',
     description: 'System administrator',
-    profileImageUrl: '/user/pic.jpg'
+    profileImageUrl: '/user/pic.jpg',
+    roles: [
+      {
+        roleid: 1,
+        shortname: 'admin',
+        name: 'Administrator'
+      }
+    ]
   },
   2: {
     id: 2,
@@ -204,7 +216,104 @@ const MOCK_ADMIN_USERS: Record<number, AdminUser> = {
     timezone: 'America/New_York',
     language: 'en',
     description: 'Course teacher',
-    profileImageUrl: '/user/pic2.jpg'
+    profileImageUrl: '/user/pic2.jpg',
+    roles: [
+      {
+        roleid: 3,
+        shortname: 'editingteacher',
+        name: 'Teacher'
+      }
+    ]
+  },
+  3: {
+    id: 3,
+    username: 'student1',
+    email: 'student1@example.com',
+    firstName: 'John',
+    lastName: 'Student',
+    fullName: 'John Student',
+    auth: 'manual',
+    confirmed: true,
+    suspended: false,
+    deleted: false,
+    firstAccess: 1640200000,
+    lastAccess: 1672536000,
+    lastLogin: 1672536000,
+    timeCreated: 1640200000,
+    timeModified: 1672536000,
+    city: 'Boston',
+    country: 'US',
+    timezone: 'America/New_York',
+    language: 'en',
+    description: 'Student user',
+    profileImageUrl: '/user/pic3.jpg',
+    roles: [
+      {
+        roleid: 5,
+        shortname: 'student',
+        name: 'Student'
+      }
+    ]
+  },
+  4: {
+    id: 4,
+    username: 'student2',
+    email: 'student2@example.com',
+    firstName: 'Jane',
+    lastName: 'Smith',
+    fullName: 'Jane Smith',
+    auth: 'manual',
+    confirmed: true,
+    suspended: false,
+    deleted: false,
+    firstAccess: 1640300000,
+    lastAccess: 1672536000,
+    lastLogin: 1672536000,
+    timeCreated: 1640300000,
+    timeModified: 1672536000,
+    city: 'Chicago',
+    country: 'US',
+    timezone: 'America/Chicago',
+    language: 'en',
+    description: 'Student user',
+    profileImageUrl: '/user/pic4.jpg',
+    roles: [
+      {
+        roleid: 5,
+        shortname: 'student',
+        name: 'Student'
+      }
+    ]
+  },
+  5: {
+    id: 5,
+    username: 'suspended_user',
+    email: 'suspended@example.com',
+    firstName: 'Suspended',
+    lastName: 'User',
+    fullName: 'Suspended User',
+    auth: 'manual',
+    confirmed: true,
+    suspended: true,
+    deleted: false,
+    firstAccess: 1640400000,
+    lastAccess: 1672536000,
+    lastLogin: 1672536000,
+    timeCreated: 1640400000,
+    timeModified: 1672536000,
+    city: 'Miami',
+    country: 'US',
+    timezone: 'America/New_York',
+    language: 'en',
+    description: 'Suspended student',
+    profileImageUrl: '/user/pic5.jpg',
+    roles: [
+      {
+        roleid: 5,
+        shortname: 'student',
+        name: 'Student'
+      }
+    ]
   }
 };
 
@@ -443,7 +552,14 @@ const createUserHandler = http.post('*/api/v1/admin/users', async ({ request }) 
     timezone: body.timezone || 'UTC',
     language: body.language || 'en',
     description: body.description || '',
-    profileImageUrl: '/user/default.jpg'
+    profileImageUrl: '/user/default.jpg',
+    roles: [
+      {
+        roleid: 5,
+        shortname: 'student',
+        name: 'Student'
+      }
+    ]
   };
   
   return HttpResponse.json({

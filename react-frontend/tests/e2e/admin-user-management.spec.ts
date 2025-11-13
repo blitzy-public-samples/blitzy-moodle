@@ -19,7 +19,7 @@
  * @see public/admin/user/user_bulk.php for bulk operations backend
  */
 
-import { test, expect, describe, beforeAll, afterAll, beforeEach, Page } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { AdminUserPage } from './pages/AdminUserPage';
 import { loginAsAdmin, logout, isAuthenticated } from './utils/auth';
 import { testAdmin, testStudent, testTeacher, testStudent2, TEST_PASSWORD } from './fixtures/users';
@@ -29,22 +29,37 @@ import type { UserData } from './pages/AdminUserPage';
  * Admin user management test suite
  * Tests all user management operations available to site administrators
  */
-describe('Admin User Management', () => {
-  let adminPage: AdminUserPage;
-  let page: Page;
-  
+test.describe('Admin User Management', () => {
   // Track test users created during tests for cleanup
   const createdUserIds: number[] = [];
   const createdUsernames: string[] = [];
 
   /**
    * Setup: Login as admin and navigate to user management page
-   * Runs once before all tests in this suite
+   * Runs before each test to ensure clean state
    */
-  beforeAll(async ({ browser }) => {
-    // Create a new browser context and page for the entire test suite
-    const context = await browser.newContext();
-    page = await context.newPage();
+  test.beforeEach(async ({ page }) => {
+    // Listen to browser console to debug MSW initialization
+    page.on('console', msg => {
+      const text = msg.text();
+      // Log all console messages for debugging
+      console.log(`[Browser Console] ${msg.type()}: ${text}`);
+    });
+    
+    // Listen to network requests to debug API calls
+    page.on('request', request => {
+      const url = request.url();
+      if (url.includes('/api/') || url.includes('/admin/')) {
+        console.log(`[Network Request] ${request.method()} ${url}`);
+      }
+    });
+    
+    page.on('response', response => {
+      const url = response.url();
+      if (url.includes('/api/') || url.includes('/admin/')) {
+        console.log(`[Network Response] ${response.status()} ${url}`);
+      }
+    });
     
     // Login as admin user with full system permissions
     await loginAsAdmin(page);
@@ -53,74 +68,97 @@ describe('Admin User Management', () => {
     const authenticated = await isAuthenticated(page);
     expect(authenticated).toBe(true);
     
-    // Initialize Page Object Model for admin user management
-    adminPage = new AdminUserPage(page);
-    
-    // Navigate to user management page
-    await adminPage.goto();
-    
-    // Wait for user management interface to load
-    await adminPage.waitForUserManagement();
-  });
-
-  /**
-   * Test isolation: Reset to clean state before each test
-   * Ensures tests don't interfere with each other
-   */
-  beforeEach(async () => {
-    // Navigate back to user management page
+    // Initialize Page Object Model and navigate to user management
+    const adminPage = new AdminUserPage(page);
     await adminPage.goto();
     await adminPage.waitForUserManagement();
     
-    // Clear any active search filters
-    await adminPage.searchUsers('');
-    
-    // Reset filters to default state
-    await adminPage.filterUsers({
-      role: 'all',
-      status: 'active',
-      auth: 'all'
-    });
-  });
-
-  /**
-   * Cleanup: Delete all test users created during tests
-   * Runs once after all tests complete
-   */
-  afterAll(async () => {
-    // Delete all test users created during this test run
-    for (const username of createdUsernames) {
-      try {
-        await adminPage.goto();
-        await adminPage.searchUsers(username);
-        const users = await adminPage.getUsers();
-        
-        if (users.length > 0) {
-          const user = users.find(u => u.username === username);
-          if (user && user.id) {
-            await adminPage.deleteUser(user.id);
-            await adminPage.confirmDeletion();
-            await adminPage.waitForActionComplete();
-          }
-        }
-      } catch (error) {
-        console.warn(`Failed to cleanup user ${username}:`, error);
-      }
+    // Wait for the user table to actually populate with data from MSW
+    // This ensures MSW has intercepted the API call and returned mock data
+    // before any test interactions begin
+    try {
+      await page.waitForSelector('[data-testid^="user-row-"]', { 
+        state: 'visible', 
+        timeout: 10000 
+      });
+    } catch (error) {
+      // If no rows appear, MSW might not be ready - wait a bit longer
+      console.log('[Test] No user rows found, waiting for MSW initialization...');
+      await page.waitForTimeout(2000);
+      // Try again after waiting
+      await page.waitForSelector('[data-testid^="user-row-"]', { 
+        state: 'visible', 
+        timeout: 5000 
+      });
     }
     
+    // Store adminPage in test context for use in test
+    (page as any)._adminPage = adminPage;
+  });
+
+  /**
+   * Cleanup: Delete test users and logout
+   * Runs after each test
+   */
+  test.afterEach(async ({ page }) => {
     // Logout admin user
     await logout(page);
+  });
+
+  /**
+   * Final cleanup: Delete all test users created during tests
+   * Runs once after all tests complete
+   */
+  test.afterAll(async ({ browser }) => {
+    if (createdUsernames.length === 0) {
+      return; // No users to clean up
+    }
+
+    // Create a new context for cleanup
+    const context = await browser.newContext();
+    const page = await context.newPage();
     
-    // Close browser context
-    await page.close();
+    try {
+      // Login as admin for cleanup
+      await loginAsAdmin(page);
+      const adminPage = new AdminUserPage(page);
+      
+      // Delete all test users created during this test run
+      for (const username of createdUsernames) {
+        try {
+          await adminPage.goto();
+          await adminPage.searchUsers(username);
+          const users = await adminPage.getUsers();
+          
+          if (users.length > 0) {
+            const user = users.find(u => u.username === username);
+            if (user && user.id) {
+              await adminPage.deleteUser(user.id);
+              await adminPage.confirmDeletion();
+              await adminPage.waitForActionComplete();
+            }
+          }
+        } catch (error) {
+          console.warn(`Failed to cleanup user ${username}:`, error);
+        }
+      }
+      
+      // Logout admin user
+      await logout(page);
+    } finally {
+      // Close browser context
+      await context.close();
+    }
   });
 
   /**
    * Test 1: User List Display
    * Verifies that the user table displays correctly with pagination, search, and filters
    */
-  describe('User List Display', () => {
-    test('should display user table with pagination controls', async () => {
+  test.describe('User List Display', () => {
+    test('should display user table with pagination controls', async ({ page }) => {
+      const adminPage = (page as any)._adminPage as AdminUserPage;
+      
       // Get initial user list
       const users = await adminPage.getUsers();
       
@@ -142,7 +180,9 @@ describe('Admin User Management', () => {
       });
     });
 
-    test('should search users by username', async () => {
+    test('should search users by username', async ({ page }) => {
+      const adminPage = (page as any)._adminPage as AdminUserPage;
+      
       // Search for a specific test user
       await adminPage.searchUsers('student');
       await page.waitForTimeout(500); // Allow search to process
@@ -157,7 +197,9 @@ describe('Admin User Management', () => {
       });
     });
 
-    test('should search users by email', async () => {
+    test('should search users by email', async ({ page }) => {
+      const adminPage = (page as any)._adminPage as AdminUserPage;
+      
       // Search by email domain
       await adminPage.searchUsers('@example.com');
       await page.waitForTimeout(500);
@@ -171,7 +213,9 @@ describe('Admin User Management', () => {
       });
     });
 
-    test('should filter users by role', async () => {
+    test('should filter users by role', async ({ page }) => {
+      const adminPage = (page as any)._adminPage as AdminUserPage;
+      
       // Filter to show only students
       await adminPage.filterUsers({ role: 'student' });
       await page.waitForTimeout(500);
@@ -181,11 +225,13 @@ describe('Admin User Management', () => {
       // Verify all users have student role
       expect(users.length).toBeGreaterThan(0);
       users.forEach(user => {
-        expect(user.roles?.some(r => r.toLowerCase().includes('student'))).toBe(true);
+        expect(user.roles?.some(r => r.shortname.toLowerCase().includes('student'))).toBe(true);
       });
     });
 
-    test('should filter users by status', async () => {
+    test('should filter users by status', async ({ page }) => {
+      const adminPage = (page as any)._adminPage as AdminUserPage;
+      
       // Filter to show only active users
       await adminPage.filterUsers({ status: 'active' });
       await page.waitForTimeout(500);
@@ -199,7 +245,9 @@ describe('Admin User Management', () => {
       });
     });
 
-    test('should combine search and filters', async () => {
+    test('should combine search and filters', async ({ page }) => {
+      const adminPage = (page as any)._adminPage as AdminUserPage;
+      
       // Search and filter simultaneously
       await adminPage.searchUsers('test');
       await adminPage.filterUsers({ 
@@ -224,8 +272,10 @@ describe('Admin User Management', () => {
    * Test 2: User Creation
    * Validates user creation workflow with form validation
    */
-  describe('User Creation', () => {
-    test('should create new user with valid data', async () => {
+  test.describe('User Creation', () => {
+    test('should create new user with valid data', async ({ page }) => {
+      const adminPage = (page as any)._adminPage as AdminUserPage;
+      
       // Generate unique user data
       const timestamp = Date.now();
       const newUser: UserData = {
@@ -244,10 +294,7 @@ describe('Admin User Management', () => {
       // Track for cleanup
       createdUsernames.push(newUser.username);
       
-      // Click create user button
-      await adminPage.clickCreateUser();
-      
-      // Fill user creation form
+      // Create user (createUser method handles opening the dialog)
       await adminPage.createUser(newUser);
       
       // Wait for user to be created
@@ -279,7 +326,9 @@ describe('Admin User Management', () => {
       });
     });
 
-    test('should show validation error for missing required fields', async () => {
+    test('should show validation error for missing required fields', async ({ page }) => {
+      const adminPage = (page as any)._adminPage as AdminUserPage;
+      
       // Attempt to create user with missing username
       const incompleteUser: UserData = {
         username: '', // Missing required field
@@ -290,8 +339,11 @@ describe('Admin User Management', () => {
         auth: 'manual'
       };
       
-      await adminPage.clickCreateUser();
-      await adminPage.createUser(incompleteUser);
+      // Pass false to not wait for completion (validation should keep dialog open)
+      await adminPage.createUser(incompleteUser, false);
+      
+      // Wait briefly for validation to render
+      await page.waitForTimeout(500);
       
       // Get validation errors
       const errors = await adminPage.getValidationErrors();
@@ -306,7 +358,9 @@ describe('Admin User Management', () => {
       });
     });
 
-    test('should show validation error for invalid email format', async () => {
+    test('should show validation error for invalid email format', async ({ page }) => {
+      const adminPage = (page as any)._adminPage as AdminUserPage;
+      
       const timestamp = Date.now();
       const invalidUser: UserData = {
         username: `testuser${timestamp}`,
@@ -317,8 +371,11 @@ describe('Admin User Management', () => {
         auth: 'manual'
       };
       
-      await adminPage.clickCreateUser();
-      await adminPage.createUser(invalidUser);
+      // Pass false to not wait for completion (validation should keep dialog open)
+      await adminPage.createUser(invalidUser, false);
+      
+      // Wait briefly for validation to render
+      await page.waitForTimeout(500);
       
       const errors = await adminPage.getValidationErrors();
       
@@ -330,7 +387,9 @@ describe('Admin User Management', () => {
       )).toBe(true);
     });
 
-    test('should show validation error for duplicate username', async () => {
+    test('should show validation error for duplicate username', async ({ page }) => {
+      const adminPage = (page as any)._adminPage as AdminUserPage;
+      
       // Try to create user with existing username
       const duplicateUser: UserData = {
         username: 'admin', // Already exists
@@ -341,8 +400,11 @@ describe('Admin User Management', () => {
         auth: 'manual'
       };
       
-      await adminPage.clickCreateUser();
-      await adminPage.createUser(duplicateUser);
+      // Pass false to not wait for completion (validation should keep dialog open)
+      await adminPage.createUser(duplicateUser, false);
+      
+      // Wait briefly for validation to render
+      await page.waitForTimeout(500);
       
       const errors = await adminPage.getValidationErrors();
       
@@ -355,7 +417,9 @@ describe('Admin User Management', () => {
       )).toBe(true);
     });
 
-    test('should show validation error for weak password', async () => {
+    test('should show validation error for weak password', async ({ page }) => {
+      const adminPage = (page as any)._adminPage as AdminUserPage;
+      
       const timestamp = Date.now();
       const weakPasswordUser: UserData = {
         username: `testuser${timestamp}`,
@@ -366,8 +430,11 @@ describe('Admin User Management', () => {
         auth: 'manual'
       };
       
-      await adminPage.clickCreateUser();
-      await adminPage.createUser(weakPasswordUser);
+      // Pass false to not wait for completion (validation should keep dialog open)
+      await adminPage.createUser(weakPasswordUser, false);
+      
+      // Wait briefly for validation to render
+      await page.waitForTimeout(500);
       
       const errors = await adminPage.getValidationErrors();
       
@@ -383,8 +450,10 @@ describe('Admin User Management', () => {
    * Test 3: User Editing
    * Validates user profile editing with field updates
    */
-  describe('User Editing', () => {
-    test('should edit user profile fields', async () => {
+  test.describe('User Editing', () => {
+    test('should edit user profile fields', async ({ page }) => {
+      const adminPage = (page as any)._adminPage as AdminUserPage;
+      
       // Create a test user first
       const timestamp = Date.now();
       const testUser: UserData = {
@@ -400,7 +469,7 @@ describe('Admin User Management', () => {
       
       createdUsernames.push(testUser.username);
       
-      await adminPage.clickCreateUser();
+      // Create user (createUser method handles opening the dialog)
       await adminPage.createUser(testUser);
       await adminPage.waitForActionComplete();
       
@@ -437,7 +506,9 @@ describe('Admin User Management', () => {
       });
     });
 
-    test('should persist changes after page refresh', async () => {
+    test('should persist changes after page refresh', async ({ page }) => {
+      const adminPage = (page as any)._adminPage as AdminUserPage;
+      
       // Create test user
       const timestamp = Date.now();
       const testUser: UserData = {
@@ -451,7 +522,7 @@ describe('Admin User Management', () => {
       
       createdUsernames.push(testUser.username);
       
-      await adminPage.clickCreateUser();
+      // Create user (createUser method handles opening the dialog)
       await adminPage.createUser(testUser);
       await adminPage.waitForActionComplete();
       
@@ -484,8 +555,10 @@ describe('Admin User Management', () => {
    * Test 4: Bulk Operations
    * Validates bulk actions on multiple selected users
    */
-  describe('Bulk Operations', () => {
-    test('should suspend multiple users', async () => {
+  test.describe('Bulk Operations', () => {
+    test('should suspend multiple users', async ({ page }) => {
+      const adminPage = (page as any)._adminPage as AdminUserPage;
+      
       // Create two test users
       const timestamp = Date.now();
       const user1: UserData = {
@@ -508,12 +581,10 @@ describe('Admin User Management', () => {
       
       createdUsernames.push(user1.username, user2.username);
       
-      // Create users
-      await adminPage.clickCreateUser();
+      // Create users (createUser method handles opening the dialog)
       await adminPage.createUser(user1);
       await adminPage.waitForActionComplete();
       
-      await adminPage.clickCreateUser();
       await adminPage.createUser(user2);
       await adminPage.waitForActionComplete();
       
@@ -550,7 +621,9 @@ describe('Admin User Management', () => {
       });
     });
 
-    test('should delete multiple users', async () => {
+    test('should delete multiple users', async ({ page }) => {
+      const adminPage = (page as any)._adminPage as AdminUserPage;
+      
       // Create two test users
       const timestamp = Date.now();
       const user1: UserData = {
@@ -573,12 +646,10 @@ describe('Admin User Management', () => {
       
       createdUsernames.push(user1.username, user2.username);
       
-      // Create users
-      await adminPage.clickCreateUser();
+      // Create users (createUser method handles opening the dialog)
       await adminPage.createUser(user1);
       await adminPage.waitForActionComplete();
       
-      await adminPage.clickCreateUser();
       await adminPage.createUser(user2);
       await adminPage.waitForActionComplete();
       
@@ -608,7 +679,9 @@ describe('Admin User Management', () => {
       ).toBe(0);
     });
 
-    test('should assign cohort to multiple users', async () => {
+    test('should assign cohort to multiple users', async ({ page }) => {
+      const adminPage = (page as any)._adminPage as AdminUserPage;
+      
       // Create test users
       const timestamp = Date.now();
       const user1: UserData = {
@@ -631,12 +704,10 @@ describe('Admin User Management', () => {
       
       createdUsernames.push(user1.username, user2.username);
       
-      // Create users
-      await adminPage.clickCreateUser();
+      // Create users (createUser method handles opening the dialog)
       await adminPage.createUser(user1);
       await adminPage.waitForActionComplete();
       
-      await adminPage.clickCreateUser();
       await adminPage.createUser(user2);
       await adminPage.waitForActionComplete();
       
@@ -666,8 +737,10 @@ describe('Admin User Management', () => {
    * Test 5: Password Reset
    * Validates password reset workflow
    */
-  describe('Password Reset', () => {
-    test('should trigger password reset for user', async () => {
+  test.describe('Password Reset', () => {
+    test('should trigger password reset for user', async ({ page }) => {
+      const adminPage = (page as any)._adminPage as AdminUserPage;
+      
       // Create test user
       const timestamp = Date.now();
       const testUser: UserData = {
@@ -681,7 +754,7 @@ describe('Admin User Management', () => {
       
       createdUsernames.push(testUser.username);
       
-      await adminPage.clickCreateUser();
+      // Create user (createUser method handles opening the dialog)
       await adminPage.createUser(testUser);
       await adminPage.waitForActionComplete();
       
@@ -711,8 +784,10 @@ describe('Admin User Management', () => {
    * Test 6: User Suspension
    * Validates user suspension and login blocking
    */
-  describe('User Suspension', () => {
-    test('should suspend user account', async () => {
+  test.describe('User Suspension', () => {
+    test('should suspend user account', async ({ page }) => {
+      const adminPage = (page as any)._adminPage as AdminUserPage;
+      
       // Create test user
       const timestamp = Date.now();
       const testUser: UserData = {
@@ -726,7 +801,7 @@ describe('Admin User Management', () => {
       
       createdUsernames.push(testUser.username);
       
-      await adminPage.clickCreateUser();
+      // Create user (createUser method handles opening the dialog)
       await adminPage.createUser(testUser);
       await adminPage.waitForActionComplete();
       
@@ -757,7 +832,9 @@ describe('Admin User Management', () => {
       });
     });
 
-    test('should verify suspended user cannot login', async () => {
+    test('should verify suspended user cannot login', async ({ page }) => {
+      const adminPage = (page as any)._adminPage as AdminUserPage;
+      
       // Create and suspend test user
       const timestamp = Date.now();
       const testUser: UserData = {
@@ -771,7 +848,7 @@ describe('Admin User Management', () => {
       
       createdUsernames.push(testUser.username);
       
-      await adminPage.clickCreateUser();
+      // Create user (createUser method handles opening the dialog)
       await adminPage.createUser(testUser);
       await adminPage.waitForActionComplete();
       
@@ -806,8 +883,9 @@ describe('Admin User Management', () => {
       
       // Login back as admin
       await loginAsAdmin(page);
-      adminPage = new AdminUserPage(page);
-      await adminPage.goto();
+      const adminPageNew = new AdminUserPage(page);
+      (page as any)._adminPage = adminPageNew;
+      await adminPageNew.goto();
     });
   });
 
@@ -815,8 +893,10 @@ describe('Admin User Management', () => {
    * Test 7: User Deletion
    * Validates user deletion and data anonymization
    */
-  describe('User Deletion', () => {
-    test('should delete user account', async () => {
+  test.describe('User Deletion', () => {
+    test('should delete user account', async ({ page }) => {
+      const adminPage = (page as any)._adminPage as AdminUserPage;
+      
       // Create test user
       const timestamp = Date.now();
       const testUser: UserData = {
@@ -830,7 +910,7 @@ describe('Admin User Management', () => {
       
       createdUsernames.push(testUser.username);
       
-      await adminPage.clickCreateUser();
+      // Create user (createUser method handles opening the dialog)
       await adminPage.createUser(testUser);
       await adminPage.waitForActionComplete();
       
@@ -861,7 +941,9 @@ describe('Admin User Management', () => {
       });
     });
 
-    test('should anonymize user data on deletion', async () => {
+    test('should anonymize user data on deletion', async ({ page }) => {
+      const adminPage = (page as any)._adminPage as AdminUserPage;
+      
       // Create test user with specific data
       const timestamp = Date.now();
       const testUser: UserData = {
@@ -877,7 +959,7 @@ describe('Admin User Management', () => {
       
       createdUsernames.push(testUser.username);
       
-      await adminPage.clickCreateUser();
+      // Create user (createUser method handles opening the dialog)
       await adminPage.createUser(testUser);
       await adminPage.waitForActionComplete();
       
@@ -910,7 +992,9 @@ describe('Admin User Management', () => {
       ).toBe(0);
     });
 
-    test('should prevent deletion of admin users', async () => {
+    test('should prevent deletion of admin users', async ({ page }) => {
+      const adminPage = (page as any)._adminPage as AdminUserPage;
+      
       // Search for admin user
       await adminPage.searchUsers('admin');
       const users = await adminPage.getUsers();
@@ -940,8 +1024,10 @@ describe('Admin User Management', () => {
    * Test 8: Error Scenarios
    * Validates proper error handling and validation
    */
-  describe('Error Scenarios', () => {
-    test('should handle network errors gracefully', async () => {
+  test.describe('Error Scenarios', () => {
+    test('should handle network errors gracefully', async ({ page }) => {
+      const adminPage = (page as any)._adminPage as AdminUserPage;
+      
       // Simulate network condition or timeout
       // Note: Actual network simulation would require Playwright network interception
       
@@ -953,7 +1039,9 @@ describe('Admin User Management', () => {
       expect(Array.isArray(users)).toBe(true);
     });
 
-    test('should handle concurrent operations', async () => {
+    test('should handle concurrent operations', async ({ page }) => {
+      const adminPage = (page as any)._adminPage as AdminUserPage;
+      
       // Create test user
       const timestamp = Date.now();
       const testUser: UserData = {
@@ -967,7 +1055,7 @@ describe('Admin User Management', () => {
       
       createdUsernames.push(testUser.username);
       
-      await adminPage.clickCreateUser();
+      // Create user (createUser method handles opening the dialog)
       await adminPage.createUser(testUser);
       await adminPage.waitForActionComplete();
       
@@ -995,7 +1083,9 @@ describe('Admin User Management', () => {
       expect(finalUsers[0].firstname).toBe('Update2');
     });
 
-    test('should validate email format in bulk operations', async () => {
+    test('should validate email format in bulk operations', async ({ page }) => {
+      const adminPage = (page as any)._adminPage as AdminUserPage;
+      
       // Create user with valid email
       const timestamp = Date.now();
       const testUser: UserData = {
@@ -1009,7 +1099,7 @@ describe('Admin User Management', () => {
       
       createdUsernames.push(testUser.username);
       
-      await adminPage.clickCreateUser();
+      // Create user (createUser method handles opening the dialog)
       await adminPage.createUser(testUser);
       await adminPage.waitForActionComplete();
       
@@ -1035,8 +1125,10 @@ describe('Admin User Management', () => {
    * Test 9: Pagination
    * Validates pagination controls work correctly
    */
-  describe('Pagination', () => {
-    test('should navigate through user pages', async () => {
+  test.describe('Pagination', () => {
+    test('should navigate through user pages', async ({ page }) => {
+      const adminPage = (page as any)._adminPage as AdminUserPage;
+      
       // Clear search to show all users
       await adminPage.searchUsers('');
       
@@ -1066,8 +1158,10 @@ describe('Admin User Management', () => {
    * Test 10: Accessibility
    * Validates keyboard navigation and screen reader support
    */
-  describe('Accessibility', () => {
-    test('should support keyboard navigation', async () => {
+  test.describe('Accessibility', () => {
+    test('should support keyboard navigation', async ({ page }) => {
+      const adminPage = (page as any)._adminPage as AdminUserPage;
+      
       // Navigate with Tab key
       await page.keyboard.press('Tab');
       
@@ -1076,7 +1170,9 @@ describe('Admin User Management', () => {
       expect(['INPUT', 'BUTTON', 'A', 'SELECT']).toContain(focused);
     });
 
-    test('should have proper ARIA labels', async () => {
+    test('should have proper ARIA labels', async ({ page }) => {
+      const adminPage = (page as any)._adminPage as AdminUserPage;
+      
       // Check for ARIA labels on key elements
       const searchInput = page.locator('input[type="search"], input[placeholder*="search" i]').first();
       const ariaLabel = await searchInput.getAttribute('aria-label').catch(() => null);

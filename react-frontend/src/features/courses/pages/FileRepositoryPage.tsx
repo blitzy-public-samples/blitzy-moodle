@@ -32,7 +32,6 @@ import {
   InsertDriveFile as FileIcon,
   Download as DownloadIcon,
   Delete as DeleteIcon,
-  Edit as EditIcon,
   MoreVert as MoreVertIcon,
 } from '@mui/icons-material';
 import apiClient from '@/services/api/client';
@@ -61,7 +60,7 @@ export const FileRepositoryPage: React.FC = () => {
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [currentPath, setCurrentPath] = useState<string[]>(['root']);
-  const [isLoading, setIsLoading] = useState(false);
+  const [, setIsLoading] = useState(false);
 
   /**
    * Fetch files from API on component mount
@@ -131,6 +130,7 @@ export const FileRepositoryPage: React.FC = () => {
     // Upload each file sequentially
     for (let i = 0; i < selectedFiles.length; i++) {
       const file = selectedFiles[i];
+      if (!file) continue; // Skip if file is undefined
 
       try {
         // Show upload progress
@@ -210,6 +210,7 @@ export const FileRepositoryPage: React.FC = () => {
     if (droppedFiles.length === 0) return;
 
     const file = droppedFiles[0];
+    if (!file) return; // Return early if no file
 
     try {
       // Show upload progress

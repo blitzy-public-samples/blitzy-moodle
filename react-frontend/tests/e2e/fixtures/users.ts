@@ -44,6 +44,8 @@ export interface User {
   confirmed: boolean;
   /** Whether user account is suspended */
   suspended: boolean;
+  /** Whether user account is deleted */
+  deleted?: boolean;
   /** Array of role assignments */
   roles: Array<{
     /** Role identifier */
