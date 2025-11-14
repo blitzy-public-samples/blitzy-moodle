@@ -103,20 +103,44 @@ export interface ScormReportCardProps {
  * @returns Formatted time string (e.g., "1h 23m 45s" or "5m 30s")
  */
 function formatDuration(seconds: number): string {
-  if (!seconds || seconds < 0) {
-    return '0s';
+  // Handle negative values as zero
+  const totalSeconds = seconds < 0 ? 0 : seconds;
+
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const secs = Math.floor(totalSeconds % 60);
+
+  // Always include all three units for consistency
+  return `${hours}h ${minutes}m ${secs}s`;
+}
+
+/**
+ * Helper function to parse time string to seconds
+ * Supports HH:MM:SS format and plain seconds
+ *
+ * @param timeStr - Time string in HH:MM:SS format or seconds
+ * @returns Total seconds or 0 if invalid
+ */
+function parseTimeToSeconds(timeStr: string | number | undefined | null): number {
+  if (!timeStr) return 0;
+
+  // If it's already a number, return it
+  if (typeof timeStr === 'number') return timeStr;
+
+  // Try parsing HH:MM:SS format
+  const timeMatch = timeStr.match(/(\d+):(\d+):(\d+)/);
+  if (timeMatch?.[1] && timeMatch[2] && timeMatch[3]) {
+    const hours = parseInt(timeMatch[1], 10);
+    const minutes = parseInt(timeMatch[2], 10);
+    const seconds = parseInt(timeMatch[3], 10);
+    return hours * 3600 + minutes * 60 + seconds;
   }
 
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = Math.floor(seconds % 60);
+  // Try parsing as plain seconds
+  const seconds = parseInt(timeStr, 10);
+  if (!isNaN(seconds)) return seconds;
 
-  const parts: string[] = [];
-  if (hours > 0) {parts.push(`${hours}h`);}
-  if (minutes > 0) {parts.push(`${minutes}m`);}
-  if (secs > 0 || parts.length === 0) {parts.push(`${secs}s`);}
-
-  return parts.join(' ');
+  return 0;
 }
 
 /**
@@ -262,31 +286,54 @@ export function ScormReportCard({
     // Calculate overall completion percentage from SCO progress
     const totalScos = scoProgress.length;
     let completedScos = 0;
+    
+    // Use report-level totalTimeSpent if available, otherwise calculate from SCO progress
     let totalTimeSeconds = 0;
+    if (report.totalTimeSpent) {
+      // Parse report.totalTimeSpent (could be in seconds or HH:MM:SS format)
+      if (typeof report.totalTimeSpent === 'string') {
+        const timeMatch = report.totalTimeSpent.match(/(\d+):(\d+):(\d+)/);
+        if (timeMatch?.[1] && timeMatch[2] && timeMatch[3]) {
+          totalTimeSeconds = parseInt(timeMatch[1], 10) * 3600 + parseInt(timeMatch[2], 10) * 60 + parseInt(timeMatch[3], 10);
+        } else {
+          // Assume it's already in seconds
+          totalTimeSeconds = parseInt(report.totalTimeSpent, 10) || 0;
+        }
+      } else if (typeof report.totalTimeSpent === 'number') {
+        totalTimeSeconds = report.totalTimeSpent;
+      }
+    } else {
+      // Fallback: calculate from SCO progress if report-level time not available
+      scoProgress.forEach((sco: ScormScoProgress) => {
+        // Parse timeSpent string (format: HH:MM:SS or total seconds)
+        if (sco.timeSpent) {
+          const timeMatch = sco.timeSpent.match(/(\d+):(\d+):(\d+)/);
+          if (timeMatch?.[1] && timeMatch[2] && timeMatch[3]) {
+            totalTimeSeconds += parseInt(timeMatch[1], 10) * 3600 + parseInt(timeMatch[2], 10) * 60 + parseInt(timeMatch[3], 10);
+          } else {
+            // Assume it's already in seconds
+            totalTimeSeconds += parseInt(sco.timeSpent, 10) ?? 0;
+          }
+        }
+      });
+    }
 
     scoProgress.forEach((sco: ScormScoProgress) => {
       const status = sco.status?.toLowerCase() ?? '';
       if (status === 'completed' || status === 'passed') {
         completedScos++;
       }
-      // Parse timeSpent string (format: HH:MM:SS or total seconds)
-      if (sco.timeSpent) {
-        const timeMatch = sco.timeSpent.match(/(\d+):(\d+):(\d+)/);
-        if (timeMatch?.[1] && timeMatch[2] && timeMatch[3]) {
-          totalTimeSeconds += parseInt(timeMatch[1], 10) * 3600 + parseInt(timeMatch[2], 10) * 60 + parseInt(timeMatch[3], 10);
-        } else {
-          // Assume it's already in seconds
-          totalTimeSeconds += parseInt(sco.timeSpent, 10) ?? 0;
-        }
-      }
     });
 
-    const completionPercentage =
-      totalScos > 0 ? Math.round((completedScos / totalScos) * 100) : 0;
+    // Use report-level completionPercentage if available, otherwise calculate from SCO progress
+    const completionPercentage = report.completionPercentage !== undefined
+      ? report.completionPercentage
+      : totalScos > 0 ? Math.round((completedScos / totalScos) * 100) : 0;
 
     // Get current attempt data
+    // Use attemptNumber prop if provided, otherwise fall back to report.currentAttempt
     const currentAttemptData = attempts.find(
-      (att: ScormAttemptSummary) => att.attemptNumber === report.currentAttempt
+      (att: ScormAttemptSummary) => att.attemptNumber === (attemptNumber ?? report.currentAttempt)
     ) ?? attempts[attempts.length - 1];
 
     // Calculate average score across all attempts
@@ -563,7 +610,7 @@ export function ScormReportCard({
                           : 'N/A'}
                       </TableCell>
                       <TableCell align="right">
-                        {sco.timeSpent ?? 'N/A'}
+                        {sco.timeSpent ? formatDuration(parseTimeToSeconds(sco.timeSpent)) : 'N/A'}
                       </TableCell>
                     </TableRow>
                   );
@@ -643,7 +690,7 @@ export function ScormReportCard({
                         </TableCell>
                         <TableCell align="right">
                           {interaction.latency
-                            ? formatDuration(parseFloat(interaction.latency))
+                            ? formatDuration(parseTimeToSeconds(interaction.latency))
                             : 'N/A'}
                         </TableCell>
                       </TableRow>
