@@ -20,6 +20,22 @@
 import { expect } from 'vitest';
 import { run as axeRun, type AxeResults } from 'axe-core';
 
+// Type guard helpers
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function _hasProperty<K extends string>(
+  obj: unknown,
+  key: K
+): obj is Record<K, unknown> {
+  return isRecord(obj) && key in obj;
+}
+
+function _isArrayOf<T>(value: unknown, itemGuard: (item: unknown) => item is T): value is T[] {
+  return Array.isArray(value) && value.every(itemGuard);
+}
+
 /**
  * Helper function to create consistent matcher messages
  */
@@ -97,7 +113,7 @@ interface CustomMatchers<R = unknown> {
 }
 
 declare module 'vitest' {
-  interface Assertion<T = any> extends CustomMatchers<T> {}
+  interface Assertion<T = unknown> extends CustomMatchers<T> {}
   interface AsymmetricMatchersContaining extends CustomMatchers {}
 }
 
@@ -116,12 +132,20 @@ expect.extend({
    * expect(user).toBeEnrolled(5); // User should be enrolled in course 5
    * expect(user).not.toBeEnrolled(10); // User should not be enrolled in course 10
    */
-  toBeEnrolled(received: any, courseid: number) {
-    const enrollments = received?.enrollments || received?.courses || [];
+  toBeEnrolled(received: unknown, courseid: number) {
+    const enrollments = isRecord(received) && ('enrollments' in received || 'courses' in received)
+      ? (received.enrollments as unknown[] || received.courses as unknown[] || [])
+      : [];
+    
     const isEnrolled = Array.isArray(enrollments) && 
-      enrollments.some((enrollment: any) => 
-        enrollment.courseid === courseid || enrollment.id === courseid
-      );
+      enrollments.some((enrollment: unknown) => {
+        if (!isRecord(enrollment)) {
+          return false;
+        }
+        const enrollmentCourseid = 'courseid' in enrollment ? enrollment.courseid : undefined;
+        const enrollmentId = 'id' in enrollment ? enrollment.id : undefined;
+        return enrollmentCourseid === courseid || enrollmentId === courseid;
+      });
 
     return {
       pass: isEnrolled,
@@ -143,12 +167,20 @@ expect.extend({
    * @example
    * expect(user).toBeUnenrolled(5);
    */
-  toBeUnenrolled(received: any, courseid: number) {
-    const enrollments = received?.enrollments || received?.courses || [];
+  toBeUnenrolled(received: unknown, courseid: number) {
+    const enrollments = isRecord(received) && ('enrollments' in received || 'courses' in received)
+      ? (received.enrollments as unknown[] || received.courses as unknown[] || [])
+      : [];
+    
     const isEnrolled = Array.isArray(enrollments) && 
-      enrollments.some((enrollment: any) => 
-        enrollment.courseid === courseid || enrollment.id === courseid
-      );
+      enrollments.some((enrollment: unknown) => {
+        if (!isRecord(enrollment)) {
+          return false;
+        }
+        const enrollmentCourseid = 'courseid' in enrollment ? enrollment.courseid : undefined;
+        const enrollmentId = 'id' in enrollment ? enrollment.id : undefined;
+        return enrollmentCourseid === courseid || enrollmentId === courseid;
+      });
 
     return {
       pass: !isEnrolled,
@@ -171,8 +203,10 @@ expect.extend({
    * expect(enrollment).toHaveEnrollmentMethod('manual');
    * expect(enrollment).toHaveEnrollmentMethod('self');
    */
-  toHaveEnrollmentMethod(received: any, method: string) {
-    const hasMethod = received?.enrolmethod === method || received?.method === method;
+  toHaveEnrollmentMethod(received: unknown, method: string) {
+    const enrolmethod = isRecord(received) && 'enrolmethod' in received ? received.enrolmethod : undefined;
+    const methodValue = isRecord(received) && 'method' in received ? received.method : undefined;
+    const hasMethod = enrolmethod === method || methodValue === method;
 
     return {
       pass: hasMethod,
@@ -180,7 +214,7 @@ expect.extend({
         formatMatcherMessage(
           hasMethod,
           'toHaveEnrollmentMethod',
-          received?.enrolmethod || received?.method,
+          enrolmethod || methodValue,
           method,
           `enrollment to have method "${method}"`,
           `enrollment to NOT have method "${method}"`
@@ -199,12 +233,26 @@ expect.extend({
    * expect(user).toHaveCapability('moodle/course:view');
    * expect(user).toHaveCapability('mod/assign:grade', 'course');
    */
-  toHaveCapability(received: any, capability: string, context?: string) {
-    const capabilities = received?.capabilities || received?.permissions || [];
+  toHaveCapability(received: unknown, capability: string, context?: string) {
+    const capabilities = isRecord(received) && ('capabilities' in received || 'permissions' in received)
+      ? (received.capabilities as unknown[] || received.permissions as unknown[] || [])
+      : [];
+    
     const hasCapability = Array.isArray(capabilities) &&
-      capabilities.some((cap: any) => {
-        const capMatch = cap.name === capability || cap.capability === capability || cap === capability;
-        const contextMatch = !context || cap.context === context;
+      capabilities.some((cap: unknown) => {
+        if (typeof cap === 'string') {
+          return cap === capability;
+        }
+        if (!isRecord(cap)) {
+          return false;
+        }
+        
+        const capName = 'name' in cap ? cap.name : undefined;
+        const capCapability = 'capability' in cap ? cap.capability : undefined;
+        const capContext = 'context' in cap ? cap.context : undefined;
+        
+        const capMatch = capName === capability || capCapability === capability;
+        const contextMatch = !context || capContext === context;
         return capMatch && contextMatch;
       });
 
@@ -228,12 +276,25 @@ expect.extend({
    * @example
    * expect(user).toLackCapability('moodle/course:delete');
    */
-  toLackCapability(received: any, capability: string) {
-    const capabilities = received?.capabilities || received?.permissions || [];
+  toLackCapability(received: unknown, capability: string) {
+    const capabilities = isRecord(received) && ('capabilities' in received || 'permissions' in received)
+      ? (received.capabilities as unknown[] || received.permissions as unknown[] || [])
+      : [];
+    
     const hasCapability = Array.isArray(capabilities) &&
-      capabilities.some((cap: any) => 
-        cap.name === capability || cap.capability === capability || cap === capability
-      );
+      capabilities.some((cap: unknown) => {
+        if (typeof cap === 'string') {
+          return cap === capability;
+        }
+        if (!isRecord(cap)) {
+          return false;
+        }
+        
+        const capName = 'name' in cap ? cap.name : undefined;
+        const capCapability = 'capability' in cap ? cap.capability : undefined;
+        
+        return capName === capability || capCapability === capability;
+      });
 
     return {
       pass: !hasCapability,
@@ -256,10 +317,25 @@ expect.extend({
    * expect(user).toBeRole('student');
    * expect(user).toBeRole('teacher');
    */
-  toBeRole(received: any, role: 'student' | 'teacher' | 'admin' | 'guest') {
-    const userRole = received?.role || received?.rolename || received?.roles?.[0];
-    const hasRole = userRole === role || 
-      (Array.isArray(received?.roles) && received.roles.includes(role));
+  toBeRole(received: unknown, role: 'student' | 'teacher' | 'admin' | 'guest') {
+    if (!isRecord(received)) {
+      return {
+        pass: false,
+        message: () => formatMatcherMessage(false, 'toBeRole', received, role, `user to have role "${role}"`, `user to NOT have role "${role}"`),
+      };
+    }
+    
+    let userRole: unknown = undefined;
+    if ('role' in received) {
+      userRole = received.role;
+    } else if ('rolename' in received) {
+      userRole = received.rolename;
+    } else if ('roles' in received && Array.isArray(received.roles) && received.roles.length > 0) {
+      userRole = received.roles[0] as unknown;
+    }
+    
+    const roles = 'roles' in received && Array.isArray(received.roles) ? received.roles : [];
+    const hasRole = userRole === role || roles.includes(role);
 
     return {
       pass: hasRole,
@@ -286,14 +362,19 @@ expect.extend({
    * expect(grade).toHaveGrade(85);
    * expect(grade).toHaveGrade({ min: 80, max: 90 });
    */
-  toHaveGrade(received: any, expected: number | { min: number; max: number }) {
-    const gradeValue = received?.grade ?? received?.finalgrade ?? received;
+  toHaveGrade(received: unknown, expected: number | { min: number; max: number }) {
+    let gradeValue: unknown;
+    if (isRecord(received)) {
+      gradeValue = ('grade' in received ? received.grade : undefined) ?? ('finalgrade' in received ? received.finalgrade : undefined);
+    } else {
+      gradeValue = received;
+    }
     
     let pass: boolean;
     if (typeof expected === 'number') {
       pass = gradeValue === expected;
     } else {
-      pass = gradeValue >= expected.min && gradeValue <= expected.max;
+      pass = typeof gradeValue === 'number' && gradeValue >= expected.min && gradeValue <= expected.max;
     }
 
     return {
@@ -320,9 +401,16 @@ expect.extend({
    * @example
    * expect(grade).toBePassingGrade(60);
    */
-  toBePassingGrade(received: any, passingGrade: number) {
-    const gradeValue = received?.grade ?? received?.finalgrade ?? received;
-    const pass = gradeValue >= passingGrade;
+  toBePassingGrade(received: unknown, passingGrade: number) {
+    let gradeValue: unknown;
+    if (isRecord(received)) {
+      gradeValue = ('grade' in received ? received.grade : undefined) ?? ('finalgrade' in received ? received.finalgrade : undefined);
+    } else {
+      gradeValue = received;
+    }
+    
+    const pass = typeof gradeValue === 'number' && gradeValue >= passingGrade;
+    const gradeStr = String(gradeValue);
 
     return {
       pass,
@@ -332,8 +420,8 @@ expect.extend({
           'toBePassingGrade',
           gradeValue,
           passingGrade,
-          `grade ${gradeValue} to be passing (>= ${passingGrade})`,
-          `grade ${gradeValue} to NOT be passing (< ${passingGrade})`
+          `grade ${gradeStr} to be passing (>= ${passingGrade})`,
+          `grade ${gradeStr} to NOT be passing (< ${passingGrade})`
         ),
     };
   },
@@ -344,9 +432,16 @@ expect.extend({
    * @example
    * expect(grade).toBeFailingGrade(60);
    */
-  toBeFailingGrade(received: any, passingGrade: number) {
-    const gradeValue = received?.grade ?? received?.finalgrade ?? received;
-    const pass = gradeValue < passingGrade;
+  toBeFailingGrade(received: unknown, passingGrade: number) {
+    let gradeValue: unknown;
+    if (isRecord(received)) {
+      gradeValue = ('grade' in received ? received.grade : undefined) ?? ('finalgrade' in received ? received.finalgrade : undefined);
+    } else {
+      gradeValue = received;
+    }
+    
+    const pass = typeof gradeValue === 'number' && gradeValue < passingGrade;
+    const gradeStr = String(gradeValue);
 
     return {
       pass,
@@ -356,8 +451,8 @@ expect.extend({
           'toBeFailingGrade',
           gradeValue,
           passingGrade,
-          `grade ${gradeValue} to be failing (< ${passingGrade})`,
-          `grade ${gradeValue} to NOT be failing (>= ${passingGrade})`
+          `grade ${gradeStr} to be failing (< ${passingGrade})`,
+          `grade ${gradeStr} to NOT be failing (>= ${passingGrade})`
         ),
     };
   },
@@ -368,13 +463,23 @@ expect.extend({
    * @example
    * expect(grade).toHaveGradePercentage(85);
    */
-  toHaveGradePercentage(received: any, percentage: number) {
-    const gradePercentage = received?.percentage ?? 
-      (received?.grade != null && received?.grademax != null 
-        ? (received.grade / received.grademax * 100) 
-        : received);
+  toHaveGradePercentage(received: unknown, percentage: number) {
+    let gradePercentage: unknown;
     
-    const pass = Math.abs(gradePercentage - percentage) < 0.01;
+    if (isRecord(received)) {
+      if ('percentage' in received) {
+        gradePercentage = received.percentage;
+      } else if ('grade' in received && 'grademax' in received && 
+                 typeof received.grade === 'number' && typeof received.grademax === 'number') {
+        gradePercentage = (received.grade / received.grademax * 100);
+      } else {
+        gradePercentage = received;
+      }
+    } else {
+      gradePercentage = received;
+    }
+    
+    const pass = typeof gradePercentage === 'number' && Math.abs(gradePercentage - percentage) < 0.01;
 
     return {
       pass,
@@ -400,11 +505,13 @@ expect.extend({
    * @example
    * expect(activity).toBeCompleted();
    */
-  toBeCompleted(received: any) {
-    const isCompleted = received?.completed === true || 
-      received?.completion === 1 || 
-      received?.completionstate === 1 ||
-      received?.state === 'completed';
+  toBeCompleted(received: unknown) {
+    const isCompleted = isRecord(received) && (
+      ('completed' in received && received.completed === true) || 
+      ('completion' in received && received.completion === 1) || 
+      ('completionstate' in received && received.completionstate === 1) ||
+      ('state' in received && received.state === 'completed')
+    );
 
     return {
       pass: isCompleted,
@@ -426,10 +533,12 @@ expect.extend({
    * @example
    * expect(activity).toBeInProgress();
    */
-  toBeInProgress(received: any) {
-    const inProgress = received?.state === 'in_progress' || 
-      received?.completionstate === 2 ||
-      (received?.progress > 0 && received?.progress < 100);
+  toBeInProgress(received: unknown) {
+    const inProgress = isRecord(received) && (
+      ('state' in received && received.state === 'in_progress') || 
+      ('completionstate' in received && received.completionstate === 2) ||
+      ('progress' in received && typeof received.progress === 'number' && received.progress > 0 && received.progress < 100)
+    );
 
     return {
       pass: inProgress,
@@ -451,10 +560,12 @@ expect.extend({
    * @example
    * expect(activity).toBeNotStarted();
    */
-  toBeNotStarted(received: any) {
-    const notStarted = received?.state === 'not_started' || 
-      received?.completionstate === 0 ||
-      received?.progress === 0;
+  toBeNotStarted(received: unknown) {
+    const notStarted = isRecord(received) && (
+      ('state' in received && received.state === 'not_started') || 
+      ('completionstate' in received && received.completionstate === 0) ||
+      ('progress' in received && received.progress === 0)
+    );
 
     return {
       pass: notStarted,
@@ -476,8 +587,16 @@ expect.extend({
    * @example
    * expect(activity).toHaveCompletionPercentage(75);
    */
-  toHaveCompletionPercentage(received: any, percentage: number) {
-    const completionPercentage = received?.progress ?? received?.percentage ?? 0;
+  toHaveCompletionPercentage(received: unknown, percentage: number) {
+    let completionPercentage: number = 0;
+    if (isRecord(received)) {
+      if ('progress' in received && typeof received.progress === 'number') {
+        completionPercentage = received.progress;
+      } else if ('percentage' in received && typeof received.percentage === 'number') {
+        completionPercentage = received.percentage;
+      }
+    }
+    
     const pass = Math.abs(completionPercentage - percentage) < 0.01;
 
     return {
@@ -504,10 +623,11 @@ expect.extend({
    * @example
    * expect(assignment).toHaveSubmission();
    */
-  toHaveSubmission(received: any) {
-    const hasSubmission = received?.submission !== null && 
-      received?.submission !== undefined &&
-      received?.hassubmission === true;
+  toHaveSubmission(received: unknown) {
+    const hasSubmission = isRecord(received) && (
+      ('submission' in received && received.submission !== null && received.submission !== undefined) ||
+      ('hassubmission' in received && received.hassubmission === true)
+    );
 
     return {
       pass: hasSubmission,
@@ -529,10 +649,12 @@ expect.extend({
    * @example
    * expect(submission).toBeGraded();
    */
-  toBeGraded(received: any) {
-    const isGraded = received?.graded === true || 
-      received?.grade !== null && received?.grade !== undefined ||
-      received?.status === 'graded';
+  toBeGraded(received: unknown) {
+    const isGraded = isRecord(received) && (
+      ('graded' in received && received.graded === true) || 
+      ('grade' in received && received.grade !== null && received.grade !== undefined) ||
+      ('status' in received && received.status === 'graded')
+    );
 
     return {
       pass: isGraded,
@@ -554,10 +676,12 @@ expect.extend({
    * @example
    * expect(submission).toHaveFeedback();
    */
-  toHaveFeedback(received: any) {
-    const hasFeedback = (received?.feedback && received.feedback.length > 0) ||
-      received?.feedbackcomment ||
-      received?.teachercomment;
+  toHaveFeedback(received: unknown) {
+    const hasFeedback = isRecord(received) && (
+      ('feedback' in received && typeof received.feedback === 'string' && received.feedback.length > 0) ||
+      ('feedbackcomment' in received && received.feedbackcomment) ||
+      ('teachercomment' in received && received.teachercomment)
+    );
 
     return {
       pass: hasFeedback,
@@ -579,10 +703,14 @@ expect.extend({
    * @example
    * expect(assignment).toBeOverdue();
    */
-  toBeOverdue(received: any) {
-    const duedate = received?.duedate ?? received?.due;
+  toBeOverdue(received: unknown) {
+    let duedate: unknown;
+    if (isRecord(received)) {
+      duedate = ('duedate' in received ? received.duedate : undefined) ?? ('due' in received ? received.due : undefined);
+    }
+    
     const now = Math.floor(Date.now() / 1000);
-    const isOverdue = duedate && duedate < now;
+    const isOverdue = typeof duedate === 'number' && duedate < now;
 
     return {
       pass: isOverdue,
@@ -590,7 +718,7 @@ expect.extend({
         formatMatcherMessage(
           isOverdue,
           'toBeOverdue',
-          duedate ? new Date(duedate * 1000) : null,
+          typeof duedate === 'number' ? new Date(duedate * 1000) : null,
           'overdue',
           `assignment to be overdue`,
           `assignment to NOT be overdue`
@@ -608,8 +736,17 @@ expect.extend({
    * @example
    * expect(quiz).toHaveAttempts(3);
    */
-  toHaveAttempts(received: any, count: number) {
-    const attemptCount = received?.attempts?.length ?? received?.attemptscount ?? 0;
+  toHaveAttempts(received: unknown, count: number) {
+    let attemptCount: number = 0;
+    
+    if (isRecord(received)) {
+      if ('attempts' in received && Array.isArray(received.attempts)) {
+        attemptCount = received.attempts.length;
+      } else if ('attemptscount' in received && typeof received.attemptscount === 'number') {
+        attemptCount = received.attemptscount;
+      }
+    }
+    
     const pass = attemptCount === count;
 
     return {
@@ -632,10 +769,20 @@ expect.extend({
    * @example
    * expect(quiz).toBeQuizOpen();
    */
-  toBeQuizOpen(received: any) {
+  toBeQuizOpen(received: unknown) {
     const now = Math.floor(Date.now() / 1000);
-    const timeopen = received?.timeopen ?? 0;
-    const timeclose = received?.timeclose ?? Number.MAX_SAFE_INTEGER;
+    let timeopen: number = 0;
+    let timeclose: number = Number.MAX_SAFE_INTEGER;
+    
+    if (isRecord(received)) {
+      if ('timeopen' in received && typeof received.timeopen === 'number') {
+        timeopen = received.timeopen;
+      }
+      if ('timeclose' in received && typeof received.timeclose === 'number') {
+        timeclose = received.timeclose;
+      }
+    }
+    
     const isOpen = now >= timeopen && now <= timeclose;
 
     return {
@@ -658,9 +805,14 @@ expect.extend({
    * @example
    * expect(quiz).toBeQuizClosed();
    */
-  toBeQuizClosed(received: any) {
+  toBeQuizClosed(received: unknown) {
     const now = Math.floor(Date.now() / 1000);
-    const timeclose = received?.timeclose ?? Number.MAX_SAFE_INTEGER;
+    let timeclose: number = Number.MAX_SAFE_INTEGER;
+    
+    if (isRecord(received) && 'timeclose' in received && typeof received.timeclose === 'number') {
+      timeclose = received.timeclose;
+    }
+    
     const isClosed = now > timeclose;
 
     return {
@@ -683,8 +835,17 @@ expect.extend({
    * @example
    * expect(attempt).toHaveTimeRemaining(600); // 10 minutes
    */
-  toHaveTimeRemaining(received: any, seconds: number) {
-    const timeRemaining = received?.timeremaining ?? received?.timeleft ?? 0;
+  toHaveTimeRemaining(received: unknown, seconds: number) {
+    let timeRemaining: number = 0;
+    
+    if (isRecord(received)) {
+      if ('timeremaining' in received && typeof received.timeremaining === 'number') {
+        timeRemaining = received.timeremaining;
+      } else if ('timeleft' in received && typeof received.timeleft === 'number') {
+        timeRemaining = received.timeleft;
+      }
+    }
+    
     const pass = Math.abs(timeRemaining - seconds) < 5; // 5 second tolerance
 
     return {
@@ -711,17 +872,25 @@ expect.extend({
    * @example
    * expect(container).toHaveLoadingState();
    */
-  toHaveLoadingState(received: any) {
-    const hasLoadingIndicator = received?.textContent?.includes('Loading') ||
-      received?.querySelector?.('[data-testid="loading"]') ||
-      received?.querySelector?.('.loading') ||
-      received?.querySelector?.('[role="progressbar"]');
+  toHaveLoadingState(received: unknown) {
+    let hasLoadingIndicator = false;
+    
+    if (isRecord(received)) {
+      if ('textContent' in received && typeof received.textContent === 'string' && received.textContent.includes('Loading')) {
+        hasLoadingIndicator = true;
+      } else if ('querySelector' in received && typeof received.querySelector === 'function') {
+        const loadingEl = received.querySelector('[data-testid="loading"]') ||
+          received.querySelector('.loading') ||
+          received.querySelector('[role="progressbar"]');
+        hasLoadingIndicator = !!loadingEl;
+      }
+    }
 
     return {
-      pass: !!hasLoadingIndicator,
+      pass: hasLoadingIndicator,
       message: () =>
         formatMatcherMessage(
-          !!hasLoadingIndicator,
+          hasLoadingIndicator,
           'toHaveLoadingState',
           received,
           'loading indicator',
@@ -738,13 +907,19 @@ expect.extend({
    * expect(container).toHaveErrorState();
    * expect(container).toHaveErrorState('Failed to load');
    */
-  toHaveErrorState(received: any, message?: string) {
-    const errorElement = received?.querySelector?.('[data-testid="error"]') ||
-      received?.querySelector?.('.error') ||
-      received?.querySelector?.('[role="alert"]');
+  toHaveErrorState(received: unknown, message?: string) {
+    let errorElement: unknown = null;
+    
+    if (isRecord(received) && 'querySelector' in received && typeof received.querySelector === 'function') {
+      errorElement = received.querySelector('[data-testid="error"]') ||
+        received.querySelector('.error') ||
+        received.querySelector('[role="alert"]');
+    }
     
     const hasError = !!errorElement;
-    const errorText = errorElement?.textContent || '';
+    const errorText = (isRecord(errorElement) && 'textContent' in errorElement && typeof errorElement.textContent === 'string') 
+      ? errorElement.textContent 
+      : '';
     const messageMatch = !message || errorText.includes(message);
 
     const pass = hasError && messageMatch;
@@ -773,17 +948,28 @@ expect.extend({
    * @example
    * expect(container).toHaveEmptyState();
    */
-  toHaveEmptyState(received: any) {
-    const hasEmptyIndicator = received?.textContent?.includes('No data') ||
-      received?.textContent?.includes('Empty') ||
-      received?.querySelector?.('[data-testid="empty"]') ||
-      received?.querySelector?.('.empty-state');
+  toHaveEmptyState(received: unknown) {
+    let hasEmptyIndicator = false;
+    
+    if (isRecord(received)) {
+      if ('textContent' in received && typeof received.textContent === 'string') {
+        if (received.textContent.includes('No data') || received.textContent.includes('Empty')) {
+          hasEmptyIndicator = true;
+        }
+      }
+      
+      if (!hasEmptyIndicator && 'querySelector' in received && typeof received.querySelector === 'function') {
+        const emptyEl = received.querySelector('[data-testid="empty"]') ||
+          received.querySelector('.empty-state');
+        hasEmptyIndicator = !!emptyEl;
+      }
+    }
 
     return {
-      pass: !!hasEmptyIndicator,
+      pass: hasEmptyIndicator,
       message: () =>
         formatMatcherMessage(
-          !!hasEmptyIndicator,
+          hasEmptyIndicator,
           'toHaveEmptyState',
           received,
           'empty state',
@@ -799,7 +985,7 @@ expect.extend({
    * @example
    * await expect(container).toBeAccessible();
    */
-  async toBeAccessible(received: any) {
+  async toBeAccessible(received: unknown) {
     try {
       const results: AxeResults = await axeRun(received);
       const violations = results.violations;
@@ -838,10 +1024,19 @@ expect.extend({
    * expect(timestamp).toMatchMoodleTimestamp(1609459200);
    * expect(timestamp).toMatchMoodleTimestamp(1609459200, 1000); // 1 second tolerance
    */
-  toMatchMoodleTimestamp(received: any, expected: number, toleranceMs: number = 0) {
-    const receivedTimestamp = typeof received === 'number' ? received : parseInt(received);
+  toMatchMoodleTimestamp(received: unknown, expected: number, toleranceMs: number = 0) {
+    let receivedTimestamp: number;
+    
+    if (typeof received === 'number') {
+      receivedTimestamp = received;
+    } else if (typeof received === 'string') {
+      receivedTimestamp = parseInt(received, 10);
+    } else {
+      receivedTimestamp = NaN;
+    }
+    
     const diff = Math.abs(receivedTimestamp - expected);
-    const pass = diff <= toleranceMs / 1000;
+    const pass = !isNaN(receivedTimestamp) && diff <= toleranceMs / 1000;
 
     return {
       pass,
@@ -863,7 +1058,7 @@ expect.extend({
    * @example
    * expect(courseId).toBeValidMoodleId();
    */
-  toBeValidMoodleId(received: any) {
+  toBeValidMoodleId(received: unknown) {
     const isValid = typeof received === 'number' && 
       Number.isInteger(received) && 
       received > 0;
@@ -892,15 +1087,19 @@ expect.extend({
    *   shortname: 'string'
    * });
    */
-  toHaveMoodleStructure(received: any, shape: object) {
+  toHaveMoodleStructure(received: unknown, shape: Record<string, string>) {
     const errors: string[] = [];
 
-    for (const [key, expectedType] of Object.entries(shape)) {
-      const actualValue = received?.[key];
-      const actualType = typeof actualValue;
+    if (!isRecord(received)) {
+      errors.push(`Expected object, got ${typeof received}`);
+    } else {
+      for (const [key, expectedType] of Object.entries(shape)) {
+        const actualValue = received[key];
+        const actualType = typeof actualValue;
 
-      if (actualType !== expectedType) {
-        errors.push(`Property "${key}": expected type "${expectedType}", got "${actualType}"`);
+        if (actualType !== expectedType) {
+          errors.push(`Property "${key}": expected type "${expectedType}", got "${actualType}"`);
+        }
       }
     }
 
@@ -927,9 +1126,11 @@ expect.extend({
    * @example
    * expect(response).toBeSuccessResponse();
    */
-  toBeSuccessResponse(received: any) {
-    const isSuccess = received?.success === true && 
-      received?.data !== undefined;
+  toBeSuccessResponse(received: unknown) {
+    const isSuccess = isRecord(received) && 
+      received.success === true && 
+      'data' in received && 
+      received.data !== undefined;
 
     return {
       pass: isSuccess,
@@ -952,11 +1153,13 @@ expect.extend({
    * expect(response).toBeErrorResponse();
    * expect(response).toBeErrorResponse('PERMISSION_DENIED');
    */
-  toBeErrorResponse(received: any, code?: string) {
-    const isError = received?.success === false && 
-      received?.error !== undefined;
+  toBeErrorResponse(received: unknown, code?: string) {
+    const isError = isRecord(received) && 
+      received.success === false && 
+      'error' in received && 
+      received.error !== undefined;
     
-    const codeMatch = !code || received?.error?.code === code;
+    const codeMatch = !code || (isRecord(received) && isRecord(received.error) && received.error.code === code);
     const pass = isError && codeMatch;
 
     return {
@@ -983,11 +1186,20 @@ expect.extend({
    * @example
    * expect(response).toHavePagination();
    */
-  toHavePagination(received: any) {
-    const hasPagination = received?.meta?.pagination !== undefined &&
-      typeof received?.meta?.pagination?.page === 'number' &&
-      typeof received?.meta?.pagination?.perPage === 'number' &&
-      typeof received?.meta?.pagination?.total === 'number';
+  toHavePagination(received: unknown) {
+    let hasPagination = false;
+    let paginationData: unknown = undefined;
+    
+    if (isRecord(received) && 'meta' in received && isRecord(received.meta)) {
+      const meta = received.meta;
+      if ('pagination' in meta && isRecord(meta.pagination)) {
+        const pagination = meta.pagination;
+        paginationData = pagination;
+        hasPagination = typeof pagination.page === 'number' &&
+          typeof pagination.perPage === 'number' &&
+          typeof pagination.total === 'number';
+      }
+    }
 
     return {
       pass: hasPagination,
@@ -995,7 +1207,7 @@ expect.extend({
         formatMatcherMessage(
           hasPagination,
           'toHavePagination',
-          received?.meta?.pagination,
+          paginationData,
           'pagination metadata',
           `response to have pagination metadata`,
           `response to NOT have pagination metadata`
@@ -1013,15 +1225,21 @@ expect.extend({
    * @example
    * expect(timestamp).toBeWithinDays(7);
    */
-  toBeWithinDays(received: any, days: number) {
-    const date = typeof received === 'number' 
-      ? new Date(received * 1000) 
-      : new Date(received);
+  toBeWithinDays(received: unknown, days: number) {
+    let date: Date;
+    
+    if (typeof received === 'number') {
+      date = new Date(received * 1000);
+    } else if (typeof received === 'string') {
+      date = new Date(received);
+    } else {
+      date = new Date(NaN);
+    }
     
     const now = new Date();
     const diffMs = Math.abs(date.getTime() - now.getTime());
     const diffDays = diffMs / (1000 * 60 * 60 * 24);
-    const pass = diffDays <= days;
+    const pass = !isNaN(date.getTime()) && diffDays <= days;
 
     return {
       pass,
@@ -1043,13 +1261,19 @@ expect.extend({
    * @example
    * expect(duedate).toBeInFuture();
    */
-  toBeInFuture(received: any) {
-    const date = typeof received === 'number' 
-      ? new Date(received * 1000) 
-      : new Date(received);
+  toBeInFuture(received: unknown) {
+    let date: Date;
+    
+    if (typeof received === 'number') {
+      date = new Date(received * 1000);
+    } else if (typeof received === 'string') {
+      date = new Date(received);
+    } else {
+      date = new Date(NaN);
+    }
     
     const now = new Date();
-    const pass = date > now;
+    const pass = !isNaN(date.getTime()) && date > now;
 
     return {
       pass,
@@ -1071,13 +1295,19 @@ expect.extend({
    * @example
    * expect(completeddate).toBeInPast();
    */
-  toBeInPast(received: any) {
-    const date = typeof received === 'number' 
-      ? new Date(received * 1000) 
-      : new Date(received);
+  toBeInPast(received: unknown) {
+    let date: Date;
+    
+    if (typeof received === 'number') {
+      date = new Date(received * 1000);
+    } else if (typeof received === 'string') {
+      date = new Date(received);
+    } else {
+      date = new Date(NaN);
+    }
     
     const now = new Date();
-    const pass = date < now;
+    const pass = !isNaN(date.getTime()) && date < now;
 
     return {
       pass,

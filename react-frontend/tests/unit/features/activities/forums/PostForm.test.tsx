@@ -25,6 +25,10 @@ vi.mock('@/features/activities/forums/hooks/useCreatePost', () => ({
   useCreatePost: vi.fn(),
 }));
 
+vi.mock('@/features/activities/forums/hooks/useCreateDiscussion', () => ({
+  useCreateDiscussion: vi.fn(),
+}));
+
 vi.mock('@/features/activities/forums/hooks/useUpdatePost', () => ({
   useUpdatePost: vi.fn(),
 }));
@@ -51,6 +55,7 @@ vi.mock('@/components/editor/RichTextEditor', () => ({
 }));
 
 import { useCreatePost } from '@/features/activities/forums/hooks/useCreatePost';
+import { useCreateDiscussion } from '@/features/activities/forums/hooks/useCreateDiscussion';
 import { useUpdatePost } from '@/features/activities/forums/hooks/useUpdatePost';
 import { useSaveDraft } from '@/features/activities/forums/hooks/useSaveDraft';
 import { useMultiFileUpload } from '@/hooks/useMultiFileUpload';
@@ -61,6 +66,7 @@ describe('PostForm Component', () => {
 
   // Mock mutation functions
   const mockCreatePost = vi.fn();
+  const mockCreateDiscussion = vi.fn();
   const mockUpdatePost = vi.fn();
   const mockSaveDraft = vi.fn();
   const mockLoadDraft = vi.fn();
@@ -81,6 +87,13 @@ describe('PostForm Component', () => {
     // Setup default mock implementations
     vi.mocked(useCreatePost).mockReturnValue({
       createPost: mockCreatePost,
+      isLoading: false,
+      isError: false,
+      error: null,
+    } as any);
+
+    vi.mocked(useCreateDiscussion).mockReturnValue({
+      createDiscussion: mockCreateDiscussion,
       isLoading: false,
       isError: false,
       error: null,
@@ -654,8 +667,7 @@ describe('PostForm Component', () => {
       await user.click(submitButton);
 
       await waitFor(() => {
-        expect(mockCreatePost).toHaveBeenCalledWith({
-          forumId: 1,
+        expect(mockCreateDiscussion).toHaveBeenCalledWith(1, {
           subject: 'New Discussion Subject',
           message: 'This is the message body content',
           subscribe: true,
@@ -764,15 +776,15 @@ describe('PostForm Component', () => {
       const onSubmitSuccess = vi.fn();
       const createdPost = { id: 20, subject: 'New Post' };
 
-      // Mock useCreatePost to capture onSuccess callback and invoke it
-      vi.mocked(useCreatePost).mockImplementation((options) => {
-        const mockCreatePostWithCallback = vi.fn((data) => {
+      // Mock useCreateDiscussion to capture onSuccess callback and invoke it
+      vi.mocked(useCreateDiscussion).mockImplementation((options) => {
+        const mockCreateDiscussionWithCallback = vi.fn((data) => {
           // Simulate successful mutation by calling the onSuccess callback
           options?.onSuccess?.(createdPost);
         });
 
         return {
-          createPost: mockCreatePostWithCallback,
+          createDiscussion: mockCreateDiscussionWithCallback,
           isLoading: false,
           isError: false,
           error: null,
@@ -801,15 +813,15 @@ describe('PostForm Component', () => {
     it('resets form after successful submission', async () => {
       const createdPost = { id: 20, subject: 'New Post' };
 
-      // Mock useCreatePost to capture onSuccess callback and invoke it
-      vi.mocked(useCreatePost).mockImplementation((options) => {
-        const mockCreatePostWithCallback = vi.fn((data) => {
+      // Mock useCreateDiscussion to capture onSuccess callback and invoke it
+      vi.mocked(useCreateDiscussion).mockImplementation((options) => {
+        const mockCreateDiscussionWithCallback = vi.fn((data) => {
           // Simulate successful mutation by calling the onSuccess callback
           options?.onSuccess?.(createdPost);
         });
 
         return {
-          createPost: mockCreatePostWithCallback,
+          createDiscussion: mockCreateDiscussionWithCallback,
           isLoading: false,
           isError: false,
           error: null,
@@ -838,15 +850,15 @@ describe('PostForm Component', () => {
     it('displays error message on failed submission', async () => {
       const error = new Error('Network error occurred');
 
-      // Mock useCreatePost to capture onError callback and invoke it on submission
-      vi.mocked(useCreatePost).mockImplementation((options) => {
-        const mockCreatePostWithError = vi.fn((data) => {
+      // Mock useCreateDiscussion to capture onError callback and invoke it on submission
+      vi.mocked(useCreateDiscussion).mockImplementation((options) => {
+        const mockCreateDiscussionWithError = vi.fn((data) => {
           // Simulate failed mutation by calling the onError callback
           options?.onError?.(error);
         });
 
         return {
-          createPost: mockCreatePostWithError,
+          createDiscussion: mockCreateDiscussionWithError,
           isLoading: false,
           isError: false,
           error: null,
@@ -1081,7 +1093,8 @@ describe('PostForm Component', () => {
       await user.click(submitButton);
 
       await waitFor(() => {
-        expect(mockCreatePost).toHaveBeenCalledWith(
+        expect(mockCreateDiscussion).toHaveBeenCalledWith(
+          1,
           expect.objectContaining({
             subscribe: true,
           })
@@ -1116,7 +1129,8 @@ describe('PostForm Component', () => {
       await user.click(submitButton);
 
       await waitFor(() => {
-        expect(mockCreatePost).toHaveBeenCalledWith(
+        expect(mockCreateDiscussion).toHaveBeenCalledWith(
+          1,
           expect.objectContaining({
             pinned: true,
           })
@@ -1143,7 +1157,8 @@ describe('PostForm Component', () => {
       await user.click(submitButton);
 
       await waitFor(() => {
-        expect(mockCreatePost).toHaveBeenCalledWith(
+        expect(mockCreateDiscussion).toHaveBeenCalledWith(
+          1,
           expect.objectContaining({
             locked: true,
           })
@@ -1222,7 +1237,7 @@ describe('PostForm Component', () => {
       await user.keyboard('{Enter}');
 
       await waitFor(() => {
-        expect(mockCreatePost).toHaveBeenCalled();
+        expect(mockCreateDiscussion).toHaveBeenCalled();
       });
     });
 
@@ -1419,7 +1434,7 @@ describe('PostForm Component', () => {
       fireEvent.click(submitButton);
 
       // Should only call once because subsequent clicks are on a disabled button
-      expect(mockCreatePost).toHaveBeenCalledTimes(1);
+      expect(mockCreateDiscussion).toHaveBeenCalledTimes(1);
     });
 
     it('handles empty file list gracefully', () => {
