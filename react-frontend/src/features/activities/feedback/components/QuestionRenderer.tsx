@@ -480,7 +480,7 @@ export function QuestionRenderer({
    * Based on public/mod/feedback/item/info/lib.php
    */
   const renderInfo = () => {
-    const content = presentation.info?.content ?? label;
+    const content = presentation.info?.content || label;
     
     return (
       <Box
@@ -516,8 +516,6 @@ export function QuestionRenderer({
     return (
       <Box
         id={fieldId}
-        role="heading"
-        aria-level={3}
         className={className}
         sx={{ mt: 3, mb: 2 }}
       >

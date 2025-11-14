@@ -50,7 +50,7 @@ describe('QuestionRenderer', () => {
    * Tests radio button rendering for single-selection multichoice questions
    */
   describe('Multichoice Questions - Radio Buttons', () => {
-    const baseProps: QuestionRendererProps = {
+    const getBaseProps = (): QuestionRendererProps => ({
       id: 1,
       type: 'multichoice',
       presentation: {
@@ -68,10 +68,10 @@ describe('QuestionRenderer', () => {
       label: 'Select your preference',
       value: '',
       onChange: mockOnChange,
-    };
+    });
 
     it('should render radio group with all options', () => {
-      render(<QuestionRenderer {...baseProps} />);
+      render(<QuestionRenderer {...getBaseProps()} />);
       
       // Check that the question label is rendered
       expect(screen.getByText('Select your preference')).toBeInTheDocument();
@@ -89,7 +89,7 @@ describe('QuestionRenderer', () => {
 
     it('should handle radio button selection and call onChange', async () => {
       const user = userEvent.setup();
-      render(<QuestionRenderer {...baseProps} />);
+      render(<QuestionRenderer {...getBaseProps()} />);
       
       // Click the second option (Option 1)
       const option1Radio = screen.getByLabelText('Option 1');
@@ -101,7 +101,7 @@ describe('QuestionRenderer', () => {
     });
 
     it('should display selected value correctly', () => {
-      render(<QuestionRenderer {...baseProps} value="2" />);
+      render(<QuestionRenderer {...getBaseProps()} value="2" />);
       
       // Verify the correct radio button is checked
       const option2Radio = screen.getByLabelText('Option 2');
@@ -109,7 +109,7 @@ describe('QuestionRenderer', () => {
     });
 
     it('should render required indicator when required=1', () => {
-      render(<QuestionRenderer {...baseProps} required={1} />);
+      render(<QuestionRenderer {...getBaseProps()} required={1} />);
       
       // Check for required indicator in the FormLabel
       const legend = screen.getByText('Select your preference');
@@ -123,7 +123,7 @@ describe('QuestionRenderer', () => {
     it('should display validation error when touched and error provided', () => {
       render(
         <QuestionRenderer
-          {...baseProps}
+          {...getBaseProps()}
           required={1}
           error="This field is required"
           touched={true}
@@ -141,7 +141,7 @@ describe('QuestionRenderer', () => {
     it('should not display error when not touched', () => {
       render(
         <QuestionRenderer
-          {...baseProps}
+          {...getBaseProps()}
           error="This field is required"
           touched={false}
         />
@@ -153,7 +153,7 @@ describe('QuestionRenderer', () => {
 
     it('should hide "Not selected" option when hideNotSelected=true', () => {
       const propsWithHidden: QuestionRendererProps = {
-        ...baseProps,
+        ...getBaseProps(),
         presentation: {
           type: FeedbackQuestionType.MULTICHOICE,
           multichoice: {
@@ -177,7 +177,7 @@ describe('QuestionRenderer', () => {
     });
 
     it('should disable all radio buttons when disabled=true', () => {
-      render(<QuestionRenderer {...baseProps} disabled={true} />);
+      render(<QuestionRenderer {...getBaseProps()} disabled={true} />);
       
       // All radio buttons should be disabled
       const radios = screen.getAllByRole('radio');
@@ -187,7 +187,7 @@ describe('QuestionRenderer', () => {
     });
 
     it('should have proper ARIA attributes for accessibility', () => {
-      render(<QuestionRenderer {...baseProps} required={1} />);
+      render(<QuestionRenderer {...getBaseProps()} required={1} />);
       
       const radioGroup = screen.getByRole('radiogroup');
       
@@ -200,7 +200,7 @@ describe('QuestionRenderer', () => {
 
     it('should support keyboard navigation', async () => {
       const user = userEvent.setup();
-      render(<QuestionRenderer {...baseProps} />);
+      render(<QuestionRenderer {...getBaseProps()} />);
       
       // Tab to the radio group
       await user.tab();
@@ -220,7 +220,7 @@ describe('QuestionRenderer', () => {
    * Tests checkbox rendering for multiple-selection multichoice questions
    */
   describe('Multichoice Questions - Checkboxes', () => {
-    const baseProps: QuestionRendererProps = {
+    const getBaseProps = (): QuestionRendererProps => ({
       id: 2,
       type: 'multichoice',
       presentation: {
@@ -238,10 +238,10 @@ describe('QuestionRenderer', () => {
       label: 'Select all that apply',
       value: [],
       onChange: mockOnChange,
-    };
+    });
 
     it('should render checkboxes for all options', () => {
-      render(<QuestionRenderer {...baseProps} />);
+      render(<QuestionRenderer {...getBaseProps()} />);
       
       // Check question label
       expect(screen.getByText('Select all that apply')).toBeInTheDocument();
@@ -258,7 +258,7 @@ describe('QuestionRenderer', () => {
 
     it('should handle checkbox selection and call onChange with array', async () => {
       const user = userEvent.setup();
-      render(<QuestionRenderer {...baseProps} />);
+      render(<QuestionRenderer {...getBaseProps()} />);
       
       // Click first checkbox
       const choiceA = screen.getByLabelText('Choice A');
@@ -270,7 +270,7 @@ describe('QuestionRenderer', () => {
 
     it('should handle multiple checkbox selections', async () => {
       const user = userEvent.setup();
-      render(<QuestionRenderer {...baseProps} value={['1']} />);
+      render(<QuestionRenderer {...getBaseProps()} value={['1']} />);
       
       // First checkbox should be checked
       expect(screen.getByLabelText('Choice A')).toBeChecked();
@@ -285,7 +285,7 @@ describe('QuestionRenderer', () => {
 
     it('should handle checkbox deselection', async () => {
       const user = userEvent.setup();
-      render(<QuestionRenderer {...baseProps} value={['1', '2']} />);
+      render(<QuestionRenderer {...getBaseProps()} value={['1', '2']} />);
       
       // Both checkboxes should be checked
       expect(screen.getByLabelText('Choice A')).toBeChecked();
@@ -302,7 +302,7 @@ describe('QuestionRenderer', () => {
     it('should display validation error for checkboxes', () => {
       render(
         <QuestionRenderer
-          {...baseProps}
+          {...getBaseProps()}
           required={1}
           error="Select at least one option"
           touched={true}
@@ -314,9 +314,11 @@ describe('QuestionRenderer', () => {
     });
 
     it('should have proper ARIA attributes on checkbox group', () => {
-      render(<QuestionRenderer {...baseProps} required={1} />);
+      render(<QuestionRenderer {...getBaseProps()} required={1} />);
       
-      const group = screen.getByRole('group');
+      // Get all groups and find the one with aria-describedby (the Box, not the fieldset)
+      const groups = screen.getAllByRole('group', { name: /Select all that apply/i });
+      const group = groups.find(g => g.hasAttribute('aria-describedby'));
       expect(group).toHaveAttribute('aria-labelledby');
       expect(group).toHaveAttribute('aria-describedby');
     });
@@ -327,7 +329,7 @@ describe('QuestionRenderer', () => {
    * Tests rating scale questions with MUI Rating component
    */
   describe('Multichoicerated Questions', () => {
-    const baseProps: QuestionRendererProps = {
+    const getBaseProps = (): QuestionRendererProps => ({
       id: 3,
       type: 'multichoicerated',
       presentation: {
@@ -348,10 +350,10 @@ describe('QuestionRenderer', () => {
       label: 'Rate our service',
       value: '',
       onChange: mockOnChange,
-    };
+    });
 
     it('should render rated options with Rating component', () => {
-      render(<QuestionRenderer {...baseProps} />);
+      render(<QuestionRenderer {...getBaseProps()} />);
       
       // Check question label
       expect(screen.getByText('Rate our service')).toBeInTheDocument();
@@ -369,7 +371,7 @@ describe('QuestionRenderer', () => {
     });
 
     it('should display rating values correctly', () => {
-      render(<QuestionRenderer {...baseProps} />);
+      render(<QuestionRenderer {...getBaseProps()} />);
       
       // Check that rating values are displayed
       expect(screen.getByText('(1)')).toBeInTheDocument();
@@ -381,7 +383,7 @@ describe('QuestionRenderer', () => {
 
     it('should handle rated option selection', async () => {
       const user = userEvent.setup();
-      render(<QuestionRenderer {...baseProps} />);
+      render(<QuestionRenderer {...getBaseProps()} />);
       
       // Click "Good" option
       const goodOption = screen.getByLabelText('Good - 4 points');
@@ -392,7 +394,7 @@ describe('QuestionRenderer', () => {
     });
 
     it('should display selected rated option', () => {
-      render(<QuestionRenderer {...baseProps} value="3" />);
+      render(<QuestionRenderer {...getBaseProps()} value="3" />);
       
       // Verify "Average" is selected
       const averageOption = screen.getByLabelText('Average - 3 points');
@@ -402,7 +404,7 @@ describe('QuestionRenderer', () => {
     it('should display validation error for rated questions', () => {
       render(
         <QuestionRenderer
-          {...baseProps}
+          {...getBaseProps()}
           required={1}
           error="Please select a rating"
           touched={true}
@@ -418,7 +420,7 @@ describe('QuestionRenderer', () => {
    * Tests numeric input with min/max validation
    */
   describe('Numeric Questions', () => {
-    const baseProps: QuestionRendererProps = {
+    const getBaseProps = (): QuestionRendererProps => ({
       id: 4,
       type: 'numeric',
       presentation: {
@@ -433,10 +435,10 @@ describe('QuestionRenderer', () => {
       label: 'Enter your score',
       value: '',
       onChange: mockOnChange,
-    };
+    });
 
     it('should render numeric input field', () => {
-      render(<QuestionRenderer {...baseProps} />);
+      render(<QuestionRenderer {...getBaseProps()} />);
       
       // Check label
       expect(screen.getByLabelText('Enter your score')).toBeInTheDocument();
@@ -450,7 +452,7 @@ describe('QuestionRenderer', () => {
     });
 
     it('should have min and max attributes', () => {
-      render(<QuestionRenderer {...baseProps} />);
+      render(<QuestionRenderer {...getBaseProps()} />);
       
       const input = screen.getByLabelText('Enter your score');
       expect(input).toHaveAttribute('min', '0');
@@ -459,7 +461,7 @@ describe('QuestionRenderer', () => {
 
     it('should handle numeric input and call onChange', async () => {
       const user = userEvent.setup();
-      render(<QuestionRenderer {...baseProps} />);
+      render(<QuestionRenderer {...getBaseProps()} />);
       
       const input = screen.getByLabelText('Enter your score');
       await user.type(input, '75');
@@ -471,7 +473,7 @@ describe('QuestionRenderer', () => {
     });
 
     it('should display numeric value correctly', () => {
-      render(<QuestionRenderer {...baseProps} value={42} />);
+      render(<QuestionRenderer {...getBaseProps()} value={42} />);
       
       const input = screen.getByLabelText('Enter your score') as HTMLInputElement;
       expect(input.value).toBe('42');
@@ -480,7 +482,7 @@ describe('QuestionRenderer', () => {
     it('should display validation error for numeric input', () => {
       render(
         <QuestionRenderer
-          {...baseProps}
+          {...getBaseProps()}
           required={1}
           error="Value must be between 0 and 100"
           touched={true}
@@ -495,7 +497,7 @@ describe('QuestionRenderer', () => {
 
     it('should handle clearing numeric input', async () => {
       const user = userEvent.setup();
-      render(<QuestionRenderer {...baseProps} value={50} />);
+      render(<QuestionRenderer {...getBaseProps()} value={50} />);
       
       const input = screen.getByLabelText('Enter your score');
       await user.clear(input);
@@ -507,9 +509,9 @@ describe('QuestionRenderer', () => {
     });
 
     it('should have proper ARIA attributes for numeric input', () => {
-      render(<QuestionRenderer {...baseProps} required={1} />);
+      render(<QuestionRenderer {...getBaseProps()} required={1} />);
       
-      const input = screen.getByLabelText('Enter your score');
+      const input = screen.getByLabelText(/Enter your score/i);
       expect(input).toHaveAttribute('aria-required', 'true');
       expect(input).toHaveAttribute('aria-describedby');
       expect(input).toHaveAttribute('aria-invalid', 'false');
@@ -518,7 +520,7 @@ describe('QuestionRenderer', () => {
     it('should set aria-invalid to true when error exists', () => {
       render(
         <QuestionRenderer
-          {...baseProps}
+          {...getBaseProps()}
           error="Invalid value"
           touched={true}
         />
@@ -534,7 +536,7 @@ describe('QuestionRenderer', () => {
    * Tests multi-line text input
    */
   describe('Textarea Questions', () => {
-    const baseProps: QuestionRendererProps = {
+    const getBaseProps = (): QuestionRendererProps => ({
       id: 5,
       type: 'textarea',
       presentation: {
@@ -549,10 +551,10 @@ describe('QuestionRenderer', () => {
       label: 'Please provide your feedback',
       value: '',
       onChange: mockOnChange,
-    };
+    });
 
     it('should render multiline textarea', () => {
-      render(<QuestionRenderer {...baseProps} />);
+      render(<QuestionRenderer {...getBaseProps()} />);
       
       // Check label
       expect(screen.getByLabelText('Please provide your feedback')).toBeInTheDocument();
@@ -563,7 +565,7 @@ describe('QuestionRenderer', () => {
     });
 
     it('should display character count when maxLength is set', () => {
-      render(<QuestionRenderer {...baseProps} />);
+      render(<QuestionRenderer {...getBaseProps()} />);
       
       // Check character counter
       expect(screen.getByText('0/500 characters')).toBeInTheDocument();
@@ -571,7 +573,7 @@ describe('QuestionRenderer', () => {
 
     it('should update character count as user types', async () => {
       const user = userEvent.setup();
-      render(<QuestionRenderer {...baseProps} />);
+      render(<QuestionRenderer {...getBaseProps()} />);
       
       const textarea = screen.getByLabelText('Please provide your feedback');
       await user.type(textarea, 'Hello');
@@ -582,14 +584,14 @@ describe('QuestionRenderer', () => {
 
     it('should display textarea value correctly', () => {
       const longText = 'This is a longer feedback text that spans multiple lines.';
-      render(<QuestionRenderer {...baseProps} value={longText} />);
+      render(<QuestionRenderer {...getBaseProps()} value={longText} />);
       
       const textarea = screen.getByLabelText('Please provide your feedback') as HTMLTextAreaElement;
       expect(textarea.value).toBe(longText);
     });
 
     it('should enforce maxLength attribute', () => {
-      render(<QuestionRenderer {...baseProps} />);
+      render(<QuestionRenderer {...getBaseProps()} />);
       
       const textarea = screen.getByLabelText('Please provide your feedback');
       expect(textarea).toHaveAttribute('maxLength', '500');
@@ -598,7 +600,7 @@ describe('QuestionRenderer', () => {
     it('should display validation error for textarea', () => {
       render(
         <QuestionRenderer
-          {...baseProps}
+          {...getBaseProps()}
           required={1}
           error="This field is required"
           touched={true}
@@ -611,7 +613,7 @@ describe('QuestionRenderer', () => {
 
     it('should render textarea without maxLength when not specified', () => {
       const propsWithoutMax: QuestionRendererProps = {
-        ...baseProps,
+        ...getBaseProps(),
         presentation: {
           type: FeedbackQuestionType.TEXTAREA,
           text: {
@@ -628,9 +630,9 @@ describe('QuestionRenderer', () => {
     });
 
     it('should have proper ARIA attributes for textarea', () => {
-      render(<QuestionRenderer {...baseProps} required={1} />);
+      render(<QuestionRenderer {...getBaseProps()} required={1} />);
       
-      const textarea = screen.getByLabelText('Please provide your feedback');
+      const textarea = screen.getByLabelText(/Please provide your feedback/i);
       expect(textarea).toHaveAttribute('aria-required', 'true');
       expect(textarea).toHaveAttribute('aria-describedby');
     });
@@ -641,7 +643,7 @@ describe('QuestionRenderer', () => {
    * Tests single-line text input
    */
   describe('Textfield Questions', () => {
-    const baseProps: QuestionRendererProps = {
+    const getBaseProps = (): QuestionRendererProps => ({
       id: 6,
       type: 'textfield',
       presentation: {
@@ -656,10 +658,10 @@ describe('QuestionRenderer', () => {
       label: 'Enter your name',
       value: '',
       onChange: mockOnChange,
-    };
+    });
 
     it('should render single-line text input', () => {
-      render(<QuestionRenderer {...baseProps} />);
+      render(<QuestionRenderer {...getBaseProps()} />);
       
       // Check label
       expect(screen.getByLabelText('Enter your name')).toBeInTheDocument();
@@ -670,14 +672,14 @@ describe('QuestionRenderer', () => {
     });
 
     it('should display character count when maxLength is set', () => {
-      render(<QuestionRenderer {...baseProps} />);
+      render(<QuestionRenderer {...getBaseProps()} />);
       
       expect(screen.getByText('0/100 characters')).toBeInTheDocument();
     });
 
     it('should handle text input and call onChange', async () => {
       const user = userEvent.setup();
-      render(<QuestionRenderer {...baseProps} />);
+      render(<QuestionRenderer {...getBaseProps()} />);
       
       const input = screen.getByLabelText('Enter your name');
       await user.type(input, 'John Doe');
@@ -686,21 +688,21 @@ describe('QuestionRenderer', () => {
     });
 
     it('should display textfield value correctly', () => {
-      render(<QuestionRenderer {...baseProps} value="Jane Smith" />);
+      render(<QuestionRenderer {...getBaseProps()} value="Jane Smith" />);
       
       const input = screen.getByLabelText('Enter your name') as HTMLInputElement;
       expect(input.value).toBe('Jane Smith');
     });
 
     it('should enforce maxLength attribute', () => {
-      render(<QuestionRenderer {...baseProps} />);
+      render(<QuestionRenderer {...getBaseProps()} />);
       
       const input = screen.getByLabelText('Enter your name');
       expect(input).toHaveAttribute('maxLength', '100');
     });
 
     it('should apply width styling when width is specified', () => {
-      render(<QuestionRenderer {...baseProps} />);
+      render(<QuestionRenderer {...getBaseProps()} />);
       
       const input = screen.getByLabelText('Enter your name');
       expect(input).toHaveAttribute('size', '30');
@@ -708,7 +710,7 @@ describe('QuestionRenderer', () => {
 
     it('should render textfield without maxLength when not specified', () => {
       const propsWithoutMax: QuestionRendererProps = {
-        ...baseProps,
+        ...getBaseProps(),
         presentation: {
           type: FeedbackQuestionType.TEXTFIELD,
           text: {},
@@ -725,7 +727,7 @@ describe('QuestionRenderer', () => {
     it('should display validation error for textfield', () => {
       render(
         <QuestionRenderer
-          {...baseProps}
+          {...getBaseProps()}
           required={1}
           error="Name is required"
           touched={true}
@@ -736,9 +738,9 @@ describe('QuestionRenderer', () => {
     });
 
     it('should have proper ARIA attributes for textfield', () => {
-      render(<QuestionRenderer {...baseProps} required={1} />);
+      render(<QuestionRenderer {...getBaseProps()} required={1} />);
       
-      const input = screen.getByLabelText('Enter your name');
+      const input = screen.getByLabelText(/Enter your name/i);
       expect(input).toHaveAttribute('aria-required', 'true');
       expect(input).toHaveAttribute('aria-describedby');
     });
@@ -749,7 +751,7 @@ describe('QuestionRenderer', () => {
    * Tests informational display-only items
    */
   describe('Info Display', () => {
-    const baseProps: QuestionRendererProps = {
+    const getBaseProps = (): QuestionRendererProps => ({
       id: 7,
       type: 'info',
       presentation: {
@@ -763,10 +765,10 @@ describe('QuestionRenderer', () => {
       label: 'Information',
       value: '',
       onChange: mockOnChange,
-    };
+    });
 
     it('should render info content as HTML', () => {
-      render(<QuestionRenderer {...baseProps} />);
+      render(<QuestionRenderer {...getBaseProps()} />);
       
       // Check that content is rendered
       const infoText = screen.getByText(
@@ -776,7 +778,7 @@ describe('QuestionRenderer', () => {
     });
 
     it('should have role="note" for accessibility', () => {
-      render(<QuestionRenderer {...baseProps} />);
+      render(<QuestionRenderer {...getBaseProps()} />);
       
       const infoBox = screen.getByRole('note');
       expect(infoBox).toBeInTheDocument();
@@ -784,7 +786,7 @@ describe('QuestionRenderer', () => {
     });
 
     it('should render info with styled background', () => {
-      render(<QuestionRenderer {...baseProps} />);
+      render(<QuestionRenderer {...getBaseProps()} />);
       
       const infoBox = screen.getByRole('note');
       expect(infoBox).toHaveStyle({ backgroundColor: expect.any(String) });
@@ -792,7 +794,7 @@ describe('QuestionRenderer', () => {
 
     it('should fallback to label when content is not provided', () => {
       const propsWithoutContent: QuestionRendererProps = {
-        ...baseProps,
+        ...getBaseProps(),
         presentation: {
           type: FeedbackQuestionType.INFO,
           info: {
@@ -810,7 +812,7 @@ describe('QuestionRenderer', () => {
 
     it('should handle HTML with multiple elements', () => {
       const propsWithComplexHTML: QuestionRendererProps = {
-        ...baseProps,
+        ...getBaseProps(),
         presentation: {
           type: FeedbackQuestionType.INFO,
           info: {
@@ -832,7 +834,7 @@ describe('QuestionRenderer', () => {
    * Tests section headers for organizing questions
    */
   describe('Label Headers', () => {
-    const baseProps: QuestionRendererProps = {
+    const getBaseProps = (): QuestionRendererProps => ({
       id: 8,
       type: 'label',
       presentation: {
@@ -843,25 +845,27 @@ describe('QuestionRenderer', () => {
       label: 'Section 1: Personal Information',
       value: '',
       onChange: mockOnChange,
-    };
+    });
 
     it('should render label as heading', () => {
-      render(<QuestionRenderer {...baseProps} />);
+      render(<QuestionRenderer {...getBaseProps()} />);
       
       // Check that label is rendered as h3 heading
-      const heading = screen.getByRole('heading', { level: 3 });
+      const heading = screen.getByRole('heading', { level: 3, name: 'Section 1: Personal Information' });
       expect(heading).toHaveTextContent('Section 1: Personal Information');
     });
 
     it('should have role="heading" with aria-level', () => {
-      render(<QuestionRenderer {...baseProps} />);
+      render(<QuestionRenderer {...getBaseProps()} />);
       
-      const headingBox = screen.getByRole('heading', { level: 3 });
-      expect(headingBox).toHaveAttribute('aria-level', '3');
+      // Verify heading exists with correct level (implicit in h3 element)
+      const heading = screen.getByRole('heading', { level: 3, name: 'Section 1: Personal Information' });
+      expect(heading).toBeInTheDocument();
+      expect(heading.tagName).toBe('H3');
     });
 
     it('should render label with styled border', () => {
-      render(<QuestionRenderer {...baseProps} />);
+      render(<QuestionRenderer {...getBaseProps()} />);
       
       const heading = screen.getByText('Section 1: Personal Information');
       expect(heading.parentElement).toHaveStyle({ borderBottom: expect.any(String) });
@@ -869,13 +873,16 @@ describe('QuestionRenderer', () => {
 
     it('should support long label text', () => {
       const propsWithLongLabel: QuestionRendererProps = {
-        ...baseProps,
+        ...getBaseProps(),
         label: 'This is a very long section header that describes the content below in great detail',
       };
       
       render(<QuestionRenderer {...propsWithLongLabel} />);
       
-      const heading = screen.getByRole('heading', { level: 3 });
+      const heading = screen.getByRole('heading', { 
+        level: 3, 
+        name: 'This is a very long section header that describes the content below in great detail' 
+      });
       expect(heading).toHaveTextContent(
         'This is a very long section header that describes the content below in great detail'
       );
@@ -955,7 +962,7 @@ describe('QuestionRenderer', () => {
       
       render(<QuestionRenderer {...props} />);
       
-      const textarea = screen.getByLabelText('Comments');
+      const textarea = screen.getByLabelText(/Comments/i);
       const describedBy = textarea.getAttribute('aria-describedby');
       expect(describedBy).toContain('error');
     });
