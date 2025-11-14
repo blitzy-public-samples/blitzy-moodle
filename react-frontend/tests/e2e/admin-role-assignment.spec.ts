@@ -13,17 +13,18 @@
  * @module tests/e2e/admin-role-assignment.spec
  */
 
-import { test, expect, describe, beforeAll, afterAll, beforeEach, Page } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 import { AdminRolePage } from './pages/AdminRolePage';
 import { CoursePage } from './pages/CoursePage';
 import { loginAsAdmin, loginAsStudent, logout, isAuthenticated } from './utils/auth';
 import { testAdmin, testStudent, TEST_PASSWORD } from './fixtures/users';
 import { testCourse1 } from './fixtures/courses';
 
-describe('Admin Role Assignment Workflow', () => {
+test.describe('Admin Role Assignment Workflow', () => {
   let adminPage: Page;
   let adminRolePage: AdminRolePage;
   let customRoleName: string;
+  let customRoleId: number;
   const customRoleDescription = 'Custom role for E2E testing with course management capabilities';
   
   // Capabilities to assign to custom role
@@ -37,7 +38,7 @@ describe('Admin Role Assignment Workflow', () => {
   /**
    * Setup: Login as admin user, navigate to role management
    */
-  beforeAll(async ({ browser }) => {
+  test.beforeAll(async ({ browser }) => {
     // Step 1: Login as admin user
     adminPage = await browser.newPage();
     await loginAsAdmin(adminPage);
@@ -57,13 +58,13 @@ describe('Admin Role Assignment Workflow', () => {
   /**
    * Cleanup: Remove test roles and assignments
    */
-  afterAll(async () => {
+  test.afterAll(async () => {
     // Step 10: Cleanup - Remove test roles and assignments
     try {
       // Attempt to delete role if it still exists
       const roleExists = await adminRolePage.verifyRoleExists(customRoleName);
-      if (roleExists) {
-        await adminRolePage.deleteRole(customRoleName);
+      if (roleExists && customRoleId) {
+        await adminRolePage.deleteRole(customRoleId);
         await adminRolePage.confirmRoleDeletion();
       }
     } catch (error) {
@@ -78,7 +79,7 @@ describe('Admin Role Assignment Workflow', () => {
   /**
    * Reset state before each test
    */
-  beforeEach(async () => {
+  test.beforeEach(async () => {
     // Ensure we're on role management page
     await adminRolePage.waitForRoleManagement();
   });
@@ -97,6 +98,12 @@ describe('Admin Role Assignment Workflow', () => {
     const roleExists = await adminRolePage.verifyRoleExists(customRoleName);
     expect(roleExists).toBe(true);
     
+    // Get the role ID by fetching all roles and finding the one with matching name
+    const roles = await adminRolePage.getRoles();
+    const createdRole = roles.find(role => role.name === customRoleName);
+    expect(createdRole).toBeDefined();
+    customRoleId = createdRole!.id;
+    
     // Capture screenshot for verification
     await adminPage.screenshot({ 
       path: `screenshots/admin-role-created-${customRoleName}.png`,
@@ -110,7 +117,7 @@ describe('Admin Role Assignment Workflow', () => {
   test('should assign multiple capabilities to the custom role', async () => {
     // Assign each capability to the role
     for (const capability of testCapabilities) {
-      await adminRolePage.assignCapability(capability);
+      await adminRolePage.assignCapability(customRoleId, capability);
     }
     
     // Save role with assigned capabilities
@@ -119,18 +126,19 @@ describe('Admin Role Assignment Workflow', () => {
     // Step 8 Assertion: Verify capabilities saved correctly
     for (const capability of testCapabilities) {
       const isAssigned = await adminRolePage.verifyCapabilityAssigned(
-        customRoleName,
+        customRoleId,
         capability
       );
       expect(isAssigned).toBe(true);
     }
     
     // Retrieve all role capabilities for comprehensive verification
-    const roleCapabilities = await adminRolePage.getRoleCapabilities(customRoleName);
+    const roleCapabilities = await adminRolePage.getRoleCapabilities(customRoleId);
     
     // Verify all test capabilities are present
     for (const capability of testCapabilities) {
-      expect(roleCapabilities).toContain(capability);
+      const capabilityNames = roleCapabilities.map(cap => cap.name);
+      expect(capabilityNames).toContain(capability);
     }
     
     // Capture screenshot
@@ -148,25 +156,24 @@ describe('Admin Role Assignment Workflow', () => {
     await adminRolePage.clickAssignRole();
     
     // Select the custom role
-    await adminRolePage.selectRole(customRoleName);
+    await adminRolePage.selectRole(customRoleId);
     
     // Select course context for role assignment
-    await adminRolePage.selectContext('course', testCourse1.id);
+    await adminRolePage.selectContext(`course/${testCourse1.id}`);
     
     // Select test student as the user to assign role to
-    await adminRolePage.selectUser(testStudent.username);
+    await adminRolePage.selectUser(testStudent.id);
     
     // Perform the role assignment
-    await adminRolePage.assignRoleToUser();
+    await adminRolePage.assignRoleToUser(testStudent.id, customRoleId, `course/${testCourse1.id}`);
     
     // Wait for assignment operation to complete
     await adminRolePage.waitForAssignmentComplete();
     
     // Step 8 Assertion: Verify user has role
     const userHasRole = await adminRolePage.verifyUserHasRole(
-      testStudent.username,
-      customRoleName,
-      testCourse1.id
+      testStudent.id,
+      customRoleId
     );
     expect(userHasRole).toBe(true);
     
@@ -194,12 +201,12 @@ describe('Admin Role Assignment Workflow', () => {
       
       // Navigate to the course where role was assigned
       const coursePage = new CoursePage(studentPage);
-      await coursePage.waitForCourse(testCourse1.id);
+      await coursePage.waitForCourse();
       
       // Verify student can view course (moodle/course:view capability)
       const courseInfo = await coursePage.getCourseInfo();
       expect(courseInfo).toBeDefined();
-      expect(courseInfo.name).toBe(testCourse1.name);
+      expect(courseInfo.title).toBe(testCourse1.fullname);
       
       // Step 8 Assertion: User gains access
       const isEnrolled = await coursePage.isEnrolled();
@@ -234,16 +241,15 @@ describe('Admin Role Assignment Workflow', () => {
     // Step 6: Remove role from user
     await adminRolePage.clickAssignRole();
     await adminRolePage.unassignRole(
-      testStudent.username,
-      customRoleName,
-      testCourse1.id
+      testStudent.id,
+      customRoleId,
+      `course/${testCourse1.id}`
     );
     
     // Verify role unassignment completed
     const userStillHasRole = await adminRolePage.verifyUserHasRole(
-      testStudent.username,
-      customRoleName,
-      testCourse1.id
+      testStudent.id,
+      customRoleId
     );
     expect(userStillHasRole).toBe(false);
     
@@ -258,7 +264,7 @@ describe('Admin Role Assignment Workflow', () => {
       
       // Attempt to access course
       try {
-        await coursePage.waitForCourse(testCourse1.id);
+        await coursePage.waitForCourse();
         
         // Check enrollment status after role unassignment
         const stillEnrolled = await coursePage.isEnrolled();
@@ -298,7 +304,7 @@ describe('Admin Role Assignment Workflow', () => {
    */
   test('should delete custom role and verify cleanup', async () => {
     // Delete the custom role
-    await adminRolePage.deleteRole(customRoleName);
+    await adminRolePage.deleteRole(customRoleId);
     
     // Confirm deletion in confirmation dialog
     await adminRolePage.confirmRoleDeletion();
@@ -386,6 +392,7 @@ describe('Admin Role Assignment Workflow', () => {
     // This test runs the complete workflow to ensure end-to-end consistency
     
     const workflowRoleName = `E2E_Workflow_Role_${Date.now()}`;
+    let workflowRoleId: number;
     
     // Step 1: Already logged in as admin from beforeAll
     await adminRolePage.waitForRoleManagement();
@@ -395,37 +402,43 @@ describe('Admin Role Assignment Workflow', () => {
     await adminRolePage.createRole(workflowRoleName, 'Full workflow test role');
     expect(await adminRolePage.verifyRoleExists(workflowRoleName)).toBe(true);
     
+    // Get the role ID after creation
+    const roles = await adminRolePage.getRoles();
+    const workflowRole = roles.find(r => r.name === workflowRoleName);
+    expect(workflowRole).toBeDefined();
+    workflowRoleId = workflowRole!.id;
+    
     // Step 3: Assign capabilities
-    await adminRolePage.assignCapability('moodle/course:view');
-    await adminRolePage.assignCapability('moodle/course:update');
+    await adminRolePage.assignCapability(workflowRoleId, 'moodle/course:view');
+    await adminRolePage.assignCapability(workflowRoleId, 'moodle/course:update');
     await adminRolePage.saveRole();
-    expect(await adminRolePage.verifyCapabilityAssigned(workflowRoleName, 'moodle/course:view')).toBe(true);
+    expect(await adminRolePage.verifyCapabilityAssigned(workflowRoleId, 'moodle/course:view')).toBe(true);
     
     // Step 4: Assign role to user
     await adminRolePage.clickAssignRole();
-    await adminRolePage.selectRole(workflowRoleName);
-    await adminRolePage.selectContext('course', testCourse1.id);
-    await adminRolePage.selectUser(testStudent.username);
-    await adminRolePage.assignRoleToUser();
+    await adminRolePage.selectRole(workflowRoleId);
+    await adminRolePage.selectContext(`course/${testCourse1.id}`);
+    await adminRolePage.selectUser(testStudent.id);
+    await adminRolePage.assignRoleToUser(testStudent.id, workflowRoleId, `course/${testCourse1.id}`);
     await adminRolePage.waitForAssignmentComplete();
-    expect(await adminRolePage.verifyUserHasRole(testStudent.username, workflowRoleName, testCourse1.id)).toBe(true);
+    expect(await adminRolePage.verifyUserHasRole(testStudent.id, workflowRoleId)).toBe(true);
     
     // Step 5: Verify permissions granted
     const studentPage = await browser.newPage();
     await loginAsStudent(studentPage);
     const coursePage = new CoursePage(studentPage);
-    await coursePage.waitForCourse(testCourse1.id);
+    await coursePage.waitForCourse();
     expect(await coursePage.isEnrolled()).toBe(true);
     await logout(studentPage);
     await studentPage.close();
     
     // Step 6: Unassign role
     await adminRolePage.clickAssignRole();
-    await adminRolePage.unassignRole(testStudent.username, workflowRoleName, testCourse1.id);
-    expect(await adminRolePage.verifyUserHasRole(testStudent.username, workflowRoleName, testCourse1.id)).toBe(false);
+    await adminRolePage.unassignRole(testStudent.id, workflowRoleId, `course/${testCourse1.id}`);
+    expect(await adminRolePage.verifyUserHasRole(testStudent.id, workflowRoleId)).toBe(false);
     
     // Step 7: Delete role
-    await adminRolePage.deleteRole(workflowRoleName);
+    await adminRolePage.deleteRole(workflowRoleId);
     await adminRolePage.confirmRoleDeletion();
     expect(await adminRolePage.verifyRoleExists(workflowRoleName)).toBe(false);
     

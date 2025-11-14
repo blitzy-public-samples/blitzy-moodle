@@ -485,8 +485,8 @@ export class AdminUserPage {
    * NOTE: Bulk actions now use separate buttons, not a select dropdown
    */
   async applyBulkAction(action: BulkAction): Promise<void> {
-    // Open the bulk actions menu first
-    await this.bulkActionsMenu.waitFor({ state: 'visible' });
+    // Note: Bulk actions now use separate buttons, not a menu/select dropdown
+    // Playwright will auto-wait for buttons to be actionable when clicking
     
     switch (action) {
       case 'suspend':

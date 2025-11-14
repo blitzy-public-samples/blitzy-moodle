@@ -71,13 +71,13 @@ export class QuizPage {
   private readonly attemptButton: Locator;
   private readonly timer: Locator;
   private readonly questionText: Locator;
-  // @ts-expect-error - Defined for future use and POM consistency
+  // Defined for future use and POM consistency
   private readonly _answerOptions: Locator;
 
   // Navigation locators
   private readonly nextButton: Locator;
   private readonly previousButton: Locator;
-  // @ts-expect-error - Defined for future use and POM consistency
+  // Defined for future use and POM consistency
   private readonly _questionSidebar: Locator;
 
   // Submission locators
@@ -85,7 +85,7 @@ export class QuizPage {
   private readonly confirmSubmitButton: Locator;
 
   // Results locators
-  // @ts-expect-error - Defined for future use and POM consistency
+  // Defined for future use and POM consistency
   private readonly _reviewSection: Locator;
   private readonly resultsSection: Locator;
   private readonly scoreSummary: Locator;

@@ -189,17 +189,17 @@ export class CourseCatalogPage {
       ]);
       
       // Extract enrollment count (parse from text like "123 students")
-      const enrollmentCount = parseInt(enrollmentText.match(/\d+/)?.[0] || '0', 10);
+      const enrollmentCount = parseInt((enrollmentText || '0').match(/\d+/)?.[0] || '0', 10);
       
       // Strip "Starts: " and "Ends: " prefixes from dates
       const cleanStartDate = startDate?.trim().replace(/^Starts:\s*/, '');
       const cleanEndDate = endDate?.trim().replace(/^Ends:\s*/, '');
       
       return {
-        courseId: courseId.trim(),
-        title: title.trim(),
-        instructor: instructor.trim(),
-        category: category.trim(),
+        courseId: (courseId || '').trim(),
+        title: (title || '').trim(),
+        instructor: (instructor || '').trim(),
+        category: (category || '').trim(),
         enrollmentCount,
         imageUrl: imageUrl ?? undefined,
         description: description?.trim(),

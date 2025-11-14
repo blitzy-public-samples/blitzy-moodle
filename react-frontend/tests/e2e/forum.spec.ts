@@ -125,8 +125,8 @@ test.describe('Forum Discussion and Moderation', () => {
       const discussionSubject = `Test Discussion with Attachment ${Date.now()}`;
       const discussionMessage = '<p>This discussion includes a file attachment.</p>';
       
-      // Generate test file for attachment
-      const testFile = await generateTestFile('pdf', 'test-forum-attachment.pdf');
+      // Generate test file for attachment (using default 'small' size)
+      const testFile = await generateTestFile('pdf');
       
       // Create discussion with attachment and capture the ID
       const discussionId = await forumPage.createDiscussion(discussionSubject, discussionMessage, testFile);
@@ -147,8 +147,7 @@ test.describe('Forum Discussion and Moderation', () => {
       const attachmentText = await page.locator('[data-testid="post-attachment"]').textContent();
       expect(attachmentText).toContain('test-forum-attachment.pdf');
       
-      // Cleanup test file
-      await cleanupTestFiles([testFile]);
+      // Note: Test files are cleaned up automatically by cleanupTestFiles() in afterAll hooks
     });
   });
 
@@ -167,7 +166,7 @@ test.describe('Forum Discussion and Moderation', () => {
       await forumPage.clickDiscussion(discussionId);
       
       const replyMessage = '<p>This is a <strong>reply</strong> to the original post.</p>';
-      await forumPage.replyToPost(1, replyMessage);
+      await forumPage.replyToPost('1', replyMessage);
       
       // Verify reply appears
       const posts = await forumPage.getPosts();
@@ -179,7 +178,7 @@ test.describe('Forum Discussion and Moderation', () => {
       
       // Verify reply is indented (appears as child post)
       const replyPost = posts[1];
-      expect(replyPost.parentId).toBe(posts[0].id);
+      expect(replyPost.level).toBeGreaterThan(posts[0].level);
     });
 
     test('should display posts in correct thread format with timestamps', async ({ page }) => {
@@ -244,8 +243,8 @@ test.describe('Forum Discussion and Moderation', () => {
       const editedPost = postsAfterEdit.find(p => p.id === postId);
       
       expect(editedPost).toBeDefined();
-      expect(editedPost?.message).toContain('updated');
-      expect(editedPost?.message).toContain('modified');
+      expect(editedPost?.content).toContain('updated');
+      expect(editedPost?.content).toContain('modified');
     });
 
     test('should delete own post and remove from thread', async ({ page }) => {
@@ -342,7 +341,10 @@ test.describe('Forum Discussion and Moderation', () => {
       await forumPage.createDiscussion(subject, message);
       
       // Test forum search: Search for keyword in forum, verify matching posts shown
-      const searchResults = await forumPage.searchForum(uniqueKeyword);
+      await forumPage.searchForum(uniqueKeyword);
+      
+      // Get the filtered discussions after search
+      const searchResults = await forumPage.getDiscussions();
       
       expect(searchResults).toBeDefined();
       expect(Array.isArray(searchResults)).toBe(true);
@@ -350,7 +352,7 @@ test.describe('Forum Discussion and Moderation', () => {
       
       // Verify search results contain the keyword
       const firstResult = searchResults[0];
-      const contentLower = firstResult.subject.toLowerCase() + ' ' + firstResult.message.toLowerCase();
+      const contentLower = firstResult.subject.toLowerCase();
       expect(contentLower).toContain(uniqueKeyword.toLowerCase());
     });
   });
@@ -393,8 +395,8 @@ test.describe('Forum Discussion and Moderation', () => {
       // Navigate to discussion
       await teacherForumPage.clickDiscussion(studentDiscussionId);
       
-      // Verify moderation capability (teacher can see delete button for student post)
-      const canModerate = await teacherForumPage.verifyModeration(studentPostId);
+      // Verify moderation capability (teacher can see delete/edit buttons for student post)
+      const canModerate = await teacherForumPage.verifyModeration();
       expect(canModerate).toBe(true);
       
       // Delete student post
@@ -451,9 +453,9 @@ test.describe('Forum Discussion and Moderation', () => {
       const discussionId = await forumPage.createDiscussion(subject, message);
       
       // Assertions: Verify permissions enforced
-      // Verify current user (student) can post to forum
-      const canPost = await forumPage.getForumInfo();
-      expect(canPost.canAddDiscussion).toBe(true);
+      // Verify current user (student) can post to forum (add discussion button is visible)
+      const addButtonVisible = await forumPage.addDiscussionButton.isVisible();
+      expect(addButtonVisible).toBe(true);
       
       // Navigate to the discussion we just created
       await forumPage.clickDiscussion(discussionId);
@@ -522,7 +524,7 @@ test.describe('Forum Discussion and Moderation', () => {
       await forumPage.waitForForum();
       const postsAfterEdit = await forumPage.getPosts();
       const editedPost = postsAfterEdit.find(p => p.id === replyPost.id);
-      expect(editedPost?.message).toContain('Edited');
+      expect(editedPost?.content).toContain('Edited');
       
       // 9. Subscribe to forum
       await page.goto(`/courses/${testCourseId}/forums/${testForumId}`);
@@ -532,7 +534,8 @@ test.describe('Forum Discussion and Moderation', () => {
       expect(isSubscribed).toBe(true);
       
       // 10. Search for discussion
-      const searchResults = await forumPage.searchForum(subject);
+      await forumPage.searchForum(subject);
+      const searchResults = await forumPage.getDiscussions();
       const foundDiscussion = searchResults.find(r => r.subject === subject);
       expect(foundDiscussion).toBeDefined();
     });

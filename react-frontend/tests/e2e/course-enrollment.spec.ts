@@ -295,6 +295,9 @@ test.describe('Course Enrollment Workflow', () => {
     
     // Enter valid enrollment key from fixture
     const validKey = testCourse2.enrollmentmethods[0].password;
+    if (!validKey) {
+      throw new Error('Test course 2 must have an enrollment key configured');
+    }
     await enrollmentPage.enterEnrollmentKey(validKey);
     
     // Confirm enrollment
