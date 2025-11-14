@@ -55,8 +55,10 @@ vi.mock('@tanstack/react-query', async () => {
   const actual = await vi.importActual('@tanstack/react-query');
   return {
     ...actual,
-    useQuery: (...args: any[]) => mockUseQuery(...args),
-    useMutation: (...args: any[]) => mockUseMutation(...args),
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+    useQuery: (options: unknown) => mockUseQuery(options),
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+    useMutation: (options: unknown) => mockUseMutation(options),
   };
 });
 
@@ -452,7 +454,7 @@ describe('DiscussionList Component', () => {
       
       // Check for text that indicates no replies - could be "No replies" or "0 replies"
       const noRepliesIndicator = within(discussionElement!).queryByText(/no replies|0 replies/i);
-      expect(noRepliesIndicator || within(discussionElement!).getByText('0')).toBeInTheDocument();
+      expect(noRepliesIndicator ?? within(discussionElement!).getByText('0')).toBeInTheDocument();
     });
   });
 
@@ -717,7 +719,7 @@ describe('DiscussionList Component', () => {
     it('should disable next button on last page', async () => {
       // Set up data for 3 pages total (60 items / 20 per page = 3 pages)
       // Use mockImplementation to ensure consistent behavior on every call
-      mockUseQuery.mockImplementation((options) => {
+      mockUseQuery.mockImplementation((_options) => {
         return {
           data: { discussions: mockDiscussions, totalCount: 60, hasMore: false },
           isLoading: false,
@@ -1193,7 +1195,7 @@ describe('DiscussionList Component', () => {
       expect(avatar).toBeInTheDocument();
     });
 
-    it('should not allow navigation to deleted author profile', async () => {
+    it('should not allow navigation to deleted author profile', () => {
       renderWithProviders(<DiscussionList {...defaultProps} />);
 
       const deletedAuthorDiscussion = mockDiscussions.find(d => d.author.isDeleted);
@@ -1216,7 +1218,7 @@ describe('DiscussionList Component', () => {
       const discussionElement = screen.getByText(noReplyDiscussion!.title).closest('li');
       
       // Check for "0 replies" or just "0" indicator
-      const replyText = within(discussionElement!).queryByText(/0\s+replies/i) || 
+      const replyText = within(discussionElement!).queryByText(/0\s+replies/i) ?? 
                        within(discussionElement!).getByText('0');
       expect(replyText).toBeInTheDocument();
     });
@@ -1310,7 +1312,7 @@ describe('DiscussionList Component', () => {
 
     it('should revert optimistic update if mutation fails', async () => {
       // Mock mutation that calls onError callback instead of rejecting
-      const mutateFn = vi.fn().mockImplementation((_, options) => {
+      const mutateFn = vi.fn().mockImplementation((_: unknown, options: { onError?: (error: Error) => void }) => {
         // Simulate calling the onError callback if it exists
         if (options?.onError) {
           options.onError(new Error('Failed to pin'));
@@ -1469,13 +1471,13 @@ describe('DiscussionList Component', () => {
       // The ListItemButton is the one that contains the full discussion title text
       // (the action buttons like pin/lock/delete only have icon aria-labels)
       const firstButton = buttonsInFirstItem.find(btn => {
-        const text = btn.textContent || '';
+        const text = btn.textContent ?? '';
         // ListItemButton contains the title and author info
         return text.includes(mockDiscussions[0].title) && text.includes(mockDiscussions[0].author.name);
       });
 
       // If still not found, just get the first button (fallback)
-      const discussionButton = firstButton || buttonsInFirstItem[0];
+      const discussionButton = firstButton ?? buttonsInFirstItem[0];
 
       // Focus on first discussion button
       discussionButton.focus();
@@ -1511,7 +1513,7 @@ describe('DiscussionList Component', () => {
       });
 
       // If still not found, just get the first button (fallback)
-      const discussionButton = firstButton || buttonsInFirstItem[0];
+      const discussionButton = firstButton ?? buttonsInFirstItem[0];
 
       // Focus and press Enter on the button
       discussionButton.focus();

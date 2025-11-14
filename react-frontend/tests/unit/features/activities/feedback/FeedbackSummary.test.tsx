@@ -14,17 +14,18 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { axe, toHaveNoViolations } from 'jest-axe';
 import { FeedbackSummary } from '@/features/activities/feedback/components/FeedbackSummary';
-import type { FeedbackStatistics, GroupResponseCount, CourseResponseCount } from '@/features/activities/feedback/types/feedback.types';
+import type { FeedbackStatistics } from '@/features/activities/feedback/types/feedback.types';
 
 // Extend expect with jest-axe matchers
 expect.extend(toHaveNoViolations);
 
 // Mock date-fns to ensure consistent date formatting in tests
 vi.mock('date-fns', async () => {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-imports
   const actual = await vi.importActual<typeof import('date-fns')>('date-fns');
   return {
     ...actual,
@@ -32,9 +33,15 @@ vi.mock('date-fns', async () => {
       const now = new Date('2024-01-15T12:00:00Z');
       const diff = now.getTime() - date.getTime();
       const hours = Math.floor(diff / (1000 * 60 * 60));
-      if (hours < 1) return 'less than an hour ago';
-      if (hours === 1) return '1 hour ago';
-      if (hours < 24) return `${hours} hours ago`;
+      if (hours < 1) {
+        return 'less than an hour ago';
+      }
+      if (hours === 1) {
+        return '1 hour ago';
+      }
+      if (hours < 24) {
+        return `${hours} hours ago`;
+      }
       return `${Math.floor(hours / 24)} days ago`;
     }),
     format: vi.fn((date: Date, formatStr: string) => {
@@ -134,7 +141,7 @@ describe('FeedbackSummary Component', () => {
     });
 
     it('renders in Card with appropriate icon', () => {
-      const { container } = render(<FeedbackSummary {...defaultProps} />);
+      render(<FeedbackSummary {...defaultProps} />);
       
       const responseCard = screen.getByText('Total Responses').closest('div[class*="MuiCard"]');
       expect(responseCard).toBeInTheDocument();
@@ -378,7 +385,7 @@ describe('FeedbackSummary Component', () => {
       const lastSubmissionElement = screen.getByText(/last submission:/i);
       
       // Check that the parent container includes both the formatted date and relative time
-      const parentContainer = lastSubmissionElement.closest('.MuiTypography-root') || lastSubmissionElement.parentElement;
+      const parentContainer = lastSubmissionElement.closest('.MuiTypography-root') ?? lastSubmissionElement.parentElement;
       expect(parentContainer?.textContent).toContain('Jan 15, 2024');
       // Match both singular and plural forms: "hour ago", "hours ago", "day ago", "days ago"
       expect(parentContainer?.textContent).toMatch(/hours? ago|days? ago/i);
@@ -532,7 +539,7 @@ describe('FeedbackSummary Component', () => {
     });
 
     it('displays skeleton when isLoading is true', () => {
-      render(<FeedbackSummary feedbackId={1} statistics={mockStatistics} isLoading={true} />);
+      render(<FeedbackSummary feedbackId={1} statistics={mockStatistics} isLoading />);
       
       // Should show skeleton even with statistics
       const skeletons = screen.getAllByTestId(/skeleton-/);
@@ -696,7 +703,7 @@ describe('FeedbackSummary Component', () => {
     });
 
     it('component handles isLoading prop', () => {
-      render(<FeedbackSummary feedbackId={1} isLoading={true} />);
+      render(<FeedbackSummary feedbackId={1} isLoading />);
       
       // Should show skeleton
       expect(screen.getByTestId('skeleton-circular-1')).toBeInTheDocument();
