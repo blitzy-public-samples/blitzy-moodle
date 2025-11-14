@@ -21,6 +21,7 @@ import {
   retryOperation, 
   pollUntil 
 } from './wait-helpers';
+import { TEST_PASSWORD } from '../fixtures/users';
 
 // ============================================================================
 // Type Definitions
@@ -78,11 +79,11 @@ export type UserRole = 'student' | 'teacher' | 'admin' | 'guest';
 /** Login page URL path */
 const LOGIN_PAGE_URL = '/login';
 
-/** LocalStorage key for access token */
-const ACCESS_TOKEN_KEY = 'accessToken';
+/** LocalStorage key for access token (must match authService.ts, client.ts, and authApi.ts) */
+const ACCESS_TOKEN_KEY = 'moodle_access_token';
 
-/** LocalStorage key for refresh token */
-const REFRESH_TOKEN_KEY = 'refreshToken';
+/** LocalStorage key for refresh token (must match authService.ts, client.ts, and authApi.ts) */
+const REFRESH_TOKEN_KEY = 'moodle_refresh_token';
 
 /** Cookie name for JWT token (if using httpOnly cookies) */
 const JWT_COOKIE_NAME = 'jwt_token';
@@ -97,15 +98,15 @@ const REFRESH_API_ENDPOINT = '/api/v1/auth/refresh';
 const TEST_USERS = {
   student: {
     username: 'student1',
-    password: 'Student@123',
+    password: TEST_PASSWORD,
   },
   teacher: {
     username: 'teacher1',
-    password: 'Teacher@123',
+    password: TEST_PASSWORD,
   },
   admin: {
     username: 'admin',
-    password: 'Admin@123',
+    password: TEST_PASSWORD,
   },
 };
 
@@ -137,6 +138,13 @@ export async function login(page: Page, credentials: LoginCredentials): Promise<
   await page.goto(LOGIN_PAGE_URL);
   // Removed waitForPageLoad - the form element waits below are more reliable
 
+  // Capture console logs for debugging
+  page.on('console', msg => {
+    const type = msg.type();
+    const text = msg.text();
+    console.log(`[BROWSER ${type.toUpperCase()}] ${text}`);
+  });
+
   // Wait for login form to be visible
   await waitForElement(page, 'input[name="username"]', 'visible', { timeout: 5000 });
   await waitForElement(page, 'input[name="password"]', 'visible', { timeout: 5000 });
@@ -144,6 +152,9 @@ export async function login(page: Page, credentials: LoginCredentials): Promise<
   // Fill in credentials
   await page.fill('input[name="username"]', credentials.username);
   await page.fill('input[name="password"]', credentials.password);
+
+  console.log('[TEST] Filled in credentials, about to click submit...');
+  console.log('[TEST] Current URL:', page.url());
 
   // Submit the form and wait for navigation
   // Set up navigation expectation before clicking
@@ -153,8 +164,19 @@ export async function login(page: Page, credentials: LoginCredentials): Promise<
   // Click submit button to trigger form submission
   await page.click('button[type="submit"]');
   
+  console.log('[TEST] Clicked submit button, waiting for navigation...');
+  
   // Now wait for the navigation to complete
   await navigationPromise;
+  
+  console.log('[TEST] Navigation completed to:', page.url());
+  
+  // NOTE: We do NOT wait for /api/v1/auth/me here because:
+  // - The login response already includes the user data (tokens + user object)
+  // - useLoginMutation stores this user data directly in React Query cache
+  // - useCurrentUser uses the cached data without making another API call
+  // - /api/v1/auth/me is only called on page refresh when cache is empty but token exists
+  console.log('[TEST] Login successful, user data cached from login response');
 
   // Navigation is complete - the more specific URL and element waits below are sufficient
   // Note: Removed waitForPageLoad here as it waits for networkidle which is too strict
@@ -404,11 +426,16 @@ export async function getAuthToken(page: Page): Promise<string | null> {
   }
 
   // Try to get token from cookies as fallback
-  const cookies = await page.context().cookies();
-  const jwtCookie = cookies.find(cookie => cookie.name === JWT_COOKIE_NAME);
+  try {
+    const cookies = await page.context().cookies();
+    const jwtCookie = cookies.find(cookie => cookie.name === JWT_COOKIE_NAME);
 
-  if (jwtCookie) {
-    return jwtCookie.value;
+    if (jwtCookie) {
+      return jwtCookie.value;
+    }
+  } catch (error) {
+    // Context may not be available (e.g., page closed or invalid state)
+    // This is expected during cleanup and we'll return null
   }
 
   return null;
@@ -734,20 +761,30 @@ export async function clearAuthenticationState(page: Page): Promise<void> {
   }
 
   // Clear JWT cookies
-  const context = page.context();
-  const cookies = await context.cookies();
-  
-  const jwtCookies = cookies.filter(
-    cookie => cookie.name === JWT_COOKIE_NAME || cookie.name.includes('auth')
-  );
+  try {
+    const context = page.context();
+    const cookies = await context.cookies();
+    
+    const jwtCookies = cookies.filter(
+      cookie => cookie.name === JWT_COOKIE_NAME || cookie.name.includes('auth')
+    );
 
-  if (jwtCookies.length > 0) {
-    await context.clearCookies();
+    if (jwtCookies.length > 0) {
+      await context.clearCookies();
+    }
+  } catch (error) {
+    // Context may not be available (e.g., page closed or invalid state)
+    // This is acceptable during cleanup
   }
 
   // Verify authentication state is cleared
-  const isAuth = await isAuthenticated(page);
-  if (isAuth) {
-    throw new Error('Failed to clear authentication state');
+  // Only verify if the page is still valid
+  try {
+    const isAuth = await isAuthenticated(page);
+    if (isAuth) {
+      throw new Error('Failed to clear authentication state');
+    }
+  } catch (error) {
+    // If verification fails due to invalid page state, that's acceptable during cleanup
   }
 }

@@ -241,8 +241,9 @@ export class ForumPage {
    * @param subject - Discussion subject/title
    * @param message - Discussion message content
    * @param attachment - Optional file path for attachment
+   * @returns The ID of the newly created discussion
    */
-  async createDiscussion(subject: string, message: string, attachment?: string): Promise<void> {
+  async createDiscussion(subject: string, message: string, attachment?: string): Promise<string> {
     // Fill in the subject
     await this.discussionSubjectInput.waitFor({ state: 'visible' });
     await this.discussionSubjectInput.fill(subject);
@@ -253,7 +254,8 @@ export class ForumPage {
 
     // Upload attachment if provided
     if (attachment) {
-      await this.attachmentUpload.waitFor({ state: 'visible' });
+      // Note: The file input has display:none, so we wait for 'attached' not 'visible'
+      await this.attachmentUpload.waitFor({ state: 'attached' });
       await this.attachmentUpload.setInputFiles(attachment);
       
       // Wait for upload confirmation (if any)
@@ -263,6 +265,10 @@ export class ForumPage {
     // Submit the form
     await this.postButton.waitFor({ state: 'visible' });
     await this.postButton.click();
+    
+    // Wait for discussion to be created and get its ID
+    const discussionId = await this.waitForDiscussionCreated();
+    return discussionId;
   }
 
   /**
@@ -573,21 +579,40 @@ export class ForumPage {
   /**
    * Wait for discussion creation success confirmation
    */
-  async waitForDiscussionCreated(): Promise<void> {
-    // Wait for success message or redirect to discussion
-    const successMessage = this.page.locator(
-      '[data-testid="success-message"], .alert-success, .notification-success'
-    ).first();
+  async waitForDiscussionCreated(): Promise<string> {
+    // After creating a discussion, the app navigates to the discussion detail page
+    // Wait for the URL to change to the discussion detail page
+    await this.page.waitForURL(/\/discussions\/\d+/, { timeout: 10000 });
     
-    try {
-      await successMessage.waitFor({ state: 'visible', timeout: 5000 });
-    } catch {
-      // If no success message, wait for discussion thread to appear
-      await this.discussionThread.waitFor({ state: 'visible', timeout: 5000 });
+    // Ensure page has fully loaded
+    await this.page.waitForLoadState('networkidle');
+    
+    // Extract discussionId from the current URL
+    const currentUrl = this.page.url();
+    const discussionMatch = currentUrl.match(/\/discussions\/(\d+)/);
+    const discussionId = discussionMatch ? discussionMatch[1] : '';
+    
+    // Extract courseId and forumId from the current URL and navigate back to forum list
+    const urlMatch = currentUrl.match(/\/courses\/(\d+)\/forums\/(\d+)/);
+    
+    if (urlMatch) {
+      // Navigate back to the forum list page using browser history
+      // This triggers client-side navigation via React Router instead of a full page reload
+      // which preserves the MSW worker state and avoids race conditions
+      await this.page.goBack();
+      await this.page.waitForLoadState('networkidle');
+      await this.waitForForum();
+      
+      // Wait for the newly created discussion to appear in the list
+      if (discussionId) {
+        await this.page.locator(`[data-discussion-id="${discussionId}"]`).waitFor({ 
+          state: 'visible', 
+          timeout: 5000 
+        });
+      }
     }
     
-    // Ensure page has settled
-    await this.page.waitForLoadState('networkidle');
+    return discussionId;
   }
 
   /**
