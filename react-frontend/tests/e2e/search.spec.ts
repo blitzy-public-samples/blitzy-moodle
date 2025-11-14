@@ -51,8 +51,12 @@ test.describe('Global Search Functionality', () => {
    * search from student perspective with appropriate permissions.
    */
   test.beforeEach(async ({ browser }) => {
+    // Create a new page context
+    const context = await browser.newContext();
+    page = await context.newPage();
+    
     // Login as student user with access to test courses
-    page = await loginAsStudent(browser);
+    await loginAsStudent(page);
     
     // Initialize search page object model
     searchPage = new SearchPage(page);
@@ -221,7 +225,7 @@ test.describe('Global Search Functionality', () => {
     expect(initialResults.length).toBeGreaterThan(0);
     
     // Apply course filter
-    await searchPage.filterByType('courses');
+    await searchPage.filterByType('course');
     
     // Verify only course results are shown
     const courseResults = await searchPage.getCourseResults();
@@ -232,7 +236,7 @@ test.describe('Global Search Functionality', () => {
     
     // Reset and apply user filter
     await searchPage.search('test');
-    await searchPage.filterByType('users');
+    await searchPage.filterByType('user');
     
     // Verify only user results are shown
     const userResults = await searchPage.getUserResults();
@@ -257,7 +261,7 @@ test.describe('Global Search Functionality', () => {
     expect(courseResults.length).toBeGreaterThan(0);
     
     // Click first course result
-    await searchPage.clickResult(0);
+    await searchPage.clickResult(courseResults[0].id);
     
     // Verify navigation to course page
     await page.waitForLoadState('networkidle');
@@ -294,7 +298,7 @@ test.describe('Global Search Functionality', () => {
     
     // Verify suggestions contain matching text
     const firstSuggestion = suggestions[0];
-    expect(firstSuggestion.toLowerCase()).toContain(partialQuery.toLowerCase());
+    expect(firstSuggestion.text.toLowerCase()).toContain(partialQuery.toLowerCase());
     
     // Select a suggestion
     await searchPage.selectSuggestion(0);
