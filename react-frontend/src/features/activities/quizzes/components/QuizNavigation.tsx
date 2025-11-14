@@ -486,19 +486,21 @@ function QuizNavigation({
               Answered
             </Typography>
           </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Box
-              sx={{
-                width: 16,
-                height: 16,
-                backgroundColor: 'warning.main',
-                borderRadius: 0.5,
-              }}
-            />
-            <Typography variant="caption" color="text.secondary">
-              Flagged for review
-            </Typography>
-          </Box>
+          {progressStats.flaggedCount > 0 && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box
+                sx={{
+                  width: 16,
+                  height: 16,
+                  backgroundColor: 'warning.main',
+                  borderRadius: 0.5,
+                }}
+              />
+              <Typography variant="caption" color="text.secondary">
+                Flagged for review
+              </Typography>
+            </Box>
+          )}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Box
               sx={{
