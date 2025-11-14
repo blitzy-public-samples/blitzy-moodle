@@ -83,9 +83,11 @@ describe('FeedbackSummary Component', () => {
       const gridContainer = screen.getByRole('region', { name: /feedback statistics summary/i });
       expect(gridContainer).toBeInTheDocument();
       
-      // Check that cards are rendered in grid
-      const cards = screen.getAllByRole('article');
-      expect(cards.length).toBeGreaterThan(0);
+      // Check that metric cards are rendered by verifying their headings
+      expect(screen.getByRole('heading', { name: /total responses/i })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /completion rate/i })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /average time/i })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /participants/i })).toBeInTheDocument();
     });
 
     it('renders Card components for each metric', () => {
@@ -123,8 +125,12 @@ describe('FeedbackSummary Component', () => {
     it('displays total response count', () => {
       render(<FeedbackSummary {...defaultProps} />);
       
-      expect(screen.getByText('Total Responses')).toBeInTheDocument();
-      expect(screen.getByText('125')).toBeInTheDocument();
+      const totalResponsesHeading = screen.getByRole('heading', { name: /total responses/i });
+      expect(totalResponsesHeading).toBeInTheDocument();
+      
+      // Find the card containing this heading and verify the count is displayed
+      const responseCard = totalResponsesHeading.closest('div[class*="MuiCard"]');
+      expect(responseCard).toHaveTextContent('125');
     });
 
     it('renders in Card with appropriate icon', () => {
@@ -319,16 +325,23 @@ describe('FeedbackSummary Component', () => {
     it('displays number of respondents', () => {
       render(<FeedbackSummary {...defaultProps} />);
       
-      expect(screen.getByText('Participants')).toBeInTheDocument();
-      expect(screen.getByText('125')).toBeInTheDocument();
-      expect(screen.getByText('Responded')).toBeInTheDocument();
+      const participantsHeading = screen.getByRole('heading', { name: /participants/i });
+      expect(participantsHeading).toBeInTheDocument();
+      
+      // Find the Participants card and verify respondent count
+      const participantsCard = participantsHeading.closest('div[class*="MuiCard"]');
+      expect(participantsCard).toHaveTextContent('125');
+      expect(participantsCard).toHaveTextContent('Responded');
     });
 
     it('displays number of non-respondents', () => {
       render(<FeedbackSummary {...defaultProps} />);
       
-      expect(screen.getByText('40')).toBeInTheDocument();
-      expect(screen.getByText('Pending')).toBeInTheDocument();
+      const participantsHeading = screen.getByRole('heading', { name: /participants/i });
+      const participantsCard = participantsHeading.closest('div[class*="MuiCard"]');
+      
+      expect(participantsCard).toHaveTextContent('40');
+      expect(participantsCard).toHaveTextContent('Pending');
     });
 
     it('displays pending chip when non-respondents exist', () => {
@@ -361,9 +374,14 @@ describe('FeedbackSummary Component', () => {
     it('formats date with date-fns', () => {
       render(<FeedbackSummary {...defaultProps} />);
       
-      // Check that formatted date appears
-      expect(screen.getByText(/Jan 15, 2024/i)).toBeInTheDocument();
-      expect(screen.getByText(/hours ago|days ago/i)).toBeInTheDocument();
+      // Find the specific container with "Last submission:" text
+      const lastSubmissionElement = screen.getByText(/last submission:/i);
+      
+      // Check that the parent container includes both the formatted date and relative time
+      const parentContainer = lastSubmissionElement.closest('.MuiTypography-root') || lastSubmissionElement.parentElement;
+      expect(parentContainer?.textContent).toContain('Jan 15, 2024');
+      // Match both singular and plural forms: "hour ago", "hours ago", "day ago", "days ago"
+      expect(parentContainer?.textContent).toMatch(/hours? ago|days? ago/i);
     });
 
     it('does not display when lastSubmissionDate is 0', () => {
@@ -418,8 +436,12 @@ describe('FeedbackSummary Component', () => {
       
       render(<FeedbackSummary feedbackId={1} statistics={statsWithLargeNumbers} />);
       
-      // Intl.NumberFormat should add commas for locale
-      expect(screen.getByText(/1,234|1234/)).toBeInTheDocument();
+      // Find the Total Responses heading
+      const totalResponsesHeading = screen.getByText('Total Responses');
+      const totalResponsesCard = totalResponsesHeading.closest('.MuiCard-root');
+      
+      // Check that the card contains the formatted number with commas
+      expect(totalResponsesCard?.textContent).toMatch(/1,234|1234/);
     });
 
     it('handles zero values', () => {
@@ -593,8 +615,12 @@ describe('FeedbackSummary Component', () => {
       
       render(<FeedbackSummary feedbackId={1} statistics={statsWithVeryLargeNumbers} />);
       
-      // Should format with appropriate separators
-      expect(screen.getByText(/1,500,000|1500000/)).toBeInTheDocument();
+      // Find the Total Responses heading
+      const totalResponsesHeading = screen.getByText('Total Responses');
+      const totalResponsesCard = totalResponsesHeading.closest('.MuiCard-root');
+      
+      // Check that the card contains the formatted very large number
+      expect(totalResponsesCard?.textContent).toMatch(/1,500,000|1500000/);
     });
 
     it('handles completion rate over 100%', () => {
