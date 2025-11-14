@@ -16,122 +16,16 @@
 import type { UseQueryResult } from '@tanstack/react-query';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/services/api/client';
-
-/**
- * Represents a single feedback item's analysis data
- */
-interface FeedbackItemAnalysis {
-  /** Unique item ID */
-  id: number;
-  /** Item type (e.g., 'multichoice', 'numeric', 'textarea') */
-  type: string;
-  /** Item question/label */
-  name: string;
-  /** Item number for display (if autonumbering enabled) */
-  itemNumber: number | null;
-  /** Position in feedback */
-  position: number;
-  /** Whether this item is required */
-  required: boolean;
-  /** Analysis results specific to item type */
-  analysisData: {
-    /** Number of responses for this item */
-    responseCount: number;
-    /** For choice-based items: response distribution */
-    choices?: Array<{
-      value: string;
-      label: string;
-      count: number;
-      percentage: number;
-    }>;
-    /** For numeric items: statistical data */
-    statistics?: {
-      min: number;
-      max: number;
-      mean: number;
-      median: number;
-      stdDev: number;
-      sum: number;
-    };
-    /** For text items: sample responses (limited for privacy) */
-    textResponses?: Array<{
-      id: number;
-      response: string;
-      /** Random response number for anonymous feedback */
-      responseNumber?: number;
-    }>;
-  };
-}
-
-/**
- * Summary statistics for the entire feedback
- */
-interface FeedbackAnalysisSummary {
-  /** Total number of completed responses */
-  totalResponses: number;
-  /** Number of started but incomplete responses */
-  incompleteResponses: number;
-  /** Number of responses in selected group (if filtered) */
-  groupResponses?: number;
-  /** Time period statistics */
-  timeStats: {
-    /** First response timestamp */
-    firstResponseTime: number | null;
-    /** Most recent response timestamp */
-    lastResponseTime: number | null;
-    /** Average completion time in seconds */
-    avgCompletionTime: number | null;
-  };
-}
-
-/**
- * Anonymous protection status
- */
-interface AnonymousProtection {
-  /** Whether feedback is anonymous */
-  isAnonymous: boolean;
-  /** Whether sufficient responses exist for group analysis */
-  sufficientResponses: boolean;
-  /** Minimum required responses for anonymous group analysis */
-  minimumRequired: number;
-  /** Actual response count in current context */
-  actualCount: number;
-  /** Warning message if insufficient responses */
-  warningMessage?: string;
-}
-
-/**
- * Complete feedback analysis data returned from API
- */
-interface FeedbackAnalysisData {
-  /** Feedback activity ID */
-  feedbackId: number;
-  /** Feedback activity name */
-  feedbackName: string;
-  /** Course ID */
-  courseId: number;
-  /** Summary statistics */
-  summary: FeedbackAnalysisSummary;
-  /** Anonymous protection status */
-  anonymousProtection: AnonymousProtection;
-  /** Analysis data for each item */
-  items: FeedbackItemAnalysis[];
-  /** Currently applied group filter (0 = all) */
-  groupId: number;
-  /** Group name if filtered */
-  groupName?: string;
-  /** Whether user can export to Excel */
-  canExport: boolean;
-  /** Whether analysis is viewable */
-  canViewAnalysis: boolean;
-}
+import type { 
+  FeedbackAnalysis
+} from '@/features/activities/feedback/types';
 
 /**
  * API response envelope for feedback analysis
  */
 interface FeedbackAnalysisResponse {
   success: boolean;
-  data: FeedbackAnalysisData;
+  data: FeedbackAnalysis;
   meta?: {
     /** Timestamp of data generation */
     generatedAt: number;
@@ -181,7 +75,7 @@ interface UseFeedbackAnalysisOptions {
 const fetchFeedbackAnalysis = async (
   feedbackId: number,
   groupId: number = 0
-): Promise<FeedbackAnalysisData> => {
+): Promise<FeedbackAnalysis> => {
   try {
     // Build query parameters
     const params: Record<string, string | number> = {};
@@ -308,7 +202,7 @@ const fetchFeedbackAnalysis = async (
  */
 export function useFeedbackAnalysis(
   options: UseFeedbackAnalysisOptions
-): UseQueryResult<FeedbackAnalysisData, Error> {
+): UseQueryResult<FeedbackAnalysis, Error> {
   const {
     feedbackId,
     groupId = 0,
@@ -330,9 +224,9 @@ export function useFeedbackAnalysis(
   }
 
   return useQuery<
-    FeedbackAnalysisData,
+    FeedbackAnalysis,
     Error,
-    FeedbackAnalysisData,
+    FeedbackAnalysis,
     readonly [string, number, string, number]
   >({
     // Query key includes feedbackId and groupId for proper caching
@@ -383,19 +277,14 @@ export function useFeedbackAnalysis(
  * @returns True if analysis can be displayed, false if blocked by anonymous protection
  */
 export function canDisplayAnalysis(
-  data: FeedbackAnalysisData | undefined
-): data is FeedbackAnalysisData {
+  data: FeedbackAnalysis | undefined
+): data is FeedbackAnalysis {
   if (!data) {
     return false;
   }
 
-  // If anonymous feedback, check if sufficient responses exist
-  if (data.anonymousProtection.isAnonymous) {
-    return data.anonymousProtection.sufficientResponses;
-  }
-
-  // Non-anonymous feedback can always be displayed (if user has permission)
-  return data.canViewAnalysis;
+  // Check if meets anonymous threshold (for anonymous feedback)
+  return data.meetAnonymousThreshold;
 }
 
 /**
@@ -406,14 +295,14 @@ export function canDisplayAnalysis(
  * @returns Response rate as percentage (0-100), or null if totalEnrolled not provided
  */
 export function calculateResponseRate(
-  data: FeedbackAnalysisData,
+  data: FeedbackAnalysis,
   totalEnrolled?: number
 ): number | null {
   if (!totalEnrolled || totalEnrolled <= 0) {
     return null;
   }
 
-  const responses = data.summary.groupResponses ?? data.summary.totalResponses;
+  const responses = data.groupResponses ?? data.totalResponses;
   return Math.round((responses / totalEnrolled) * 100 * 10) / 10; // Round to 1 decimal
 }
 
@@ -421,9 +310,5 @@ export function calculateResponseRate(
  * Export types for use in other components
  */
 export type {
-  FeedbackAnalysisData,
-  FeedbackAnalysisSummary,
-  FeedbackItemAnalysis,
-  AnonymousProtection,
   UseFeedbackAnalysisOptions,
 };

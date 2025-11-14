@@ -150,12 +150,15 @@ interface ChartConfig {
           display: boolean;
           text: string;
         };
+        min?: number;
+        beginAtZero?: boolean;
       };
       y?: {
         title?: {
           display: boolean;
           text: string;
         };
+        min?: number;
         beginAtZero?: boolean;
       };
     };
@@ -319,9 +322,8 @@ export const FeedbackAnalysis: React.FC<FeedbackAnalysisProps> = ({
       return null;
     }
 
-    const labels = item.distribution.map((d) => d.label);
+    const labels = item.distribution.map((d) => d.value);
     const values = item.distribution.map((d) => d.count);
-    const percentages = item.distribution.map((d) => d.percentage);
 
     // Color palette for charts
     const colors = [
@@ -381,7 +383,7 @@ export const FeedbackAnalysis: React.FC<FeedbackAnalysisProps> = ({
                   display: true,
                   text: 'Number of Responses',
                 },
-                beginAtZero: true,
+                min: 0,
               },
               y: {
                 title: {
@@ -528,7 +530,7 @@ export const FeedbackAnalysis: React.FC<FeedbackAnalysisProps> = ({
           <TableBody>
             {item.distribution.map((dist, idx) => (
               <TableRow key={idx}>
-                <TableCell>{dist.label}</TableCell>
+                <TableCell>{dist.value}</TableCell>
                 <TableCell align="right">{dist.count}</TableCell>
                 <TableCell align="right">{dist.percentage.toFixed(1)}%</TableCell>
               </TableRow>
@@ -610,28 +612,28 @@ export const FeedbackAnalysis: React.FC<FeedbackAnalysisProps> = ({
             <Typography variant="h6">{item.statistics.mode.toFixed(2)}</Typography>
           </Box>
         )}
-        {item.statistics.stdDev !== undefined && (
+        {item.statistics.standardDeviation !== undefined && (
           <Box>
             <Typography variant="caption" color="text.secondary">
               Std. Deviation
             </Typography>
-            <Typography variant="h6">{item.statistics.stdDev.toFixed(2)}</Typography>
+            <Typography variant="h6">{item.statistics.standardDeviation.toFixed(2)}</Typography>
           </Box>
         )}
-        {item.statistics.min !== undefined && (
+        {item.statistics.minimum !== undefined && (
           <Box>
             <Typography variant="caption" color="text.secondary">
               Minimum
             </Typography>
-            <Typography variant="h6">{item.statistics.min}</Typography>
+            <Typography variant="h6">{item.statistics.minimum}</Typography>
           </Box>
         )}
-        {item.statistics.max !== undefined && (
+        {item.statistics.maximum !== undefined && (
           <Box>
             <Typography variant="caption" color="text.secondary">
               Maximum
             </Typography>
-            <Typography variant="h6">{item.statistics.max}</Typography>
+            <Typography variant="h6">{item.statistics.maximum}</Typography>
           </Box>
         )}
       </Box>
@@ -693,13 +695,13 @@ export const FeedbackAnalysis: React.FC<FeedbackAnalysisProps> = ({
             {(item.type === 'textarea' || item.type === 'textfield') && renderTextResponses(item)}
 
             {/* Show most common response */}
-            {item.distribution && item.distribution.length > 0 && (
+            {item.distribution && item.distribution.length > 0 && item.distribution[0] && (
               <Box sx={{ mt: 3, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
                 <Typography variant="subtitle2" gutterBottom>
                   Most Common Response
                 </Typography>
                 <Typography variant="body1">
-                  {item.distribution[0].label} ({item.distribution[0].count} responses,{' '}
+                  {item.distribution[0].value} ({item.distribution[0].count} responses,{' '}
                   {item.distribution[0].percentage.toFixed(1)}%)
                 </Typography>
               </Box>
@@ -754,16 +756,13 @@ export const FeedbackAnalysis: React.FC<FeedbackAnalysisProps> = ({
   }
 
   // Anonymous protection check
-  if (analysisData?.anonymousProtection?.protected) {
+  if (analysisData && !analysisData.meetAnonymousThreshold) {
     return (
       <Box sx={{ p: 3 }}>
         <Alert
           severity="warning"
           title="Insufficient Responses"
-          message={
-            analysisData.anonymousProtection.message ||
-            'This feedback activity is anonymous and does not have enough responses in the selected group to display analysis while protecting respondent anonymity.'
-          }
+          message="This feedback activity is anonymous and does not have enough responses in the selected group to display analysis while protecting respondent anonymity."
         />
       </Box>
     );
@@ -831,22 +830,22 @@ export const FeedbackAnalysis: React.FC<FeedbackAnalysisProps> = ({
             {/* Filter Controls */}
             <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
               {/* Group Filter */}
-              {analysisData.summary?.groupOptions && analysisData.summary.groupOptions.length > 0 && (
+              {analysisData.statistics?.responsesByGroup && analysisData.statistics.responsesByGroup.length > 0 && (
                 <Box sx={{ minWidth: 120 }}>
                   <Typography variant="caption" sx={{ display: 'block', mb: 0.5 }}>
                     Filter by Group
                   </Typography>
                   <Select
-                    value={filters.groupId ?? ''}
+                    value={(filters.groupId ?? 0).toString()}
                     onChange={handleGroupChange}
                     size="small"
                     displayEmpty
                     aria-label="Select group"
                   >
-                    <MenuItem value="">All Groups</MenuItem>
-                    {analysisData.summary.groupOptions.map((group) => (
-                      <MenuItem key={group.id} value={group.id}>
-                        {group.name}
+                    <MenuItem value={0}>All Groups</MenuItem>
+                    {analysisData.statistics.responsesByGroup.map((group) => (
+                      <MenuItem key={group.groupId} value={group.groupId}>
+                        {group.groupName}
                       </MenuItem>
                     ))}
                   </Select>
@@ -854,22 +853,22 @@ export const FeedbackAnalysis: React.FC<FeedbackAnalysisProps> = ({
               )}
 
               {/* Course Filter (for multi-course feedback) */}
-              {analysisData.summary?.courseOptions && analysisData.summary.courseOptions.length > 0 && (
+              {analysisData.statistics?.responsesByCourse && analysisData.statistics.responsesByCourse.length > 0 && (
                 <Box sx={{ minWidth: 120 }}>
                   <Typography variant="caption" sx={{ display: 'block', mb: 0.5 }}>
                     Filter by Course
                   </Typography>
                   <Select
-                    value={filters.courseId ?? ''}
+                    value={(filters.courseId ?? 0).toString()}
                     onChange={handleCourseChange}
                     size="small"
                     displayEmpty
                     aria-label="Select course"
                   >
-                    <MenuItem value="">All Courses</MenuItem>
-                    {analysisData.summary.courseOptions.map((course) => (
-                      <MenuItem key={course.id} value={course.id}>
-                        {course.name}
+                    <MenuItem value={0}>All Courses</MenuItem>
+                    {analysisData.statistics.responsesByCourse.map((course) => (
+                      <MenuItem key={course.courseId} value={course.courseId}>
+                        {course.courseName}
                       </MenuItem>
                     ))}
                   </Select>
@@ -880,7 +879,7 @@ export const FeedbackAnalysis: React.FC<FeedbackAnalysisProps> = ({
 
           {/* Feedback Summary Statistics */}
           <Box sx={{ mb: 4 }}>
-            <FeedbackSummary feedbackId={feedbackId} statistics={analysisData.summary} />
+            <FeedbackSummary feedbackId={feedbackId} statistics={analysisData.statistics} />
           </Box>
 
           {/* Question-by-Question Analysis */}
@@ -906,10 +905,10 @@ export const FeedbackAnalysis: React.FC<FeedbackAnalysisProps> = ({
         <Box>
           <ResponseList
             feedbackId={feedbackId}
-            responses={analysisData.responses || []}
-            onDelete={async (responseId: number) => {
+            responses={[]}
+            onDelete={async (responseIds: number[]) => {
               // Handle delete - this would typically trigger a mutation and refetch
-              console.log('Delete response:', responseId);
+              console.log('Delete responses:', responseIds);
             }}
             canDelete={false}
           />
