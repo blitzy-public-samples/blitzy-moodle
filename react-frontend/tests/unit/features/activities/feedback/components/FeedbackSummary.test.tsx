@@ -18,30 +18,13 @@
  * @module tests/unit/features/activities/feedback/components
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { describe, it, expect } from 'vitest';
+import { render, screen, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import '@testing-library/jest-dom';
-import {
-  Grid,
-  LinearProgress,
-  Typography,
-  Skeleton,
-  Chip,
-  Card,
-  CardContent,
-  Box,
-} from '@mui/material';
-import {
-  CheckCircle,
-  People,
-  Schedule,
-  TrendingUp,
-} from '@mui/icons-material';
-import { format, formatDistanceToNow } from 'date-fns';
+import { format } from 'date-fns';
 
 import { FeedbackSummary } from '../../../../../../src/features/activities/feedback/components/FeedbackSummary';
-import type { GroupResponseCount } from '../../../../../../src/features/activities/feedback/types/feedback.types';
 
 /**
  * Helper function to create mock feedback statistics with sensible defaults
@@ -615,7 +598,7 @@ describe('FeedbackSummary Component', () => {
         ],
       });
       
-      const { container } = render(
+      render(
         <FeedbackSummary
           feedbackId={123}
           statistics={statistics}
@@ -832,7 +815,7 @@ describe('FeedbackSummary Component', () => {
       render(
         <FeedbackSummary
           feedbackId={123}
-          isLoading={true}
+          isLoading
         />
       );
 
@@ -858,7 +841,7 @@ describe('FeedbackSummary Component', () => {
       render(
         <FeedbackSummary
           feedbackId={123}
-          isLoading={true}
+          isLoading
         />
       );
 
@@ -869,7 +852,7 @@ describe('FeedbackSummary Component', () => {
       render(
         <FeedbackSummary
           feedbackId={123}
-          isLoading={true}
+          isLoading
         />
       );
 
@@ -884,7 +867,7 @@ describe('FeedbackSummary Component', () => {
       render(
         <FeedbackSummary
           feedbackId={123}
-          isLoading={true}
+          isLoading
         />
       );
 
@@ -1049,7 +1032,7 @@ describe('FeedbackSummary Component', () => {
     it('should use body2 variant for helper text', () => {
       const statistics = createMockStatistics();
       
-      const { container } = render(
+      render(
         <FeedbackSummary
           feedbackId={123}
           statistics={statistics}
@@ -1419,8 +1402,7 @@ describe('FeedbackSummary Component', () => {
   });
 
   describe('User Interactions', () => {
-    it('should apply hover effect to cards', async () => {
-      const user = userEvent.setup();
+    it('should apply hover effect to cards', () => {
       const statistics = createMockStatistics();
       
       const { container } = render(
@@ -1517,7 +1499,7 @@ describe('FeedbackSummary Component', () => {
       const { rerender } = render(
         <FeedbackSummary
           feedbackId={123}
-          isLoading={true}
+          isLoading
         />
       );
 
