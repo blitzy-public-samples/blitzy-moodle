@@ -48,7 +48,6 @@ import {
   FormControlLabel,
   FormControl,
   FormLabel,
-  FormHelperText,
   TextField,
   Select,
   MenuItem,
@@ -61,7 +60,6 @@ import {
 import { Flag, FlagOutlined } from '@mui/icons-material';
 
 import type { Question } from '../types/quiz.types';
-import { FormFileUpload } from '@/components/forms/FormFileUpload';
 import { Alert } from '@/components/feedback/Alert';
 
 // ============================================================================
@@ -234,7 +232,6 @@ export function QuestionRenderer({
       case 'truefalse':
         return (
           <TrueFalseQuestion
-            question={question}
             answer={currentAnswer as string}
             onChange={handleAnswerChange}
             disabled={disabled}
@@ -244,7 +241,6 @@ export function QuestionRenderer({
       case 'shortanswer':
         return (
           <ShortAnswerQuestion
-            question={question}
             answer={currentAnswer as string}
             onChange={handleAnswerChange}
             disabled={disabled}
@@ -505,11 +501,10 @@ function MultipleChoiceQuestion({
  * Specialized multiple choice with two options
  */
 function TrueFalseQuestion({
-  question,
   answer,
   onChange,
   disabled,
-}: QuestionTypeProps): JSX.Element {
+}: Omit<QuestionTypeProps, 'question'>): JSX.Element {
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     onChange(event.target.value);
   };
@@ -545,11 +540,10 @@ function TrueFalseQuestion({
  * Single-line text input with optional case sensitivity
  */
 function ShortAnswerQuestion({
-  question,
   answer,
   onChange,
   disabled,
-}: QuestionTypeProps): JSX.Element {
+}: Omit<QuestionTypeProps, 'question'>): JSX.Element {
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     onChange(event.target.value);
   };
@@ -583,7 +577,7 @@ function EssayQuestion({
   const [textAnswer, setTextAnswer] = useState<string>(
     typeof answer === 'string' ? answer : ''
   );
-  const [files, setFiles] = useState<File[]>([]);
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
 
   const handleTextChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newText = event.target.value;
@@ -591,14 +585,17 @@ function EssayQuestion({
     onChange(newText);
   };
 
-  const handleFileChange = useCallback(
-    (newFiles: File[]) => {
-      setFiles(newFiles);
-      // In a real implementation, files would be uploaded and referenced
-      // For now, we just track them locally
-    },
-    []
-  );
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = event.target.files;
+    if (fileList) {
+      const filesArray = Array.from(fileList);
+      setAttachedFiles((prev) => [...prev, ...filesArray].slice(0, 5));
+    }
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setAttachedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
 
   return (
     <Box>
@@ -623,15 +620,66 @@ function EssayQuestion({
           <Typography variant="subtitle2" sx={{ mb: 1 }}>
             Optional: Attach supporting files
           </Typography>
-          <FormFileUpload
-            name={`question_${question.id}_files`}
-            label="Upload Files"
-            accept="application/pdf,image/*,.doc,.docx"
-            maxSize={10 * 1024 * 1024}
-            multiple
-            maxFiles={5}
-            helperText="Upload PDF, images, or documents (max 10MB each, up to 5 files)"
-          />
+          <Box sx={{ mt: 1 }}>
+            <input
+              type="file"
+              id={`question-${question.id}-files`}
+              accept="application/pdf,image/*,.doc,.docx"
+              multiple
+              onChange={handleFileChange}
+              style={{ display: 'none' }}
+              aria-label="Upload files"
+            />
+            <label htmlFor={`question-${question.id}-files`}>
+              <Typography
+                component="span"
+                sx={{
+                  display: 'inline-block',
+                  px: 2,
+                  py: 1,
+                  border: '1px solid',
+                  borderColor: 'primary.main',
+                  borderRadius: 1,
+                  cursor: 'pointer',
+                  '&:hover': {
+                    backgroundColor: 'action.hover',
+                  },
+                }}
+              >
+                Choose Files (max 5)
+              </Typography>
+            </label>
+            {attachedFiles.length > 0 && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="caption" color="text.secondary">
+                  {attachedFiles.length} file(s) selected
+                </Typography>
+                <Box component="ul" sx={{ listStyle: 'none', p: 0, mt: 1 }}>
+                  {attachedFiles.map((file, index) => (
+                    <Box
+                      component="li"
+                      key={index}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        py: 0.5,
+                      }}
+                    >
+                      <Typography variant="body2">{file.name}</Typography>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleRemoveFile(index)}
+                        aria-label={`Remove ${file.name}`}
+                      >
+                        ✕
+                      </IconButton>
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            )}
+          </Box>
         </Box>
       )}
     </Box>
@@ -648,8 +696,8 @@ function MatchingQuestion({
   onChange,
   disabled,
 }: QuestionTypeProps): JSX.Element {
-  const matches = question.options.matches || [];
-  const subquestions = question.options.subquestions || [];
+  const matches = (question.options.matches as any[] | undefined) || [];
+  const subquestions = (question.options.subquestions as any[] | undefined) || [];
   
   const currentMatches = (answer as Record<string, string>) || {};
 
@@ -720,8 +768,27 @@ function NumericalQuestion({
     }
   };
 
-  const units = question.options.unit || '';
-  const unitPosition = question.options.unitsleft ? 'start' : 'end';
+  const units = question.options.unit as string | undefined || '';
+  const unitPosition: 'start' | 'end' = (question.options.unitsleft as boolean | undefined) ? 'start' : 'end';
+
+  // Construct InputProps conditionally
+  const inputProps = units
+    ? unitPosition === 'start'
+      ? {
+          startAdornment: (
+            <InputAdornment position="start">
+              {units}
+            </InputAdornment>
+          ),
+        }
+      : {
+          endAdornment: (
+            <InputAdornment position="end">
+              {units}
+            </InputAdornment>
+          ),
+        }
+    : undefined;
 
   return (
     <FormControl fullWidth>
@@ -736,17 +803,7 @@ function NumericalQuestion({
         variant="outlined"
         error={!!error}
         helperText={error || 'Enter a number'}
-        InputProps={
-          units
-            ? {
-                [unitPosition === 'start' ? 'startAdornment' : 'endAdornment']: (
-                  <InputAdornment position={unitPosition}>
-                    {units}
-                  </InputAdornment>
-                ),
-              }
-            : undefined
-        }
+        InputProps={inputProps}
       />
     </FormControl>
   );
