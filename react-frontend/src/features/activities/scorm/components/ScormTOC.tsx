@@ -234,6 +234,7 @@ function ScormTreeItem({
       {/* Status Chip */}
       {statusChip && (
         <Chip
+          data-testid="sco-status-chip"
           label={statusChip.label}
           color={statusChip.color}
           size="small"
@@ -303,7 +304,10 @@ function ScormTOC({
   const navigate = useNavigate();
   const theme = useTheme();
 
-  // Fetch TOC data using React Query
+  // Check if TOC should be hidden based on SCORM settings
+  const shouldHideTOC = scorm?.hidetoc === ScormTocDisplay.DISABLED;
+
+  // Fetch TOC data using React Query (always called to comply with Rules of Hooks)
   const {
     data: tocResponse,
     isLoading,
@@ -406,11 +410,17 @@ function ScormTOC({
    * Handle SCO selection and navigation
    */
   const handleScoSelect = (scoId: number) => {
-    // Find the node to check if it's enabled
+    // Find the node to check if it's enabled and launchable
     if (tocResponse?.scoes) {
       const node = findNodeById(tocResponse.scoes, scoId);
+      
+      // Don't navigate if node is disabled
       if (node && !node.isEnabled) {
-        // Don't navigate if node is disabled
+        return;
+      }
+      
+      // Don't navigate if node doesn't have a launch URL (organizational nodes)
+      if (node && !node.launch) {
         return;
       }
     }
@@ -428,6 +438,11 @@ function ScormTOC({
       },
     });
   };
+
+  // Return null if TOC should be hidden (check after all hooks)
+  if (shouldHideTOC) {
+    return null;
+  }
 
   // Loading state
   if (isLoading) {
@@ -473,13 +488,6 @@ function ScormTOC({
         />
       </Box>
     );
-  }
-
-  // Check if TOC should be hidden based on SCORM settings
-  const shouldHideTOC = scorm?.hidetoc === ScormTocDisplay.DISABLED;
-
-  if (shouldHideTOC) {
-    return null;
   }
 
   return (
@@ -574,11 +582,11 @@ function ScormTOC({
         <Stack direction="row" spacing={2} sx={{ mt: 0.5, flexWrap: 'wrap' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <CheckCircleIcon fontSize="small" color="success" />
-            <Typography variant="caption">Completed/Passed</Typography>
+            <Typography variant="caption">Complete/Pass</Typography>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <CancelIcon fontSize="small" color="error" />
-            <Typography variant="caption">Failed</Typography>
+            <Typography variant="caption">Failure</Typography>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <PlayIcon fontSize="small" color="primary" />
@@ -586,7 +594,7 @@ function ScormTOC({
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <NotAttemptedIcon fontSize="small" color="action" />
-            <Typography variant="caption">Not Attempted</Typography>
+            <Typography variant="caption">Not Started</Typography>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <LockIcon fontSize="small" color="disabled" />

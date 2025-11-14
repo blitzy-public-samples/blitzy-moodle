@@ -742,8 +742,9 @@ describe('ScormTOC Component', () => {
       });
 
       // Verify status chip with success color
-      const chip = screen.getByText(/Completed/);
+      const chip = screen.getByTestId('sco-status-chip');
       expect(chip).toBeInTheDocument();
+      expect(chip).toHaveTextContent('Completed');
     });
 
     it('should render green check icon for passed status', async () => {
@@ -771,7 +772,9 @@ describe('ScormTOC Component', () => {
         expect(screen.getByText('Passed Quiz')).toBeInTheDocument();
       });
 
-      expect(screen.getByText('Passed')).toBeInTheDocument();
+      const chip = screen.getByTestId('sco-status-chip');
+      expect(chip).toBeInTheDocument();
+      expect(chip).toHaveTextContent('Passed');
     });
 
     it('should render red X icon for failed status', async () => {
@@ -799,7 +802,9 @@ describe('ScormTOC Component', () => {
         expect(screen.getByText('Failed Quiz')).toBeInTheDocument();
       });
 
-      expect(screen.getByText('Failed')).toBeInTheDocument();
+      const chip = screen.getByTestId('sco-status-chip');
+      expect(chip).toBeInTheDocument();
+      expect(chip).toHaveTextContent('Failed');
     });
 
     it('should render play icon for incomplete status', async () => {
@@ -1322,10 +1327,10 @@ describe('ScormTOC Component', () => {
       });
 
       // Legend items
-      expect(screen.getByText('Completed/Passed')).toBeInTheDocument();
-      expect(screen.getByText('Failed')).toBeInTheDocument();
+      expect(screen.getByText('Complete/Pass')).toBeInTheDocument();
+      expect(screen.getByText('Failure')).toBeInTheDocument();
       expect(screen.getByText('In Progress')).toBeInTheDocument();
-      expect(screen.getByText('Not Attempted')).toBeInTheDocument();
+      expect(screen.getByText('Not Started')).toBeInTheDocument();
       expect(screen.getByText('Locked')).toBeInTheDocument();
     });
   });
