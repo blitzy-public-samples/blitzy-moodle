@@ -13,6 +13,8 @@
  * All tests inherit this setup automatically via vitest.config.ts
  */
 
+console.log('[Setup] Loading test setup file...');
+
 import '@testing-library/jest-dom';
 import './helpers/customMatchers';
 import { cleanup } from '@testing-library/react';
@@ -23,6 +25,8 @@ import { QueryClient } from '@tanstack/react-query';
 // Note: This assumes ./mocks/server.ts exists with server export
 // If not yet created, this import should be added once MSW is configured
 import { server } from './mocks/server';
+
+console.log('[Setup] Test setup file loaded, applying mocks...');
 
 /**
  * MSW Server Lifecycle Management
@@ -110,6 +114,7 @@ global.IntersectionObserver = class IntersectionObserver {
 } as any;
 
 // Mock ResizeObserver for component resize handling
+// MUI DataGrid requires proper dimensions to render virtualized rows
 global.ResizeObserver = class ResizeObserver {
   constructor(public callback: ResizeObserverCallback) {}
   
@@ -117,14 +122,26 @@ global.ResizeObserver = class ResizeObserver {
   
   observe(target: Element, _options?: ResizeObserverOptions): void {
     // Immediately trigger callback with mock entry
+    // Use realistic dimensions instead of getBoundingClientRect() which returns zeros in happy-dom
+    const mockContentRect = {
+      x: 0,
+      y: 0,
+      width: 1200,  // Realistic viewport width
+      height: 800,  // Realistic viewport height
+      top: 0,
+      right: 1200,
+      bottom: 800,
+      left: 0,
+    };
+    
     this.callback(
       [
         {
           target,
-          contentRect: target.getBoundingClientRect(),
-          borderBoxSize: [],
-          contentBoxSize: [],
-          devicePixelContentBoxSize: [],
+          contentRect: mockContentRect as DOMRectReadOnly,
+          borderBoxSize: [{ inlineSize: 1200, blockSize: 800 } as any],
+          contentBoxSize: [{ inlineSize: 1200, blockSize: 800 } as any],
+          devicePixelContentBoxSize: [{ inlineSize: 1200, blockSize: 800 } as any],
         } as ResizeObserverEntry,
       ],
       this
@@ -136,6 +153,74 @@ global.ResizeObserver = class ResizeObserver {
 
 // Mock HTMLElement.prototype.scrollIntoView for scroll behavior testing
 HTMLElement.prototype.scrollIntoView = vi.fn();
+
+// Mock HTMLElement dimensions for MUI DataGrid
+// MUI DataGrid checks clientWidth/clientHeight and offsetWidth/offsetHeight of parent container
+Object.defineProperty(HTMLElement.prototype, 'clientWidth', {
+  configurable: true,
+  get: function() {
+    const styleWidth = parseFloat(this.style.width);
+    const width = styleWidth || 1200;
+    
+    // Log when clientWidth is accessed
+    const className = this.className || 'no-class';
+    if (styleWidth === 0 || (className.includes && className.includes('MuiDataGrid'))) {
+      console.log('[Mock] clientWidth accessed:', this.tagName, className.slice(0, 100), 'style.width:', this.style.width, 'returning:', width);
+    }
+    
+    return width;
+  },
+});
+
+Object.defineProperty(HTMLElement.prototype, 'clientHeight', {
+  configurable: true,
+  get: function() {
+    return parseFloat(this.style.height) || 800;
+  },
+});
+
+Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
+  configurable: true,
+  get: function() {
+    return parseFloat(this.style.width) || 1200;
+  },
+});
+
+Object.defineProperty(HTMLElement.prototype, 'offsetHeight', {
+  configurable: true,
+  get: function() {
+    return parseFloat(this.style.height) || 800;
+  },
+});
+
+// Mock HTMLElement.prototype.getBoundingClientRect for proper layout calculations
+// MUI DataGrid and other components need realistic dimensions to render properly
+const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+HTMLElement.prototype.getBoundingClientRect = function(this: HTMLElement) {
+  // Try to get real dimensions first
+  const rect = originalGetBoundingClientRect.call(this);
+  
+  // If width is zero (typical in happy-dom), return realistic mock dimensions
+  // This is crucial for MUI DataGrid which checks parent container width
+  if (rect.width === 0) {
+    const width = this.offsetWidth || 1200;
+    const height = this.offsetHeight || 800;
+    console.log('[Mock] getBoundingClientRect called on element with zero width, returning mock dimensions', this.tagName, this.className, 'width:', width);
+    return {
+      x: 0,
+      y: 0,
+      width: width,
+      height: height,
+      top: 0,
+      right: width,
+      bottom: height,
+      left: 0,
+      toJSON: () => ({})
+    } as DOMRect;
+  }
+  
+  return rect;
+};
 
 /**
  * Storage API Mocks

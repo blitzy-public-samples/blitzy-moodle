@@ -277,6 +277,10 @@ export function ResponseList({
         type: 'dateTime',
         sortable: true,
         filterable: true,
+        valueGetter: (params) => {
+          // Convert Unix timestamp (seconds) to Date object for MUI DataGrid
+          return new Date(params.row.timemodified * 1000);
+        },
         renderCell: (params) => (
           <Typography variant="body2">
             {formatDate(params.row.timemodified)}
