@@ -37,6 +37,7 @@ import {
   Skeleton,
   Card,
   CardContent,
+  SelectChangeEvent,
 } from '@mui/material';
 import { Download, ExpandMore } from '@mui/icons-material';
 import { Bar, Line, Pie } from 'react-chartjs-2';
@@ -218,7 +219,7 @@ export const FeedbackAnalysis: React.FC<FeedbackAnalysisProps> = ({
   /**
    * Handle group filter change
    */
-  const handleGroupChange = (event: any) => {
+  const handleGroupChange = (event: SelectChangeEvent<string>) => {
     setFilters((prev) => ({
       ...prev,
       groupId: event.target.value === '' ? null : Number(event.target.value),
@@ -228,7 +229,7 @@ export const FeedbackAnalysis: React.FC<FeedbackAnalysisProps> = ({
   /**
    * Handle course filter change
    */
-  const handleCourseChange = (event: any) => {
+  const handleCourseChange = (event: SelectChangeEvent<string>) => {
     setFilters((prev) => ({
       ...prev,
       courseId: event.target.value === '' ? null : Number(event.target.value),
