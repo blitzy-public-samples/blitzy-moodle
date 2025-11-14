@@ -14,9 +14,9 @@ import { getItem, setItem, removeItem } from '@/services/storage/storageService'
 import { AUTH_ENDPOINTS } from '@/services/api/endpoints';
 import type { ApiResponse } from '@/types/api';
 
-// Token storage keys
-const ACCESS_TOKEN_KEY = 'accessToken';
-const REFRESH_TOKEN_KEY = 'refreshToken';
+// Token storage keys (must match client.ts, authApi.ts, and useAuth.ts)
+const ACCESS_TOKEN_KEY = 'moodle_access_token';
+const REFRESH_TOKEN_KEY = 'moodle_refresh_token';
 
 // Token expiration buffer (refresh 1 minute before expiration)
 const EXPIRATION_BUFFER = 60;

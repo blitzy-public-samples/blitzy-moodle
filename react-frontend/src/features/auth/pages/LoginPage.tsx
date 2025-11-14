@@ -9,7 +9,6 @@
 
 import React from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
 import {
   Box,
   Container,
@@ -17,7 +16,6 @@ import {
   Typography,
 } from '@mui/material';
 import { LoginForm } from '../components/LoginForm';
-import { loginSuccess } from '../store/authSlice';
 
 // ============================================================================
 // Component
@@ -29,7 +27,7 @@ import { loginSuccess } from '../store/authSlice';
  * Features:
  * - Centered login form with Material-UI styling
  * - Redirects to dashboard or returnUrl after successful login
- * - Dispatches login success action to Redux store
+ * - Integrates with React Query-based authentication state
  * - Accessible layout with proper heading structure
  *
  * URL Parameters:
@@ -46,7 +44,6 @@ export const LoginPage: React.FC = () => {
   // ============================================================================
 
   const navigate = useNavigate();
-  const dispatch = useDispatch();
   const [searchParams] = useSearchParams();
 
   // Get return URL from query params (default to dashboard)
@@ -58,18 +55,27 @@ export const LoginPage: React.FC = () => {
 
   /**
    * Handle successful login
-   * Dispatches Redux action and redirects to intended destination
+   * Navigates to the return URL after the mutation has successfully
+   * stored the token and updated the React Query cache.
    */
-  const handleLoginSuccess = (response: { user: any; tokens: any }) => {
-    // Update Redux store with authenticated user
-    dispatch(loginSuccess({
-      user: response.user,
-      tokens: response.tokens,
-    }));
-
-    // Redirect to intended page
-    console.log('Login successful, redirecting to:', returnUrl);
+  const handleLoginSuccess = async (response: { user: any; tokens: any }) => {
+    console.log('[LoginPage] handleLoginSuccess called with response:', response);
+    console.log('[LoginPage] Return URL:', returnUrl);
+    
+    // Wait a brief moment to ensure React Query cache update has propagated
+    // This prevents a race condition where ProtectedRoute checks authentication
+    // before the useAuth hook has received the updated cache data
+    console.log('[LoginPage] Waiting 100ms for state propagation...');
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    console.log('[LoginPage] Calling navigate...');
+    
+    // Navigate to the return URL
+    // The token and user data are already stored in localStorage and React Query cache
+    // by the useLoginMutation hook's onSuccess handler
     navigate(returnUrl, { replace: true });
+    
+    console.log('[LoginPage] navigate() called successfully');
   };
 
   /**

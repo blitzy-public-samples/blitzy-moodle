@@ -58,10 +58,12 @@ import {
   EmojiEmotions as EmojiEmotionsIcon,
 } from '@mui/icons-material';
 import { useCreatePost } from '../hooks/useCreatePost';
+import { useCreateDiscussion } from '../hooks/useCreateDiscussion';
 import { useUpdatePost } from '../hooks/useUpdatePost';
 import { useSaveDraft } from '../hooks/useSaveDraft';
 import { useMultiFileUpload } from '@/hooks/useMultiFileUpload';
-import type { Post } from '../types/forum.types';
+import type { Post, PostResponse } from '../types/forum.types';
+import type { DiscussionResponse } from '../api/forumApi';
 
 // ============================================================================
 // TYPES
@@ -152,7 +154,7 @@ export interface PostFormProps {
   /** Available tags */
   availableTags?: string[];
   /** Callback on successful submission */
-  onSubmitSuccess?: (post: Post) => void;
+  onSubmitSuccess?: (response: PostResponse | DiscussionResponse) => void;
   /** Callback on cancel */
   onCancel?: () => void;
 }
@@ -363,7 +365,31 @@ export function PostForm({
       deleteDraft();
       clearFiles();
       reset();
-      onSubmitSuccess?.(data as unknown as Post);
+      onSubmitSuccess?.(data);
+    },
+    onError: (error) => {
+      setIsSubmittingLocal(false);
+      if (error.message.includes('409')) {
+        setConcurrentEditError(true);
+      } else {
+        setNetworkError(error.message);
+      }
+    },
+  });
+
+  // Create discussion mutation
+  const {
+    createDiscussion,
+    isLoading: isCreatingDiscussion,
+    isError: isCreateDiscussionError,
+    error: createDiscussionError,
+  } = useCreateDiscussion({
+    onSuccess: (data) => {
+      setIsSubmittingLocal(false);
+      deleteDraft();
+      clearFiles();
+      reset();
+      onSubmitSuccess?.(data);
     },
     onError: (error) => {
       setIsSubmittingLocal(false);
@@ -387,7 +413,7 @@ export function PostForm({
       deleteDraft();
       clearFiles();
       reset();
-      onSubmitSuccess?.(data as unknown as Post);
+      onSubmitSuccess?.(data);
     },
     onError: (error) => {
       setIsSubmittingLocal(false);
@@ -399,7 +425,7 @@ export function PostForm({
     },
   });
 
-  const isSubmitting = isCreating || isUpdating || isSubmittingLocal;
+  const isSubmitting = isCreating || isCreatingDiscussion || isUpdating || isSubmittingLocal;
 
   // ============================================================================
   // EFFECTS
@@ -477,6 +503,36 @@ export function PostForm({
       }
     }
   }, [isCreateError, createError, setError]);
+
+  useEffect(() => {
+    if (isCreateDiscussionError && createDiscussionError) {
+      // Cast to unknown to use type guards
+      const err = createDiscussionError as unknown;
+
+      if (hasErrorCode(err) && err.code === 'CONCURRENT_EDIT') {
+        setConcurrentEditError(true);
+      } else if (createDiscussionError.message?.includes('409')) {
+        setConcurrentEditError(true);
+      } else if (hasFieldErrors(err)) {
+        // Handle server validation errors with field-level errors
+        const fieldErrors = err.fields;
+        if (fieldErrors) {
+          Object.keys(fieldErrors).forEach((field) => {
+            const errorMessage = fieldErrors[field];
+            if (errorMessage) {
+              setError(field as keyof PostFormData, {
+                type: 'server',
+                message: errorMessage,
+              });
+            }
+          });
+        }
+      } else {
+        const errorMessage = createDiscussionError.message ?? 'An error occurred';
+        setNetworkError(errorMessage);
+      }
+    }
+  }, [isCreateDiscussionError, createDiscussionError, setError]);
 
   // Auto-save draft
   useEffect(() => {
@@ -569,18 +625,29 @@ export function PostForm({
       updatePost(updateData);
     } else {
       // Create new post or discussion
-      const createData = {
-        forumId,
-        ...(discussionId && { discussionId }),
-        ...(parentPostId && { parentPostId }),
-        ...(isNewDiscussion && { subject: data.subject }),
-        message: data.message,
-        subscribe: data.subscribe,
-        attachments: files.map((f) => f.file),
-        ...(canModerate && isNewDiscussion && { pinned: data.pinned, locked: data.locked }),
-        ...(supportsTags && { tags: data.tags }),
-      };
-      createPost(createData);
+      if (isNewDiscussion) {
+        // Create new discussion
+        const discussionData = {
+          subject: data.subject!,
+          message: data.message,
+          subscribe: data.subscribe,
+          attachments: files.map((f) => f.file),
+          ...(canModerate && { pinned: data.pinned, locked: data.locked }),
+        };
+        createDiscussion(forumId, discussionData);
+      } else {
+        // Create reply post
+        const postData = {
+          forumId,
+          discussionId: discussionId!,
+          ...(parentPostId && { parentPostId }),
+          message: data.message,
+          subscribe: data.subscribe,
+          attachments: files.map((f) => f.file),
+          ...(supportsTags && { tags: data.tags }),
+        };
+        createPost(postData);
+      }
     }
   });
 
@@ -1285,6 +1352,7 @@ export function PostForm({
               style={{ display: 'none' }}
               accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
               aria-label="File input"
+              data-testid="attachment-upload"
             />
 
             <Box

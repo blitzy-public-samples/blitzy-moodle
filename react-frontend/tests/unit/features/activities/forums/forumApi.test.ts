@@ -631,6 +631,7 @@ const handlers = [
 describe('forumApi', () => {
   beforeAll(() => {
     // Set up mock JWT token in localStorage for apiClient interceptor
+    // CRITICAL: Must match ACCESS_TOKEN_KEY in src/services/auth/authService.ts and client.ts
     localStorage.setItem('moodle_access_token', MOCK_JWT_TOKEN);
   });
 

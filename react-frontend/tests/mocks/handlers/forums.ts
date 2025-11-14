@@ -126,13 +126,13 @@ const MOCK_FORUMS: Record<number, Forum> = {
     canAddDiscussion: true,
     canModerate: false,
     unreadCount: 5,
-    discussionCount: 25,
+    discussionCount: 6,
     postCount: 150,
     participants: 42
   }
 };
 
-const MOCK_DISCUSSIONS: Record<number, Discussion> = {
+const INITIAL_MOCK_DISCUSSIONS: Record<number, Discussion> = {
   1: {
     id: 1,
     forumId: 1,
@@ -279,7 +279,111 @@ const MOCK_DISCUSSIONS: Record<number, Discussion> = {
   }
 };
 
-const MOCK_POSTS: Record<number, Post> = {
+// ============================================================================
+// SessionStorage Persistence for E2E Tests
+// ============================================================================
+
+/**
+ * SessionStorage keys for persisting mock forum data across page reloads
+ * 
+ * During E2E tests, page reloads (e.g., via page.goto()) would normally reset
+ * all mock data. By persisting to sessionStorage, we maintain state across
+ * navigations within the same test session.
+ */
+const DISCUSSIONS_STORAGE_KEY = 'msw_mock_forum_discussions';
+const POSTS_STORAGE_KEY = 'msw_mock_forum_posts';
+
+/**
+ * Load discussions from sessionStorage
+ * 
+ * Restores discussion data from sessionStorage if available, otherwise returns
+ * the initial mock data. This ensures discussions persist across page reloads.
+ * 
+ * @returns Record of discussion ID to Discussion objects
+ */
+function loadDiscussions(): Record<number, Discussion> {
+  try {
+    const stored = sessionStorage.getItem(DISCUSSIONS_STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      console.log('[MSW Forums] Loaded discussions from sessionStorage:', Object.keys(parsed).length, 'discussions');
+      return parsed;
+    }
+  } catch (error) {
+    console.warn('[MSW Forums] Failed to load discussions from sessionStorage:', error);
+  }
+  console.log('[MSW Forums] No existing discussions in storage, using initial mock data');
+  return { ...INITIAL_MOCK_DISCUSSIONS };
+}
+
+/**
+ * Save discussions to sessionStorage
+ * 
+ * Persists the current discussion state to sessionStorage so it survives
+ * page reloads during E2E tests.
+ * 
+ * @param discussions - Record of discussion ID to Discussion objects
+ */
+function saveDiscussions(discussions: Record<number, Discussion>): void {
+  try {
+    sessionStorage.setItem(DISCUSSIONS_STORAGE_KEY, JSON.stringify(discussions));
+    console.log('[MSW Forums] Saved discussions to sessionStorage:', Object.keys(discussions).length, 'discussions');
+  } catch (error) {
+    console.warn('[MSW Forums] Failed to save discussions to sessionStorage:', error);
+  }
+}
+
+/**
+ * Load posts from sessionStorage
+ * 
+ * Restores post data from sessionStorage if available, otherwise returns
+ * the initial mock data. This ensures posts persist across page reloads.
+ * 
+ * @returns Record of post ID to Post objects
+ */
+function loadPosts(): Record<number, Post> {
+  try {
+    const stored = sessionStorage.getItem(POSTS_STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      console.log('[MSW Forums] Loaded posts from sessionStorage:', Object.keys(parsed).length, 'posts');
+      return parsed;
+    }
+  } catch (error) {
+    console.warn('[MSW Forums] Failed to load posts from sessionStorage:', error);
+  }
+  console.log('[MSW Forums] No existing posts in storage, will initialize with initial data');
+  // Return empty for now, will be populated from INITIAL_MOCK_POSTS below
+  return {};
+}
+
+/**
+ * Save posts to sessionStorage
+ * 
+ * Persists the current post state to sessionStorage so it survives
+ * page reloads during E2E tests.
+ * 
+ * @param posts - Record of post ID to Post objects
+ */
+function savePosts(posts: Record<number, Post>): void {
+  try {
+    sessionStorage.setItem(POSTS_STORAGE_KEY, JSON.stringify(posts));
+    console.log('[MSW Forums] Saved posts to sessionStorage:', Object.keys(posts).length, 'posts');
+  } catch (error) {
+    console.warn('[MSW Forums] Failed to save posts to sessionStorage:', error);
+  }
+}
+
+/**
+ * Mock discussions storage - persisted across page reloads via sessionStorage
+ * Use let so handlers can reload from sessionStorage on each request
+ */
+let MOCK_DISCUSSIONS = loadDiscussions();
+
+/**
+ * Initial mock posts (used as defaults before any test modifications)
+ */
+const INITIAL_MOCK_POSTS: Record<number, Post> = {
   1: {
     id: 1,
     discussionId: 1,
@@ -320,9 +424,34 @@ const MOCK_POSTS: Record<number, Post> = {
   }
 };
 
+/**
+ * Mock posts storage - persisted across page reloads via sessionStorage
+ * 
+ * Initializes from sessionStorage if available, otherwise from INITIAL_MOCK_POSTS
+ * Use let so handlers can reload from sessionStorage on each request
+ */
+let MOCK_POSTS = (() => {
+  const loadedPosts = loadPosts();
+  // If sessionStorage is empty, initialize with default posts
+  if (Object.keys(loadedPosts).length === 0) {
+    console.log('[MSW Forums] Initializing posts with initial mock data');
+    return { ...INITIAL_MOCK_POSTS };
+  }
+  return loadedPosts;
+})();
+
 // ============================================================================
 // Helper Functions
 // ============================================================================
+
+/**
+ * Reload mock data from sessionStorage before each request
+ * This ensures MSW handlers use fresh data after page reloads
+ */
+function reloadMockData(): void {
+  MOCK_DISCUSSIONS = loadDiscussions();
+  MOCK_POSTS = loadPosts();
+}
 
 async function simulateNetworkDelay(min = 100, max = 300): Promise<void> {
   const delay = Math.floor(Math.random() * (max - min + 1)) + min;
@@ -368,6 +497,7 @@ const getForumHandler = http.get('*/api/v1/forums/:id', async ({ params }) => {
  * List discussions in a forum with pagination and filtering
  */
 const getDiscussionsHandler = http.get('*/api/v1/forums/:id/discussions', async ({ params, request }) => {
+  reloadMockData(); // Reload fresh data from sessionStorage
   await simulateNetworkDelay();
   
   const id = Number(params.id);
@@ -398,7 +528,10 @@ const getDiscussionsHandler = http.get('*/api/v1/forums/:id/discussions', async 
   
   return HttpResponse.json({
     success: true,
-    data: discussions,
+    data: {
+      items: discussions,
+      total: discussions.length
+    },
     meta: {
       pagination: {
         page,
@@ -415,12 +548,19 @@ const getDiscussionsHandler = http.get('*/api/v1/forums/:id/discussions', async 
  * Get posts in a discussion thread
  */
 const getPostsHandler = http.get('*/api/v1/forums/discussions/:id/posts', async ({ params }) => {
+  reloadMockData(); // Reload fresh data from sessionStorage
   await simulateNetworkDelay();
   
   const id = Number(params.id);
+  console.log('[MSW Forums] Getting posts for discussion:', id);
+  console.log('[MSW Forums] Current discussions:', Object.keys(MOCK_DISCUSSIONS));
+  console.log('[MSW Forums] Current posts:', Object.keys(MOCK_POSTS));
+  console.log('[MSW Forums] All post values:', Object.values(MOCK_POSTS).map(p => ({ id: p.id, discussionId: p.discussionId })));
+  
   const discussion = MOCK_DISCUSSIONS[id];
   
   if (!discussion) {
+    console.log('[MSW Forums] Discussion not found:', id);
     return HttpResponse.json(
       {
         success: false,
@@ -435,6 +575,7 @@ const getPostsHandler = http.get('*/api/v1/forums/discussions/:id/posts', async 
   }
   
   const posts = Object.values(MOCK_POSTS).filter(p => p.discussionId === id);
+  console.log('[MSW Forums] Found', posts.length, 'posts for discussion', id);
   
   return HttpResponse.json({
     success: true,
@@ -447,6 +588,7 @@ const getPostsHandler = http.get('*/api/v1/forums/discussions/:id/posts', async 
  * Create a new discussion in a forum
  */
 const createDiscussionHandler = http.post('*/api/v1/forums/:id/discussions', async ({ params, request }) => {
+  reloadMockData(); // Reload fresh data from sessionStorage
   await simulateNetworkDelay();
   
   const id = Number(params.id);
@@ -552,9 +694,43 @@ const createDiscussionHandler = http.post('*/api/v1/forums/:id/discussions', asy
     canLock: false
   };
   
+  // Add the new discussion to MOCK_DISCUSSIONS so it can be found by subsequent requests
+  MOCK_DISCUSSIONS[newDiscussion.id] = newDiscussion;
+  saveDiscussions(MOCK_DISCUSSIONS);
+  console.log('[MSW Forums] Created discussion:', newDiscussion.id, 'Current discussions:', Object.keys(MOCK_DISCUSSIONS));
+  
+  // Create the first post (the discussion content itself)
+  const firstPost: Post = {
+    id: Object.keys(MOCK_POSTS).length + 1,
+    discussionId: newDiscussion.id,
+    parentId: 0,
+    userId: newDiscussion.userId,
+    userFullName: newDiscussion.userFullName,
+    userPictureUrl: newDiscussion.userPictureUrl,
+    created: newDiscussion.created,
+    modified: newDiscussion.modified,
+    subject: newDiscussion.name,
+    message: newDiscussion.message,
+    messageFormat: newDiscussion.messageFormat,
+    attachment: false,
+    attachments: [],
+    canEdit: true,
+    canDelete: true,
+    canReply: true,
+    replies: []
+  };
+  
+  MOCK_POSTS[firstPost.id] = firstPost;
+  savePosts(MOCK_POSTS);
+  console.log('[MSW Forums] Created first post:', firstPost.id, 'for discussion:', newDiscussion.id, 'Current posts:', Object.keys(MOCK_POSTS));
+  
+  // Return in DiscussionResponse format: { discussion: Discussion, message: string }
   return HttpResponse.json({
     success: true,
-    data: newDiscussion
+    data: {
+      discussion: newDiscussion,
+      message: 'Discussion created successfully'
+    }
   }, { status: 201 });
 });
 
@@ -563,6 +739,7 @@ const createDiscussionHandler = http.post('*/api/v1/forums/:id/discussions', asy
  * Create a new post (reply) in a discussion
  */
 const createPostHandler = http.post('*/api/v1/forums/discussions/:id/posts', async ({ params, request }) => {
+  reloadMockData(); // Reload fresh data from sessionStorage
   await simulateNetworkDelay();
   
   const id = Number(params.id);
@@ -650,6 +827,16 @@ const createPostHandler = http.post('*/api/v1/forums/discussions/:id/posts', asy
     replies: []
   };
   
+  // Add the new post to MOCK_POSTS so it can be found by subsequent requests
+  MOCK_POSTS[newPost.id] = newPost;
+  savePosts(MOCK_POSTS);
+  
+  // Update the discussion's reply count if the discussion exists
+  if (discussion) {
+    discussion.numReplies += 1;
+    saveDiscussions(MOCK_DISCUSSIONS);
+  }
+  
   return HttpResponse.json({
     success: true,
     data: newPost
@@ -661,6 +848,7 @@ const createPostHandler = http.post('*/api/v1/forums/discussions/:id/posts', asy
  * Update an existing post
  */
 const updatePostHandler = http.put('*/api/v1/forums/posts/:id', async ({ params, request }) => {
+  reloadMockData(); // Reload fresh data from sessionStorage
   await simulateNetworkDelay();
   
   const id = Number(params.id);
@@ -729,6 +917,7 @@ const updatePostHandler = http.put('*/api/v1/forums/posts/:id', async ({ params,
  * Delete a post
  */
 const deletePostHandler = http.delete('*/api/v1/forums/posts/:id', async ({ params }) => {
+  reloadMockData(); // Reload fresh data from sessionStorage
   await simulateNetworkDelay();
   
   const id = Number(params.id);
@@ -827,6 +1016,7 @@ const unsubscribeForumHandler = http.post('*/api/v1/forums/:id/unsubscribe', asy
  * Subscribe to discussion notifications
  */
 const subscribeDiscussionHandler = http.post('*/api/v1/forums/discussions/:id/subscribe', async ({ params }) => {
+  reloadMockData(); // Reload fresh data from sessionStorage
   await simulateNetworkDelay();
   
   const id = Number(params.id);
@@ -861,6 +1051,7 @@ const subscribeDiscussionHandler = http.post('*/api/v1/forums/discussions/:id/su
  * Unsubscribe from discussion notifications
  */
 const unsubscribeDiscussionHandler = http.post('*/api/v1/forums/discussions/:id/unsubscribe', async ({ params }) => {
+  reloadMockData(); // Reload fresh data from sessionStorage
   await simulateNetworkDelay();
   
   const id = Number(params.id);
@@ -895,6 +1086,7 @@ const unsubscribeDiscussionHandler = http.post('*/api/v1/forums/discussions/:id/
  * Mark discussion as read
  */
 const markReadHandler = http.post('*/api/v1/forums/discussions/:id/read', async ({ params }) => {
+  reloadMockData(); // Reload fresh data from sessionStorage
   await simulateNetworkDelay();
   
   const id = Number(params.id);
@@ -928,6 +1120,7 @@ const markReadHandler = http.post('*/api/v1/forums/discussions/:id/read', async 
  * Pin a discussion to the top
  */
 const pinDiscussionHandler = http.post('*/api/v1/forums/discussions/:id/pin', async ({ params }) => {
+  reloadMockData(); // Reload fresh data from sessionStorage
   await simulateNetworkDelay();
   
   const id = Number(params.id);
@@ -952,6 +1145,7 @@ const pinDiscussionHandler = http.post('*/api/v1/forums/discussions/:id/pin', as
     ...discussion,
     pinned: true
   };
+  saveDiscussions(MOCK_DISCUSSIONS);
   
   return HttpResponse.json({
     success: true,
@@ -967,6 +1161,7 @@ const pinDiscussionHandler = http.post('*/api/v1/forums/discussions/:id/pin', as
  * Unpin a discussion
  */
 const unpinDiscussionHandler = http.post('*/api/v1/forums/discussions/:id/unpin', async ({ params }) => {
+  reloadMockData(); // Reload fresh data from sessionStorage
   await simulateNetworkDelay();
   
   const id = Number(params.id);
@@ -991,6 +1186,7 @@ const unpinDiscussionHandler = http.post('*/api/v1/forums/discussions/:id/unpin'
     ...discussion,
     pinned: false
   };
+  saveDiscussions(MOCK_DISCUSSIONS);
   
   return HttpResponse.json({
     success: true,
@@ -1006,6 +1202,7 @@ const unpinDiscussionHandler = http.post('*/api/v1/forums/discussions/:id/unpin'
  * Lock a discussion (prevent new replies)
  */
 const lockDiscussionHandler = http.post('*/api/v1/forums/discussions/:id/lock', async ({ params }) => {
+  reloadMockData(); // Reload fresh data from sessionStorage
   await simulateNetworkDelay();
   
   const id = Number(params.id);
@@ -1030,6 +1227,7 @@ const lockDiscussionHandler = http.post('*/api/v1/forums/discussions/:id/lock', 
     ...discussion,
     locked: true
   };
+  saveDiscussions(MOCK_DISCUSSIONS);
   
   return HttpResponse.json({
     success: true,
@@ -1045,6 +1243,7 @@ const lockDiscussionHandler = http.post('*/api/v1/forums/discussions/:id/lock', 
  * Unlock a discussion
  */
 const unlockDiscussionHandler = http.post('*/api/v1/forums/discussions/:id/unlock', async ({ params }) => {
+  reloadMockData(); // Reload fresh data from sessionStorage
   await simulateNetworkDelay();
   
   const id = Number(params.id);
@@ -1069,6 +1268,7 @@ const unlockDiscussionHandler = http.post('*/api/v1/forums/discussions/:id/unloc
     ...discussion,
     locked: false
   };
+  saveDiscussions(MOCK_DISCUSSIONS);
   
   return HttpResponse.json({
     success: true,
@@ -1084,6 +1284,7 @@ const unlockDiscussionHandler = http.post('*/api/v1/forums/discussions/:id/unloc
  * Report a post for moderation
  */
 const reportPostHandler = http.post('*/api/v1/forums/posts/:id/report', async ({ params, request }) => {
+  reloadMockData(); // Reload fresh data from sessionStorage
   await simulateNetworkDelay();
   
   const id = Number(params.id);

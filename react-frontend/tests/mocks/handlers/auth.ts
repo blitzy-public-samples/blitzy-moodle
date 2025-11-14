@@ -83,12 +83,13 @@ interface RefreshRequest {
 
 /**
  * Mock test users with different roles for comprehensive testing scenarios
+ * NOTE: Passwords must match TEST_PASSWORD from tests/e2e/fixtures/users.ts
  */
 const MOCK_USERS: Record<string, User & { password: string; status: 'active' | 'suspended' | 'locked' }> = {
   student1: {
     id: 1001,
     username: 'student1',
-    password: 'Student@123',
+    password: 'TestPassword123!',
     email: 'student1@example.com',
     firstname: 'John',
     lastname: 'Student',
@@ -112,7 +113,7 @@ const MOCK_USERS: Record<string, User & { password: string; status: 'active' | '
   teacher1: {
     id: 2001,
     username: 'teacher1',
-    password: 'Teacher@123',
+    password: 'TestPassword123!',
     email: 'teacher1@example.com',
     firstname: 'Jane',
     lastname: 'Teacher',
@@ -138,7 +139,7 @@ const MOCK_USERS: Record<string, User & { password: string; status: 'active' | '
   admin1: {
     id: 5001,
     username: 'admin',
-    password: 'Admin@123',
+    password: 'TestPassword123!',
     email: 'admin@example.com',
     firstname: 'Admin',
     lastname: 'Administrator',
@@ -244,7 +245,7 @@ function extractUserIdFromToken(token: string): number | null {
     const parts = token.split('.');
     if (parts.length !== 3 || !parts[1]) return null;
     const payload = JSON.parse(atob(parts[1]));
-    return payload.userId || null;
+    return payload.sub || null; // Changed from payload.userId to payload.sub to match token generation
   } catch {
     return null;
   }

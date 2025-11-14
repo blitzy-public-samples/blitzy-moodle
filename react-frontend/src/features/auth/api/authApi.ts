@@ -2,79 +2,128 @@
  * Authentication API
  *
  * React Query hooks and API functions for authentication operations.
- * Integrates with JWT-based API authentication layer that wraps existing
- * Moodle authenticate_user_login() functions.
+ * Integrates with authentication API endpoints that handle JWT-based authentication.
  *
  * @module features/auth/api/authApi
  */
 
-import { useMutation } from '@tanstack/react-query';
-import { apiClient, extractData } from '@/services/api/client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiClient } from '@/services/api/client';
 import { AUTH_ENDPOINTS } from '@/services/api/endpoints';
-import { setTokens, clearTokens } from '@/services/auth/authService';
-import type { User, LoginCredentials, LoginResponse } from '../types/auth.types';
 import type { ApiResponse } from '@/types/api';
+import type { AuthTokens } from '../types/auth.types';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+/**
+ * User data returned from authentication endpoints
+ */
+export interface AuthUser {
+  id: number;
+  pictureitemid: number;
+  firstname: string;
+  lastname: string;
+  fullname: string;
+  email: string;
+  username?: string;
+  roles?: string[];
+  capabilities?: string[];
+  deleted?: boolean;
+}
+
+/**
+ * Login request parameters
+ */
+export interface LoginParams {
+  username: string;
+  password: string;
+}
+
+/**
+ * Login response containing user data and tokens
+ */
+export interface LoginResponse {
+  user: AuthUser;
+  tokens: AuthTokens;
+}
 
 // ============================================================================
 // API Functions
 // ============================================================================
 
 /**
- * Login with username and password
+ * Fetch current authenticated user information
  *
- * Calls POST /api/v1/auth/login which wraps existing Moodle
- * authenticate_user_login() function.
+ * Calls GET /api/v1/auth/me which validates the JWT token
+ * and returns the current user's information.
  *
- * @param credentials - Username and password
- * @returns User data and JWT tokens
+ * @returns Current user data
+ * @throws {Error} If user is not authenticated or token is invalid
  */
-export async function login(credentials: LoginCredentials): Promise<LoginResponse> {
-  const response = await apiClient.post<ApiResponse<LoginResponse>>(
-    AUTH_ENDPOINTS.LOGIN,
-    credentials
+export async function fetchCurrentUser(): Promise<AuthUser> {
+  const response = await apiClient.get<ApiResponse<AuthUser>>(
+    AUTH_ENDPOINTS.ME
   );
 
-  // Extract data from response envelope
-  const loginData = extractData(response);
-  
-  // Store tokens securely if provided
-  if (loginData.tokens) {
-    setTokens(loginData.tokens.accessToken, loginData.tokens.refreshToken);
+  if (!response.data.success || !response.data.data) {
+    throw new Error('Failed to fetch current user');
   }
 
-  return loginData;
+  return response.data.data;
+}
+
+/**
+ * Login with username and password
+ *
+ * Calls POST /api/v1/auth/login which validates credentials
+ * and returns JWT tokens along with user information.
+ *
+ * @param params - Login credentials
+ * @returns Login response with user data and tokens
+ */
+export async function login(params: LoginParams): Promise<LoginResponse> {
+  const response = await apiClient.post<ApiResponse<LoginResponse>>(
+    AUTH_ENDPOINTS.LOGIN,
+    params
+  );
+
+  if (!response.data.success || !response.data.data) {
+    throw new Error('Login failed');
+  }
+
+  return response.data.data;
 }
 
 /**
  * Logout current user
  *
- * Calls POST /api/v1/auth/logout which invalidates JWT token
- * by adding it to Redis blacklist.
+ * Calls POST /api/v1/auth/logout which invalidates the current
+ * JWT token on the server.
  */
 export async function logout(): Promise<void> {
-  try {
-    await apiClient.post(AUTH_ENDPOINTS.LOGOUT);
-  } catch (error) {
-    // Continue with client-side cleanup even if server logout fails
-    console.error('Logout API call failed:', error);
-  } finally {
-    // Always clear tokens on client side
-    clearTokens();
-  }
+  await apiClient.post(AUTH_ENDPOINTS.LOGOUT);
 }
 
 /**
- * Get current user from JWT token
+ * Refresh authentication token
  *
- * Calls GET /api/v1/auth/me which extracts user from JWT token.
+ * Calls POST /api/v1/auth/refresh to get a new access token
+ * using the refresh token.
  *
- * @returns Current user data
+ * @returns New access token and expiration time
  */
-export async function getCurrentUser(): Promise<User> {
-  const response = await apiClient.get<ApiResponse<User>>(AUTH_ENDPOINTS.ME);
+export async function refreshToken(): Promise<{ accessToken: string; expiresIn: number }> {
+  const response = await apiClient.post<ApiResponse<{ accessToken: string; expiresIn: number }>>(
+    AUTH_ENDPOINTS.REFRESH
+  );
 
-  // Extract data from response envelope
-  return extractData(response);
+  if (!response.data.success || !response.data.data) {
+    throw new Error('Token refresh failed');
+  }
+
+  return response.data.data;
 }
 
 // ============================================================================
@@ -82,49 +131,100 @@ export async function getCurrentUser(): Promise<User> {
 // ============================================================================
 
 /**
- * React Query mutation hook for login
- *
- * Usage:
- * ```tsx
- * const { mutate: loginUser, isLoading, error } = useLoginMutation();
- *
- * loginUser(
- *   { username: 'user', password: 'pass' },
- *   {
- *     onSuccess: (data) => {
- *       // Handle successful login
- *     },
- *     onError: (error) => {
- *       // Handle login error
- *     }
- *   }
- * );
- * ```
+ * Query key for current user data
  */
-export function useLoginMutation() {
-  return useMutation({
-    mutationFn: login,
-    onError: (error) => {
-      console.error('Login mutation failed:', error);
+export const CURRENT_USER_QUERY_KEY = ['auth', 'me'] as const;
+
+/**
+ * Hook to fetch and cache current user information
+ *
+ * Uses React Query to manage the authenticated user's data.
+ * This hook automatically refetches when the query is invalidated.
+ * Only fetches user data when an authentication token exists in localStorage.
+ *
+ * @returns React Query result with user data
+ */
+export function useCurrentUser() {
+  // Check if a token exists in localStorage
+  // Only fetch user data if a token is present
+  const hasToken = !!localStorage.getItem('moodle_access_token');
+  
+  return useQuery({
+    queryKey: CURRENT_USER_QUERY_KEY,
+    queryFn: fetchCurrentUser,
+    enabled: hasToken, // Only fetch if token exists
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+    retry: (failureCount, error: any) => {
+      // Don't retry on authentication errors
+      if (error?.response?.status === 401) {
+        return false;
+      }
+      return failureCount < 3;
     },
   });
 }
 
 /**
- * React Query mutation hook for logout
+ * Hook to perform login mutation
  *
- * Usage:
- * ```tsx
- * const { mutate: logoutUser } = useLogoutMutation();
+ * Logs in a user with username and password, stores authentication tokens,
+ * and updates the current user query cache with the authenticated user data.
  *
- * logoutUser();
- * ```
+ * @returns Mutation function and state
  */
-export function useLogoutMutation() {
+export function useLoginMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: login,
+    onSuccess: (data) => {
+      console.log('[useLoginMutation] onSuccess called with data:', {
+        hasUser: !!data.user,
+        hasTokens: !!data.tokens,
+        accessToken: data.tokens?.accessToken ? 'present' : 'missing',
+        refreshToken: data.tokens?.refreshToken ? 'present' : 'missing',
+      });
+      
+      // Store access token in localStorage
+      // This matches the key used by the API client interceptor
+      if (data.tokens.accessToken) {
+        localStorage.setItem('moodle_access_token', data.tokens.accessToken);
+        console.log('[useLoginMutation] Stored access token in localStorage');
+      }
+      
+      // Optionally store refresh token for token refresh functionality
+      if (data.tokens.refreshToken) {
+        localStorage.setItem('moodle_refresh_token', data.tokens.refreshToken);
+        console.log('[useLoginMutation] Stored refresh token in localStorage');
+      }
+      
+      // Set the current user data directly in the query cache
+      // This ensures useAuth immediately sees the authenticated user
+      // without waiting for a refetch, preventing race conditions
+      queryClient.setQueryData(CURRENT_USER_QUERY_KEY, data.user);
+      console.log('[useLoginMutation] Set user data in query cache:', data.user.email);
+    },
+  });
+}
+
+/**
+ * Hook to perform logout mutation
+ *
+ * Logs out the current user and clears all cached authentication data.
+ *
+ * @returns Mutation function and state
+ */
+export function useLogout() {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: logout,
-    onError: (error) => {
-      console.error('Logout mutation failed:', error);
+    onSuccess: () => {
+      // Clear all authentication-related queries
+      queryClient.removeQueries({ queryKey: CURRENT_USER_QUERY_KEY });
+      
+      // Clear any other cached data that depends on authentication
+      queryClient.clear();
     },
   });
 }

@@ -12,6 +12,9 @@ import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { CourseCatalogPage } from '@/features/courses/pages/CourseCatalogPage';
 import { FileRepositoryPage } from '@/features/courses/pages/FileRepositoryPage';
 import { UserManagementPage } from '@/features/admin/users/pages/UserManagementPage';
+import { ForumPage } from '@/features/activities/forums/pages/ForumPage';
+import { DiscussionPage } from '@/features/activities/forums/pages/DiscussionPage';
+import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
 import App from '@/App';
 
 // ============================================================================
@@ -39,27 +42,61 @@ export const router = createBrowserRouter([
   {
     path: '/dashboard',
     element: (
-      <div>
-        <h1>Dashboard</h1>
-        <p>Dashboard implementation coming soon...</p>
-      </div>
+      <ProtectedRoute>
+        <div>
+          <h1>Dashboard</h1>
+          <p>Dashboard implementation coming soon...</p>
+        </div>
+      </ProtectedRoute>
     ),
   },
   {
     path: '/courses',
-    element: <CourseCatalogPage />,
+    element: (
+      <ProtectedRoute>
+        <CourseCatalogPage />
+      </ProtectedRoute>
+    ),
   },
   {
     path: '/courses/:id/files',
-    element: <FileRepositoryPage />,
+    element: (
+      <ProtectedRoute>
+        <FileRepositoryPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/courses/:courseId/forums/:forumId',
+    element: (
+      <ProtectedRoute>
+        <ForumPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/courses/:courseId/forums/:forumId/discussions/:discussionId',
+    element: (
+      <ProtectedRoute>
+        <DiscussionPage />
+      </ProtectedRoute>
+    ),
   },
   {
     path: '/admin/users',
-    element: <UserManagementPage />,
+    element: (
+      <ProtectedRoute requiredPermission="moodle/site:config">
+        <UserManagementPage />
+      </ProtectedRoute>
+    ),
   },
   {
     path: '/demo',
-    element: <App />,
+    element: (
+      <ProtectedRoute>
+        <App />
+      </ProtectedRoute>
+    ),
   },
   {
     path: '*',

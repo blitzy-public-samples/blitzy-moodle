@@ -21,7 +21,7 @@
  * @module features/activities/forums/components/ForumView
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -38,6 +38,9 @@ import {
   Paper,
   Menu,
   MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
   useTheme,
   useMediaQuery,
 } from '@mui/material';
@@ -60,7 +63,9 @@ import {
 import { useForum } from '../hooks/useForum';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { DiscussionList } from './DiscussionList';
-import { ForumType } from '../types/forum.types';
+import { PostForm } from './PostForm';
+import { ForumType, PostResponse } from '../types/forum.types';
+import { DiscussionResponse } from '../api/forumApi';
 
 // ============================================================================
 // TYPES
@@ -70,6 +75,8 @@ import { ForumType } from '../types/forum.types';
  * Props for ForumView component
  */
 export interface ForumViewComponentProps {
+  /** Course ID that contains the forum */
+  courseId: number;
   /** Forum ID to display */
   forumId: number;
 }
@@ -164,19 +171,22 @@ const formatBytes = (bytes: number): string => {
  * ForumView component - Container for complete forum display
  */
 // eslint-disable-next-line react/function-component-definition
-export const ForumView: React.FC<ForumViewComponentProps> = ({ forumId }) => {
+export const ForumView: React.FC<ForumViewComponentProps> = ({ courseId, forumId }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const navigate = useNavigate();
 
   // Hooks
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { forum, isLoading, isError, error, isSubscribing, toggleSubscription, refetch } =
     useForum(forumId);
 
   // Menu state for moderator actions
   const [moderateMenuAnchor, setModerateMenuAnchor] = React.useState<null | HTMLElement>(null);
   const moderateMenuOpen = Boolean(moderateMenuAnchor);
+
+  // Dialog state for creating new discussions
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState<boolean>(false);
 
   const handleModerateClick = (event: React.MouseEvent<HTMLElement>) => {
     setModerateMenuAnchor(event.currentTarget);
@@ -313,7 +323,30 @@ export const ForumView: React.FC<ForumViewComponentProps> = ({ forumId }) => {
   };
 
   const handleCreateDiscussion = () => {
-    navigate(`/forum/${forumId}/discussion/create`);
+    setIsCreateDialogOpen(true);
+  };
+
+  const handleCloseCreateDialog = () => {
+    setIsCreateDialogOpen(false);
+  };
+
+  const handleSubmitSuccess = (response: PostResponse | DiscussionResponse) => {
+    setIsCreateDialogOpen(false);
+    
+    // Extract discussion ID based on response type
+    let discussionId: number;
+    if ('discussion' in response) {
+      // DiscussionResponse: { discussion: Discussion, message: string }
+      discussionId = response.discussion.id;
+    } else {
+      // PostResponse: extends Post with discussionId property
+      discussionId = response.discussionId;
+    }
+    
+    // Navigate to the newly created discussion
+    navigate(`/courses/${courseId}/forums/${forumId}/discussions/${discussionId}`);
+    // Refetch forum data to update discussion count
+    refetch();
   };
 
   // ============================================================================
@@ -339,6 +372,7 @@ export const ForumView: React.FC<ForumViewComponentProps> = ({ forumId }) => {
                 component="h1"
                 gutterBottom
                 aria-level={1}
+                data-testid="forum-title"
                 sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
               >
                 {forum.name}
@@ -382,6 +416,7 @@ export const ForumView: React.FC<ForumViewComponentProps> = ({ forumId }) => {
                         forum.subscribed ? 'Unsubscribe from forum' : 'Subscribe to forum'
                       }
                       aria-pressed={forum.subscribed}
+                      data-testid="subscribe-button"
                     >
                       {forum.subscribed ? 'Unsubscribe' : 'Subscribe'}
                     </Button>
@@ -425,6 +460,7 @@ export const ForumView: React.FC<ForumViewComponentProps> = ({ forumId }) => {
                   startIcon={<AddIcon />}
                   onClick={handleCreateDiscussion}
                   aria-label="Add new discussion"
+                  data-testid="add-discussion-button"
                 >
                   {isMobile ? 'Add' : 'Add discussion'}
                 </Button>
@@ -438,6 +474,7 @@ export const ForumView: React.FC<ForumViewComponentProps> = ({ forumId }) => {
               <Typography
                 variant="body1"
                 color="text.secondary"
+                data-testid="forum-description"
                 dangerouslySetInnerHTML={{ __html: forum.intro }}
                 sx={{
                   '& p': { margin: 0 },
@@ -500,7 +537,7 @@ export const ForumView: React.FC<ForumViewComponentProps> = ({ forumId }) => {
             )}
 
             {/* Due Date */}
-            {forum.duedate && forum.duedate > 0 && (
+            {forum.duedate > 0 && (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <EventIcon color="action" fontSize="small" />
                 <Typography variant="body2" color="text.secondary">
@@ -572,6 +609,7 @@ export const ForumView: React.FC<ForumViewComponentProps> = ({ forumId }) => {
       {/* Discussion List */}
       {forum.discussionCount > 0 && user && (
         <DiscussionList
+          courseId={courseId}
           forumId={forumId}
           currentUser={{
             id: user.id,
@@ -585,6 +623,25 @@ export const ForumView: React.FC<ForumViewComponentProps> = ({ forumId }) => {
           }}
         />
       )}
+
+      {/* Create Discussion Dialog */}
+      <Dialog
+        open={isCreateDialogOpen}
+        onClose={handleCloseCreateDialog}
+        maxWidth="md"
+        fullWidth
+        aria-labelledby="create-discussion-dialog-title"
+      >
+        <DialogTitle id="create-discussion-dialog-title">Create New Discussion</DialogTitle>
+        <DialogContent>
+          <PostForm
+            forumId={forumId}
+            discussionId={null}
+            onSubmitSuccess={handleSubmitSuccess}
+            onCancel={handleCloseCreateDialog}
+          />
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 };

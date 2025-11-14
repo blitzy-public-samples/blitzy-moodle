@@ -288,7 +288,8 @@ export async function apiRequest<T = any>(
     // For API-only requests, token should be passed explicitly
     if (typeof window !== 'undefined') {
       // Browser context - this won't work in Node.js
-      authToken = localStorage.getItem('accessToken') || undefined;
+      // Must match ACCESS_TOKEN_KEY in authService.ts and client.ts
+      authToken = localStorage.getItem('moodle_access_token') || undefined;
     }
   }
 

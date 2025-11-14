@@ -63,6 +63,7 @@ import {
   Person as PersonIcon,
 } from '@mui/icons-material';
 import {
+  getDiscussions,
   pinDiscussion,
   unpinDiscussion,
   lockDiscussion,
@@ -137,6 +138,8 @@ export interface CurrentUser {
  * Props for DiscussionList component
  */
 export interface DiscussionListProps {
+  /** Course ID containing the forum */
+  courseId: number;
   /** Forum ID */
   forumId: number;
   /** Current user */
@@ -171,6 +174,44 @@ interface DiscussionsQueryResponse {
 }
 
 /**
+ * Map component sort option to API sort parameters
+ */
+function mapSortOptionToAPI(sortOption: SortOption): { sortBy: 'date' | 'replies' | 'author'; sortOrder: 'asc' | 'desc' } {
+  switch (sortOption) {
+    case 'newest':
+      return { sortBy: 'date', sortOrder: 'desc' };
+    case 'oldest':
+      return { sortBy: 'date', sortOrder: 'asc' };
+    case 'most-replies':
+      return { sortBy: 'replies', sortOrder: 'desc' };
+    case 'recently-updated':
+      return { sortBy: 'date', sortOrder: 'desc' }; // Use date as proxy for recently updated
+    default:
+      return { sortBy: 'date', sortOrder: 'desc' };
+  }
+}
+
+/**
+ * Map component filter option to API filter parameter
+ */
+function mapFilterOptionToAPI(filterOption: FilterOption): 'all' | 'unread' | 'pinned' | undefined {
+  switch (filterOption) {
+    case 'all':
+      return 'all';
+    case 'unread':
+      return 'unread';
+    case 'pinned':
+      return 'pinned';
+    case 'my-discussions':
+      // 'my-discussions' is not supported by the API directly
+      // This would need to be handled client-side or the API needs to be extended
+      return undefined;
+    default:
+      return 'all';
+  }
+}
+
+/**
  * Context type for optimistic mutations
  */
 interface MutationContext {
@@ -182,6 +223,7 @@ interface MutationContext {
 // ============================================================================
 
 export function DiscussionList({
+  courseId,
   forumId,
   currentUser,
   permissions,
@@ -233,11 +275,56 @@ export function DiscussionList({
   // Fetch discussions using React Query
   const { data, isLoading, isError, error, refetch } = useQuery<DiscussionsQueryResponse>({
     queryKey: ['discussions', forumId, sortBy, filterBy, currentPage, pageSize, debouncedSearch],
-    queryFn: () => {
-      // Mock implementation - in real app, this would call the API
+    queryFn: async () => {
+      // Map component options to API parameters
+      const { sortBy: apiSortBy, sortOrder } = mapSortOptionToAPI(sortBy);
+      const apiFilter = mapFilterOptionToAPI(filterBy);
+
+      // Call the real API with proper parameters
+      // NOTE: The API does not currently support a 'search' parameter.
+      // We'll implement client-side search filtering below.
+      const response = await getDiscussions(forumId, {
+        page: currentPage,
+        perPage: pageSize,
+        sortBy: apiSortBy,
+        sortOrder: sortOrder,
+        filter: apiFilter,
+      });
+
+      // Transform the API response to the component's expected format
+      // NOTE: There's a type mismatch between the declared Discussion type in forum.types.ts
+      // and what the API actually returns. The API returns enriched data with user info,
+      // reply counts, etc. This transformation bridges that gap.
+      let discussions: DiscussionListItem[] = response.data.items.map((discussion: any) => ({
+        id: discussion.id,
+        title: discussion.name,
+        author: {
+          id: discussion.userId || discussion.userid,
+          name: discussion.userFullName || 'Unknown User',
+          avatarUrl: discussion.userPictureUrl || null,
+        },
+        createdAt: discussion.created 
+          ? new Date(discussion.created * 1000).toISOString()
+          : new Date().toISOString(),
+        replyCount: discussion.numReplies || 0,
+        unreadCount: discussion.numUnreadPosts || 0,
+        isPinned: discussion.pinned || false,
+        isLocked: discussion.locked || false,
+        lastPost: null, // TODO: Add lastPost data when available from API
+      }));
+
+      // Client-side search filtering (since API doesn't support it yet)
+      if (debouncedSearch && debouncedSearch.trim() !== '') {
+        const searchLower = debouncedSearch.toLowerCase();
+        discussions = discussions.filter(d => 
+          d.title.toLowerCase().includes(searchLower) ||
+          d.author.name.toLowerCase().includes(searchLower)
+        );
+      }
+
       return {
-        discussions: [],
-        totalCount: 0,
+        discussions,
+        totalCount: debouncedSearch ? discussions.length : response.data.total,
       };
     },
     staleTime: 30000, // 30 seconds
@@ -460,9 +547,9 @@ export function DiscussionList({
   // Handlers
   const handleDiscussionClick = useCallback(
     (discussionId: number) => {
-      navigate(`/forums/${forumId}/discussions/${discussionId}`);
+      navigate(`/courses/${courseId}/forums/${forumId}/discussions/${discussionId}`);
     },
-    [navigate, forumId]
+    [navigate, courseId, forumId]
   );
 
   const handleAuthorClick = useCallback(
@@ -672,6 +759,7 @@ export function DiscussionList({
             placeholder="Search discussions..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            data-testid="forum-search"
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -801,6 +889,8 @@ export function DiscussionList({
           return (
             <React.Fragment key={discussion.id}>
               <ListItem
+                data-discussion-id={discussion.id}
+                data-testid={`discussion-item-${discussion.id}`}
                 disablePadding
                 secondaryAction={
                   !isMobile && (canPin || canLock || canDelete) ? (

@@ -128,19 +128,27 @@ export const LoginForm: React.FC<LoginFormProps> = ({
     };
 
     // Submit login request
+    console.log('[LoginForm] Calling loginUser mutation with credentials:', { username: credentials.username });
     loginUser(credentials, {
       onSuccess: (response) => {
-        console.log('Login successful:', response);
+        console.log('[LoginForm] Mutation onSuccess called with response:', response);
+        console.log('[LoginForm] Response has user:', !!response.user);
+        console.log('[LoginForm] Response has tokens:', !!response.tokens);
         // Only call onSuccess if user and tokens are present
         if (response.user && response.tokens) {
+          console.log('[LoginForm] Calling parent onSuccess callback...');
           onSuccess?.({ user: response.user, tokens: response.tokens });
+          console.log('[LoginForm] Parent onSuccess callback called');
+        } else {
+          console.error('[LoginForm] Response missing user or tokens, not calling parent onSuccess');
         }
       },
       onError: (error) => {
-        console.error('Login failed:', error);
+        console.error('[LoginForm] Mutation onError called:', error);
         onError?.(error);
       },
     });
+    console.log('[LoginForm] loginUser mutation call completed (async)');
   };
 
   /**
