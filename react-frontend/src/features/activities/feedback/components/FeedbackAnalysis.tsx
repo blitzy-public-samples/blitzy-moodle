@@ -52,7 +52,6 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-import { format, parseISO } from 'date-fns';
 
 // Internal imports
 import { ResponseList } from './ResponseList';
