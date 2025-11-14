@@ -43,7 +43,6 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
-import type { FieldErrors } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import type { ZodType, ZodSchema } from 'zod';
@@ -66,15 +65,12 @@ import {
   CircularProgress,
   LinearProgress,
   Paper,
-  Grid,
   Container,
   Skeleton,
   InputLabel,
   Divider,
   Chip,
-  Badge,
   IconButton,
-  useTheme,
 } from '@mui/material';
 import {
   ExpandMore,
@@ -82,9 +78,6 @@ import {
   RestoreOutlined,
   InfoOutlined,
   WarningAmberOutlined,
-  ErrorOutline,
-  CheckCircleOutline,
-  Close,
   Visibility,
   VisibilityOff,
   HelpOutline,
@@ -93,16 +86,30 @@ import {
 // Internal imports
 import { useToast } from '@/hooks/useToast';
 import type {
-  SettingType,
-  BaseSetting,
+  Setting,
   TextSetting,
+  TextareaSetting,
+  PasswordSetting,
   SelectSetting,
+  MultiSelectSetting,
   CheckboxSetting,
+  MultiCheckboxSetting,
+  NumberSetting,
+  TimeSetting,
+  DurationSetting,
+  HtmlEditorSetting,
+  FileSetting,
+  ExecutableSetting,
+  ColorSetting,
+  HeadingSetting,
+  DescriptionSetting,
   SettingCategory,
-  SettingsFormData,
   SettingsFormProps,
+  EmailSetting,
+  UrlSetting,
 } from '@/features/admin/settings/types/settings.types';
-import { RichTextEditor } from '@/components/editor/RichTextEditor';
+import { SettingType } from '@/features/admin/settings/types/settings.types';
+import RichTextEditor from '@/components/editor/RichTextEditor';
 import { Alert } from '@/components/feedback/Alert';
 import { Modal } from '@/components/feedback/Modal';
 
@@ -227,9 +234,12 @@ const buildValidationSchema = (categories: SettingCategory[]): ZodType<FormValue
       // Add custom validation if provided
       if (setting.validation) {
         if (fieldSchema instanceof z.ZodString) {
-          fieldSchema = fieldSchema.refine(
-            (val) => setting.validation!(val),
-            { message: setting.validationMessage || 'Invalid value' }
+          const validationPattern = setting.validation instanceof RegExp 
+            ? setting.validation 
+            : new RegExp(setting.validation);
+          fieldSchema = fieldSchema.regex(
+            validationPattern,
+            setting.validationMessage || 'Invalid value'
           );
         }
       }
@@ -238,7 +248,7 @@ const buildValidationSchema = (categories: SettingCategory[]): ZodType<FormValue
     });
   });
 
-  return z.object(schemaFields);
+  return z.object(schemaFields as z.ZodRawShape);
 };
 
 // ============================================================================
@@ -272,19 +282,24 @@ const getDefaultValues = (categories: SettingCategory[]): FormValues => {
  * @returns True if setting should be visible
  */
 const isSettingVisible = (
-  setting: BaseSetting,
+  setting: Setting,
   formValues: FormValues
 ): boolean => {
-  if (!setting.dependsOn || setting.dependsOn.length === 0) {
+  if (!setting.dependsOn) {
     return true;
   }
 
-  // Check if all dependencies are satisfied
-  return setting.dependsOn.every((depName) => {
-    const depValue = formValues[depName];
-    // Setting is visible if dependent field has a truthy value
-    return Boolean(depValue);
-  });
+  // Get the value of the dependent setting
+  const dependentValue = formValues[setting.dependsOn.setting];
+  const requiredValue = setting.dependsOn.value;
+
+  // If requiredValue is an array, check if dependentValue is in the array
+  if (Array.isArray(requiredValue)) {
+    return requiredValue.includes(dependentValue as any);
+  }
+
+  // Otherwise, check for equality
+  return dependentValue === requiredValue;
 };
 
 /**
@@ -317,7 +332,6 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
   loading = false,
   initialExpanded = [],
 }) => {
-  const theme = useTheme();
   const { success, error: showErrorToast, warning } = useToast();
 
   // ============================================================================
@@ -348,12 +362,10 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
   // Initialize form with react-hook-form
   const {
     control,
-    register,
     handleSubmit,
-    formState: { errors, isDirty, dirtyFields, isSubmitting },
+    formState: { isDirty, dirtyFields, isSubmitting },
     reset,
     watch,
-    setValue,
   } = useForm<FormValues>({
     resolver: zodResolver(validationSchema),
     defaultValues: getDefaultValues(settings),
@@ -468,12 +480,20 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
   // ============================================================================
 
   /**
-   * Renders a text input field
+   * Renders a text input field (supports TEXT, EMAIL, and URL types)
    */
   const renderTextField = useCallback(
-    (setting: TextSetting) => {
+    (setting: TextSetting | EmailSetting | UrlSetting) => {
       const isVisible = isSettingVisible(setting, formValues);
       if (!isVisible) return null;
+
+      // Type-specific properties
+      const placeholder = setting.type === SettingType.TEXT 
+        ? (setting as TextSetting).placeholder || setting.defaultValue?.toString()
+        : setting.defaultValue?.toString();
+      const size = setting.type === SettingType.TEXT 
+        ? (setting as TextSetting).size 
+        : undefined;
 
       return (
         <Controller
@@ -485,16 +505,17 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
               <TextField
                 {...field}
                 label={setting.label}
-                placeholder={setting.placeholder || setting.defaultValue?.toString()}
+                placeholder={placeholder}
                 helperText={
                   fieldState.error?.message || setting.description || ''
                 }
                 error={!!fieldState.error}
                 disabled={setting.readonly || loading || isSubmitting}
                 required={setting.required}
-                size={setting.size || 'medium'}
+                size="medium"
                 fullWidth
                 inputProps={{
+                  size: size,
                   'aria-label': setting.label,
                   'aria-describedby': setting.description
                     ? `${setting.name}-description`
@@ -515,7 +536,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
    * Renders a textarea field
    */
   const renderTextareaField = useCallback(
-    (setting: BaseSetting & { type: 'textarea'; rows?: number }) => {
+    (setting: TextareaSetting) => {
       const isVisible = isSettingVisible(setting, formValues);
       if (!isVisible) return null;
 
@@ -529,7 +550,6 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
               <TextField
                 {...field}
                 label={setting.label}
-                placeholder={setting.placeholder || setting.defaultValue?.toString()}
                 helperText={
                   fieldState.error?.message || setting.description || ''
                 }
@@ -560,7 +580,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
    * Renders a password field with visibility toggle
    */
   const renderPasswordField = useCallback(
-    (setting: BaseSetting & { type: 'password' }) => {
+    (setting: PasswordSetting) => {
       const isVisible = isSettingVisible(setting, formValues);
       if (!isVisible) return null;
 
@@ -577,7 +597,6 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
                 {...field}
                 type={showPassword ? 'text' : 'password'}
                 label={setting.label}
-                placeholder={setting.placeholder}
                 helperText={
                   fieldState.error?.message || setting.description || ''
                 }
@@ -687,7 +706,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
    * Renders a multi-checkbox field
    */
   const renderMultiCheckboxField = useCallback(
-    (setting: BaseSetting & { type: 'multicheckbox'; options: Array<{ value: string; label: string }> }) => {
+    (setting: MultiCheckboxSetting) => {
       const isVisible = isSettingVisible(setting, formValues);
       if (!isVisible) return null;
 
@@ -805,7 +824,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
    * Renders a multi-select dropdown field
    */
   const renderMultiSelectField = useCallback(
-    (setting: BaseSetting & { type: 'multiselect'; options: Array<{ value: string; label: string }> }) => {
+    (setting: MultiSelectSetting) => {
       const isVisible = isSettingVisible(setting, formValues);
       if (!isVisible) return null;
 
@@ -877,7 +896,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
    * Renders a number input field
    */
   const renderNumberField = useCallback(
-    (setting: BaseSetting & { type: 'number'; min?: number; max?: number; step?: number }) => {
+    (setting: NumberSetting) => {
       const isVisible = isSettingVisible(setting, formValues);
       if (!isVisible) return null;
 
@@ -892,7 +911,6 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
                 {...field}
                 type="number"
                 label={setting.label}
-                placeholder={setting.placeholder || setting.defaultValue?.toString()}
                 helperText={
                   fieldState.error?.message || setting.description || ''
                 }
@@ -924,7 +942,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
    * Renders a time input field (HH:MM format)
    */
   const renderTimeField = useCallback(
-    (setting: BaseSetting & { type: 'time' }) => {
+    (setting: TimeSetting) => {
       const isVisible = isSettingVisible(setting, formValues);
       if (!isVisible) return null;
 
@@ -970,7 +988,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
    * Renders a duration input field (hours and minutes)
    */
   const renderDurationField = useCallback(
-    (setting: BaseSetting & { type: 'duration' }) => {
+    (setting: DurationSetting) => {
       const isVisible = isSettingVisible(setting, formValues);
       if (!isVisible) return null;
 
@@ -1048,7 +1066,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
    * Renders a rich text HTML editor field
    */
   const renderHtmlEditorField = useCallback(
-    (setting: BaseSetting & { type: 'htmleditor' }) => {
+    (setting: HtmlEditorSetting) => {
       const isVisible = isSettingVisible(setting, formValues);
       if (!isVisible) return null;
 
@@ -1060,7 +1078,9 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
           render={({ field, fieldState }) => (
             <Box sx={{ mb: 2 }}>
               <RichTextEditor
-                {...field}
+                name={field.name}
+                value={field.value as string | undefined}
+                onChange={field.onChange}
                 label={setting.label}
                 defaultValue={setting.defaultValue as string}
                 disabled={setting.readonly || loading || isSubmitting}
@@ -1084,7 +1104,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
    * Renders a file path input field
    */
   const renderFileField = useCallback(
-    (setting: BaseSetting & { type: 'file' | 'executable' }) => {
+    (setting: FileSetting | ExecutableSetting) => {
       const isVisible = isSettingVisible(setting, formValues);
       if (!isVisible) return null;
 
@@ -1098,7 +1118,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
               <TextField
                 {...field}
                 label={setting.label}
-                placeholder={setting.placeholder || '/path/to/file'}
+                placeholder="/path/to/file"
                 helperText={
                   fieldState.error?.message || setting.description || ''
                 }
@@ -1127,7 +1147,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
    * Renders a color picker field
    */
   const renderColorField = useCallback(
-    (setting: BaseSetting & { type: 'color' }) => {
+    (setting: ColorSetting) => {
       const isVisible = isSettingVisible(setting, formValues);
       if (!isVisible) return null;
 
@@ -1181,7 +1201,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
   /**
    * Renders a heading (non-editable section divider)
    */
-  const renderHeading = useCallback((setting: BaseSetting & { type: 'heading' }) => {
+  const renderHeading = useCallback((setting: HeadingSetting) => {
     return (
       <Box key={setting.name} sx={{ mb: 2, mt: 3 }}>
         <Typography variant="h6" gutterBottom>
@@ -1200,7 +1220,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
   /**
    * Renders a description (informational text block)
    */
-  const renderDescription = useCallback((setting: BaseSetting & { type: 'description' }) => {
+  const renderDescription = useCallback((setting: DescriptionSetting) => {
     return (
       <Box
         key={setting.name}
@@ -1232,49 +1252,43 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
    * Master field renderer - routes to appropriate renderer based on setting type
    */
   const renderField = useCallback(
-    (setting: BaseSetting) => {
+    (setting: Setting) => {
       switch (setting.type) {
         case 'text':
-          return renderTextField(setting as TextSetting);
+          return renderTextField(setting);
         case 'textarea':
-          return renderTextareaField(setting as BaseSetting & { type: 'textarea'; rows?: number });
+          return renderTextareaField(setting);
         case 'password':
-          return renderPasswordField(setting as BaseSetting & { type: 'password' });
+          return renderPasswordField(setting);
         case 'checkbox':
-          return renderCheckboxField(setting as CheckboxSetting);
+          return renderCheckboxField(setting);
         case 'multicheckbox':
-          return renderMultiCheckboxField(
-            setting as BaseSetting & { type: 'multicheckbox'; options: Array<{ value: string; label: string }> }
-          );
+          return renderMultiCheckboxField(setting);
         case 'select':
-          return renderSelectField(setting as SelectSetting);
+          return renderSelectField(setting);
         case 'multiselect':
-          return renderMultiSelectField(
-            setting as BaseSetting & { type: 'multiselect'; options: Array<{ value: string; label: string }> }
-          );
+          return renderMultiSelectField(setting);
         case 'number':
-          return renderNumberField(
-            setting as BaseSetting & { type: 'number'; min?: number; max?: number; step?: number }
-          );
+          return renderNumberField(setting);
         case 'time':
-          return renderTimeField(setting as BaseSetting & { type: 'time' });
+          return renderTimeField(setting);
         case 'duration':
-          return renderDurationField(setting as BaseSetting & { type: 'duration' });
+          return renderDurationField(setting);
         case 'htmleditor':
-          return renderHtmlEditorField(setting as BaseSetting & { type: 'htmleditor' });
+          return renderHtmlEditorField(setting);
         case 'file':
         case 'executable':
-          return renderFileField(setting as BaseSetting & { type: 'file' | 'executable' });
+          return renderFileField(setting);
         case 'color':
-          return renderColorField(setting as BaseSetting & { type: 'color' });
+          return renderColorField(setting);
         case 'heading':
-          return renderHeading(setting as BaseSetting & { type: 'heading' });
+          return renderHeading(setting);
         case 'description':
-          return renderDescription(setting as BaseSetting & { type: 'description' });
+          return renderDescription(setting);
         case 'email':
         case 'url':
           // Email and URL use text field with validation in schema
-          return renderTextField(setting as TextSetting);
+          return renderTextField(setting);
         default:
           // Default to text field for unknown types
           return renderTextField(setting as TextSetting);

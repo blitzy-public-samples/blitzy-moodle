@@ -58,7 +58,44 @@ export enum SettingType {
 
   /** Numeric input with min/max constraints */
   NUMBER = 'number',
+
+  /** Multiple checkbox selection with individual toggles */
+  MULTICHECKBOX = 'multicheckbox',
+
+  /** Multi-select dropdown with multiple selections */
+  MULTISELECT = 'multiselect',
+
+  /** Time input field (HH:MM format) */
+  TIME = 'time',
+
+  /** Duration input (hours and minutes) */
+  DURATION = 'duration',
+
+  /** Rich text HTML editor */
+  HTMLEDITOR = 'htmleditor',
+
+  /** Section heading (display only) */
+  HEADING = 'heading',
+
+  /** Information/description box (display only) */
+  DESCRIPTION = 'description',
 }
+
+// ============================================================================
+// Setting Value Types
+// ============================================================================
+
+/**
+ * Union type of all possible setting values.
+ * Defined before BaseSetting so it can be used in the value property.
+ */
+export type SettingValue = 
+  | string 
+  | number 
+  | boolean 
+  | null 
+  | string[] 
+  | { hours: number; minutes: number };
 
 // ============================================================================
 // Base Setting Interface
@@ -72,8 +109,8 @@ export interface BaseSetting {
   /** Unique setting identifier (matches Moodle config key) */
   name: string;
 
-  /** Current setting value */
-  value: string | number | boolean | null;
+  /** Current setting value (flexible type to accommodate all setting types) */
+  value: SettingValue;
 
   /** Human-readable label for the setting */
   label: string;
@@ -88,10 +125,24 @@ export interface BaseSetting {
   readonly: boolean;
 
   /** Default value when resetting or initializing */
-  defaultValue: string | number | boolean | null;
+  defaultValue: SettingValue;
 
   /** Type discriminator for union type narrowing */
   type: SettingType;
+
+  /** Optional validation rule for the setting */
+  validation?: string | RegExp;
+
+  /** Optional validation error message to display when validation fails */
+  validationMessage?: string;
+
+  /** Optional dependency on another setting (conditional rendering) */
+  dependsOn?: {
+    /** Name of the setting this depends on */
+    setting: string;
+    /** Required value(s) to show this setting */
+    value: SettingValue | SettingValue[];
+  };
 }
 
 // ============================================================================
@@ -252,6 +303,74 @@ export interface NumberSetting extends BaseSetting {
   step?: number;
 }
 
+/**
+ * Multiple checkbox setting with individual toggle controls.
+ */
+export interface MultiCheckboxSetting extends BaseSetting {
+  type: SettingType.MULTICHECKBOX;
+  value: string[];
+
+  /** Available checkbox options */
+  options: Array<{ value: string; label: string }>;
+}
+
+/**
+ * Multi-select dropdown setting allowing multiple selections.
+ */
+export interface MultiSelectSetting extends BaseSetting {
+  type: SettingType.MULTISELECT;
+  value: string[];
+
+  /** Available options for the multi-select */
+  options: SelectOption[];
+}
+
+/**
+ * Time input setting (HH:MM format).
+ */
+export interface TimeSetting extends BaseSetting {
+  type: SettingType.TIME;
+  value: string;
+}
+
+/**
+ * Duration input setting with separate hours and minutes fields.
+ */
+export interface DurationSetting extends BaseSetting {
+  type: SettingType.DURATION;
+  value: { hours: number; minutes: number };
+}
+
+/**
+ * Rich text HTML editor setting.
+ */
+export interface HtmlEditorSetting extends BaseSetting {
+  type: SettingType.HTMLEDITOR;
+  value: string;
+
+  /** Editor height in pixels */
+  height?: number;
+
+  /** Toolbar configuration (basic, full, etc.) */
+  toolbar?: string;
+}
+
+/**
+ * Heading setting for section organization (display only).
+ */
+export interface HeadingSetting extends BaseSetting {
+  type: SettingType.HEADING;
+  value: null;
+}
+
+/**
+ * Description/info box setting (display only).
+ */
+export interface DescriptionSetting extends BaseSetting {
+  type: SettingType.DESCRIPTION;
+  value: null;
+}
+
 // ============================================================================
 // Union Types for Settings
 // ============================================================================
@@ -271,12 +390,14 @@ export type Setting =
   | ExecutableSetting
   | TextareaSetting
   | PasswordSetting
-  | NumberSetting;
-
-/**
- * Union type of all possible setting values.
- */
-export type SettingValue = string | number | boolean | null | string[];
+  | NumberSetting
+  | MultiCheckboxSetting
+  | MultiSelectSetting
+  | TimeSetting
+  | DurationSetting
+  | HtmlEditorSetting
+  | HeadingSetting
+  | DescriptionSetting;
 
 // ============================================================================
 // Setting Organization Structures
@@ -505,6 +626,46 @@ export interface SettingUpdate {
 
   /** Section containing the setting */
   section: string;
+}
+
+/**
+ * Props for the SettingsForm component.
+ * Main form component for displaying and editing admin settings.
+ */
+export interface SettingsFormProps {
+  /**
+   * Array of setting categories containing settings to render.
+   * Each category contains a group of related settings organized into sections.
+   */
+  settings: SettingCategory[];
+
+  /**
+   * Callback function invoked when form is submitted successfully.
+   * Receives form values as key-value pairs where keys are setting names.
+   * @param data - Form values as Record<string, unknown>
+   * @returns Promise that resolves when save is complete
+   */
+  onSave: (data: Record<string, unknown>) => Promise<void>;
+
+  /**
+   * Optional callback function invoked when an error occurs during save operation.
+   * @param error - The error that occurred
+   */
+  onError?: (error: Error) => void;
+
+  /**
+   * Optional loading state to disable form during async operations.
+   * When true, displays loading indicators and disables all form controls.
+   * @default false
+   */
+  loading?: boolean;
+
+  /**
+   * Optional array of section IDs to expand by default on component mount.
+   * Useful for deep-linking to specific settings or maintaining user preferences.
+   * @default []
+   */
+  initialExpanded?: string[];
 }
 
 // ============================================================================
