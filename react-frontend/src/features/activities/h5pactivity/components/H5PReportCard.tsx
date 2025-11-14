@@ -31,7 +31,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import React from 'react';
+import type React from 'react';
 import {
   Card,
   CardContent,
@@ -148,14 +148,14 @@ function formatTimestamp(timestamp: number): string {
  * @param props - Component properties
  * @returns React element
  */
-const H5PReportCard: React.FC<H5PReportCardProps> = ({
+function H5PReportCard({
   attempt,
   reportUrl,
   compact = false,
   isScored = false,
   onClick,
   className,
-}) => {
+}: H5PReportCardProps): JSX.Element {
   const theme = useTheme();
 
   // Calculate derived values
@@ -403,7 +403,7 @@ const H5PReportCard: React.FC<H5PReportCardProps> = ({
       </CardActionArea>
     </Card>
   );
-};
+}
 
 // ============================================================================
 // Exports
