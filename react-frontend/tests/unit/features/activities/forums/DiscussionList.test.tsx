@@ -199,6 +199,7 @@ const renderWithProviders = (ui: React.ReactElement, options = {}) => {
 
 // Default props for DiscussionList
 const defaultProps = {
+  courseId: 1,
   forumId: 1,
   currentUser: mockCurrentUser,
   permissions: mockPermissions,
@@ -1142,8 +1143,8 @@ describe('DiscussionList Component', () => {
       await user.click(discussionLink);
 
       await waitFor(() => {
-        // URL format is /forums/{forumId}/discussions/{discussionId}
-        expect(mockNavigate).toHaveBeenCalledWith(`/forums/${defaultProps.forumId}/discussions/${firstDiscussion.id}`);
+        // URL format is /courses/{courseId}/forums/{forumId}/discussions/{discussionId}
+        expect(mockNavigate).toHaveBeenCalledWith(`/courses/${defaultProps.courseId}/forums/${defaultProps.forumId}/discussions/${firstDiscussion.id}`);
       });
     });
 
@@ -1516,8 +1517,8 @@ describe('DiscussionList Component', () => {
       discussionButton.focus();
       await user.keyboard('{Enter}');
 
-      // The URL format is /forums/{forumId}/discussions/{discussionId}
-      expect(mockNavigate).toHaveBeenCalledWith(`/forums/${defaultProps.forumId}/discussions/${expectedDiscussion.id}`);
+      // The URL format is /courses/{courseId}/forums/{forumId}/discussions/{discussionId}
+      expect(mockNavigate).toHaveBeenCalledWith(`/courses/${defaultProps.courseId}/forums/${defaultProps.forumId}/discussions/${expectedDiscussion.id}`);
     });
   });
 
