@@ -27,7 +27,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import React, { useMemo } from 'react';
+import type React from 'react';
+import { useMemo } from 'react';
 import {
   Typography,
   Box,
@@ -38,7 +39,6 @@ import {
 } from '@mui/material';
 import {
   CheckCircle,
-  Cancel,
   AttachFile,
   Image as ImageIcon,
   LocationOn,
@@ -50,8 +50,8 @@ import { format } from 'date-fns';
 import type {
   DatabaseField,
   FieldContent,
-  FieldType,
 } from '../types/data.types';
+import { FieldType } from '../types/data.types';
 import { formatNumber } from '@/utils/formatters';
 
 // ============================================================================
@@ -113,12 +113,12 @@ interface FieldRendererProps {
  * @param props - Component props
  * @returns Rendered field value
  */
-const FieldRenderer: React.FC<FieldRendererProps> = ({
+function FieldRenderer({
   field,
   value,
   mode = 'view',
   fileBaseUrl = '/api/v1/files/download',
-}) => {
+}: FieldRendererProps): React.ReactElement {
   /**
    * Memoized field rendering logic based on field type
    * Prevents unnecessary recalculations on re-renders
@@ -135,40 +135,40 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({
 
     // Render based on field type
     switch (field.type) {
-      case 'text':
+      case FieldType.Text:
         return renderTextField(value);
 
-      case 'textarea':
+      case FieldType.Textarea:
         return renderTextareaField(value);
 
-      case 'number':
+      case FieldType.Number:
         return renderNumberField(field, value);
 
-      case 'date':
+      case FieldType.Date:
         return renderDateField(value);
 
-      case 'menu':
+      case FieldType.Menu:
         return renderMenuField(value);
 
-      case 'checkbox':
+      case FieldType.Checkbox:
         return renderCheckboxField(value);
 
-      case 'radiobutton':
+      case FieldType.RadioButton:
         return renderRadioButtonField(value);
 
-      case 'file':
+      case FieldType.File:
         return renderFileField(value, fileBaseUrl);
 
-      case 'picture':
+      case FieldType.Picture:
         return renderPictureField(field, value, mode, fileBaseUrl);
 
-      case 'url':
+      case FieldType.URL:
         return renderUrlField(field, value);
 
-      case 'latlong':
+      case FieldType.LatLong:
         return renderLatLongField(field, value);
 
-      case 'multimenu':
+      case FieldType.MultiMenu:
         return renderMultiMenuField(value);
 
       default:
@@ -182,7 +182,7 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({
   }, [field, value, mode, fileBaseUrl]);
 
   return <Box>{renderedContent}</Box>;
-};
+}
 
 // ============================================================================
 // Field Type Rendering Functions
@@ -223,8 +223,8 @@ function renderTextField(value: FieldContent): React.ReactNode {
  * @returns Rendered textarea content
  */
 function renderTextareaField(value: FieldContent): React.ReactNode {
-  const content = value.content || '';
-  const format = value.content1 || '0';
+  const content = value.content ?? '';
+  const format = value.content1 ?? '0';
 
   // Format types: 0=MOODLE, 1=HTML, 2=PLAIN, 4=MARKDOWN
   // For React display, we treat formats 0, 1, and 4 as HTML-capable
@@ -282,7 +282,7 @@ function renderNumberField(
   field: DatabaseField,
   value: FieldContent
 ): React.ReactNode {
-  const numValue = parseFloat(value.content || '0');
+  const numValue = parseFloat(value.content ?? '0');
 
   // Handle invalid numbers
   if (isNaN(numValue)) {
@@ -295,7 +295,7 @@ function renderNumberField(
 
   // Get decimal places from param1 (default to 0)
   const decimals = parseInt(
-    (field as { param1?: string }).param1 || '0',
+    (field as { param1?: string }).param1 ?? '0',
     10
   );
 
@@ -329,7 +329,7 @@ function renderNumberField(
  * @returns Rendered date
  */
 function renderDateField(value: FieldContent): React.ReactNode {
-  const timestamp = parseInt(value.content || '0', 10);
+  const timestamp = parseInt(value.content ?? '0', 10);
 
   // Handle invalid or zero timestamps
   if (!timestamp || timestamp <= 0) {
@@ -395,7 +395,7 @@ function renderMenuField(value: FieldContent): React.ReactNode {
  * @returns Rendered checkbox selections
  */
 function renderCheckboxField(value: FieldContent): React.ReactNode {
-  const content = value.content || '';
+  const content = value.content ?? '';
 
   // Split by ## separator
   const selections = content.split('##').filter((item) => item.trim() !== '');
@@ -410,9 +410,9 @@ function renderCheckboxField(value: FieldContent): React.ReactNode {
 
   return (
     <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-      {selections.map((selection, index) => (
+      {selections.map((selection) => (
         <Chip
-          key={index}
+          key={selection}
           icon={<CheckCircle />}
           label={selection}
           size="small"
@@ -460,8 +460,8 @@ function renderFileField(
   value: FieldContent,
   fileBaseUrl: string
 ): React.ReactNode {
-  const filename = value.content || '';
-  const displayName = value.content1 || filename;
+  const filename = value.content ?? '';
+  const displayName = value.content1 ?? filename;
 
   if (!filename) {
     return (
@@ -522,8 +522,8 @@ function renderPictureField(
   mode: 'view' | 'list',
   fileBaseUrl: string
 ): React.ReactNode {
-  const filename = value.content || '';
-  const altText = value.content1 || 'Image';
+  const filename = value.content ?? '';
+  const altText = value.content1 ?? 'Image';
 
   if (!filename) {
     return (
@@ -577,7 +577,7 @@ function renderPictureField(
       src={imageUrl}
       alt={altText}
       sx={{
-        maxWidth: width || '100%',
+        maxWidth: width ?? '100%',
         maxHeight: height,
         width: width ? `${width}px` : 'auto',
         height: height ? `${height}px` : 'auto',
@@ -598,16 +598,16 @@ function renderPictureField(
  * - content1: Link text (if provided)
  * - Renders as clickable link
  *
- * @param field - Field definition (for future param support)
+ * @param _field - Field definition (for future param support)
  * @param value - Field content with URL and optional link text
  * @returns Rendered URL link
  */
 function renderUrlField(
-  field: DatabaseField,
+  _field: DatabaseField,
   value: FieldContent
 ): React.ReactNode {
-  const url = value.content || '';
-  const linkText = value.content1 || url;
+  const url = value.content ?? '';
+  const linkText = value.content1 ?? url;
 
   if (!url) {
     return (
@@ -652,16 +652,16 @@ function renderUrlField(
  * - param1: Controls which map services to show links for
  * - Displays coordinates and optionally map links
  *
- * @param field - Field definition (for future map link support)
+ * @param _field - Field definition (for future map link support)
  * @param value - Field content with latitude and longitude
  * @returns Rendered coordinates
  */
 function renderLatLongField(
-  field: DatabaseField,
+  _field: DatabaseField,
   value: FieldContent
 ): React.ReactNode {
-  const latitude = value.content || '';
-  const longitude = value.content1 || '';
+  const latitude = value.content ?? '';
+  const longitude = value.content1 ?? '';
 
   if (!latitude || !longitude) {
     return (
@@ -731,7 +731,7 @@ function renderLatLongField(
  * @returns Rendered multi-menu selections
  */
 function renderMultiMenuField(value: FieldContent): React.ReactNode {
-  const content = value.content || '';
+  const content = value.content ?? '';
 
   // Split by ## separator
   const selections = content.split('##').filter((item) => item.trim() !== '');
@@ -746,9 +746,9 @@ function renderMultiMenuField(value: FieldContent): React.ReactNode {
 
   return (
     <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-      {selections.map((selection, index) => (
+      {selections.map((selection) => (
         <Chip
-          key={index}
+          key={selection}
           label={selection}
           size="small"
           color="primary"
