@@ -85,6 +85,7 @@ require_once(__DIR__ . '/../../lib/api_exception.php');
 // Import BigBlueButton classes
 use mod_bigbluebuttonbn\instance;
 use mod_bigbluebuttonbn\recording;
+use mod_bigbluebuttonbn\local\exceptions\server_not_available_exception;
 
 /**
  * API endpoint class for BigBlueButton recordings retrieval.
@@ -162,80 +163,116 @@ class BigBlueButtonRecordingsEndpoint extends ApiBase {
         // Uses Moodle's capability system to enforce authorization
         $this->checkCapability('mod/bigbluebuttonbn:view', $instance->get_context());
         
-        // Fetch recordings for this instance using existing Moodle function
-        // Parameters:
-        // - $instance: The BigBlueButton instance object
-        // - true: Include imported recordings (recordings from other instances)
-        // - false: Not only imported (include all recordings)
-        // - true: Filter by groups according to instance group settings
-        $recordings = recording::get_recordings_for_instance(
-            $instance,
-            true,  // Include imported recordings
-            false, // Not only imported
-            true   // Filter by groups
-        );
-        
-        // Format recordings data for API response
-        // Extract relevant metadata from each recording object
-        $recordingsData = [];
-        
-        foreach ($recordings as $recording) {
-            // Build recording data structure with all essential metadata
-            $recordingData = [
-                'id' => $recording->get('id'),
-                'recordingid' => $recording->get('recordingid'),
-                'name' => $recording->get('name'),
-                'description' => $recording->get('description'),
-                'starttime' => $recording->get('starttime'),
-                'endtime' => $recording->get('endtime'),
-                'published' => $recording->get('published'),
-                'protected' => $recording->get('protected'),
-            ];
+        try {
+            // Fetch recordings for this instance using existing Moodle function
+            // Parameters:
+            // - $instance: The BigBlueButton instance object
+            // - true: Include imported recordings (recordings from other instances)
+            // - false: Not only imported (include all recordings)
+            // - true: Filter by groups according to instance group settings
+            $recordings = recording::get_recordings_for_instance(
+                $instance,
+                true,  // Include imported recordings
+                false, // Not only imported
+                true   // Filter by groups
+            );
             
-            // Calculate duration if both start and end times are available
-            if ($recordingData['starttime'] && $recordingData['endtime']) {
-                $recordingData['duration'] = $recordingData['endtime'] - $recordingData['starttime'];
-            } else {
-                $recordingData['duration'] = null;
-            }
+            // Format recordings data for API response
+            // Extract relevant metadata from each recording object
+            $recordingsData = [];
             
-            // Get playback URLs
-            // The get_playbacks() method returns an array of playback objects
-            // Each playback contains type, url, and length information
-            $playbacks = $recording->get('playbacks');
-            $playbackUrls = [];
-            
-            if (is_array($playbacks) && !empty($playbacks)) {
-                foreach ($playbacks as $playback) {
-                    // Each playback is already formatted with Moodle URL
-                    // Extract the URL and type for the API response
-                    $playbackUrls[] = [
-                        'type' => $playback['type'] ?? 'presentation',
-                        'url' => isset($playback['url']) ? $playback['url']->out(false) : null,
-                        'length' => $playback['length'] ?? null,
-                    ];
+            foreach ($recordings as $recording) {
+                // Build recording data structure with all essential metadata
+                $recordingData = [
+                    'id' => $recording->get('id'),
+                    'recordingid' => $recording->get('recordingid'),
+                    'name' => $recording->get('name'),
+                    'description' => $recording->get('description'),
+                    'starttime' => $recording->get('starttime'),
+                    'endtime' => $recording->get('endtime'),
+                    'published' => $recording->get('published'),
+                    'protected' => $recording->get('protected'),
+                ];
+                
+                // Calculate duration if both start and end times are available
+                if ($recordingData['starttime'] && $recordingData['endtime']) {
+                    $recordingData['duration'] = $recordingData['endtime'] - $recordingData['starttime'];
+                } else {
+                    $recordingData['duration'] = null;
                 }
+                
+                // Get playback URLs
+                // The get_playbacks() method returns an array of playback objects
+                // Each playback contains type, url, and length information
+                $playbacks = $recording->get('playbacks');
+                $playbackUrls = [];
+                
+                if (is_array($playbacks) && !empty($playbacks)) {
+                    foreach ($playbacks as $playback) {
+                        // Each playback is already formatted with Moodle URL
+                        // Extract the URL and type for the API response
+                        $playbackUrls[] = [
+                            'type' => $playback['type'] ?? 'presentation',
+                            'url' => isset($playback['url']) ? $playback['url']->out(false) : null,
+                            'length' => $playback['length'] ?? null,
+                        ];
+                    }
+                }
+                
+                $recordingData['playback_urls'] = $playbackUrls;
+                
+                // Add additional metadata fields
+                $recordingData['imported'] = $recording->get('imported');
+                $recordingData['groupid'] = $recording->get('groupid');
+                $recordingData['status'] = $recording->get('status');
+                $recordingData['timecreated'] = $recording->get('timecreated');
+                $recordingData['timemodified'] = $recording->get('timemodified');
+                
+                // Add to response array
+                $recordingsData[] = $recordingData;
             }
             
-            $recordingData['playback_urls'] = $playbackUrls;
+            // Return success response with recordings array
+            // If no recordings exist, returns empty array (not an error condition)
+            $this->success([
+                'recordings' => $recordingsData,
+                'count' => count($recordingsData),
+            ]);
             
-            // Add additional metadata fields
-            $recordingData['imported'] = $recording->get('imported');
-            $recordingData['groupid'] = $recording->get('groupid');
-            $recordingData['status'] = $recording->get('status');
-            $recordingData['timecreated'] = $recording->get('timecreated');
-            $recordingData['timemodified'] = $recording->get('timemodified');
-            
-            // Add to response array
-            $recordingsData[] = $recordingData;
+        } catch (server_not_available_exception $e) {
+            // Handle BBB server unavailability
+            // This exception is thrown by the BigBlueButton proxy when it cannot
+            // communicate with the BBB server
+            throw new ServerException(
+                'BigBlueButton server is not available',
+                [
+                    'instanceId' => $instanceId,
+                    'error' => $e->getMessage(),
+                    'suggestion' => 'Please check BBB server status and try again later'
+                ]
+            );
+        } catch (moodle_exception $e) {
+            // Handle other Moodle exceptions
+            // These might include database errors, configuration issues, etc.
+            throw new ServerException(
+                'Error retrieving recordings: ' . $e->getMessage(),
+                [
+                    'instanceId' => $instanceId,
+                    'errorCode' => $e->errorcode ?? 'unknown',
+                    'module' => $e->module ?? 'unknown'
+                ]
+            );
+        } catch (Exception $e) {
+            // Handle any other unexpected exceptions
+            throw new ServerException(
+                'Unexpected error occurred while retrieving recordings',
+                [
+                    'instanceId' => $instanceId,
+                    'error' => $e->getMessage(),
+                    'type' => get_class($e)
+                ]
+            );
         }
-        
-        // Return success response with recordings array
-        // If no recordings exist, returns empty array (not an error condition)
-        $this->success([
-            'recordings' => $recordingsData,
-            'count' => count($recordingsData),
-        ]);
     }
     
     /**
