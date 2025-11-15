@@ -156,7 +156,7 @@ export function mockAssignment(overrides: DeepPartial<Assignment> = {}): Assignm
   const fourteenDaysFromNow = generateTimestamp(14);
 
   const defaults: Assignment = {
-    id: 1,
+    id: overrides.id !== undefined ? overrides.id : generateAssignmentId(),
     course: 1,
     name: 'Test Assignment',
     intro: 'This is a test assignment for unit testing',
@@ -236,7 +236,7 @@ export function mockAssignmentSubmission(
   const currentTimestamp = generateTimestamp();
 
   const defaults: AssignmentSubmission = {
-    id: 1,
+    id: overrides.id !== undefined ? overrides.id : generateSubmissionId(),
     assignment: 1,
     userid: 2,
     timecreated: currentTimestamp,
@@ -519,6 +519,117 @@ export function mockGradingScenario(assignmentid: AssignmentId): AssignmentSubmi
       userid: 6,
     }),
   ];
+}
+
+/**
+ * Creates a mock assignment that is past due
+ * 
+ * @param overrides - Optional properties to override defaults
+ * @returns Assignment with due date in the past
+ * 
+ * @example
+ * ```typescript
+ * const overdueAssignment = mockOverdueAssignment({ name: 'Late Assignment' });
+ * ```
+ */
+export function mockOverdueAssignment(
+  overrides: DeepPartial<Assignment> = {}
+): Assignment {
+  const threeDaysAgo = generateTimestamp(-3);
+  return mockAssignment({
+    duedate: threeDaysAgo,
+    cutoffdate: generateTimestamp(-1),
+    ...overrides,
+  });
+}
+
+/**
+ * Creates a mock assignment with a future due date
+ * 
+ * @param overrides - Optional properties to override defaults
+ * @returns Assignment with due date in the future
+ * 
+ * @example
+ * ```typescript
+ * const upcomingAssignment = mockUpcomingAssignment({ duedate: generateTimestamp(10) });
+ * ```
+ */
+export function mockUpcomingAssignment(
+  overrides: DeepPartial<Assignment> = {}
+): Assignment {
+  return mockAssignment({
+    duedate: generateTimestamp(7),
+    cutoffdate: generateTimestamp(14),
+    allowsubmissionsfromdate: generateTimestamp(1), // 1 day in future - submission period hasn't started yet
+    ...overrides,
+  });
+}
+
+/**
+ * Creates a mock assignment configured for team submissions
+ * 
+ * @param overrides - Optional properties to override defaults
+ * @returns Assignment with team submission enabled
+ * 
+ * @example
+ * ```typescript
+ * const teamAssignment = mockTeamAssignment({ requireallteammemberssubmit: true });
+ * ```
+ */
+export function mockTeamAssignment(
+  overrides: DeepPartial<Assignment> = {}
+): Assignment {
+  return mockAssignment({
+    teamsubmission: true,
+    requireallteammemberssubmit: false,
+    ...overrides,
+  });
+}
+
+/**
+ * Creates a mock submission that has been graded
+ * 
+ * @param overrides - Optional properties to override defaults
+ * @returns AssignmentSubmission with graded status
+ * 
+ * @example
+ * ```typescript
+ * const gradedSubmission = mockGradedSubmission({ grade: 85 });
+ * ```
+ */
+export function mockGradedSubmission(
+  overrides: DeepPartial<AssignmentSubmission> = {}
+): AssignmentSubmission {
+  return mockAssignmentSubmission({
+    status: 'submitted',
+    grade: 85,
+    gradingstatus: 'graded',
+    grader: 1,
+    ...overrides,
+  });
+}
+
+/**
+ * Creates a mock submission that was submitted after the due date
+ * 
+ * @param overrides - Optional properties to override defaults
+ * @returns AssignmentSubmission with late submission timestamp
+ * 
+ * @example
+ * ```typescript
+ * const lateSubmission = mockLateSubmission({ assignmentid: 5 });
+ * ```
+ */
+export function mockLateSubmission(
+  overrides: DeepPartial<AssignmentSubmission> = {}
+): AssignmentSubmission {
+  const assignment = mockOverdueAssignment();
+  return mockAssignmentSubmission({
+    assignment: assignment.id,
+    timemodified: generateTimestamp(1),
+    status: 'submitted',
+    ...overrides,
+  });
 }
 
 /**
