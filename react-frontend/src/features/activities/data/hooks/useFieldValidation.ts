@@ -475,12 +475,16 @@ function createPictureSchema(field: Extract<DatabaseField, { type: 'picture' }>)
  * @returns Zod schema for validation
  */
 function createURLSchema(field: Extract<DatabaseField, { type: 'url' }>): z.ZodTypeAny {
-  const schema = z.string().url({ message: 'Must be a valid URL' });
-
   // Handle required constraint
   if (field.required) {
-    return schema.min(1, { message: 'This field is required' }) as z.ZodTypeAny;
+    // Use pipe to ensure required check happens first before URL validation
+    // This prevents double error messages for empty required fields
+    const nonEmptySchema = z.string().min(1, { message: 'This field is required' });
+    const urlSchema = z.string().url({ message: 'Must be a valid URL' });
+    return nonEmptySchema.pipe(urlSchema) as z.ZodTypeAny;
   } 
+    // For optional fields, allow empty string or valid URL
+    const schema = z.string().url({ message: 'Must be a valid URL' });
     return schema.optional().or(z.literal('')) as z.ZodTypeAny;
   
 }
