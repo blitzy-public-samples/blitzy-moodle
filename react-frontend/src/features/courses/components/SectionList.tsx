@@ -475,13 +475,13 @@ export default function SectionList({
                               checked={activity.completed}
                               disabled
                               checkedIcon={
-                                <CheckCircle color="success" aria-label="Activity completed" />
+                                <CheckCircle color="success" aria-label={`${activity.name} completed`} />
                               }
                               sx={{ mr: 1 }}
                               inputProps={{
                                 'aria-label': activity.completed
-                                  ? 'Activity is completed'
-                                  : 'Activity is not completed',
+                                  ? `${activity.name} is completed`
+                                  : `${activity.name} is not completed`,
                               }}
                             />
                           )}
@@ -493,8 +493,8 @@ export default function SectionList({
                               sx={{ mr: 1 }}
                               aria-label={
                                 activity.visible
-                                  ? 'Activity is visible to students'
-                                  : 'Activity is hidden from students'
+                                  ? `${activity.name} is visible to students`
+                                  : `${activity.name} is hidden from students`
                               }
                             >
                               {activity.visible ? (

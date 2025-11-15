@@ -259,7 +259,7 @@ describe('SectionList', () => {
     it('renders each section as Accordion component', () => {
       renderSectionList({ sections: sampleSections.slice(0, 2) });
 
-      const accordions = screen.getAllByRole('region');
+      const accordions = screen.getAllByRole('region', { hidden: true });
       expect(accordions).toHaveLength(2);
     });
 
@@ -747,7 +747,7 @@ describe('SectionList', () => {
 
       await waitFor(() => {
         // First activity (Introduction Assignment) is completed
-        const checkbox = screen.getByLabelText('Activity is completed');
+        const checkbox = screen.getByLabelText('Introduction Assignment is completed');
         expect(checkbox).toBeChecked();
       });
     });
@@ -766,7 +766,7 @@ describe('SectionList', () => {
       );
 
       await waitFor(() => {
-        const checkbox = screen.getByLabelText('Activity is not completed');
+        const checkbox = screen.getByLabelText('Test Activity is not completed');
         expect(checkbox).not.toBeChecked();
       });
     });
@@ -782,7 +782,7 @@ describe('SectionList', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByLabelText('Activity completed')).toBeInTheDocument();
+        expect(screen.getByLabelText('Introduction Assignment completed')).toBeInTheDocument();
       });
     });
   });
@@ -804,7 +804,7 @@ describe('SectionList', () => {
 
       await waitFor(() => {
         const visibilityIcons = screen.getAllByLabelText(
-          /activity is visible to students|activity is hidden from students/i
+          /is visible to students|is hidden from students/i
         );
         expect(visibilityIcons.length).toBeGreaterThan(0);
       });
@@ -822,7 +822,7 @@ describe('SectionList', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByLabelText('Activity is visible to students')
+          screen.getByLabelText('Introduction Assignment is visible to students')
         ).toBeInTheDocument();
       });
     });
@@ -840,7 +840,7 @@ describe('SectionList', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByLabelText('Activity is hidden from students')
+          screen.getByLabelText('Activity 1 is hidden from students')
         ).toBeInTheDocument();
       });
     });
@@ -1064,7 +1064,7 @@ describe('SectionList', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByLabelText('Activity is completed')).toBeInTheDocument();
+        expect(screen.getByLabelText('Introduction Assignment is completed')).toBeInTheDocument();
       });
     });
 
@@ -1161,7 +1161,7 @@ describe('SectionList', () => {
 
       renderSectionList({ sections: manySections });
 
-      expect(screen.getAllByRole('region')).toHaveLength(15);
+      expect(screen.getAllByRole('region', { hidden: true })).toHaveLength(15);
     });
 
     it('expand/collapse states independent', async () => {
