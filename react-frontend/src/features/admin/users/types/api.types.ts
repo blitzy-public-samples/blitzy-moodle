@@ -567,6 +567,20 @@ export type DeleteUserResult = ApiResult<{ userId: UserId }>;
  */
 export type BulkActionResult = ApiResult<BulkActionResultData>;
 
+/**
+ * Result type for POST /api/v1/admin/users/{id}/suspend
+ *
+ * Union type representing either a successful user suspension or an error.
+ */
+export type SuspendUserResult = ApiResult<User>;
+
+/**
+ * Result type for POST /api/v1/admin/users/{id}/confirm
+ *
+ * Union type representing either a successful user confirmation or an error.
+ */
+export type ConfirmUserResult = ApiResult<User>;
+
 // ============================================================================
 // Type Guards
 // ============================================================================
@@ -649,5 +663,29 @@ export function isDeleteUserSuccess(
 export function isBulkActionSuccess(
   result: BulkActionResult
 ): result is BulkActionResponse {
+  return result.success === true;
+}
+
+/**
+ * Type guard to check if an API result is a successful SuspendUserResponse
+ *
+ * @param result - The API result to check
+ * @returns True if the result is a successful response, false if it's an error
+ */
+export function isSuspendUserSuccess(
+  result: SuspendUserResult
+): result is SuspendUserResponse {
+  return result.success === true;
+}
+
+/**
+ * Type guard to check if an API result is a successful ConfirmUserResponse
+ *
+ * @param result - The API result to check
+ * @returns True if the result is a successful response, false if it's an error
+ */
+export function isConfirmUserSuccess(
+  result: ConfirmUserResult
+): result is ConfirmUserResponse {
   return result.success === true;
 }
