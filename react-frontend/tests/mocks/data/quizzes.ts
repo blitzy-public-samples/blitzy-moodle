@@ -468,7 +468,7 @@ export function mockQuizArray(
   for (let i = 0; i < count; i++) {
     const quiz = mockQuiz({
       ...baseOverrides,
-      id: generateQuizId(),
+      id: i + 1, // Sequential IDs starting from 1
       name: `Quiz ${i + 1}`,
       ...(courseid !== undefined && { course: courseid }),
     });
@@ -518,7 +518,7 @@ export function mockAttemptArray(
   for (let i = 0; i < count; i++) {
     const attempt = mockQuizAttempt({
       ...baseOverrides,
-      id: generateAttemptId(),
+      id: i + 1, // Sequential IDs starting from 1
       quiz: quizid,
       userid: userid,
       attempt: i + 1, // Sequential attempt numbers
