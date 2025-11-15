@@ -194,7 +194,7 @@ export function getRandomEventType(): string {
  */
 export function mockMessage(overrides: DeepPartial<Message> = {}): Message {
   const defaultMessage: Message = {
-    id: 1,
+    id: generateMessageId(),
     useridfrom: 1,
     useridto: 2,
     subject: 'Test Message',
@@ -227,7 +227,7 @@ export function mockMessage(overrides: DeepPartial<Message> = {}): Message {
  * Creates a mock read message
  * 
  * Convenience factory for creating messages that have been read by the recipient.
- * Sets timeread to 5 minutes ago by default.
+ * Sets timecreated to 10 minutes ago and timeread to 5 minutes ago by default.
  * 
  * @param {DeepPartial<Message>} [overrides={}] - Partial message properties to override
  * @returns {Message} Message with timeread set
@@ -235,6 +235,7 @@ export function mockMessage(overrides: DeepPartial<Message> = {}): Message {
  * @example
  * const readMessage = mockReadMessage();
  * console.log(readMessage.timeread); // timestamp 5 minutes ago
+ * console.log(readMessage.timecreated); // timestamp 10 minutes ago
  * 
  * @example
  * // Read message 1 hour ago
@@ -244,6 +245,7 @@ export function mockMessage(overrides: DeepPartial<Message> = {}): Message {
  */
 export function mockReadMessage(overrides: DeepPartial<Message> = {}): Message {
   return mockMessage({
+    timecreated: generateTimestamp(10),
     timeread: generateTimestamp(5),
     ...overrides,
   });
@@ -292,7 +294,7 @@ export function mockUnreadMessage(overrides: DeepPartial<Message> = {}): Message
  * });
  */
 export function mockMessageArray(
-  count: number,
+  count: number = 5,
   useridfrom?: UserId,
   useridto?: UserId,
   overrides: DeepPartial<Message> = {}
@@ -354,7 +356,7 @@ export function mockMessageArray(
  */
 export function mockNotification(overrides: DeepPartial<Notification> = {}): Notification {
   const defaultNotification: Notification = {
-    id: 1,
+    id: generateNotificationId(),
     useridfrom: 1,
     useridto: 2,
     subject: 'Test Notification',
@@ -382,37 +384,41 @@ export function mockNotification(overrides: DeepPartial<Notification> = {}): Not
  * Generates multiple notifications with unique IDs, random components/event types,
  * and sequential timestamps. Useful for testing notification lists and feeds.
  * 
- * @param {UserId} useridto - Recipient user ID for all notifications
- * @param {number} count - Number of notifications to generate
+ * @param {number} [count=5] - Number of notifications to generate
+ * @param {UserId} [useridto] - Recipient user ID for all notifications (defaults to 2)
  * @param {DeepPartial<Notification>} [overrides={}] - Overrides applied to all notifications
  * @returns {Notification[]} Array of notifications with unique IDs
  * 
  * @example
- * // Generate 5 notifications for user 10
- * const notifications = mockNotificationArray(10, 5);
+ * // Generate 5 notifications with default settings
+ * const notifications = mockNotificationArray();
+ * 
+ * @example
+ * // Generate 3 notifications for user 10
+ * const notifications = mockNotificationArray(3, 10);
  * 
  * @example
  * // Generate 3 read notifications
- * const readNotifications = mockNotificationArray(5, 3, {
+ * const readNotifications = mockNotificationArray(3, 5, {
  *   timeread: generateTimestamp(10)
  * });
  * 
  * @example
  * // Generate 10 assignment notifications
- * const assignNotifications = mockNotificationArray(8, 10, {
+ * const assignNotifications = mockNotificationArray(10, 8, {
  *   component: 'mod_assign',
  *   eventtype: 'assign_notification'
  * });
  */
 export function mockNotificationArray(
-  useridto: UserId,
-  count: number,
+  count: number = 5,
+  useridto?: UserId,
   overrides: DeepPartial<Notification> = {}
 ): Notification[] {
   return Array.from({ length: count }, (_, index) =>
     mockNotification({
       id: index + 1,
-      useridto,
+      useridto: useridto ?? 2,
       timecreated: generateTimestamp(count - index),
       component: getRandomComponent(),
       eventtype: getRandomEventType(),
@@ -461,7 +467,7 @@ export function mockNotificationArray(
  */
 export function mockConversation(overrides: DeepPartial<Conversation> = {}): Conversation {
   const defaultConversation: Conversation = {
-    id: 1,
+    id: generateConversationId(),
     type: 1,
     name: undefined,
     enabled: true,
