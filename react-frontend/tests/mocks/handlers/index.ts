@@ -15,6 +15,7 @@
  * - choices: Choice activity endpoints (results, responses)
  * - feedback: Feedback activity endpoints (questions, responses, analysis)
  * - h5p: H5P activity endpoints (attempts, user attempts)
+ * - grades: Gradebook endpoints (course grades, user grades, items, categories, export, report)
  * - admin: Admin endpoints (settings, users, roles, plugins)
  * 
  * Usage:
@@ -41,6 +42,7 @@ import { forumsHandlers } from './forums';
 import { choicesHandlers } from './choices';
 import { feedbackHandlers } from './feedback';
 import { h5pHandlers } from './h5p';
+import { gradesHandlers } from './grades';
 import { adminHandlers } from './admin';
 import { filesHandlers } from './files';
 
@@ -60,7 +62,8 @@ import { filesHandlers } from './files';
  * 7. Choices (1 handler)
  * 8. Feedback (multiple handlers)
  * 9. H5P (2 handlers)
- * 10. Admin (multiple handlers)
+ * 10. Grades (9 handlers)
+ * 11. Admin (multiple handlers)
  * 
  * Total handler count varies based on feature implementation.
  */
@@ -74,6 +77,7 @@ export const handlers = [
   ...choicesHandlers,
   ...feedbackHandlers,
   ...h5pHandlers,
+  ...gradesHandlers,
   ...adminHandlers,
   ...filesHandlers,
 ];
@@ -100,6 +104,7 @@ export {
   choicesHandlers,
   feedbackHandlers,
   h5pHandlers,
+  gradesHandlers,
   adminHandlers,
   filesHandlers,
 };

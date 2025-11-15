@@ -146,6 +146,7 @@ interface UserGradesResponse {
  */
 interface GradeUpdateRequest {
   rawgrade?: number;
+  finalgrade?: number; // Alias for rawgrade
   feedback?: string;
   feedbackformat?: number;
   excluded?: boolean;
@@ -168,14 +169,8 @@ interface CategoryCreateRequest {
 
 /**
  * Gradebook report request
+ * Note: Interface removed - will be defined when report handlers are implemented
  */
-interface GradebookReportRequest {
-  courseid: number;
-  userid?: number;
-  reportType: 'user' | 'grader' | 'overview' | 'outcomes' | 'singleview';
-  dateFrom?: number;
-  dateTo?: number;
-}
 
 /**
  * Mock grade data for various courses
@@ -533,6 +528,49 @@ const mockGradebooks: Record<number, CourseGradebook> = {
         contributionToCategory: 89.0,
         contributionToCourse: 26.7,
       },
+      // Extra assignment for testing update operations
+      {
+        id: 5001,
+        courseid: 1,
+        categoryid: 1,
+        itemname: 'Extra Credit Assignment',
+        itemtype: 'mod',
+        itemmodule: 'assign',
+        iteminstance: 21,
+        gradetype: 1,
+        grademax: 100,
+        grademin: 0,
+        gradepass: 60,
+        multfactor: 1.0,
+        plusfactor: 0.0,
+        aggregationcoef: 0.0,
+        aggregationcoef2: 1.0,
+        weightoverride: false,
+        sortorder: 8,
+        display: 1,
+        decimals: 2,
+        hidden: false,
+        locked: false,
+        categoryname: 'Assignments',
+        weight: 25,
+        grade: {
+          id: 5001001,
+          userid: 42,
+          rawgrade: 80,
+          finalgrade: 80,
+          feedback: '',
+          feedbackformat: 1,
+          hidden: false,
+          locked: false,
+          overridden: false,
+          excluded: false,
+          timemodified: Date.now() - 86400000 * 5,
+        },
+        percentage: 80,
+        lettergrade: 'B-',
+        contributionToCategory: 20.0,
+        contributionToCourse: 8.0,
+      },
       // Course total (computed)
       {
         id: 1000,
@@ -756,23 +794,252 @@ const mockGradebooks: Record<number, CourseGradebook> = {
     ],
     students: [],
   },
+  // Course 101: Test course for ad-hoc unit tests
+  101: {
+    courseid: 101,
+    coursename: 'Test Course for Validation',
+    aggregation: 'AGGREGATION_MEAN_WEIGHTED',
+    canViewAllGrades: true,
+    canEditGrades: true,
+    categories: [
+      {
+        id: 101,
+        courseid: 101,
+        depth: 1,
+        path: '/101',
+        fullname: 'Tests',
+        aggregation: 'AGGREGATION_MEAN_SIMPLE',
+        keephigh: 0,
+        droplow: 0,
+        aggregateonlygraded: true,
+        aggregateoutcomes: false,
+        hidden: false,
+        locked: false,
+        weight: 50,
+      },
+      {
+        id: 102,
+        courseid: 101,
+        depth: 1,
+        path: '/102',
+        fullname: 'Projects',
+        aggregation: 'AGGREGATION_SUM',
+        keephigh: 0,
+        droplow: 0,
+        aggregateonlygraded: false,
+        aggregateoutcomes: false,
+        hidden: false,
+        locked: false,
+        weight: 50,
+      },
+    ],
+    items: [
+      // Visible test item
+      {
+        id: 10101,
+        courseid: 101,
+        categoryid: 101,
+        itemname: 'Test 1: Visible',
+        itemtype: 'mod',
+        itemmodule: 'quiz',
+        iteminstance: 101,
+        gradetype: 1,
+        grademax: 100,
+        grademin: 0,
+        gradepass: 60,
+        multfactor: 1.0,
+        plusfactor: 0.0,
+        aggregationcoef: 0.0,
+        aggregationcoef2: 1.0,
+        weightoverride: false,
+        sortorder: 1,
+        display: 1,
+        decimals: 2,
+        hidden: false,
+        locked: false,
+        categoryname: 'Tests',
+        weight: 50,
+        grade: {
+          id: 101001,
+          userid: 1,
+          rawgrade: 90,
+          finalgrade: 90,
+          feedback: 'Excellent work',
+          feedbackformat: 1,
+          hidden: false,
+          locked: false,
+          overridden: false,
+          excluded: false,
+          timemodified: Date.now() - 86400000 * 3,
+        },
+        percentage: 90,
+        lettergrade: 'A-',
+        contributionToCategory: 45,
+        contributionToCourse: 22.5,
+      },
+      // Hidden test item (for filtering tests)
+      {
+        id: 10102,
+        courseid: 101,
+        categoryid: 101,
+        itemname: 'Test 2: Hidden',
+        itemtype: 'mod',
+        itemmodule: 'quiz',
+        iteminstance: 102,
+        gradetype: 1,
+        grademax: 100,
+        grademin: 0,
+        gradepass: 60,
+        multfactor: 1.0,
+        plusfactor: 0.0,
+        aggregationcoef: 0.0,
+        aggregationcoef2: 1.0,
+        weightoverride: false,
+        sortorder: 2,
+        display: 1,
+        decimals: 2,
+        hidden: true, // HIDDEN ITEM
+        locked: false,
+        categoryname: 'Tests',
+        weight: 50,
+        grade: {
+          id: 101002,
+          userid: 1,
+          rawgrade: 75,
+          finalgrade: 75,
+          feedback: 'Good',
+          feedbackformat: 1,
+          hidden: true,
+          locked: false,
+          overridden: false,
+          excluded: false,
+          timemodified: Date.now() - 86400000 * 2,
+        },
+        percentage: 75,
+        lettergrade: 'C',
+        contributionToCategory: 37.5,
+        contributionToCourse: 18.75,
+      },
+      // Visible project item
+      {
+        id: 10103,
+        courseid: 101,
+        categoryid: 102,
+        itemname: 'Project 1: Visible',
+        itemtype: 'mod',
+        itemmodule: 'assign',
+        iteminstance: 101,
+        gradetype: 1,
+        grademax: 100,
+        grademin: 0,
+        gradepass: 60,
+        multfactor: 1.0,
+        plusfactor: 0.0,
+        aggregationcoef: 0.0,
+        aggregationcoef2: 1.0,
+        weightoverride: false,
+        sortorder: 3,
+        display: 1,
+        decimals: 2,
+        hidden: false,
+        locked: false,
+        categoryname: 'Projects',
+        weight: 100,
+        grade: {
+          id: 101003,
+          userid: 1,
+          rawgrade: 88,
+          finalgrade: 88,
+          feedback: 'Well done',
+          feedbackformat: 1,
+          hidden: false,
+          locked: false,
+          overridden: false,
+          excluded: false,
+          timemodified: Date.now() - 86400000,
+        },
+        percentage: 88,
+        lettergrade: 'B+',
+        contributionToCategory: 88,
+        contributionToCourse: 44,
+      },
+      // Course total
+      {
+        id: 101000,
+        courseid: 101,
+        itemname: 'Course Total',
+        itemtype: 'course',
+        gradetype: 1,
+        grademax: 100,
+        grademin: 0,
+        multfactor: 1.0,
+        plusfactor: 0.0,
+        aggregationcoef: 0.0,
+        aggregationcoef2: 1.0,
+        weightoverride: false,
+        sortorder: 9999,
+        display: 1,
+        decimals: 2,
+        hidden: false,
+        locked: false,
+        grade: {
+          id: 1010000,
+          userid: 1,
+          rawgrade: 85.25,
+          finalgrade: 85.25,
+          feedback: '',
+          feedbackformat: 1,
+          hidden: false,
+          locked: false,
+          overridden: false,
+          excluded: false,
+          timemodified: Date.now(),
+        },
+        percentage: 85.25,
+        lettergrade: 'B',
+      },
+    ],
+    students: [],
+  },
 };
 
 /**
  * Calculate letter grade from percentage
  */
 function getLetterGrade(percentage: number): string {
-  if (percentage >= 93) return 'A';
-  if (percentage >= 90) return 'A-';
-  if (percentage >= 87) return 'B+';
-  if (percentage >= 83) return 'B';
-  if (percentage >= 80) return 'B-';
-  if (percentage >= 77) return 'C+';
-  if (percentage >= 73) return 'C';
-  if (percentage >= 70) return 'C-';
-  if (percentage >= 67) return 'D+';
-  if (percentage >= 63) return 'D';
-  if (percentage >= 60) return 'D-';
+  if (percentage >= 93) {
+    return 'A';
+  }
+  if (percentage >= 90) {
+    return 'A-';
+  }
+  if (percentage >= 87) {
+    return 'B+';
+  }
+  if (percentage >= 83) {
+    return 'B';
+  }
+  if (percentage >= 80) {
+    return 'B-';
+  }
+  if (percentage >= 77) {
+    return 'C+';
+  }
+  if (percentage >= 73) {
+    return 'C';
+  }
+  if (percentage >= 70) {
+    return 'C-';
+  }
+  if (percentage >= 67) {
+    return 'D+';
+  }
+  if (percentage >= 63) {
+    return 'D';
+  }
+  if (percentage >= 60) {
+    return 'D-';
+  }
   return 'F';
 }
 
@@ -787,17 +1054,16 @@ function simulateLatency(): Promise<void> {
 /**
  * MSW Handlers for gradebook endpoints
  */
-export const gradesHandlers = [
-  /**
-   * GET /api/v1/gradebook/course/:id
-   * Get complete gradebook for a course
-   */
-  http.get('/api/v1/gradebook/course/:id', async ({ params, request }) => {
+
+/**
+ * GET /api/v1/gradebook/course/:id
+ * Get complete gradebook for a course
+ */
+const getCourseGradebookHandler = http.get('http://*/api/v1/gradebook/course/:id', async ({ params, request }) => {
     await simulateLatency();
 
     const courseId = Number(params.id);
     const url = new URL(request.url);
-    const userId = url.searchParams.get('userid');
     const includeHidden = url.searchParams.get('includeHidden') === 'true';
 
     // Simulate authentication check
@@ -807,7 +1073,7 @@ export const gradesHandlers = [
         {
           success: false,
           error: {
-            code: 'AUTHENTICATION_FAILED',
+            code: 'UNAUTHORIZED',
             message: 'Authentication required',
           },
         },
@@ -835,8 +1101,8 @@ export const gradesHandlers = [
     }
 
     // Filter hidden items if not authorized
-    let items = gradebook.items;
-    if (!includeHidden && !gradebook.canViewAllGrades) {
+    let { items } = gradebook;
+    if (!includeHidden) {
       items = items.filter((item) => !item.hidden && !item.grade?.hidden);
     }
 
@@ -852,19 +1118,16 @@ export const gradesHandlers = [
     };
 
     return HttpResponse.json(response);
-  }),
+  });
 
-  /**
-   * GET /api/v1/gradebook/user/:id
-   * Get user grades across all enrolled courses
-   */
-  http.get('/api/v1/gradebook/user/:id', async ({ params, request }) => {
+/**
+ * GET /api/v1/gradebook/user/:id
+ * Get user grades across all enrolled courses
+ */
+const getUserGradesHandler = http.get('http://*/api/v1/gradebook/user/:id', async ({ params, request }) => {
     await simulateLatency();
 
     const userId = Number(params.id);
-    const url = new URL(request.url);
-    const dateFrom = url.searchParams.get('dateFrom');
-    const dateTo = url.searchParams.get('dateTo');
 
     // Simulate authentication check
     const authHeader = request.headers.get('Authorization');
@@ -873,11 +1136,25 @@ export const gradesHandlers = [
         {
           success: false,
           error: {
-            code: 'AUTHENTICATION_FAILED',
+            code: 'UNAUTHORIZED',
             message: 'Authentication required',
           },
         },
         { status: 401 }
+      );
+    }
+
+    // Check if user exists (mock: users with ID > 1000 don't exist)
+    if (userId > 1000) {
+      return HttpResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'NOT_FOUND',
+            message: 'User not found',
+          },
+        },
+        { status: 404 }
       );
     }
 
@@ -922,19 +1199,19 @@ export const gradesHandlers = [
     };
 
     return HttpResponse.json(response);
-  }),
+  });
 
-  /**
-   * GET /api/v1/gradebook/items
-   * Get list of grade items (with optional course filter)
-   */
-  http.get('/api/v1/gradebook/items', async ({ request }) => {
+/**
+ * GET /api/v1/gradebook/items
+ * Get list of grade items (with optional course filter)
+ */
+const listGradeItemsHandler = http.get('http://*/api/v1/gradebook/items', async ({ request }) => {
     await simulateLatency();
 
     const url = new URL(request.url);
     const courseId = url.searchParams.get('courseid');
-    const page = Number(url.searchParams.get('page') || '1');
-    const perPage = Number(url.searchParams.get('perPage') || '20');
+    const page = Number(url.searchParams.get('page') ?? '1');
+    const perPage = Number(url.searchParams.get('perPage') ?? '20');
 
     // Simulate authentication check
     const authHeader = request.headers.get('Authorization');
@@ -943,7 +1220,7 @@ export const gradesHandlers = [
         {
           success: false,
           error: {
-            code: 'AUTHENTICATION_FAILED',
+            code: 'UNAUTHORIZED',
             message: 'Authentication required',
           },
         },
@@ -956,11 +1233,11 @@ export const gradesHandlers = [
     if (courseId) {
       const gradebook = mockGradebooks[Number(courseId)];
       if (gradebook) {
-        allItems = gradebook.items.map(({ grade, ...item }) => item as GradeItem);
+        allItems = gradebook.items.map(({ grade: _grade, ...item }) => item as GradeItem);
       }
     } else {
       allItems = Object.values(mockGradebooks).flatMap((gradebook) =>
-        gradebook.items.map(({ grade, ...item }) => item as GradeItem)
+        gradebook.items.map(({ grade: _grade, ...item }) => item as GradeItem)
       );
     }
 
@@ -984,13 +1261,13 @@ export const gradesHandlers = [
     };
 
     return HttpResponse.json(response);
-  }),
+  });
 
-  /**
-   * PUT /api/v1/gradebook/items/:id
-   * Update a grade item (grade value, feedback, exclusion flags)
-   */
-  http.put('/api/v1/gradebook/items/:id', async ({ params, request }) => {
+/**
+ * PUT /api/v1/gradebook/items/:id
+ * Update a grade item (grade value, feedback, exclusion flags)
+ */
+const updateGradeItemHandler = http.put('http://*/api/v1/gradebook/items/:id', async ({ params, request }) => {
     await simulateLatency();
 
     const itemId = Number(params.id);
@@ -1002,7 +1279,7 @@ export const gradesHandlers = [
         {
           success: false,
           error: {
-            code: 'AUTHENTICATION_FAILED',
+            code: 'UNAUTHORIZED',
             message: 'Authentication required',
           },
         },
@@ -1079,11 +1356,13 @@ export const gradesHandlers = [
       );
     }
 
+    // Normalize grade value (accept both rawgrade and finalgrade)
+    const gradeValue = updateData.rawgrade ?? updateData.finalgrade;
+
     // Validate grade range
     if (
-      updateData.rawgrade !== undefined &&
-      (updateData.rawgrade < foundItem.grademin ||
-        updateData.rawgrade > foundItem.grademax)
+      gradeValue !== undefined &&
+      (gradeValue < foundItem.grademin || gradeValue > foundItem.grademax)
     ) {
       return HttpResponse.json(
         {
@@ -1092,8 +1371,8 @@ export const gradesHandlers = [
             code: 'VALIDATION_ERROR',
             message: 'Grade value out of range',
             details: {
-              field: 'rawgrade',
-              value: updateData.rawgrade,
+              field: 'grade',
+              value: gradeValue,
               min: foundItem.grademin,
               max: foundItem.grademax,
             },
@@ -1105,10 +1384,10 @@ export const gradesHandlers = [
 
     // Update grade
     if (foundItem.grade) {
-      if (updateData.rawgrade !== undefined) {
-        foundItem.grade.rawgrade = updateData.rawgrade;
-        foundItem.grade.finalgrade = updateData.rawgrade;
-        foundItem.percentage = (updateData.rawgrade / foundItem.grademax) * 100;
+      if (gradeValue !== undefined) {
+        foundItem.grade.rawgrade = gradeValue;
+        foundItem.grade.finalgrade = gradeValue;
+        foundItem.percentage = (gradeValue / foundItem.grademax) * 100;
         foundItem.lettergrade = getLetterGrade(foundItem.percentage);
       }
       if (updateData.feedback !== undefined) {
@@ -1128,10 +1407,10 @@ export const gradesHandlers = [
 
     // Recalculate course total (simplified)
     const categoryItems = foundGradebook.items.filter(
-      (i) => i.categoryid === foundItem!.categoryid && i.itemtype !== 'category'
+      (i) => i.categoryid === foundItem.categoryid && i.itemtype !== 'category'
     );
     const categoryTotal =
-      categoryItems.reduce((sum, i) => sum + (i.grade?.finalgrade || 0), 0) /
+      categoryItems.reduce((sum, i) => sum + (i.grade?.finalgrade ?? 0), 0) /
       categoryItems.length;
 
     const response: ApiResponse<GradeItemWithGrade> = {
@@ -1147,17 +1426,17 @@ export const gradesHandlers = [
     };
 
     return HttpResponse.json(response);
-  }),
+  });
 
-  /**
-   * GET /api/v1/gradebook/categories
-   * Get grade categories for a course
-   */
-  http.get('/api/v1/gradebook/categories', async ({ request }) => {
+/**
+ * GET /api/v1/gradebook/categories
+ * Get grade categories for a course
+ */
+const listGradeCategoriesHandler = http.get('http://*/api/v1/gradebook/categories', async ({ request }) => {
     await simulateLatency();
 
     const url = new URL(request.url);
-    const courseId = Number(url.searchParams.get('courseid'));
+    const courseIdParam = url.searchParams.get('courseid');
 
     // Simulate authentication check
     const authHeader = request.headers.get('Authorization');
@@ -1166,7 +1445,7 @@ export const gradesHandlers = [
         {
           success: false,
           error: {
-            code: 'AUTHENTICATION_FAILED',
+            code: 'UNAUTHORIZED',
             message: 'Authentication required',
           },
         },
@@ -1174,6 +1453,25 @@ export const gradesHandlers = [
       );
     }
 
+    // Validate required parameter
+    if (!courseIdParam) {
+      return HttpResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'INVALID_REQUEST',
+            message: 'Missing required parameter: courseid',
+            details: {
+              field: 'courseid',
+              reason: 'required',
+            },
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    const courseId = Number(courseIdParam);
     const gradebook = mockGradebooks[courseId];
     if (!gradebook) {
       return HttpResponse.json(
@@ -1197,13 +1495,13 @@ export const gradesHandlers = [
     };
 
     return HttpResponse.json(response);
-  }),
+  });
 
-  /**
-   * POST /api/v1/gradebook/categories
-   * Create a new grade category
-   */
-  http.post('/api/v1/gradebook/categories', async ({ request }) => {
+/**
+ * POST /api/v1/gradebook/categories
+ * Create a new grade category
+ */
+const createGradeCategoryHandler = http.post('http://*/api/v1/gradebook/categories', async ({ request }) => {
     await simulateLatency();
 
     // Simulate authentication check
@@ -1213,7 +1511,7 @@ export const gradesHandlers = [
         {
           success: false,
           error: {
-            code: 'AUTHENTICATION_FAILED',
+            code: 'UNAUTHORIZED',
             message: 'Authentication required',
           },
         },
@@ -1229,14 +1527,14 @@ export const gradesHandlers = [
         {
           success: false,
           error: {
-            code: 'VALIDATION_ERROR',
+            code: 'INVALID_REQUEST',
             message: 'Missing required fields',
             details: {
               required: ['fullname', 'courseid'],
             },
           },
         },
-        { status: 422 }
+        { status: 400 }
       );
     }
 
@@ -1261,11 +1559,11 @@ export const gradesHandlers = [
       courseid: categoryData.courseid,
       parent: categoryData.parent,
       depth: categoryData.parent ? 2 : 1,
-      path: `/${categoryData.parent || 0}`,
+      path: `/${categoryData.parent ?? 0}`,
       fullname: categoryData.fullname,
-      aggregation: categoryData.aggregation || 'AGGREGATION_MEAN_WEIGHTED',
-      keephigh: categoryData.keephigh || 0,
-      droplow: categoryData.droplow || 0,
+      aggregation: categoryData.aggregation ?? 'AGGREGATION_MEAN_WEIGHTED',
+      keephigh: categoryData.keephigh ?? 0,
+      droplow: categoryData.droplow ?? 0,
       aggregateonlygraded: categoryData.aggregateonlygraded ?? true,
       aggregateoutcomes: false,
       hidden: false,
@@ -1283,18 +1581,18 @@ export const gradesHandlers = [
     };
 
     return HttpResponse.json(response, { status: 201 });
-  }),
+  });
 
-  /**
-   * GET /api/v1/gradebook/export
-   * Export gradebook data
-   */
-  http.get('/api/v1/gradebook/export', async ({ request }) => {
+/**
+ * GET /api/v1/gradebook/export
+ * Export gradebook data
+ */
+const exportGradebookHandler = http.get('http://*/api/v1/gradebook/export', async ({ request }) => {
     await simulateLatency();
 
     const url = new URL(request.url);
     const courseId = Number(url.searchParams.get('courseid'));
-    const format = url.searchParams.get('format') || 'csv';
+    const format = url.searchParams.get('format') ?? 'csv';
 
     // Simulate authentication check
     const authHeader = request.headers.get('Authorization');
@@ -1303,7 +1601,7 @@ export const gradesHandlers = [
         {
           success: false,
           error: {
-            code: 'AUTHENTICATION_FAILED',
+            code: 'UNAUTHORIZED',
             message: 'Authentication required',
           },
         },
@@ -1331,14 +1629,14 @@ export const gradesHandlers = [
       `${student.firstname} ${student.lastname}`,
       student.email,
       ...gradebook.items.map(
-        (item) => item.grade?.finalgrade?.toString() || '-'
+        (item) => item.grade?.finalgrade?.toString() ?? '-'
       ),
     ]);
 
     const exportData = {
       format,
       headers,
-      rows: rows || [],
+      rows: rows ?? [],
       generatedAt: Date.now(),
     };
 
@@ -1351,19 +1649,19 @@ export const gradesHandlers = [
     };
 
     return HttpResponse.json(response);
-  }),
+  });
 
-  /**
-   * GET /api/v1/gradebook/report
-   * Generate gradebook report
-   */
-  http.get('/api/v1/gradebook/report', async ({ request }) => {
+/**
+ * GET /api/v1/gradebook/report
+ * Generate gradebook report
+ */
+const generateGradebookReportHandler = http.get('http://*/api/v1/gradebook/report', async ({ request }) => {
     await simulateLatency();
 
     const url = new URL(request.url);
     const courseId = Number(url.searchParams.get('courseid'));
     const userId = url.searchParams.get('userid');
-    const reportType = url.searchParams.get('reportType') || 'user';
+    const reportType = url.searchParams.get('reportType') ?? 'user';
 
     // Simulate authentication check
     const authHeader = request.headers.get('Authorization');
@@ -1372,7 +1670,7 @@ export const gradesHandlers = [
         {
           success: false,
           error: {
-            code: 'AUTHENTICATION_FAILED',
+            code: 'UNAUTHORIZED',
             message: 'Authentication required',
           },
         },
@@ -1438,5 +1736,18 @@ export const gradesHandlers = [
     };
 
     return HttpResponse.json(response);
-  }),
+  });
+
+/**
+ * Export all gradebook handlers
+ */
+export const gradesHandlers = [
+  getCourseGradebookHandler,
+  getUserGradesHandler,
+  listGradeItemsHandler,
+  updateGradeItemHandler,
+  listGradeCategoriesHandler,
+  createGradeCategoryHandler,
+  exportGradebookHandler,
+  generateGradebookReportHandler,
 ];
