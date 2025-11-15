@@ -130,8 +130,9 @@ export function formatPercentage(value: number, decimals: number = 0): string {
     throw new TypeError('Invalid number provided to formatPercentage');
   }
 
-  // If value is between 0 and 1, assume it's a decimal representation
-  const percentageValue = value > 0 && value <= 1 ? value * 100 : value;
+  // If absolute value is less than 10, treat as decimal and multiply by 100
+  // Otherwise, assume it's already in percentage form
+  const percentageValue = Math.abs(value) < 10 ? value * 100 : value;
 
   return `${formatNumber(percentageValue, decimals)}%`;
 }
@@ -211,7 +212,11 @@ export function abbreviateNumber(value: number): string {
   for (const unit of units) {
     if (absValue >= unit.threshold) {
       const abbreviated = absValue / unit.threshold;
-      const formatted = abbreviated >= 10 ? abbreviated.toFixed(0) : abbreviated.toFixed(1);
+      // Use no decimals for whole numbers or values >= 10, otherwise use 1 decimal
+      const isWholeNumber = abbreviated % 1 === 0;
+      const formatted = isWholeNumber || abbreviated >= 10 
+        ? abbreviated.toFixed(0) 
+        : abbreviated.toFixed(1);
       return `${sign}${formatted}${unit.suffix}`;
     }
   }
@@ -301,8 +306,11 @@ export function formatBytes(bytes: number, decimals: number = 2): string {
   const unitIndex = Math.min(i, units.length - 1);
 
   const value = bytes / Math.pow(k, unitIndex);
+  
+  // Bytes are always whole numbers, so use 0 decimals for unitIndex 0
+  const effectiveDecimals = unitIndex === 0 ? 0 : decimals;
 
-  return `${formatNumber(value, decimals)} ${units[unitIndex]}`;
+  return `${formatNumber(value, effectiveDecimals)} ${units[unitIndex]}`;
 }
 
 // ============================================================================
