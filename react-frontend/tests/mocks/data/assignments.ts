@@ -19,12 +19,9 @@ import type { Assignment, AssignmentSubmission } from '@/types/entities';
 import type {
   AssignmentId,
   CourseId,
-  UserId,
   Id,
   Timestamp,
 } from '@/types/common';
-import { mockCourse } from './courses';
-import { mockUser } from './users';
 
 // ============================================================================
 // Type Utilities
@@ -156,7 +153,7 @@ export function mockAssignment(overrides: DeepPartial<Assignment> = {}): Assignm
   const fourteenDaysFromNow = generateTimestamp(14);
 
   const defaults: Assignment = {
-    id: overrides.id !== undefined ? overrides.id : generateAssignmentId(),
+    id: overrides.id ?? generateAssignmentId(),
     course: 1,
     name: 'Test Assignment',
     intro: 'This is a test assignment for unit testing',
@@ -236,7 +233,7 @@ export function mockAssignmentSubmission(
   const currentTimestamp = generateTimestamp();
 
   const defaults: AssignmentSubmission = {
-    id: overrides.id !== undefined ? overrides.id : generateSubmissionId(),
+    id: overrides.id ?? generateSubmissionId(),
     assignment: 1,
     userid: 2,
     timecreated: currentTimestamp,
