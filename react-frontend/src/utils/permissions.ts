@@ -235,7 +235,7 @@ function getCurrentUser(): CurrentUserData | null {
 
       const capabilities: UserPermission[] = (globalUser.capabilities ?? []).map(cap => ({
         capability: cap,
-        contextId: 1, // Placeholder context ID (system context)
+        contextId: CONTEXT_SYSTEM, // Grant capabilities at system context by default
         granted: true, // If it's in the list, it's granted
       }));
 
@@ -277,11 +277,11 @@ function hasCapabilityInContext(
   }
 
   // Check for capability in specific context
-  // In a full implementation, this would also check parent contexts
+  // Also check parent contexts: if capability exists at system context, it applies everywhere
   return capabilities.some(
     (perm) =>
       perm.capability === capability &&
-      perm.contextId === contextId &&
+      (perm.contextId === contextId || perm.contextId === CONTEXT_SYSTEM) &&
       perm.granted
   );
 }
