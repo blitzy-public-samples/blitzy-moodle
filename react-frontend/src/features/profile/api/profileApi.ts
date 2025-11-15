@@ -13,7 +13,7 @@
 
 import type { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
 import axios from 'axios';
-import { authService } from '@/services/auth/authService';
+import authService from '@/services/auth/authService';
 import type {
   User,
   UpdateProfileData,
@@ -82,7 +82,7 @@ const createApiClient = (): AxiosInstance => {
         originalRequest._retry = true;
 
         try {
-          await authService.refreshToken();
+          await authService.refreshAccessToken();
 
           // Retry the original request with new token
           const token = authService.getAccessToken();
