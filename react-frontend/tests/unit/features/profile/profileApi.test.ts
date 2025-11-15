@@ -27,9 +27,9 @@ import type { User, UpdateProfilePayload } from '@/features/profile/types/profil
 
 // Mock authentication service
 vi.mock('@/services/auth/authService', () => ({
-  authService: {
+  default: {
     getAccessToken: vi.fn(() => 'mock-jwt-token'),
-    refreshToken: vi.fn(() => Promise.resolve('new-mock-jwt-token')),
+    refreshAccessToken: vi.fn(() => Promise.resolve('new-mock-jwt-token')),
   },
 }));
 
@@ -183,7 +183,7 @@ describe('profileApi', () => {
 
     it('should handle 401 Unauthorized and trigger token refresh attempt', async () => {
       const userId = 123;
-      const { authService } = await import('@/services/auth/authService');
+      const authService = (await import('@/services/auth/authService')).default;
       
       server.use(
         http.get(`${API_BASE_URL}/api/v1/users/${userId}`, () => {
@@ -203,7 +203,7 @@ describe('profileApi', () => {
       await expect(fetchUserProfile(userId)).rejects.toThrow();
       
       // Verify token refresh was attempted
-      expect(authService.refreshToken).toHaveBeenCalled();
+      expect(authService.refreshAccessToken).toHaveBeenCalled();
     });
 
     it('should throw permission error on 403 Forbidden', async () => {
@@ -422,7 +422,7 @@ describe('profileApi', () => {
 
     it('should handle 401 Unauthorized error', async () => {
       const userId = 123;
-      const { authService } = await import('@/services/auth/authService');
+      const authService = (await import('@/services/auth/authService')).default;
       
       server.use(
         http.put(`${API_BASE_URL}/api/v1/users/${userId}`, () => {
@@ -440,7 +440,7 @@ describe('profileApi', () => {
       );
 
       await expect(updateUserProfile(userId, mockProfileUpdateData)).rejects.toThrow();
-      expect(authService.refreshToken).toHaveBeenCalled();
+      expect(authService.refreshAccessToken).toHaveBeenCalled();
     });
 
     it('should handle 403 Forbidden error', async () => {
@@ -636,7 +636,7 @@ describe('profileApi', () => {
     it('should handle 401 Unauthorized error', async () => {
       const userId = 123;
       const mockFile = new File(['avatar content'], 'avatar.jpg', { type: 'image/jpeg' });
-      const { authService } = await import('@/services/auth/authService');
+      const authService = (await import('@/services/auth/authService')).default;
       
       server.use(
         http.post(`${API_BASE_URL}/api/v1/files/upload`, () => {
@@ -654,7 +654,7 @@ describe('profileApi', () => {
       );
 
       await expect(uploadAvatar(userId, mockFile)).rejects.toThrow();
-      expect(authService.refreshToken).toHaveBeenCalled();
+      expect(authService.refreshAccessToken).toHaveBeenCalled();
     });
   });
 
