@@ -18,49 +18,80 @@
  * - Time to Interactive (TTI): <5 seconds
  */
 
-import { test, expect, describe, beforeAll, afterAll, beforeEach, Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import { DashboardPage } from './pages/DashboardPage';
-import { login, loginAsStudent, isAuthenticated, logout, getAuthToken, clearAuthenticationState } from './utils/auth';
-import { testCourse1, testCourse2, testCourse4, createCourse, getCourseWithActivities } from './fixtures/courses';
-import { testStudent, testStudent2, testStudent3, TEST_PASSWORD } from './fixtures/users';
+import { login, isAuthenticated, logout, getAuthToken, clearAuthenticationState } from './utils/auth';
 import { waitForPageLoad, waitForNetworkIdle, waitForCondition, pollUntil, waitForElement } from './utils/wait-helpers';
-import { testAssignment1, testAssignment2, testAssignment4, createAssignment } from './fixtures/assignments';
-import { testQuiz1, testQuiz2, testQuiz3, createQuiz } from './fixtures/quizzes';
-import { apiRequest, setupTestEnvironment, cleanupTestEnvironment, enrollUserInCourse, createTestCourse } from './utils/api-helpers';
+import { apiRequest, setupTestEnvironment, cleanupTestEnvironment, createTestUser, type TestEnvironment } from './utils/api-helpers';
 
-describe('Dashboard E2E Tests', () => {
+test.describe('Dashboard E2E Tests', () => {
   let dashboardPage: DashboardPage;
   let page: Page;
-  let testEnvironmentId: string;
+  let testEnv: TestEnvironment;
+  let additionalStudent2: { id: number; username: string; email: string; password: string };
+  let additionalStudent3: { id: number; username: string; email: string; password: string };
 
   /**
    * Setup: Create test environment with enrolled courses and activities
    */
-  beforeAll(async ({ browser }) => {
+  test.beforeAll(async ({ browser }) => {
     // Create new browser context and page
     const context = await browser.newContext();
     page = await context.newPage();
     
     // Setup test environment via API for faster execution
-    // Creates courses, enrolls student, creates assignments and quizzes
-    testEnvironmentId = await setupTestEnvironment({
-      courses: [testCourse1, testCourse2, testCourse4],
-      assignments: [testAssignment1, testAssignment2, testAssignment4],
-      quizzes: [testQuiz1, testQuiz2, testQuiz3],
-      enrollUser: testStudent.username
+    // Creates student, teacher, course, and optionally assignments/quizzes
+    testEnv = await setupTestEnvironment({
+      courseName: 'Dashboard Test Course',
+      includeAssignment: true,
+      includeQuiz: true
     });
+
+    // Create additional students for online users widget testing
+    const timestamp = Date.now();
+    additionalStudent2 = {
+      ...(await createTestUser({
+        username: `test_student2_${timestamp}`,
+        email: `test_student2_${timestamp}@example.com`,
+        password: 'TestStudent2@123',
+        firstname: 'Test',
+        lastname: 'Student2'
+      })),
+      password: 'TestStudent2@123'
+    };
+
+    additionalStudent3 = {
+      ...(await createTestUser({
+        username: `test_student3_${timestamp}`,
+        email: `test_student3_${timestamp}@example.com`,
+        password: 'TestStudent3@123',
+        firstname: 'Test',
+        lastname: 'Student3'
+      })),
+      password: 'TestStudent3@123'
+    };
 
     // Login additional students for online users widget testing
     const context2 = await browser.newContext();
     const page2 = await context2.newPage();
-    await loginAsStudent(page2, testStudent2.username, TEST_PASSWORD);
+    await login(page2, {
+      username: additionalStudent2.username,
+      password: additionalStudent2.password
+    });
     
     const context3 = await browser.newContext();
     const page3 = await context3.newPage();
-    await loginAsStudent(page3, testStudent3.username, TEST_PASSWORD);
+    await login(page3, {
+      username: additionalStudent3.username,
+      password: additionalStudent3.password
+    });
 
     // Authenticate main test student user
-    await loginAsStudent(page, testStudent.username, TEST_PASSWORD);
+    await login(page, {
+      username: testEnv.student.username,
+      password: testEnv.student.password
+    });
     
     // Verify authentication succeeded
     const authenticated = await isAuthenticated(page);
@@ -73,11 +104,11 @@ describe('Dashboard E2E Tests', () => {
   /**
    * Cleanup: Reset dashboard layout and remove test data
    */
-  afterAll(async () => {
+  test.afterAll(async () => {
     // Reset dashboard to default layout
     await dashboardPage.customizeWidgets();
-    // Cleanup test environment via API
-    await cleanupTestEnvironment(testEnvironmentId);
+    // Cleanup test environment via API (cleans up all tracked test data)
+    await cleanupTestEnvironment();
     
     // Clear authentication state
     await clearAuthenticationState(page);
@@ -90,12 +121,12 @@ describe('Dashboard E2E Tests', () => {
   /**
    * Before each test: Navigate to dashboard
    */
-  beforeEach(async () => {
+  test.beforeEach(async () => {
     // Navigate to dashboard page
     await page.goto('/dashboard');
   });
 
-  describe('Dashboard Loading and Performance', () => {
+  test.describe('Dashboard Loading and Performance', () => {
     test('should load dashboard within 3 seconds with all widgets', async () => {
       // Record start time for performance measurement
       const startTime = Date.now();
@@ -134,14 +165,14 @@ describe('Dashboard E2E Tests', () => {
       await waitForPageLoad(page);
 
       // Wait for all interactive elements to be ready
-      await waitForCondition(page, async () => {
+      await waitForCondition(async () => {
         // Check if all widgets are interactive
         const calendarInteractive = await page.locator('[data-testid="calendar-widget"]').isEnabled();
         const timelineInteractive = await page.locator('[data-testid="timeline-widget"]').isEnabled();
         const courseOverviewInteractive = await page.locator('[data-testid="course-overview-widget"]').isEnabled();
         
         return calendarInteractive && timelineInteractive && courseOverviewInteractive;
-      }, 5000);
+      }, { timeout: 5000 });
 
       // Calculate Time to Interactive
       const tti = Date.now() - startTime;
@@ -151,7 +182,7 @@ describe('Dashboard E2E Tests', () => {
     });
   });
 
-  describe('Calendar Widget', () => {
+  test.describe('Calendar Widget', () => {
     test('should display current month with events highlighted', async () => {
       // Get calendar events
       const events = await dashboardPage.getCalendarEvents();
@@ -208,7 +239,8 @@ describe('Dashboard E2E Tests', () => {
 
       // Click on first event
       const firstEvent = events[0];
-      await firstEvent.click();
+      const eventElement = page.locator(`[data-testid="calendar-event"][data-event-id="${firstEvent.eventId}"]`);
+      await eventElement.click();
 
       // Wait for event details modal to open
       await waitForElement(page, '[data-testid="event-details-modal"]');
@@ -230,7 +262,7 @@ describe('Dashboard E2E Tests', () => {
     });
   });
 
-  describe('Timeline Widget', () => {
+  test.describe('Timeline Widget', () => {
     test('should show upcoming activities sorted by due date', async () => {
       // Get timeline items
       const timelineItems = await dashboardPage.getTimelineItems();
@@ -238,24 +270,21 @@ describe('Dashboard E2E Tests', () => {
       // Verify timeline has items
       expect(timelineItems.length).toBeGreaterThan(0);
 
-      // Extract due dates from timeline items
-      const dueDates: Date[] = [];
-      for (const item of timelineItems) {
-        const dueDateText = await item.locator('[data-testid="activity-due-date"]').textContent();
-        if (dueDateText) {
-          dueDates.push(new Date(dueDateText));
-        }
-      }
+      // Extract due dates from timeline items (already in the data)
+      const dueDates: Date[] = timelineItems
+        .filter(item => item.dueDate !== undefined)
+        .map(item => item.dueDate!);
 
       // Verify activities are sorted chronologically (earliest first)
       for (let i = 0; i < dueDates.length - 1; i++) {
         expect(dueDates[i].getTime()).toBeLessThanOrEqual(dueDates[i + 1].getTime());
       }
 
-      // Verify timeline shows activity types
+      // Verify timeline shows activity types by checking the first item in the DOM
       const firstItem = timelineItems[0];
-      await expect(firstItem.locator('[data-testid="activity-type"]')).toBeVisible();
-      await expect(firstItem.locator('[data-testid="activity-title"]')).toBeVisible();
+      const firstItemElement = page.locator(`[data-testid="timeline-item"][data-item-id="${firstItem.itemId}"]`);
+      await expect(firstItemElement.locator('[data-testid="activity-type"]')).toBeVisible();
+      await expect(firstItemElement.locator('[data-testid="activity-title"]')).toBeVisible();
     });
 
     test('should filter timeline by activity type (assignment)', async () => {
@@ -270,10 +299,9 @@ describe('Dashboard E2E Tests', () => {
       // Get filtered timeline items
       const filteredItems = await dashboardPage.getTimelineItems();
 
-      // Verify all items are assignments
+      // Verify all items are assignments (using data from the interface)
       for (const item of filteredItems) {
-        const activityType = await item.locator('[data-testid="activity-type"]').textContent();
-        expect(activityType?.toLowerCase()).toContain('assignment');
+        expect(item.activityType.toLowerCase()).toContain('assignment');
       }
 
       // Verify count changed (filtered)
@@ -292,10 +320,9 @@ describe('Dashboard E2E Tests', () => {
       // Get filtered timeline items
       const filteredItems = await dashboardPage.getTimelineItems();
 
-      // Verify all items are quizzes
+      // Verify all items are quizzes (using data from the interface)
       for (const item of filteredItems) {
-        const activityType = await item.locator('[data-testid="activity-type"]').textContent();
-        expect(activityType?.toLowerCase()).toContain('quiz');
+        expect(item.activityType.toLowerCase()).toContain('quiz');
       }
 
       // Verify count changed (filtered)
@@ -318,13 +345,10 @@ describe('Dashboard E2E Tests', () => {
       // Verify count is greater than or equal to filtered count
       expect(allItems.length).toBeGreaterThanOrEqual(filteredCount);
 
-      // Verify mixed activity types present
+      // Verify mixed activity types present (using data from the interface)
       const activityTypes = new Set<string>();
       for (const item of allItems) {
-        const activityType = await item.locator('[data-testid="activity-type"]').textContent();
-        if (activityType) {
-          activityTypes.add(activityType.toLowerCase());
-        }
+        activityTypes.add(item.activityType.toLowerCase());
       }
       
       // Should have more than one activity type
@@ -332,7 +356,7 @@ describe('Dashboard E2E Tests', () => {
     });
   });
 
-  describe('Recent Activity Widget', () => {
+  test.describe('Recent Activity Widget', () => {
     test('should show latest course updates', async () => {
       // Get recent activity items
       const recentActivities = await dashboardPage.getRecentActivity();
@@ -340,17 +364,20 @@ describe('Dashboard E2E Tests', () => {
       // Verify recent activity feed has items
       expect(recentActivities.length).toBeGreaterThan(0);
 
-      // Verify recent activity structure
+      // Verify recent activity structure by checking the first item in the DOM
       const firstActivity = recentActivities[0];
-      await expect(firstActivity.locator('[data-testid="activity-course"]')).toBeVisible();
-      await expect(firstActivity.locator('[data-testid="activity-description"]')).toBeVisible();
-      await expect(firstActivity.locator('[data-testid="activity-timestamp"]')).toBeVisible();
+      const firstActivityElement = page.locator(`[data-testid="activity-item"][data-activity-id="${firstActivity.activityId}"]`);
+      await expect(firstActivityElement.locator('[data-testid="activity-course"]')).toBeVisible();
+      await expect(firstActivityElement.locator('[data-testid="activity-description"]')).toBeVisible();
+      await expect(firstActivityElement.locator('[data-testid="activity-timestamp"]')).toBeVisible();
 
-      // Verify timestamps are recent (within last 7 days for test data)
+      // Verify timestamps are recent (check data objects directly)
       for (const activity of recentActivities.slice(0, 3)) {
-        const timestampText = await activity.locator('[data-testid="activity-timestamp"]').textContent();
-        // Should contain relative time like "2 hours ago", "1 day ago", etc.
-        expect(timestampText).toMatch(/(seconds?|minutes?|hours?|days?) ago/i);
+        const now = Date.now();
+        const activityTime = activity.timestamp.getTime();
+        const daysDiff = (now - activityTime) / (1000 * 60 * 60 * 24);
+        // Timestamp should be within last 7 days
+        expect(daysDiff).toBeLessThanOrEqual(7);
       }
     });
 
@@ -358,16 +385,15 @@ describe('Dashboard E2E Tests', () => {
       // Get recent activity items
       const recentActivities = await dashboardPage.getRecentActivity();
 
-      // Verify each activity has a course name
+      // Verify each activity has a course name (using data from the interface)
       for (const activity of recentActivities) {
-        const courseName = await activity.locator('[data-testid="activity-course"]').textContent();
-        expect(courseName).toBeTruthy();
-        expect(courseName?.length).toBeGreaterThan(0);
+        expect(activity.courseName).toBeTruthy();
+        expect(activity.courseName.length).toBeGreaterThan(0);
       }
     });
   });
 
-  describe('Online Users Widget', () => {
+  test.describe('Online Users Widget', () => {
     test('should show currently active users', async () => {
       // Get online users list
       const onlineUsers = await dashboardPage.getOnlineUsers();
@@ -376,13 +402,14 @@ describe('Dashboard E2E Tests', () => {
       // Should include at least testStudent2 and testStudent3 logged in during beforeAll
       expect(onlineUsers.length).toBeGreaterThanOrEqual(2);
 
-      // Verify user structure
+      // Verify user structure by constructing locator for first user
       const firstUser = onlineUsers[0];
-      await expect(firstUser.locator('[data-testid="user-name"]')).toBeVisible();
-      await expect(firstUser.locator('[data-testid="user-avatar"]')).toBeVisible();
+      const firstUserElement = page.locator(`[data-testid="online-user"][data-user-id="${firstUser.userId}"]`);
+      await expect(firstUserElement.locator('[data-testid="user-name"]')).toBeVisible();
+      await expect(firstUserElement.locator('[data-testid="user-avatar"]')).toBeVisible();
 
       // Verify online status indicator
-      await expect(firstUser.locator('[data-testid="online-status"]')).toBeVisible();
+      await expect(firstUserElement.locator('[data-testid="online-status"]')).toBeVisible();
     });
 
     test('should display user profiles in online users list', async () => {
@@ -391,16 +418,18 @@ describe('Dashboard E2E Tests', () => {
 
       // Verify each user has name and avatar
       for (const user of onlineUsers) {
-        const userName = await user.locator('[data-testid="user-name"]').textContent();
-        expect(userName).toBeTruthy();
+        // Check data from interface
+        expect(user.fullName).toBeTruthy();
         
-        const avatar = user.locator('[data-testid="user-avatar"]');
+        // Verify avatar is visible in DOM
+        const userElement = page.locator(`[data-testid="online-user"][data-user-id="${user.userId}"]`);
+        const avatar = userElement.locator('[data-testid="user-avatar"]');
         await expect(avatar).toBeVisible();
       }
     });
   });
 
-  describe('Course Overview Widget', () => {
+  test.describe('Course Overview Widget', () => {
     test('should display enrolled courses with progress bars', async () => {
       // Get course overview cards
       const courseCards = await dashboardPage.getCourseOverview();
@@ -410,15 +439,18 @@ describe('Dashboard E2E Tests', () => {
 
       // Verify course card structure
       const firstCourse = courseCards[0];
-      await expect(firstCourse.locator('[data-testid="course-name"]')).toBeVisible();
-      await expect(firstCourse.locator('[data-testid="course-progress"]')).toBeVisible();
+      const firstCourseElement = page.locator(`[data-testid="course-card"][data-course-id="${firstCourse.courseId}"]`);
+      await expect(firstCourseElement.locator('[data-testid="course-name"]')).toBeVisible();
+      await expect(firstCourseElement.locator('[data-testid="course-progress"]')).toBeVisible();
 
-      // Verify progress bar has percentage
-      const progressBar = firstCourse.locator('[data-testid="course-progress"]');
+      // Verify progress bar has percentage (check data from interface)
+      expect(firstCourse.progress).toBeGreaterThanOrEqual(0);
+      expect(firstCourse.progress).toBeLessThanOrEqual(100);
+      
+      // Also verify the progress bar DOM element
+      const progressBar = firstCourseElement.locator('[data-testid="course-progress"]');
       const progressValue = await progressBar.getAttribute('aria-valuenow');
       expect(progressValue).toBeTruthy();
-      expect(Number(progressValue)).toBeGreaterThanOrEqual(0);
-      expect(Number(progressValue)).toBeLessThanOrEqual(100);
     });
 
     test('should navigate to course page when course card clicked', async () => {
@@ -426,11 +458,12 @@ describe('Dashboard E2E Tests', () => {
       const courseCards = await dashboardPage.getCourseOverview();
       expect(courseCards.length).toBeGreaterThan(0);
 
-      // Get first course name for verification
-      const firstCourseName = await courseCards[0].locator('[data-testid="course-name"]').textContent();
+      // Get first course name for verification (from data object)
+      const firstCourse = courseCards[0];
+      const firstCourseName = firstCourse.courseName;
 
-      // Click first course card
-      await dashboardPage.clickCourseCard(0);
+      // Click first course card (pass courseId as string)
+      await dashboardPage.clickCourseCard(firstCourse.courseId);
 
       // Wait for navigation to course page
       await waitForPageLoad(page);
@@ -444,7 +477,7 @@ describe('Dashboard E2E Tests', () => {
     });
   });
 
-  describe('Widget Customization', () => {
+  test.describe('Widget Customization', () => {
     test('should allow adding widgets to dashboard', async () => {
       // Open widget customization
       await dashboardPage.customizeWidgets();
@@ -536,7 +569,7 @@ describe('Dashboard E2E Tests', () => {
     });
   });
 
-  describe('Widget Refresh', () => {
+  test.describe('Widget Refresh', () => {
     test('should refresh widget data when refresh button clicked', async () => {
       // Get initial timeline items count
       const initialItems = await dashboardPage.getTimelineItems();
@@ -587,14 +620,15 @@ describe('Dashboard E2E Tests', () => {
     });
   });
 
-  describe('Dashboard Navigation', () => {
+  test.describe('Dashboard Navigation', () => {
     test('should navigate to course page from course card', async () => {
       // Get first course card
       const courseCards = await dashboardPage.getCourseOverview();
       expect(courseCards.length).toBeGreaterThan(0);
 
-      // Click first course
-      await dashboardPage.clickCourseCard(0);
+      // Click first course (pass courseId as string)
+      const firstCourse = courseCards[0];
+      await dashboardPage.clickCourseCard(firstCourse.courseId);
 
       // Verify navigation
       await waitForPageLoad(page);
@@ -610,8 +644,10 @@ describe('Dashboard E2E Tests', () => {
       const timelineItems = await dashboardPage.getTimelineItems();
       expect(timelineItems.length).toBeGreaterThan(0);
 
-      // Click first timeline item
-      await timelineItems[0].click();
+      // Click first timeline item (construct locator from data)
+      const firstItem = timelineItems[0];
+      const firstItemElement = page.locator(`[data-testid="timeline-item"][data-item-id="${firstItem.itemId}"]`);
+      await firstItemElement.click();
 
       // Verify navigation to activity page
       await waitForPageLoad(page);
@@ -619,7 +655,7 @@ describe('Dashboard E2E Tests', () => {
     });
   });
 
-  describe('Dashboard Search', () => {
+  test.describe('Dashboard Search', () => {
     test('should perform global search from dashboard', async () => {
       // Locate search input in header
       const searchInput = page.locator('[data-testid="global-search-input"]');
@@ -643,7 +679,7 @@ describe('Dashboard E2E Tests', () => {
     });
   });
 
-  describe('Notifications Badge', () => {
+  test.describe('Notifications Badge', () => {
     test('should display notification count in header', async () => {
       // Locate notifications badge
       const notificationsBadge = page.locator('[data-testid="notifications-badge"]');
@@ -670,16 +706,21 @@ describe('Dashboard E2E Tests', () => {
     });
   });
 
-  describe('Real-time Updates', () => {
+  test.describe('Real-time Updates', () => {
     test('should reflect real-time data updates in widgets', async () => {
       // Get auth token for API calls
       const authToken = await getAuthToken(page);
 
       // Create a new assignment via API
-      const newAssignment = await apiRequest(authToken, '/api/v1/assignments', 'POST', {
-        courseid: testCourse1.id,
-        name: 'Real-time Test Assignment',
-        duedate: Math.floor(Date.now() / 1000) + 86400 // Due tomorrow
+      const newAssignment = await apiRequest({
+        token: authToken,
+        endpoint: '/api/v1/assignments',
+        method: 'POST',
+        body: {
+          courseid: testEnv.course.id,
+          name: 'Real-time Test Assignment',
+          duedate: Math.floor(Date.now() / 1000) + 86400 // Due tomorrow
+        }
       });
 
       // Wait for potential websocket or polling update
@@ -689,19 +730,21 @@ describe('Dashboard E2E Tests', () => {
       await dashboardPage.refreshWidget('timeline');
       await waitForNetworkIdle(page);
 
-      // Verify new assignment appears in timeline
+      // Verify new assignment appears in timeline (use data from interface)
       const timelineItems = await dashboardPage.getTimelineItems();
-      const timelineTitles = await Promise.all(
-        timelineItems.map(item => item.locator('[data-testid="activity-title"]').textContent())
-      );
+      const timelineTitles = timelineItems.map(item => item.title);
 
       const hasNewAssignment = timelineTitles.some(title => 
-        title?.includes('Real-time Test Assignment')
+        title.includes('Real-time Test Assignment')
       );
       expect(hasNewAssignment).toBe(true);
 
       // Cleanup: Remove test assignment via API
-      await apiRequest(authToken, `/api/v1/assignments/${newAssignment.id}`, 'DELETE');
+      await apiRequest({
+        token: authToken,
+        endpoint: `/api/v1/assignments/${newAssignment.id}`,
+        method: 'DELETE'
+      });
     });
 
     test('should update recent activity feed with new content', async () => {
@@ -720,7 +763,7 @@ describe('Dashboard E2E Tests', () => {
     });
   });
 
-  describe('Performance Validation', () => {
+  test.describe('Performance Validation', () => {
     test('should load all widgets within performance budget', async () => {
       const startTime = Date.now();
 
@@ -729,7 +772,7 @@ describe('Dashboard E2E Tests', () => {
       await dashboardPage.waitForDashboard();
 
       // Wait for all widgets to load
-      await waitForCondition(page, async () => {
+      await waitForCondition(async () => {
         const calendarLoaded = await dashboardPage.verifyWidgetLoaded('calendar');
         const timelineLoaded = await dashboardPage.verifyWidgetLoaded('timeline');
         const recentActivityLoaded = await dashboardPage.verifyWidgetLoaded('recent-activity');
@@ -738,7 +781,7 @@ describe('Dashboard E2E Tests', () => {
 
         return calendarLoaded && timelineLoaded && recentActivityLoaded && 
                onlineUsersLoaded && courseOverviewLoaded;
-      }, 5000);
+      }, { timeout: 5000 });
 
       const totalLoadTime = Date.now() - startTime;
 
@@ -764,7 +807,7 @@ describe('Dashboard E2E Tests', () => {
     });
   });
 
-  describe('Error Handling', () => {
+  test.describe('Error Handling', () => {
     test('should display error message when widget fails to load', async () => {
       // Simulate network failure by intercepting API request
       await page.route('**/api/v1/blocks/timeline', route => {
@@ -815,7 +858,7 @@ describe('Dashboard E2E Tests', () => {
     });
   });
 
-  describe('Accessibility', () => {
+  test.describe('Accessibility', () => {
     test('should support keyboard navigation in dashboard', async () => {
       // Focus on first interactive element
       await page.keyboard.press('Tab');
