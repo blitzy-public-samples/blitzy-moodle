@@ -295,7 +295,7 @@ try {
     // If exception wasn't caught by ApiBase error handling,
     // ensure it's properly logged and returned as JSON.
     if ($e instanceof ApiException) {
-        http_response_code($e->getHttpStatusCode());
+        http_response_code($e->getHttpStatus());
         header('Content-Type: application/json');
         echo json_encode([
             'success' => false,
