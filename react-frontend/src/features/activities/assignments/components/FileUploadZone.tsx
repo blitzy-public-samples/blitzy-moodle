@@ -293,8 +293,10 @@ const FileUploadZone: React.FC<FileUploadZoneProps> = ({
 
       // Announce to screen readers
       const removedFile = files[index];
-      const announcement = `File ${removedFile.name} removed`;
-      announceToScreenReader(announcement);
+      if (removedFile) {
+        const announcement = `File ${removedFile.name} removed`;
+        announceToScreenReader(announcement);
+      }
     },
     [files, onFilesChange]
   );
@@ -592,19 +594,19 @@ const FileUploadZone: React.FC<FileUploadZoneProps> = ({
         >
           Select Files
         </Button>
-
-        {/* Hidden file input */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple={maxFiles === undefined || maxFiles > 1}
-          accept={acceptedFileTypes?.join(',')}
-          onChange={handleFileInputChange}
-          disabled={disabled}
-          style={{ display: 'none' }}
-          aria-label="File input"
-        />
       </Box>
+
+      {/* Hidden file input - placed outside clickable zone to prevent event bubbling */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple={maxFiles === undefined || maxFiles > 1}
+        accept={acceptedFileTypes?.join(',')}
+        onChange={handleFileInputChange}
+        disabled={disabled}
+        style={{ display: 'none' }}
+        aria-label="File input"
+      />
 
       {/* File Count Indicator */}
       {fileCountDisplay && (
