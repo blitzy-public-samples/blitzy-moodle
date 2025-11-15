@@ -37,7 +37,6 @@ import {
 import { useQuiz, useQuizQuestions, useSubmitQuizAttempt } from '../api/quizApi';
 import { QuestionRenderer } from '../components/QuestionRenderer';
 import { QuizNavigation } from '../components/QuizNavigation';
-import type { QuizQuestion } from '../api/quizApi';
 
 /**
  * QuizAttemptPage Component
@@ -217,6 +216,29 @@ export function QuizAttemptPage(): React.ReactElement {
   };
 
   /**
+   * Handle flag toggle for a question
+   */
+  const handleFlagToggle = (index: number): void => {
+    if (!questions || index < 0 || index >= questions.length) return;
+    
+    // Update the flagged status in the questions array
+    const question = questions[index];
+    if (question) {
+      question.flagged = !question.flagged;
+    }
+    
+    // In a real implementation, this would also send an API request
+    // to save the flagged status on the server
+  };
+
+  /**
+   * Handle finish attempt button click
+   */
+  const handleFinishAttempt = (): void => {
+    setConfirmSubmitOpen(true);
+  };
+
+  /**
    * Handle quiz submission
    */
   const handleSubmit = async (): Promise<void> => {
@@ -239,19 +261,28 @@ export function QuizAttemptPage(): React.ReactElement {
   };
 
   /**
-   * Get answer status for question
-   */
-  const getQuestionStatus = (question: QuizQuestion): 'answered' | 'not-answered' => {
-    return answers[question.slot] !== undefined ? 'answered' : 'not-answered';
-  };
-
-  /**
    * Calculate progress percentage
    */
   const calculateProgress = (): number => {
     if (!questions || questions.length === 0) return 0;
     const answeredCount = questions.filter((q) => answers[q.slot] !== undefined).length;
     return (answeredCount / questions.length) * 100;
+  };
+
+  /**
+   * Convert QuizQuestion[] to QuestionNavigationState[] for QuizNavigation
+   */
+  const getNavigationStates = (): import('../types/quiz.types').QuestionNavigationState[] => {
+    if (!questions) return [];
+    
+    return questions.map((q, index) => ({
+      slot: q.slot,
+      number: String(index + 1),
+      answered: answers[q.slot] !== undefined,
+      flagged: q.flagged || false,
+      page: 0, // Single page for now
+      isCurrentQuestion: index === currentQuestionIndex,
+    }));
   };
 
   // Render loading state
@@ -431,10 +462,13 @@ export function QuizAttemptPage(): React.ReactElement {
           Question Navigation
         </Typography>
         <QuizNavigation
-          questions={questions}
+          questions={getNavigationStates()}
           currentQuestionIndex={currentQuestionIndex}
-          onNavigate={handleNavigateToQuestion}
-          getQuestionStatus={getQuestionStatus}
+          onQuestionClick={handleNavigateToQuestion}
+          onFlagToggle={handleFlagToggle}
+          onFinishAttempt={handleFinishAttempt}
+          navigationMode="free"
+          isSequential={false}
         />
 
         <Button
