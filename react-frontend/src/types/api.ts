@@ -194,15 +194,18 @@ export interface PaginatedResponse<T> {
  * where the full error structure is not needed. Contains only the essential
  * error information for display and handling.
  *
+ * Note: Renamed from ApiError to SimplifiedApiError to avoid naming conflict
+ * with the more comprehensive ApiError interface in errors.ts.
+ *
  * @example
  * ```typescript
- * const handleError = (error: ApiError) => {
+ * const handleError = (error: SimplifiedApiError) => {
  *   toast.error(error.message);
  *   console.error('Error code:', error.code);
  * };
  * ```
  */
-export interface ApiError {
+export interface SimplifiedApiError {
   /**
    * Error code for programmatic error handling
    */
