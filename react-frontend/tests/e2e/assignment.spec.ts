@@ -55,7 +55,7 @@ test.describe('Assignment Submission E2E Tests', () => {
     
     // Login as student user
     await page.goto('/');
-    await loginAsStudent(page, testStudent.username, TEST_PASSWORD);
+    await loginAsStudent(page);
     
     // Verify authentication successful
     await expect(page).toHaveURL(/\/dashboard/);
@@ -73,7 +73,7 @@ test.describe('Assignment Submission E2E Tests', () => {
    */
   test.afterAll(async () => {
     // Clean up any generated test files
-    await cleanupTestFiles(testFilePaths);
+    await cleanupTestFiles();
     
     // Logout user
     await logout(page);
@@ -108,7 +108,7 @@ test.describe('Assignment Submission E2E Tests', () => {
     
     // Verify assignment description is present
     expect(assignmentInfo.description).toBeTruthy();
-    expect(assignmentInfo.description).toContain(testAssignment1.description);
+    expect(assignmentInfo.description).toContain(testAssignment1.intro);
     
     // Verify due date is displayed
     expect(assignmentInfo.dueDate).toBeTruthy();
@@ -769,7 +769,7 @@ test.describe('Assignment Submission E2E Tests', () => {
     await assignmentPage.clickAddSubmission();
     
     // Generate a file with an uncommon/invalid extension
-    const invalidFilePath = await generateTestFile('exe', 'small');
+    const invalidFilePath = await generateTestFile('exe' as any, 'small');
     testFilePaths.push(invalidFilePath);
     
     // Attempt to upload the invalid file type
