@@ -197,7 +197,16 @@ export const QUIZ_ENDPOINTS = {
   ATTEMPTS: (id: number) => `/quizzes/${id}/attempts`,
 
   /** GET - Retrieve quiz questions for an attempt */
-  QUESTIONS: (id: number) => `/quizzes/${id}/questions`,
+  QUESTIONS: (id: number, attemptId?: number, page?: number) => {
+    const baseUrl = `/quizzes/${id}/questions`;
+    if (attemptId !== undefined && page !== undefined) {
+      return `${baseUrl}?attemptId=${attemptId}&page=${page}`;
+    }
+    if (attemptId !== undefined) {
+      return `${baseUrl}?attemptId=${attemptId}`;
+    }
+    return baseUrl;
+  },
 
   /** GET - Review a completed quiz attempt with correct answers */
   REVIEW: (attemptId: number) => `/quizzes/attempts/${attemptId}/review`,

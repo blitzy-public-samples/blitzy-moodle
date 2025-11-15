@@ -49,13 +49,13 @@ export const QUESTION_TYPES = {
  */
 export const GRADE_METHODS = {
   /** Use the highest grade from all attempts */
-  HIGHEST_GRADE: 1,
+  HIGHEST_GRADE: 'highest' as const,
   /** Use the average of all attempt grades */
-  AVERAGE_GRADE: 2,
+  AVERAGE_GRADE: 'average' as const,
   /** Use the first attempt grade only */
-  FIRST_ATTEMPT: 3,
+  FIRST_ATTEMPT: 'first' as const,
   /** Use the last attempt grade only */
-  LAST_ATTEMPT: 4,
+  LAST_ATTEMPT: 'last' as const,
 } as const;
 
 /**
@@ -166,7 +166,7 @@ export interface Quiz {
   /** Maximum number of attempts allowed (0 = unlimited) */
   attempts: number;
   /** Grade calculation method for multiple attempts */
-  grademethod: number;
+  grademethod: 'highest' | 'average' | 'first' | 'last';
   /** Total number of questions in quiz */
   questioncount: number;
   /** Maximum grade possible for quiz */

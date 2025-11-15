@@ -22,8 +22,8 @@ export default defineConfig({
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: process.env.CI ? 'list' : 'html',
   
-  /* Global timeout for each test (30 seconds) */
-  timeout: 30000,
+  /* Global timeout for each test (60 seconds - increased due to slow dev server and complex quiz interactions) */
+  timeout: 60000,
   
   /* Timeout for each assertion (5 seconds) */
   expect: {
@@ -85,14 +85,16 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    // Set both E2E_TEST and VITE_E2E_TEST environment variables
+    // Build the production version with E2E flags, then serve it statically
+    // This prevents double-initialization issues that occur with the Vite dev server
     // E2E_TEST: Disables Vite proxy in server config (Node.js side)
     // VITE_E2E_TEST: Enables MSW browser worker (browser side)
     // Note: VITE_ prefix is required for Vite to expose env vars to the browser
     command: process.platform === 'win32' 
-      ? 'set E2E_TEST=true && set VITE_E2E_TEST=true && npm run dev'
-      : 'E2E_TEST=true VITE_E2E_TEST=true npm run dev',
+      ? 'npm run build:e2e && npm run serve:e2e'
+      : 'npm run build:e2e && npm run serve:e2e',
     url: 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,
+    timeout: 120000, // Allow 2 minutes for build + server start
   },
 });

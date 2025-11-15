@@ -1,139 +1,61 @@
 /**
- * QuizNavigation Component
+ * Quiz Navigation Component
  *
- * Question navigation panel component that displays all questions in the quiz with status
- * indicators (answered, flagged, current), provides quick navigation between questions,
- * and shows overall progress. This component mirrors the functionality of Moodle's PHP
- * quiz navigation panel (mod_quiz\output\navigation_panel_attempt).
+ * Sidebar navigation showing all quiz questions with their status
+ * (answered/not answered/flagged) and allowing quick navigation between questions.
+ * Includes progress tracking, question status indicators, flag toggle functionality,
+ * and finish attempt confirmation.
  *
- * Features:
- * - Visual status indicators using color-coded buttons (green=answered, orange=flagged,
- *   gray=not answered, blue=current question)
- * - Quick navigation to any question (in free navigation mode)
- * - Sequential navigation enforcement (in sequential mode)
- * - Progress bar showing completion percentage
- * - Summary statistics (e.g., "5 of 10 answered")
- * - Flag/unflag questions for later review
- * - Finish attempt button with confirmation dialog
- * - Sticky positioning on scroll for persistent access
- * - Responsive layout that adapts to mobile viewports
- * - Keyboard navigation support (arrow keys, Enter)
- * - Tooltips showing detailed question status on hover
- *
- * Navigation Modes:
- * - Free Navigation: Students can jump to any question at any time
- * - Sequential Navigation: Students must answer questions in order
- *
- * Color Coding:
- * - Blue (#1976d2): Current question being viewed
- * - Green (#2e7d32): Question has been answered
- * - Orange (#ed6c02): Question is flagged for review
- * - Gray (#757575): Question not yet answered
- *
- * Usage Example:
- * ```tsx
- * <QuizNavigation
- *   questions={questionNavigationStates}
- *   currentQuestionIndex={2}
- *   onQuestionClick={(index) => navigateToQuestion(index)}
- *   onFlagToggle={(index) => toggleQuestionFlag(index)}
- *   onFinishAttempt={() => submitQuizAttempt()}
- *   navigationMode="free"
- *   isSequential={false}
- * />
- * ```
- *
- * @package    react-frontend
- * @subpackage features/activities/quizzes/components
- * @copyright  2024 Moodle React Frontend
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @module features/activities/quizzes/components/QuizNavigation
  */
 
-import type React from 'react';
-import { useState, useCallback, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   Box,
-  Grid,
   Button,
+  Grid,
+  Tooltip,
   LinearProgress,
   Typography,
-  Tooltip,
-  IconButton,
   Divider,
+  IconButton,
 } from '@mui/material';
 import {
-  CheckCircle as CheckCircleIcon,
+  CheckCircle,
+  RadioButtonUnchecked,
   Flag as FlagIcon,
   FlagOutlined as FlagOutlinedIcon,
 } from '@mui/icons-material';
-import { Modal } from '../../../../components/feedback/Modal';
 import type { QuestionNavigationState } from '../types/quiz.types';
+import { Modal } from '@/components/feedback/Modal';
 
 /**
- * Props interface for the QuizNavigation component
- * Defines all required and optional properties for navigation panel configuration
+ * QuizNavigation Props
  */
 export interface QuizNavigationProps {
-  /**
-   * Array of question navigation states
-   * Each entry contains question slot, display number, answered/flagged status
-   * @required
-   */
+  /** Array of question navigation states */
   questions: QuestionNavigationState[];
-
-  /**
-   * Index of the currently displayed question (0-based)
-   * Used to highlight the current question button
-   * @required
-   */
+  /** Index of the currently displayed question (0-based) */
   currentQuestionIndex: number;
-
-  /**
-   * Callback fired when user clicks on a question button
-   * Receives the question index as parameter
-   * @required
-   */
+  /** Callback when a question button is clicked */
   onQuestionClick: (index: number) => void;
-
-  /**
-   * Callback fired when user toggles the flag status of a question
-   * Receives the question index as parameter
-   * @required
-   */
+  /** Callback when flag toggle is clicked for a question */
   onFlagToggle: (index: number) => void;
-
-  /**
-   * Callback fired when user confirms finishing the attempt
-   * Should trigger quiz submission logic in parent component
-   * @required
-   */
+  /** Callback when finish attempt button is clicked */
   onFinishAttempt: () => void;
-
-  /**
-   * Navigation mode: 'free' allows jumping to any question, 'seq' enforces sequential order
-   * Maps to QuizNavMethod enum values
-   * @default 'free'
-   */
-  navigationMode?: 'free' | 'seq';
-
-  /**
-   * Whether sequential navigation is enforced
-   * When true, students can only navigate to next unanswered question
-   * @default false
-   */
+  /** Navigation mode: 'free' or 'sequential' */
+  navigationMode?: 'free' | 'sequential';
+  /** Whether sequential navigation is enforced */
   isSequential?: boolean;
 }
 
 /**
  * QuizNavigation Component
  *
- * Renders the quiz navigation panel with question buttons, progress indicator,
- * and finish attempt button. Handles all navigation interactions and state display.
- *
- * @param props - QuizNavigationProps configuration object
- * @returns React functional component
+ * Displays a grid of question numbers with status indicators,
+ * progress tracking, flag toggles, and enables navigation between questions
  */
-function QuizNavigation({
+export const QuizNavigation: React.FC<QuizNavigationProps> = ({
   questions,
   currentQuestionIndex,
   onQuestionClick,
@@ -141,322 +63,313 @@ function QuizNavigation({
   onFinishAttempt,
   navigationMode = 'free',
   isSequential = false,
-}: QuizNavigationProps): JSX.Element {
+}) => {
   // State for finish attempt confirmation modal
-  const [showFinishModal, setShowFinishModal] = useState<boolean>(false);
+  const [showFinishModal, setShowFinishModal] = useState(false);
 
-  // Calculate progress statistics using useMemo for performance
-  const progressStats = useMemo(() => {
-    const answeredCount = questions.filter((q) => q.answered).length;
-    const totalCount = questions.length;
-    const progressPercentage = totalCount > 0 ? (answeredCount / totalCount) * 100 : 0;
-    const flaggedCount = questions.filter((q) => q.flagged).length;
+  /**
+   * Calculate progress statistics
+   */
+  const stats = useMemo(() => {
+    const answered = questions.filter((q) => q.answered).length;
+    const flagged = questions.filter((q) => q.flagged).length;
+    const total = questions.length;
+    const percentage = total > 0 ? Math.round((answered / total) * 100) : 0;
 
     return {
-      answeredCount,
-      totalCount,
-      progressPercentage,
-      flaggedCount,
+      answered,
+      flagged,
+      total,
+      percentage,
+      notAnswered: total - answered,
     };
   }, [questions]);
 
   /**
-   * Handles question button click with navigation mode enforcement
-   * In sequential mode, only allows navigation to next unanswered question
-   * In free mode, allows navigation to any question
+   * Check if navigation to a question is allowed
+   */
+  const canNavigateToQuestion = useCallback(
+    (index: number): boolean => {
+      if (navigationMode === 'free' || !isSequential) {
+        return true;
+      }
+      // In sequential mode, use the question's canNavigate property
+      return questions[index]?.canNavigate ?? false;
+    },
+    [navigationMode, isSequential, questions]
+  );
+
+  /**
+   * Handle question click
    */
   const handleQuestionClick = useCallback(
     (index: number) => {
-      const question = questions[index];
-
-      // Guard against invalid index
-      if (!question) {
-        return;
+      if (canNavigateToQuestion(index)) {
+        onQuestionClick(index);
       }
-
-      // Check if navigation to this question is allowed
-      if (isSequential && !question.canNavigate) {
-        // In sequential mode, don't allow navigation to future questions
-        return;
-      }
-
-      onQuestionClick(index);
     },
-    [questions, isSequential, onQuestionClick]
+    [canNavigateToQuestion, onQuestionClick]
   );
 
   /**
-   * Handles keyboard navigation within the navigation panel
-   * Arrow keys: Navigate between question buttons
-   * Enter/Space: Select focused question button
-   */
-  const handleKeyDown = useCallback(
-    (event: React.KeyboardEvent, index: number) => {
-      let targetIndex = index;
-
-      switch (event.key) {
-        case 'ArrowRight':
-        case 'ArrowDown':
-          event.preventDefault();
-          targetIndex = Math.min(index + 1, questions.length - 1);
-          break;
-        case 'ArrowLeft':
-        case 'ArrowUp':
-          event.preventDefault();
-          targetIndex = Math.max(index - 1, 0);
-          break;
-        case 'Enter':
-        case ' ':
-          event.preventDefault();
-          handleQuestionClick(index);
-          return;
-        default:
-          return;
-      }
-
-      // Focus the target button after navigation
-      const targetButton = document.querySelector(
-        `[data-question-index="${targetIndex}"]`
-      ) as HTMLButtonElement;
-      if (targetButton) {
-        targetButton.focus();
-      }
-    },
-    [questions.length, handleQuestionClick]
-  );
-
-  /**
-   * Handles flag toggle button click
-   * Toggles the flagged state of the specified question
+   * Handle flag toggle
    */
   const handleFlagToggle = useCallback(
-    (event: React.MouseEvent, index: number) => {
-      event.stopPropagation(); // Prevent triggering question navigation
+    (index: number, event: React.MouseEvent) => {
+      event.stopPropagation();
       onFlagToggle(index);
     },
     [onFlagToggle]
   );
 
   /**
-   * Opens the finish attempt confirmation modal
+   * Handle finish attempt confirmation
    */
-  const handleFinishAttemptClick = useCallback(() => {
-    setShowFinishModal(true);
-  }, []);
-
-  /**
-   * Closes the finish attempt confirmation modal
-   */
-  const handleCloseModal = useCallback(() => {
-    setShowFinishModal(false);
-  }, []);
-
-  /**
-   * Confirms finish attempt and triggers submission
-   */
-  const handleConfirmFinish = useCallback(() => {
+  const handleFinishConfirm = useCallback(() => {
     setShowFinishModal(false);
     onFinishAttempt();
   }, [onFinishAttempt]);
 
   /**
-   * Determines the button color based on question state
-   * Priority: current (blue) > answered (green) > flagged (orange) > default (gray)
+   * Handle keyboard navigation
    */
-  const getQuestionButtonColor = useCallback(
-    (question: QuestionNavigationState, index: number) => {
-      if (index === currentQuestionIndex) {
-        return 'primary'; // Blue for current question
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent, currentIndex: number) => {
+      let targetIndex: number | null = null;
+
+      switch (event.key) {
+        case 'ArrowRight':
+        case 'ArrowDown':
+          // Navigate to next question
+          if (currentIndex < questions.length - 1) {
+            targetIndex = currentIndex + 1;
+          }
+          break;
+        case 'ArrowLeft':
+        case 'ArrowUp':
+          // Navigate to previous question
+          if (currentIndex > 0) {
+            targetIndex = currentIndex - 1;
+          }
+          break;
+        default:
+          return;
       }
-      if (question.answered) {
-        return 'success'; // Green for answered
+
+      if (targetIndex !== null) {
+        event.preventDefault();
+        const targetButton = document.querySelector(
+          `[data-question-index="${targetIndex}"]`
+        ) as HTMLButtonElement;
+        if (targetButton && !targetButton.disabled) {
+          targetButton.focus();
+        }
       }
-      if (question.flagged) {
-        return 'warning'; // Orange for flagged
-      }
-      return 'inherit'; // Gray for not answered
     },
-    [currentQuestionIndex]
+    [questions.length]
   );
 
   /**
-   * Determines the button variant based on question state
-   * Current question uses 'contained', others use 'outlined'
+   * Get accessible name for question button
    */
-  const getQuestionButtonVariant = useCallback(
-    (index: number) => {
-      return index === currentQuestionIndex ? 'contained' : 'outlined';
-    },
-    [currentQuestionIndex]
-  );
+  const getQuestionAccessibleName = (
+    index: number,
+    question: QuestionNavigationState
+  ): string => {
+    let name = `Navigate to question ${index + 1}`;
+    if (question.answered) {
+      name += ' (answered)';
+    }
+    if (question.flagged) {
+      name += ' (flagged)';
+    }
+    return name;
+  };
 
   /**
-   * Generates tooltip text with detailed question status
+   * Get tooltip text for question button
    */
-  const getQuestionTooltip = useCallback((question: QuestionNavigationState) => {
-    const parts: string[] = [`Question ${question.number}`];
-
+  const getTooltipText = (
+    index: number,
+    question: QuestionNavigationState,
+    canNavigate: boolean
+  ): string => {
+    if (!canNavigate) {
+      return 'Complete previous questions first';
+    }
+    
+    const parts: string[] = [`Question ${index + 1}`];
+    
     if (question.answered) {
       parts.push('Answered');
     } else {
       parts.push('Not answered');
     }
-
+    
     if (question.flagged) {
       parts.push('Flagged for review');
     }
-
-    if (question.state) {
-      parts.push(`Status: ${question.state}`);
-    }
-
-    return parts.join(' • ');
-  }, []);
-
-  /**
-   * Determines if navigation to a question is disabled
-   * In sequential mode, only current and previous questions are enabled
-   */
-  const isQuestionDisabled = useCallback(
-    (question: QuestionNavigationState, _index: number) => {
-      if (navigationMode === 'free') {
-        return false; // All questions accessible in free mode
-      }
-
-      // In sequential mode, can only navigate to current or previous questions
-      if (isSequential && question.canNavigate === false) {
-        return true;
-      }
-
-      return false;
-    },
-    [navigationMode, isSequential]
-  );
+    
+    return parts.join(' - ');
+  };
 
   return (
     <Box
       sx={{
         position: 'sticky',
-        top: 16,
-        padding: 2,
-        backgroundColor: 'background.paper',
+        padding: '16px',
+        bgcolor: 'background.paper',
         borderRadius: 1,
-        boxShadow: 2,
-        maxHeight: 'calc(100vh - 32px)',
-        overflowY: 'auto',
+        border: 1,
+        borderColor: 'divider',
       }}
+      data-testid="quiz-navigation"
     >
+      {/* Header */}
+      <Typography variant="h6" gutterBottom>
+        Quiz Navigation
+      </Typography>
+
       {/* Progress Section */}
       <Box sx={{ mb: 2 }}>
-        <Typography variant="h6" gutterBottom>
-          Quiz Navigation
-        </Typography>
-
-        {/* Progress Bar */}
-        <Box sx={{ mb: 1 }}>
-          <LinearProgress
-            variant="determinate"
-            value={progressStats.progressPercentage}
-            sx={{ height: 8, borderRadius: 1 }}
-          />
-        </Box>
-
-        {/* Progress Statistics */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            mb: 1,
+          }}
+        >
           <Typography variant="body2" color="text.secondary">
-            {progressStats.answeredCount} of {progressStats.totalCount} answered
+            {stats.answered} of {stats.total} answered
           </Typography>
-          {progressStats.flaggedCount > 0 && (
-            <Typography variant="body2" color="warning.main" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <FlagIcon fontSize="small" />
-              {progressStats.flaggedCount} flagged
-            </Typography>
-          )}
+          <Typography variant="body2" color="text.secondary">
+            {stats.percentage}%
+          </Typography>
         </Box>
+        <LinearProgress
+          variant="determinate"
+          value={stats.percentage}
+          sx={{ height: 8, borderRadius: 1 }}
+        />
       </Box>
 
-      <Divider sx={{ mb: 2 }} />
+      {stats.flagged > 0 && (
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            mb: 2,
+          }}
+        >
+          <FlagIcon color="warning" fontSize="small" />
+          <Typography variant="body2" color="text.secondary">
+            {stats.flagged} flagged
+          </Typography>
+        </Box>
+      )}
 
-      {/* Question Grid */}
-      <Box sx={{ mb: 2 }}>
-        <Typography variant="subtitle2" gutterBottom>
-          Questions
-        </Typography>
-        <Grid container spacing={1}>
-          {questions.map((question, index) => (
-            <Grid item xs={3} sm={2} md={3} key={question.slot}>
-              <Tooltip title={getQuestionTooltip(question)} arrow placement="top">
+      <Divider sx={{ my: 2 }} />
+
+      {/* Sequential Navigation Info */}
+      {isSequential && (
+        <Box
+          sx={{
+            mb: 2,
+            p: 1.5,
+            bgcolor: 'info.light',
+            borderRadius: 1,
+          }}
+        >
+          <Typography variant="body2" color="info.contrastText">
+            Sequential navigation - answer questions in order
+          </Typography>
+        </Box>
+      )}
+
+      {/* Questions Section */}
+      <Typography variant="subtitle2" gutterBottom>
+        Questions
+      </Typography>
+
+      <Grid container spacing={1} sx={{ mb: 2 }}>
+        {questions.map((question, index) => {
+          const isCurrent = index === currentQuestionIndex;
+          const canNavigate = canNavigateToQuestion(index);
+          const tooltipText = getTooltipText(index, question, canNavigate);
+          const accessibleName = getQuestionAccessibleName(index, question);
+
+          // Determine button color based on state
+          // Priority: current > answered > flagged > default
+          let buttonColor: 'primary' | 'success' | 'warning' | 'inherit' = 'inherit';
+          if (isCurrent) {
+            buttonColor = 'primary';
+          } else if (question.answered) {
+            buttonColor = 'success';
+          } else if (question.flagged) {
+            buttonColor = 'warning';
+          }
+
+          return (
+            <Grid item xs={3} key={index}>
+              <Tooltip title={tooltipText} arrow>
                 <Box sx={{ position: 'relative' }}>
                   <Button
+                    variant={isCurrent ? 'contained' : 'outlined'}
+                    color={buttonColor}
                     fullWidth
-                    variant={getQuestionButtonVariant(index)}
-                    color={getQuestionButtonColor(question, index)}
                     onClick={() => handleQuestionClick(index)}
                     onKeyDown={(e) => handleKeyDown(e, index)}
-                    disabled={isQuestionDisabled(question, index)}
+                    disabled={!canNavigate}
+                    aria-label={accessibleName}
+                    aria-current={isCurrent ? 'true' : undefined}
                     data-question-index={index}
                     sx={{
                       minWidth: 0,
-                      aspectRatio: '1/1',
-                      fontSize: '0.875rem',
-                      fontWeight: index === currentQuestionIndex ? 600 : 400,
-                      position: 'relative',
+                      fontWeight: isCurrent ? 600 : 400,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 0.5,
                     }}
-                    aria-label={`Navigate to question ${question.number}${
-                      question.answered ? ' (answered)' : ''
-                    }${question.flagged ? ' (flagged)' : ''}`}
-                    aria-current={index === currentQuestionIndex ? 'true' : undefined}
                   >
-                    {question.number}
                     {question.answered && (
-                      <CheckCircleIcon
-                        sx={{
-                          position: 'absolute',
-                          top: 2,
-                          right: 2,
-                          fontSize: 12,
-                          color: index === currentQuestionIndex ? 'white' : 'success.main',
-                        }}
-                      />
+                      <CheckCircle sx={{ fontSize: 16 }} />
                     )}
+                    {index + 1}
                   </Button>
 
-                  {/* Flag Toggle Button */}
+                  {/* Flag toggle button */}
                   <IconButton
                     size="small"
-                    onClick={(e) => handleFlagToggle(e, index)}
+                    onClick={(e) => handleFlagToggle(index, e)}
+                    aria-label={question.flagged ? 'remove flag' : 'flag for review'}
                     sx={{
                       position: 'absolute',
-                      bottom: -8,
+                      top: -8,
                       right: -8,
                       backgroundColor: 'background.paper',
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      padding: 0.25,
                       '&:hover': {
                         backgroundColor: 'action.hover',
                       },
                     }}
-                    aria-label={question.flagged ? 'Remove flag' : 'Flag for review'}
                   >
                     {question.flagged ? (
-                      <FlagIcon sx={{ fontSize: 14, color: 'warning.main' }} />
+                      <FlagIcon color="warning" fontSize="small" />
                     ) : (
-                      <FlagOutlinedIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                      <FlagOutlinedIcon color="disabled" fontSize="small" />
                     )}
                   </IconButton>
                 </Box>
               </Tooltip>
             </Grid>
-          ))}
-        </Grid>
-      </Box>
-
-      <Divider sx={{ mb: 2 }} />
+          );
+        })}
+      </Grid>
 
       {/* Legend */}
       <Box sx={{ mb: 2 }}>
-        <Typography variant="caption" display="block" gutterBottom>
+        <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
           Legend:
         </Typography>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
@@ -474,43 +387,21 @@ function QuizNavigation({
             </Typography>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Box
-              sx={{
-                width: 16,
-                height: 16,
-                backgroundColor: 'success.main',
-                borderRadius: 0.5,
-              }}
-            />
+            <CheckCircle color="success" sx={{ fontSize: 16 }} />
             <Typography variant="caption" color="text.secondary">
               Answered
             </Typography>
           </Box>
-          {progressStats.flaggedCount > 0 && (
+          {stats.flagged > 0 && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Box
-                sx={{
-                  width: 16,
-                  height: 16,
-                  backgroundColor: 'warning.main',
-                  borderRadius: 0.5,
-                }}
-              />
+              <FlagIcon color="warning" sx={{ fontSize: 16 }} />
               <Typography variant="caption" color="text.secondary">
                 Flagged for review
               </Typography>
             </Box>
           )}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Box
-              sx={{
-                width: 16,
-                height: 16,
-                border: '1px solid',
-                borderColor: 'divider',
-                borderRadius: 0.5,
-              }}
-            />
+            <RadioButtonUnchecked color="disabled" sx={{ fontSize: 16 }} />
             <Typography variant="caption" color="text.secondary">
               Not answered
             </Typography>
@@ -518,89 +409,69 @@ function QuizNavigation({
         </Box>
       </Box>
 
-      <Divider sx={{ mb: 2 }} />
+      <Divider sx={{ my: 2 }} />
 
-      {/* Finish Attempt Button */}
+      {/* Finish Button */}
       <Button
         variant="contained"
         color="primary"
         fullWidth
-        size="large"
-        onClick={handleFinishAttemptClick}
+        onClick={() => setShowFinishModal(true)}
+        aria-label="finish quiz attempt"
         sx={{ fontWeight: 600 }}
-        aria-label="Finish quiz attempt"
       >
         Finish Attempt
       </Button>
 
-      {/* Navigation Mode Info */}
-      {isSequential && (
-        <Typography
-          variant="caption"
-          color="info.main"
-          sx={{ display: 'block', mt: 1, textAlign: 'center' }}
-        >
-          Sequential navigation: answer questions in order
-        </Typography>
-      )}
-
-      {/* Finish Attempt Confirmation Modal */}
+      {/* Finish Confirmation Modal */}
       <Modal
         open={showFinishModal}
-        onClose={handleCloseModal}
+        onClose={() => setShowFinishModal(false)}
         title="Finish Quiz Attempt?"
-        maxWidth="sm"
-        actions={[
-          {
-            label: 'Cancel',
-            onClick: handleCloseModal,
-            color: 'inherit',
-          },
-          {
-            label: 'Finish Attempt',
-            onClick: handleConfirmFinish,
-            color: 'primary',
-            variant: 'contained',
-            autoFocus: true,
-          },
-        ]}
       >
-        <Typography variant="body1" paragraph>
-          Are you sure you want to finish this quiz attempt?
-        </Typography>
-        <Typography variant="body2" color="text.secondary" paragraph>
-          Once you finish, you will not be able to change your answers.
-        </Typography>
-        <Box
-          sx={{
-            p: 2,
-            backgroundColor: 'info.light',
-            borderRadius: 1,
-            mb: 2,
-          }}
-        >
-          <Typography variant="body2" fontWeight={600} gutterBottom>
-            Current Progress:
+        <Box>
+          <Typography variant="body1" gutterBottom>
+            {stats.answered} of {stats.total} questions answered
           </Typography>
-          <Typography variant="body2">
-            • {progressStats.answeredCount} of {progressStats.totalCount} questions answered
-          </Typography>
-          {progressStats.flaggedCount > 0 && (
-            <Typography variant="body2" color="warning.dark">
-              • {progressStats.flaggedCount} question{progressStats.flaggedCount !== 1 ? 's' : ''}{' '}
-              flagged for review
+
+          {stats.notAnswered > 0 && (
+            <Typography variant="body2" color="warning.main" gutterBottom>
+              You have not answered all questions.
             </Typography>
           )}
+
+          {stats.flagged > 0 && (
+            <Typography variant="body2" color="info.main" gutterBottom>
+              {stats.flagged} {stats.flagged === 1 ? 'question' : 'questions'} flagged for review
+            </Typography>
+          )}
+
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: 1,
+              mt: 2,
+            }}
+          >
+            <Button
+              variant="outlined"
+              onClick={() => setShowFinishModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleFinishConfirm}
+            >
+              Finish Attempt
+            </Button>
+          </Box>
         </Box>
-        {progressStats.answeredCount < progressStats.totalCount && (
-          <Typography variant="body2" color="warning.main">
-            <strong>Warning:</strong> You have not answered all questions. Unanswered questions
-            will receive zero marks.
-          </Typography>
-        )}
       </Modal>
     </Box>
   );
-}
+};
 
 export default QuizNavigation;

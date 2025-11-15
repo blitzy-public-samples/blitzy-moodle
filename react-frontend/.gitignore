@@ -34,6 +34,8 @@ coverage/
 playwright-report/
 test-results/
 .vitest/
+screenshots/
+test-files/
 
 # Logs
 logs/

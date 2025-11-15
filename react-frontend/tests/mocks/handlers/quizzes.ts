@@ -16,6 +16,13 @@
  */
 
 import { http, HttpResponse } from 'msw';
+import { GradeMethod } from '../../../src/features/activities/quizzes/types/quiz.types';
+import {
+  testQuiz1,
+  testQuiz2,
+  testQuiz3,
+  type QuizQuestion as FixtureQuizQuestion
+} from '../../e2e/fixtures/quizzes';
 
 /**
  * TypeScript type definitions for quiz entities
@@ -33,7 +40,7 @@ interface Quiz {
   preferredbehaviour: 'deferredfeedback' | 'adaptive' | 'immediatefeedback' | 'interactive';
   canredoquestions: boolean;
   attempts: number; // 0 means unlimited
-  grademethod: 'highest' | 'average' | 'first' | 'last';
+  grademethod: GradeMethod;
   decimalpoints: number;
   questiondecimalpoints: number;
   reviewattempt: boolean;
@@ -172,20 +179,20 @@ interface AttemptSummary {
  */
 const mockQuizzes: Map<number, Quiz> = new Map([
   [
-    1,
+    201,
     {
-      id: 1,
-      name: 'Introduction to React Quiz',
-      intro: '<p>Test your knowledge of React fundamentals including components, hooks, and state management.</p>',
+      id: 201,
+      name: 'Python Fundamentals Quiz',
+      intro: '<p>This quiz tests your understanding of Python basics including variables, data types, and functions.</p><p>You have unlimited attempts and no time limit. Good luck!</p>',
       timeopen: null, // Always open
       timeclose: null,
-      timelimit: 1800, // 30 minutes
+      timelimit: null, // No time limit
       overduehandling: 'autosubmit',
       graceperiod: 300, // 5 minutes grace period
       preferredbehaviour: 'deferredfeedback',
       canredoquestions: false,
       attempts: 3,
-      grademethod: 'highest',
+      grademethod: GradeMethod.HIGHEST,
       decimalpoints: 2,
       questiondecimalpoints: 2,
       reviewattempt: true,
@@ -207,7 +214,7 @@ const mockQuizzes: Map<number, Quiz> = new Map([
         attemptsmade: 1,
         attemptsallowed: 3,
         bestgrade: 75.5,
-        lastattempt: Date.now() - 86400000, // 1 day ago
+        lastattempt: Math.floor(Date.now() / 1000) - 86400, // 1 day ago (Unix timestamp in seconds)
       },
       haspassword: false,
       hasipaddress: false,
@@ -215,20 +222,20 @@ const mockQuizzes: Map<number, Quiz> = new Map([
     },
   ],
   [
-    2,
+    202,
     {
-      id: 2,
-      name: 'Advanced TypeScript Assessment',
-      intro: '<p>Comprehensive assessment covering advanced TypeScript features including generics, type guards, and decorators.</p>',
-      timeopen: Date.now() - 604800000, // Opened 1 week ago
-      timeclose: Date.now() + 604800000, // Closes in 1 week
+      id: 202,
+      name: 'Midterm Exam: Programming Concepts',
+      intro: '<p>This is a timed midterm examination covering all topics from weeks 1-6.</p><p><strong>Important:</strong> You have 60 minutes to complete this quiz and only 2 attempts are allowed.</p>',
+      timeopen: Math.floor(Date.now() / 1000) - 604800, // Opened 1 week ago (Unix timestamp in seconds)
+      timeclose: Math.floor(Date.now() / 1000) + 604800, // Closes in 1 week (Unix timestamp in seconds)
       timelimit: 3600, // 60 minutes
       overduehandling: 'graceperiod',
       graceperiod: 600, // 10 minutes
       preferredbehaviour: 'immediatefeedback',
       canredoquestions: true,
-      attempts: 0, // Unlimited
-      grademethod: 'average',
+      attempts: 2, // Maximum 2 attempts
+      grademethod: GradeMethod.HIGHEST, // Highest grade
       decimalpoints: 1,
       questiondecimalpoints: 1,
       reviewattempt: true,
@@ -244,7 +251,7 @@ const mockQuizzes: Map<number, Quiz> = new Map([
       sumgrades: 50,
       grade: 100,
       courseid: 1,
-      questioncount: 15,
+      questioncount: 10,
       estimatedduration: 55,
       userattempts: {
         attemptsmade: 0,
@@ -252,52 +259,95 @@ const mockQuizzes: Map<number, Quiz> = new Map([
         bestgrade: null,
         lastattempt: null,
       },
-      haspassword: true,
+      haspassword: false,
       hasipaddress: false,
       requiressafebrowser: false,
     },
   ],
   [
-    3,
+    203,
     {
-      id: 3,
-      name: 'Final Exam - Web Development',
-      intro: '<p>Comprehensive final exam covering all topics from the course. This exam is timed and can only be attempted once.</p>',
-      timeopen: Date.now() - 86400000, // Opened yesterday
-      timeclose: Date.now() + 172800000, // Closes in 2 days
-      timelimit: 7200, // 2 hours
+      id: 203,
+      name: 'Practice Quiz: Python Syntax',
+      intro: '<p>Practice your Python syntax knowledge with this self-paced quiz.</p><p>You have unlimited attempts and will receive immediate feedback after each question.</p>',
+      timeopen: Math.floor(Date.now() / 1000) - 86400 * 14, // Opened 14 days ago (Unix timestamp in seconds)
+      timeclose: 0, // Never closes
+      timelimit: 0, // No time limit
       overduehandling: 'autoabandon',
       graceperiod: null,
-      preferredbehaviour: 'deferredfeedback',
-      canredoquestions: false,
-      attempts: 1, // Only one attempt allowed
-      grademethod: 'first',
+      preferredbehaviour: 'immediatefeedback',
+      canredoquestions: true,
+      attempts: 0, // Unlimited attempts
+      grademethod: GradeMethod.LAST, // Last attempt
       decimalpoints: 2,
       questiondecimalpoints: 2,
-      reviewattempt: false, // No review until after close
-      reviewcorrectness: false,
-      reviewmarks: false,
-      reviewspecificfeedback: false,
-      reviewgeneralfeedback: false,
-      reviewrightanswer: false,
-      reviewoverallfeedback: false,
-      questionsperpage: 10,
+      reviewattempt: true,
+      reviewcorrectness: true,
+      reviewmarks: true,
+      reviewspecificfeedback: true,
+      reviewgeneralfeedback: true,
+      reviewrightanswer: true,
+      reviewoverallfeedback: true,
+      questionsperpage: 1,
       navmethod: 'free',
       shuffleanswers: true,
-      sumgrades: 200,
-      grade: 200,
+      sumgrades: 5,
+      grade: 5,
       courseid: 1,
-      questioncount: 50,
-      estimatedduration: 110,
+      questioncount: 5,
+      estimatedduration: 10,
+      userattempts: {
+        attemptsmade: 0,
+        attemptsallowed: 0, // Unlimited
+        bestgrade: null,
+        lastattempt: null,
+      },
+      haspassword: false,
+      hasipaddress: false,
+      requiressafebrowser: false,
+    },
+  ],
+  [
+    204,
+    {
+      id: 204,
+      name: 'Final Project: Programming Concepts',
+      intro: '<p>This quiz assesses your understanding of advanced programming concepts through essay questions.</p><p>All questions require detailed written responses and will be manually graded by your instructor.</p>',
+      timeopen: Math.floor(Date.now() / 1000) - 86400, // Opened 1 day ago (Unix timestamp in seconds)
+      timeclose: Math.floor(Date.now() / 1000) + 1209600, // Closes in 14 days (Unix timestamp in seconds)
+      timelimit: 7200, // 2 hours
+      overduehandling: 'autosubmit',
+      graceperiod: 0,
+      preferredbehaviour: 'deferredfeedback',
+      canredoquestions: false,
+      attempts: 1, // Single attempt only
+      grademethod: GradeMethod.FIRST,
+      decimalpoints: 2,
+      questiondecimalpoints: 2,
+      reviewattempt: true,
+      reviewcorrectness: true,
+      reviewmarks: true,
+      reviewspecificfeedback: true,
+      reviewgeneralfeedback: true,
+      reviewrightanswer: false,
+      reviewoverallfeedback: true,
+      questionsperpage: 1,
+      navmethod: 'free',
+      shuffleanswers: false,
+      sumgrades: 30,
+      grade: 30,
+      courseid: 1,
+      questioncount: 3,
+      estimatedduration: 115,
       userattempts: {
         attemptsmade: 0,
         attemptsallowed: 1,
         bestgrade: null,
         lastattempt: null,
       },
-      haspassword: true,
-      hasipaddress: true,
-      requiressafebrowser: true,
+      haspassword: false,
+      hasipaddress: false,
+      requiressafebrowser: false,
     },
   ],
 ]);
@@ -310,7 +360,7 @@ const mockAttempts: Map<number, QuizAttempt> = new Map([
     1,
     {
       id: 1,
-      quiz: 1,
+      quiz: 201,
       userid: 1,
       attempt: 1,
       uniqueid: 1001,
@@ -318,9 +368,9 @@ const mockAttempts: Map<number, QuizAttempt> = new Map([
       currentpage: 0,
       preview: false,
       state: 'inprogress',
-      timestart: Date.now() - 600000, // Started 10 minutes ago (600 seconds * 1000ms)
+      timestart: Math.floor(Date.now() / 1000) - 600, // Started 10 minutes ago (Unix timestamp in seconds)
       timefinish: null,
-      timemodified: Date.now() - 600000,
+      timemodified: Math.floor(Date.now() / 1000) - 600, // Unix timestamp in seconds
       timecheckstate: null,
       sumgrades: null,
       gradednotificationsenttime: null,
@@ -329,337 +379,134 @@ const mockAttempts: Map<number, QuizAttempt> = new Map([
 ]);
 
 /**
+ * Helper function to convert fixture QuizQuestion to MSW Question format
+ */
+function convertFixtureQuestionToMSW(fixtureQuestion: FixtureQuizQuestion): Question {
+  const baseQuestion: Question = {
+    slot: fixtureQuestion.slot,
+    questionid: fixtureQuestion.id,
+    type: fixtureQuestion.type as Question['type'],
+    questiontext: fixtureQuestion.questiontext,
+    questiontextformat: 1,
+    generalfeedback: fixtureQuestion.feedback || '',
+    defaultmark: fixtureQuestion.defaultmark,
+    maxmark: fixtureQuestion.defaultmark,
+    page: 0,
+    answered: false,
+    flagged: false,
+    mark: null,
+    state: 'notanswered',
+  };
+
+  // Convert answers based on question type
+  if (fixtureQuestion.type === 'multichoice' && fixtureQuestion.answers) {
+    baseQuestion.options = {
+      single: true,
+      shuffleanswers: true,
+      answers: fixtureQuestion.answers.map(ans => ({
+        id: ans.id,
+        answer: ans.text,
+        fraction: ans.fraction,
+        feedback: ans.feedback || '',
+      })),
+    } as MultichoiceOptions;
+  } else if (fixtureQuestion.type === 'truefalse' && fixtureQuestion.answers) {
+    const trueAnswer = fixtureQuestion.answers.find(a => a.text.toLowerCase() === 'true');
+    const falseAnswer = fixtureQuestion.answers.find(a => a.text.toLowerCase() === 'false');
+    baseQuestion.options = {
+      truefeedback: trueAnswer?.feedback || '',
+      falsefeedback: falseAnswer?.feedback || '',
+    } as TrueFalseOptions;
+  } else if (fixtureQuestion.type === 'shortanswer' && fixtureQuestion.correctanswer) {
+    baseQuestion.options = {
+      usecase: false,
+      answers: [
+        {
+          answer: String(fixtureQuestion.correctanswer),
+          fraction: 1.0,
+          feedback: 'Correct!',
+        },
+      ],
+    } as ShortAnswerOptions;
+  } else if (fixtureQuestion.type === 'essay') {
+    baseQuestion.options = {
+      responseformat: fixtureQuestion.responseformat || 'editor',
+      responserequired: true,
+      responsefieldlines: 15,
+      attachments: 0,
+      attachmentsrequired: 0,
+    } as EssayOptions;
+  }
+
+  return baseQuestion;
+}
+
+/**
+ * Transform MSW Question format to frontend QuizQuestion format
+ * Converts complex options object to simple options array expected by frontend
+ */
+function transformQuestionForFrontend(question: Question): any {
+  const baseTransformed: any = {
+    id: question.questionid,
+    slot: question.slot,
+    type: question.type,
+    questiontext: question.questiontext,
+    defaultmark: question.defaultmark,
+    maxmark: question.maxmark,
+    answered: question.answered,
+    flagged: question.flagged,
+    mark: question.mark,
+    state: question.state,
+    generalfeedback: question.generalfeedback,
+  };
+
+  // Transform options based on question type
+  if (question.type === 'multichoice' && question.options) {
+    const mcOptions = question.options as MultichoiceOptions;
+    // Convert MultichoiceOptions.answers to simple options array
+    baseTransformed.options = mcOptions.answers.map(ans => ({
+      id: ans.id,
+      text: ans.answer,
+      correct: ans.fraction === 1.0,
+    }));
+  } else if (question.type === 'truefalse' && question.options) {
+    // Convert TrueFalseOptions to two simple options
+    baseTransformed.options = [
+      { id: 1, text: 'True', correct: false },
+      { id: 2, text: 'False', correct: false },
+    ];
+  } else if (question.type === 'shortanswer' && question.options) {
+    const saOptions = question.options as ShortAnswerOptions;
+    // For shortanswer, we don't show options in the UI
+    baseTransformed.options = [];
+    baseTransformed.correctanswer = saOptions.answers[0]?.answer;
+  } else if (question.type === 'essay') {
+    // Essay questions don't have options
+    baseTransformed.options = [];
+  } else {
+    // Default: empty options array
+    baseTransformed.options = [];
+  }
+
+  return baseTransformed;
+}
+
+/**
  * Mock questions database - various question types for testing
+ * Quiz ID 201 uses questions from E2E test fixtures for consistency
  */
 const mockQuestions: Map<number, Question[]> = new Map([
   [
-    1, // Quiz ID 1
-    [
-      {
-        slot: 1,
-        questionid: 101,
-        type: 'multichoice',
-        questiontext: '<p>What is the purpose of the useState hook in React?</p>',
-        questiontextformat: 1,
-        generalfeedback: '<p>useState is a React Hook that lets you add state to function components.</p>',
-        defaultmark: 10,
-        maxmark: 10,
-        page: 0,
-        options: {
-          single: true,
-          shuffleanswers: true,
-          answers: [
-            {
-              id: 1,
-              answer: 'To manage component state in functional components',
-              fraction: 1.0,
-              feedback: 'Correct! useState allows functional components to have state.',
-            },
-            {
-              id: 2,
-              answer: 'To create class components',
-              fraction: 0,
-              feedback: 'Incorrect. useState is used in functional components, not class components.',
-            },
-            {
-              id: 3,
-              answer: 'To make API calls',
-              fraction: 0,
-              feedback: 'Incorrect. Use useEffect for side effects like API calls.',
-            },
-            {
-              id: 4,
-              answer: 'To define component props',
-              fraction: 0,
-              feedback: 'Incorrect. Props are passed from parent components, not defined with useState.',
-            },
-          ],
-        } as MultichoiceOptions,
-        answered: false,
-        flagged: false,
-        mark: null,
-        state: 'notanswered',
-      },
-      {
-        slot: 2,
-        questionid: 102,
-        type: 'truefalse',
-        questiontext: '<p>React components must always have a render method.</p>',
-        questiontextformat: 1,
-        generalfeedback: '<p>Functional components do not need a render method, only class components do.</p>',
-        defaultmark: 10,
-        maxmark: 10,
-        page: 0,
-        options: {
-          truefeedback: 'Incorrect. Functional components do not have a render method.',
-          falsefeedback: 'Correct! Only class components require a render method.',
-        } as TrueFalseOptions,
-        answered: false,
-        flagged: false,
-        mark: null,
-        state: 'notanswered',
-      },
-      {
-        slot: 3,
-        questionid: 103,
-        type: 'shortanswer',
-        questiontext: '<p>What method is used to update state in a class component? (one word)</p>',
-        questiontextformat: 1,
-        generalfeedback: '<p>The setState method is used to update component state in class components.</p>',
-        defaultmark: 10,
-        maxmark: 10,
-        page: 0,
-        options: {
-          usecase: false,
-          answers: [
-            {
-              answer: 'setState',
-              fraction: 1.0,
-              feedback: 'Correct!',
-            },
-            {
-              answer: 'setstate',
-              fraction: 1.0,
-              feedback: 'Correct! (case insensitive)',
-            },
-          ],
-        } as ShortAnswerOptions,
-        answered: false,
-        flagged: false,
-        mark: null,
-        state: 'notanswered',
-      },
-      {
-        slot: 4,
-        questionid: 104,
-        type: 'essay',
-        questiontext: '<p>Explain the concept of "lifting state up" in React and when you should use it. Provide an example.</p>',
-        questiontextformat: 1,
-        generalfeedback: '<p>Lifting state up involves moving state to the nearest common ancestor component when multiple components need to share that state.</p>',
-        defaultmark: 20,
-        maxmark: 20,
-        page: 0,
-        options: {
-          responseformat: 'editor',
-          responserequired: true,
-          responsefieldlines: 15,
-          attachments: 0,
-          attachmentsrequired: 0,
-        } as EssayOptions,
-        answered: false,
-        flagged: false,
-        mark: null,
-        state: 'notanswered',
-      },
-      {
-        slot: 5,
-        questionid: 105,
-        type: 'matching',
-        questiontext: '<p>Match each React Hook with its primary purpose:</p>',
-        questiontextformat: 1,
-        generalfeedback: '<p>Each hook has a specific purpose in React functional components.</p>',
-        defaultmark: 10,
-        maxmark: 10,
-        page: 0,
-        options: {
-          shuffleanswers: true,
-          subquestions: [
-            {
-              questiontext: 'useState',
-              answertext: 'Manage component state',
-            },
-            {
-              questiontext: 'useEffect',
-              answertext: 'Handle side effects',
-            },
-            {
-              questiontext: 'useContext',
-              answertext: 'Access context values',
-            },
-            {
-              questiontext: 'useReducer',
-              answertext: 'Complex state logic',
-            },
-          ],
-          choices: ['Manage component state', 'Handle side effects', 'Access context values', 'Complex state logic', 'Create refs'],
-        } as MatchingOptions,
-        answered: false,
-        flagged: false,
-        mark: null,
-        state: 'notanswered',
-      },
-      {
-        slot: 6,
-        questionid: 106,
-        type: 'numerical',
-        questiontext: '<p>How many times will the effect run if you have useEffect with an empty dependency array []? (enter a number)</p>',
-        questiontextformat: 1,
-        generalfeedback: '<p>With an empty dependency array, useEffect runs exactly once after the initial render.</p>',
-        defaultmark: 10,
-        maxmark: 10,
-        page: 1,
-        options: {
-          answers: [
-            {
-              answer: 1,
-              fraction: 1.0,
-              tolerance: 0,
-              feedback: 'Correct! Once on mount.',
-            },
-          ],
-          unitgradingtype: 'none',
-          unitpenalty: 0,
-        } as NumericalOptions,
-        answered: false,
-        flagged: false,
-        mark: null,
-        state: 'notanswered',
-      },
-      {
-        slot: 7,
-        questionid: 107,
-        type: 'multichoice',
-        questiontext: '<p>Which of the following are valid ways to pass data to a component? (Select all that apply)</p>',
-        questiontextformat: 1,
-        generalfeedback: '<p>Props, context, and state are all valid ways to provide data to React components.</p>',
-        defaultmark: 10,
-        maxmark: 10,
-        page: 1,
-        options: {
-          single: false, // Multiple answers allowed
-          shuffleanswers: true,
-          answers: [
-            {
-              id: 1,
-              answer: 'Props',
-              fraction: 0.333,
-              feedback: 'Correct!',
-            },
-            {
-              id: 2,
-              answer: 'Context',
-              fraction: 0.333,
-              feedback: 'Correct!',
-            },
-            {
-              id: 3,
-              answer: 'State',
-              fraction: 0.334,
-              feedback: 'Correct!',
-            },
-            {
-              id: 4,
-              answer: 'Global variables',
-              fraction: -0.25,
-              feedback: 'Incorrect. Avoid using global variables in React.',
-            },
-          ],
-        } as MultichoiceOptions,
-        answered: false,
-        flagged: false,
-        mark: null,
-        state: 'notanswered',
-      },
-      {
-        slot: 8,
-        questionid: 108,
-        type: 'truefalse',
-        questiontext: '<p>The key prop is required when rendering lists in React.</p>',
-        questiontextformat: 1,
-        generalfeedback: '<p>Keys help React identify which items have changed, been added, or been removed.</p>',
-        defaultmark: 10,
-        maxmark: 10,
-        page: 1,
-        options: {
-          truefeedback: 'Correct! Keys help React optimize re-renders.',
-          falsefeedback: 'Incorrect. Keys are required for efficient list rendering.',
-        } as TrueFalseOptions,
-        answered: false,
-        flagged: false,
-        mark: null,
-        state: 'notanswered',
-      },
-      {
-        slot: 9,
-        questionid: 109,
-        type: 'shortanswer',
-        questiontext: '<p>What JSX syntax is used to embed JavaScript expressions in markup?</p>',
-        questiontextformat: 1,
-        generalfeedback: '<p>Curly braces {} are used to embed JavaScript in JSX.</p>',
-        defaultmark: 5,
-        maxmark: 5,
-        page: 1,
-        options: {
-          usecase: false,
-          answers: [
-            {
-              answer: '{}',
-              fraction: 1.0,
-              feedback: 'Correct!',
-            },
-            {
-              answer: 'curly braces',
-              fraction: 1.0,
-              feedback: 'Correct!',
-            },
-            {
-              answer: 'braces',
-              fraction: 1.0,
-              feedback: 'Correct!',
-            },
-          ],
-        } as ShortAnswerOptions,
-        answered: false,
-        flagged: false,
-        mark: null,
-        state: 'notanswered',
-      },
-      {
-        slot: 10,
-        questionid: 110,
-        type: 'multichoice',
-        questiontext: '<p>What will happen if you call setState multiple times in the same function?</p>',
-        questiontextformat: 1,
-        generalfeedback: '<p>React batches multiple setState calls for performance optimization.</p>',
-        defaultmark: 5,
-        maxmark: 5,
-        page: 1,
-        options: {
-          single: true,
-          shuffleanswers: true,
-          answers: [
-            {
-              id: 1,
-              answer: 'React will batch the updates and re-render once',
-              fraction: 1.0,
-              feedback: 'Correct! React automatically batches state updates.',
-            },
-            {
-              id: 2,
-              answer: 'The component will re-render for each setState call',
-              fraction: 0,
-              feedback: 'Incorrect. React batches updates in event handlers.',
-            },
-            {
-              id: 3,
-              answer: 'An error will be thrown',
-              fraction: 0,
-              feedback: 'Incorrect. Multiple setState calls are allowed.',
-            },
-            {
-              id: 4,
-              answer: 'Only the last setState will take effect',
-              fraction: 0,
-              feedback: 'Incorrect. All updates are applied, but batched together.',
-            },
-          ],
-        } as MultichoiceOptions,
-        answered: false,
-        flagged: false,
-        mark: null,
-        state: 'notanswered',
-      },
-    ],
+    201, // Quiz ID 201 - Python Fundamentals with all 4 questions from testQuiz1 fixture
+    testQuiz1.questions.map(q => convertFixtureQuestionToMSW(q)),
+  ],
+  [
+    202, // Quiz ID 202 - Midterm Exam with all 10 questions from testQuiz2 fixture
+    testQuiz2.questions.map(q => convertFixtureQuestionToMSW(q)),
+  ],
+  [
+    203, // Quiz ID 203 - Practice Quiz with all 5 questions from testQuiz3 fixture
+    testQuiz3.questions.map(q => convertFixtureQuestionToMSW(q)),
   ],
 ]);
 
@@ -671,17 +518,17 @@ const addLatency = () => new Promise(resolve => setTimeout(resolve, Math.random(
 /**
  * Helper function to calculate grade based on grade method
  */
-const calculateFinalGrade = (attempts: number[], method: string): number => {
+const calculateFinalGrade = (attempts: number[], method: GradeMethod): number => {
   if (attempts.length === 0) return 0;
   
   switch (method) {
-    case 'highest':
+    case GradeMethod.HIGHEST:
       return Math.max(...attempts);
-    case 'average':
+    case GradeMethod.AVERAGE:
       return attempts.reduce((a, b) => a + b, 0) / attempts.length;
-    case 'first':
+    case GradeMethod.FIRST:
       return attempts[0]!;
-    case 'last':
+    case GradeMethod.LAST:
       return attempts[attempts.length - 1]!;
     default:
       return Math.max(...attempts);
@@ -754,7 +601,7 @@ export const quizzesHandlers = [
     }
 
     // Simulate quiz not yet open
-    if (quiz.timeopen && Date.now() < quiz.timeopen) {
+    if (quiz.timeopen && Math.floor(Date.now() / 1000) < quiz.timeopen) {
       return HttpResponse.json(
         {
           success: false,
@@ -771,9 +618,28 @@ export const quizzesHandlers = [
       );
     }
 
+    // Get user's attempts for this quiz
+    const userAttempts = Array.from(mockAttempts.values()).filter(
+      (attempt) => attempt.quiz === quizId && attempt.userid === 1
+    );
+
+    // Calculate attempts used and remaining
+    const attemptsUsed = userAttempts.length;
+    const attemptsRemaining = quiz.attempts === 0 ? null : quiz.attempts - attemptsUsed;
+
+    // Determine if user can attempt quiz
+    const canAttempt = quiz.attempts === 0 || attemptsRemaining! > 0;
+
     return HttpResponse.json({
       success: true,
-      data: quiz,
+      data: {
+        quiz,
+        attempts: userAttempts,
+        canAttempt,
+        canPreview: true, // Always allow preview for testing
+        attemptsUsed,
+        attemptsRemaining,
+      },
       meta: {},
     });
   }),
@@ -787,7 +653,18 @@ export const quizzesHandlers = [
 
     const quizId = Number(params.id);
     const quiz = mockQuizzes.get(quizId);
-    const body = await request.json() as { password?: string; preview?: boolean };
+    
+    // Safely parse request body (may be empty for simple attempt start)
+    let body: { password?: string; preview?: boolean } = {};
+    try {
+      const text = await request.text();
+      if (text && text.trim()) {
+        body = JSON.parse(text);
+      }
+    } catch (error) {
+      // Ignore JSON parse errors, use empty body
+      console.warn('[MSW] Failed to parse request body for quiz attempt, using empty body:', error);
+    }
 
     if (!quiz) {
       return HttpResponse.json(
@@ -819,7 +696,7 @@ export const quizzesHandlers = [
     }
 
     // Check if quiz is closed
-    if (quiz.timeclose && Date.now() > quiz.timeclose) {
+    if (quiz.timeclose && Math.floor(Date.now() / 1000) > quiz.timeclose) {
       return HttpResponse.json(
         {
           success: false,
@@ -868,9 +745,9 @@ export const quizzesHandlers = [
       currentpage: 0,
       preview: body.preview || false,
       state: 'inprogress',
-      timestart: Date.now(),
+      timestart: Math.floor(Date.now() / 1000), // Unix timestamp in seconds
       timefinish: null,
-      timemodified: Date.now(),
+      timemodified: Math.floor(Date.now() / 1000), // Unix timestamp in seconds
       timecheckstate: null,
       sumgrades: null,
       gradednotificationsenttime: null,
@@ -878,16 +755,34 @@ export const quizzesHandlers = [
 
     mockAttempts.set(newAttemptId, newAttempt);
 
+    // Get questions for this quiz
+    const questions = mockQuestions.get(quizId) || [];
+    
+    // Debug logging to verify questions are being returned
+    console.log(`[MSW] Creating quiz attempt for quiz ${quizId}`);
+    console.log(`[MSW] Found ${questions.length} questions for quiz ${quizId}`);
+    if (questions.length > 0) {
+      console.log('[MSW] First question (before transform):', JSON.stringify(questions[0], null, 2));
+    }
+    
+    // Transform questions to frontend format
+    const transformedQuestions = questions.map(transformQuestionForFrontend);
+    
+    if (transformedQuestions.length > 0) {
+      console.log('[MSW] First question (after transform):', JSON.stringify(transformedQuestions[0], null, 2));
+    }
+    
+    // Calculate time remaining
+    const timeRemaining = quiz.timelimit 
+      ? quiz.timelimit 
+      : 0;
+
     return HttpResponse.json({
       success: true,
       data: {
-        id: newAttempt.id,
-        attemptid: newAttempt.id,
-        timestart: newAttempt.timestart,
-        state: newAttempt.state,
-        layout: newAttempt.layout,
-        currentpage: newAttempt.currentpage,
-        timelimit: quiz.timelimit,
+        attempt: newAttempt,
+        questions: transformedQuestions,
+        timeRemaining: timeRemaining,
       },
       meta: {},
     });
@@ -930,14 +825,17 @@ export const quizzesHandlers = [
     const pageQuestions = questions.slice(startIndex, endIndex);
     const totalPages = Math.ceil(questions.length / questionsPerPage);
 
+    // Transform questions to frontend format
+    const transformedPageQuestions = pageQuestions.map(transformQuestionForFrontend);
+
     return HttpResponse.json({
       success: true,
-      data: pageQuestions,
+      data: transformedPageQuestions,
       meta: {
         currentpage: page,
         totalpages: totalPages,
         navmethod: quiz.navmethod,
-        timeremaining: quiz.timelimit ? quiz.timelimit - Math.floor((Date.now() - attempt.timestart) / 1000) : null,
+        timeremaining: quiz.timelimit ? quiz.timelimit - (Math.floor(Date.now() / 1000) - attempt.timestart) : null,
         pagination: {
           page: page + 1,
           perPage: questionsPerPage,
@@ -983,7 +881,7 @@ export const quizzesHandlers = [
 
     // Check if time has expired
     if (quiz.timelimit) {
-      const timeElapsed = Math.floor((Date.now() - attempt.timestart) / 1000);
+      const timeElapsed = Math.floor(Date.now() / 1000) - attempt.timestart;
       if (timeElapsed > quiz.timelimit) {
         return HttpResponse.json(
           {
@@ -1007,9 +905,9 @@ export const quizzesHandlers = [
       // Mock grade calculation
       const sumGrades = 75.5; // Simplified for mock
       attempt.state = 'finished';
-      attempt.timefinish = Date.now();
+      attempt.timefinish = Math.floor(Date.now() / 1000); // Unix timestamp in seconds
       attempt.sumgrades = sumGrades;
-      attempt.timemodified = Date.now();
+      attempt.timemodified = Math.floor(Date.now() / 1000); // Unix timestamp in seconds
 
       return HttpResponse.json({
         success: true,
@@ -1024,7 +922,7 @@ export const quizzesHandlers = [
       });
     } else {
       // Auto-save
-      attempt.timemodified = Date.now();
+      attempt.timemodified = Math.floor(Date.now() / 1000); // Unix timestamp in seconds
       return HttpResponse.json({
         success: true,
         data: {
@@ -1258,38 +1156,76 @@ export const quizzesHandlers = [
     // Build detailed review with questions and answers
     const reviewQuestions = questions.map((q) => {
       // Mock user answer and correct answer
-      let useranswer: any = null;
-      let correctanswer: any = null;
-      let markobtained = 0;
+      let userAnswer: any = null;
+      let correctAnswer: any = null;
+      let mark = 0;
 
       if (q.type === 'multichoice') {
         const opts = q.options as MultichoiceOptions;
         // Simulate user selecting first answer
-        useranswer = opts.answers[0]?.id;
-        correctanswer = opts.answers.find(a => a.fraction === 1.0)?.id || null;
-        markobtained = (opts.answers[0]?.fraction ?? 0) * q.maxmark;
+        userAnswer = opts.answers[0]?.id;
+        correctAnswer = opts.answers.find(a => a.fraction === 1.0)?.id || null;
+        mark = (opts.answers[0]?.fraction ?? 0) * q.maxmark;
       } else if (q.type === 'truefalse') {
-        useranswer = false;
-        correctanswer = true;
-        markobtained = 0;
+        userAnswer = false;
+        correctAnswer = true;
+        mark = 0;
       } else if (q.type === 'shortanswer') {
-        useranswer = 'setState';
-        correctanswer = 'setState';
-        markobtained = q.maxmark;
+        userAnswer = 'setState';
+        correctAnswer = 'setState';
+        mark = q.maxmark;
       }
 
+      const isCorrect = mark === q.maxmark;
+
+      // Transform to frontend format and add review-specific properties
+      const transformed = transformQuestionForFrontend(q);
       return {
-        ...q,
-        useranswer,
-        correctanswer: quiz.reviewrightanswer ? correctanswer : null,
+        ...transformed,
+        userAnswer,
+        correctAnswer: quiz.reviewrightanswer ? correctAnswer : null,
         feedback: quiz.reviewspecificfeedback ? 'Good attempt.' : '',
-        markobtained: quiz.reviewmarks ? markobtained : null,
-        maxmark: q.maxmark,
+        mark: quiz.reviewmarks ? mark : 0,
+        maxMark: q.maxmark,
+        isCorrect,
       };
     });
 
     const sumgrades = attempt.sumgrades || 0;
     const percentage = (sumgrades / quiz.sumgrades) * 100;
+    const grade = (percentage / 100) * quiz.grade;
+
+    // Transform quiz to frontend format
+    const transformedQuiz = {
+      id: quiz.id,
+      course: quiz.courseid,
+      name: quiz.name,
+      intro: quiz.intro,
+      timeOpen: quiz.timeopen,
+      timeClose: quiz.timeclose,
+      timeLimit: quiz.timelimit,
+      overdueHandling: quiz.overduehandling,
+      gracePeriod: quiz.graceperiod,
+      preferredBehaviour: quiz.preferredbehaviour,
+      canRedoQuestions: quiz.canredoquestions,
+      attemptsAllowed: quiz.attempts,
+      gradeMethod: quiz.grademethod,
+      decimalPoints: quiz.decimalpoints,
+      questionDecimalPoints: quiz.questiondecimalpoints,
+      reviewAttempt: quiz.reviewattempt,
+      reviewCorrectness: quiz.reviewcorrectness,
+      reviewMarks: quiz.reviewmarks,
+      reviewSpecificFeedback: quiz.reviewspecificfeedback,
+      reviewGeneralFeedback: quiz.reviewgeneralfeedback,
+      reviewRightAnswer: quiz.reviewrightanswer,
+      reviewOverallFeedback: quiz.reviewoverallfeedback,
+      questionsPerPage: quiz.questionsperpage,
+      navMethod: quiz.navmethod,
+      shuffleAnswers: quiz.shuffleanswers,
+      sumGrades: quiz.sumgrades,
+      grade: quiz.grade,
+      hasQuestions: true,
+    };
 
     return HttpResponse.json({
       success: true,
@@ -1302,19 +1238,14 @@ export const quizzesHandlers = [
           timestart: attempt.timestart,
           timefinish: attempt.timefinish,
           sumgrades: sumgrades,
-          grade: (percentage / 100) * quiz.grade,
+          grade: grade,
         },
+        quiz: transformedQuiz,
         questions: reviewQuestions,
-        overallfeedback: quiz.reviewoverallfeedback ? getOverallFeedback(percentage) : '',
-        reviewoptions: {
-          attempt: quiz.reviewattempt,
-          correctness: quiz.reviewcorrectness,
-          marks: quiz.reviewmarks,
-          specificfeedback: quiz.reviewspecificfeedback,
-          generalfeedback: quiz.reviewgeneralfeedback,
-          rightanswer: quiz.reviewrightanswer,
-          overallfeedback: quiz.reviewoverallfeedback,
-        },
+        grade: grade,
+        maxGrade: quiz.grade,
+        percentage: percentage,
+        feedback: quiz.reviewoverallfeedback ? getOverallFeedback(percentage) : '',
       },
       meta: {},
     });
@@ -1377,7 +1308,7 @@ export const quizzesHandlers = [
     const unansweredCount = questionsSummary.length - answeredCount;
 
     // Calculate time remaining
-    const timeElapsed = Math.floor((Date.now() - attempt.timestart) / 1000);
+    const timeElapsed = Math.floor(Date.now() / 1000) - attempt.timestart;
     const timeRemaining = quiz.timelimit ? quiz.timelimit - timeElapsed : null;
 
     return HttpResponse.json({

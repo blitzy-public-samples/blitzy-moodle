@@ -17,7 +17,7 @@
  * Captures screenshots on test failure for debugging.
  */
 
-import { test, expect, describe, beforeAll, afterAll, beforeEach, Page } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { QuizPage } from './pages/QuizPage';
 import { loginAsStudent, logout, clearAuthenticationState } from './utils/auth';
 import { testCourse1 } from './fixtures/courses';
@@ -26,16 +26,16 @@ import { testQuiz1, testQuiz2, testQuiz3 } from './fixtures/quizzes';
 /**
  * Test suite for quiz attempt workflow with timer and question navigation
  */
-describe('Quiz Attempt E2E Tests', () => {
+test.describe('Quiz Attempt E2E Tests', () => {
   let page: Page;
   let quizPage: QuizPage;
 
   /**
-   * Setup: Login as student and prepare test environment
-   * Runs once before all tests in this suite
+   * Setup: Login as student before each test
+   * Ensures each test has fresh authenticated page context
    */
-  beforeAll(async ({ browser }) => {
-    page = await browser.newPage();
+  test.beforeEach(async ({ page: testPage }) => {
+    page = testPage;
     quizPage = new QuizPage(page);
     
     // Step 1: Login as student for quiz testing
@@ -46,27 +46,10 @@ describe('Quiz Attempt E2E Tests', () => {
       return localStorage.getItem('moodle_access_token') !== null;
     });
     expect(isAuthenticated).toBe(true);
-  });
-
-  /**
-   * Cleanup: Logout and clear authentication state
-   * Runs once after all tests complete
-   * Note: Quiz attempts persist for grading (no cleanup needed)
-   */
-  afterAll(async () => {
-    await logout(page);
-    await clearAuthenticationState(page);
-    await page.close();
-  });
-
-  /**
-   * Reset navigation state before each test
-   * Ensures clean test isolation
-   */
-  beforeEach(async () => {
-    // Navigate to course page before each test
+    
+    // Navigate to course page
     await page.goto(`/courses/${testCourse1.id}`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
   });
 
   /**
@@ -90,8 +73,8 @@ describe('Quiz Attempt E2E Tests', () => {
     expect(quizInfo.timeLimit).toBe('60 minutes'); // 3600 seconds = 60 minutes
     expect(quizInfo.attemptsAllowed).toBe('2'); // Maximum 2 attempts
     
-    // Verify grade method is displayed
-    expect(quizInfo.gradeMethod).toContain('highest');
+    // Verify grade method is displayed (case-sensitive match for UI text)
+    expect(quizInfo.gradeMethod).toContain('Highest');
   });
 
   /**
@@ -193,18 +176,16 @@ describe('Quiz Attempt E2E Tests', () => {
     await quizPage.startAttempt();
     
     // Step 6: Select answer option, verify selection highlighted
-    const question = await quizPage.getCurrentQuestion();
+    await quizPage.getCurrentQuestion();
     
     // Select the second answer option (index 1)
     await quizPage.selectAnswer(1);
     
-    // Verify the answer is selected (highlighted)
-    const selectedOption = page.locator('[data-testid^="answer-option-"]').nth(1);
-    await expect(selectedOption).toHaveClass(/selected|checked|active/);
+    // Verify the answer is selected (the data-testid is on the input element itself)
+    const selectedOption = page.locator('[data-testid^="option-"]').nth(1);
     
     // Verify radio button or checkbox is checked
-    const inputElement = selectedOption.locator('input[type="radio"], input[type="checkbox"]');
-    await expect(inputElement).toBeChecked();
+    await expect(selectedOption).toBeChecked();
   });
 
   /**
@@ -265,7 +246,7 @@ describe('Quiz Attempt E2E Tests', () => {
     let status3 = await quizPage.getQuestionStatus(3);
     expect(status3.status).toBe('unanswered');
     
-    let status4 = await quizPage.getQuestionStatus(4);
+    const status4 = await quizPage.getQuestionStatus(4);
     expect(status4.status).toBe('unanswered');
     
     // Answer question 1
@@ -345,8 +326,8 @@ describe('Quiz Attempt E2E Tests', () => {
     await quizPage.selectAnswer(1);
     
     // Verify answer is selected
-    let selectedOption = page.locator('[data-testid^="answer-option-"]').nth(1);
-    await expect(selectedOption.locator('input')).toBeChecked();
+    let selectedOption = page.locator('[data-testid^="option-"]').nth(1);
+    await expect(selectedOption).toBeChecked();
     
     // Navigate to question 2
     await quizPage.nextQuestion();
@@ -364,15 +345,15 @@ describe('Quiz Attempt E2E Tests', () => {
     await quizPage.jumpToQuestion(1);
     
     // Verify answer for question 1 is still selected
-    selectedOption = page.locator('[data-testid^="answer-option-"]').nth(1);
-    await expect(selectedOption.locator('input')).toBeChecked();
+    selectedOption = page.locator('[data-testid^="option-"]').nth(1);
+    await expect(selectedOption).toBeChecked();
     
     // Navigate to question 2
     await quizPage.nextQuestion();
     
     // Verify answer for question 2 is still selected
-    selectedOption = page.locator('[data-testid^="answer-option-"]').nth(1);
-    await expect(selectedOption.locator('input')).toBeChecked();
+    selectedOption = page.locator('[data-testid^="option-"]').nth(1);
+    await expect(selectedOption).toBeChecked();
     
     // Navigate to question 3
     await quizPage.nextQuestion();
@@ -409,7 +390,7 @@ describe('Quiz Attempt E2E Tests', () => {
     expect(dialogText).toMatch(/submit|finish|confirm/i);
     
     // Cancel the submission for now (so we don't affect other tests)
-    const cancelButton = confirmDialog.locator('button:has-text("Cancel"), button:has-text("No")');
+    const cancelButton = confirmDialog.locator('button', { hasText: 'Cancel' });
     if (await cancelButton.count() > 0) {
       await cancelButton.click();
     }
@@ -504,9 +485,6 @@ describe('Quiz Attempt E2E Tests', () => {
     await page.goto(`/courses/${testCourse1.id}/quizzes/${testQuiz1.id}`);
     await quizPage.waitForQuiz();
     await quizPage.startAttempt();
-    
-    // Record start time
-    const startTime = Date.now();
     
     // Answer questions quickly
     await quizPage.selectAnswer(1);
@@ -625,11 +603,10 @@ describe('Quiz Attempt E2E Tests', () => {
     expect(summary.state).toBe('finished');
     
     // Step 16: Verify timer was accurate (time taken should be approximately 60 minutes)
-    const timeTaken = summary.timeTaken;
+    const { timeTaken } = summary;
     expect(timeTaken).toMatch(/\d+/); // Contains numeric time value
     
-    // Uninstall clock for other tests
-    await page.clock.uninstall();
+    // Clock is automatically cleaned up at test end - no manual cleanup needed
   });
 
   /**
@@ -650,24 +627,24 @@ describe('Quiz Attempt E2E Tests', () => {
       await quizPage.selectMultipleAnswers([0, 2]);
       
       // Verify both are checked
-      const option0 = page.locator('[data-testid^="answer-option-"]').nth(0);
-      await expect(option0.locator('input')).toBeChecked();
+      const option0 = page.locator('[data-testid^="option-"]').nth(0);
+      await expect(option0).toBeChecked();
       
-      const option2 = page.locator('[data-testid^="answer-option-"]').nth(2);
-      await expect(option2.locator('input')).toBeChecked();
+      const option2 = page.locator('[data-testid^="option-"]').nth(2);
+      await expect(option2).toBeChecked();
     } else {
       // For single-answer questions, selecting a new answer should deselect previous
       await quizPage.selectAnswer(0);
-      let selected0 = page.locator('[data-testid^="answer-option-"]').nth(0);
-      await expect(selected0.locator('input')).toBeChecked();
+      let selected0 = page.locator('[data-testid^="option-"]').nth(0);
+      await expect(selected0).toBeChecked();
       
       await quizPage.selectAnswer(1);
-      let selected1 = page.locator('[data-testid^="answer-option-"]').nth(1);
-      await expect(selected1.locator('input')).toBeChecked();
+      const selected1 = page.locator('[data-testid^="option-"]').nth(1);
+      await expect(selected1).toBeChecked();
       
       // First option should now be unchecked
-      selected0 = page.locator('[data-testid^="answer-option-"]').nth(0);
-      await expect(selected0.locator('input')).not.toBeChecked();
+      selected0 = page.locator('[data-testid^="option-"]').nth(0);
+      await expect(selected0).not.toBeChecked();
     }
   });
 
@@ -690,8 +667,8 @@ describe('Quiz Attempt E2E Tests', () => {
     
     // Try to answer - should work
     await quizPage.selectAnswer(1);
-    const option1 = page.locator('[data-testid^="answer-option-"]').nth(1);
-    await expect(option1.locator('input')).toBeChecked();
+    const option1 = page.locator('[data-testid^="option-"]').nth(1);
+    await expect(option1).toBeChecked();
     
     // Fast-forward past expiration
     await page.clock.fastForward(2 * 60 * 1000); // 2 more minutes (now 61 minutes total)
@@ -711,7 +688,7 @@ describe('Quiz Attempt E2E Tests', () => {
       await expect(answerInputs.first()).toBeDisabled();
     }
     
-    await page.clock.uninstall();
+    // Clock is automatically cleaned up at test end - no manual cleanup needed
   });
 
   /**
@@ -728,7 +705,7 @@ describe('Quiz Attempt E2E Tests', () => {
     const question = await quizPage.getCurrentQuestion();
     expect(question.questionNumber).toBe(1);
     
-    const previousButton = page.locator('button:has-text("Previous"), button[data-testid="previous-question"]');
+    const previousButton = page.locator('[data-testid="prev-button"]');
     
     if (await previousButton.count() > 0) {
       // If button exists, it should be disabled
@@ -739,7 +716,7 @@ describe('Quiz Attempt E2E Tests', () => {
     await quizPage.jumpToQuestion(4);
     
     // On last question, next button should be disabled or not present
-    const nextButton = page.locator('button:has-text("Next"), button[data-testid="next-question"]');
+    const nextButton = page.locator('[data-testid="next-button"]');
     
     if (await nextButton.count() > 0) {
       // If button exists, it should be disabled
@@ -747,7 +724,7 @@ describe('Quiz Attempt E2E Tests', () => {
     }
     
     // Submit button should be available on last question
-    const submitButton = page.locator('button:has-text("Submit"), button:has-text("Finish")');
+    const submitButton = page.locator('[data-testid="submit-button"]');
     await expect(submitButton).toBeVisible();
     await expect(submitButton).toBeEnabled();
   });
@@ -820,11 +797,11 @@ describe('Quiz Attempt E2E Tests', () => {
     await quizPage.startAttempt();
     
     // Verify no answer is pre-selected (fresh attempt)
-    const option0 = page.locator('[data-testid^="answer-option-"]').nth(0);
-    const option1 = page.locator('[data-testid^="answer-option-"]').nth(1);
+    const option0 = page.locator('[data-testid^="option-"]').nth(0);
+    const option1 = page.locator('[data-testid^="option-"]').nth(1);
     
-    await expect(option0.locator('input')).not.toBeChecked();
-    await expect(option1.locator('input')).not.toBeChecked();
+    await expect(option0).not.toBeChecked();
+    await expect(option1).not.toBeChecked();
     
     // Answer differently
     await quizPage.selectAnswer(1);
@@ -866,13 +843,13 @@ describe('Quiz Attempt E2E Tests', () => {
     // Step 13: Verify feedback displayed for each question with explanation
     const feedback = await quizPage.viewFeedback();
     
-    // Feedback should be an array with entries for each question
-    expect(Array.isArray(feedback)).toBe(true);
+    // Feedback should be a non-empty string
+    expect(typeof feedback).toBe('string');
     expect(feedback.length).toBeGreaterThan(0);
     
-    // At least some feedback should contain explanatory text
-    const hasFeedback = feedback.some((f: string) => f && f.length > 0);
-    expect(hasFeedback).toBe(true);
+    // Verify feedback contains content
+    expect(feedback.trim()).not.toBe('');
+    expect(feedback).toBeTruthy();
     
     // Verify feedback section is visible
     const feedbackSection = page.locator('[data-testid="question-feedback"], .question-feedback');

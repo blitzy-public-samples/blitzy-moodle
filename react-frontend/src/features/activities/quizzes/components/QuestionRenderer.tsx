@@ -1,45 +1,13 @@
 /**
- * QuestionRenderer Component
+ * Question Renderer Component
  *
- * Dynamic question renderer component that displays different question types with appropriate
- * input controls. Implements a factory pattern to render multichoice, truefalse, shortanswer,
- * essay, matching, and numerical question types using Material-UI form components.
- *
- * Features:
- * - Factory pattern for rendering different question types
- * - Material-UI form components for consistent input handling
- * - Real-time validation and feedback display
- * - Answer state management with dirty tracking for auto-save
- * - Flag/unflag functionality for marking questions for review
- * - File attachment support for essay questions
- * - HTML content rendering for question text
- * - Accessibility compliance with ARIA labels
- * - TypeScript discriminated unions for type safety
- *
- * Supported Question Types:
- * - Multiple Choice (single or multiple answers)
- * - True/False (special case of multiple choice)
- * - Short Answer (text input with validation)
- * - Essay (multiline text with optional file attachments)
- * - Matching (dropdown selections for paired items)
- * - Numerical (number input with range validation)
- *
- * Usage:
- * ```tsx
- * <QuestionRenderer
- *   question={questionData}
- *   answer={currentAnswer}
- *   onChange={handleAnswerChange}
- *   onFlag={handleFlagToggle}
- *   showFeedback={true}
- *   disabled={false}
- * />
- * ```
+ * Renders quiz questions based on their type (multiple choice, true/false, etc.)
+ * and handles answer selection/input.
  *
  * @module features/activities/quizzes/components/QuestionRenderer
  */
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React from 'react';
 import {
   Box,
   Typography,
@@ -47,764 +15,317 @@ import {
   RadioGroup,
   FormControlLabel,
   FormControl,
-  FormLabel,
-  TextField,
-  Select,
-  MenuItem,
-  IconButton,
   Checkbox,
-  InputAdornment,
+  FormGroup,
+  TextField,
   Paper,
-  Divider,
 } from '@mui/material';
-import { Flag, FlagOutlined } from '@mui/icons-material';
-
-import type { Question } from '../types/quiz.types';
-import { Alert } from '@/components/feedback/Alert';
-
-// ============================================================================
-// TYPES & INTERFACES
-// ============================================================================
+import type { QuizQuestion } from '../api/quizApi';
 
 /**
- * Answer type - can be string, array of strings, or object for complex answers
+ * QuestionRenderer Props
  */
-export type QuestionAnswer = string | string[] | Record<string, string> | null;
-
-/**
- * Props interface for QuestionRenderer component
- */
-export interface QuestionRendererProps {
-  /**
-   * Question data including type, text, options, and current state
-   */
-  question: Question;
-
-  /**
-   * Current answer value (if any)
-   */
-  answer?: QuestionAnswer;
-
-  /**
-   * Callback fired when the answer changes
-   * @param questionId - ID of the question being answered
-   * @param answer - New answer value
-   */
-  onChange: (questionId: number, answer: QuestionAnswer) => void;
-
-  /**
-   * Callback fired when the question flag status changes
-   * @param questionId - ID of the question being flagged/unflagged
-   * @param flagged - New flag status
-   */
-  onFlag?: (questionId: number, flagged: boolean) => void;
-
-  /**
-   * Whether to show feedback for this question
-   * Controlled by quiz review settings
-   * @default false
-   */
-  showFeedback?: boolean;
-
-  /**
-   * Whether the question is in read-only mode (during review)
-   * @default false
-   */
+interface QuestionRendererProps {
+  question: QuizQuestion;
+  value: string | string[] | undefined;
+  onChange: (value: string | string[]) => void;
   disabled?: boolean;
-
-  /**
-   * Additional CSS class name for custom styling
-   */
-  className?: string;
 }
-
-/**
- * Internal state for tracking answer changes
- */
-interface QuestionState {
-  /** Current answer value */
-  currentAnswer: QuestionAnswer;
-  /** Whether the answer has been modified */
-  isDirty: boolean;
-}
-
-// ============================================================================
-// MAIN COMPONENT
-// ============================================================================
 
 /**
  * QuestionRenderer Component
  *
- * Renders a quiz question with appropriate input controls based on question type.
- * Uses factory pattern to delegate rendering to type-specific subcomponents.
+ * Renders different question types:
+ * - multichoice: Single or multiple answer selection
+ * - truefalse: Boolean choice
+ * - shortanswer: Text input
+ * - numerical: Number input
+ * - essay: Long text input
+ *
+ * @param props - Component props
+ * @returns Question renderer component
  */
 export function QuestionRenderer({
   question,
-  answer: initialAnswer = null,
+  value,
   onChange,
-  onFlag,
-  showFeedback = false,
   disabled = false,
-  className,
-}: QuestionRendererProps): JSX.Element {
-  // ============================================================================
-  // STATE MANAGEMENT
-  // ============================================================================
-
-  const [localState, setLocalState] = useState<QuestionState>({
-    currentAnswer: initialAnswer,
-    isDirty: false,
-  });
-
-  const [flagged, setFlagged] = useState<boolean>(question.flagged || false);
-
-  // ============================================================================
-  // EVENT HANDLERS
-  // ============================================================================
-
+}: QuestionRendererProps): React.ReactElement {
   /**
-   * Handles answer changes and notifies parent component
+   * Handle single choice change
    */
-  const handleAnswerChange = useCallback(
-    (newAnswer: QuestionAnswer) => {
-      setLocalState({
-        currentAnswer: newAnswer,
-        isDirty: true,
-      });
-      onChange(question.id, newAnswer);
-    },
-    [question.id, onChange]
-  );
-
-  /**
-   * Handles flag toggle for marking questions for review
-   */
-  const handleFlagToggle = useCallback(() => {
-    const newFlaggedState = !flagged;
-    setFlagged(newFlaggedState);
-    if (onFlag) {
-      onFlag(question.id, newFlaggedState);
-    }
-  }, [flagged, question.id, onFlag]);
-
-  // ============================================================================
-  // COMPUTED VALUES
-  // ============================================================================
-
-  /**
-   * Determine if feedback should be shown based on question state and settings
-   */
-  const shouldShowFeedback = useMemo(() => {
-    return showFeedback && question.feedback !== undefined;
-  }, [showFeedback, question.feedback]);
-
-  /**
-   * Get feedback severity based on question state
-   */
-  const feedbackSeverity = useMemo(() => {
-    if (!question.fraction) return 'info';
-    if (question.fraction >= 1) return 'success';
-    if (question.fraction > 0) return 'warning';
-    return 'error';
-  }, [question.fraction]);
-
-  // ============================================================================
-  // RENDER QUESTION CONTENT
-  // ============================================================================
-
-  /**
-   * Renders the appropriate question input based on question type
-   */
-  const renderQuestionInput = useCallback(() => {
-    const currentAnswer = localState.currentAnswer;
-
-    switch (question.type) {
-      case 'multichoice':
-        return (
-          <MultipleChoiceQuestion
-            question={question}
-            answer={currentAnswer as string | string[]}
-            onChange={handleAnswerChange}
-            disabled={disabled}
-          />
-        );
-
-      case 'truefalse':
-        return (
-          <TrueFalseQuestion
-            answer={currentAnswer as string}
-            onChange={handleAnswerChange}
-            disabled={disabled}
-          />
-        );
-
-      case 'shortanswer':
-        return (
-          <ShortAnswerQuestion
-            answer={currentAnswer as string}
-            onChange={handleAnswerChange}
-            disabled={disabled}
-          />
-        );
-
-      case 'essay':
-        return (
-          <EssayQuestion
-            question={question}
-            answer={currentAnswer as string}
-            onChange={handleAnswerChange}
-            disabled={disabled}
-          />
-        );
-
-      case 'match':
-        return (
-          <MatchingQuestion
-            question={question}
-            answer={currentAnswer as Record<string, string>}
-            onChange={handleAnswerChange}
-            disabled={disabled}
-          />
-        );
-
-      case 'numerical':
-        return (
-          <NumericalQuestion
-            question={question}
-            answer={currentAnswer as string}
-            onChange={handleAnswerChange}
-            disabled={disabled}
-          />
-        );
-
-      default:
-        return (
-          <Alert
-            severity="warning"
-            message={`Question type "${question.type}" is not yet supported.`}
-          />
-        );
-    }
-  }, [question, localState.currentAnswer, handleAnswerChange, disabled]);
-
-  // ============================================================================
-  // MAIN RENDER
-  // ============================================================================
-
-  return (
-    <Paper
-      elevation={1}
-      className={className}
-      sx={{
-        p: 3,
-        mb: 3,
-        position: 'relative',
-      }}
-      role="article"
-      aria-label={`Question ${question.displaynumber || question.slot}`}
-    >
-      {/* Question Header */}
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
-        <Box sx={{ flex: 1 }}>
-          <Typography
-            variant="h6"
-            component="h3"
-            sx={{ mb: 1, fontWeight: 600 }}
-          >
-            Question {question.displaynumber || question.slot}
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Marks: {question.defaultmark}
-            {question.maxmark && question.maxmark !== question.defaultmark && (
-              <> (Max: {question.maxmark})</>
-            )}
-          </Typography>
-        </Box>
-
-        {/* Flag Button */}
-        {onFlag && (
-          <IconButton
-            onClick={handleFlagToggle}
-            color={flagged ? 'primary' : 'default'}
-            aria-label={flagged ? 'Unflag question' : 'Flag question for review'}
-            aria-pressed={flagged}
-            disabled={disabled}
-            sx={{ ml: 1 }}
-          >
-            {flagged ? <Flag /> : <FlagOutlined />}
-          </IconButton>
-        )}
-      </Box>
-
-      <Divider sx={{ mb: 2 }} />
-
-      {/* Question Text */}
-      <Box sx={{ mb: 3 }}>
-        <Typography
-          variant="body1"
-          component="div"
-          sx={{ mb: 2 }}
-          dangerouslySetInnerHTML={{
-            __html: question.questiontext,
-          }}
-          aria-label="Question text"
-        />
-      </Box>
-
-      {/* Question Input (type-specific) */}
-      {renderQuestionInput()}
-
-      {/* Feedback Display */}
-      {shouldShowFeedback && question.feedback && (
-        <Box sx={{ mt: 3 }}>
-          <Alert
-            severity={feedbackSeverity}
-            title="Feedback"
-            message={question.feedback}
-          />
-        </Box>
-      )}
-
-      {/* General Feedback */}
-      {showFeedback && question.generalfeedback && (
-        <Box sx={{ mt: 2 }}>
-          <Alert
-            severity="info"
-            title="General Feedback"
-            message={question.generalfeedback}
-          />
-        </Box>
-      )}
-
-      {/* Right Answer (if shown) */}
-      {showFeedback && question.rightanswer && (
-        <Box sx={{ mt: 2 }}>
-          <Alert
-            severity="info"
-            title="Correct Answer"
-            message={question.rightanswer}
-          />
-        </Box>
-      )}
-
-      {/* Answer State Indicator */}
-      {localState.isDirty && (
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          sx={{ mt: 2, display: 'block', fontStyle: 'italic' }}
-        >
-          Answer modified (auto-saving...)
-        </Typography>
-      )}
-    </Paper>
-  );
-}
-
-// ============================================================================
-// QUESTION TYPE SUBCOMPONENTS
-// ============================================================================
-
-/**
- * Props for question type subcomponents
- */
-interface QuestionTypeProps {
-  question: Question;
-  answer: any;
-  onChange: (answer: QuestionAnswer) => void;
-  disabled: boolean;
-}
-
-/**
- * Multiple Choice Question Component
- * Supports both single and multiple answer selections
- */
-function MultipleChoiceQuestion({
-  question,
-  answer,
-  onChange,
-  disabled,
-}: QuestionTypeProps): JSX.Element {
-  const answers = question.options.answers || [];
-  const isSingleChoice = question.options.single !== false;
-
-  const handleSingleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSingleChoiceChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
     onChange(event.target.value);
   };
 
-  const handleMultipleChange = (answerId: string, checked: boolean) => {
-    const currentAnswers = Array.isArray(answer) ? answer : [];
-    const newAnswers = checked
-      ? [...currentAnswers, answerId]
-      : currentAnswers.filter((id) => id !== answerId);
-    onChange(newAnswers);
+  /**
+   * Handle multiple choice change
+   */
+  const handleMultipleChoiceChange = (optionId: string, checked: boolean): void => {
+    const currentValue = Array.isArray(value) ? value : [];
+    
+    if (checked) {
+      onChange([...currentValue, optionId]);
+    } else {
+      onChange(currentValue.filter((v) => v !== optionId));
+    }
   };
 
-  if (isSingleChoice) {
+  /**
+   * Handle text input change
+   */
+  const handleTextChange = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void => {
+    onChange(event.target.value);
+  };
+
+  /**
+   * Render multiple choice question (single answer)
+   */
+  const renderMultipleChoiceSingle = (): React.ReactElement => {
     return (
       <FormControl component="fieldset" fullWidth disabled={disabled}>
-        <FormLabel component="legend" sx={{ mb: 1 }}>
-          Select one answer:
-        </FormLabel>
         <RadioGroup
-          value={answer || ''}
-          onChange={handleSingleChange}
-          aria-label="Answer options"
+          value={value || ''}
+          onChange={handleSingleChoiceChange}
+          data-testid="question-options"
         >
-          {answers.map((ans) => (
-            <FormControlLabel
-              key={ans.id}
-              value={String(ans.id)}
-              control={<Radio />}
-              label={
-                <span dangerouslySetInnerHTML={{ __html: ans.answer }} />
-              }
-              sx={{ mb: 1 }}
-            />
+          {question.options.map((option) => (
+            <Paper
+              key={option.id}
+              variant="outlined"
+              sx={{
+                p: 2,
+                mb: 1,
+                cursor: disabled ? 'not-allowed' : 'pointer',
+                '&:hover': disabled ? {} : {
+                  bgcolor: 'action.hover',
+                },
+                bgcolor: value === option.id.toString() ? 'action.selected' : 'transparent',
+              }}
+            >
+              <FormControlLabel
+                value={option.id.toString()}
+                control={<Radio data-testid={`option-${option.id}`} />}
+                label={
+                  <Typography
+                    variant="body1"
+                    dangerouslySetInnerHTML={{ __html: option.text }}
+                  />
+                }
+                sx={{ width: '100%', m: 0 }}
+              />
+            </Paper>
           ))}
         </RadioGroup>
       </FormControl>
     );
-  }
-
-  // Multiple choice (checkboxes)
-  const selectedAnswers = Array.isArray(answer) ? answer : [];
-
-  return (
-    <FormControl component="fieldset" fullWidth disabled={disabled}>
-      <FormLabel component="legend" sx={{ mb: 1 }}>
-        Select one or more answers:
-      </FormLabel>
-      <Box>
-        {answers.map((ans) => (
-          <FormControlLabel
-            key={ans.id}
-            control={
-              <Checkbox
-                checked={selectedAnswers.includes(String(ans.id))}
-                onChange={(e) =>
-                  handleMultipleChange(String(ans.id), e.target.checked)
-                }
-              />
-            }
-            label={<span dangerouslySetInnerHTML={{ __html: ans.answer }} />}
-            sx={{ mb: 1, display: 'block' }}
-          />
-        ))}
-      </Box>
-    </FormControl>
-  );
-}
-
-/**
- * True/False Question Component
- * Specialized multiple choice with two options
- */
-function TrueFalseQuestion({
-  answer,
-  onChange,
-  disabled,
-}: Omit<QuestionTypeProps, 'question'>): JSX.Element {
-  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(event.target.value);
   };
 
-  return (
-    <FormControl component="fieldset" fullWidth disabled={disabled}>
-      <FormLabel component="legend" sx={{ mb: 1 }}>
-        Select True or False:
-      </FormLabel>
-      <RadioGroup
-        value={answer || ''}
-        onChange={handleChange}
-        aria-label="True or False"
-      >
-        <FormControlLabel
-          value="true"
-          control={<Radio />}
-          label="True"
-          sx={{ mb: 1 }}
-        />
-        <FormControlLabel
-          value="false"
-          control={<Radio />}
-          label="False"
-        />
-      </RadioGroup>
-    </FormControl>
-  );
-}
+  /**
+   * Render multiple choice question (multiple answers)
+   */
+  const renderMultipleChoiceMultiple = (): React.ReactElement => {
+    const currentValue = Array.isArray(value) ? value : [];
 
-/**
- * Short Answer Question Component
- * Single-line text input with optional case sensitivity
- */
-function ShortAnswerQuestion({
-  answer,
-  onChange,
-  disabled,
-}: Omit<QuestionTypeProps, 'question'>): JSX.Element {
-  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(event.target.value);
-  };
+    return (
+      <FormControl component="fieldset" fullWidth disabled={disabled}>
+        <FormGroup data-testid="question-options">
+          {question.options.map((option) => {
+            const optionId = option.id.toString();
+            const isChecked = currentValue.includes(optionId);
 
-  return (
-    <FormControl fullWidth>
-      <TextField
-        value={answer || ''}
-        onChange={handleChange}
-        disabled={disabled}
-        fullWidth
-        placeholder="Enter your answer"
-        aria-label="Short answer input"
-        variant="outlined"
-        helperText="Enter a short text answer"
-      />
-    </FormControl>
-  );
-}
-
-/**
- * Essay Question Component
- * Multiline text input with optional file attachments
- */
-function EssayQuestion({
-  question,
-  answer,
-  onChange,
-  disabled,
-}: QuestionTypeProps): JSX.Element {
-  const [textAnswer, setTextAnswer] = useState<string>(
-    typeof answer === 'string' ? answer : ''
-  );
-  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
-
-  const handleTextChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newText = event.target.value;
-    setTextAnswer(newText);
-    onChange(newText);
-  };
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const fileList = event.target.files;
-    if (fileList) {
-      const filesArray = Array.from(fileList);
-      setAttachedFiles((prev) => [...prev, ...filesArray].slice(0, 5));
-    }
-  };
-
-  const handleRemoveFile = (index: number) => {
-    setAttachedFiles((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  return (
-    <Box>
-      <FormControl fullWidth sx={{ mb: 3 }}>
-        <TextField
-          value={textAnswer}
-          onChange={handleTextChange}
-          disabled={disabled}
-          fullWidth
-          multiline
-          rows={8}
-          placeholder="Write your essay here..."
-          aria-label="Essay answer input"
-          variant="outlined"
-          helperText="Provide a detailed answer"
-        />
-      </FormControl>
-
-      {/* File Attachments */}
-      {!disabled && (
-        <Box>
-          <Typography variant="subtitle2" sx={{ mb: 1 }}>
-            Optional: Attach supporting files
-          </Typography>
-          <Box sx={{ mt: 1 }}>
-            <input
-              type="file"
-              id={`question-${question.id}-files`}
-              accept="application/pdf,image/*,.doc,.docx"
-              multiple
-              onChange={handleFileChange}
-              style={{ display: 'none' }}
-              aria-label="Upload files"
-            />
-            <label htmlFor={`question-${question.id}-files`}>
-              <Typography
-                component="span"
+            return (
+              <Paper
+                key={option.id}
+                variant="outlined"
                 sx={{
-                  display: 'inline-block',
-                  px: 2,
-                  py: 1,
-                  border: '1px solid',
-                  borderColor: 'primary.main',
-                  borderRadius: 1,
-                  cursor: 'pointer',
-                  '&:hover': {
-                    backgroundColor: 'action.hover',
+                  p: 2,
+                  mb: 1,
+                  cursor: disabled ? 'not-allowed' : 'pointer',
+                  '&:hover': disabled ? {} : {
+                    bgcolor: 'action.hover',
                   },
+                  bgcolor: isChecked ? 'action.selected' : 'transparent',
                 }}
               >
-                Choose Files (max 5)
-              </Typography>
-            </label>
-            {attachedFiles.length > 0 && (
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="caption" color="text.secondary">
-                  {attachedFiles.length} file(s) selected
-                </Typography>
-                <Box component="ul" sx={{ listStyle: 'none', p: 0, mt: 1 }}>
-                  {attachedFiles.map((file, index) => (
-                    <Box
-                      component="li"
-                      key={index}
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        py: 0.5,
-                      }}
-                    >
-                      <Typography variant="body2">{file.name}</Typography>
-                      <IconButton
-                        size="small"
-                        onClick={() => handleRemoveFile(index)}
-                        aria-label={`Remove ${file.name}`}
-                      >
-                        ✕
-                      </IconButton>
-                    </Box>
-                  ))}
-                </Box>
-              </Box>
-            )}
-          </Box>
-        </Box>
-      )}
-    </Box>
-  );
-}
-
-/**
- * Matching Question Component
- * Dropdown selections for pairing items
- */
-function MatchingQuestion({
-  question,
-  answer,
-  onChange,
-  disabled,
-}: QuestionTypeProps): JSX.Element {
-  const matches = (question.options.matches as any[] | undefined) || [];
-  const subquestions = (question.options.subquestions as any[] | undefined) || [];
-  
-  const currentMatches = (answer as Record<string, string>) || {};
-
-  const handleMatchChange = (subquestionId: string, matchId: string) => {
-    const newMatches = {
-      ...currentMatches,
-      [subquestionId]: matchId,
-    };
-    onChange(newMatches);
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={isChecked}
+                      onChange={(e) => handleMultipleChoiceChange(optionId, e.target.checked)}
+                      data-testid={`option-${option.id}`}
+                    />
+                  }
+                  label={
+                    <Typography
+                      variant="body1"
+                      dangerouslySetInnerHTML={{ __html: option.text }}
+                    />
+                  }
+                  sx={{ width: '100%', m: 0 }}
+                />
+              </Paper>
+            );
+          })}
+        </FormGroup>
+      </FormControl>
+    );
   };
 
-  return (
-    <Box>
-      <Typography variant="body2" sx={{ mb: 2 }}>
-        Match each item on the left with an item on the right:
-      </Typography>
-      {subquestions.map((subq: any) => (
-        <Box key={subq.id} sx={{ mb: 2 }}>
-          <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
-            <span dangerouslySetInnerHTML={{ __html: subq.questiontext }} />
-          </Typography>
-          <FormControl fullWidth disabled={disabled}>
-            <Select
-              value={currentMatches[String(subq.id)] || ''}
-              onChange={(e) =>
-                handleMatchChange(String(subq.id), e.target.value)
-              }
-              displayEmpty
-              aria-label={`Match for ${subq.questiontext}`}
-            >
-              <MenuItem value="">
-                <em>Choose...</em>
-              </MenuItem>
-              {matches.map((match: any) => (
-                <MenuItem key={match.id} value={String(match.id)}>
-                  {match.answertext}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Box>
-      ))}
-    </Box>
-  );
-}
-
-/**
- * Numerical Question Component
- * Number input with validation for numerical answers
- */
-function NumericalQuestion({
-  question,
-  answer,
-  onChange,
-  disabled,
-}: QuestionTypeProps): JSX.Element {
-  const [error, setError] = useState<string>('');
-
-  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = event.target.value;
-    
-    // Validate numerical input
-    if (value && isNaN(Number(value))) {
-      setError('Please enter a valid number');
-    } else {
-      setError('');
-      onChange(value);
-    }
+  /**
+   * Render true/false question
+   */
+  const renderTrueFalse = (): React.ReactElement => {
+    return (
+      <FormControl component="fieldset" fullWidth disabled={disabled}>
+        <RadioGroup
+          value={value || ''}
+          onChange={handleSingleChoiceChange}
+          data-testid="question-options"
+        >
+          <Paper
+            variant="outlined"
+            sx={{
+              p: 2,
+              mb: 1,
+              cursor: disabled ? 'not-allowed' : 'pointer',
+              '&:hover': disabled ? {} : {
+                bgcolor: 'action.hover',
+              },
+              bgcolor: value === 'true' ? 'action.selected' : 'transparent',
+            }}
+          >
+            <FormControlLabel
+              value="true"
+              control={<Radio data-testid="option-true" />}
+              label="True"
+              sx={{ width: '100%', m: 0 }}
+            />
+          </Paper>
+          <Paper
+            variant="outlined"
+            sx={{
+              p: 2,
+              cursor: disabled ? 'not-allowed' : 'pointer',
+              '&:hover': disabled ? {} : {
+                bgcolor: 'action.hover',
+              },
+              bgcolor: value === 'false' ? 'action.selected' : 'transparent',
+            }}
+          >
+            <FormControlLabel
+              value="false"
+              control={<Radio data-testid="option-false" />}
+              label="False"
+              sx={{ width: '100%', m: 0 }}
+            />
+          </Paper>
+        </RadioGroup>
+      </FormControl>
+    );
   };
 
-  const units = question.options.unit as string | undefined || '';
-  const unitPosition: 'start' | 'end' = (question.options.unitsleft as boolean | undefined) ? 'start' : 'end';
-
-  // Construct InputProps conditionally
-  const inputProps = units
-    ? unitPosition === 'start'
-      ? {
-          startAdornment: (
-            <InputAdornment position="start">
-              {units}
-            </InputAdornment>
-          ),
-        }
-      : {
-          endAdornment: (
-            <InputAdornment position="end">
-              {units}
-            </InputAdornment>
-          ),
-        }
-    : undefined;
-
-  return (
-    <FormControl fullWidth>
+  /**
+   * Render short answer question
+   */
+  const renderShortAnswer = (): React.ReactElement => {
+    return (
       <TextField
-        type="text"
-        value={answer || ''}
-        onChange={handleChange}
-        disabled={disabled}
         fullWidth
-        placeholder="Enter a numerical answer"
-        aria-label="Numerical answer input"
         variant="outlined"
-        error={!!error}
-        helperText={error || 'Enter a number'}
-        InputProps={inputProps}
+        value={typeof value === 'string' ? value : ''}
+        onChange={handleTextChange}
+        disabled={disabled}
+        placeholder="Enter your answer"
+        data-testid="short-answer-input"
       />
-    </FormControl>
+    );
+  };
+
+  /**
+   * Render numerical question
+   */
+  const renderNumerical = (): React.ReactElement => {
+    return (
+      <TextField
+        fullWidth
+        variant="outlined"
+        type="number"
+        value={typeof value === 'string' ? value : ''}
+        onChange={handleTextChange}
+        disabled={disabled}
+        placeholder="Enter a number"
+        data-testid="numerical-input"
+      />
+    );
+  };
+
+  /**
+   * Render essay question
+   */
+  const renderEssay = (): React.ReactElement => {
+    return (
+      <TextField
+        fullWidth
+        variant="outlined"
+        multiline
+        rows={10}
+        value={typeof value === 'string' ? value : ''}
+        onChange={handleTextChange}
+        disabled={disabled}
+        placeholder="Write your essay here"
+        data-testid="essay-input"
+      />
+    );
+  };
+
+  /**
+   * Render unknown question type
+   */
+  const renderUnknown = (): React.ReactElement => {
+    return (
+      <Paper variant="outlined" sx={{ p: 2, bgcolor: 'warning.light' }}>
+        <Typography>
+          Question type "{question.type}" is not supported yet.
+        </Typography>
+      </Paper>
+    );
+  };
+
+  return (
+    <Box data-testid="question-renderer">
+      {/* Question Text */}
+      <Typography
+        variant="h6"
+        gutterBottom
+        dangerouslySetInnerHTML={{ __html: question.questiontext }}
+        data-testid="question-text"
+        sx={{ mb: 3 }}
+      />
+
+      {/* Question Marks */}
+      <Typography variant="body2" color="text.secondary" gutterBottom sx={{ mb: 2 }}>
+        Marks: {question.maxmark}
+      </Typography>
+
+      {/* Question Input */}
+      <Box>
+        {question.type === 'multichoice' && question.options.length > 0 && (
+          renderMultipleChoiceSingle()
+        )}
+        {question.type === 'multichoicemulti' && question.options.length > 0 && (
+          renderMultipleChoiceMultiple()
+        )}
+        {question.type === 'truefalse' && renderTrueFalse()}
+        {question.type === 'shortanswer' && renderShortAnswer()}
+        {question.type === 'numerical' && renderNumerical()}
+        {question.type === 'essay' && renderEssay()}
+        {!['multichoice', 'multichoicemulti', 'truefalse', 'shortanswer', 'numerical', 'essay'].includes(question.type) && (
+          renderUnknown()
+        )}
+      </Box>
+    </Box>
   );
 }
+
+export default QuestionRenderer;

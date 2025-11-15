@@ -66,6 +66,7 @@ export class QuizPage {
   private readonly quizDescription: Locator;
   private readonly timeLimit: Locator;
   private readonly attemptsAllowed: Locator;
+  private readonly gradeMethodLocator: Locator;
 
   // Quiz attempt locators
   private readonly attemptButton: Locator;
@@ -99,25 +100,27 @@ export class QuizPage {
     this.page = page;
 
     // Initialize quiz information locators
-    this.quizTitle = page.locator('[data-testid="quiz-title"], h1.quiz-title, .quiz-header h1').first();
-    this.quizDescription = page.locator('[data-testid="quiz-description"], .quiz-description, .quiz-intro').first();
-    this.timeLimit = page.locator('[data-testid="quiz-time-limit"], .quiz-time-limit, .time-limit-info').first();
-    this.attemptsAllowed = page.locator('[data-testid="quiz-attempts-allowed"], .attempts-allowed, .attempt-limit-info').first();
+    this.quizTitle = page.locator('[data-testid="quiz-name"], [data-testid="quiz-title"], [data-testid="quiz-attempt-title"], h1, h5').first();
+    this.quizDescription = page.locator('[data-testid="quiz-intro"], [data-testid="quiz-description"], .quiz-description').first();
+    // Target the secondary text (paragraph) within the ListItemText for time limit
+    this.timeLimit = page.locator('[data-testid="quiz-time-limit"] p, [data-testid="quiz-time-limit"] .MuiListItemText-secondary').first();
+    this.attemptsAllowed = page.locator('[data-testid="quiz-attempts-allowed"] p, [data-testid="quiz-attempts-allowed"] .MuiListItemText-secondary').first();
+    this.gradeMethodLocator = page.locator('[data-testid="quiz-grade-method"] p, [data-testid="quiz-grade-method"] .MuiListItemText-secondary').first();
 
     // Initialize quiz attempt locators
     this.attemptButton = page.locator('[data-testid="start-attempt-button"], button:has-text("Attempt quiz"), button:has-text("Continue quiz"), button:has-text("Start attempt")').first();
-    this.timer = page.locator('[data-testid="quiz-timer"], .quiz-timer, .countdown-timer, #quiz-timer').first();
+    this.timer = page.locator('[data-testid="timer-display"]');
     this.questionText = page.locator('[data-testid="question-text"], .qtext, .question-text').first();
-    this._answerOptions = page.locator('[data-testid="answer-option"], .answer input[type="radio"], .answer input[type="checkbox"], .answer textarea');
+    this._answerOptions = page.locator('[data-testid="question-options"] input[type="radio"], [data-testid="question-options"] input[type="checkbox"], [data-testid="essay-input"], [data-testid="short-answer-input"], [data-testid="numerical-input"]');
 
     // Initialize navigation locators
-    this.nextButton = page.locator('[data-testid="next-question-button"], button:has-text("Next"), button[name="next"]').first();
-    this.previousButton = page.locator('[data-testid="previous-question-button"], button:has-text("Previous"), button[name="previous"]').first();
+    this.nextButton = page.locator('[data-testid="next-button"]');
+    this.previousButton = page.locator('[data-testid="prev-button"]');
     this._questionSidebar = page.locator('[data-testid="question-sidebar"], .question-navigation, .qn-buttons, nav.quiz-nav').first();
 
     // Initialize submission locators
-    this.submitAllButton = page.locator('[data-testid="submit-all-button"], button:has-text("Submit all and finish"), button:has-text("Finish attempt"), input[name="finishattempt"]').first();
-    this.confirmSubmitButton = page.locator('[data-testid="confirm-submit-button"], button:has-text("Submit all"), button:has-text("Confirm"), .confirmation-dialog button:has-text("Yes")').first();
+    this.submitAllButton = page.locator('[data-testid="submit-button"]');
+    this.confirmSubmitButton = page.locator('[data-testid="confirm-submit-button"]');
 
     // Initialize results locators
     this._reviewSection = page.locator('[data-testid="quiz-review"], .quiz-review, .review-container').first();
@@ -131,7 +134,8 @@ export class QuizPage {
    * @param timeout - Optional timeout in milliseconds (default: 30000)
    */
   async waitForQuiz(timeout: number = 30000): Promise<void> {
-    await this.page.waitForLoadState('networkidle', { timeout });
+    // Wait for DOM content to be loaded (removed networkidle - too strict)
+    await this.page.waitForLoadState('domcontentloaded', { timeout });
     await this.quizTitle.waitFor({ state: 'visible', timeout });
   }
 
@@ -160,12 +164,20 @@ export class QuizPage {
       // Attempts info not displayed
     }
 
+    let gradeMethod = 'Not specified';
+    try {
+      const gradeMethodText = await this.gradeMethodLocator.textContent({ timeout: 5000 });
+      gradeMethod = gradeMethodText || 'Not specified';
+    } catch {
+      // Grade method not displayed
+    }
+
     return {
       title: title.trim(),
       description: description.trim(),
       timeLimit,
       attemptsAllowed: attemptsAllowed.trim(),
-      gradeMethod: 'Highest grade', // Default value
+      gradeMethod: gradeMethod.trim(),
     };
   }
 
@@ -176,8 +188,16 @@ export class QuizPage {
     await this.attemptButton.waitFor({ state: 'visible', timeout: 10000 });
     await this.attemptButton.click();
     
-    // Wait for the first question to load
-    await this.page.waitForLoadState('networkidle');
+    // Handle confirmation dialog if it appears
+    try {
+      const confirmButton = this.page.locator('button:has-text("Start Attempt")');
+      await confirmButton.waitFor({ state: 'visible', timeout: 5000 });
+      await confirmButton.click();
+    } catch {
+      // Dialog might not appear, continue
+    }
+    
+    // Wait for the first question to load (removed networkidle - too strict)
     await this.questionText.waitFor({ state: 'visible', timeout: 15000 });
   }
 
@@ -208,10 +228,10 @@ export class QuizPage {
     const questionNumber = pageMatch && pageMatch[1] ? parseInt(pageMatch[1], 10) + 1 : 1;
 
     // Determine question type by inspecting answer options
-    const radioInputs = await this.page.locator('.answer input[type="radio"]').count();
-    const checkboxInputs = await this.page.locator('.answer input[type="checkbox"]').count();
-    const textareas = await this.page.locator('.answer textarea').count();
-    const textInputs = await this.page.locator('.answer input[type="text"]').count();
+    const radioInputs = await this.page.locator('[data-testid="question-options"] input[type="radio"]').count();
+    const checkboxInputs = await this.page.locator('[data-testid="question-options"] input[type="checkbox"]').count();
+    const textareas = await this.page.locator('[data-testid="essay-input"]').count();
+    const textInputs = await this.page.locator('[data-testid="short-answer-input"], [data-testid="numerical-input"]').count();
 
     let questionType: QuestionData['questionType'] = 'single';
     let hasMultipleAnswers = false;
@@ -229,7 +249,7 @@ export class QuizPage {
 
     // Extract answer options
     const options: string[] = [];
-    const optionElements = await this.page.locator('.answer label').all();
+    const optionElements = await this.page.locator('[data-testid="question-options"] label').all();
     
     for (const element of optionElements) {
       const text = await element.textContent();
@@ -252,7 +272,7 @@ export class QuizPage {
    * @param optionIndex - Zero-based index of the option to select
    */
   async selectAnswer(optionIndex: number): Promise<void> {
-    const radioInputs = await this.page.locator('.answer input[type="radio"]').all();
+    const radioInputs = await this.page.locator('[data-testid="question-options"] input[type="radio"]').all();
     
     if (optionIndex < 0 || optionIndex >= radioInputs.length) {
       throw new Error(`Invalid option index: ${optionIndex}. Available options: ${radioInputs.length}`);
@@ -273,7 +293,7 @@ export class QuizPage {
    * @param optionIndexes - Array of zero-based indexes of options to select
    */
   async selectMultipleAnswers(optionIndexes: number[]): Promise<void> {
-    const checkboxInputs = await this.page.locator('.answer input[type="checkbox"]').all();
+    const checkboxInputs = await this.page.locator('[data-testid="question-options"] input[type="checkbox"]').all();
     
     for (const index of optionIndexes) {
       if (index < 0 || index >= checkboxInputs.length) {
@@ -296,14 +316,18 @@ export class QuizPage {
    * @param text - Text to enter as the answer
    */
   async enterTextAnswer(text: string): Promise<void> {
-    const textarea = this.page.locator('.answer textarea').first();
-    const textInput = this.page.locator('.answer input[type="text"]').first();
+    // For MUI TextField components, we need to target the input element inside
+    const essayTextarea = this.page.locator('[data-testid="essay-input"] textarea').first();
+    const shortAnswerInput = this.page.locator('[data-testid="short-answer-input"] input').first();
+    const numericalInput = this.page.locator('[data-testid="numerical-input"] input').first();
     
-    // Try textarea first, then text input
-    if (await textarea.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await textarea.fill(text);
-    } else if (await textInput.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await textInput.fill(text);
+    // Try textarea first, then text inputs
+    if (await essayTextarea.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await essayTextarea.fill(text);
+    } else if (await shortAnswerInput.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await shortAnswerInput.fill(text);
+    } else if (await numericalInput.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await numericalInput.fill(text);
     } else {
       throw new Error('No text input field found for this question');
     }
@@ -319,8 +343,7 @@ export class QuizPage {
     await this.nextButton.waitFor({ state: 'visible', timeout: 5000 });
     await this.nextButton.click();
     
-    // Wait for the next question to load
-    await this.page.waitForLoadState('networkidle');
+    // Wait for the next question to load (removed networkidle - too strict)
     await this.questionText.waitFor({ state: 'visible', timeout: 10000 });
   }
 
@@ -331,8 +354,7 @@ export class QuizPage {
     await this.previousButton.waitFor({ state: 'visible', timeout: 5000 });
     await this.previousButton.click();
     
-    // Wait for the previous question to load
-    await this.page.waitForLoadState('networkidle');
+    // Wait for the previous question to load (removed networkidle - too strict)
     await this.questionText.waitFor({ state: 'visible', timeout: 10000 });
   }
 
@@ -341,17 +363,14 @@ export class QuizPage {
    * @param questionNumber - One-based question number to jump to
    */
   async jumpToQuestion(questionNumber: number): Promise<void> {
-    const questionButton = this.page.locator(
-      `[data-testid="question-nav-${questionNumber}"], ` +
-      `.qnbutton[data-question="${questionNumber}"], ` +
-      `.question-nav button:has-text("${questionNumber}")`
-    ).first();
+    // The correct data-testid is nav-question-${index + 1}, where index is 0-based
+    // So for question 1, it's nav-question-1
+    const questionButton = this.page.locator(`[data-testid="nav-question-${questionNumber}"]`).first();
 
     await questionButton.waitFor({ state: 'visible', timeout: 5000 });
     await questionButton.click();
     
-    // Wait for the question to load
-    await this.page.waitForLoadState('networkidle');
+    // Wait for the question to load (removed networkidle - too strict)
     await this.questionText.waitFor({ state: 'visible', timeout: 10000 });
   }
 
@@ -361,11 +380,8 @@ export class QuizPage {
    * @returns Promise resolving to QuestionStatus object
    */
   async getQuestionStatus(questionNumber: number): Promise<QuestionStatus> {
-    const questionButton = this.page.locator(
-      `[data-testid="question-nav-${questionNumber}"], ` +
-      `.qnbutton[data-question="${questionNumber}"], ` +
-      `.question-nav button:nth-child(${questionNumber})`
-    ).first();
+    // The correct data-testid is nav-question-${index + 1}, where index is 0-based
+    const questionButton = this.page.locator(`[data-testid="nav-question-${questionNumber}"]`).first();
 
     await questionButton.waitFor({ state: 'visible', timeout: 5000 });
     
@@ -406,8 +422,7 @@ export class QuizPage {
     await this.confirmSubmitButton.waitFor({ state: 'visible', timeout: 10000 });
     await this.confirmSubmitButton.click();
     
-    // Wait for results page to load
-    await this.page.waitForLoadState('networkidle');
+    // Wait for results page to load (removed networkidle - too strict)
     await this.page.waitForTimeout(2000);
   }
 

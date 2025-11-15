@@ -15,6 +15,9 @@ import { FileRepositoryPage } from '@/features/courses/pages/FileRepositoryPage'
 import { UserManagementPage } from '@/features/admin/users/pages/UserManagementPage';
 import { ForumPage } from '@/features/activities/forums/pages/ForumPage';
 import { DiscussionPage } from '@/features/activities/forums/pages/DiscussionPage';
+import { QuizPage } from '@/features/activities/quizzes/pages/QuizPage';
+import { QuizAttemptPage } from '@/features/activities/quizzes/pages/QuizAttemptPage';
+import { QuizReviewPage } from '@/features/activities/quizzes/pages/QuizReviewPage';
 import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
 import App from '@/App';
 
@@ -77,6 +80,30 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <DiscussionPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/courses/:courseId/quizzes/:quizId',
+    element: (
+      <ProtectedRoute>
+        <QuizPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/courses/:courseId/quizzes/:quizId/attempt/:attemptId',
+    element: (
+      <ProtectedRoute>
+        <QuizAttemptPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/courses/:courseId/quizzes/:quizId/review/:attemptId',
+    element: (
+      <ProtectedRoute>
+        <QuizReviewPage />
       </ProtectedRoute>
     ),
   },
