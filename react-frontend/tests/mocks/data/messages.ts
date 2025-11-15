@@ -17,7 +17,6 @@
 
 import type { Message, Conversation, Notification } from '@/types/entities';
 import type { Id, MessageId, UserId } from '@/types/common';
-import { mockUser } from './users';
 
 // ============================================================================
 // Utility Types
@@ -125,7 +124,7 @@ export function getRandomComponent(): string {
     'core_message',
     'core_badges',
   ];
-  return components[Math.floor(Math.random() * components.length)];
+  return components[Math.floor(Math.random() * components.length)]!;
 }
 
 /**
@@ -147,7 +146,7 @@ export function getRandomEventType(): string {
     'course_enrolment',
     'discussion_reply',
   ];
-  return eventTypes[Math.floor(Math.random() * eventTypes.length)];
+  return eventTypes[Math.floor(Math.random() * eventTypes.length)]!;
 }
 
 // ============================================================================

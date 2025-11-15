@@ -10,7 +10,7 @@
  */
 
 import { http, HttpResponse } from 'msw';
-import type { User, Message, Conversation, Notification, ApiResponse } from '@/types';
+import type { User, Message, Notification, ApiResponse } from '@/types';
 
 // ============================================================================
 // Mock Data
@@ -109,34 +109,6 @@ const mockUsers: Record<number, User> = {
     profileimageurlsmall: 'https://example.com/user4_small.jpg',
   },
 };
-
-/**
- * Mock conversations
- */
-const mockConversations: Conversation[] = [
-  {
-    id: 1,
-    type: 1, // individual
-    enabled: true,
-    timecreated: Date.now() / 1000 - 86400 * 7,
-    timemodified: Date.now() / 1000 - 3600,
-  },
-  {
-    id: 2,
-    type: 1, // individual
-    enabled: true,
-    timecreated: Date.now() / 1000 - 86400 * 3,
-    timemodified: Date.now() / 1000 - 7200,
-  },
-  {
-    id: 3,
-    type: 2, // group
-    name: 'Course Discussion Group',
-    enabled: true,
-    timecreated: Date.now() / 1000 - 86400 * 14,
-    timemodified: Date.now() / 1000 - 86400,
-  },
-];
 
 /**
  * Mock messages with realistic data
@@ -479,9 +451,11 @@ const listMessagesHandler = http.get('/api/v1/messages', async ({ request }) => 
     (msg) => msg.useridto === currentUserId && !msg.timeread
   ).length;
 
-  const response: ApiResponse<typeof formattedMessages> = {
+  const response = {
     success: true,
-    data: formattedMessages,
+    data: {
+      messages: formattedMessages,
+    },
     meta: {
       pagination: {
         page,
@@ -593,10 +567,22 @@ const sendMessageHandler = http.post('/api/v1/messages', async ({ request }) => 
     return newMessage;
   });
 
-  const response: ApiResponse<typeof newMessages> = {
-    success: true,
-    data: newMessages.map(formatMessageWithUsers),
-  };
+  const formattedMessages = newMessages.map(formatMessageWithUsers);
+
+  // Return single message or array based on number of recipients
+  const response = recipientIds.length === 1
+    ? {
+        success: true,
+        data: {
+          message: formattedMessages[0],
+        },
+      }
+    : {
+        success: true,
+        data: {
+          messages: formattedMessages,
+        },
+      };
 
   return HttpResponse.json(response, { status: 201 });
 });
@@ -760,7 +746,7 @@ const deleteMessageHandler = http.delete('/api/v1/messages/:id', async ({ params
     );
   }
 
-  const message = mockMessages[messageIndex];
+  const message = mockMessages[messageIndex]!;
 
   // Check if current user is involved in the message
   if (message.useridfrom !== currentUserId && message.useridto !== currentUserId) {
@@ -865,9 +851,11 @@ const getContactsHandler = http.get('/api/v1/messages/contacts', async ({ reques
     return bTime - aTime;
   });
 
-  const response: ApiResponse<typeof contacts> = {
+  const response = {
     success: true,
-    data: contacts,
+    data: {
+      contacts,
+    },
   };
 
   return HttpResponse.json(response);
@@ -1002,9 +990,11 @@ const getNotificationsHandler = http.get('/api/v1/notifications', async ({ reque
     (notif) => notif.useridto === currentUserId && !notif.timeread
   ).length;
 
-  const response: ApiResponse<typeof formattedNotifications> = {
+  const response = {
     success: true,
-    data: formattedNotifications,
+    data: {
+      notifications: formattedNotifications,
+    },
     meta: {
       pagination: {
         page,
@@ -1064,7 +1054,7 @@ const markNotificationReadHandler = http.put(
     // Mark as read
     notification.timeread = Date.now() / 1000;
 
-    const response: ApiResponse<{ notification: typeof notification }> = {
+    const response = {
       success: true,
       data: {
         notification: {
@@ -1111,7 +1101,7 @@ const deleteNotificationHandler = http.delete(
       );
     }
 
-    const notification = mockNotifications[notificationIndex];
+    const notification = mockNotifications[notificationIndex]!;
 
     // Check if current user is the recipient
     if (notification.useridto !== currentUserId) {
