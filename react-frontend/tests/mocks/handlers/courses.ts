@@ -13,6 +13,7 @@
  */
 
 import { http, HttpResponse } from 'msw';
+import { validateAuthToken } from './auth';
 
 // ============================================================================
 // TypeScript Type Definitions
@@ -674,6 +675,22 @@ const simulateLatency = () => new Promise(resolve => setTimeout(resolve, Math.ra
 const listCoursesHandler = http.get('http://*/api/v1/courses', async ({ request }) => {
   await simulateLatency();
 
+  // Validate authentication token
+  const validation = validateAuthToken(request);
+  if (!validation.valid) {
+    return HttpResponse.json(
+      {
+        success: false,
+        error: {
+          code: validation.error!.code,
+          message: validation.error!.message,
+          details: {},
+        },
+      },
+      { status: validation.error!.status }
+    );
+  }
+
   const url = new URL(request.url);
   
   // Extract query parameters
@@ -782,8 +799,24 @@ const listCoursesHandler = http.get('http://*/api/v1/courses', async ({ request 
  * GET /api/v1/courses/:id
  * Get course details by ID
  */
-const showCourseHandler = http.get('http://*/api/v1/courses/:id', async ({ params }) => {
+const showCourseHandler = http.get('http://*/api/v1/courses/:id', async ({ request, params }) => {
   await simulateLatency();
+
+  // Validate authentication token
+  const validation = validateAuthToken(request);
+  if (!validation.valid) {
+    return HttpResponse.json(
+      {
+        success: false,
+        error: {
+          code: validation.error!.code,
+          message: validation.error!.message,
+          details: {},
+        },
+      },
+      { status: validation.error!.status }
+    );
+  }
 
   const courseId = parseInt(params.id as string, 10);
   const course = mockCourses.find(c => c.id === courseId);

@@ -12,6 +12,7 @@
  */
 
 import { http, HttpResponse } from 'msw';
+import { validateAuthToken } from './auth';
 
 // ============================================================================
 // TypeScript Type Definitions
@@ -871,23 +872,23 @@ const getUserDashboardHandler = http.get(
     // Simulate network latency
     await new Promise((resolve) => setTimeout(resolve, 300));
 
-    const userId = parseInt(params.id as string, 10);
-
-    // Check for authorization header
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // Validate authentication token
+    const validation = validateAuthToken(request);
+    if (!validation.valid) {
       return HttpResponse.json(
         {
           success: false,
           error: {
-            code: 'UNAUTHORIZED',
-            message: 'Authentication required',
+            code: validation.error!.code,
+            message: validation.error!.message,
             details: {},
           },
         },
-        { status: 401 }
+        { status: validation.error!.status }
       );
     }
+
+    const userId = parseInt(params.id as string, 10);
 
     // Check if user exists
     const user = mockUsers[userId];

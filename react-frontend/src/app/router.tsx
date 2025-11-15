@@ -9,6 +9,7 @@
 
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
+import { DashboardPage } from '@/features/dashboard/pages/DashboardPage';
 import { CourseCatalogPage } from '@/features/courses/pages/CourseCatalogPage';
 import { FileRepositoryPage } from '@/features/courses/pages/FileRepositoryPage';
 import { UserManagementPage } from '@/features/admin/users/pages/UserManagementPage';
@@ -43,10 +44,7 @@ export const router = createBrowserRouter([
     path: '/dashboard',
     element: (
       <ProtectedRoute>
-        <div>
-          <h1>Dashboard</h1>
-          <p>Dashboard implementation coming soon...</p>
-        </div>
+        <DashboardPage />
       </ProtectedRoute>
     ),
   },

@@ -23,6 +23,180 @@
 import { http, HttpResponse } from 'msw';
 
 // ============================================================================
+// Token Blacklist for Logout Simulation
+// ============================================================================
+
+/**
+ * Set of blacklisted JWT tokens
+ * 
+ * When a user logs out, their tokens (both access and refresh) are added to this
+ * blacklist. Subsequent requests using these tokens will be rejected with 401 status.
+ * 
+ * This simulates the server-side token blacklist that would exist in production
+ * (typically implemented with Redis or a similar cache).
+ * 
+ * NOTE: This is an in-memory store that persists across test runs within the same
+ * process. For isolated tests, use MSW's resetHandlers() or clear the blacklist
+ * manually in test setup/teardown.
+ */
+const tokenBlacklist = new Set<string>();
+
+/**
+ * Map of user IDs to their active token pairs (access + refresh)
+ * 
+ * This allows us to blacklist both access and refresh tokens when a user logs out,
+ * simulating the server-side session management that would exist in production.
+ */
+const userTokens = new Map<number, { accessToken: string; refreshToken: string }>();
+
+/**
+ * Clear all blacklisted tokens and user token mappings
+ * 
+ * This function is exported for test setup/teardown to ensure clean state
+ * between test suites.
+ */
+export function clearTokenBlacklist(): void {
+  tokenBlacklist.clear();
+  userTokens.clear();
+}
+
+/**
+ * Check if a token is blacklisted
+ * 
+ * @param token - JWT token to check
+ * @returns true if token is blacklisted, false otherwise
+ */
+export function isTokenBlacklisted(token: string): boolean {
+  return tokenBlacklist.has(token);
+}
+
+/**
+ * Add a token to the blacklist
+ * 
+ * @param token - JWT token to blacklist
+ */
+function blacklistToken(token: string): void {
+  tokenBlacklist.add(token);
+}
+
+/**
+ * Validation result for token authentication
+ */
+export interface TokenValidationResult {
+  valid: boolean;
+  userId?: number;
+  token?: string;
+  error?: {
+    code: string;
+    message: string;
+    status: number;
+  };
+}
+
+/**
+ * Validate authentication token from request header
+ * 
+ * This function performs comprehensive token validation including:
+ * - Checking for Authorization header presence
+ * - Extracting Bearer token
+ * - Verifying token is not blacklisted
+ * - Extracting user ID from token
+ * 
+ * @param request - The HTTP request object
+ * @returns Validation result with userId if valid, or error details if invalid
+ * 
+ * @example
+ * ```typescript
+ * const validation = validateAuthToken(request);
+ * if (!validation.valid) {
+ *   return HttpResponse.json(
+ *     { success: false, error: validation.error },
+ *     { status: validation.error.status }
+ *   );
+ * }
+ * const userId = validation.userId!;
+ * ```
+ */
+export function validateAuthToken(request: Request): TokenValidationResult {
+  // Check for Authorization header
+  const authHeader = request.headers.get('Authorization');
+  if (!authHeader) {
+    return {
+      valid: false,
+      error: {
+        code: 'MISSING_AUTH_HEADER',
+        message: 'Authorization header is required',
+        status: 401,
+      },
+    };
+  }
+
+  // Check Bearer token format
+  if (!authHeader.startsWith('Bearer ')) {
+    return {
+      valid: false,
+      error: {
+        code: 'INVALID_AUTH_FORMAT',
+        message: 'Authorization header must use Bearer token format',
+        status: 401,
+      },
+    };
+  }
+
+  // Extract token
+  const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+  if (!token) {
+    return {
+      valid: false,
+      error: {
+        code: 'MISSING_TOKEN',
+        message: 'Bearer token is missing',
+        status: 401,
+      },
+    };
+  }
+
+  // Check if token is blacklisted (user has logged out)
+  console.log('[MSW VALIDATE] Checking token:', token);
+  console.log('[MSW VALIDATE] Blacklist size:', tokenBlacklist.size);
+  console.log('[MSW VALIDATE] Blacklist contains:', Array.from(tokenBlacklist));
+  const isBlacklisted = isTokenBlacklisted(token);
+  console.log('[MSW VALIDATE] Token is blacklisted:', isBlacklisted);
+  
+  if (isBlacklisted) {
+    console.log('[MSW VALIDATE] Rejecting blacklisted token with 401');
+    return {
+      valid: false,
+      error: {
+        code: 'TOKEN_REVOKED',
+        message: 'This token has been revoked. Please log in again.',
+        status: 401,
+      },
+    };
+  }
+
+  // Extract user ID from token
+  const userId = extractUserIdFromToken(token);
+  if (userId === null) {
+    return {
+      valid: false,
+      error: {
+        code: 'INVALID_TOKEN',
+        message: 'Token is malformed or invalid',
+        status: 401,
+      },
+    };
+  }
+
+  // Token is valid
+  return {
+    valid: true,
+    userId,
+    token,
+  };
+}
+
+// ============================================================================
 // TypeScript Type Definitions
 // ============================================================================
 
@@ -240,7 +414,7 @@ function generateMockToken(userId: number, type: 'access' | 'refresh'): string {
  * @param token - JWT token string
  * @returns User ID or null if invalid
  */
-function extractUserIdFromToken(token: string): number | null {
+export function extractUserIdFromToken(token: string): number | null {
   try {
     const parts = token.split('.');
     if (parts.length !== 3 || !parts[1]) return null;
@@ -411,6 +585,12 @@ const loginHandler = http.post('*/api/v1/auth/login', async ({ request }) => {
       expiresIn: 3600, // 1 hour
     };
 
+    // Store tokens for this user (for logout blacklisting)
+    userTokens.set(user.id, {
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+    });
+
     // Return success response
     return HttpResponse.json(
       {
@@ -505,8 +685,22 @@ const logoutHandler = http.post('*/api/v1/auth/logout', async ({ request }) => {
       );
     }
 
-    // In a real implementation, the token would be added to a blacklist here
-    // For mock purposes, we just return success
+    // Add access token to blacklist
+    console.log('[MSW LOGOUT] Blacklisting access token:', token);
+    blacklistToken(token);
+    
+    // Also blacklist the refresh token for this user
+    const userTokenPair = userTokens.get(userId);
+    if (userTokenPair && userTokenPair.refreshToken) {
+      console.log('[MSW LOGOUT] Also blacklisting refresh token for user:', userId);
+      blacklistToken(userTokenPair.refreshToken);
+    }
+    
+    // Remove user's tokens from active sessions
+    userTokens.delete(userId);
+    
+    console.log('[MSW LOGOUT] Tokens blacklisted. Blacklist size:', tokenBlacklist.size);
+    console.log('[MSW LOGOUT] Blacklist contains:', Array.from(tokenBlacklist))
 
     return HttpResponse.json(
       {
@@ -602,6 +796,23 @@ const refreshHandler = http.post('*/api/v1/auth/refresh', async ({ request }) =>
       );
     }
 
+    // Check if refresh token is blacklisted (user has logged out)
+    if (isTokenBlacklisted(refreshToken)) {
+      return HttpResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'TOKEN_REVOKED',
+            message: 'This token has been revoked. Please log in again.',
+            details: {
+              reason: 'Token was invalidated during logout',
+            },
+          },
+        },
+        { status: 401 }
+      );
+    }
+
     // Check if user still exists
     const user = findUserById(userId);
     
@@ -645,6 +856,12 @@ const refreshHandler = http.post('*/api/v1/auth/refresh', async ({ request }) =>
       tokenType: 'Bearer',
       expiresIn: 3600, // 1 hour
     };
+
+    // Store new tokens for this user (for logout blacklisting)
+    userTokens.set(userId, {
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+    });
 
     return HttpResponse.json(
       {
@@ -719,6 +936,10 @@ const meHandler = http.get('*/api/v1/auth/me', async ({ request }) => {
     }
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+    
+    console.log('[meHandler] Token extracted:', token);
+    console.log('[meHandler] Blacklist size:', tokenBlacklist.size);
+    console.log('[meHandler] Blacklist contents:', Array.from(tokenBlacklist));
 
     // Validate token and extract user ID
     const userId = extractUserIdFromToken(token);
@@ -732,6 +953,25 @@ const meHandler = http.get('*/api/v1/auth/me', async ({ request }) => {
             message: 'Invalid or malformed authentication token',
             details: {
               reason: 'Token could not be parsed',
+            },
+          },
+        },
+        { status: 401 }
+      );
+    }
+
+    // Check if token is blacklisted (user has logged out)
+    console.log('[meHandler] Checking if token is blacklisted:', token);
+    console.log('[meHandler] Is blacklisted?', isTokenBlacklisted(token));
+    if (isTokenBlacklisted(token)) {
+      return HttpResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'TOKEN_REVOKED',
+            message: 'This token has been revoked. Please log in again.',
+            details: {
+              reason: 'Token was invalidated during logout',
             },
           },
         },

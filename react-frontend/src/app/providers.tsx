@@ -13,6 +13,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { CssBaseline, ThemeProvider } from '@mui/material';
 import { store } from './store';
 import theme from '@/styles/theme';
+import { AuthInitializer } from '@/features/auth/components/AuthInitializer';
 
 // ============================================================================
 // React Query Configuration
@@ -56,6 +57,7 @@ export interface ProvidersProps {
  * 2. React Query Provider - Server state management
  * 3. MUI Theme Provider - Material-UI theming
  * 4. CssBaseline - Normalize CSS across browsers
+ * 5. AuthInitializer - Hydrates auth state from localStorage on startup
  *
  * Usage:
  * ```tsx
@@ -63,6 +65,15 @@ export interface ProvidersProps {
  *   <App />
  * </Providers>
  * ```
+ *
+ * Critical: AuthInitializer must be inside ReduxProvider to have access
+ * to the Redux store dispatch function. It runs once on mount to synchronize
+ * the Redux auth state with localStorage, preventing UI inconsistencies
+ * where the user appears logged out when they are actually authenticated.
+ * 
+ * The AuthInitializer wraps the children and blocks rendering until the
+ * auth state has been initialized, preventing race conditions where the
+ * Header renders before Redux state is hydrated.
  */
 export const Providers: React.FC<ProvidersProps> = ({ children }) => {
   return (
@@ -70,7 +81,9 @@ export const Providers: React.FC<ProvidersProps> = ({ children }) => {
       <QueryClientProvider client={queryClient}>
         <ThemeProvider theme={theme}>
           <CssBaseline />
-          {children}
+          <AuthInitializer>
+            {children}
+          </AuthInitializer>
         </ThemeProvider>
       </QueryClientProvider>
     </ReduxProvider>

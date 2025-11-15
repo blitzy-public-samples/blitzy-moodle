@@ -404,6 +404,46 @@ export const authSlice = createSlice({
         state.status = 'error' as AuthStatus;
       }
     },
+
+    /**
+     * Initialize authentication state from stored tokens
+     *
+     * Called on application startup to restore authentication state
+     * from localStorage. Hydrates Redux store with user and token data
+     * if valid tokens exist.
+     *
+     * State Changes:
+     * - Restores user data from payload
+     * - Restores JWT tokens from payload
+     * - Sets isAuthenticated to true
+     * - Sets isLoading to false
+     * - Clears any error
+     * - Sets status to 'authenticated'
+     *
+     * Critical for:
+     * - Maintaining login state across page refreshes
+     * - Synchronizing Redux store with localStorage on app startup
+     * - Preventing "logged out" UI flash when user is actually logged in
+     * - Supporting browser back/forward navigation
+     *
+     * Security Notes:
+     * - Tokens should be validated server-side before use
+     * - Client-side validation only checks token format and expiration
+     * - Backend must verify JWT signature on every API request
+     *
+     * @param action.payload - User and tokens restored from storage
+     */
+    initializeAuth: (
+      state,
+      action: PayloadAction<{ user: User; tokens: AuthTokens }>
+    ) => {
+      state.user = action.payload.user;
+      state.tokens = action.payload.tokens;
+      state.isAuthenticated = true;
+      state.isLoading = false;
+      state.error = null;
+      state.status = 'authenticated' as AuthStatus;
+    },
   },
 });
 
@@ -435,6 +475,7 @@ export const {
   clearAuth,
   setLoading,
   setError,
+  initializeAuth,
 } = authSlice.actions;
 
 /**

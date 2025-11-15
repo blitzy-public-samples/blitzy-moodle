@@ -343,8 +343,8 @@ export async function logout(page: Page): Promise<void> {
     return;
   }
 
-  // Check if user menu is visible (indicates user is on a page with auth UI)
-  const userMenuVisible = await page.locator('[data-testid="user-menu"]').isVisible().catch(() => false);
+  // Check if user menu button is visible (indicates user is on a page with auth UI)
+  const userMenuVisible = await page.locator('[data-testid="user-menu-button"]').isVisible().catch(() => false);
   
   if (!userMenuVisible) {
     // User is authenticated but not on a page with the user menu
@@ -356,15 +356,15 @@ export async function logout(page: Page): Promise<void> {
   }
 
   // Open user menu
-  await page.click('[data-testid="user-menu"]');
+  await page.click('[data-testid="user-menu-button"]');
   
-  // Wait for menu to expand
-  await waitForElement(page, '[data-testid="logout-button"]', 'visible', { timeout: 3000 });
+  // Wait for menu to expand and logout menu item to appear
+  await waitForElement(page, '[data-testid="logout-menu-item"]', 'visible', { timeout: 3000 });
 
-  // Click logout button and wait for navigation
+  // Click logout menu item and wait for navigation
   await Promise.all([
     page.waitForURL(`**${LOGIN_PAGE_URL}`, { timeout: 10000 }),
-    page.click('[data-testid="logout-button"]'),
+    page.click('[data-testid="logout-menu-item"]'),
   ]);
 
   // Removed waitForPageLoad - URL wait above is sufficient

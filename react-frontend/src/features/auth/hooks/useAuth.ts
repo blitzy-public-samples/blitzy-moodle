@@ -7,7 +7,8 @@
  * @module features/auth/hooks/useAuth
  */
 
-import { useCurrentUser, useLoginMutation, useLogout } from '../api/authApi';
+import { useQueryClient } from '@tanstack/react-query';
+import { useCurrentUser, useLoginMutation, useLogout, CURRENT_USER_QUERY_KEY } from '../api/authApi';
 import type { AuthUser } from '../api/authApi';
 
 export type { AuthUser };
@@ -45,6 +46,7 @@ export interface UseAuthReturn {
  * ```
  */
 export const useAuth = (): UseAuthReturn => {
+  const queryClient = useQueryClient();
   const { data: user, isLoading, isError } = useCurrentUser();
   const loginMutation = useLoginMutation();
   const logoutMutation = useLogout();
@@ -54,10 +56,19 @@ export const useAuth = (): UseAuthReturn => {
   };
 
   const logout = (): void => {
-    // Clear authentication tokens from localStorage
-    localStorage.removeItem('moodle_access_token');
-    localStorage.removeItem('moodle_refresh_token');
+    console.log('[useAuth] logout() called');
     
+    // CRITICAL: Clear the user query cache SYNCHRONOUSLY FIRST
+    // This ensures isAuthenticated immediately becomes false
+    // preventing race conditions in ProtectedRoute and other components
+    queryClient.removeQueries({ queryKey: CURRENT_USER_QUERY_KEY });
+    queryClient.setQueryData(CURRENT_USER_QUERY_KEY, null);
+    
+    console.log('[useAuth] Cache cleared, calling logout API (tokens still in localStorage for request)');
+    
+    // Call the logout API endpoint
+    // Tokens are still in localStorage so the interceptor can add them to the request
+    // The useLogout hook will clear tokens in its onSettled callback after the API call completes
     logoutMutation.mutate();
   };
 

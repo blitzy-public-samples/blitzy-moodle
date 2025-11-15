@@ -9,6 +9,7 @@
 
 import React from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import {
   Box,
   Container,
@@ -16,6 +17,7 @@ import {
   Typography,
 } from '@mui/material';
 import { LoginForm } from '../components/LoginForm';
+import { loginSuccess } from '../store/authSlice';
 
 // ============================================================================
 // Component
@@ -44,6 +46,7 @@ export const LoginPage: React.FC = () => {
   // ============================================================================
 
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [searchParams] = useSearchParams();
 
   // Get return URL from query params (default to dashboard)
@@ -55,24 +58,28 @@ export const LoginPage: React.FC = () => {
 
   /**
    * Handle successful login
-   * Navigates to the return URL after the mutation has successfully
-   * stored the token and updated the React Query cache.
+   * Updates Redux auth state and navigates to the return URL.
    */
   const handleLoginSuccess = async (response: { user: any; tokens: any }) => {
     console.log('[LoginPage] handleLoginSuccess called with response:', response);
     console.log('[LoginPage] Return URL:', returnUrl);
     
-    // Wait a brief moment to ensure React Query cache update has propagated
-    // This prevents a race condition where ProtectedRoute checks authentication
-    // before the useAuth hook has received the updated cache data
+    // Dispatch login success action to Redux store
+    // This updates the isAuthenticated flag and makes the user menu visible
+    console.log('[LoginPage] Dispatching loginSuccess action to Redux...');
+    dispatch(loginSuccess({ user: response.user, tokens: response.tokens }));
+    console.log('[LoginPage] Redux state updated');
+    
+    // Wait a brief moment to ensure state update has propagated to all components
+    // This prevents a race condition where ProtectedRoute or Header checks authentication
+    // before the Redux state has fully updated
     console.log('[LoginPage] Waiting 100ms for state propagation...');
     await new Promise(resolve => setTimeout(resolve, 100));
     
     console.log('[LoginPage] Calling navigate...');
     
     // Navigate to the return URL
-    // The token and user data are already stored in localStorage and React Query cache
-    // by the useLoginMutation hook's onSuccess handler
+    // The token and user data are now in Redux state, localStorage, and React Query cache
     navigate(returnUrl, { replace: true });
     
     console.log('[LoginPage] navigate() called successfully');

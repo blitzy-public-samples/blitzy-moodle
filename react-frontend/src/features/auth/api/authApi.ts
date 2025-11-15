@@ -103,7 +103,11 @@ export async function login(params: LoginParams): Promise<LoginResponse> {
  * JWT token on the server.
  */
 export async function logout(): Promise<void> {
-  await apiClient.post(AUTH_ENDPOINTS.LOGOUT);
+  console.log('[AUTH API] logout() called');
+  console.log('[AUTH API] Logout endpoint:', AUTH_ENDPOINTS.LOGOUT);
+  console.log('[AUTH API] API client baseURL:', apiClient.defaults.baseURL);
+  const response = await apiClient.post(AUTH_ENDPOINTS.LOGOUT);
+  console.log('[AUTH API] Logout response:', response);
 }
 
 /**
@@ -225,6 +229,13 @@ export function useLogout() {
       
       // Clear any other cached data that depends on authentication
       queryClient.clear();
+    },
+    onSettled: () => {
+      // Clear tokens from localStorage after the API call completes
+      // This runs even if the component that initiated the mutation has unmounted
+      console.log('[useLogout] onSettled - clearing tokens from localStorage');
+      localStorage.removeItem('moodle_access_token');
+      localStorage.removeItem('moodle_refresh_token');
     },
   });
 }
