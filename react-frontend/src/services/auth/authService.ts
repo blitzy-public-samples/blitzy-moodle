@@ -150,17 +150,19 @@ export interface TokenUser {
  *
  * The backend returns both a new access token and a new refresh token
  * to support refresh token rotation for enhanced security.
+ * 
+ * Note: The API returns snake_case property names, not camelCase.
  */
 interface RefreshTokenResponse {
   /**
    * New JWT access token (1 hour expiration)
    */
-  accessToken: string;
+  access_token: string;
 
   /**
    * New JWT refresh token (7 day expiration)
    */
-  refreshToken: string;
+  refresh_token: string;
 }
 
 // ============================================================================
@@ -485,9 +487,6 @@ export async function refreshAccessToken(): Promise<string> {
   // Check if refresh is already in progress
   // If so, return the existing promise instead of making a new request
   if (refreshPromise) {
-    if (import.meta.env.DEV) {
-      console.debug('[AuthService] Refresh already in progress, waiting for result...');
-    }
     return refreshPromise;
   }
 
@@ -529,7 +528,7 @@ export async function refreshAccessToken(): Promise<string> {
         throw new Error('Token refresh failed: Invalid response structure');
       }
 
-      const { accessToken, refreshToken: newRefreshToken } = response.data.data;
+      const { access_token: accessToken, refresh_token: newRefreshToken } = response.data.data;
 
       // Validate returned tokens
       if (!accessToken || !newRefreshToken) {
@@ -757,6 +756,41 @@ export async function logout(): Promise<void> {
     if (import.meta.env.DEV) {
       console.debug('[AuthService] Logout complete - tokens cleared');
     }
+  }
+}
+
+// ============================================================================
+// Test Utilities
+// ============================================================================
+
+/**
+ * Reset internal state - FOR TESTING ONLY
+ * 
+ * This function clears the module-level refreshPromise mutex to prevent state
+ * leakage between test runs. It should NEVER be called in production code.
+ * 
+ * The refreshPromise variable acts as a mutex to prevent concurrent token refresh
+ * operations. In tests, this state can leak between test runs when a refresh
+ * operation completes after a test has ended. This function allows tests to
+ * explicitly reset this state in their beforeEach hooks.
+ * 
+ * @internal
+ * @example
+ * ```typescript
+ * // In test file beforeEach hook
+ * import { __resetAuthState } from '@/services/auth/authService';
+ * 
+ * beforeEach(() => {
+ *   __resetAuthState(); // Clear mutex state
+ *   vi.clearAllMocks();
+ * });
+ * ```
+ */
+export function __resetAuthState(): void {
+  refreshPromise = null;
+  
+  if (import.meta.env.DEV) {
+    console.debug('[AuthService] Test utility: internal state reset');
   }
 }
 
