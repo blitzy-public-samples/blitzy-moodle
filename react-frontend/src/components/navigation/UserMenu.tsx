@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import type React from 'react';
+import { useState } from 'react';
 import {
   IconButton,
   Menu,
@@ -69,7 +70,7 @@ export function UserMenu() {
 
   // Get full name for display
   const getFullName = () => {
-    if (!user) return 'User';
+    if (!user) {return 'User';}
     const parts = [user.firstname, user.lastname].filter(Boolean);
     return parts.join(' ') || user.username || 'User';
   };

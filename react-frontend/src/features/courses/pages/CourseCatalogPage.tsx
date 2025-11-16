@@ -7,7 +7,10 @@
  * @module features/courses/pages/CourseCatalogPage
  */
 
-import React, { useState, useCallback } from 'react';
+import type React from 'react';
+import { useState, useCallback } from 'react';
+import type {
+  SelectChangeEvent} from '@mui/material';
 import {
   Box,
   Container,
@@ -27,8 +30,7 @@ import {
   Alert,
   Breadcrumbs,
   Link as MuiLink,
-  Paper,
-  SelectChangeEvent,
+  Paper
 } from '@mui/material';
 import {
   Search as SearchIcon,

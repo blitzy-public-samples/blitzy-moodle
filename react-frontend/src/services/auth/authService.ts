@@ -524,7 +524,7 @@ export async function refreshAccessToken(): Promise<string> {
       );
 
       // Validate response structure
-      if (!response.data || !response.data.success || !response.data.data) {
+      if (!response.data?.success || !response.data.data) {
         throw new Error('Token refresh failed: Invalid response structure');
       }
 

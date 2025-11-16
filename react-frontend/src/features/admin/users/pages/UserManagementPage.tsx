@@ -213,7 +213,7 @@ export function UserManagementPage() {
 
   // Transform API users to UserData format
   const transformedUsers: UserData[] = React.useMemo(() => {
-    if (!apiUsers) return [];
+    if (!apiUsers) {return [];}
     
     return apiUsers.map(user => ({
       id: user.id,
@@ -514,7 +514,7 @@ export function UserManagementPage() {
    * Handle edit user form submission
    */
   const handleEditUser = async () => {
-    if (!editingUser) return;
+    if (!editingUser) {return;}
     
     try {
       // Call the API to update the user
@@ -560,7 +560,7 @@ export function UserManagementPage() {
    * Handle user deletion
    */
   const handleDeleteUser = async () => {
-    if (deletingUserId === null) return;
+    if (deletingUserId === null) {return;}
     
     try {
       // Prevent deletion of admin user (id 1 or username 'admin')
@@ -604,7 +604,7 @@ export function UserManagementPage() {
    * Handle suspend users bulk operation
    */
   const handleBulkSuspend = async () => {
-    if (selectedUsers.length === 0) return;
+    if (selectedUsers.length === 0) {return;}
     
     try {
       // Determine if we're suspending or unsuspending based on the first selected user
@@ -628,7 +628,7 @@ export function UserManagementPage() {
    * Handle delete users bulk operation
    */
   const handleBulkDelete = async () => {
-    if (selectedUsers.length === 0) return;
+    if (selectedUsers.length === 0) {return;}
     
     // Prevent deletion of admin users
     const usersToDelete = users.filter(user => selectedUsers.includes(user.id));

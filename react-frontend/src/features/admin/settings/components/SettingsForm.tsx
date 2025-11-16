@@ -41,7 +41,8 @@
  * @module features/admin/settings/components/SettingsForm
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import type React from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -151,7 +152,7 @@ const buildValidationSchema = (categories: SettingCategory[]): ZodType<FormValue
 
       // Build schema based on setting type
       switch (setting.type) {
-        case 'number':
+        case SettingType.NUMBER:
           fieldSchema = z.coerce.number({
             required_error: `${setting.label} is required`,
             invalid_type_error: `${setting.label} must be a number`,
@@ -170,48 +171,48 @@ const buildValidationSchema = (categories: SettingCategory[]): ZodType<FormValue
           }
           break;
 
-        case 'email':
+        case SettingType.EMAIL:
           fieldSchema = z
             .string()
             .email(`${setting.label} must be a valid email address`);
           break;
 
-        case 'url':
+        case SettingType.URL:
           fieldSchema = z
             .string()
             .url(`${setting.label} must be a valid URL`);
           break;
 
-        case 'checkbox':
-        case 'multicheckbox':
+        case SettingType.CHECKBOX:
+        case SettingType.MULTICHECKBOX:
           fieldSchema = z.union([z.boolean(), z.array(z.string())]);
           break;
 
-        case 'select':
-        case 'multiselect':
-          if (setting.type === 'multiselect') {
+        case SettingType.SELECT:
+        case SettingType.MULTISELECT:
+          if (setting.type === SettingType.MULTISELECT) {
             fieldSchema = z.array(z.string());
           } else {
             fieldSchema = z.string();
           }
           break;
 
-        case 'time':
+        case SettingType.TIME:
           fieldSchema = z.string().regex(
             /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/,
             `${setting.label} must be in HH:MM format`
           );
           break;
 
-        case 'duration':
+        case SettingType.DURATION:
           fieldSchema = z.object({
             hours: z.coerce.number().min(0, 'Hours must be non-negative'),
             minutes: z.coerce.number().min(0).max(59, 'Minutes must be 0-59'),
           });
           break;
 
-        case 'file':
-        case 'executable':
+        case SettingType.FILE:
+        case SettingType.EXECUTABLE:
           fieldSchema = z.string();
           // Add file path validation if needed
           break;
@@ -239,7 +240,7 @@ const buildValidationSchema = (categories: SettingCategory[]): ZodType<FormValue
             : new RegExp(setting.validation);
           fieldSchema = fieldSchema.regex(
             validationPattern,
-            setting.validationMessage || 'Invalid value'
+            setting.validationMessage ?? 'Invalid value'
           );
         }
       }
@@ -295,7 +296,9 @@ const isSettingVisible = (
 
   // If requiredValue is an array, check if dependentValue is in the array
   if (Array.isArray(requiredValue)) {
-    return requiredValue.includes(dependentValue as any);
+    // Convert dependentValue to string for comparison
+    const valueAsString = String(dependentValue ?? '');
+    return requiredValue.includes(valueAsString);
   }
 
   // Otherwise, check for equality
@@ -325,13 +328,13 @@ const countChangedSettings = (
  *
  * Main settings management form component
  */
-export const SettingsForm: React.FC<SettingsFormProps> = ({
+export function SettingsForm({
   settings,
   onSave,
   onError,
   loading = false,
   initialExpanded = [],
-}) => {
+}: SettingsFormProps): JSX.Element {
   const { success, error: showErrorToast, warning } = useToast();
 
   // ============================================================================
@@ -485,14 +488,14 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
   const renderTextField = useCallback(
     (setting: TextSetting | EmailSetting | UrlSetting) => {
       const isVisible = isSettingVisible(setting, formValues);
-      if (!isVisible) return null;
+      if (!isVisible) {return null;}
 
       // Type-specific properties
       const placeholder = setting.type === SettingType.TEXT 
-        ? (setting as TextSetting).placeholder || setting.defaultValue?.toString()
+        ? (setting).placeholder ?? setting.defaultValue?.toString()
         : setting.defaultValue?.toString();
       const size = setting.type === SettingType.TEXT 
-        ? (setting as TextSetting).size 
+        ? (setting).size 
         : undefined;
 
       return (
@@ -507,7 +510,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
                 label={setting.label}
                 placeholder={placeholder}
                 helperText={
-                  fieldState.error?.message || setting.description || ''
+                  fieldState.error?.message ?? setting.description ?? ''
                 }
                 error={!!fieldState.error}
                 disabled={setting.readonly || loading || isSubmitting}
@@ -515,7 +518,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
                 size="medium"
                 fullWidth
                 inputProps={{
-                  size: size,
+                  size,
                   'aria-label': setting.label,
                   'aria-describedby': setting.description
                     ? `${setting.name}-description`
@@ -538,7 +541,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
   const renderTextareaField = useCallback(
     (setting: TextareaSetting) => {
       const isVisible = isSettingVisible(setting, formValues);
-      if (!isVisible) return null;
+      if (!isVisible) {return null;}
 
       return (
         <Controller
@@ -551,13 +554,13 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
                 {...field}
                 label={setting.label}
                 helperText={
-                  fieldState.error?.message || setting.description || ''
+                  fieldState.error?.message ?? setting.description ?? ''
                 }
                 error={!!fieldState.error}
                 disabled={setting.readonly || loading || isSubmitting}
                 required={setting.required}
                 multiline
-                rows={setting.rows || 4}
+                rows={setting.rows ?? 4}
                 fullWidth
                 inputProps={{
                   'aria-label': setting.label,
@@ -582,9 +585,9 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
   const renderPasswordField = useCallback(
     (setting: PasswordSetting) => {
       const isVisible = isSettingVisible(setting, formValues);
-      if (!isVisible) return null;
+      if (!isVisible) {return null;}
 
-      const showPassword = passwordVisibility[setting.name] || false;
+      const showPassword = passwordVisibility[setting.name] ?? false;
 
       return (
         <Controller
@@ -598,7 +601,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
                 type={showPassword ? 'text' : 'password'}
                 label={setting.label}
                 helperText={
-                  fieldState.error?.message || setting.description || ''
+                  fieldState.error?.message ?? setting.description ?? ''
                 }
                 error={!!fieldState.error}
                 disabled={setting.readonly || loading || isSubmitting}
@@ -643,7 +646,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
   const renderCheckboxField = useCallback(
     (setting: CheckboxSetting) => {
       const isVisible = isSettingVisible(setting, formValues);
-      if (!isVisible) return null;
+      if (!isVisible) {return null;}
 
       return (
         <Controller
@@ -708,7 +711,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
   const renderMultiCheckboxField = useCallback(
     (setting: MultiCheckboxSetting) => {
       const isVisible = isSettingVisible(setting, formValues);
-      if (!isVisible) return null;
+      if (!isVisible) {return null;}
 
       return (
         <Controller
@@ -730,7 +733,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
               )}
               <FormGroup>
                 {setting.options.map((option) => {
-                  const values = Array.isArray(field.value) ? field.value : [];
+                  const values = Array.isArray(field.value) ? (field.value as string[]) : [];
                   const isChecked = values.includes(option.value);
 
                   return (
@@ -772,7 +775,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
   const renderSelectField = useCallback(
     (setting: SelectSetting) => {
       const isVisible = isSettingVisible(setting, formValues);
-      if (!isVisible) return null;
+      if (!isVisible) {return null;}
 
       return (
         <Controller
@@ -804,12 +807,12 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
                   </MenuItem>
                 ))}
               </Select>
-              {(fieldState.error?.message || setting.description) && (
+              {(fieldState.error?.message ?? setting.description) && (
                 <FormHelperText
                   error={!!fieldState.error}
                   id={`${setting.name}-description`}
                 >
-                  {fieldState.error?.message || setting.description}
+                  {fieldState.error?.message ?? setting.description}
                 </FormHelperText>
               )}
             </FormControl>
@@ -826,7 +829,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
   const renderMultiSelectField = useCallback(
     (setting: MultiSelectSetting) => {
       const isVisible = isSettingVisible(setting, formValues);
-      if (!isVisible) return null;
+      if (!isVisible) {return null;}
 
       return (
         <Controller
@@ -862,7 +865,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
                       return (
                         <Chip
                           key={value}
-                          label={option?.label || value}
+                          label={option?.label ?? value}
                           size="small"
                         />
                       );
@@ -876,12 +879,12 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
                   </MenuItem>
                 ))}
               </Select>
-              {(fieldState.error?.message || setting.description) && (
+              {(fieldState.error?.message ?? setting.description) && (
                 <FormHelperText
                   error={!!fieldState.error}
                   id={`${setting.name}-description`}
                 >
-                  {fieldState.error?.message || setting.description}
+                  {fieldState.error?.message ?? setting.description}
                 </FormHelperText>
               )}
             </FormControl>
@@ -898,7 +901,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
   const renderNumberField = useCallback(
     (setting: NumberSetting) => {
       const isVisible = isSettingVisible(setting, formValues);
-      if (!isVisible) return null;
+      if (!isVisible) {return null;}
 
       return (
         <Controller
@@ -912,7 +915,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
                 type="number"
                 label={setting.label}
                 helperText={
-                  fieldState.error?.message || setting.description || ''
+                  fieldState.error?.message ?? setting.description ?? ''
                 }
                 error={!!fieldState.error}
                 disabled={setting.readonly || loading || isSubmitting}
@@ -921,7 +924,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
                 inputProps={{
                   min: setting.min,
                   max: setting.max,
-                  step: setting.step || 1,
+                  step: setting.step ?? 1,
                   'aria-label': setting.label,
                   'aria-describedby': setting.description
                     ? `${setting.name}-description`
@@ -944,7 +947,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
   const renderTimeField = useCallback(
     (setting: TimeSetting) => {
       const isVisible = isSettingVisible(setting, formValues);
-      if (!isVisible) return null;
+      if (!isVisible) {return null;}
 
       return (
         <Controller
@@ -958,7 +961,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
                 type="time"
                 label={setting.label}
                 helperText={
-                  fieldState.error?.message || setting.description || ''
+                  fieldState.error?.message ?? setting.description ?? ''
                 }
                 error={!!fieldState.error}
                 disabled={setting.readonly || loading || isSubmitting}
@@ -990,7 +993,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
   const renderDurationField = useCallback(
     (setting: DurationSetting) => {
       const isVisible = isSettingVisible(setting, formValues);
-      if (!isVisible) return null;
+      if (!isVisible) {return null;}
 
       return (
         <Controller
@@ -1015,7 +1018,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
                   <TextField
                     type="number"
                     label="Hours"
-                    value={value.hours || 0}
+                    value={value.hours ?? 0}
                     onChange={(e) => {
                       field.onChange({
                         ...value,
@@ -1032,7 +1035,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
                   <TextField
                     type="number"
                     label="Minutes"
-                    value={value.minutes || 0}
+                    value={value.minutes ?? 0}
                     onChange={(e) => {
                       field.onChange({
                         ...value,
@@ -1068,7 +1071,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
   const renderHtmlEditorField = useCallback(
     (setting: HtmlEditorSetting) => {
       const isVisible = isSettingVisible(setting, formValues);
-      if (!isVisible) return null;
+      if (!isVisible) {return null;}
 
       return (
         <Controller
@@ -1087,7 +1090,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
                 required={setting.required}
                 error={!!fieldState.error}
                 helperText={
-                  fieldState.error?.message || setting.description || ''
+                  fieldState.error?.message ?? setting.description ?? ''
                 }
                 height={400}
                 toolbar="full"
@@ -1106,7 +1109,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
   const renderFileField = useCallback(
     (setting: FileSetting | ExecutableSetting) => {
       const isVisible = isSettingVisible(setting, formValues);
-      if (!isVisible) return null;
+      if (!isVisible) {return null;}
 
       return (
         <Controller
@@ -1120,7 +1123,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
                 label={setting.label}
                 placeholder="/path/to/file"
                 helperText={
-                  fieldState.error?.message || setting.description || ''
+                  fieldState.error?.message ?? setting.description ?? ''
                 }
                 error={!!fieldState.error}
                 disabled={setting.readonly || loading || isSubmitting}
@@ -1149,7 +1152,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
   const renderColorField = useCallback(
     (setting: ColorSetting) => {
       const isVisible = isSettingVisible(setting, formValues);
-      if (!isVisible) return null;
+      if (!isVisible) {return null;}
 
       return (
         <Controller
@@ -1254,39 +1257,39 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
   const renderField = useCallback(
     (setting: Setting) => {
       switch (setting.type) {
-        case 'text':
+        case SettingType.TEXT:
           return renderTextField(setting);
-        case 'textarea':
+        case SettingType.TEXTAREA:
           return renderTextareaField(setting);
-        case 'password':
+        case SettingType.PASSWORD:
           return renderPasswordField(setting);
-        case 'checkbox':
+        case SettingType.CHECKBOX:
           return renderCheckboxField(setting);
-        case 'multicheckbox':
+        case SettingType.MULTICHECKBOX:
           return renderMultiCheckboxField(setting);
-        case 'select':
+        case SettingType.SELECT:
           return renderSelectField(setting);
-        case 'multiselect':
+        case SettingType.MULTISELECT:
           return renderMultiSelectField(setting);
-        case 'number':
+        case SettingType.NUMBER:
           return renderNumberField(setting);
-        case 'time':
+        case SettingType.TIME:
           return renderTimeField(setting);
-        case 'duration':
+        case SettingType.DURATION:
           return renderDurationField(setting);
-        case 'htmleditor':
+        case SettingType.HTMLEDITOR:
           return renderHtmlEditorField(setting);
-        case 'file':
-        case 'executable':
+        case SettingType.FILE:
+        case SettingType.EXECUTABLE:
           return renderFileField(setting);
-        case 'color':
+        case SettingType.COLOR:
           return renderColorField(setting);
-        case 'heading':
+        case SettingType.HEADING:
           return renderHeading(setting);
-        case 'description':
+        case SettingType.DESCRIPTION:
           return renderDescription(setting);
-        case 'email':
-        case 'url':
+        case SettingType.EMAIL:
+        case SettingType.URL:
           // Email and URL use text field with validation in schema
           return renderTextField(setting);
         default:
@@ -1377,7 +1380,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
         {/* Settings Sections */}
         <Box sx={{ mb: 10 }}>
           {settings.map((category) => {
-            const isExpanded = expandedSections[category.id] || false;
+            const isExpanded = expandedSections[category.id] ?? false;
             const changedInCategory = countChangedSettings(
               category,
               dirtyFields as Record<string, boolean>
@@ -1534,7 +1537,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({
       </Box>
     </Container>
   );
-};
+}
 
 // Export component as default
 export default SettingsForm;

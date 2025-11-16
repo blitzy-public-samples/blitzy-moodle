@@ -7,7 +7,7 @@
  * @module features/activities/forums/pages/ForumPage
  */
 
-import React from 'react';
+import type React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Box, Container, Alert, Button } from '@mui/material';
 import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';

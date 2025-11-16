@@ -7,7 +7,8 @@
  * @module features/activities/quizzes/pages/QuizPage
  */
 
-import React, { useState } from 'react';
+import type React from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -114,10 +115,10 @@ export function QuizPage(): React.ReactElement {
    * Format time duration in minutes
    */
   const formatDuration = (seconds: number): string => {
-    if (seconds === 0) return 'No time limit';
+    if (seconds === 0) {return 'No time limit';}
     const minutes = Math.floor(seconds / 60);
     // For values <= 90 minutes, show in minutes for clarity
-    if (minutes <= 90) return `${minutes} minute${minutes === 1 ? '' : 's'}`;
+    if (minutes <= 90) {return `${minutes} minute${minutes === 1 ? '' : 's'}`;}
     const hours = Math.floor(minutes / 60);
     const remainingMinutes = minutes % 60;
     if (remainingMinutes > 0) {
@@ -130,7 +131,7 @@ export function QuizPage(): React.ReactElement {
    * Format grade
    */
   const formatGrade = (grade: number | null): string => {
-    if (grade === null) return 'Not graded';
+    if (grade === null) {return 'Not graded';}
     return grade.toFixed(2);
   };
 

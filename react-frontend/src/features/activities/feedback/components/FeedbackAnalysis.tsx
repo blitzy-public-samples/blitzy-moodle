@@ -17,7 +17,10 @@
  * @module features/activities/feedback/components/FeedbackAnalysis
  */
 
-import React, { useState, useMemo } from 'react';
+import type React from 'react';
+import { useState, useMemo } from 'react';
+import type {
+  SelectChangeEvent} from '@mui/material';
 import {
   Accordion,
   AccordionSummary,
@@ -36,8 +39,7 @@ import {
   Box,
   Skeleton,
   Card,
-  CardContent,
-  SelectChangeEvent,
+  CardContent
 } from '@mui/material';
 import { Download, ExpandMore } from '@mui/icons-material';
 import { Bar, Line, Pie } from 'react-chartjs-2';
@@ -58,7 +60,7 @@ import {
 import { ResponseList } from './ResponseList';
 import { FeedbackSummary } from './FeedbackSummary';
 import { useFeedbackAnalysis } from '../hooks/useFeedbackAnalysis';
-import { FeedbackItemAnalysis } from '../types/index';
+import type { FeedbackItemAnalysis } from '../types/index';
 import { Alert } from '../../../../components/feedback/Alert';
 import { useToast } from '../../../../hooks/useToast';
 
@@ -769,7 +771,7 @@ export const FeedbackAnalysis: React.FC<FeedbackAnalysisProps> = ({
   }
 
   // Empty state - no responses
-  if (!analysisData || !analysisData.items || analysisData.items.length === 0) {
+  if (!analysisData?.items || analysisData.items.length === 0) {
     return (
       <Box sx={{ p: 3 }}>
         <Alert

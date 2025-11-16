@@ -15,7 +15,8 @@
  * @module features/activities/book/components/ChapterList
  */
 
-import React, { useMemo } from 'react';
+import type React from 'react';
+import { useMemo } from 'react';
 import {
   Box,
   List,
@@ -160,7 +161,7 @@ const ChapterList: React.FC<ChapterListProps> = ({
       } else {
         // Subchapter processing
         const parentChapter = chapterParentMap.get(ch.id);
-        const isParentHidden = parentChapter && parentChapter.hidden;
+        const isParentHidden = parentChapter?.hidden;
 
         if (!isHidden) {
           subchapterNumber++;
@@ -284,7 +285,7 @@ const ChapterList: React.FC<ChapterListProps> = ({
    * The structure mirrors the ul/li nesting in book_get_toc()
    */
   const renderChapterHierarchy = (): React.ReactNode => {
-    let currentMainChapterItems: React.ReactNode[] = [];
+    const currentMainChapterItems: React.ReactNode[] = [];
     let subchapterElements: React.ReactNode[] = [];
     let inSubchapterGroup = false;
 
@@ -320,7 +321,7 @@ const ChapterList: React.FC<ChapterListProps> = ({
     if (inSubchapterGroup && subchapterElements.length > 0) {
       currentMainChapterItems.push(
         <List
-          key={`sub-final`}
+          key="sub-final"
           disablePadding
           sx={{ pl: 2 }}
         >

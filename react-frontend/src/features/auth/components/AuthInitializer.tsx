@@ -109,7 +109,7 @@ export function AuthInitializer({ children }: { children: ReactNode }): ReactNod
 
       // Step 3: Extract user info from JWT payload
       const tokenUser = getUserFromToken(accessToken);
-      if (!tokenUser || !tokenUser.id) {
+      if (!tokenUser?.id) {
         console.warn('[AuthInitializer] Failed to extract user from token. Token may be invalid.');
         return;
       }

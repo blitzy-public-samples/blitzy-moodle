@@ -122,10 +122,10 @@ function formatDuration(seconds: number): string {
  * @returns Total seconds or 0 if invalid
  */
 function parseTimeToSeconds(timeStr: string | number | undefined | null): number {
-  if (!timeStr) return 0;
+  if (!timeStr) {return 0;}
 
   // If it's already a number, return it
-  if (typeof timeStr === 'number') return timeStr;
+  if (typeof timeStr === 'number') {return timeStr;}
 
   // Try parsing HH:MM:SS format
   const timeMatch = timeStr.match(/(\d+):(\d+):(\d+)/);
@@ -138,7 +138,7 @@ function parseTimeToSeconds(timeStr: string | number | undefined | null): number
 
   // Try parsing as plain seconds
   const seconds = parseInt(timeStr, 10);
-  if (!isNaN(seconds)) return seconds;
+  if (!isNaN(seconds)) {return seconds;}
 
   return 0;
 }

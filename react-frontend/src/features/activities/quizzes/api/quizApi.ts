@@ -7,7 +7,8 @@
  * @module features/activities/quizzes/api/quizApi
  */
 
-import { useQuery, useMutation, useQueryClient, UseQueryResult, UseMutationResult } from '@tanstack/react-query';
+import type { UseQueryResult, UseMutationResult } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/services/api/client';
 import { QUIZ_ENDPOINTS } from '@/services/api/endpoints';
 import type { ApiResponse } from '@/types/api';

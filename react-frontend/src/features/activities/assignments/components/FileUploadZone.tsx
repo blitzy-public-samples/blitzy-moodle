@@ -24,7 +24,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import React, { useState, useCallback, useRef, useMemo } from 'react';
+import type React from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -178,7 +179,7 @@ const FileUploadZone: React.FC<FileUploadZoneProps> = ({
           // Check for wildcard MIME types (e.g., "image/*")
           if (normalizedType.includes('*')) {
             const [category] = normalizedType.split('/');
-            return fileMimeType.startsWith(category + '/');
+            return fileMimeType.startsWith(`${category  }/`);
           }
 
           // Check for exact MIME type match
@@ -241,14 +242,12 @@ const FileUploadZone: React.FC<FileUploadZoneProps> = ({
             name: file.name,
             size: file.size,
             type: file.type,
-            file: file,
+            file,
             uploadProgress: 0,
           });
-        } else {
-          if (validation.error) {
+        } else if (validation.error) {
             newErrors.push(validation.error);
           }
-        }
       });
 
       // Update state with valid files

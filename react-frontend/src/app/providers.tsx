@@ -7,7 +7,7 @@
  * @module app/providers
  */
 
-import React from 'react';
+import type React from 'react';
 import { Provider as ReduxProvider } from 'react-redux';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { CssBaseline, ThemeProvider } from '@mui/material';

@@ -9,7 +9,8 @@
  * @module features/activities/quizzes/components/QuizNavigation
  */
 
-import React, { useState, useMemo, useCallback } from 'react';
+import type React from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
   Box,
   Button,

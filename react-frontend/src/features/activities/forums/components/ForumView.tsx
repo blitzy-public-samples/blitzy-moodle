@@ -64,8 +64,9 @@ import { useForum } from '../hooks/useForum';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { DiscussionList } from './DiscussionList';
 import { PostForm } from './PostForm';
-import { ForumType, PostResponse } from '../types/forum.types';
-import { DiscussionResponse } from '../api/forumApi';
+import type { PostResponse } from '../types/forum.types';
+import { ForumType } from '../types/forum.types';
+import type { DiscussionResponse } from '../api/forumApi';
 
 // ============================================================================
 // TYPES

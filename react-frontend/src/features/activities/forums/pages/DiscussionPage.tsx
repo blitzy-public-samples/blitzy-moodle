@@ -5,7 +5,7 @@
  * Handles routing and parameter extraction for discussion view.
  */
 
-import React from 'react';
+import type React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Container, Box, Button, Alert } from '@mui/material';
 import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';

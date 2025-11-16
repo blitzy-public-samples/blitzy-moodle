@@ -639,7 +639,7 @@ export function PostForm({
         // Create reply post
         const postData = {
           forumId,
-          discussionId: discussionId!,
+          discussionId,
           ...(parentPostId && { parentPostId }),
           message: data.message,
           subscribe: data.subscribe,

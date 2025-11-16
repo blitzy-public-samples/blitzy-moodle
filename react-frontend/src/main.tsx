@@ -28,6 +28,7 @@ declare global {
     __APP_INITIALIZING__?: boolean;
     __APP_INITIALIZED__?: boolean;
     __APP_INIT_COUNT__?: number;
+    __WINDOW_ID__?: string;
   }
 }
 
@@ -39,40 +40,52 @@ async function initializeApp() {
   
   const callId = ++window.__APP_INIT_COUNT__;
   const timestamp = new Date().toISOString();
-  const windowId = (window as any).__WINDOW_ID__ || ((window as any).__WINDOW_ID__ = Math.random().toString(36));
+  const windowId = window.__WINDOW_ID__ ?? (window.__WINDOW_ID__ = Math.random().toString(36));
+  // eslint-disable-next-line no-console
   console.log(`[App ${callId} @ ${timestamp}] initializeApp called - windowId:`, windowId, 'isInitializing:', window.__APP_INITIALIZING__, 'isInitialized:', window.__APP_INITIALIZED__);
   
   // Atomic check-and-set to prevent double initialization
   // This handles race conditions when module is loaded multiple times simultaneously
-  if (window.__APP_INITIALIZING__ || window.__APP_INITIALIZED__) {
+  if (window.__APP_INITIALIZING__ ?? window.__APP_INITIALIZED__) {
+    // eslint-disable-next-line no-console
     console.log(`[App ${callId}] Skipping - already initialized or initializing`);
     return;
   }
   
   // Set flag immediately to block any concurrent calls
   window.__APP_INITIALIZING__ = true;
+  // eslint-disable-next-line no-console
   console.log(`[App ${callId}] Set __APP_INITIALIZING__ = true, windowId:`, windowId);
   
   // Check if we're running E2E tests
   // VITE_E2E_TEST is set in .env files or via environment variables
   const isE2ETest = import.meta.env.VITE_E2E_TEST === 'true';
   
+  // eslint-disable-next-line no-console
   console.log(`[App ${callId}] __APP_INITIALIZING__ check passed, continuing...`);
+  // eslint-disable-next-line no-console
   console.log(`[App ${callId}] Environment check - VITE_E2E_TEST:`, import.meta.env.VITE_E2E_TEST);
+  // eslint-disable-next-line no-console
   console.log(`[App ${callId}] isE2ETest:`, isE2ETest);
+  // eslint-disable-next-line no-console
   console.log(`[App ${callId}] DEV mode:`, import.meta.env.DEV);
+  // eslint-disable-next-line no-console
   console.log(`[App ${callId}] Will use StrictMode:`, import.meta.env.DEV && !isE2ETest);
   
   if (isE2ETest) {
+    // eslint-disable-next-line no-console
     console.log(`[App ${callId}] E2E test mode detected, initializing MSW...`);
     try {
       const { initMswForE2E } = await import('./mocks/browser');
       await initMswForE2E();
+      // eslint-disable-next-line no-console
       console.log(`[App ${callId}] MSW initialized, rendering app`);
     } catch (error) {
       // MSW initialization failed - log error but continue rendering app
       // This can happen in some browsers (e.g., WebKit) with dynamic imports
+      // eslint-disable-next-line no-console
       console.error(`[App ${callId}] Failed to initialize MSW (continuing without mocking):`, error);
+      // eslint-disable-next-line no-console
       console.warn(`[App ${callId}] E2E tests may fail due to unmocked API calls`);
     }
   }
@@ -80,6 +93,7 @@ async function initializeApp() {
   // Render the app
   // Note: StrictMode disabled for E2E tests to prevent double-invocation of state updaters
   // which causes timers to run twice as fast
+  // eslint-disable-next-line no-console
   console.log(`[App ${callId}] About to render app, StrictMode:`, import.meta.env.DEV && !isE2ETest);
   const app = (
     <Providers>
@@ -90,6 +104,7 @@ async function initializeApp() {
   root.render(
     import.meta.env.DEV && !isE2ETest ? <StrictMode>{app}</StrictMode> : app
   );
+  // eslint-disable-next-line no-console
   console.log(`[App ${callId}] App rendered`);
   
   window.__APP_INITIALIZED__ = true;
@@ -98,6 +113,7 @@ async function initializeApp() {
 
 // Initialize and render the app
 initializeApp().catch((error) => {
+  // eslint-disable-next-line no-console
   console.error('[App] Failed to initialize application:', error);
   // Last resort: render the app anyway
   const app = (

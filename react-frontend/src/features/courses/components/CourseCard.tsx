@@ -7,7 +7,7 @@
  * @module features/courses/components/CourseCard
  */
 
-import React from 'react';
+import type React from 'react';
 import {
   Card,
   CardContent,
@@ -86,8 +86,8 @@ export const CourseCard: React.FC<CourseCardProps> = ({
    * Truncate text to specified length
    */
   const truncateText = (text: string, maxLength: number) => {
-    if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength).trim() + '...';
+    if (text.length <= maxLength) {return text;}
+    return `${text.substring(0, maxLength).trim()  }...`;
   };
 
   // Default placeholder image if none provided

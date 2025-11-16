@@ -14,7 +14,7 @@
  * @module features/auth/components/ProtectedRoute
  */
 
-import React from 'react';
+import type React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { Box, CircularProgress, Typography } from '@mui/material';
 import { useAuth } from '../hooks/useAuth';

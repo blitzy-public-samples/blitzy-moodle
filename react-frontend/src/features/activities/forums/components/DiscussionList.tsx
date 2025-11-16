@@ -287,7 +287,7 @@ export function DiscussionList({
         page: currentPage,
         perPage: pageSize,
         sortBy: apiSortBy,
-        sortOrder: sortOrder,
+        sortOrder,
         filter: apiFilter,
       });
 

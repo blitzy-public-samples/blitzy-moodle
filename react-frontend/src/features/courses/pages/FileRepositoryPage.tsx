@@ -11,7 +11,8 @@
  * @module features/courses/pages/FileRepositoryPage
  */
 
-import React, { useState, useEffect } from 'react';
+import type React from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   Box,
@@ -125,12 +126,12 @@ export const FileRepositoryPage: React.FC = () => {
    */
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = event.target.files;
-    if (!selectedFiles || selectedFiles.length === 0) return;
+    if (!selectedFiles || selectedFiles.length === 0) {return;}
 
     // Upload each file sequentially
     for (let i = 0; i < selectedFiles.length; i++) {
       const file = selectedFiles[i];
-      if (!file) continue; // Skip if file is undefined
+      if (!file) {continue;} // Skip if file is undefined
 
       try {
         // Show upload progress
@@ -207,10 +208,10 @@ export const FileRepositoryPage: React.FC = () => {
     setIsDragging(false);
 
     const droppedFiles = event.dataTransfer.files;
-    if (droppedFiles.length === 0) return;
+    if (droppedFiles.length === 0) {return;}
 
     const file = droppedFiles[0];
-    if (!file) return; // Return early if no file
+    if (!file) {return;} // Return early if no file
 
     try {
       // Show upload progress
@@ -339,11 +340,11 @@ export const FileRepositoryPage: React.FC = () => {
    * Format file size for display
    */
   const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 Bytes';
+    if (bytes === 0) {return '0 Bytes';}
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    return `${Math.round(bytes / Math.pow(k, i) * 100) / 100  } ${  sizes[i]}`;
   };
 
   return (

@@ -7,7 +7,8 @@
  * @module features/activities/quizzes/pages/QuizReviewPage
  */
 
-import React, { useState } from 'react';
+import type React from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -96,16 +97,16 @@ export function QuizReviewPage(): React.ReactElement {
       return `${hours}h ${minutes}m ${secs}s`;
     } else if (minutes > 0) {
       return `${minutes}m ${secs}s`;
-    } else {
+    } 
       return `${secs}s`;
-    }
+    
   };
 
   /**
    * Render answer text
    */
   const renderAnswer = (answer: string | string[] | undefined): React.ReactNode => {
-    if (!answer) return <em>Not answered</em>;
+    if (!answer) {return <em>Not answered</em>;}
     if (Array.isArray(answer)) {
       return (
         <ul>
@@ -122,8 +123,8 @@ export function QuizReviewPage(): React.ReactElement {
    * Get grade color
    */
   const getGradeColor = (percentage: number): 'success' | 'warning' | 'error' => {
-    if (percentage >= 70) return 'success';
-    if (percentage >= 50) return 'warning';
+    if (percentage >= 70) {return 'success';}
+    if (percentage >= 50) {return 'warning';}
     return 'error';
   };
 

@@ -342,7 +342,7 @@ export function useForum(forumId: number, options: UseForumOptions = {}): UseFor
       const discussionsData = queryClient.getQueryData<PaginatedResponse<Discussion>>(
         forumKeys.discussions(forumId, discussionOptions)
       );
-      if (discussionsData && discussionsData.data && Array.isArray(discussionsData.data.items)) {
+      if (discussionsData?.data && Array.isArray(discussionsData.data.items)) {
         const updatedData = {
           ...discussionsData,
           data: {
@@ -367,7 +367,7 @@ export function useForum(forumId: number, options: UseForumOptions = {}): UseFor
       const discussionsData = queryClient.getQueryData<PaginatedResponse<Discussion>>(
         forumKeys.discussions(forumId, discussionOptions)
       );
-      if (discussionsData && discussionsData.data && Array.isArray(discussionsData.data.items)) {
+      if (discussionsData?.data && Array.isArray(discussionsData.data.items)) {
         const updatedData = {
           ...discussionsData,
           data: {
@@ -392,7 +392,7 @@ export function useForum(forumId: number, options: UseForumOptions = {}): UseFor
       const discussionsData = queryClient.getQueryData<PaginatedResponse<Discussion>>(
         forumKeys.discussions(forumId, discussionOptions)
       );
-      if (discussionsData && discussionsData.data && Array.isArray(discussionsData.data.items)) {
+      if (discussionsData?.data && Array.isArray(discussionsData.data.items)) {
         const updatedData = {
           ...discussionsData,
           data: {
@@ -417,7 +417,7 @@ export function useForum(forumId: number, options: UseForumOptions = {}): UseFor
       const discussionsData = queryClient.getQueryData<PaginatedResponse<Discussion>>(
         forumKeys.discussions(forumId, discussionOptions)
       );
-      if (discussionsData && discussionsData.data && Array.isArray(discussionsData.data.items)) {
+      if (discussionsData?.data && Array.isArray(discussionsData.data.items)) {
         const updatedData = {
           ...discussionsData,
           data: {

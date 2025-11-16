@@ -7,7 +7,7 @@
  * @module features/auth/pages/LoginPage
  */
 
-import React from 'react';
+import type React from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import {
@@ -143,8 +143,8 @@ export const LoginPage: React.FC = () => {
           <LoginForm
             onSuccess={handleLoginSuccess}
             onError={handleLoginError}
-            showRememberMe={true}
-            showForgotPassword={true}
+            showRememberMe
+            showForgotPassword
           />
         </Paper>
       </Container>

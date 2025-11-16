@@ -7,7 +7,8 @@
  * @module features/activities/quizzes/pages/QuizAttemptPage
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import type React from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -219,7 +220,7 @@ export function QuizAttemptPage(): React.ReactElement {
    * Handle flag toggle for a question
    */
   const handleFlagToggle = (index: number): void => {
-    if (!questions || index < 0 || index >= questions.length) return;
+    if (!questions || index < 0 || index >= questions.length) {return;}
     
     // Update the flagged status in the questions array
     const question = questions[index];
@@ -264,7 +265,7 @@ export function QuizAttemptPage(): React.ReactElement {
    * Calculate progress percentage
    */
   const calculateProgress = (): number => {
-    if (!questions || questions.length === 0) return 0;
+    if (!questions || questions.length === 0) {return 0;}
     const answeredCount = questions.filter((q) => answers[q.slot] !== undefined).length;
     return (answeredCount / questions.length) * 100;
   };
@@ -273,7 +274,7 @@ export function QuizAttemptPage(): React.ReactElement {
    * Convert QuizQuestion[] to QuestionNavigationState[] for QuizNavigation
    */
   const getNavigationStates = (): import('../types/quiz.types').QuestionNavigationState[] => {
-    if (!questions) return [];
+    if (!questions) {return [];}
     
     return questions.map((q, index) => ({
       slot: q.slot,

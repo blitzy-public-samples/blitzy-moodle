@@ -8,7 +8,7 @@
  * @module features/dashboard/pages
  */
 
-import React from 'react';
+import type React from 'react';
 import { Box, Grid, Typography, Paper } from '@mui/material';
 import { AppLayout } from '../../../components/layouts/AppLayout';
 

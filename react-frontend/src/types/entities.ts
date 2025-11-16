@@ -412,7 +412,7 @@ export interface AssignmentSubmission {
   /** Submitted files */
   files?: Array<{ filename: string; fileurl: string; filesize: number }>;
   /** Submission plugins data */
-  plugins?: Array<{ type: string; name: string; data: any }>;
+  plugins?: Array<{ type: string; name: string; data: Record<string, unknown> }>;
 }
 
 /**
