@@ -14,13 +14,13 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor, within as _within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import { ForumView } from '@/features/activities/forums/components/ForumView';
 import * as forumHooks from '@/features/activities/forums/hooks/useForum';
-import type { Forum, ForumType, ForumStatistics } from '@/features/activities/forums/types/forum.types';
+import type { Forum, ForumType, ForumStatistics as _ForumStatistics } from '@/features/activities/forums/types/forum.types';
 
 // Mock the useForum hook with a factory that returns the default mock
 vi.mock('@/features/activities/forums/hooks/useForum', () => ({
@@ -42,7 +42,7 @@ vi.mock('@/features/auth/hooks/useAuth', () => ({
 
 // Mock the DiscussionList component to isolate ForumView tests
 vi.mock('@/features/activities/forums/components/DiscussionList', () => ({
-  DiscussionList: ({ forumId, onSort, onFilter }: any) => (
+  DiscussionList: ({ forumId, onSort, onFilter }: { forumId: number; onSort?: (option: string) => void; onFilter?: (filter: { unread: boolean }) => void }) => (
     <div data-testid="discussion-list">
       <span>Discussion List for Forum {forumId}</span>
       <button onClick={() => onSort?.('latest')}>Sort Latest</button>
@@ -98,7 +98,7 @@ const createMockForum = (overrides?: Partial<Forum>): Forum => ({
 /**
  * Test helper to create a mock useForum return value
  */
-const createMockUseForumReturn = (overrides?: any): any => ({
+const createMockUseForumReturn = (overrides?: { forum?: Partial<Forum> }): ReturnType<typeof forumHooks.useForum> => ({
   forum: createMockForum(overrides?.forum),
   isLoading: false,
   isError: false,
@@ -170,7 +170,7 @@ describe('ForumView Component', () => {
   });
 
   describe('Basic Rendering', () => {
-    it('should render forum header with title and description', async () => {
+    it('should render forum header with title and description', () => {
       const mockForum = createMockForum();
 
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -208,7 +208,7 @@ describe('ForumView Component', () => {
       expect(screen.getByText('This is a forum for general course discussions and announcements.')).toBeInTheDocument();
     });
 
-    it('should display forum metadata correctly', async () => {
+    it('should display forum metadata correctly', () => {
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue(
         createMockUseForumReturn({
           forum: {
@@ -227,7 +227,7 @@ describe('ForumView Component', () => {
       expect(screen.getByText('3')).toBeInTheDocument();
     });
 
-    it('should render discussion list integration', async () => {
+    it('should render discussion list integration', () => {
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue(createMockUseForumReturn());
 
       renderWithProviders(<ForumView forumId={1} />);
@@ -239,7 +239,7 @@ describe('ForumView Component', () => {
   });
 
   describe('Forum Types', () => {
-    it('should display indicator for single discussion forum', async () => {
+    it('should display indicator for single discussion forum', () => {
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue(
         createMockUseForumReturn({
           forum: { type: 'single' },
@@ -251,8 +251,8 @@ describe('ForumView Component', () => {
       expect(screen.getByText(/Single discussion/i)).toBeInTheDocument();
     });
 
-    it('should display indicator for standard forum', async () => {
-      const mockForum = createMockForum({ type: 'standard' });
+    it('should display indicator for standard forum', () => {
+      const _mockForum = createMockForum({ type: 'standard' });
 
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue(createMockUseForumReturn());
 
@@ -261,7 +261,7 @@ describe('ForumView Component', () => {
       expect(screen.getByText(/Standard forum/i)).toBeInTheDocument();
     });
 
-    it('should display indicator for Q&A forum', async () => {
+    it('should display indicator for Q&A forum', () => {
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue(
         createMockUseForumReturn({
           forum: { type: 'qanda' },
@@ -273,7 +273,7 @@ describe('ForumView Component', () => {
       expect(screen.getByText(/Q&A forum/i)).toBeInTheDocument();
     });
 
-    it('should display indicator for blog-style forum', async () => {
+    it('should display indicator for blog-style forum', () => {
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue(
         createMockUseForumReturn({
           forum: { type: 'blog' },
@@ -287,8 +287,8 @@ describe('ForumView Component', () => {
   });
 
   describe('Subscription Functionality', () => {
-    it('should display subscription button when not subscribed', async () => {
-      const mockForum = createMockForum();
+    it('should display subscription button when not subscribed', () => {
+      const _mockForum = createMockForum();
 
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue(createMockUseForumReturn());
 
@@ -299,7 +299,7 @@ describe('ForumView Component', () => {
       expect(subscribeButton).not.toHaveAttribute('aria-pressed', 'true');
     });
 
-    it('should display unsubscribe button when subscribed', async () => {
+    it('should display unsubscribe button when subscribed', () => {
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue(
         createMockUseForumReturn({
           forum: { subscribed: true, canSubscribe: true },
@@ -315,7 +315,7 @@ describe('ForumView Component', () => {
 
     it('should call toggleSubscription when subscription button is clicked', async () => {
       const user = userEvent.setup();
-      const mockForum = createMockForum();
+      const _mockForum = createMockForum();
       const mockToggleSubscription = vi.fn();
 
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -331,8 +331,8 @@ describe('ForumView Component', () => {
       expect(mockToggleSubscription).toHaveBeenCalledTimes(1);
     });
 
-    it('should disable subscription button while toggling', async () => {
-      const mockForum = createMockForum();
+    it('should disable subscription button while toggling', () => {
+      const _mockForum = createMockForum();
 
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue({
         ...createMockUseForumReturn(),
@@ -345,7 +345,7 @@ describe('ForumView Component', () => {
       expect(subscribeButton).toBeDisabled();
     });
 
-    it('should display subscription status indicator', async () => {
+    it('should display subscription status indicator', () => {
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue(
         createMockUseForumReturn({
           forum: { subscribed: true },
@@ -359,8 +359,8 @@ describe('ForumView Component', () => {
   });
 
   describe('Create Discussion Button', () => {
-    it('should display create discussion button with permission', async () => {
-      const mockForum = createMockForum();
+    it('should display create discussion button with permission', () => {
+      const _mockForum = createMockForum();
 
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue({
         ...createMockUseForumReturn(),
@@ -371,7 +371,7 @@ describe('ForumView Component', () => {
       expect(screen.getByRole('button', { name: /Add.*discussion/i })).toBeInTheDocument();
     });
 
-    it('should not display create discussion button without permission', async () => {
+    it('should not display create discussion button without permission', () => {
       const mockForum = createMockForum({ canAddDiscussion: false });
 
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -384,7 +384,7 @@ describe('ForumView Component', () => {
       expect(screen.queryByRole('button', { name: /Add.*discussion/i })).not.toBeInTheDocument();
     });
 
-    it('should hide create discussion button in single discussion forum', async () => {
+    it('should hide create discussion button in single discussion forum', () => {
       const mockForum = createMockForum({ type: 'single', canAddDiscussion: false });
 
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -400,7 +400,7 @@ describe('ForumView Component', () => {
   });
 
   describe('Forum Statistics', () => {
-    it('should display total discussions count', async () => {
+    it('should display total discussions count', () => {
       const mockForum = createMockForum({ discussionCount: 25 });
 
       const mockUseForum = forumHooks.useForum as ReturnType<typeof vi.fn>;
@@ -418,7 +418,7 @@ describe('ForumView Component', () => {
       expect(numberElement.parentElement?.textContent).toContain('Discussions');
     });
 
-    it('should display total posts count', async () => {
+    it('should display total posts count', () => {
       const mockForum = createMockForum({ postCount: 150 });
 
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -433,7 +433,7 @@ describe('ForumView Component', () => {
       expect(screen.getByText('Posts', { exact: false })).toBeInTheDocument();
     });
 
-    it('should display unread posts count', async () => {
+    it('should display unread posts count', () => {
       const mockForum = createMockForum({ unreadCount: 8 });
 
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -450,7 +450,7 @@ describe('ForumView Component', () => {
       expect(numberElement.parentElement?.textContent).toContain('Unread');
     });
 
-    it('should display unread count', async () => {
+    it('should display unread count', () => {
       const mockForum = createMockForum({ unreadCount: 4 });
 
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -469,7 +469,7 @@ describe('ForumView Component', () => {
   });
 
   describe('Loading State', () => {
-    it('should display loading skeleton during data fetch', async () => {
+    it('should display loading skeleton during data fetch', () => {
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue({
         data: undefined,
         statistics: undefined,
@@ -489,7 +489,7 @@ describe('ForumView Component', () => {
       expect(screen.getByTestId('forum-skeleton')).toBeInTheDocument();
     });
 
-    it('should display accessible loading message for screen readers', async () => {
+    it('should display accessible loading message for screen readers', () => {
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue({
         data: undefined,
         statistics: undefined,
@@ -509,7 +509,7 @@ describe('ForumView Component', () => {
   });
 
   describe('Error State', () => {
-    it('should display error message when fetch fails', async () => {
+    it('should display error message when fetch fails', () => {
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue({
         data: undefined,
         statistics: undefined,
@@ -528,7 +528,7 @@ describe('ForumView Component', () => {
       expect(screen.getByText(/Failed to load forum/i)).toBeInTheDocument();
     });
 
-    it('should display retry button on error', async () => {
+    it('should display retry button on error', () => {
       const mockRefetch = vi.fn();
 
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -575,7 +575,7 @@ describe('ForumView Component', () => {
   });
 
   describe('Empty State', () => {
-    it('should display empty state when no discussions exist', async () => {
+    it('should display empty state when no discussions exist', () => {
       const mockForum = createMockForum({
         discussionCount: 0,
         postCount: 0,
@@ -593,7 +593,7 @@ describe('ForumView Component', () => {
       expect(screen.getByText(/Be the first/i)).toBeInTheDocument();
     });
 
-    it('should show appropriate message in empty state without create permission', async () => {
+    it('should show appropriate message in empty state without create permission', () => {
       const mockForum = createMockForum({
         discussionCount: 0,
         postCount: 0,
@@ -613,7 +613,7 @@ describe('ForumView Component', () => {
   });
 
   describe('Permission-Based Actions', () => {
-    it('should display moderator actions for users with permission', async () => {
+    it('should display moderator actions for users with permission', () => {
       const mockForum = createMockForum({ canModerate: true });
 
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -626,8 +626,8 @@ describe('ForumView Component', () => {
       expect(screen.getByRole('button', { name: /Moderate/i })).toBeInTheDocument();
     });
 
-    it('should not display moderator actions for regular students', async () => {
-      const mockForum = createMockForum();
+    it('should not display moderator actions for regular students', () => {
+      const _mockForum = createMockForum();
 
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue({
         ...createMockUseForumReturn(),
@@ -674,7 +674,7 @@ describe('ForumView Component', () => {
   });
 
   describe('Edge Cases', () => {
-    it('should display archived forum indicator', async () => {
+    it('should display archived forum indicator', () => {
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue(
         createMockUseForumReturn({
           forum: {
@@ -688,7 +688,7 @@ describe('ForumView Component', () => {
       expect(screen.getByText(/This forum is archived/i)).toBeInTheDocument();
     });
 
-    it('should disable create discussion button in archived forum', async () => {
+    it('should disable create discussion button in archived forum', () => {
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue(
         createMockUseForumReturn({
           forum: {
@@ -702,7 +702,7 @@ describe('ForumView Component', () => {
       expect(screen.queryByRole('button', { name: /Add.*discussion/i })).not.toBeInTheDocument();
     });
 
-    it('should display read-only forum indicator', async () => {
+    it('should display read-only forum indicator', () => {
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue(
         createMockUseForumReturn({
           forum: {
@@ -717,7 +717,7 @@ describe('ForumView Component', () => {
       expect(screen.getByText(/read-only/i)).toBeInTheDocument();
     });
 
-    it('should handle forum with due date', async () => {
+    it('should handle forum with due date', () => {
       const dueDate = Math.floor(Date.now() / 1000) + 604800; // 7 days from now (in seconds)
 
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue(
@@ -735,8 +735,8 @@ describe('ForumView Component', () => {
   });
 
   describe('Accessibility', () => {
-    it('should have proper heading hierarchy', async () => {
-      const mockForum = createMockForum();
+    it('should have proper heading hierarchy', () => {
+      const _mockForum = createMockForum();
 
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue(createMockUseForumReturn());
 
@@ -748,8 +748,8 @@ describe('ForumView Component', () => {
       expect(headings[0]).toHaveAttribute('aria-level');
     });
 
-    it('should have accessible subscription button labels', async () => {
-      const mockForum = createMockForum();
+    it('should have accessible subscription button labels', () => {
+      const _mockForum = createMockForum();
 
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue(createMockUseForumReturn());
 
@@ -762,7 +762,7 @@ describe('ForumView Component', () => {
 
     it('should support keyboard navigation for actions', async () => {
       const user = userEvent.setup();
-      const mockForum = createMockForum();
+      const _mockForum = createMockForum();
       const mockToggleSubscription = vi.fn();
 
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -772,7 +772,7 @@ describe('ForumView Component', () => {
 
       renderWithProviders(<ForumView forumId={1} />);
 
-      const subscribeButton = screen.getByRole('button', { name: /Subscribe/i });
+      const _subscribeButton = screen.getByRole('button', { name: /Subscribe/i });
 
       // Tab to the button
       await user.tab();
@@ -785,18 +785,18 @@ describe('ForumView Component', () => {
       });
     });
 
-    it('should have proper ARIA landmarks', async () => {
-      const mockForum = createMockForum();
+    it('should have proper ARIA landmarks', () => {
+      const _mockForum = createMockForum();
 
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue(createMockUseForumReturn());
 
       const { container } = renderWithProviders(<ForumView forumId={1} />);
 
       // Should have main landmark
-      expect(container.querySelector('main') || container.querySelector('[role="main"]')).toBeInTheDocument();
+      expect(container.querySelector('main') ?? container.querySelector('[role="main"]')).toBeInTheDocument();
     });
 
-    it('should announce loading state to screen readers', async () => {
+    it('should announce loading state to screen readers', () => {
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue({
         data: undefined,
         statistics: undefined,
@@ -815,7 +815,7 @@ describe('ForumView Component', () => {
       expect(loadingElement).toHaveAttribute('aria-live', 'polite');
     });
 
-    it('should announce error state to screen readers', async () => {
+    it('should announce error state to screen readers', () => {
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue({
         data: undefined,
         statistics: undefined,
@@ -834,7 +834,7 @@ describe('ForumView Component', () => {
       expect(alertElement).toHaveAttribute('aria-live', 'assertive');
     });
 
-    it('should have descriptive text for forum statistics', async () => {
+    it('should have descriptive text for forum statistics', () => {
       const mockForum = createMockForum({
         discussionCount: 15,
         postCount: 87,
@@ -854,8 +854,8 @@ describe('ForumView Component', () => {
   });
 
   describe('Sorting and Filtering Integration', () => {
-    it('should pass sorting controls to DiscussionList', async () => {
-      const mockForum = createMockForum();
+    it('should pass sorting controls to DiscussionList', () => {
+      const _mockForum = createMockForum();
 
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue(createMockUseForumReturn());
 
@@ -886,7 +886,7 @@ describe('ForumView Component', () => {
         toggleSubscription: mockToggleSubscription,
       });
 
-      const { rerender } = renderWithProviders(<ForumView forumId={1} />);
+      const { _rerender } = renderWithProviders(<ForumView forumId={1} />);
 
       const subscribeButton = screen.getByRole('button', { name: /Subscribe/i });
       await user.click(subscribeButton);

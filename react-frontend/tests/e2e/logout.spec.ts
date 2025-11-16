@@ -18,7 +18,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { login, loginAsStudent, getAuthToken, logout, clearAuthenticationState, isAuthenticated } from './utils/auth';
-import { clearBrowserStorage, createIsolatedContext, handleNewTab, closeTab } from './utils/browser-helpers';
+import { clearBrowserStorage, _createIsolatedContext, _handleNewTab, _closeTab } from './utils/browser-helpers';
 import { testStudent, TEST_PASSWORD } from './fixtures/users';
 
 test.describe('Logout Workflow', () => {
@@ -27,7 +27,7 @@ test.describe('Logout Workflow', () => {
   let dashboardPage: DashboardPage;
   let authToken: string | null;
 
-  test.beforeEach(async ({ page: testPage, context }) => {
+  test.beforeEach(async ({ page: testPage, _context }) => {
     page = testPage;
     loginPage = new LoginPage(page);
     dashboardPage = new DashboardPage(page);
@@ -159,16 +159,19 @@ test.describe('Logout Workflow', () => {
 
     // Verify token is blacklisted on server by calling a protected endpoint
     // Get the user ID from the cached user data
-    const userId = await page.evaluate(() => {
+    const userId = await page.evaluate<number>(() => {
       const userStr = localStorage.getItem('moodle_user');
       if (userStr) {
-        const user = JSON.parse(userStr);
+        const user = JSON.parse(userStr) as { id: number };
         return user.id;
       }
       return 1001; // Default student user ID
     });
 
-    const dashboardResponse = await page.evaluate(async ({ token, userId }) => {
+    const dashboardResponse = await page.evaluate<
+      { status: number; ok: boolean },
+      { token: string; userId: number }
+    >(async ({ token, userId }) => {
       const response = await fetch(`/api/v1/users/${userId}/dashboard`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -424,7 +427,7 @@ test.describe('Logout Workflow', () => {
     ).first();
     
     // Set up dialog handler to capture warning
-    let dialogAppeared = false;
+    const _dialogAppeared = false;
     page.on('dialog', async dialog => {
       dialogAppeared = true;
       expect(dialog.type()).toBe('confirm');
@@ -461,7 +464,7 @@ test.describe('Logout Workflow', () => {
 
   test('should verify complete session cleanup and no cached sensitive data', async () => {
     // Store sensitive data references before logout
-    const userDataBefore = await page.evaluate(() => {
+    const _userDataBefore = await page.evaluate(() => {
       return {
         localStorage: { ...localStorage },
         sessionStorage: { ...sessionStorage }
@@ -473,7 +476,12 @@ test.describe('Logout Workflow', () => {
     await loginPage.waitForLoginForm();
 
     // Verify complete session cleanup
-    const userDataAfter = await page.evaluate(() => {
+    const userDataAfter = await page.evaluate<{
+      localStorage: Record<string, string>;
+      sessionStorage: Record<string, string>;
+      localStorageLength: number;
+      sessionStorageLength: number;
+    }>(() => {
       return {
         localStorage: { ...localStorage },
         sessionStorage: { ...sessionStorage },
@@ -504,10 +512,23 @@ test.describe('Logout Workflow', () => {
     }
 
     // Verify API cache cleared
-    const cacheCleared = await page.evaluate(() => {
+    const cacheCleared = await page.evaluate<{
+      reactQueryEmpty: boolean;
+      reduxStoreCleared: boolean;
+    }>(() => {
       // Check if React Query cache or Redux store is cleared
-      const reactQueryCache = (window as any).__REACT_QUERY_CACHE__;
-      const reduxStore = (window as any).__REDUX_STORE__;
+      interface WindowWithCache extends Window {
+        __REACT_QUERY_CACHE__?: Record<string, unknown>;
+        __REDUX_STORE__?: {
+          getState: () => {
+            auth?: {
+              user?: unknown;
+            };
+          };
+        };
+      }
+      const reactQueryCache = (window as WindowWithCache).__REACT_QUERY_CACHE__;
+      const reduxStore = (window as WindowWithCache).__REDUX_STORE__;
       
       return {
         reactQueryEmpty: !reactQueryCache || Object.keys(reactQueryCache).length === 0,

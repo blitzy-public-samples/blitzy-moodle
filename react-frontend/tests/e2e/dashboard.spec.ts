@@ -22,8 +22,9 @@ import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { DashboardPage } from './pages/DashboardPage';
 import { login, isAuthenticated, logout, getAuthToken, clearAuthenticationState } from './utils/auth';
-import { waitForPageLoad, waitForNetworkIdle, waitForCondition, pollUntil, waitForElement } from './utils/wait-helpers';
+import { waitForPageLoad, waitForNetworkIdle, waitForCondition, _pollUntil, waitForElement } from './utils/wait-helpers';
 import { apiRequest, setupTestEnvironment, cleanupTestEnvironment, createTestUser, type TestEnvironment } from './utils/api-helpers';
+import type { Assignment } from '@/features/activities/assignments/types/assignment.types';
 
 test.describe('Dashboard E2E Tests', () => {
   let dashboardPage: DashboardPage;
@@ -573,7 +574,7 @@ test.describe('Dashboard E2E Tests', () => {
     test('should refresh widget data when refresh button clicked', async () => {
       // Get initial timeline items count
       const initialItems = await dashboardPage.getTimelineItems();
-      const initialCount = initialItems.length;
+      const _initialCount = initialItems.length;
 
       // Setup API request monitoring
       const apiRequestPromise = page.waitForResponse(
@@ -712,7 +713,7 @@ test.describe('Dashboard E2E Tests', () => {
       const authToken = await getAuthToken(page);
 
       // Create a new assignment via API
-      const newAssignment = await apiRequest({
+      const newAssignment = await apiRequest<Assignment>({
         token: authToken,
         endpoint: '/api/v1/assignments',
         method: 'POST',
@@ -742,6 +743,7 @@ test.describe('Dashboard E2E Tests', () => {
       // Cleanup: Remove test assignment via API
       await apiRequest({
         token: authToken,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         endpoint: `/api/v1/assignments/${newAssignment.id}`,
         method: 'DELETE'
       });
@@ -811,7 +813,7 @@ test.describe('Dashboard E2E Tests', () => {
     test('should display error message when widget fails to load', async () => {
       // Simulate network failure by intercepting API request
       await page.route('**/api/v1/blocks/timeline', route => {
-        route.abort('failed');
+        void route.abort('failed');
       });
 
       // Refresh timeline widget
@@ -832,9 +834,9 @@ test.describe('Dashboard E2E Tests', () => {
       await page.route('**/api/v1/blocks/calendar', route => {
         requestCount++;
         if (requestCount === 1) {
-          route.abort('failed');
+          void route.abort('failed');
         } else {
-          route.continue();
+          void route.continue();
         }
       });
 
@@ -864,13 +866,13 @@ test.describe('Dashboard E2E Tests', () => {
       await page.keyboard.press('Tab');
 
       // Verify focus is visible
-      const focusedElement = await page.locator(':focus');
+      const focusedElement = page.locator(':focus');
       await expect(focusedElement).toBeVisible();
 
       // Tab through widgets
       for (let i = 0; i < 5; i++) {
         await page.keyboard.press('Tab');
-        const currentFocus = await page.locator(':focus');
+        const currentFocus = page.locator(':focus');
         await expect(currentFocus).toBeVisible();
       }
     });

@@ -371,8 +371,8 @@ export function useStartQuizAttempt(): UseMutationResult<
     mutationFn: (quizId: number) => startQuizAttempt(quizId),
     onSuccess: (_data, quizId) => {
       // Invalidate quiz queries to refresh attempt list
-      queryClient.invalidateQueries({ queryKey: ['quizzes', quizId] });
-      queryClient.invalidateQueries({ queryKey: ['quizzes', quizId, 'attempts'] });
+      void queryClient.invalidateQueries({ queryKey: ['quizzes', quizId] });
+      void queryClient.invalidateQueries({ queryKey: ['quizzes', quizId, 'attempts'] });
     },
   });
 }
@@ -394,9 +394,9 @@ export function useSubmitQuizAttempt(): UseMutationResult<
     mutationFn: ({ quizId, submission }) => submitQuizAttempt(quizId, submission),
     onSuccess: (_data, variables) => {
       // Invalidate quiz and attempt queries
-      queryClient.invalidateQueries({ queryKey: ['quizzes', variables.quizId] });
-      queryClient.invalidateQueries({ queryKey: ['quizzes', variables.quizId, 'attempts'] });
-      queryClient.invalidateQueries({ queryKey: ['quizAttempts', variables.submission.attemptId] });
+      void queryClient.invalidateQueries({ queryKey: ['quizzes', variables.quizId] });
+      void queryClient.invalidateQueries({ queryKey: ['quizzes', variables.quizId, 'attempts'] });
+      void queryClient.invalidateQueries({ queryKey: ['quizAttempts', variables.submission.attemptId] });
     },
   });
 }

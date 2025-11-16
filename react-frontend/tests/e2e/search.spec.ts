@@ -322,7 +322,7 @@ test.describe('Global Search Functionality', () => {
     await searchPage.verifyEmptyState();
     
     // Verify appropriate message is shown
-    const emptyMessage = await page.locator('[data-testid="empty-search-message"]');
+    const emptyMessage = page.locator('[data-testid="empty-search-message"]');
     await expect(emptyMessage).toBeVisible();
     
     // Verify message text is appropriate
@@ -344,7 +344,7 @@ test.describe('Global Search Functionality', () => {
     await searchPage.search(nonExistentTerm);
     
     // Verify no results message is displayed
-    const noResultsMessage = await page.locator('[data-testid="no-results-message"]');
+    const noResultsMessage = page.locator('[data-testid="no-results-message"]');
     await expect(noResultsMessage).toBeVisible();
     
     // Verify appropriate message text

@@ -171,7 +171,9 @@ describe('storageService', () => {
     });
 
     // Restore console methods
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     consoleErrorSpy.mockRestore();
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     consoleWarnSpy.mockRestore();
 
     // Clear all mocks
@@ -869,6 +871,7 @@ describe('storageService', () => {
       addStorageListener(callback);
 
       // Get the registered listener
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const registeredListener = addEventListenerSpy.mock.calls[0]![1] as EventListener;
 
       // Create a mock StorageEvent
@@ -925,6 +928,7 @@ describe('storageService', () => {
       const callback = vi.fn();
 
       addStorageListener(callback);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const registeredListener = addEventListenerSpy.mock.calls[0]![1] as EventListener;
 
       removeStorageListener(registeredListener);
@@ -967,6 +971,7 @@ describe('storageService', () => {
       const callback = vi.fn();
       addStorageListener(callback);
 
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const registeredListener = addEventListenerSpy.mock.calls[0]![1] as EventListener;
 
       // Create a regular Event (not StorageEvent)

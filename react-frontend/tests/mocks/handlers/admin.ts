@@ -118,8 +118,46 @@ interface Plugin {
   version: string;
   release: string;
   enabled: boolean;
-  settings: Record<string, any>;
+  settings: Record<string, unknown>;
 }
+
+// Request body types
+interface CreateUserBody {
+  username: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  password: string;
+  auth?: string;
+  city?: string;
+  country?: string;
+  timezone?: string;
+  language?: string;
+  description?: string;
+}
+
+interface UpdateUserBody {
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  city?: string;
+  country?: string;
+  timezone?: string;
+  language?: string;
+  description?: string;
+}
+
+interface AssignRoleBody {
+  roleId: number;
+  userId: number;
+  contextId?: number;
+}
+
+interface ConfigurePluginBody {
+  enabled?: boolean;
+  settings?: Record<string, unknown>;
+}
+
 
 // ============================================================================
 // Mock Data
@@ -492,7 +530,7 @@ const getUsersHandler = http.get('*/api/v1/admin/users', async ({ request }) => 
 const createUserHandler = http.post('*/api/v1/admin/users', async ({ request }) => {
   await simulateNetworkDelay();
   
-  const body = await request.json() as any;
+  const body = await request.json() as CreateUserBody;
   
   // Validate required fields
   const requiredFields = ['username', 'email', 'firstName', 'lastName', 'password'];
@@ -593,7 +631,7 @@ const updateUserHandler = http.put('*/api/v1/admin/users/:id', async ({ params, 
     );
   }
   
-  const body = await request.json() as any;
+  const body = await request.json() as UpdateUserBody;
   
   const updatedUser = {
     ...user,
@@ -675,7 +713,7 @@ const getRolesHandler = http.get('*/api/v1/admin/roles', async () => {
 const assignRoleHandler = http.post('*/api/v1/admin/roles/assign', async ({ request }) => {
   await simulateNetworkDelay();
   
-  const body = await request.json() as any;
+  const body = await request.json() as AssignRoleBody;
   
   if (!body.roleId || !body.userId) {
     return HttpResponse.json(
@@ -753,7 +791,7 @@ const configurePluginHandler = http.put('*/api/v1/admin/plugins/:component', asy
     );
   }
   
-  const body = await request.json() as any;
+  const body = await request.json() as ConfigurePluginBody;
   
   const updatedPlugin = {
     ...plugin,

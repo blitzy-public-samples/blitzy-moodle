@@ -22,14 +22,14 @@
 
 import { test, expect, type Page } from '@playwright/test';
 import { CourseCatalogPage } from './pages/CourseCatalogPage';
-import { login, loginAsStudent, isAuthenticated, getAuthToken, logout } from './utils/auth';
+import { _login, loginAsStudent, isAuthenticated, _getAuthToken, _logout } from './utils/auth';
 import { 
   testCourse1, 
-  testCourse2, 
-  testCourse3, 
-  testCourse4, 
-  createCourse, 
-  getCourseWithActivities 
+  _testCourse2, 
+  _testCourse3, 
+  _testCourse4, 
+  _createCourse, 
+  _getCourseWithActivities 
 } from './fixtures/courses';
 import { setViewport, clearBrowserStorage, navigateToPage } from './utils/browser-helpers';
 
@@ -210,7 +210,7 @@ test.describe('Course Catalog - Browsing and Search', () => {
       // This is a component implementation issue outside the scope of this E2E test file validation
       
       // Get initial view state (should default to grid)
-      const initialView = await page.getAttribute('[data-testid="view-toggle"]', 'data-view');
+      const _initialView = await page.getAttribute('[data-testid="view-toggle"]', 'data-view');
       
       // Toggle to list view
       await catalogPage.toggleView('list');

@@ -62,6 +62,11 @@ interface FeedbackResponse {
   answers: Record<number, any>;
 }
 
+// Request body for submitting feedback responses
+interface SubmitResponseBody {
+  answers: Record<number, any>;
+}
+
 // ============================================================================
 // Mock Data
 // ============================================================================
@@ -457,7 +462,7 @@ const submitFeedbackHandler = http.post('*/api/v1/feedback/:id/submit', async ({
     );
   }
   
-  const body = await request.json() as any;
+  const body = await request.json() as SubmitResponseBody;
   
   if (!body.answers || typeof body.answers !== 'object') {
     return HttpResponse.json(
@@ -476,6 +481,7 @@ const submitFeedbackHandler = http.post('*/api/v1/feedback/:id/submit', async ({
   // Validate required questions are answered
   const questions = MOCK_QUESTIONS[id] || [];
   const missingRequired = questions
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     .filter(q => q.required && !body.answers[q.id])
     .map(q => q.id);
   
@@ -501,6 +507,7 @@ const submitFeedbackHandler = http.post('*/api/v1/feedback/:id/submit', async ({
     userid: feedback.anonymous === 1 ? 0 : 5,
     anonymous: feedback.anonymous,
     timemodified: Math.floor(Date.now() / 1000),
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     answers: body.answers
   };
   

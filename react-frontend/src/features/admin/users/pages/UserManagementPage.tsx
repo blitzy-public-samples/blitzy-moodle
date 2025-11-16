@@ -53,6 +53,8 @@ import {
 } from '@mui/icons-material';
 import { apiClient } from '@/services/api/client';
 import { ADMIN_ENDPOINTS } from '@/services/api/endpoints';
+import type { ErrorResponse } from '@/types/errors';
+import type { AxiosError } from 'axios';
 
 /**
  * Admin user interface matching the API response
@@ -153,7 +155,7 @@ export function UserManagementPage() {
     },
     onSuccess: () => {
       // Invalidate and refetch the users list
-      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
     },
   });
 
@@ -177,7 +179,7 @@ export function UserManagementPage() {
       return response.data.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
     },
   });
 
@@ -190,7 +192,7 @@ export function UserManagementPage() {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
     },
   });
 
@@ -207,7 +209,7 @@ export function UserManagementPage() {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
     },
   });
 
@@ -473,14 +475,15 @@ export function UserManagementPage() {
         password: '',
         auth: 'manual',
       });
-    } catch (error: any) {
+    } catch (error) {
       // Handle API errors
       console.error('Failed to create user:', error);
       
       // Show error in the form if it's a validation error from the API
-      if (error.response?.data?.error) {
+      const axiosError = error as AxiosError<ErrorResponse>;
+      if (axiosError.response?.data?.error) {
         setFormErrors({
-          email: error.response.data.error.message || 'Failed to create user',
+          email: axiosError.response.data.error.message || 'Failed to create user',
         });
       }
     }
@@ -657,6 +660,7 @@ export function UserManagementPage() {
   /**
    * Handle password reset
    */
+  // eslint-disable-next-line @typescript-eslint/require-await
   const handlePasswordReset = async (userId: number) => {
     // Mock implementation for E2E testing (in production, this would be an API call)
     console.log('Password reset email would be sent for user:', userId);
@@ -728,7 +732,7 @@ export function UserManagementPage() {
               label="Role" 
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
-              SelectDisplayProps={{ 'data-testid': 'filter-role' } as any}
+              SelectDisplayProps={{ 'data-testid': 'filter-role' } as React.HTMLAttributes<HTMLDivElement>}
             >
               <MenuItem value="all">All</MenuItem>
               <MenuItem value="admin">Admin</MenuItem>
@@ -742,7 +746,7 @@ export function UserManagementPage() {
               label="Status" 
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              SelectDisplayProps={{ 'data-testid': 'filter-status' } as any}
+              SelectDisplayProps={{ 'data-testid': 'filter-status' } as React.HTMLAttributes<HTMLDivElement>}
             >
               <MenuItem value="all">All</MenuItem>
               <MenuItem value="active">Active</MenuItem>
@@ -756,7 +760,7 @@ export function UserManagementPage() {
               label="Auth Method" 
               value={authFilter}
               onChange={(e) => setAuthFilter(e.target.value)}
-              SelectDisplayProps={{ 'data-testid': 'filter-auth' } as any}
+              SelectDisplayProps={{ 'data-testid': 'filter-auth' } as React.HTMLAttributes<HTMLDivElement>}
             >
               <MenuItem value="all">All</MenuItem>
               <MenuItem value="manual">Manual</MenuItem>
@@ -985,7 +989,7 @@ export function UserManagementPage() {
                 value={formData.auth}
                 onChange={(e) => setFormData({ ...formData, auth: e.target.value })}
                 label="Auth Method"
-                SelectDisplayProps={{ 'data-testid': 'auth-method-select' } as any}
+                SelectDisplayProps={{ 'data-testid': 'auth-method-select' } as React.HTMLAttributes<HTMLDivElement>}
               >
                 <MenuItem value="manual">Manual</MenuItem>
                 <MenuItem value="ldap">LDAP</MenuItem>

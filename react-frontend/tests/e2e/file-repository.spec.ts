@@ -18,7 +18,7 @@
  * PHP file management system (public/files/index.php).
  */
 
-import { test, expect, Page } from '@playwright/test';
+import { test, expect, _Page } from '@playwright/test';
 import { basename } from 'path';
 import { promises as fs } from 'fs';
 import * as path from 'path';
@@ -28,17 +28,17 @@ import {
   loginAsTeacher, 
   loginAsStudent, 
   logout,
-  isAuthenticated
+  _isAuthenticated
 } from './utils/auth';
 import { 
   generateTestFile, 
   createImageFile, 
-  createTextFile,
+  _createTextFile,
   cleanupTestFiles 
 } from './utils/file-helpers';
 import { 
   MAX_FILE_SIZE, 
-  MIME_TYPES 
+  _MIME_TYPES 
 } from './fixtures/files';
 
 test.describe('File Repository E2E Tests', () => {
@@ -680,7 +680,7 @@ test.describe('File Repository E2E Tests', () => {
     
     // Generate file exceeding max size (MAX_FILE_SIZE + 1MB)
     // Assuming MAX_FILE_SIZE is 100MB, create a 101MB file
-    const oversizedFilePath = await path.join(os.tmpdir(), `oversized-${Date.now()}.pdf`);
+    const oversizedFilePath = path.join(os.tmpdir(), `oversized-${Date.now()}.pdf`);
     const oversizedSize = MAX_FILE_SIZE + (1 * 1024 * 1024); // MAX_FILE_SIZE + 1MB
     const buffer = Buffer.alloc(oversizedSize, 0);
     await fs.writeFile(oversizedFilePath, buffer);

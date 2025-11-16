@@ -80,6 +80,18 @@ function blacklistToken(token: string): void {
 }
 
 /**
+ * JWT payload structure for mock tokens
+ */
+interface JWTPayload {
+  sub: number;
+  roles: string[];
+  iat: number;
+  exp: number;
+  iss: string;
+  type: 'access' | 'refresh';
+}
+
+/**
  * Validation result for token authentication
  */
 export interface TokenValidationResult {
@@ -418,7 +430,7 @@ export function extractUserIdFromToken(token: string): number | null {
   try {
     const parts = token.split('.');
     if (parts.length !== 3 || !parts[1]) {return null;}
-    const payload = JSON.parse(atob(parts[1]));
+    const payload = JSON.parse(atob(parts[1])) as JWTPayload;
     return payload.sub || null; // Changed from payload.userId to payload.sub to match token generation
   } catch {
     return null;
@@ -466,7 +478,7 @@ function findUserById(userId: number): (User & { password: string; status: 'acti
  * @returns User object without sensitive fields
  */
 function sanitizeUser(user: User & { password: string; status: string }): User {
-  const { password, status, ...sanitized } = user;
+  const { _password, _status, ...sanitized } = user;
   return sanitized as User;
 }
 

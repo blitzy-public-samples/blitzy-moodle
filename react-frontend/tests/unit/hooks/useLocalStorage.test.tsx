@@ -2,6 +2,8 @@ import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import useLocalStorage from '@/hooks/useLocalStorage';
 
+/* eslint-disable @typescript-eslint/unbound-method */
+
 /**
  * Comprehensive test suite for the useLocalStorage custom hook.
  *
@@ -351,7 +353,7 @@ describe('useLocalStorage', () => {
   it('should handle SSR where localStorage is undefined', () => {
     // Temporarily remove window.localStorage
     const originalLocalStorage = window.localStorage;
-    // @ts-ignore - Simulating SSR environment
+    // @ts-expect-error - Simulating SSR environment
     delete window.localStorage;
 
     const { result } = renderHook(() => useLocalStorage('test-key', 'ssr-initial'));

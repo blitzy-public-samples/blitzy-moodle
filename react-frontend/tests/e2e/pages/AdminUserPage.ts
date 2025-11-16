@@ -226,7 +226,7 @@ export class AdminUserPage {
       let roles: Array<{ roleid: number; shortname: string; name: string }> | undefined;
       if (rolesAttr) {
         try {
-          roles = JSON.parse(rolesAttr);
+          roles = JSON.parse(rolesAttr) as Array<{ roleid: number; shortname: string; name: string }>;
         } catch (e) {
           roles = undefined;
         }
@@ -248,12 +248,12 @@ export class AdminUserPage {
       
       // Extract status from the Chip in the Status cell (column 5)
       // The Chip contains text like "Active", "Suspended", or "Deleted"
-      let statusText = '';
+      let _statusText = '';
       if (cells.length > 5) {
         const statusCell = cells[5];
         const chipLocator = statusCell.locator('.MuiChip-label');
         if (await chipLocator.count() > 0) {
-          statusText = (await chipLocator.innerText()).trim();
+          _statusText = (await chipLocator.innerText()).trim();
         }
       }
       
@@ -526,7 +526,8 @@ export class AdminUserPage {
    * @param cohortId - ID of the cohort to assign
    * NOTE: Cohort assignment is not yet implemented in the React component
    */
-  async bulkAssignCohort(cohortId: string): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async bulkAssignCohort(_cohortId: string): Promise<void> {
     throw new Error('Cohort assignment is not yet implemented in the React component');
   }
 

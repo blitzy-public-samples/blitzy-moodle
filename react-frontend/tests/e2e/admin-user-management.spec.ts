@@ -19,10 +19,10 @@
  * @see public/admin/user/user_bulk.php for bulk operations backend
  */
 
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type _Page } from '@playwright/test';
 import { AdminUserPage } from './pages/AdminUserPage';
 import { loginAsAdmin, logout, isAuthenticated } from './utils/auth';
-import { testAdmin, testStudent, testTeacher, testStudent2, TEST_PASSWORD } from './fixtures/users';
+import { _testAdmin, _testStudent, _testTeacher, _testStudent2, _TEST_PASSWORD } from './fixtures/users';
 import type { UserData } from './pages/AdminUserPage';
 
 /**
@@ -93,6 +93,7 @@ test.describe('Admin User Management', () => {
     }
     
     // Store adminPage in test context for use in test
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     (page as any)._adminPage = adminPage;
   });
 
@@ -157,6 +158,7 @@ test.describe('Admin User Management', () => {
    */
   test.describe('User List Display', () => {
     test('should display user table with pagination controls', async ({ page }) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const adminPage = (page as any)._adminPage as AdminUserPage;
       
       // Get initial user list
@@ -181,6 +183,7 @@ test.describe('Admin User Management', () => {
     });
 
     test('should search users by username', async ({ page }) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const adminPage = (page as any)._adminPage as AdminUserPage;
       
       // Search for a specific test user
@@ -198,6 +201,7 @@ test.describe('Admin User Management', () => {
     });
 
     test('should search users by email', async ({ page }) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const adminPage = (page as any)._adminPage as AdminUserPage;
       
       // Search by email domain
@@ -214,6 +218,7 @@ test.describe('Admin User Management', () => {
     });
 
     test('should filter users by role', async ({ page }) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const adminPage = (page as any)._adminPage as AdminUserPage;
       
       // Filter to show only students
@@ -230,6 +235,7 @@ test.describe('Admin User Management', () => {
     });
 
     test('should filter users by status', async ({ page }) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const adminPage = (page as any)._adminPage as AdminUserPage;
       
       // Filter to show only active users
@@ -246,6 +252,7 @@ test.describe('Admin User Management', () => {
     });
 
     test('should combine search and filters', async ({ page }) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const adminPage = (page as any)._adminPage as AdminUserPage;
       
       // Search and filter simultaneously
@@ -274,6 +281,7 @@ test.describe('Admin User Management', () => {
    */
   test.describe('User Creation', () => {
     test('should create new user with valid data', async ({ page }) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const adminPage = (page as any)._adminPage as AdminUserPage;
       
       // Generate unique user data
@@ -327,6 +335,7 @@ test.describe('Admin User Management', () => {
     });
 
     test('should show validation error for missing required fields', async ({ page }) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const adminPage = (page as any)._adminPage as AdminUserPage;
       
       // Attempt to create user with missing username
@@ -359,6 +368,7 @@ test.describe('Admin User Management', () => {
     });
 
     test('should show validation error for invalid email format', async ({ page }) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const adminPage = (page as any)._adminPage as AdminUserPage;
       
       const timestamp = Date.now();
@@ -388,6 +398,7 @@ test.describe('Admin User Management', () => {
     });
 
     test('should show validation error for duplicate username', async ({ page }) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const adminPage = (page as any)._adminPage as AdminUserPage;
       
       // Try to create user with existing username
@@ -418,6 +429,7 @@ test.describe('Admin User Management', () => {
     });
 
     test('should show validation error for weak password', async ({ page }) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const adminPage = (page as any)._adminPage as AdminUserPage;
       
       const timestamp = Date.now();
@@ -452,6 +464,7 @@ test.describe('Admin User Management', () => {
    */
   test.describe('User Editing', () => {
     test('should edit user profile fields', async ({ page }) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const adminPage = (page as any)._adminPage as AdminUserPage;
       
       // Create a test user first
@@ -507,6 +520,7 @@ test.describe('Admin User Management', () => {
     });
 
     test('should persist changes after page refresh', async ({ page }) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const adminPage = (page as any)._adminPage as AdminUserPage;
       
       // Create test user
@@ -557,6 +571,7 @@ test.describe('Admin User Management', () => {
    */
   test.describe('Bulk Operations', () => {
     test('should suspend multiple users', async ({ page }) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const adminPage = (page as any)._adminPage as AdminUserPage;
       
       // Create two test users
@@ -622,6 +637,7 @@ test.describe('Admin User Management', () => {
     });
 
     test('should delete multiple users', async ({ page }) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const adminPage = (page as any)._adminPage as AdminUserPage;
       
       // Create two test users
@@ -680,6 +696,7 @@ test.describe('Admin User Management', () => {
     });
 
     test('should assign cohort to multiple users', async ({ page }) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const adminPage = (page as any)._adminPage as AdminUserPage;
       
       // Create test users
@@ -739,6 +756,7 @@ test.describe('Admin User Management', () => {
    */
   test.describe('Password Reset', () => {
     test('should trigger password reset for user', async ({ page }) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const adminPage = (page as any)._adminPage as AdminUserPage;
       
       // Create test user
@@ -786,6 +804,7 @@ test.describe('Admin User Management', () => {
    */
   test.describe('User Suspension', () => {
     test('should suspend user account', async ({ page }) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const adminPage = (page as any)._adminPage as AdminUserPage;
       
       // Create test user
@@ -833,6 +852,7 @@ test.describe('Admin User Management', () => {
     });
 
     test('should verify suspended user cannot login', async ({ page }) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const adminPage = (page as any)._adminPage as AdminUserPage;
       
       // Create and suspend test user
@@ -884,6 +904,7 @@ test.describe('Admin User Management', () => {
       // Login back as admin
       await loginAsAdmin(page);
       const adminPageNew = new AdminUserPage(page);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       (page as any)._adminPage = adminPageNew;
       await adminPageNew.goto();
     });
@@ -895,6 +916,7 @@ test.describe('Admin User Management', () => {
    */
   test.describe('User Deletion', () => {
     test('should delete user account', async ({ page }) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const adminPage = (page as any)._adminPage as AdminUserPage;
       
       // Create test user
@@ -942,6 +964,7 @@ test.describe('Admin User Management', () => {
     });
 
     test('should anonymize user data on deletion', async ({ page }) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const adminPage = (page as any)._adminPage as AdminUserPage;
       
       // Create test user with specific data
@@ -993,6 +1016,7 @@ test.describe('Admin User Management', () => {
     });
 
     test('should prevent deletion of admin users', async ({ page }) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const adminPage = (page as any)._adminPage as AdminUserPage;
       
       // Search for admin user
@@ -1026,6 +1050,7 @@ test.describe('Admin User Management', () => {
    */
   test.describe('Error Scenarios', () => {
     test('should handle network errors gracefully', async ({ page }) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const adminPage = (page as any)._adminPage as AdminUserPage;
       
       // Simulate network condition or timeout
@@ -1040,6 +1065,7 @@ test.describe('Admin User Management', () => {
     });
 
     test('should handle concurrent operations', async ({ page }) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const adminPage = (page as any)._adminPage as AdminUserPage;
       
       // Create test user
@@ -1084,6 +1110,7 @@ test.describe('Admin User Management', () => {
     });
 
     test('should validate email format in bulk operations', async ({ page }) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const adminPage = (page as any)._adminPage as AdminUserPage;
       
       // Create user with valid email
@@ -1127,6 +1154,7 @@ test.describe('Admin User Management', () => {
    */
   test.describe('Pagination', () => {
     test('should navigate through user pages', async ({ page }) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const adminPage = (page as any)._adminPage as AdminUserPage;
       
       // Clear search to show all users
@@ -1160,7 +1188,8 @@ test.describe('Admin User Management', () => {
    */
   test.describe('Accessibility', () => {
     test('should support keyboard navigation', async ({ page }) => {
-      const adminPage = (page as any)._adminPage as AdminUserPage;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      const _adminPage = (page as any)._adminPage as AdminUserPage;
       
       // Navigate with Tab key
       await page.keyboard.press('Tab');
@@ -1171,7 +1200,8 @@ test.describe('Admin User Management', () => {
     });
 
     test('should have proper ARIA labels', async ({ page }) => {
-      const adminPage = (page as any)._adminPage as AdminUserPage;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      const _adminPage = (page as any)._adminPage as AdminUserPage;
       
       // Check for ARIA labels on key elements
       const searchInput = page.locator('input[type="search"], input[placeholder*="search" i]').first();

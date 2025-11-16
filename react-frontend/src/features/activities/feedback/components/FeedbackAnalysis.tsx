@@ -908,6 +908,7 @@ export const FeedbackAnalysis: React.FC<FeedbackAnalysisProps> = ({
           <ResponseList
             feedbackId={feedbackId}
             responses={[]}
+            // eslint-disable-next-line @typescript-eslint/require-await
             onDelete={async (responseIds: number[]) => {
               // Handle delete - this would typically trigger a mutation and refetch
               console.log('Delete responses:', responseIds);

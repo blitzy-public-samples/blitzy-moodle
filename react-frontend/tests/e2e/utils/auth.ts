@@ -72,6 +72,24 @@ export interface TokenPayload {
  */
 export type UserRole = 'student' | 'teacher' | 'admin' | 'guest';
 
+/**
+ * API response envelope for authentication endpoints
+ */
+interface AuthApiResponse {
+  success: boolean;
+  data: AuthToken;
+}
+
+/**
+ * API response envelope for token refresh endpoint
+ */
+interface RefreshTokenApiResponse {
+  success: boolean;
+  data: {
+    accessToken: string;
+  };
+}
+
 // ============================================================================
 // Constants
 // ============================================================================
@@ -580,13 +598,13 @@ export async function refreshToken(page: Page): Promise<string> {
     throw new Error(`Token refresh failed with status: ${response.status()}`);
   }
 
-  const responseData = await response.json();
+  const responseData = await response.json() as RefreshTokenApiResponse;
 
   if (!responseData.success || !responseData.data?.accessToken) {
     throw new Error('Invalid response from refresh token endpoint');
   }
 
-  const newAccessToken = responseData.data.accessToken;
+  const newAccessToken = responseData.data.accessToken as string;
 
   // Update access token in storage
   await page.evaluate(
@@ -691,7 +709,7 @@ export async function setupAuthenticationState(
     throw new Error(`API login failed with status: ${response.status()}`);
   }
 
-  const responseData = await response.json();
+  const responseData = await response.json() as AuthApiResponse;
 
   if (!responseData.success || !responseData.data) {
     throw new Error('Invalid response from login API');

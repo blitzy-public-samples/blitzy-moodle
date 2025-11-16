@@ -414,7 +414,7 @@ export function QuizPage(): React.ReactElement {
           <Button
             onClick={() => {
               setConfirmDialogOpen(false);
-              handleStartAttempt();
+              void handleStartAttempt();
             }}
             variant="contained"
             color="primary"

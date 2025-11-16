@@ -39,6 +39,7 @@
 import { apiClient, extractData } from '@/services/api/client';
 import type { ApiResponse, PaginatedResponse } from '@/types/api';
 import type {
+  DiscussionEnriched,
   Forum,
   Discussion,
   Post,
@@ -169,8 +170,8 @@ export async function getForum(forumId: number): Promise<Forum> {
 export async function getDiscussions(
   forumId: number,
   options?: DiscussionListOptions
-): Promise<PaginatedResponse<Discussion>> {
-  const response = await apiClient.get<PaginatedResponse<Discussion>>(
+): Promise<PaginatedResponse<DiscussionEnriched>> {
+  const response = await apiClient.get<PaginatedResponse<DiscussionEnriched>>(
     `/forums/${forumId}/discussions`,
     { params: options }
   );

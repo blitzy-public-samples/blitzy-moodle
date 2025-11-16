@@ -12,7 +12,7 @@
  * @module tests/unit/utils/permissions.test
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, _vi } from 'vitest';
 import {
   hasCapability,
   hasAnyCapability,

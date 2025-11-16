@@ -2,20 +2,20 @@ import type { Page } from '@playwright/test';
 import { test, expect } from '@playwright/test';
 import type { AssignmentInfo, SubmissionStatus, SubmittedFile, FeedbackInfo, SubmissionHistoryEntry } from './pages/AssignmentPage';
 import { AssignmentPage } from './pages/AssignmentPage';
-import { login, loginAsStudent, logout, clearAuthenticationState } from './utils/auth';
+import { _login, loginAsStudent, logout, _clearAuthenticationState } from './utils/auth';
 import { 
-  uploadFile, 
-  uploadFileDragDrop, 
-  uploadMultipleFiles, 
+  _uploadFile, 
+  _uploadFileDragDrop, 
+  _uploadMultipleFiles, 
   generateTestFile, 
-  createImageFile,
-  verifyFileUploaded, 
-  verifyFileProperties,
+  _createImageFile,
+  _verifyFileUploaded, 
+  _verifyFileProperties,
   waitForUploadComplete,
   cleanupTestFiles 
 } from './utils/file-helpers';
-import { testCourse1, testCourse4 } from './fixtures/courses';
-import { samplePDFFile, sampleImageFile, sampleDocumentFile, createTestFile, MAX_FILE_SIZE, MIME_TYPES } from './fixtures/files';
+import { _testCourse1, testCourse4 } from './fixtures/courses';
+import { _samplePDFFile, _sampleImageFile, _sampleDocumentFile, _createTestFile, _MAX_FILE_SIZE, _MIME_TYPES } from './fixtures/files';
 import { 
   testAssignment1, 
   testAssignment2, 
@@ -23,7 +23,7 @@ import {
   testAssignment4,
   createAssignment 
 } from './fixtures/assignments';
-import { testStudent, testTeacher, TEST_PASSWORD } from './fixtures/users';
+import { _testStudent, _testTeacher, _TEST_PASSWORD } from './fixtures/users';
 
 /**
  * E2E Test Suite: Assignment Submission Workflow
@@ -66,6 +66,7 @@ test.describe('Assignment Submission E2E Tests', () => {
   /**
    * Before each test: Initialize page object and navigate to fresh state
    */
+  // eslint-disable-next-line @typescript-eslint/require-await
   test.beforeEach(async () => {
     assignmentPage = new AssignmentPage(page);
   });
@@ -214,7 +215,7 @@ test.describe('Assignment Submission E2E Tests', () => {
     await assignmentPage.uploadFileByDragDrop(testFilePath);
     
     // Verify upload progress bar appears
-    const progressVisible = await assignmentPage.verifyUploadProgress();
+    const _progressVisible = await assignmentPage.verifyUploadProgress();
     // Note: Progress may complete too quickly for small files, so we don't strictly require it
     
     // Wait for upload to complete
@@ -600,7 +601,7 @@ test.describe('Assignment Submission E2E Tests', () => {
     } else {
       // If no feedback yet, verify the feedback section structure exists
       const feedbackSection = page.locator('[data-testid="feedback-section"], .feedback, #id_feedback');
-      const feedbackExists = await feedbackSection.isVisible({ timeout: 2000 }).catch(() => false);
+      const _feedbackExists = await feedbackSection.isVisible({ timeout: 2000 }).catch(() => false);
       
       // This is acceptable - assignment may not be graded yet
       console.log('No feedback available yet - assignment not graded');
@@ -620,7 +621,7 @@ test.describe('Assignment Submission E2E Tests', () => {
     await assignmentPage.waitForAssignment();
     
     // Check for late submission indicator in assignment info
-    const assignmentInfo = await assignmentPage.getAssignmentInfo();
+    const _assignmentInfo = await assignmentPage.getAssignmentInfo();
     const pageContent = await page.content();
     
     // Look for late submission warnings in the page
@@ -813,7 +814,7 @@ test.describe('Assignment Submission E2E Tests', () => {
    */
   test('should prevent submission after cutoff date with error message', async () => {
     // Create a test assignment with past cutoff date
-    const pastCutoffAssignment = createAssignment({
+    const _pastCutoffAssignment = createAssignment({
       name: 'Past Cutoff Assignment',
       duedate: Date.now() - (7 * 24 * 60 * 60 * 1000), // 7 days ago
       cutoffdate: Date.now() - (3 * 24 * 60 * 60 * 1000), // 3 days ago
@@ -834,7 +835,7 @@ test.describe('Assignment Submission E2E Tests', () => {
     const hasCutoffWarning = pageContent.toLowerCase().includes('cutoff') || 
                              pageContent.toLowerCase().includes('no longer accept');
     
-    const status = await assignmentPage.getSubmissionStatus();
+    const _status = await assignmentPage.getSubmissionStatus();
     
     // If assignment is past cutoff, verify submission is not allowed
     if (hasCutoffWarning) {

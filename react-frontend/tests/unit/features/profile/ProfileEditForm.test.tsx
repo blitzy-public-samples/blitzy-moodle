@@ -10,9 +10,12 @@ const mockUseUpdateProfile = vi.fn();
 
 vi.mock('@/features/profile/hooks/useUpdateProfile', () => ({
   useUpdateProfile: (options?: { onSuccess?: () => void; onError?: (error: any) => void }) => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const result = mockUseUpdateProfile();
     // Store the callbacks to trigger them when mutate is called
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
     const originalMutate = result.mutate;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     result.mutate = (...args: any[]) => {
       originalMutate(...args);
       // Simulate successful mutation by calling onSuccess callback
@@ -431,6 +434,7 @@ describe('ProfileEditForm', () => {
   });
 
   describe('Optimistic UI Updates', () => {
+    // eslint-disable-next-line @typescript-eslint/require-await
     it('shows loading state during submission', async () => {
       // Mock hook to return pending state
       mockUseUpdateProfile.mockReturnValue({
@@ -454,6 +458,7 @@ describe('ProfileEditForm', () => {
       expect(screen.getByRole('progressbar')).toBeInTheDocument();
     });
 
+    // eslint-disable-next-line @typescript-eslint/require-await
     it('disables form fields during submission', async () => {
       mockUseUpdateProfile.mockReturnValue({
         mutate: mockUpdateProfile,
@@ -515,6 +520,7 @@ describe('ProfileEditForm', () => {
       expect(defaultProps.onCancel).toHaveBeenCalled();
     });
 
+    // eslint-disable-next-line @typescript-eslint/require-await
     it('disables cancel button during submission', async () => {
       mockUseUpdateProfile.mockReturnValue({
         mutate: mockUpdateProfile,
@@ -639,6 +645,7 @@ describe('ProfileEditForm', () => {
       expect(screen.getByLabelText(/email/i)).toHaveFocus();
     });
 
+    // eslint-disable-next-line @typescript-eslint/require-await
     it('announces loading state to screen readers', async () => {
       mockUseUpdateProfile.mockReturnValue({
         mutate: mockUpdateProfile,

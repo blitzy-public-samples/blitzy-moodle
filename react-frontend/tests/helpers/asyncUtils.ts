@@ -14,6 +14,48 @@ import {
   screen,
 } from '@testing-library/react';
 import { expect } from 'vitest';
+import type { QueryClient } from '@tanstack/react-query';
+
+// ============================================================================
+// Global Type Extensions
+// ============================================================================
+
+/**
+ * API call tracking information
+ */
+interface ApiCallInfo {
+  url: string;
+  method: string;
+  timestamp: number;
+}
+
+/**
+ * API response data
+ */
+interface ApiResponseData {
+  [url: string]: unknown;
+}
+
+/**
+ * Test state tracking
+ */
+interface TestStateData {
+  [key: string]: unknown;
+}
+
+/**
+ * Extend globalThis with test utilities
+ */
+declare global {
+  // eslint-disable-next-line no-var
+  var __queryClient__: QueryClient | undefined;
+  // eslint-disable-next-line no-var
+  var __apiCalls__: ApiCallInfo[] | undefined;
+  // eslint-disable-next-line no-var
+  var __apiResponses__: ApiResponseData | undefined;
+  // eslint-disable-next-line no-var
+  var __currentState__: TestStateData | undefined;
+}
 
 // ============================================================================
 // Constants
@@ -120,7 +162,7 @@ export const waitForQuery = async (
     () => {
       // In a test environment, we need to access the QueryClient from the test context
       // This is typically available through a test wrapper
-      const queryCache = (globalThis as any).__queryClient__;
+      const queryCache = globalThis.__queryClient__;
       if (!queryCache) {
         throw new Error(
           'QueryClient not found. Ensure your test wrapper provides __queryClient__ globally.'
@@ -150,7 +192,7 @@ export const waitForQuery = async (
 export const waitForMutation = async (options?: WaitOptions): Promise<void> => {
   await waitFor(
     () => {
-      const queryCache = (globalThis as any).__queryClient__;
+      const queryCache = globalThis.__queryClient__;
       if (!queryCache) {
         throw new Error(
           'QueryClient not found. Ensure your test wrapper provides __queryClient__ globally.'
@@ -185,7 +227,7 @@ export const waitForQuerySuccess = async <T>(
   
   await waitFor(
     () => {
-      const queryCache = (globalThis as any).__queryClient__;
+      const queryCache = globalThis.__queryClient__;
       if (!queryCache) {
         throw new Error(
           'QueryClient not found. Ensure your test wrapper provides __queryClient__ globally.'
@@ -202,7 +244,11 @@ export const waitForQuerySuccess = async <T>(
     options
   );
   
-  return data!;
+  if (data === undefined) {
+    throw new Error(`Query data was not available after successful completion`);
+  }
+  
+  return data;
 };
 
 /**
@@ -224,7 +270,7 @@ export const waitForQueryError = async (
   
   await waitFor(
     () => {
-      const queryCache = (globalThis as any).__queryClient__;
+      const queryCache = globalThis.__queryClient__;
       if (!queryCache) {
         throw new Error(
           'QueryClient not found. Ensure your test wrapper provides __queryClient__ globally.'
@@ -241,7 +287,11 @@ export const waitForQueryError = async (
     options
   );
   
-  return error!;
+  if (error === undefined) {
+    throw new Error(`Query error was not available after error state`);
+  }
+  
+  return error;
 };
 
 /**
@@ -259,7 +309,7 @@ export const waitForLoadingToFinish = async (
 ): Promise<void> => {
   await waitFor(
     () => {
-      const queryCache = (globalThis as any).__queryClient__;
+      const queryCache = globalThis.__queryClient__;
       if (!queryCache) {
         throw new Error(
           'QueryClient not found. Ensure your test wrapper provides __queryClient__ globally.'
@@ -302,7 +352,7 @@ export const waitForApiCall = async (
 ): Promise<void> => {
   await waitFor(
     () => {
-      const apiCalls = (globalThis as any).__apiCalls__ || [];
+      const apiCalls = globalThis.__apiCalls__ ?? [];
       const found = apiCalls.some(
         (call: { url: string; method: string }) =>
           call.url.includes(url) && call.method === method
@@ -328,7 +378,7 @@ export const waitForApiCall = async (
 export const waitForAnyApiCall = async (options?: WaitOptions): Promise<void> => {
   await waitFor(
     () => {
-      const apiCalls = (globalThis as any).__apiCalls__ || [];
+      const apiCalls = globalThis.__apiCalls__ ?? [];
       if (apiCalls.length === 0) {
         throw new Error('No API calls made yet');
       }
@@ -356,7 +406,7 @@ export const waitForApiResponse = async <T>(
   
   await waitFor(
     () => {
-      const apiResponses = (globalThis as any).__apiResponses__ || {};
+      const apiResponses = globalThis.__apiResponses__ ?? {};
       response = apiResponses[url] as T;
       
       if (!response) {
@@ -366,7 +416,11 @@ export const waitForApiResponse = async <T>(
     options
   );
   
-  return response!;
+  if (response === undefined) {
+    throw new Error(`API response was not available`);
+  }
+  
+  return response;
 };
 
 // ============================================================================
@@ -460,7 +514,7 @@ export const waitForLoadingSpinner = async (
 ): Promise<void> => {
   await waitFor(
     () => {
-      const spinner = screen.queryByRole('progressbar') || screen.queryByTestId('loading-spinner');
+      const spinner = screen.queryByRole('progressbar') ?? screen.queryByTestId('loading-spinner');
       if (!spinner) {
         throw new Error('Loading spinner not found');
       }
@@ -483,7 +537,7 @@ export const waitForLoadingSpinnerToDisappear = async (
 ): Promise<void> => {
   await waitFor(
     () => {
-      const spinner = screen.queryByRole('progressbar') || screen.queryByTestId('loading-spinner');
+      const spinner = screen.queryByRole('progressbar') ?? screen.queryByTestId('loading-spinner');
       if (spinner) {
         throw new Error('Loading spinner still present');
       }
@@ -499,7 +553,7 @@ export const waitForLoadingSpinnerToDisappear = async (
  * expectLoadingState();
  */
 export const expectLoadingState = (): void => {
-  const spinner = screen.queryByRole('progressbar') || screen.queryByTestId('loading-spinner');
+  const spinner = screen.queryByRole('progressbar') ?? screen.queryByTestId('loading-spinner');
   expect(spinner).toBeDefined();
   expect(spinner).not.toBeNull();
 };
@@ -511,7 +565,7 @@ export const expectLoadingState = (): void => {
  * expectNotLoadingState();
  */
 export const expectNotLoadingState = (): void => {
-  const spinner = screen.queryByRole('progressbar') || screen.queryByTestId('loading-spinner');
+  const spinner = screen.queryByRole('progressbar') ?? screen.queryByTestId('loading-spinner');
   expect(spinner).toBeNull();
 };
 
@@ -688,7 +742,7 @@ export const expectOptimisticUpdate = async <T>(
   await waitFor(
     () => {
       // This is a placeholder check - actual implementation would depend on state management
-      const currentState = (globalThis as any).__currentState__;
+      const currentState = globalThis.__currentState__;
       if (JSON.stringify(currentState) !== JSON.stringify(expectedState)) {
         throw new Error(
           `Optimistic update not yet applied. Expected: ${JSON.stringify(expectedState)}`
@@ -715,7 +769,7 @@ export const expectEventualConsistency = async <T>(
 ): Promise<void> => {
   await waitFor(
     () => {
-      const currentState = (globalThis as any).__currentState__;
+      const currentState = globalThis.__currentState__;
       if (JSON.stringify(currentState) !== JSON.stringify(finalState)) {
         throw new Error(
           `Eventual consistency not yet achieved. Expected: ${JSON.stringify(finalState)}`

@@ -20,9 +20,9 @@
 
 import { test, expect, type Page } from '@playwright/test';
 import { MessagingPage } from './pages/MessagingPage';
-import { login, logout, isAuthenticated, getAuthToken, clearAuthenticationState } from './utils/auth';
+import { login, logout, isAuthenticated, _getAuthToken, _clearAuthenticationState } from './utils/auth';
 import { testStudent, testStudent2, testStudent3, TEST_PASSWORD } from './fixtures/users';
-import { handleNewTab, switchToTab, clearBrowserStorage } from './utils/browser-helpers';
+import { _handleNewTab, _switchToTab, _clearBrowserStorage } from './utils/browser-helpers';
 
 test.describe('Private Messaging System E2E Tests', () => {
   let user1Page: Page;
@@ -38,7 +38,7 @@ test.describe('Private Messaging System E2E Tests', () => {
     
     // Authenticate user1
     await login(user1Page, { username: testStudent.username, password: TEST_PASSWORD });
-    await expect(await isAuthenticated(user1Page)).toBe(true);
+    expect(await isAuthenticated(user1Page)).toBe(true);
     
     // Initialize MessagingPage for user1
     user1MessagingPage = new MessagingPage(user1Page);
@@ -53,7 +53,7 @@ test.describe('Private Messaging System E2E Tests', () => {
     
     // Authenticate user2
     await login(user2Page, { username: testStudent2.username, password: TEST_PASSWORD });
-    await expect(await isAuthenticated(user2Page)).toBe(true);
+    expect(await isAuthenticated(user2Page)).toBe(true);
     
     // Initialize MessagingPage for user2
     user2MessagingPage = new MessagingPage(user2Page);
@@ -69,7 +69,7 @@ test.describe('Private Messaging System E2E Tests', () => {
     await user1MessagingPage.waitForMessaging();
   });
 
-  test.afterEach(async ({ page }, testInfo) => {
+  test.afterEach(async ({ _page }, testInfo) => {
     // Capture screenshot on failure
     if (testInfo.status !== testInfo.expectedStatus) {
       const screenshot = await user1Page.screenshot();
@@ -755,7 +755,7 @@ test.describe('Private Messaging System E2E Tests', () => {
       await user1Page.goto('/messaging');
       await user1MessagingPage.waitForMessaging();
       
-      const conversationsBeforeSend = await user1MessagingPage.getConversations();
+      const _conversationsBeforeSend = await user1MessagingPage.getConversations();
       
       // Send a message
       await user1MessagingPage.composeMessage();

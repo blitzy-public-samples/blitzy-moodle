@@ -1,20 +1,56 @@
-import React from 'react';
+import _React from 'react';
 import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import DiscussionThread from '@/features/activities/forums/components/DiscussionThread';
-import type { Discussion, DiscussionPost, Author } from '@/features/activities/forums/types/forum.types';
+import type { Discussion, DiscussionPost, Author, ForumPost } from '@/features/activities/forums/types/forum.types';
+import type { UseAuthReturn } from '@/features/auth/hooks/useAuth';
+
+// Define return type for useDiscussion mock
+interface UseDiscussionReturn {
+  discussion: Discussion | null;
+  posts: DiscussionPost[];
+  isLoading: boolean;
+  isError: boolean;
+  error: Error | null;
+  refetch: () => void;
+  createReply: (data: { message: string; parentId?: number }) => void;
+  isCreatingReply: boolean;
+  editPost: (data: { postId: number; message: string }) => void;
+  isEditingPost: boolean;
+  deletePost: (postId: number) => void;
+  isDeletingPost: boolean;
+  subscribe: () => void;
+  unsubscribe: () => void;
+  isSubscribing: boolean;
+  isUnsubscribing: boolean;
+  loadMore: () => void;
+  hasMore: boolean;
+  isLoadingMore: boolean;
+}
 
 // Mock the useDiscussion hook
-const mockUseDiscussion = vi.fn();
+const mockUseDiscussion = vi.fn<[], UseDiscussionReturn>();
 vi.mock('@/features/activities/forums/hooks/useDiscussion', () => ({
   useDiscussion: () => mockUseDiscussion(),
 }));
 
+// Define props interface for PostCard mock
+interface MockPostCardProps {
+  post: ForumPost;
+  onReply?: (post: ForumPost) => void;
+  onEdit?: (post: ForumPost) => void;
+  onDelete?: (post: ForumPost) => void;
+  onReport?: (post: ForumPost) => void;
+  onQuote?: (post: ForumPost) => void;
+  isLocked?: boolean;
+  depth?: number;
+}
+
 // Mock the PostCard component (default export)
 vi.mock('@/features/activities/forums/components/PostCard', () => ({
-  default: ({ post, onReply, onEdit, onDelete, onReport, onQuote, isLocked, depth }: any) => (
+  default: ({ post, onReply, onEdit, onDelete, onReport, onQuote, isLocked, depth }: MockPostCardProps) => (
     <div
       data-testid={`post-card-${post.id}`}
       data-depth={depth}
@@ -24,7 +60,7 @@ vi.mock('@/features/activities/forums/components/PostCard', () => ({
       <div data-testid="post-author">{post.author.fullName}</div>
       <div data-testid="post-content">{post.message}</div>
       <div data-testid="post-timestamp">{post.created?.toString()}</div>
-      {!isLocked && post.canReply && (
+      {!isLocked && post.canReply && onReply && (
         <button onClick={() => onReply(post)} data-testid="reply-button">
           Reply
         </button>
@@ -54,7 +90,7 @@ vi.mock('@/features/activities/forums/components/PostCard', () => ({
 }));
 
 // Mock useAuth hook
-const mockUseAuth = vi.fn();
+const mockUseAuth = vi.fn<[], UseAuthReturn>();
 vi.mock('@/features/auth/hooks/useAuth', () => ({
   useAuth: () => mockUseAuth(),
 }));
@@ -164,8 +200,8 @@ const buildPostTree = (flatPosts: DiscussionPost[]): DiscussionPost[] => {
 };
 
 // Helper function to create default mock useDiscussion return value
-const createMockUseDiscussionReturn = (overrides?: any) => {
-  const defaults = {
+const createMockUseDiscussionReturn = (overrides?: Partial<UseDiscussionReturn>): UseDiscussionReturn => {
+  const defaults: UseDiscussionReturn = {
     discussion: null,
     posts: [],
     isLoading: false,
@@ -487,6 +523,7 @@ describe('DiscussionThread', () => {
   });
 
   describe('Expand/Collapse Controls', () => {
+    // eslint-disable-next-line @typescript-eslint/require-await
     it('should provide expand/collapse button for deeply nested threads', async () => {
       const flatPosts = [
         createMockPost({ id: 1 }),
@@ -1212,6 +1249,7 @@ describe('DiscussionThread', () => {
       expect(screen.getByTestId('loading-skeleton')).toBeInTheDocument();
     });
 
+    // eslint-disable-next-line @typescript-eslint/require-await
     it('should hide loading skeleton after data loads', async () => {
       const discussion = createMockDiscussion();
       mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
@@ -1475,6 +1513,7 @@ describe('DiscussionThread', () => {
       // In real implementation, optimistic update would show the reply immediately
     });
 
+    // eslint-disable-next-line @typescript-eslint/require-await
     it('should rollback optimistic update on creation failure', async () => {
       const createReply = vi.fn().mockRejectedValue(new Error('Failed to create reply'));
       const discussion = createMockDiscussion();

@@ -19,7 +19,7 @@
 
 import type React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, within, waitFor } from '@testing-library/react';
+import { render, screen, _within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useForm, FormProvider } from 'react-hook-form';
 import GradingStrategyRenderer, {
@@ -376,7 +376,8 @@ describe('GradingStrategyRenderer', () => {
     });
 
     it('should display error message for unknown strategy type', () => {
-      const workshop = createMockWorkshop({ strategy: 'invalid_strategy' as any });
+      // @ts-expect-error - Testing invalid strategy type to verify error handling
+      const workshop: Workshop = createMockWorkshop({ strategy: 'invalid_strategy' });
       const dimensions = createMockAccumulativeDimensions();
 
       renderWithForm({ workshop, dimensions });
@@ -899,6 +900,7 @@ describe('GradingStrategyRenderer', () => {
       });
     });
 
+    // eslint-disable-next-line @typescript-eslint/require-await
     it('should map grade values correctly based on error presence', async () => {
       const workshop = createMockWorkshop({ strategy: 'numerrors' });
       const dimensions = createMockNumErrorsDimensions();

@@ -30,6 +30,8 @@ import useH5PAttempts, {
   usePrefetchH5PAttempts,
 } from '@/features/activities/h5pactivity/hooks/useH5PAttempts';
 
+/* eslint-disable @typescript-eslint/unbound-method */
+
 // Mock the API client module
 vi.mock('@/services/api/client', () => ({
   apiClient: {
@@ -145,7 +147,7 @@ const mockApiResponseUserAttempts = {
   },
 };
 
-const mockApiResponseAttempts = {
+const _mockApiResponseAttempts = {
   success: true,
   data: {
     activityid: 1,
@@ -368,6 +370,7 @@ describe('useH5PAttempts - Filtering', () => {
     // All attempts should have first names starting with 'J'
     expect(result.current.attempts.length).toBe(2);
     result.current.attempts.forEach(attempt => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       expect(attempt.firstname.toUpperCase()).toMatch(/^J/);
     });
   });
@@ -395,6 +398,7 @@ describe('useH5PAttempts - Filtering', () => {
     // All attempts should have last names starting with 'J'
     expect(result.current.attempts.length).toBe(1);
     result.current.attempts.forEach(attempt => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       expect(attempt.lastname.toUpperCase()).toMatch(/^J/);
     });
   });
@@ -428,6 +432,7 @@ describe('useH5PAttempts - Filtering', () => {
     expect(result.current.attempts.length).toBe(1);
     result.current.attempts.forEach(attempt => {
       expect(attempt.userid).toBe(101);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       expect(attempt.firstname.toUpperCase()).toMatch(/^J/);
     });
   });
@@ -857,7 +862,7 @@ describe('useInvalidateH5PAttempts', () => {
     expect(typeof invalidateResult.current).toBe('function');
 
     // Call invalidate
-    await invalidateResult.current(1);
+    invalidateResult.current(1);
 
     // After invalidation, next query should trigger a refetch
     const { result: refetchResult } = renderHook(
@@ -961,14 +966,16 @@ describe('useH5PAttempts - Combined Scenarios', () => {
       })
     );
 
-    // Verify client-side score sorting
-    if (result.current.attempts.length > 1) {
-      for (let i = 0; i < result.current.attempts.length - 1; i++) {
-        const score1 = result.current.attempts[i].scaled ?? -1;
-        const score2 = result.current.attempts[i + 1].scaled ?? -1;
-        expect(score1).toBeGreaterThanOrEqual(score2);
+    // Verify client-side score sorting (sorts attempts within each user)
+    result.current.attempts.forEach((userAttempt) => {
+      if (userAttempt.attempts.length > 1) {
+        for (let i = 0; i < userAttempt.attempts.length - 1; i++) {
+          const score1 = userAttempt.attempts[i].scaled;
+          const score2 = userAttempt.attempts[i + 1].scaled;
+          expect(score1).toBeGreaterThanOrEqual(score2);
+        }
       }
-    }
+    });
 
     expect(result.current.attempts).toBeDefined();
   });

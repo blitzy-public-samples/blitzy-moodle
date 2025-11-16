@@ -27,11 +27,18 @@
  * @module tests/unit/features/activities/scorm/ScormReportCard.test
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, _beforeEach, afterEach } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ScormReportCard } from '@/features/activities/scorm/components/ScormReportCard';
-import type { ScormAttempt } from '@/features/activities/scorm/types/scorm.types';
+import type {
+  ScormAttempt,
+  ScormReport,
+  ScormAttemptSummary,
+  ScormScoProgress,
+  ScormCMIInteraction,
+  ScormCMIObjective,
+} from '@/features/activities/scorm/types/scorm.types';
 
 // ============================================================================
 // MOCKS
@@ -68,12 +75,12 @@ import { fetchAttemptReport } from '@/features/activities/scorm/api/scormApi';
 /**
  * Creates mock SCORM report data with customizable properties
  */
-const createMockReport = (overrides = {}) => {
+const createMockReport = (overrides: Partial<ScormReport> = {}): ScormReport => {
   // Determine currentAttempt from overrides or default
-  const currentAttempt = overrides.currentAttempt || 1;
+  const currentAttempt = overrides.currentAttempt ?? 1;
   
   // Generate attempts array to match currentAttempt
-  const defaultAttempts = [];
+  const defaultAttempts: ScormAttemptSummary[] = [];
   for (let i = 1; i <= currentAttempt; i++) {
     defaultAttempts.push({
       attemptNumber: i,
@@ -82,6 +89,8 @@ const createMockReport = (overrides = {}) => {
       timeSpent: '00:15:30',
       timeStarted: 1704067200 + (i - 1) * 1000,
       timeCompleted: 1704068130 + (i - 1) * 1000,
+      scosCompleted: 1,
+      scosTotal: 1,
     });
   }
   
@@ -89,16 +98,11 @@ const createMockReport = (overrides = {}) => {
     scormId: 1,
     userId: 100,
     currentAttempt,
-    attempts: overrides.attempts || defaultAttempts,
-    overallScore: {
-      raw: 85,
-      min: 0,
-      max: 100,
-      scaled: 0.85,
-    },
+    attempts: overrides.attempts ?? defaultAttempts,
+    overallScore: 85,
     grade: 85,
     completionPercentage: 100,
-    totalTimeSpent: 930, // 15 minutes 30 seconds
+    totalTimeSpent: '00:15:30',
     gradingMethod: 'highest',
     status: 'completed',
     scoProgress: [],
@@ -111,7 +115,7 @@ const createMockReport = (overrides = {}) => {
 /**
  * Creates mock attempt data
  */
-const createMockAttempt = (overrides = {}): ScormAttempt => ({
+const _createMockAttempt = (overrides = {}): ScormAttempt => ({
   attemptNumber: 1,
   userid: 100,
   scormid: 1,
@@ -124,20 +128,22 @@ const createMockAttempt = (overrides = {}): ScormAttempt => ({
 /**
  * Creates mock attempt summary data
  */
-const createMockAttemptSummary = (overrides = {}) => ({
+const createMockAttemptSummary = (overrides: Partial<ScormAttemptSummary> = {}): ScormAttemptSummary => ({
   attemptNumber: 1,
   status: 'completed',
   score: 85,
   timeSpent: '00:15:30',
   timeStarted: 1704067200,
   timeCompleted: 1704068130,
+  scosCompleted: 1,
+  scosTotal: 1,
   ...overrides,
 });
 
 /**
  * Creates mock SCO progress data
  */
-const createMockScoProgress = (overrides = {}) => ({
+const createMockScoProgress = (overrides: Partial<ScormScoProgress> = {}): ScormScoProgress => ({
   scoid: 1,
   title: 'Introduction Module',
   status: 'completed',
@@ -148,13 +154,14 @@ const createMockScoProgress = (overrides = {}) => ({
     scaled: 0.9,
   },
   timeSpent: '00:05:00',
+  attempts: 1,
   ...overrides,
 });
 
 /**
  * Creates mock interaction tracking data
  */
-const createMockInteraction = (overrides = {}) => ({
+const createMockInteraction = (overrides: Partial<ScormCMIInteraction> = {}): ScormCMIInteraction => ({
   id: 'q1',
   type: 'choice',
   description: 'What is the capital of France?',
@@ -168,7 +175,7 @@ const createMockInteraction = (overrides = {}) => ({
 /**
  * Creates mock objective data
  */
-const createMockObjective = (overrides = {}) => ({
+const createMockObjective = (overrides: Partial<ScormCMIObjective> = {}): ScormCMIObjective => ({
   id: 'obj1',
   description: 'Understand basic concepts',
   status: 'completed',
@@ -1038,6 +1045,7 @@ describe('ScormReportCard - SCO Progress Details', () => {
     expect(within(scoCard as HTMLElement).getByText('0h 10m 0s')).toBeInTheDocument();
   });
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   it('should not display SCO progress section when no SCO data exists', async () => {
     const mockReport = createMockReport({
       scoProgress: [],
@@ -1093,6 +1101,7 @@ describe('ScormReportCard - Detailed Report View', () => {
     expect(await screen.findByText(/result/i)).toBeInTheDocument();
   });
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   it('should not display interaction tracking when showDetailed is false', async () => {
     const mockReport = createMockReport({
       interactions: [

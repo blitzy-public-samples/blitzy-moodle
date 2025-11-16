@@ -261,6 +261,49 @@ export interface Discussion {
   pinned: boolean;
   /** Timestamp when discussion was locked (0 if not locked) */
   timelocked: number;
+
+/**
+ * Enriched Discussion entity returned from API
+ * 
+ * The API returns enriched discussion data that includes user information,
+ * reply counts, and read status that aren't in the base Discussion entity.
+ * This interface represents the actual API response format.
+ */
+export interface DiscussionEnriched {
+  /** Discussion ID */
+  id: number;
+  /** Discussion name/title */
+  name: string;
+  /** User ID who created the discussion */
+  userid: number;
+  /** Full name of the user who created the discussion */
+  userFullName?: string;
+  /** URL to the user's profile picture */
+  userPictureUrl?: string | null;
+  /** Timestamp when discussion was created (Unix timestamp) */
+  created: number;
+  /** Number of replies to this discussion */
+  numReplies?: number;
+  /** Number of unread posts in this discussion for current user */
+  numUnreadPosts?: number;
+  /** Whether the discussion is pinned */
+  pinned?: boolean;
+  /** Whether the discussion is locked */
+  locked?: boolean;
+  /** Timestamp when discussion was locked (0 if not locked) */
+  timelocked?: number;
+  /** Forum ID this discussion belongs to */
+  forumid: number;
+  /** Course ID */
+  courseid: number;
+  /** ID of the first post in the discussion */
+  firstpostid: number;
+  /** Group ID if this is a group discussion (0 for all participants) */
+  groupid?: number;
+  /** Timestamp of last modification */
+  timemodified: number;
+}
+
 }
 
 /**

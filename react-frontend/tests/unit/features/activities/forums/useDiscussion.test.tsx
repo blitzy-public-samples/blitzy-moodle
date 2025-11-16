@@ -71,7 +71,7 @@ const createMockApiPost = (overrides: Partial<Post> = {}): Post => ({
 });
 
 // Helper to create DiscussionPost for assertions (after transformation)
-const createMockPost = (overrides: Partial<DiscussionPost> = {}): DiscussionPost => ({
+const _createMockPost = (overrides: Partial<DiscussionPost> = {}): DiscussionPost => ({
   id: 1,
   discussionId: 100,
   parentId: null,
@@ -279,6 +279,7 @@ describe('useDiscussion Hook', () => {
     it('should handle 404 discussion not found error', async () => {
       const discussionId = 999;
       const error = new Error('Discussion not found');
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       (error as any).response = { status: 404 };
 
       vi.mocked(forumApi.getDiscussionPosts).mockRejectedValue(error);
@@ -293,12 +294,14 @@ describe('useDiscussion Hook', () => {
       });
 
       expect(result.current.error).toBeDefined();
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       expect((result.current.error as any)?.response?.status).toBe(404);
     });
 
     it('should handle 403 permission denied error', async () => {
       const discussionId = 100;
       const error = new Error('Permission denied');
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       (error as any).response = { status: 403, data: { error: 'PERMISSION_DENIED' } };
 
       vi.mocked(forumApi.getDiscussionPosts).mockRejectedValue(error);
@@ -313,6 +316,7 @@ describe('useDiscussion Hook', () => {
       });
 
       expect(result.current.error).toBeDefined();
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       expect((result.current.error as any)?.response?.status).toBe(403);
     });
 
@@ -337,8 +341,9 @@ describe('useDiscussion Hook', () => {
       const initialCallCount = vi.mocked(forumApi.getDiscussionPosts).mock.calls.length;
 
       // Manually invalidate the query to mark it as stale
+      // eslint-disable-next-line @typescript-eslint/require-await
       await act(async () => {
-        queryClient.invalidateQueries({ queryKey: ['discussions', 'detail', discussionId] });
+        void queryClient.invalidateQueries({ queryKey: ['discussions', 'detail', discussionId] });
       });
 
       // Simulate window focus event using React Query's focusManager
@@ -437,8 +442,9 @@ describe('useDiscussion Hook', () => {
         message: 'This is a new reply',
       };
 
+      // eslint-disable-next-line @typescript-eslint/require-await
       await act(async () => {
-        await result.current.createReply({ postData: replyData, parentId: parentPostId });
+        result.current.createReply({ postData: replyData, parentId: parentPostId });
       });
 
       await waitFor(() => {
@@ -534,9 +540,10 @@ describe('useDiscussion Hook', () => {
         message: 'This should rollback',
       };
 
+      // eslint-disable-next-line @typescript-eslint/require-await
       await act(async () => {
         try {
-          await result.current.createReply({ postData: replyData, parentId: undefined });
+          result.current.createReply({ postData: replyData, parentId: undefined });
         } catch (err) {
           // Expected error
         }
@@ -592,8 +599,9 @@ describe('useDiscussion Hook', () => {
         version: 1,
       };
 
+      // eslint-disable-next-line @typescript-eslint/require-await
       await act(async () => {
-        await result.current.editPost({ postId, postData });
+        result.current.editPost({ postId, postData });
       });
 
       await waitFor(() => {
@@ -618,6 +626,7 @@ describe('useDiscussion Hook', () => {
 
       // Simulate conflict error
       const conflictError = new Error('Concurrent modification detected');
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       (conflictError as any).response = {
         status: 409,
         data: {
@@ -646,9 +655,10 @@ describe('useDiscussion Hook', () => {
         version: 1, // Stale version
       };
 
+      // eslint-disable-next-line @typescript-eslint/require-await
       await act(async () => {
         try {
-          await result.current.editPost({ postId, postData });
+          result.current.editPost({ postId, postData });
         } catch (err) {
           // Expected conflict error
         }
@@ -657,11 +667,11 @@ describe('useDiscussion Hook', () => {
       await waitFor(() => {
         expect(onEditConflict).toHaveBeenCalledWith(
           expect.objectContaining({
-            post: expect.objectContaining({ id: postId, version: 2 }),
+            post: expect.objectContaining({ id: postId, version: 2 }) as Post,
             conflictData: expect.objectContaining({
               error: 'EDIT_CONFLICT',
               currentVersion: 2,
-            }),
+            }) as Post,
           })
         );
         expect(onEditError).toHaveBeenCalledWith(conflictError);
@@ -680,6 +690,7 @@ describe('useDiscussion Hook', () => {
       });
 
       const conflictError = new Error('Edit conflict');
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       (conflictError as any).response = {
         status: 409,
         data: {
@@ -699,9 +710,10 @@ describe('useDiscussion Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
+      // eslint-disable-next-line @typescript-eslint/require-await
       await act(async () => {
         try {
-          await result.current.editPost({
+          result.current.editPost({
             postId,
             postData: {
               message: 'My message',
@@ -747,8 +759,9 @@ describe('useDiscussion Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
+      // eslint-disable-next-line @typescript-eslint/require-await
       await act(async () => {
-        await result.current.deletePost(postId);
+        result.current.deletePost(postId);
       });
 
       await waitFor(() => {
@@ -784,8 +797,9 @@ describe('useDiscussion Hook', () => {
         expect(countPostsInHierarchy(result.current.posts || [])).toBe(2);
       });
 
+      // eslint-disable-next-line @typescript-eslint/require-await
       await act(async () => {
-        await result.current.deletePost(postId);
+        result.current.deletePost(postId);
       });
 
       await waitFor(() => {
@@ -823,8 +837,9 @@ describe('useDiscussion Hook', () => {
         expect(countPostsInHierarchy(result.current.posts || [])).toBe(3);
       });
 
+      // eslint-disable-next-line @typescript-eslint/require-await
       await act(async () => {
-        await result.current.deletePost(postId);
+        result.current.deletePost(postId);
       });
 
       await waitFor(() => {
@@ -869,8 +884,9 @@ describe('useDiscussion Hook', () => {
         expect(countPostsInHierarchy(result.current.posts || [])).toBe(4);
       });
 
+      // eslint-disable-next-line @typescript-eslint/require-await
       await act(async () => {
-        await result.current.deletePost(parentPostId);
+        result.current.deletePost(parentPostId);
       });
 
       await waitFor(() => {
@@ -909,8 +925,9 @@ describe('useDiscussion Hook', () => {
         expect(result.current.discussion?.subscribed).toBe(false);
       });
 
+      // eslint-disable-next-line @typescript-eslint/require-await
       await act(async () => {
-        await result.current.subscribe();
+        result.current.subscribe();
       });
 
       await waitFor(() => {
@@ -943,8 +960,9 @@ describe('useDiscussion Hook', () => {
         expect(result.current.discussion?.subscribed).toBe(true);
       });
 
+      // eslint-disable-next-line @typescript-eslint/require-await
       await act(async () => {
-        await result.current.unsubscribe();
+        result.current.unsubscribe();
       });
 
       await waitFor(() => {
@@ -1025,8 +1043,9 @@ describe('useDiscussion Hook', () => {
         expect(result.current.discussion?.numUnread).toBe(5);
       });
 
+      // eslint-disable-next-line @typescript-eslint/require-await
       await act(async () => {
-        await result.current.markAsRead();
+        result.current.markAsRead();
       });
 
       await waitFor(() => {
@@ -1056,8 +1075,9 @@ describe('useDiscussion Hook', () => {
         expect(result.current.discussion?.numUnread).toBe(3);
       });
 
+      // eslint-disable-next-line @typescript-eslint/require-await
       await act(async () => {
-        await result.current.markAsRead();
+        result.current.markAsRead();
       });
 
       await waitFor(() => {
@@ -1089,8 +1109,9 @@ describe('useDiscussion Hook', () => {
         expect(result.current.discussion?.numUnread).toBe(2);
       });
 
+      // eslint-disable-next-line @typescript-eslint/require-await
       await act(async () => {
-        await result.current.markAsRead();
+        result.current.markAsRead();
       });
 
       await waitFor(() => {
@@ -1128,8 +1149,9 @@ describe('useDiscussion Hook', () => {
         expect(result.current.discussion?.pinned).toBe(false);
       });
 
+      // eslint-disable-next-line @typescript-eslint/require-await
       await act(async () => {
-        await result.current.pinDiscussion();
+        result.current.pinDiscussion();
       });
 
       await waitFor(() => {
@@ -1165,8 +1187,9 @@ describe('useDiscussion Hook', () => {
         expect(result.current.discussion?.pinned).toBe(true);
       });
 
+      // eslint-disable-next-line @typescript-eslint/require-await
       await act(async () => {
-        await result.current.unpinDiscussion();
+        result.current.unpinDiscussion();
       });
 
       await waitFor(() => {
@@ -1202,8 +1225,9 @@ describe('useDiscussion Hook', () => {
         expect(result.current.discussion?.locked).toBe(false);
       });
 
+      // eslint-disable-next-line @typescript-eslint/require-await
       await act(async () => {
-        await result.current.lockDiscussion();
+        result.current.lockDiscussion();
       });
 
       await waitFor(() => {
@@ -1239,8 +1263,9 @@ describe('useDiscussion Hook', () => {
         expect(result.current.discussion?.locked).toBe(true);
       });
 
+      // eslint-disable-next-line @typescript-eslint/require-await
       await act(async () => {
-        await result.current.unlockDiscussion();
+        result.current.unlockDiscussion();
       });
 
       await waitFor(() => {
@@ -1279,8 +1304,9 @@ describe('useDiscussion Hook', () => {
         expect(result.current.discussion?.forumId).toBe(50);
       });
 
+      // eslint-disable-next-line @typescript-eslint/require-await
       await act(async () => {
-        await result.current.moveDiscussion(targetForumId);
+        result.current.moveDiscussion(targetForumId);
       });
 
       await waitFor(() => {
@@ -1321,8 +1347,9 @@ describe('useDiscussion Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
+      // eslint-disable-next-line @typescript-eslint/require-await
       await act(async () => {
-        await result.current.splitDiscussion(postId);
+        result.current.splitDiscussion(postId);
       });
 
       await waitFor(() => {
@@ -1363,8 +1390,9 @@ describe('useDiscussion Hook', () => {
         reason: 'Spam content',
       };
 
+      // eslint-disable-next-line @typescript-eslint/require-await
       await act(async () => {
-        await result.current.reportPost(reportData);
+        result.current.reportPost(reportData);
       });
 
       await waitFor(() => {
@@ -1412,8 +1440,9 @@ describe('useDiscussion Hook', () => {
         nextCursor: '40',
       });
 
+      // eslint-disable-next-line @typescript-eslint/require-await
       await act(async () => {
-        await result.current.loadMore();
+        result.current.loadMore();
       });
 
       await waitFor(() => {
@@ -1455,8 +1484,9 @@ describe('useDiscussion Hook', () => {
         hasMore: false,
       });
 
+      // eslint-disable-next-line @typescript-eslint/require-await
       await act(async () => {
-        await result.current.loadReplies(parentPostId);
+        result.current.loadReplies(parentPostId);
       });
 
       await waitFor(() => {
@@ -1492,8 +1522,9 @@ describe('useDiscussion Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
+      // eslint-disable-next-line @typescript-eslint/require-await
       await act(async () => {
-        await result.current.createReply({
+        result.current.createReply({
           postData: { message: 'Test message' },
           parentId: undefined,
         });
@@ -1533,8 +1564,9 @@ describe('useDiscussion Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
+      // eslint-disable-next-line @typescript-eslint/require-await
       await act(async () => {
-        await result.current.deletePost(1);
+        result.current.deletePost(1);
       });
 
       await waitFor(() => {
@@ -1619,6 +1651,7 @@ describe('useDiscussion Hook', () => {
 
       // Set up mock to return accumulated posts - starts with initial, then adds replies after creation
       let callCount = 0;
+      // eslint-disable-next-line @typescript-eslint/require-await
       vi.mocked(forumApi.getDiscussionPosts).mockImplementation(async () => {
         callCount++;
         if (callCount === 1) {
@@ -1703,8 +1736,9 @@ describe('useDiscussion Hook', () => {
 
       const file = new File(['content'], 'document.pdf', { type: 'application/pdf' });
 
+      // eslint-disable-next-line @typescript-eslint/require-await
       await act(async () => {
-        await result.current.createReply({
+        result.current.createReply({
           postData: {
             message: 'See attached file',
             attachments: [file],
@@ -1756,6 +1790,7 @@ describe('useDiscussion Hook', () => {
 
       // Simulate offline
       const offlineError = new Error('Network unavailable');
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       (offlineError as any).code = 'ERR_NETWORK';
       vi.mocked(forumApi.createPost).mockRejectedValue(offlineError);
 
@@ -1770,9 +1805,10 @@ describe('useDiscussion Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
+      // eslint-disable-next-line @typescript-eslint/require-await
       await act(async () => {
         try {
-          await result.current.createReply({
+          result.current.createReply({
             postData: { message: 'This should queue' },
             parentId: undefined,
           });
@@ -1811,7 +1847,7 @@ describe('useDiscussion Hook', () => {
       const {discussion} = result.current;
       const {posts} = result.current;
       const {isLoading} = result.current;
-      const error: Error | null = result.current.error as any;
+      const _error = result.current.error; // React Query error type (Error | null)
 
       expect(typeof isLoading).toBe('boolean');
       expect(discussion).toBeDefined();
@@ -1843,8 +1879,9 @@ describe('useDiscussion Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
+      // eslint-disable-next-line @typescript-eslint/require-await
       await act(async () => {
-        await result.current.createReply({
+        result.current.createReply({
           postData: { message: 'Test' },
           parentId: undefined,
         });
@@ -1878,9 +1915,10 @@ describe('useDiscussion Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
+      // eslint-disable-next-line @typescript-eslint/require-await
       await act(async () => {
         try {
-          await result.current.createReply({
+          result.current.createReply({
             postData: { message: 'Test' },
             parentId: undefined,
           });
@@ -1917,8 +1955,9 @@ describe('useDiscussion Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
+      // eslint-disable-next-line @typescript-eslint/require-await
       await act(async () => {
-        await result.current.createReply({
+        result.current.createReply({
           postData: { message: 'Test' },
           parentId: undefined,
         });

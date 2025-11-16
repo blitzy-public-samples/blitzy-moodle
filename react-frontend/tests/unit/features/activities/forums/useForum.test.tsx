@@ -762,7 +762,7 @@ describe('useForum', () => {
       };
 
       // Create discussion
-      result.current.createDiscussion(newDiscussion);
+      void result.current.createDiscussion(newDiscussion);
 
       await waitFor(() => {
         expect(result.current.isCreatingDiscussion).toBe(false);
@@ -791,7 +791,7 @@ describe('useForum', () => {
       });
 
       // Pin discussion
-      result.current.pinDiscussion(101);
+      void result.current.pinDiscussion(101);
 
       await waitFor(() => {
         expect(result.current.isPinning).toBe(false);
@@ -818,7 +818,7 @@ describe('useForum', () => {
       });
 
       // Lock discussion
-      result.current.lockDiscussion(101);
+      void result.current.lockDiscussion(101);
 
       await waitFor(() => {
         expect(result.current.isLocking).toBe(false);

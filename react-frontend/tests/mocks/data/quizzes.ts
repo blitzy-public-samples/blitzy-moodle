@@ -18,8 +18,8 @@
 
 import type { Quiz, QuizAttempt } from '@/types/entities';
 import type { QuizId, CourseId, UserId, Id } from '@/types/common';
-import { mockCourse } from './courses';
-import { mockUser } from './users';
+import { _mockCourse } from './courses';
+import { _mockUser } from './users';
 
 // ============================================================================
 // Utility Types
@@ -159,7 +159,7 @@ export function generateQuestionLayout(numQuestions: number): string {
  * 
  * @returns {string} Quiz behaviour setting
  */
-function getRandomBehaviour(): string {
+function _getRandomBehaviour(): string {
   const behaviours = [
     'deferredfeedback',
     'adaptive',
@@ -175,7 +175,7 @@ function getRandomBehaviour(): string {
  * 
  * @returns {string} Overdue handling setting
  */
-function getRandomOverdueHandling(): string {
+function _getRandomOverdueHandling(): string {
   const methods = ['autosubmit', 'graceperiod', 'autoabandon'];
   const index = Math.floor(Math.random() * methods.length);
   return methods[index];

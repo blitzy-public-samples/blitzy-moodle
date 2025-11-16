@@ -16,7 +16,7 @@
  * - public/mod/feedback/lib.php: Core feedback functions
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, _beforeEach, afterEach, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../../../../mocks/server';
 import {
@@ -117,44 +117,55 @@ const mockFeedbackItems: FeedbackItem[] = [
 const mockFeedbackAnalysis: FeedbackAnalysis = {
   feedbackId: 1,
   totalResponses: 45,
-  completionRate: 0.75,
-  questions: [
+  meetAnonymousThreshold: true,
+  items: [
     {
       itemId: 1,
-      question: 'How would you rate this course?',
+      name: 'How would you rate this course?',
       type: 'multichoice',
-      responses: [
+      position: 1,
+      hasValue: true,
+      responseCount: 45,
+      distribution: [
         { value: '1', count: 2, percentage: 4.44 },
         { value: '2', count: 5, percentage: 11.11 },
         { value: '3', count: 10, percentage: 22.22 },
         { value: '4', count: 18, percentage: 40.0 },
         { value: '5', count: 10, percentage: 22.22 },
       ],
-      average: 3.64,
-      mode: 4,
-      distribution: {
-        min: 1,
-        max: 5,
+      statistics: {
+        mean: 3.64,
         median: 4,
+        mode: 4,
+        standardDeviation: 1.1,
+        minimum: 1,
+        maximum: 5,
       },
-      percentage: 100,
     },
     {
       itemId: 3,
-      question: 'Would you recommend this course?',
+      name: 'Would you recommend this course?',
       type: 'multichoice',
-      responses: [
+      position: 3,
+      hasValue: true,
+      responseCount: 45,
+      distribution: [
         { value: 'Yes', count: 38, percentage: 84.44 },
         { value: 'No', count: 7, percentage: 15.56 },
       ],
     },
   ],
-  courseBreakdown: {
-    10: {
-      totalResponses: 45,
-      completionRate: 0.75,
-    },
+  statistics: {
+    totalResponses: 45,
+    completionRate: 75,
+    averageTime: 300,
+    responsesByCourse: [],
+    responsesByGroup: [],
+    respondents: [],
+    nonRespondents: [],
+    lastSubmissionDate: 1640000000,
   },
+  generatedAt: 1640000000,
 };
 
 const mockFeedbackStatus: FeedbackStatus = {
@@ -445,8 +456,11 @@ describe('Feedback API Client', () => {
       await submitFeedbackResponse(feedbackId, validResponses);
 
       expect(requestBody).toEqual(validResponses);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       expect(requestBody[1]).toBe('4');
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       expect(requestBody[2]).toBe('Great content and well-structured');
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       expect(requestBody[3]).toBe('Yes');
     });
 
@@ -611,20 +625,20 @@ describe('Feedback API Client', () => {
       const response = await getFeedbackAnalysis(feedbackId);
       const analysis = response.data;
 
-      // Verify question analysis structure
-      expect(analysis.questions).toHaveLength(2);
-      expect(analysis.questions[0]).toHaveProperty('itemId');
-      expect(analysis.questions[0]).toHaveProperty('question');
-      expect(analysis.questions[0]).toHaveProperty('responses');
-      expect(analysis.questions[0]).toHaveProperty('average');
-      expect(analysis.questions[0]).toHaveProperty('mode');
-      expect(analysis.questions[0]).toHaveProperty('distribution');
+      // Verify item analysis structure
+      expect(analysis.items).toHaveLength(2);
+      expect(analysis.items[0]).toHaveProperty('itemId');
+      expect(analysis.items[0]).toHaveProperty('name');
+      expect(analysis.items[0]).toHaveProperty('distribution');
+      expect(analysis.items[0]).toHaveProperty('statistics');
+      expect(analysis.items[0].statistics).toHaveProperty('mean');
+      expect(analysis.items[0].statistics).toHaveProperty('mode');
 
       // Verify response distribution
-      expect(analysis.questions[0].responses).toHaveLength(5);
-      expect(analysis.questions[0].responses[0]).toHaveProperty('value');
-      expect(analysis.questions[0].responses[0]).toHaveProperty('count');
-      expect(analysis.questions[0]).toHaveProperty('percentage');
+      expect(analysis.items[0].distribution).toHaveLength(5);
+      expect(analysis.items[0].distribution?.[0]).toHaveProperty('value');
+      expect(analysis.items[0].distribution?.[0]).toHaveProperty('count');
+      expect(analysis.items[0].distribution?.[0]).toHaveProperty('percentage');
     });
 
     it('should validate permission for analysis viewing (teachers/admins only)', async () => {
@@ -697,8 +711,19 @@ describe('Feedback API Client', () => {
       const emptyAnalysis: FeedbackAnalysis = {
         feedbackId: 1,
         totalResponses: 0,
-        completionRate: 0,
-        questions: [],
+        meetAnonymousThreshold: false,
+        items: [],
+        statistics: {
+          totalResponses: 0,
+          completionRate: 0,
+          averageTime: 0,
+          responsesByCourse: [],
+          responsesByGroup: [],
+          respondents: [],
+          nonRespondents: [],
+          lastSubmissionDate: 0,
+        },
+        generatedAt: Date.now(),
       };
 
       server.use(
@@ -714,7 +739,7 @@ describe('Feedback API Client', () => {
 
       expect(response.success).toBe(true);
       expect(response.data.totalResponses).toBe(0);
-      expect(response.data.questions).toHaveLength(0);
+      expect(response.data.items).toHaveLength(0);
     });
 
     it('should validate TypeScript types for analysis data structure', async () => {
@@ -733,15 +758,15 @@ describe('Feedback API Client', () => {
       // Type assertions to verify TypeScript interface compliance
       expect(typeof analysis.feedbackId).toBe('number');
       expect(typeof analysis.totalResponses).toBe('number');
-      expect(typeof analysis.completionRate).toBe('number');
-      expect(Array.isArray(analysis.questions)).toBe(true);
+      expect(typeof analysis.generatedAt).toBe('number');
+      expect(Array.isArray(analysis.items)).toBe(true);
       
-      if (analysis.questions.length > 0) {
-        const question: QuestionAnalysis = analysis.questions[0];
-        expect(typeof question.itemId).toBe('number');
-        expect(typeof question.question).toBe('string');
-        expect(typeof question.type).toBe('string');
-        expect(Array.isArray(question.responses)).toBe(true);
+      if (analysis.items.length > 0) {
+        const item = analysis.items[0];
+        expect(typeof item.itemId).toBe('number');
+        expect(typeof item.name).toBe('string');
+        expect(typeof item.type).toBe('string');
+        expect(Array.isArray(item.distribution)).toBe(true);
       }
     });
   });
@@ -975,7 +1000,9 @@ describe('Feedback API Client', () => {
 
       // All responses should belong to current user (implicit from backend)
       expect(response.data).toHaveLength(1);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       expect(response.data[0].completedId).toBe(1);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       expect(response.data[0].values).toHaveProperty('1');
     });
 
@@ -1023,7 +1050,9 @@ describe('Feedback API Client', () => {
       const response = await getFeedbackResponses(feedbackId);
 
       expect(response.data).toHaveLength(2);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       expect(response.data[0].completedId).toBe(1);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       expect(response.data[1].completedId).toBe(0); // In-progress
     });
 
@@ -1128,6 +1157,7 @@ describe('Feedback API Client', () => {
       } catch (error: any) {
         expect(error).toBeDefined();
         // Error should contain response data
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         expect(error.response).toBeDefined();
       }
     });
@@ -1312,6 +1342,7 @@ describe('Feedback API Client', () => {
       expect(queryKey).toEqual(['feedback', 1]);
     });
 
+    // eslint-disable-next-line @typescript-eslint/require-await
     it('should support staleTime and cacheTime configurations', async () => {
       // These configurations would be in React Query hooks
       const cacheConfig = {

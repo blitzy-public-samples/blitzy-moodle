@@ -25,9 +25,9 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, waitFor, act, cleanup } from '@testing-library/react';
+import { renderHook, _waitFor, act, cleanup } from '@testing-library/react';
 import useFieldValidation from '@/features/activities/data/hooks/useFieldValidation';
-import type { FieldValidationError } from '@/features/activities/data/hooks/useFieldValidation';
+import type { _FieldValidationError } from '@/features/activities/data/hooks/useFieldValidation';
 import type { 
   TextField,
   TextAreaField,
@@ -259,7 +259,7 @@ describe('useFieldValidation - Text Field Validation', () => {
     const field = createTextField({ param1: '10' });
 
     act(() => {
-      const isValid = result.current.validate(field, 'short');
+      const _isValid = result.current.validate(field, 'short');
     });
 
     expect(result.current.isValid).toBe(true);
@@ -1283,7 +1283,7 @@ describe('useFieldValidation - State Management', () => {
     });
 
     expect(result.current.errors).toHaveLength(1);
-    const firstError = result.current.errors[0].message;
+    const _firstError = result.current.errors[0].message;
 
     // Second validation failure with different error
     act(() => {
@@ -1329,8 +1329,8 @@ describe('useFieldValidation - Error Messages', () => {
 
     expect(result.current.errors[0]).toMatchObject({
       field: 'username',
-      message: expect.any(String),
-      code: expect.any(String),
+      message: expect.any(String) as string,
+      code: expect.any(String) as string,
     });
   });
 

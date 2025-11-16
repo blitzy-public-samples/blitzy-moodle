@@ -23,16 +23,16 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor, _within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { axe, toHaveNoViolations } from 'jest-axe';
-import React from 'react';
+import _React from 'react';
 
 import { QuestionRenderer } from '@/features/activities/feedback/components/QuestionRenderer';
 import type { QuestionRendererProps } from '@/features/activities/feedback/components/QuestionRenderer';
 import { FeedbackQuestionType } from '@/features/activities/feedback/types';
-import type { FeedbackItemPresentation } from '@/features/activities/feedback/types';
+import type { _FeedbackItemPresentation } from '@/features/activities/feedback/types';
 
 // Extend Vitest matchers with jest-axe
 expect.extend(toHaveNoViolations);
@@ -1273,7 +1273,8 @@ describe('QuestionRenderer', () => {
         required: 0,
         position: 1,
         label: 'Select',
-        value: 123 as any, // Non-string value
+        // @ts-expect-error Testing edge case with non-string value
+        value: 123, // Non-string value
         onChange: mockOnChange,
       };
       
@@ -1301,7 +1302,8 @@ describe('QuestionRenderer', () => {
         required: 0,
         position: 1,
         label: 'Select',
-        value: 'not-an-array' as any, // Non-array value
+        // @ts-expect-error Testing edge case with non-array value
+        value: 'not-an-array', // Non-array value
         onChange: mockOnChange,
       };
       

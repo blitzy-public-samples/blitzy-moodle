@@ -118,7 +118,7 @@ export const FileRepositoryPage: React.FC = () => {
    * Fetch files on component mount
    */
   useEffect(() => {
-    fetchFiles();
+    void fetchFiles();
   }, [courseId]);
 
   /**

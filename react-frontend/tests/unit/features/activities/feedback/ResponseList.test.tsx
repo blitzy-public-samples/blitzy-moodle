@@ -119,7 +119,7 @@ vi.mock('@/hooks/useToast', () => ({
  * Mock Alert component
  */
 vi.mock('@/components/feedback/Alert', () => ({
-  Alert: ({ severity, title, message }: any) => (
+  Alert: ({ severity, title, message }: { severity: string; title?: string; message: string }) => (
     <div role="alert" data-severity={severity}>
       {title && <div>{title}</div>}
       <div>{message}</div>
@@ -131,14 +131,20 @@ vi.mock('@/components/feedback/Alert', () => ({
  * Mock Modal component
  */
 vi.mock('@/components/feedback/Modal', () => ({
-  Modal: ({ open, title, children, actions, onClose }: any) => {
+  Modal: ({ open, title, children, actions, _onClose }: { 
+    open: boolean; 
+    title: string; 
+    children: React.ReactNode; 
+    actions?: Array<{ onClick: () => void; disabled?: boolean; color?: string; label: string }>; 
+    _onClose: () => void 
+  }) => {
     if (!open) {return null;}
     return (
       <div role="dialog" aria-labelledby="modal-title">
         <h2 id="modal-title">{title}</h2>
         <div>{children}</div>
         <div>
-          {actions?.map((action: any, index: number) => (
+          {actions?.map((action, index: number) => (
             <button
               key={index}
               onClick={action.onClick}
@@ -155,13 +161,13 @@ vi.mock('@/components/feedback/Modal', () => ({
 }));
 
 describe('ResponseList Component', () => {
-  let mockOnDelete: ReturnType<typeof vi.fn>;
-  let mockOnViewDetails: ReturnType<typeof vi.fn>;
+  let mockOnDelete: ReturnType<typeof vi.fn<[number[]], Promise<void>>>;
+  let mockOnViewDetails: ReturnType<typeof vi.fn<[number], void>>;
   let mockResponses: ResponseWithDetails[];
 
   beforeEach(() => {
-    mockOnDelete = vi.fn().mockResolvedValue(undefined);
-    mockOnViewDetails = vi.fn();
+    mockOnDelete = vi.fn<[number[]], Promise<void>>().mockResolvedValue(undefined);
+    mockOnViewDetails = vi.fn<[number], void>();
 
     // Create mock response data
     mockResponses = [
@@ -1249,6 +1255,7 @@ describe('ResponseList Component', () => {
       expect(checkboxes.length).toBe(0);
     });
 
+    // eslint-disable-next-line @typescript-eslint/require-await
     it('does not show bulk delete button when canDelete is false', async () => {
       renderWithProviders(
         <ResponseList

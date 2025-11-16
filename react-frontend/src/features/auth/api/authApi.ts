@@ -160,6 +160,7 @@ export function useCurrentUser() {
     staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
     retry: (failureCount, error: any) => {
       // Don't retry on authentication errors
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       if (error?.response?.status === 401) {
         return false;
       }

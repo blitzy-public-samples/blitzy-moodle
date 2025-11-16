@@ -19,7 +19,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
+import _React from 'react';
 import type { QuizNavigationProps } from '@/features/activities/quizzes/components/QuizNavigation';
 import type { QuestionNavigationState } from '@/features/activities/quizzes/types/quiz.types';
 
@@ -217,7 +217,7 @@ describe('QuizNavigation Component', () => {
 
     it('should handle all questions flagged edge case', () => {
       const questions = createMockQuestions(10);
-      questions.forEach((q, index) => {
+      questions.forEach((q, _index) => {
         q.flagged = true;
         q.isCurrentQuestion = false;
       });
@@ -268,6 +268,7 @@ describe('QuizNavigation Component', () => {
       expect(mockOnQuestionClick).toHaveBeenNthCalledWith(3, 4);
     });
 
+    // eslint-disable-next-line @typescript-eslint/require-await
     it('should not call onQuestionClick for disabled buttons', async () => {
       const mockOnQuestionClick = vi.fn();
       const questions = createMockQuestions(10);
@@ -331,7 +332,7 @@ describe('QuizNavigation Component', () => {
       const { container } = render(<QuizNavigation {...props} />);
 
       const currentButton = container.querySelector('[data-question-index="4"]') as HTMLElement;
-      const styles = window.getComputedStyle(currentButton);
+      const _styles = window.getComputedStyle(currentButton);
 
       // Font weight should be 600 for current question
       expect(currentButton).toHaveStyle({ fontWeight: 600 });

@@ -252,6 +252,7 @@ function filterByActiveStatus(responses: UserResponseData[], _includeinactive: b
  * - groupId (optional): Filter responses by group ID
  * - includeinactive (optional): Include inactive users (0 or 1)
  */
+// eslint-disable-next-line @typescript-eslint/require-await
 const getChoiceResultsHandler = http.get('*/api/v1/choices/:id/results', async ({ params, request }) => {
   console.log('[MSW Handler] getChoiceResultsHandler called with params:', params, 'URL:', request.url);
   

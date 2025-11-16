@@ -21,9 +21,9 @@ import { CoursePage } from './pages/CoursePage';
 import { EnrollmentPage } from './pages/EnrollmentPage';
 import { CourseCatalogPage } from './pages/CourseCatalogPage';
 import { DashboardPage } from './pages/DashboardPage';
-import { login, loginAsStudent, isAuthenticated, logout, getAuthToken, clearAuthenticationState } from './utils/auth';
+import { login, loginAsStudent, isAuthenticated, logout, _getAuthToken, clearAuthenticationState } from './utils/auth';
 import { testCourse1, testCourse2, testCourse3, testCourse4, createCourse, getCourseWithActivities } from './fixtures/courses';
-import { testStudent, TEST_PASSWORD, testTeacher } from './fixtures/users';
+import { _testStudent, TEST_PASSWORD, testTeacher } from './fixtures/users';
 
 test.describe('Course Enrollment Workflow', () => {
   let page: Page;
@@ -323,7 +323,7 @@ test.describe('Course Enrollment Workflow', () => {
   test('should display capacity restriction message for full course', async () => {
     // Create test course with capacity limit reached
     // Note: Capacity restrictions would need to be configured via API or Moodle settings
-    const fullCourse = await createCourse({
+    const fullCourse = createCourse({
       fullname: 'Full Course Test',
     });
     
@@ -373,7 +373,7 @@ test.describe('Course Enrollment Workflow', () => {
    */
   test('should list all available enrollment methods for course', async () => {
     // Create course with multiple enrollment methods
-    const multiMethodCourse = await createCourse({
+    const multiMethodCourse = createCourse({
       fullname: 'Multi-Method Course',
       enrollmentmethods: [
         { type: 'self', enabled: true, roleid: 5 },

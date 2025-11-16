@@ -144,7 +144,7 @@ export function QuizAttemptPage(): React.ReactElement {
 
     if (remaining <= 0) {
       // Time expired - auto submit
-      handleAutoSubmitRef.current?.();
+      void handleAutoSubmitRef.current?.();
       return;
     }
 
@@ -157,7 +157,7 @@ export function QuizAttemptPage(): React.ReactElement {
       setTimeRemaining((prev) => {
         if (prev === null || prev <= 1) {
           clearInterval(timer);
-          handleAutoSubmitRef.current?.();
+          void handleAutoSubmitRef.current?.();
           return 0;
         }
         return prev - 1;
@@ -535,7 +535,7 @@ export function QuizAttemptPage(): React.ReactElement {
           <Button
             onClick={() => {
               setConfirmSubmitOpen(false);
-              handleSubmit();
+              void handleSubmit();
             }}
             variant="contained"
             color="success"

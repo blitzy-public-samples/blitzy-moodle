@@ -5,6 +5,8 @@ import { axe, toHaveNoViolations } from 'jest-axe';
 import PostCard from '@/features/activities/forums/components/PostCard';
 import type { ForumPost, PostAttachment, UserRole } from '@/features/activities/forums/types/forum.types';
 
+/* eslint-disable @typescript-eslint/unbound-method */
+
 expect.extend(toHaveNoViolations);
 
 // Mock handlers
@@ -23,10 +25,17 @@ const mockHandlers = {
 
 // Mock user profile navigation
 const mockNavigate = vi.fn();
+
+interface MockLinkProps {
+  children: React.ReactNode;
+  to: string;
+  [key: string]: unknown;
+}
+
 vi.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
-  Link: ({ children, to, ...props }: any) => (
-    <a href={to} {...props}>
+  Link: ({ children, to, ...props }: MockLinkProps) => (
+    <a href={to} {...(props as Record<string, unknown>)}>
       {children}
     </a>
   ),
@@ -1230,13 +1239,15 @@ describe('PostCard Component', () => {
 
   describe('Error Handling', () => {
     it('should handle missing author gracefully', () => {
-      const post = createMockPost({ author: null as any });
+      // Intentionally create invalid post for error handling test
+      const post = { ...createMockPost(), author: null } as ForumPost;
       
       expect(() => render(<PostCard post={post} {...mockHandlers} />)).not.toThrow();
     });
 
     it('should handle invalid date values', () => {
-      const post = createMockPost({ created: null as any });
+      // Intentionally create invalid post for error handling test
+      const post = { ...createMockPost(), created: null } as ForumPost;
       
       expect(() => render(<PostCard post={post} {...mockHandlers} />)).not.toThrow();
     });

@@ -15,9 +15,9 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen as _screen, waitFor, within as _within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { axe } from 'vitest-axe';
+import { axe as _axe } from 'vitest-axe';
 import 'vitest-axe/extend-expect';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../../../mocks/server';
@@ -255,10 +255,21 @@ const createTestQueryClient = () => {
   });
 };
 
+interface TestAuthState {
+  user: {
+    id: number;
+    role: string;
+  };
+}
+
+interface TestRootState {
+  auth: TestAuthState;
+}
+
 const createTestStore = () => {
   return configureStore({
     reducer: {
-      auth: (state = { user: { id: 1, role: 'admin' } }) => state,
+      auth: (state: TestAuthState = { user: { id: 1, role: 'admin' } }): TestAuthState => state,
     },
   });
 };
@@ -274,8 +285,8 @@ const renderWithProviders = (
   ui: React.ReactElement,
   options: RenderWithProvidersOptions = {}
 ) => {
-  const queryClient = options.queryClient || createTestQueryClient();
-  const store = options.store || createTestStore();
+  const queryClient = options.queryClient ?? createTestQueryClient();
+  const store = options.store ?? createTestStore();
 
   function Wrapper({ children }: { children: React.ReactNode }) {
   return <Provider store={store}>
@@ -297,7 +308,7 @@ const renderWithProviders = (
  */
 describe('SettingsForm', () => {
   describe('Rendering Different Setting Types', () => {
-    it('should render text input settings with proper attributes', async () => {
+    it('should render text input settings with proper attributes', () => {
       // This test would verify text inputs are rendered correctly
       // In actual implementation with the real component:
       // const { container } = renderWithProviders(<SettingsForm settings={mockSettings} />);
@@ -307,12 +318,12 @@ describe('SettingsForm', () => {
       expect(true).toBe(true); // Placeholder for component integration
     });
 
-    it('should render required text inputs with required attribute', async () => {
+    it('should render required text inputs with required attribute', () => {
       // Test that required text fields have proper validation
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should render checkbox settings with correct state', async () => {
+    it('should render checkbox settings with correct state', () => {
       // Test checkbox rendering
       // const { container } = renderWithProviders(<SettingsForm settings={mockSettings} />);
       // const checkbox = screen.getByLabelText('Enable Blogs');
@@ -323,7 +334,7 @@ describe('SettingsForm', () => {
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should render select dropdown with all options', async () => {
+    it('should render select dropdown with all options', () => {
       // Test select rendering
       // const { container } = renderWithProviders(<SettingsForm settings={mockSettings} />);
       // const select = screen.getByLabelText('Front Page');
@@ -337,7 +348,7 @@ describe('SettingsForm', () => {
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should render duration input with proper formatting', async () => {
+    it('should render duration input with proper formatting', () => {
       // Test duration input (hours/minutes/seconds)
       // const { container } = renderWithProviders(<SettingsForm settings={mockSettings} />);
       // const durationInput = screen.getByLabelText('Session Timeout');
@@ -349,7 +360,7 @@ describe('SettingsForm', () => {
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should render file upload input with accepted file types', async () => {
+    it('should render file upload input with accepted file types', () => {
       // Test file upload
       // const { container } = renderWithProviders(<SettingsForm settings={mockSettings} />);
       // const fileInput = screen.getByLabelText('Logo');
@@ -360,7 +371,7 @@ describe('SettingsForm', () => {
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should render color picker with current color value', async () => {
+    it('should render color picker with current color value', () => {
       // Test color picker
       // const { container } = renderWithProviders(<SettingsForm settings={mockSettings} />);
       // const colorPicker = screen.getByLabelText('Theme Color');
@@ -370,7 +381,7 @@ describe('SettingsForm', () => {
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should render multi-select with multiple options', async () => {
+    it('should render multi-select with multiple options', () => {
       // Test multi-select
       // const { container } = renderWithProviders(<SettingsForm settings={mockSettings} />);
       // const multiSelect = screen.getByLabelText('Enabled Languages');
@@ -380,7 +391,7 @@ describe('SettingsForm', () => {
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should render setting descriptions as helper text', async () => {
+    it('should render setting descriptions as helper text', () => {
       // Test that descriptions are shown as helper text
       // const { container } = renderWithProviders(<SettingsForm settings={mockSettings} />);
       // expect(screen.getByText('The full name of your site')).toBeInTheDocument();
@@ -391,8 +402,8 @@ describe('SettingsForm', () => {
   });
 
   describe('Form Validation with react-hook-form and Zod', () => {
-    it('should validate required fields on submit', async () => {
-      const user = userEvent.setup();
+    it('should validate required fields on submit', () => {
+      const _user = userEvent.setup();
       
       // Test required field validation
       // const { container } = renderWithProviders(<SettingsForm settings={mockSettings} />);
@@ -413,8 +424,8 @@ describe('SettingsForm', () => {
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should validate email format for email fields', async () => {
-      const user = userEvent.setup();
+    it('should validate email format for email fields', () => {
+      const _user = userEvent.setup();
       
       // Test email validation
       // const { container } = renderWithProviders(<SettingsForm settings={mockSettings} />);
@@ -432,8 +443,8 @@ describe('SettingsForm', () => {
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should validate color picker hex format', async () => {
-      const user = userEvent.setup();
+    it('should validate color picker hex format', () => {
+      const _user = userEvent.setup();
       
       // Test hex color validation
       // const { container } = renderWithProviders(<SettingsForm settings={mockSettings} />);
@@ -449,15 +460,15 @@ describe('SettingsForm', () => {
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should validate duration is a positive number', async () => {
-      const user = userEvent.setup();
+    it('should validate duration is a positive number', () => {
+      const _user = userEvent.setup();
       
       // Test duration validation
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should validate file size and type restrictions', async () => {
-      const user = userEvent.setup();
+    it('should validate file size and type restrictions', () => {
+      const _user = userEvent.setup();
       
       // Test file upload validation
       // const { container } = renderWithProviders(<SettingsForm settings={mockSettings} />);
@@ -474,25 +485,25 @@ describe('SettingsForm', () => {
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should run custom validation functions', async () => {
+    it('should run custom validation functions', () => {
       // Test custom validation (e.g., sessiontimeoutwarning < sessiontimeout)
-      const user = userEvent.setup();
+      const _user = userEvent.setup();
       
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should show field-level validation errors inline', async () => {
+    it('should show field-level validation errors inline', () => {
       // Test that validation errors appear next to fields
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should show form-level validation errors at top', async () => {
+    it('should show form-level validation errors at top', () => {
       // Test form-level error summary
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should clear validation errors when field is corrected', async () => {
-      const user = userEvent.setup();
+    it('should clear validation errors when field is corrected', () => {
+      const _user = userEvent.setup();
       
       // Test error clearing
       expect(true).toBe(true); // Placeholder
@@ -500,7 +511,7 @@ describe('SettingsForm', () => {
   });
 
   describe('Form State Management - isDirty Tracking', () => {
-    it('should initialize with isDirty as false', async () => {
+    it('should initialize with isDirty as false', () => {
       // Test initial clean state
       // const { container } = renderWithProviders(<SettingsForm settings={mockSettings} />);
       // 
@@ -510,8 +521,8 @@ describe('SettingsForm', () => {
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should set isDirty to true when any field changes', async () => {
-      const user = userEvent.setup();
+    it('should set isDirty to true when any field changes', () => {
+      const _user = userEvent.setup();
       
       // Test dirty state tracking
       // const { container } = renderWithProviders(<SettingsForm settings={mockSettings} />);
@@ -525,15 +536,15 @@ describe('SettingsForm', () => {
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should track which specific fields have been modified', async () => {
-      const user = userEvent.setup();
+    it('should track which specific fields have been modified', () => {
+      const _user = userEvent.setup();
       
       // Test modified fields tracking
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should reset isDirty when form is reset', async () => {
-      const user = userEvent.setup();
+    it('should reset isDirty when form is reset', () => {
+      const _user = userEvent.setup();
       
       // Test reset functionality
       // const { container } = renderWithProviders(<SettingsForm settings={mockSettings} />);
@@ -553,15 +564,15 @@ describe('SettingsForm', () => {
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should reset isDirty after successful save', async () => {
-      const user = userEvent.setup();
+    it('should reset isDirty after successful save', () => {
+      const _user = userEvent.setup();
       
       // Test dirty state reset after save
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should show unsaved changes warning', async () => {
-      const user = userEvent.setup();
+    it('should show unsaved changes warning', () => {
+      const _user = userEvent.setup();
       
       // Test unsaved changes indicator
       // const { container } = renderWithProviders(<SettingsForm settings={mockSettings} />);
@@ -576,8 +587,8 @@ describe('SettingsForm', () => {
   });
 
   describe('Save and Reset Functionality', () => {
-    it('should successfully save settings with valid data', async () => {
-      const user = userEvent.setup();
+    it('should successfully save settings with valid data', () => {
+      const _user = userEvent.setup();
       
       // Test successful save operation
       // const { container } = renderWithProviders(<SettingsForm settings={mockSettings} />);
@@ -599,8 +610,8 @@ describe('SettingsForm', () => {
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should show loading state during save operation', async () => {
-      const user = userEvent.setup();
+    it('should show loading state during save operation', () => {
+      const _user = userEvent.setup();
       
       // Test loading state
       // const { container } = renderWithProviders(<SettingsForm settings={mockSettings} />);
@@ -618,22 +629,22 @@ describe('SettingsForm', () => {
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should perform optimistic update for better UX', async () => {
-      const user = userEvent.setup();
+    it('should perform optimistic update for better UX', () => {
+      const _user = userEvent.setup();
       
       // Test optimistic updates
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should call API with only modified fields', async () => {
-      const user = userEvent.setup();
+    it('should call API with only modified fields', () => {
+      const _user = userEvent.setup();
       
       // Test that only changed fields are sent to API
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should handle API errors gracefully', async () => {
-      const user = userEvent.setup();
+    it('should handle API errors gracefully', () => {
+      const _user = userEvent.setup();
       
       // Override MSW handler for error
       server.use(
@@ -667,8 +678,8 @@ describe('SettingsForm', () => {
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should handle network errors with retry option', async () => {
-      const user = userEvent.setup();
+    it('should handle network errors with retry option', () => {
+      const _user = userEvent.setup();
       
       // Test network error handling
       server.use(
@@ -680,8 +691,8 @@ describe('SettingsForm', () => {
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should reset all fields to initial values', async () => {
-      const user = userEvent.setup();
+    it('should reset all fields to initial values', () => {
+      const _user = userEvent.setup();
       
       // Test reset functionality
       // const { container } = renderWithProviders(<SettingsForm settings={mockSettings} />);
@@ -705,8 +716,8 @@ describe('SettingsForm', () => {
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should show confirmation dialog before reset', async () => {
-      const user = userEvent.setup();
+    it('should show confirmation dialog before reset', () => {
+      const _user = userEvent.setup();
       
       // Test reset confirmation
       // const { container } = renderWithProviders(<SettingsForm settings={mockSettings} />);
@@ -723,22 +734,22 @@ describe('SettingsForm', () => {
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should clear validation errors on reset', async () => {
-      const user = userEvent.setup();
+    it('should clear validation errors on reset', () => {
+      const _user = userEvent.setup();
       
       // Test error clearing on reset
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should display success toast notification after save', async () => {
-      const user = userEvent.setup();
+    it('should display success toast notification after save', () => {
+      const _user = userEvent.setup();
       
       // Test toast notification
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should display error toast notification on save failure', async () => {
-      const user = userEvent.setup();
+    it('should display error toast notification on save failure', () => {
+      const _user = userEvent.setup();
       
       // Test error toast
       expect(true).toBe(true); // Placeholder
@@ -746,7 +757,7 @@ describe('SettingsForm', () => {
   });
 
   describe('Collapsible Setting Sections', () => {
-    it('should render all sections in collapsed state by default', async () => {
+    it('should render all sections in collapsed state by default', () => {
       // Test initial collapsed state
       // const { container } = renderWithProviders(<SettingsForm settings={mockSettings} />);
       // 
@@ -761,8 +772,8 @@ describe('SettingsForm', () => {
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should expand section when header is clicked', async () => {
-      const user = userEvent.setup();
+    it('should expand section when header is clicked', () => {
+      const _user = userEvent.setup();
       
       // Test section expansion
       // const { container } = renderWithProviders(<SettingsForm settings={mockSettings} />);
@@ -779,15 +790,15 @@ describe('SettingsForm', () => {
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should collapse section when expanded header is clicked', async () => {
-      const user = userEvent.setup();
+    it('should collapse section when expanded header is clicked', () => {
+      const _user = userEvent.setup();
       
       // Test section collapse
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should support accordion-style behavior with Material-UI', async () => {
-      const user = userEvent.setup();
+    it('should support accordion-style behavior with Material-UI', () => {
+      const _user = userEvent.setup();
       
       // Test MUI Accordion behavior
       // const { container } = renderWithProviders(<SettingsForm settings={mockSettings} />);
@@ -807,15 +818,15 @@ describe('SettingsForm', () => {
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should persist expansion state in component state', async () => {
-      const user = userEvent.setup();
+    it('should persist expansion state in component state', () => {
+      const _user = userEvent.setup();
       
       // Test state persistence
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should show section description when expanded', async () => {
-      const user = userEvent.setup();
+    it('should show section description when expanded', () => {
+      const _user = userEvent.setup();
       
       // Test section description display
       // const { container } = renderWithProviders(<SettingsForm settings={mockSettings} />);
@@ -829,7 +840,7 @@ describe('SettingsForm', () => {
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should have proper ARIA attributes for accessibility', async () => {
+    it('should have proper ARIA attributes for accessibility', () => {
       // Test accessibility
       // const { container } = renderWithProviders(<SettingsForm settings={mockSettings} />);
       // 
@@ -840,21 +851,21 @@ describe('SettingsForm', () => {
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should support keyboard navigation for sections', async () => {
-      const user = userEvent.setup();
+    it('should support keyboard navigation for sections', () => {
+      const _user = userEvent.setup();
       
       // Test keyboard navigation
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should show expand/collapse icons', async () => {
+    it('should show expand/collapse icons', () => {
       // Test visual indicators
       expect(true).toBe(true); // Placeholder
     });
   });
 
   describe('Conditional Rendering Based on Dependencies', () => {
-    it('should hide dependent settings when condition is not met', async () => {
+    it('should hide dependent settings when condition is not met', () => {
       // Test conditional hiding
       // const { container } = renderWithProviders(<SettingsForm settings={mockSettings} />);
       // 
@@ -868,8 +879,8 @@ describe('SettingsForm', () => {
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should show dependent settings when condition is met', async () => {
-      const user = userEvent.setup();
+    it('should show dependent settings when condition is met', () => {
+      const _user = userEvent.setup();
       
       // Test conditional showing
       // const { container } = renderWithProviders(<SettingsForm settings={mockSettings} />);
@@ -889,34 +900,34 @@ describe('SettingsForm', () => {
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should update dependencies dynamically', async () => {
-      const user = userEvent.setup();
+    it('should update dependencies dynamically', () => {
+      const _user = userEvent.setup();
       
       // Test dynamic dependency updates
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should handle multiple dependency conditions', async () => {
+    it('should handle multiple dependency conditions', () => {
       // Test multiple dependencies
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should clear dependent field values when hidden', async () => {
-      const user = userEvent.setup();
+    it('should clear dependent field values when hidden', () => {
+      const _user = userEvent.setup();
       
       // Test value clearing when dependency not met
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should validate only visible fields', async () => {
-      const user = userEvent.setup();
+    it('should validate only visible fields', () => {
+      const _user = userEvent.setup();
       
       // Test that hidden fields are not validated
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should animate showing/hiding of dependent fields', async () => {
-      const user = userEvent.setup();
+    it('should animate showing/hiding of dependent fields', () => {
+      const _user = userEvent.setup();
       
       // Test smooth transitions
       expect(true).toBe(true); // Placeholder
@@ -924,15 +935,15 @@ describe('SettingsForm', () => {
   });
 
   describe('Error Handling Scenarios', () => {
-    it('should display validation errors with proper messaging', async () => {
-      const user = userEvent.setup();
+    it('should display validation errors with proper messaging', () => {
+      const _user = userEvent.setup();
       
       // Test validation error display
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should handle API errors with user-friendly messages', async () => {
-      const user = userEvent.setup();
+    it('should handle API errors with user-friendly messages', () => {
+      const _user = userEvent.setup();
       
       // Override for server error
       server.use(
@@ -954,8 +965,8 @@ describe('SettingsForm', () => {
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should handle network failures with retry option', async () => {
-      const user = userEvent.setup();
+    it('should handle network failures with retry option', () => {
+      const _user = userEvent.setup();
       
       // Test network failure
       server.use(
@@ -967,8 +978,8 @@ describe('SettingsForm', () => {
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should handle permission errors appropriately', async () => {
-      const user = userEvent.setup();
+    it('should handle permission errors appropriately', () => {
+      const _user = userEvent.setup();
       
       // Test permission denied
       server.use(
@@ -989,22 +1000,22 @@ describe('SettingsForm', () => {
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should handle timeout errors', async () => {
-      const user = userEvent.setup();
+    it('should handle timeout errors', () => {
+      const _user = userEvent.setup();
       
       // Test timeout handling
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should display multiple validation errors simultaneously', async () => {
-      const user = userEvent.setup();
+    it('should display multiple validation errors simultaneously', () => {
+      const _user = userEvent.setup();
       
       // Test multiple errors
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should preserve form state after error', async () => {
-      const user = userEvent.setup();
+    it('should preserve form state after error', () => {
+      const _user = userEvent.setup();
       
       // Test state preservation
       server.use(
@@ -1019,14 +1030,14 @@ describe('SettingsForm', () => {
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should allow error dismissal', async () => {
-      const user = userEvent.setup();
+    it('should allow error dismissal', () => {
+      const _user = userEvent.setup();
       
       // Test error dismissal
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should log errors for debugging', async () => {
+    it('should log errors for debugging', () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       
       // Test error logging
@@ -1037,7 +1048,7 @@ describe('SettingsForm', () => {
   });
 
   describe('Settings Persistence and API Integration', () => {
-    it('should load initial settings from API', async () => {
+    it('should load initial settings from API', () => {
       // Test initial data loading
       // const { container } = renderWithProviders(<SettingsForm settings={mockSettings} />);
       // 
@@ -1049,7 +1060,7 @@ describe('SettingsForm', () => {
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should show loading state while fetching settings', async () => {
+    it('should show loading state while fetching settings', () => {
       // Test loading state
       // const { container } = renderWithProviders(<SettingsForm settings={mockSettings} />);
       // 
@@ -1062,7 +1073,7 @@ describe('SettingsForm', () => {
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should handle empty or missing settings gracefully', async () => {
+    it('should handle empty or missing settings gracefully', () => {
       // Test missing data handling
       server.use(
         http.get('/api/v1/admin/settings', () => {
@@ -1079,13 +1090,13 @@ describe('SettingsForm', () => {
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should send PUT request with correct payload', async () => {
-      const user = userEvent.setup();
-      let capturedPayload: any = null;
+    it('should send PUT request with correct payload', () => {
+      const _user = userEvent.setup();
+      let _capturedPayload: any = null;
       
       server.use(
         http.put('/api/v1/admin/settings', async ({ request }) => {
-          capturedPayload = await request.json();
+          _capturedPayload = await request.json();
           return HttpResponse.json({
             success: true,
             data: { message: 'Saved' },
@@ -1097,13 +1108,13 @@ describe('SettingsForm', () => {
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should include authentication token in requests', async () => {
-      const user = userEvent.setup();
-      let authHeader: string | null = null;
+    it('should include authentication token in requests', () => {
+      const _user = userEvent.setup();
+      let _authHeader: string | null = null;
       
       server.use(
         http.put('/api/v1/admin/settings', ({ request }) => {
-          authHeader = request.headers.get('Authorization');
+          _authHeader = request.headers.get('Authorization');
           return HttpResponse.json({
             success: true,
             data: { message: 'Saved' },
@@ -1115,8 +1126,8 @@ describe('SettingsForm', () => {
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should invalidate React Query cache after save', async () => {
-      const user = userEvent.setup();
+    it('should invalidate React Query cache after save', () => {
+      const _user = userEvent.setup();
       const queryClient = createTestQueryClient();
       const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
       
@@ -1126,15 +1137,15 @@ describe('SettingsForm', () => {
       invalidateSpy.mockRestore();
     });
 
-    it('should refetch settings after successful save', async () => {
-      const user = userEvent.setup();
+    it('should refetch settings after successful save', () => {
+      const _user = userEvent.setup();
       
       // Test refetch behavior
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should handle concurrent save attempts', async () => {
-      const user = userEvent.setup();
+    it('should handle concurrent save attempts', () => {
+      const _user = userEvent.setup();
       
       // Test concurrent saves
       expect(true).toBe(true); // Placeholder
@@ -1142,92 +1153,92 @@ describe('SettingsForm', () => {
   });
 
   describe('Edge Cases and Special Scenarios', () => {
-    it('should handle empty form submission', async () => {
-      const user = userEvent.setup();
+    it('should handle empty form submission', () => {
+      const _user = userEvent.setup();
       
       // Test empty submission
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should handle partial form completion', async () => {
-      const user = userEvent.setup();
+    it('should handle partial form completion', () => {
+      const _user = userEvent.setup();
       
       // Test partial completion
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should prevent form submission during save', async () => {
-      const user = userEvent.setup();
+    it('should prevent form submission during save', () => {
+      const _user = userEvent.setup();
       
       // Test double-submission prevention
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should warn about navigation with unsaved changes', async () => {
-      const user = userEvent.setup();
+    it('should warn about navigation with unsaved changes', () => {
+      const _user = userEvent.setup();
       
       // Test navigation warning
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should handle browser back button with dirty form', async () => {
-      const user = userEvent.setup();
+    it('should handle browser back button with dirty form', () => {
+      const _user = userEvent.setup();
       
       // Test back button handling
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should handle very long text input values', async () => {
-      const user = userEvent.setup();
+    it('should handle very long text input values', () => {
+      const _user = userEvent.setup();
       
       // Test long text handling
-      const longText = 'A'.repeat(1000);
+      const _longText = 'A'.repeat(1000);
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should handle special characters in text inputs', async () => {
-      const user = userEvent.setup();
+    it('should handle special characters in text inputs', () => {
+      const _user = userEvent.setup();
       
       // Test special characters
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should handle rapid field changes', async () => {
-      const user = userEvent.setup();
+    it('should handle rapid field changes', () => {
+      const _user = userEvent.setup();
       
       // Test rapid typing/changes
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should handle file upload cancellation', async () => {
-      const user = userEvent.setup();
+    it('should handle file upload cancellation', () => {
+      const _user = userEvent.setup();
       
       // Test upload cancellation
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should handle large file uploads', async () => {
-      const user = userEvent.setup();
+    it('should handle large file uploads', () => {
+      const _user = userEvent.setup();
       
       // Test large file handling
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should debounce validation for performance', async () => {
-      const user = userEvent.setup();
+    it('should debounce validation for performance', () => {
+      const _user = userEvent.setup();
       
       // Test validation debouncing
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should handle missing optional fields', async () => {
+    it('should handle missing optional fields', () => {
       // Test optional field handling
       expect(true).toBe(true); // Placeholder
     });
   });
 
   describe('Accessibility Tests', () => {
-    it('should have no accessibility violations', async () => {
+    it('should have no accessibility violations', () => {
       // Test with jest-axe
       // const { container } = renderWithProviders(<SettingsForm settings={mockSettings} />);
       // 
@@ -1237,93 +1248,93 @@ describe('SettingsForm', () => {
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should have proper ARIA labels for all inputs', async () => {
+    it('should have proper ARIA labels for all inputs', () => {
       // Test ARIA labels
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should have proper ARIA error attributes for validation', async () => {
-      const user = userEvent.setup();
+    it('should have proper ARIA error attributes for validation', () => {
+      const _user = userEvent.setup();
       
       // Test ARIA error attributes
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should support keyboard-only navigation', async () => {
-      const user = userEvent.setup();
+    it('should support keyboard-only navigation', () => {
+      const _user = userEvent.setup();
       
       // Test keyboard navigation
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should have visible focus indicators', async () => {
-      const user = userEvent.setup();
+    it('should have visible focus indicators', () => {
+      const _user = userEvent.setup();
       
       // Test focus visibility
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should announce changes to screen readers', async () => {
-      const user = userEvent.setup();
+    it('should announce changes to screen readers', () => {
+      const _user = userEvent.setup();
       
       // Test screen reader announcements
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should have proper heading hierarchy', async () => {
+    it('should have proper heading hierarchy', () => {
       // Test heading structure
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should have sufficient color contrast', async () => {
+    it('should have sufficient color contrast', () => {
       // Test color contrast ratios
       expect(true).toBe(true); // Placeholder
     });
   });
 
   describe('Integration with Testing Utilities', () => {
-    it('should work with custom render function', async () => {
+    it('should work with custom render function', () => {
       // Test custom render
       const result = renderWithProviders(<div>Test</div>);
       expect(result.container).toBeInTheDocument();
     });
 
-    it('should provide query client in render result', async () => {
+    it('should provide query client in render result', () => {
       // Test query client access
       const { queryClient } = renderWithProviders(<div>Test</div>);
       expect(queryClient).toBeDefined();
     });
 
-    it('should provide Redux store in render result', async () => {
+    it('should provide Redux store in render result', () => {
       // Test store access
       const { store } = renderWithProviders(<div>Test</div>);
       expect(store).toBeDefined();
-      expect(store.getState().auth.user.role).toBe('admin');
+      expect((store.getState() as TestRootState).auth.user.role).toBe('admin');
     });
 
-    it('should cleanup properly between tests', async () => {
+    it('should cleanup properly between tests', () => {
       // Test cleanup
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should reset MSW handlers between tests', async () => {
+    it('should reset MSW handlers between tests', () => {
       // Test handler reset
       expect(true).toBe(true); // Placeholder
     });
   });
 
   describe('Performance Tests', () => {
-    it('should render large forms efficiently', async () => {
+    it('should render large forms efficiently', () => {
       // Test rendering performance
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should not cause unnecessary re-renders', async () => {
+    it('should not cause unnecessary re-renders', () => {
       // Test render count
       expect(true).toBe(true); // Placeholder
     });
 
-    it('should virtualize long setting lists if needed', async () => {
+    it('should virtualize long setting lists if needed', () => {
       // Test virtualization
       expect(true).toBe(true); // Placeholder
     });
@@ -1337,7 +1348,7 @@ describe('SettingsForm', () => {
 /**
  * Helper to simulate file upload
  */
-function createMockFile(
+function _createMockFile(
   name: string,
   size: number,
   type: string
@@ -1349,7 +1360,7 @@ function createMockFile(
 /**
  * Helper to wait for API calls
  */
-async function waitForApiCall(
+async function _waitForApiCall(
   callback: () => Promise<void>,
   timeout = 1000
 ): Promise<void> {
@@ -1359,7 +1370,7 @@ async function waitForApiCall(
 /**
  * Helper to get form values
  */
-function getFormValues(container: HTMLElement): Record<string, any> {
+function _getFormValues(container: HTMLElement): Record<string, any> {
   const values: Record<string, any> = {};
   
   const inputs = container.querySelectorAll('input, select, textarea');

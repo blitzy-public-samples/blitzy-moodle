@@ -27,7 +27,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
+import { render, screen, _fireEvent, _within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -35,7 +35,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 
 import ScormTOC from '@/features/activities/scorm/components/ScormTOC';
-import type { ScormTOCNode } from '@/features/activities/scorm/types/scorm.types';
+import type { ScormTOCNode, Scorm } from '@/features/activities/scorm/types/scorm.types';
 import { ScormStatus, ScoType, ScormTocDisplay } from '@/features/activities/scorm/types/scorm.types';
 
 // ============================================================================
@@ -674,14 +674,14 @@ describe('ScormTOC Component', () => {
       const flatToc = createFlatTocStructure();
       setupSuccessfulTocMock(flatToc);
 
-      const scorm = {
+      const scorm: Partial<Scorm> = {
         id: 1,
         name: 'Test SCORM',
         hidetoc: ScormTocDisplay.DISABLED,
-      } as any;
+      };
 
       const { container } = renderWithProviders(
-        <ScormTOC scormId={1} scorm={scorm} />
+        <ScormTOC scormId={1} scorm={scorm as Scorm} />
       );
 
       await waitFor(() => {
@@ -985,7 +985,7 @@ describe('ScormTOC Component', () => {
       const nestedToc = createNestedTocStructure();
       setupSuccessfulTocMock(nestedToc);
 
-      const user = userEvent.setup();
+      const _user = userEvent.setup();
 
       renderWithProviders(<ScormTOC scormId={1} />);
 
@@ -1293,12 +1293,12 @@ describe('ScormTOC Component', () => {
       const flatToc = createFlatTocStructure();
       setupSuccessfulTocMock(flatToc);
 
-      const scorm = {
+      const scorm: Partial<Scorm> = {
         id: 1,
         name: 'My SCORM Package',
-      } as any;
+      };
 
-      renderWithProviders(<ScormTOC scormId={1} scorm={scorm} />);
+      renderWithProviders(<ScormTOC scormId={1} scorm={scorm as Scorm} />);
 
       await waitFor(() => {
         expect(screen.getByText('My SCORM Package')).toBeInTheDocument();

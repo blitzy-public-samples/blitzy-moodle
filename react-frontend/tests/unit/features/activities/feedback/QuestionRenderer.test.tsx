@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, _within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { axe, toHaveNoViolations } from 'jest-axe';
@@ -462,6 +462,7 @@ describe('QuestionRenderer Component', () => {
       expect(Number(textarea.rows)).toBe(5);
     });
 
+    // eslint-disable-next-line @typescript-eslint/require-await
     it('calls onChange with text value', async () => {
       render(<QuestionRenderer {...getBaseProps()} />);
 
@@ -541,6 +542,7 @@ describe('QuestionRenderer Component', () => {
       expect(input.tagName).toBe('INPUT');
     });
 
+    // eslint-disable-next-line @typescript-eslint/require-await
     it('calls onChange with text value', async () => {
       render(<QuestionRenderer {...getBaseProps()} />);
 
@@ -635,6 +637,7 @@ describe('QuestionRenderer Component', () => {
       expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
     });
 
+    // eslint-disable-next-line @typescript-eslint/require-await
     it('does not call onChange callback', async () => {
       render(<QuestionRenderer {...getBaseProps()} />);
 
@@ -1072,6 +1075,7 @@ describe('QuestionRenderer Component', () => {
       expect(typeof mockOnChange.mock.calls[0][0]).toBe('string');
     });
 
+    // eslint-disable-next-line @typescript-eslint/require-await
     it('calls onChange with number value for numeric', async () => {
       const props: QuestionRendererProps = {
         id: 23,
@@ -1407,7 +1411,7 @@ describe('QuestionRenderer Component', () => {
         type: 'multichoice',
         presentation: {
           type: FeedbackQuestionType.MULTICHOICE,
-        } as any, // Missing multichoice config
+        } as FeedbackItemPresentation, // Missing multichoice config - intentionally incomplete for testing
         required: 0,
         position: 1,
         label: 'Invalid',
@@ -1426,7 +1430,7 @@ describe('QuestionRenderer Component', () => {
         type: 'numeric',
         presentation: {
           type: FeedbackQuestionType.NUMERIC,
-        } as any, // Missing numeric config
+        } as FeedbackItemPresentation, // Missing numeric config - intentionally incomplete for testing
         required: 0,
         position: 1,
         label: 'Invalid',
@@ -1445,7 +1449,7 @@ describe('QuestionRenderer Component', () => {
         type: 'multichoicerated',
         presentation: {
           type: FeedbackQuestionType.MULTICHOICERATED,
-        } as any, // Missing multichoicerated config
+        } as FeedbackItemPresentation, // Missing multichoicerated config - intentionally incomplete for testing
         required: 0,
         position: 1,
         label: 'Invalid',
@@ -1508,9 +1512,10 @@ describe('QuestionRenderer Component', () => {
       expect(screen.getByRole('alert')).toBeInTheDocument();
     });
 
+    // eslint-disable-next-line @typescript-eslint/require-await
     it('handles extremely long text input', async () => {
-      const user = userEvent.setup();
-      const longText = 'a'.repeat(1000);
+      const _user = userEvent.setup();
+      const _longText = 'a'.repeat(1000);
       const props: QuestionRendererProps = {
         id: 41,
         type: 'textfield',

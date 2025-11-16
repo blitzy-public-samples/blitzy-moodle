@@ -10,6 +10,24 @@ import {
 } from './utils/auth';
 import { testStudent, testTeacher, testAdmin, TEST_PASSWORD } from './fixtures/users';
 
+// API Response Types
+interface AuthMeSuccessResponse {
+  success: true;
+  data: {
+    username: string;
+    [key: string]: unknown;
+  };
+}
+
+interface ApiErrorResponse {
+  success: false;
+  error: {
+    code?: string;
+    message?: string;
+    [key: string]: unknown;
+  };
+}
+
 /**
  * Authentication E2E Test Suite
  * 
@@ -360,7 +378,7 @@ test.describe('Authentication E2E Tests', () => {
     expect(response.ok()).toBe(true);
     expect(response.status()).toBe(200);
 
-    const data = await response.json();
+    const data = await response.json() as AuthMeSuccessResponse;
     expect(data.success).toBe(true);
     expect(data.data).toBeTruthy();
     expect(data.data.username).toBe(testStudent.username);
@@ -630,7 +648,7 @@ test.describe('Authentication E2E Tests', () => {
     console.log('[TEST] Response body:', text);
     
     // Parse response back to JSON
-    const data = JSON.parse(text);
+    const data = JSON.parse(text) as ApiErrorResponse;
 
     // Verify 401 Unauthorized response
     expect(response.status()).toBe(401);
@@ -655,7 +673,7 @@ test.describe('Authentication E2E Tests', () => {
     // Verify 401 Unauthorized response
     expect(response.status()).toBe(401);
 
-    const data = await response.json();
+    const data = await response.json() as ApiErrorResponse;
     expect(data.success).toBe(false);
     expect(data.error).toBeTruthy();
     expect(data.error.code).toMatch(/TOKEN_EXPIRED|UNAUTHORIZED|INVALID_TOKEN/i);

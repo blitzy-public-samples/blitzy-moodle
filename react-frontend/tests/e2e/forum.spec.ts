@@ -21,10 +21,10 @@
 
 import { test, expect, type Page } from '@playwright/test';
 import { ForumPage } from './pages/ForumPage';
-import { login, loginAsStudent, loginAsTeacher, isAuthenticated, logout, getAuthToken, clearAuthenticationState } from './utils/auth';
-import { testCourse1, testCourse2, testCourse4, createCourse, getCourseWithActivities } from './fixtures/courses';
-import { uploadFile, verifyFileUploaded, generateTestFile, cleanupTestFiles } from './utils/file-helpers';
-import { testStudent, testTeacher, testEditingTeacher, TEST_PASSWORD } from './fixtures/users';
+import { _login, loginAsStudent, loginAsTeacher, isAuthenticated, logout, _getAuthToken, _clearAuthenticationState } from './utils/auth';
+import { _testCourse1, _testCourse2, testCourse4, _createCourse, _getCourseWithActivities } from './fixtures/courses';
+import { _uploadFile, _verifyFileUploaded, generateTestFile, _cleanupTestFiles } from './utils/file-helpers';
+import { _testStudent, _testTeacher, _testEditingTeacher, _TEST_PASSWORD } from './fixtures/users';
 import { waitForApiResponse } from './utils/wait-helpers';
 
 test.describe('Forum Discussion and Moderation', () => {
@@ -52,7 +52,7 @@ test.describe('Forum Discussion and Moderation', () => {
   }
   
   // Helper to setup teacher access for moderation tests
-  async function setupForumPageAsTeacher(page: Page): Promise<ForumPage> {
+  async function _setupForumPageAsTeacher(page: Page): Promise<ForumPage> {
     // Login as teacher user
     await loginAsTeacher(page);
     

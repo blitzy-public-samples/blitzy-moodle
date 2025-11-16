@@ -421,7 +421,9 @@ export function createMockSubmission(overrides: Partial<AssignmentSubmission> = 
  * const timedQuiz = createMockQuiz({ timelimit: 3600, attempts: 1 });
  * ```
  */
-export function createMockQuiz(overrides: Partial<Quiz> = {}): Quiz {
+export function createMockQuiz(
+  overrides: Partial<Quiz> & { questions?: Question[]; hasfeedback?: boolean } = {}
+): Quiz & { questions: Question[]; hasfeedback: boolean } {
   const id = overrides.id ?? generateMockId();
 
   return {
@@ -466,9 +468,9 @@ export function createMockQuiz(overrides: Partial<Quiz> = {}): Quiz {
     completionattemptsexhausted: overrides.completionattemptsexhausted ?? false,
     completionpass: overrides.completionpass ?? false,
     allowofflineattempts: overrides.allowofflineattempts ?? false,
-    questions: overrides.questions ?? [],
+    questions: overrides.questions ?? ([] as Question[]),
     hasfeedback: overrides.hasfeedback ?? true,
-  };
+  } as Quiz & { questions: Question[]; hasfeedback: boolean };
 }
 
 /**
@@ -568,7 +570,9 @@ export function createMockQuestion(overrides: Partial<Question> = {}): Question 
  * const newsChannel = createMockForum({ type: 'news', name: 'Course Announcements' });
  * ```
  */
-export function createMockForum(overrides: Partial<Forum> = {}): Forum {
+export function createMockForum(
+  overrides: Partial<Forum> & { discussions?: ForumDiscussion[]; canaddinstance?: boolean } = {}
+): Forum & { discussions: ForumDiscussion[]; canaddinstance: boolean } {
   const id = overrides.id ?? generateMockId();
 
   return {
@@ -600,9 +604,9 @@ export function createMockForum(overrides: Partial<Forum> = {}): Forum {
     completionposts: overrides.completionposts ?? 0,
     displaywordcount: overrides.displaywordcount ?? false,
     lockdiscussionafter: overrides.lockdiscussionafter ?? 0,
-    discussions: overrides.discussions ?? [],
+    discussions: overrides.discussions ?? ([] as ForumDiscussion[]),
     canaddinstance: overrides.canaddinstance ?? true,
-  };
+  } as Forum & { discussions: ForumDiscussion[]; canaddinstance: boolean };
 }
 
 /**
@@ -618,7 +622,23 @@ export function createMockForum(overrides: Partial<Forum> = {}): Forum {
  * const pinnedDiscussion = createMockDiscussion({ pinned: true, name: 'Important Topic' });
  * ```
  */
-export function createMockDiscussion(overrides: Partial<ForumDiscussion> = {}): ForumDiscussion {
+export function createMockDiscussion(
+  overrides: Partial<ForumDiscussion> & {
+    posts?: ForumPost[];
+    userfullname?: string;
+    userpictureurl?: string;
+    numreplies?: number;
+    numunread?: number;
+    timecreated?: Timestamp;
+  } = {}
+): ForumDiscussion & {
+  posts: ForumPost[];
+  userfullname: string;
+  userpictureurl: string;
+  numreplies: number;
+  numunread: number;
+  timecreated: Timestamp;
+} {
   const id = overrides.id ?? generateMockId();
 
   return {
@@ -636,12 +656,18 @@ export function createMockDiscussion(overrides: Partial<ForumDiscussion> = {}): 
     timeend: overrides.timeend ?? 0,
     pinned: overrides.pinned ?? false,
     timelocked: overrides.timelocked ?? 0,
-    posts: overrides.posts ?? [],
+    posts: overrides.posts ?? ([] as ForumPost[]),
     userfullname: overrides.userfullname ?? 'Test User',
     userpictureurl: overrides.userpictureurl ?? '',
     numreplies: overrides.numreplies ?? 0,
     numunread: overrides.numunread ?? 0,
     timecreated: overrides.timecreated ?? generateMockDate(-7),
+  } as ForumDiscussion & {
+    userfullname: string;
+    userpictureurl: string;
+    numreplies: number;
+    numunread: number;
+    timecreated: Timestamp;
   };
 }
 
@@ -658,7 +684,37 @@ export function createMockDiscussion(overrides: Partial<ForumDiscussion> = {}): 
  * const replyPost = createMockPost({ parent: parentPostId, subject: 'Re: Original Post' });
  * ```
  */
-export function createMockPost(overrides: Partial<ForumPost> = {}): ForumPost {
+export function createMockPost(
+  overrides: Partial<ForumPost> & {
+    isprivatereply?: boolean;
+    attachments?: unknown[];
+    capabilities?: {
+      view: boolean;
+      edit: boolean;
+      delete: boolean;
+      split: boolean;
+      reply: boolean;
+      export: boolean;
+      controlreadstatus: boolean;
+      canreplyprivately: boolean;
+      selfenrol: boolean;
+    };
+  } = {}
+): ForumPost & {
+  isprivatereply: boolean;
+  attachments: unknown[];
+  capabilities: {
+    view: boolean;
+    edit: boolean;
+    delete: boolean;
+    split: boolean;
+    reply: boolean;
+    export: boolean;
+    controlreadstatus: boolean;
+    canreplyprivately: boolean;
+    selfenrol: boolean;
+  };
+} {
   const id = overrides.id ?? generateMockId();
 
   return {
@@ -711,7 +767,19 @@ export function createMockPost(overrides: Partial<ForumPost> = {}): ForumPost {
  * const perfectGrade = createMockGrade({ finalgrade: 100, feedback: 'Excellent work!' });
  * ```
  */
-export function createMockGrade(overrides: Partial<Grade> = {}): Grade {
+export function createMockGrade(
+  overrides: Partial<Grade> & {
+    timecreated?: Timestamp;
+    timemodified?: Timestamp;
+    aggregationstatus?: string;
+    aggregationweight?: number | null;
+  } = {}
+): Grade & {
+  timecreated: Timestamp;
+  timemodified: Timestamp;
+  aggregationstatus: string;
+  aggregationweight: number | null;
+} {
   const id = overrides.id ?? generateMockId();
 
   return {
@@ -882,7 +950,9 @@ export function createMockConversation(overrides: Partial<Conversation> = {}): C
  * const pdfResource = createMockResource({ mimetype: 'application/pdf', name: 'Lecture Notes.pdf' });
  * ```
  */
-export function createMockResource(overrides: Partial<Resource> = {}): Resource {
+export function createMockResource(
+  overrides: Partial<Resource> & { timecreated?: Timestamp } = {}
+): Resource & { timecreated: Timestamp } {
   const id = overrides.id ?? generateMockId();
 
   return {

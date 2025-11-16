@@ -19,7 +19,7 @@
 
 import { test, expect, type Page } from '@playwright/test';
 import { QuizPage } from './pages/QuizPage';
-import { loginAsStudent, logout, clearAuthenticationState } from './utils/auth';
+import { loginAsStudent, _logout, _clearAuthenticationState } from './utils/auth';
 import { testCourse1 } from './fixtures/courses';
 import { testQuiz1, testQuiz2, testQuiz3 } from './fixtures/quizzes';
 

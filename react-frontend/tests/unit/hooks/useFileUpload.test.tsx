@@ -75,7 +75,7 @@ vi.mock('@/hooks/useToast', () => ({
 
 describe('useFileUpload', () => {
   // Mock functions
-  let mockAxiosPost: ReturnType<typeof vi.fn>;
+  let mockAxiosPost: ReturnType<typeof vi.fn<[string, FormData, Record<string, unknown>?], Promise<AxiosResponse>>>;
   let mockCancelTokenSource: CancelTokenSource;
   let mockSuccess: ReturnType<typeof vi.fn>;
   let mockError: ReturnType<typeof vi.fn>;
@@ -96,7 +96,7 @@ describe('useFileUpload', () => {
 
     // Setup cancel token mock
     mockCancelTokenSource = {
-      token: 'mock-cancel-token' as any,
+      token: 'mock-cancel-token' as unknown as CancelTokenSource['token'],
       cancel: vi.fn(),
     };
     (axios.CancelToken.source as ReturnType<typeof vi.fn>).mockReturnValue(mockCancelTokenSource);
@@ -234,10 +234,10 @@ describe('useFileUpload', () => {
       expect.any(FormData),
       expect.objectContaining({
         cancelToken: 'mock-cancel-token',
-        onUploadProgress: expect.any(Function),
+        onUploadProgress: expect.any(Function) as unknown as () => void,
         headers: expect.objectContaining({
           'Content-Type': 'multipart/form-data',
-        }),
+        }) as unknown as Record<string, string>,
       })
     );
 
@@ -351,8 +351,8 @@ describe('useFileUpload', () => {
     let capturedProgressCallback: ((event: { loaded: number; total: number }) => void) | null = null;
 
     // Mock axios to capture progress callback
-    mockAxiosPost.mockImplementation((_url, _data, config) => {
-      capturedProgressCallback = config.onUploadProgress;
+    mockAxiosPost.mockImplementation((_url, _data, config: { onUploadProgress?: (event: { loaded: number; total: number }) => void }) => {
+      capturedProgressCallback = config.onUploadProgress ?? null;
       // Return a promise that never resolves (we'll manually trigger progress)
       return new Promise(() => {
         // Never resolves - we control progress manually
@@ -589,7 +589,7 @@ describe('useFileUpload', () => {
         headers: expect.objectContaining({
           'X-Custom-Header': 'custom-value',
           'Content-Type': 'multipart/form-data',
-        }),
+        }) as unknown as Record<string, string>,
         timeout: 30000,
       })
     );
@@ -615,6 +615,7 @@ describe('useFileUpload', () => {
 
     // Verify onError was called with validation error
     expect(mockOnError).toHaveBeenCalledWith(expect.any(Error));
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     expect(mockOnError.mock.calls[0][0].message).toContain('exceeds maximum allowed size');
   });
 
@@ -692,8 +693,8 @@ describe('useFileUpload', () => {
   it('should handle progress with zero total bytes', async () => {
     let capturedProgressCallback: ((event: { loaded: number; total?: number }) => void) | null = null;
 
-    mockAxiosPost.mockImplementation((_url, _data, config) => {
-      capturedProgressCallback = config.onUploadProgress;
+    mockAxiosPost.mockImplementation((_url, _data, config: { onUploadProgress?: (event: { loaded: number; total?: number }) => void }) => {
+      capturedProgressCallback = config.onUploadProgress ?? null;
       return new Promise(() => {
         // Never resolves
       });

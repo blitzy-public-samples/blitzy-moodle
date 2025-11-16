@@ -72,6 +72,7 @@ import {
   bulkDeleteDiscussions,
   bulkMoveDiscussions,
 } from '../api/forumApi';
+import type { DiscussionEnriched } from '../types/forum.types';
 
 // ============================================================================
 // TYPES
@@ -292,14 +293,13 @@ export function DiscussionList({
       });
 
       // Transform the API response to the component's expected format
-      // NOTE: There's a type mismatch between the declared Discussion type in forum.types.ts
-      // and what the API actually returns. The API returns enriched data with user info,
-      // reply counts, etc. This transformation bridges that gap.
-      let discussions: DiscussionListItem[] = response.data.items.map((discussion: any) => ({
+      // The API returns DiscussionEnriched with additional metadata that we transform
+      // into the component's display format (DiscussionListItem)
+      let discussions: DiscussionListItem[] = response.data.items.map((discussion: DiscussionEnriched) => ({
         id: discussion.id,
         title: discussion.name,
         author: {
-          id: discussion.userId || discussion.userid,
+          id: discussion.userid,
           name: discussion.userFullName || 'Unknown User',
           avatarUrl: discussion.userPictureUrl || null,
         },

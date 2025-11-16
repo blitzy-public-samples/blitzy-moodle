@@ -497,7 +497,7 @@ describe('useScorm Hook', () => {
 
   describe('User Tracking Data Loading', () => {
     it('should load tracking data with SCORM 1.2 CMI elements', async () => {
-      const mockTrackingData: ScormUserData = {
+      const _mockTrackingData: ScormUserData = {
         scoid: 1,
         attempt: 1,
         userid: 10,
@@ -531,7 +531,7 @@ describe('useScorm Hook', () => {
     });
 
     it('should load tracking data with SCORM 2004 CMI elements', async () => {
-      const mockScorm2004Tracking: ScormUserData = {
+      const _mockScorm2004Tracking: ScormUserData = {
         scoid: 2,
         attempt: 1,
         userid: 10,
@@ -926,7 +926,7 @@ describe('useScorm Hook', () => {
       expect(result.current.error).toBe(null);
 
       // Trigger refetch (don't await - let it run in background)
-      result.current.refetch();
+      void result.current.refetch();
 
       // Wait longer for retries to complete (hook has retry: 2 configured)
       await waitFor(() => {
@@ -1185,7 +1185,7 @@ describe('useScorm Hook', () => {
     });
 
     it('should handle suspend_data persistence in tracking elements', async () => {
-      const suspendDataTracking: ScormUserData = {
+      const _suspendDataTracking: ScormUserData = {
         scoid: 1,
         attempt: 1,
         userid: 10,

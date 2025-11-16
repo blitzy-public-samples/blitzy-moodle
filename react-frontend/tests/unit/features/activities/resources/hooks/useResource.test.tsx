@@ -26,6 +26,8 @@ import {
   resourceKeys,
 } from '@/features/activities/resources/hooks/useResource';
 
+/* eslint-disable @typescript-eslint/unbound-method */
+
 // Mock the API client module
 vi.mock('@/services/api/client', () => ({
   apiClient: {
@@ -237,6 +239,7 @@ describe('useResource hook', () => {
   });
 
   describe('loading states', () => {
+    // eslint-disable-next-line @typescript-eslint/require-await
     it('should show loading state during fetch', async () => {
       vi.mocked(apiClient.get).mockImplementation(
         () => new Promise((resolve) => setTimeout(resolve, 100))
@@ -1330,6 +1333,7 @@ describe('TypeScript type safety', () => {
       expect(queryResult.refetch).toBeDefined();
     });
 
+    // eslint-disable-next-line @typescript-eslint/require-await
     it('should return UseMutationResult type for mutations', async () => {
       vi.mocked(apiClient.post).mockResolvedValueOnce({
         data: createApiResponse({ success: true, viewcount: 1 }),

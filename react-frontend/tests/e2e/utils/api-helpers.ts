@@ -337,7 +337,7 @@ export async function apiRequest<T = any>(
       const contentType = response.headers.get('content-type');
       
       if (contentType && contentType.includes('application/json')) {
-        responseData = await response.json();
+        responseData = await response.json() as ApiResponse<T>;
       } else {
         // Non-JSON response - treat as error
         throw new Error(`Unexpected response type: ${contentType}`);
@@ -350,8 +350,11 @@ export async function apiRequest<T = any>(
       if (!response.ok || !responseData.success) {
         const errorMessage = responseData.error?.message || `API request failed with status ${response.status}`;
         const error = new Error(errorMessage);
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         (error as any).code = responseData.error?.code || 'API_ERROR';
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         (error as any).details = responseData.error?.details;
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         (error as any).status = response.status;
         throw error;
       }
@@ -383,7 +386,7 @@ export async function apiRequest<T = any>(
       factor: 2,
       shouldRetry: (error: Error) => {
         // Retry on network errors, timeouts, and 5xx server errors
-        const {status} = (error as any);
+        const status = 'status' in error ? (error as {status: number}).status : undefined;
         return !status || status >= 500;
       },
     });

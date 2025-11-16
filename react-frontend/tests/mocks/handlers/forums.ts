@@ -30,7 +30,7 @@
  */
 
 import { http, HttpResponse } from 'msw';
-import type { Forum } from '../../../src/features/activities/forums/types/forum.types';
+import type { Forum, PostAttachment } from '../../../src/features/activities/forums/types/forum.types';
 import { 
   ForumType, 
   ForumSubscriptionMode, 
@@ -79,7 +79,7 @@ interface Post {
   message: string;
   messageFormat: number;
   attachment: boolean;
-  attachments: any[];
+  attachments: PostAttachment[];
   canEdit: boolean;
   canDelete: boolean;
   canReply: boolean;
@@ -305,7 +305,7 @@ function loadDiscussions(): Record<number, Discussion> {
   try {
     const stored = sessionStorage.getItem(DISCUSSIONS_STORAGE_KEY);
     if (stored) {
-      const parsed = JSON.parse(stored);
+      const parsed = JSON.parse(stored) as Record<number, Discussion>;
       console.log('[MSW Forums] Loaded discussions from sessionStorage:', Object.keys(parsed).length, 'discussions');
       return parsed;
     }
@@ -345,7 +345,7 @@ function loadPosts(): Record<number, Post> {
   try {
     const stored = sessionStorage.getItem(POSTS_STORAGE_KEY);
     if (stored) {
-      const parsed = JSON.parse(stored);
+      const parsed = JSON.parse(stored) as Record<number, Discussion> as Record<number, Post>;
       console.log('[MSW Forums] Loaded posts from sessionStorage:', Object.keys(parsed).length, 'posts');
       return parsed;
     }
@@ -469,7 +469,7 @@ async function simulateNetworkDelay(min = 100, max = 300): Promise<void> {
 const getForumHandler = http.get('*/api/v1/forums/:id', async ({ params }) => {
   await simulateNetworkDelay();
   
-  const id = Number(params.id);
+  const id = Number(params.id as string);
   const forum = MOCK_FORUMS[id];
   
   if (!forum) {
@@ -500,7 +500,7 @@ const getDiscussionsHandler = http.get('*/api/v1/forums/:id/discussions', async 
   reloadMockData(); // Reload fresh data from sessionStorage
   await simulateNetworkDelay();
   
-  const id = Number(params.id);
+  const id = Number(params.id as string);
   const forum = MOCK_FORUMS[id];
   
   if (!forum) {
@@ -551,7 +551,7 @@ const getPostsHandler = http.get('*/api/v1/forums/discussions/:id/posts', async 
   reloadMockData(); // Reload fresh data from sessionStorage
   await simulateNetworkDelay();
   
-  const id = Number(params.id);
+  const id = Number(params.id as string);
   console.log('[MSW Forums] Getting posts for discussion:', id);
   console.log('[MSW Forums] Current discussions:', Object.keys(MOCK_DISCUSSIONS));
   console.log('[MSW Forums] Current posts:', Object.keys(MOCK_POSTS));
@@ -591,7 +591,7 @@ const createDiscussionHandler = http.post('*/api/v1/forums/:id/discussions', asy
   reloadMockData(); // Reload fresh data from sessionStorage
   await simulateNetworkDelay();
   
-  const id = Number(params.id);
+  const id = Number(params.id as string);
   const forum = MOCK_FORUMS[id];
   
   if (!forum) {
@@ -609,30 +609,32 @@ const createDiscussionHandler = http.post('*/api/v1/forums/:id/discussions', asy
   }
   
   // Handle both JSON and FormData
-  let bodyData: any = {};
+  let bodyData: Record<string, unknown> = {};
   const contentType = request.headers.get('content-type') || '';
   
   try {
     if (contentType.includes('application/json')) {
-      bodyData = await request.json();
+      bodyData = await request.json() as Record<string, unknown>;
     } else if (contentType.includes('multipart/form-data') || contentType.includes('application/x-www-form-urlencoded')) {
       const formData = await request.formData();
       bodyData = {
         // The API sends 'subject' but the backend stores it as 'name'
-        name: formData.get('subject') as string || formData.get('name') as string,
-        message: formData.get('message') as string,
-        messageFormat: formData.get('messageFormat') ? Number(formData.get('messageFormat')) : undefined,
-        timeStart: formData.get('timeStart') ? Number(formData.get('timeStart')) : undefined,
-        timeEnd: formData.get('timeEnd') ? Number(formData.get('timeEnd')) : undefined,
-        groupId: formData.get('groupId') ? Number(formData.get('groupId')) : undefined,
+        name: formData.get('subject') as string | null as string || formData.get('name') as string | null as string,
+        message: formData.get('message') as string | null as string,
+        messageFormat: formData.get('messageFormat') as string | null ? Number(formData.get('messageFormat') as string | null) : undefined,
+        timeStart: formData.get('timeStart') as string | null ? Number(formData.get('timeStart') as string | null) : undefined,
+        timeEnd: formData.get('timeEnd') as string | null ? Number(formData.get('timeEnd') as string | null) : undefined,
+        groupId: formData.get('groupId') as string | null ? Number(formData.get('groupId') as string | null) : undefined,
         subscribe: formData.get('subscribe') === 'true',
-        pinned: formData.get('pinned') === 'true'
+        pinned: formData.get('pinned') as string | null === 'true'
       };
     } else {
       // Default to JSON for backward compatibility
-      bodyData = await request.json();
+      bodyData = await request.json() as Record<string, unknown>;
       // Map subject to name for JSON requests too
+       
       if (bodyData.subject && !bodyData.name) {
+         
         bodyData.name = bodyData.subject;
       }
     }
@@ -650,6 +652,7 @@ const createDiscussionHandler = http.post('*/api/v1/forums/:id/discussions', asy
     );
   }
   
+   
   if (!bodyData.name || !bodyData.message) {
     return HttpResponse.json(
       {
@@ -659,7 +662,9 @@ const createDiscussionHandler = http.post('*/api/v1/forums/:id/discussions', asy
           message: 'Discussion subject and message are required',
           details: {
             missing_fields: [
+               
               !bodyData.name ? 'subject' : null,
+               
               !bodyData.message ? 'message' : null
             ].filter(Boolean)
           }
@@ -672,18 +677,24 @@ const createDiscussionHandler = http.post('*/api/v1/forums/:id/discussions', asy
   const newDiscussion: Discussion = {
     id: Object.keys(MOCK_DISCUSSIONS).length + 1,
     forumId: id,
+     
     name: bodyData.name,
+     
     message: bodyData.message,
+     
     messageFormat: bodyData.messageFormat || 1,
     userId: 5,
     userFullName: 'Test User',
     userPictureUrl: '/user/pic.jpg',
     created: Date.now() / 1000,
     modified: Date.now() / 1000,
+     
     timeStart: bodyData.timeStart || 0,
+     
     timeEnd: bodyData.timeEnd || 0,
     pinned: false,
     locked: false,
+     
     groupId: bodyData.groupId || -1,
     numReplies: 0,
     numUnreadPosts: 0,
@@ -742,7 +753,7 @@ const createPostHandler = http.post('*/api/v1/forums/discussions/:id/posts', asy
   reloadMockData(); // Reload fresh data from sessionStorage
   await simulateNetworkDelay();
   
-  const id = Number(params.id);
+  const id = Number(params.id as string);
   const discussion = MOCK_DISCUSSIONS[id];
   
   if (!discussion) {
@@ -760,24 +771,24 @@ const createPostHandler = http.post('*/api/v1/forums/discussions/:id/posts', asy
   }
   
   // Handle both JSON and FormData
-  let bodyData: any = {};
+  let bodyData: Record<string, unknown> = {};
   const contentType = request.headers.get('content-type') || '';
   
   try {
     if (contentType.includes('application/json')) {
-      bodyData = await request.json();
+      bodyData = await request.json() as Record<string, unknown>;
     } else if (contentType.includes('multipart/form-data') || contentType.includes('application/x-www-form-urlencoded')) {
       const formData = await request.formData();
       bodyData = {
-        message: formData.get('message') as string,
-        subject: formData.get('subject') as string,
+        message: formData.get('message') as string | null as string,
+        subject: formData.get('subject') as string | null as string,
         parentId: formData.get('parentId') ? Number(formData.get('parentId')) : undefined,
-        messageFormat: formData.get('messageFormat') ? Number(formData.get('messageFormat')) : undefined,
-        attachments: formData.get('attachments') ? JSON.parse(formData.get('attachments') as string) : undefined
+        messageFormat: formData.get('messageFormat') as string | null ? Number(formData.get('messageFormat') as string | null) : undefined,
+        attachments: formData.get('attachments') ? JSON.parse(formData.get('attachments') as string) as PostAttachment[] : undefined
       };
     } else {
       // Default to JSON for backward compatibility
-      bodyData = await request.json();
+      bodyData = await request.json() as Record<string, unknown>;
     }
   } catch (error) {
     return HttpResponse.json(
@@ -793,6 +804,7 @@ const createPostHandler = http.post('*/api/v1/forums/discussions/:id/posts', asy
     );
   }
   
+   
   if (!bodyData.message) {
     return HttpResponse.json(
       {
@@ -810,16 +822,21 @@ const createPostHandler = http.post('*/api/v1/forums/discussions/:id/posts', asy
   const newPost: Post = {
     id: Object.keys(MOCK_POSTS).length + 1,
     discussionId: id,
+     
     parentId: bodyData.parentId || 0,
     userId: 5,
     userFullName: 'Test User',
     userPictureUrl: '/user/pic.jpg',
     created: Date.now() / 1000,
     modified: Date.now() / 1000,
+     
     subject: bodyData.subject || `Re: ${  discussion.name}`,
+     
     message: bodyData.message,
+     
     messageFormat: bodyData.messageFormat || 1,
     attachment: false,
+     
     attachments: bodyData.attachments || [],
     canEdit: true,
     canDelete: true,
@@ -851,7 +868,7 @@ const updatePostHandler = http.put('*/api/v1/forums/posts/:id', async ({ params,
   reloadMockData(); // Reload fresh data from sessionStorage
   await simulateNetworkDelay();
   
-  const id = Number(params.id);
+  const id = Number(params.id as string);
   const post = MOCK_POSTS[id];
   
   if (!post) {
@@ -869,21 +886,21 @@ const updatePostHandler = http.put('*/api/v1/forums/posts/:id', async ({ params,
   }
   
   // Handle both JSON and FormData
-  let bodyData: any = {};
+  let bodyData: Record<string, unknown> = {};
   const contentType = request.headers.get('content-type') || '';
   
   try {
     if (contentType.includes('application/json')) {
-      bodyData = await request.json();
+      bodyData = await request.json() as Record<string, unknown>;
     } else if (contentType.includes('multipart/form-data') || contentType.includes('application/x-www-form-urlencoded')) {
       const formData = await request.formData();
       bodyData = {
-        subject: formData.get('subject') as string,
-        message: formData.get('message') as string
+        subject: formData.get('subject') as string | null as string,
+        message: formData.get('message') as string | null as string
       };
     } else {
       // Default to JSON for backward compatibility
-      bodyData = await request.json();
+      bodyData = await request.json() as Record<string, unknown>;
     }
   } catch (error) {
     return HttpResponse.json(
@@ -901,7 +918,9 @@ const updatePostHandler = http.put('*/api/v1/forums/posts/:id', async ({ params,
   
   const updatedPost = {
     ...post,
+     
     subject: bodyData.subject || post.subject,
+     
     message: bodyData.message || post.message,
     modified: Date.now() / 1000
   };
@@ -920,7 +939,7 @@ const deletePostHandler = http.delete('*/api/v1/forums/posts/:id', async ({ para
   reloadMockData(); // Reload fresh data from sessionStorage
   await simulateNetworkDelay();
   
-  const id = Number(params.id);
+  const id = Number(params.id as string);
   const post = MOCK_POSTS[id];
   
   if (!post) {
@@ -950,7 +969,7 @@ const deletePostHandler = http.delete('*/api/v1/forums/posts/:id', async ({ para
 const subscribeForumHandler = http.post('*/api/v1/forums/:id/subscribe', async ({ params, request: _request }) => {
   await simulateNetworkDelay();
   
-  const id = Number(params.id);
+  const id = Number(params.id as string);
   const forum = MOCK_FORUMS[id];
   
   if (!forum) {
@@ -984,7 +1003,7 @@ const subscribeForumHandler = http.post('*/api/v1/forums/:id/subscribe', async (
 const unsubscribeForumHandler = http.post('*/api/v1/forums/:id/unsubscribe', async ({ params }) => {
   await simulateNetworkDelay();
   
-  const id = Number(params.id);
+  const id = Number(params.id as string);
   const forum = MOCK_FORUMS[id];
   
   if (!forum) {
@@ -1019,7 +1038,7 @@ const subscribeDiscussionHandler = http.post('*/api/v1/forums/discussions/:id/su
   reloadMockData(); // Reload fresh data from sessionStorage
   await simulateNetworkDelay();
   
-  const id = Number(params.id);
+  const id = Number(params.id as string);
   const discussion = MOCK_DISCUSSIONS[id];
   
   if (!discussion) {
@@ -1054,7 +1073,7 @@ const unsubscribeDiscussionHandler = http.post('*/api/v1/forums/discussions/:id/
   reloadMockData(); // Reload fresh data from sessionStorage
   await simulateNetworkDelay();
   
-  const id = Number(params.id);
+  const id = Number(params.id as string);
   const discussion = MOCK_DISCUSSIONS[id];
   
   if (!discussion) {
@@ -1089,7 +1108,7 @@ const markReadHandler = http.post('*/api/v1/forums/discussions/:id/read', async 
   reloadMockData(); // Reload fresh data from sessionStorage
   await simulateNetworkDelay();
   
-  const id = Number(params.id);
+  const id = Number(params.id as string);
   const discussion = MOCK_DISCUSSIONS[id];
   
   if (!discussion) {
@@ -1123,7 +1142,7 @@ const pinDiscussionHandler = http.post('*/api/v1/forums/discussions/:id/pin', as
   reloadMockData(); // Reload fresh data from sessionStorage
   await simulateNetworkDelay();
   
-  const id = Number(params.id);
+  const id = Number(params.id as string);
   const discussion = MOCK_DISCUSSIONS[id];
   
   if (!discussion) {
@@ -1164,7 +1183,7 @@ const unpinDiscussionHandler = http.post('*/api/v1/forums/discussions/:id/unpin'
   reloadMockData(); // Reload fresh data from sessionStorage
   await simulateNetworkDelay();
   
-  const id = Number(params.id);
+  const id = Number(params.id as string);
   const discussion = MOCK_DISCUSSIONS[id];
   
   if (!discussion) {
@@ -1205,7 +1224,7 @@ const lockDiscussionHandler = http.post('*/api/v1/forums/discussions/:id/lock', 
   reloadMockData(); // Reload fresh data from sessionStorage
   await simulateNetworkDelay();
   
-  const id = Number(params.id);
+  const id = Number(params.id as string);
   const discussion = MOCK_DISCUSSIONS[id];
   
   if (!discussion) {
@@ -1246,7 +1265,7 @@ const unlockDiscussionHandler = http.post('*/api/v1/forums/discussions/:id/unloc
   reloadMockData(); // Reload fresh data from sessionStorage
   await simulateNetworkDelay();
   
-  const id = Number(params.id);
+  const id = Number(params.id as string);
   const discussion = MOCK_DISCUSSIONS[id];
   
   if (!discussion) {
@@ -1287,7 +1306,7 @@ const reportPostHandler = http.post('*/api/v1/forums/posts/:id/report', async ({
   reloadMockData(); // Reload fresh data from sessionStorage
   await simulateNetworkDelay();
   
-  const id = Number(params.id);
+  const id = Number(params.id as string);
   const post = MOCK_POSTS[id];
   
   if (!post) {
@@ -1305,12 +1324,12 @@ const reportPostHandler = http.post('*/api/v1/forums/posts/:id/report', async ({
   }
   
   // Handle both JSON and FormData
-  let bodyData: any = {};
+  let bodyData: Record<string, unknown> = {};
   const contentType = request.headers.get('content-type') || '';
   
   try {
     if (contentType.includes('application/json')) {
-      bodyData = await request.json();
+      bodyData = await request.json() as Record<string, unknown>;
     } else if (contentType.includes('multipart/form-data') || contentType.includes('application/x-www-form-urlencoded')) {
       const formData = await request.formData();
       bodyData = {
@@ -1318,7 +1337,7 @@ const reportPostHandler = http.post('*/api/v1/forums/posts/:id/report', async ({
       };
     } else {
       // Default to JSON for backward compatibility
-      bodyData = await request.json();
+      bodyData = await request.json() as Record<string, unknown>;
     }
   } catch (error) {
     return HttpResponse.json(
@@ -1334,6 +1353,7 @@ const reportPostHandler = http.post('*/api/v1/forums/posts/:id/report', async ({
     );
   }
   
+   
   if (!bodyData.reason) {
     return HttpResponse.json(
       {

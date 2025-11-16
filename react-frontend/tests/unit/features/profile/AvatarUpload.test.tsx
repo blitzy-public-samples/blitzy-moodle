@@ -23,6 +23,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 // Import the actual component
 import { AvatarUpload } from '../../../../src/features/profile/components/AvatarUpload';
 
+/* eslint-disable @typescript-eslint/unbound-method */
+
 // Mock the hooks
 vi.mock('../../../../src/features/profile/hooks/useUpdateProfile', () => ({
   useUploadAvatar: vi.fn(),
@@ -77,8 +79,28 @@ describe('AvatarUpload Component', () => {
     });
 
     // Mock FileReader
-    const mockFileReader = {
-      readAsDataURL: vi.fn(function(this: any) {
+    interface MockFileReaderType {
+      readAsDataURL: ReturnType<typeof vi.fn>;
+      result: string;
+      onload: ((event: { target: { result: string } }) => void) | null;
+      onerror: (() => void) | null;
+      onabort: (() => void) | null;
+      onloadend: (() => void) | null;
+      onloadstart: (() => void) | null;
+      onprogress: (() => void) | null;
+      EMPTY: number;
+      LOADING: number;
+      DONE: number;
+      readyState: number;
+      error: null;
+      abort: ReturnType<typeof vi.fn>;
+      addEventListener: ReturnType<typeof vi.fn>;
+      removeEventListener: ReturnType<typeof vi.fn>;
+      dispatchEvent: ReturnType<typeof vi.fn>;
+    }
+    
+    const mockFileReader: MockFileReaderType = {
+      readAsDataURL: vi.fn(function(this: MockFileReaderType) {
         if (this.onload) {
           this.onload({ target: { result: 'data:image/jpeg;base64,fakebase64' } });
         }
@@ -99,16 +121,25 @@ describe('AvatarUpload Component', () => {
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
       dispatchEvent: vi.fn(),
-    } as any;
+    };
 
-    global.FileReader = vi.fn(() => mockFileReader) as any;
+    global.FileReader = vi.fn(() => mockFileReader) as unknown as typeof FileReader;
 
     // Mock URL.createObjectURL
     global.URL.createObjectURL = vi.fn(() => 'blob:http://localhost:3000/mock-url');
     global.URL.revokeObjectURL = vi.fn();
 
     // Mock Image constructor for dimension validation
-    const MockImage = vi.fn(function(this: any) {
+    interface MockImageType {
+      width: number;
+      height: number;
+      src: string;
+      onload: (() => void) | null;
+      onerror: (() => void) | null;
+      _src: string;
+    }
+    
+    const MockImage = vi.fn(function(this: MockImageType) {
       // Set default dimensions that pass validation
       this.width = 500;
       this.height = 500;
@@ -132,9 +163,9 @@ describe('AvatarUpload Component', () => {
       this.onload = null;
       this.onerror = null;
       this._src = '';
-    }) as any;
+    }) as unknown as typeof Image;
 
-    global.Image = MockImage;
+    global.Image = MockImage as unknown as typeof Image;
   });
 
   afterEach(() => {
@@ -142,6 +173,7 @@ describe('AvatarUpload Component', () => {
   });
 
   describe('File Selection via Input', () => {
+    // eslint-disable-next-line @typescript-eslint/require-await
     it('should allow file selection through file input element', async () => {
       const Wrapper = createWrapper();
       const { container } = render(
@@ -175,6 +207,7 @@ describe('AvatarUpload Component', () => {
       });
     });
 
+    // eslint-disable-next-line @typescript-eslint/require-await
     it('should have accessible "Choose File" button', async () => {
       const Wrapper = createWrapper();
       render(
@@ -491,10 +524,10 @@ describe('AvatarUpload Component', () => {
 
       if (dropZone) {
         const file = new File(['content'], 'test.jpg', { type: 'image/jpeg' });
-        const dataTransfer = {
-          items: [{ kind: 'file', type: 'image/jpeg', getAsFile: () => file }],
+        const dataTransfer: Partial<DataTransfer> = {
+          items: [{ kind: 'file', type: 'image/jpeg', getAsFile: () => file }] as unknown as DataTransferItemList,
           types: ['Files'],
-          files: [file],
+          files: [file] as unknown as FileList,
         };
 
         await user.pointer([
@@ -505,7 +538,7 @@ describe('AvatarUpload Component', () => {
         // Simulate dragover
         const dragOverEvent = new DragEvent('dragover', {
           bubbles: true,
-          dataTransfer: dataTransfer as any,
+          dataTransfer: dataTransfer as DataTransfer,
         });
         dropZone.dispatchEvent(dragOverEvent);
 
@@ -516,6 +549,7 @@ describe('AvatarUpload Component', () => {
       }
     });
 
+    // eslint-disable-next-line @typescript-eslint/require-await
     it('should handle drag leave event', async () => {
       const Wrapper = createWrapper();
       render(
@@ -988,6 +1022,7 @@ describe('AvatarUpload Component', () => {
       expect(mockUploadMutate).toHaveBeenCalledWith(file);
     });
 
+    // eslint-disable-next-line @typescript-eslint/require-await
     it('should have accessible remove button', async () => {
       const Wrapper = createWrapper();
       render(

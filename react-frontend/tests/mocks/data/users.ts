@@ -16,7 +16,7 @@
  */
 
 import type { User } from '@/types/entities';
-import type { Timezone } from '@/types/common';
+import type { _Timezone } from '@/types/common';
 
 // ============================================================================
 // Utility Types

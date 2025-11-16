@@ -60,7 +60,7 @@ function loadFileStorage(): Map<string, StoredFile> {
   try {
     const stored = sessionStorage.getItem(STORAGE_KEY);
     if (stored) {
-      const parsed = JSON.parse(stored);
+      const parsed = JSON.parse(stored) as Record<string, StoredFile>;
       console.log('[MSW Files] Loaded file storage from sessionStorage:', Object.keys(parsed).length, 'files');
       return new Map(Object.entries(parsed));
     }

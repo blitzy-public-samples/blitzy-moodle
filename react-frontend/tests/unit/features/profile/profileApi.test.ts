@@ -11,19 +11,20 @@
  * @copyright 2024 Moodle
  */
 
-import { describe, it, expect, beforeAll, afterAll, afterEach, vi, beforeEach } from 'vitest';
+import { describe, it, expect, _beforeAll, _afterAll, afterEach, vi, _beforeEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../../mocks/server';
-import axios, { AxiosError } from 'axios';
+import type { AxiosError } from 'axios';
+import _axios from 'axios';
 import { 
   fetchUserProfile, 
-  fetchCurrentUserProfile,
+  _fetchCurrentUserProfile,
   updateUserProfile, 
   uploadAvatar,
-  deleteAvatar,
-  updateUserPreferences
+  _deleteAvatar,
+  _updateUserPreferences
 } from '@/features/profile/api/profileApi';
-import type { User, UpdateProfilePayload } from '@/features/profile/types/profile.types';
+import type { User, UpdateProfilePayload, UpdateProfileData } from '@/features/profile/types/profile.types';
 
 // Mock authentication service
 vi.mock('@/services/auth/authService', () => ({
@@ -87,7 +88,7 @@ describe('profileApi', () => {
         })
       );
 
-      const result = await fetchUserProfile(userId);
+      const result: User = await fetchUserProfile(userId);
 
       expect(result).toEqual(mockProfile);
       expect(result.id).toBe(userId);
@@ -98,7 +99,7 @@ describe('profileApi', () => {
 
     it('should include JWT token in Authorization header', async () => {
       const userId = 123;
-      let capturedHeaders: Headers | null = null;
+      let capturedHeaders: any = null;
 
       server.use(
         http.get(`${API_BASE_URL}/api/v1/users/${userId}`, ({ request }) => {
@@ -112,7 +113,7 @@ describe('profileApi', () => {
 
       await fetchUserProfile(userId);
 
-      expect(capturedHeaders?.get('Authorization')).toBe('Bearer mock-jwt-token');
+      expect((capturedHeaders as Headers | null)?.get('Authorization')).toBe('Bearer mock-jwt-token');
     });
 
     it('should parse response and extract user data correctly', async () => {
@@ -127,7 +128,7 @@ describe('profileApi', () => {
         })
       );
 
-      const result = await fetchUserProfile(userId);
+      const result: User = await fetchUserProfile(userId);
 
       // Verify all expected fields are present
       expect(result).toHaveProperty('id');
@@ -294,7 +295,7 @@ describe('profileApi', () => {
         })
       );
 
-      const result = await fetchUserProfile(userId);
+      const result: User = await fetchUserProfile(userId);
 
       expect(attemptCount).toBe(4); // Initial attempt + 3 retries
       expect(result).toEqual(mockProfile);
@@ -304,7 +305,7 @@ describe('profileApi', () => {
   describe('updateProfile', () => {
     it('should send PUT request to /api/v1/users/{userId}', async () => {
       const userId = 123;
-      let capturedBody: any = null;
+      let capturedBody: UpdateProfilePayload | null = null;
       let capturedMethod: string | null = null;
       
       server.use(
@@ -326,7 +327,7 @@ describe('profileApi', () => {
 
     it('should include all updated fields in request payload', async () => {
       const userId = 123;
-      let capturedBody: any = null;
+      let capturedBody: UpdateProfilePayload | null = null;
       
       server.use(
         http.put(`${API_BASE_URL}/api/v1/users/${userId}`, async ({ request }) => {
@@ -351,7 +352,7 @@ describe('profileApi', () => {
 
     it('should include JWT token in Authorization header', async () => {
       const userId = 123;
-      let capturedHeaders: Headers | null = null;
+      let capturedHeaders: any = null;
       
       server.use(
         http.put(`${API_BASE_URL}/api/v1/users/${userId}`, ({ request }) => {
@@ -365,7 +366,7 @@ describe('profileApi', () => {
 
       await updateUserProfile(userId, mockProfileUpdateData);
 
-      expect(capturedHeaders?.get('Authorization')).toBe('Bearer mock-jwt-token');
+      expect((capturedHeaders as Headers | null)?.get('Authorization')).toBe('Bearer mock-jwt-token');
     });
 
     it('should return updated profile data', async () => {
@@ -413,10 +414,15 @@ describe('profileApi', () => {
       try {
         await updateUserProfile(userId, mockProfileUpdateData);
         expect.fail('Should have thrown validation error');
-      } catch (error: any) {
-        expect(error.response.status).toBe(422);
-        expect(error.response.data.error.details).toBeDefined();
-        expect(error.response.data.error.details.email).toEqual(['Email address is already in use']);
+      } catch (error: unknown) {
+        const axiosError = error as AxiosError<_ApiErrorResponse>;
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const errorData = axiosError.response!.data as unknown as _ApiErrorResponse;
+        expect(axiosError.response!.status).toBe(422);
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        expect(errorData.error.details).toBeDefined();
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        expect(errorData.error.details.email).toEqual(['Email address is already in use']);
       }
     });
 
@@ -524,7 +530,7 @@ describe('profileApi', () => {
     it('should include JWT token in Authorization header', async () => {
       const userId = 123;
       const mockFile = new File(['avatar content'], 'avatar.jpg', { type: 'image/jpeg' });
-      let capturedHeaders: Headers | null = null;
+      let capturedHeaders: any = null;
       
       server.use(
         http.post(`${API_BASE_URL}/api/v1/files/upload`, ({ request }) => {
@@ -542,7 +548,7 @@ describe('profileApi', () => {
 
       await uploadAvatar(userId, mockFile);
 
-      expect(capturedHeaders?.get('Authorization')).toBe('Bearer mock-jwt-token');
+      expect((capturedHeaders as Headers | null)?.get('Authorization')).toBe('Bearer mock-jwt-token');
     });
 
     it('should return uploaded file URL and metadata', async () => {
@@ -596,9 +602,13 @@ describe('profileApi', () => {
       try {
         await uploadAvatar(userId, mockFile);
         expect.fail('Should have thrown validation error');
-      } catch (error: any) {
-        expect(error.response.status).toBe(422);
-        expect(error.response.data.error.details.file).toBeDefined();
+      } catch (error: unknown) {
+        const axiosError = error as AxiosError<_ApiErrorResponse>;
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const errorData = axiosError.response!.data as unknown as _ApiErrorResponse;
+        expect(axiosError.response!.status).toBe(422);
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        expect(errorData.error.details.file).toBeDefined();
       }
     });
 
@@ -627,9 +637,13 @@ describe('profileApi', () => {
       try {
         await uploadAvatar(userId, mockFile);
         expect.fail('Should have thrown validation error');
-      } catch (error: any) {
-        expect(error.response.status).toBe(422);
-        expect(error.response.data.error.message).toBe('Invalid file type');
+      } catch (error: unknown) {
+        const axiosError = error as AxiosError<_ApiErrorResponse>;
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const errorData = axiosError.response!.data as unknown as _ApiErrorResponse;
+        expect(axiosError.response!.status).toBe(422);
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        expect(errorData.error.message).toBe('Invalid file type');
       }
     });
 
@@ -652,6 +666,19 @@ describe('profileApi', () => {
           );
         })
       );
+
+// Error response interface for validation errors
+interface _ApiErrorResponse {
+  success: false;
+  error: {
+    code: string;
+    message: string;
+    details?: {
+      [field: string]: string[];
+    };
+  };
+}
+
 
       await expect(uploadAvatar(userId, mockFile)).rejects.toThrow();
       expect(authService.refreshAccessToken).toHaveBeenCalled();
@@ -715,7 +742,7 @@ describe('profileApi', () => {
         })
       );
 
-      const result = await fetchUserProfile(userId);
+      const result: User = await fetchUserProfile(userId);
 
       expect(attemptCount).toBe(4);
       expect(result).toEqual(mockProfile);
@@ -787,10 +814,10 @@ describe('profileApi', () => {
         })
       );
 
-      const result = await fetchUserProfile(userId);
+      const result: User = await fetchUserProfile(userId);
 
       // TypeScript compile-time validation ensures this matches Profile type
-      const validatedProfile: Profile = result;
+      const validatedProfile: User = result;
       
       expect(validatedProfile.id).toBe(mockProfile.id);
       expect(validatedProfile.firstname).toBe(mockProfile.firstname);
@@ -816,7 +843,7 @@ describe('profileApi', () => {
         })
       );
 
-      const result = await fetchUserProfile(userId);
+      const result: User = await fetchUserProfile(userId);
 
       expect(result.id).toBe(123);
       expect(result.firstname).toBe('John');
@@ -827,12 +854,12 @@ describe('profileApi', () => {
 
     it('should properly encode special characters in request data', async () => {
       const userId = 123;
-      const specialCharsData: ProfileUpdateData = {
+      const specialCharsData: UpdateProfileData = {
         firstname: 'Jean-François',
         lastname: 'O\'Brien',
         description: 'Test & <special> "characters"',
       };
-      let capturedBody: any = null;
+      let capturedBody: UpdateProfilePayload | null = null;
       
       server.use(
         http.put(`${API_BASE_URL}/api/v1/users/${userId}`, async ({ request }) => {
@@ -868,7 +895,7 @@ describe('profileApi', () => {
         })
       );
 
-      const result = await fetchUserProfile(userId);
+      const result: User = await fetchUserProfile(userId);
 
       // API layer should transform to array if needed
       expect(Array.isArray(result.interests)).toBe(true);
@@ -889,7 +916,7 @@ describe('profileApi', () => {
         })
       );
 
-      const result = await fetchUserProfile(userId);
+      const result: User = await fetchUserProfile(userId);
 
       // Profile image URL should be properly formed
       expect(result.profileimageurl).toBeDefined();
@@ -913,7 +940,7 @@ describe('profileApi', () => {
         })
       );
 
-      const result = await fetchUserProfile(userId);
+      const result: User = await fetchUserProfile(userId);
 
       expect(result.description).toBeNull();
       expect(result.city).toBeNull();

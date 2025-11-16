@@ -114,7 +114,7 @@ const createMockAssignment = (overrides: Partial<Assignment> = {}): Assignment =
 /**
  * Helper to sort submissions for comparison
  */
-const sortSubmissions = (submissions: Submission[], field: keyof Submission, order: 'asc' | 'desc'): Submission[] => {
+const _sortSubmissions = (submissions: Submission[], field: keyof Submission, order: 'asc' | 'desc'): Submission[] => {
   const sorted = [...submissions].sort((a, b) => {
     const aVal = a[field];
     const bVal = b[field];
@@ -204,14 +204,14 @@ describe('SubmissionList Component', () => {
     });
 
     it('renders student name with avatar in Student column', () => {
-      const submissionsWithNames = mockSubmissions.map((sub, idx) => ({
+      const submissionsWithNames: Submission[] = mockSubmissions.map((sub, idx) => ({
         ...sub,
         studentname: `Student ${idx + 1}`,
       }));
 
       renderWithProviders(
         <SubmissionList
-          submissions={submissionsWithNames as any}
+          submissions={submissionsWithNames}
           assignment={mockAssignment}
           viewMode="teacher"
         />
@@ -245,7 +245,7 @@ describe('SubmissionList Component', () => {
       
       // Count expected occurrences of each status
       const statusCounts = mockSubmissions.reduce((acc, submission) => {
-        const statusText = statusMap[submission.status];
+        const statusText = statusMap[submission.status as SubmissionStatus];
         if (statusText) {
           acc[statusText] = (acc[statusText] || 0) + 1;
         }
@@ -597,7 +597,7 @@ describe('SubmissionList Component', () => {
       vi.useRealTimers();
       
       const user = userEvent.setup();
-      const submissions = [
+      const submissions: Submission[] = [
         { ...createMockSubmission({ id: 1 }), studentname: 'Charlie' },
         { ...createMockSubmission({ id: 2 }), studentname: 'Alice' },
         { ...createMockSubmission({ id: 3 }), studentname: 'Bob' },
@@ -605,7 +605,7 @@ describe('SubmissionList Component', () => {
 
       renderWithProviders(
         <SubmissionList
-          submissions={submissions as any}
+          submissions={submissions}
           assignment={mockAssignment}
           viewMode="teacher"
         />
@@ -632,14 +632,14 @@ describe('SubmissionList Component', () => {
       vi.useRealTimers();
       
       const user = userEvent.setup();
-      const submissions = [
+      const submissions: Submission[] = [
         { ...createMockSubmission({ id: 1 }), studentname: 'Alice' },
         { ...createMockSubmission({ id: 2 }), studentname: 'Charlie' },
       ];
 
       renderWithProviders(
         <SubmissionList
-          submissions={submissions as any}
+          submissions={submissions}
           assignment={mockAssignment}
           viewMode="teacher"
         />
@@ -945,7 +945,7 @@ describe('SubmissionList Component', () => {
 
       expect(mockOnViewSubmission).toHaveBeenCalledTimes(1);
       // Verify that a submission was passed (the actual submission depends on table sorting)
-      const calledSubmission = mockOnViewSubmission.mock.calls[0][0];
+      const calledSubmission = mockOnViewSubmission.mock.calls[0][0] as Submission;
       expect(calledSubmission).toMatchObject({
         assignment: 1,
         attemptnumber: 1,
@@ -1210,13 +1210,13 @@ describe('SubmissionList Component', () => {
     });
 
     it('extracts student name from submission object', () => {
-      const submissions = [
+      const submissions: Submission[] = [
         { ...createMockSubmission({ id: 1 }), studentname: 'John Doe' },
       ];
 
       renderWithProviders(
         <SubmissionList
-          submissions={submissions as any}
+          submissions={submissions}
           assignment={mockAssignment}
           viewMode="teacher"
         />
@@ -1470,13 +1470,13 @@ describe('SubmissionList Component', () => {
     });
 
     it('shows student avatar with initials', () => {
-      const submissions = [
+      const submissions: Submission[] = [
         { ...createMockSubmission({ id: 1 }), studentname: 'John Doe' },
       ];
 
       renderWithProviders(
         <SubmissionList
-          submissions={submissions as any}
+          submissions={submissions}
           assignment={mockAssignment}
           viewMode="teacher"
         />
@@ -1559,14 +1559,14 @@ describe('SubmissionList Component', () => {
     });
 
     it('handles submissions with missing data', () => {
-      const submissions = [
+      const submissions: Submission[] = [
         { ...createMockSubmission({ id: 1, userid: 1 }), studentname: undefined },
       ];
 
       expect(() => {
         renderWithProviders(
           <SubmissionList
-            submissions={submissions as any}
+            submissions={submissions}
             assignment={mockAssignment}
             viewMode="teacher"
           />

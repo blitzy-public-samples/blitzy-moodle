@@ -162,6 +162,25 @@ interface NumericalOptions {
   unitpenalty: number;
 }
 
+/**
+ * Frontend representation of a question after transformation
+ */
+interface TransformedQuestion {
+  id: number;
+  slot: number;
+  type: string;
+  questiontext: string;
+  defaultmark: number;
+  maxmark: number;
+  answered: boolean;
+  flagged: boolean;
+  mark: number | null;
+  state: string;
+  generalfeedback: string;
+  options: Array<{ id: number; text: string; correct: boolean }>;
+  correctanswer?: string;
+}
+
 interface AttemptSummary {
   id: number;
   quiz: number;
@@ -445,8 +464,8 @@ function convertFixtureQuestionToMSW(fixtureQuestion: FixtureQuizQuestion): Ques
  * Transform MSW Question format to frontend QuizQuestion format
  * Converts complex options object to simple options array expected by frontend
  */
-function transformQuestionForFrontend(question: Question): any {
-  const baseTransformed: any = {
+function transformQuestionForFrontend(question: Question): TransformedQuestion {
+  const baseTransformed: TransformedQuestion = {
     id: question.questionid,
     slot: question.slot,
     type: question.type,
@@ -458,12 +477,14 @@ function transformQuestionForFrontend(question: Question): any {
     mark: question.mark,
     state: question.state,
     generalfeedback: question.generalfeedback,
+    options: [], // Will be populated based on question type
   };
 
   // Transform options based on question type
   if (question.type === 'multichoice' && question.options) {
     const mcOptions = question.options as MultichoiceOptions;
     // Convert MultichoiceOptions.answers to simple options array
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     baseTransformed.options = mcOptions.answers.map(ans => ({
       id: ans.id,
       text: ans.answer,
@@ -471,6 +492,7 @@ function transformQuestionForFrontend(question: Question): any {
     }));
   } else if (question.type === 'truefalse' && question.options) {
     // Convert TrueFalseOptions to two simple options
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     baseTransformed.options = [
       { id: 1, text: 'True', correct: false },
       { id: 2, text: 'False', correct: false },
@@ -478,13 +500,17 @@ function transformQuestionForFrontend(question: Question): any {
   } else if (question.type === 'shortanswer' && question.options) {
     const saOptions = question.options as ShortAnswerOptions;
     // For shortanswer, we don't show options in the UI
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     baseTransformed.options = [];
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     baseTransformed.correctanswer = saOptions.answers[0]?.answer;
   } else if (question.type === 'essay') {
     // Essay questions don't have options
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     baseTransformed.options = [];
   } else {
     // Default: empty options array
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     baseTransformed.options = [];
   }
 
@@ -659,7 +685,7 @@ export const quizzesHandlers = [
     try {
       const text = await request.text();
       if (text && text.trim()) {
-        body = JSON.parse(text);
+        body = JSON.parse(text) as { password?: string; preview?: boolean };
       }
     } catch (error) {
       // Ignore JSON parse errors, use empty body
@@ -1156,8 +1182,8 @@ export const quizzesHandlers = [
     // Build detailed review with questions and answers
     const reviewQuestions = questions.map((q) => {
       // Mock user answer and correct answer
-      let userAnswer: any = null;
-      let correctAnswer: any = null;
+      let userAnswer: number | string | boolean | null = null;
+      let correctAnswer: number | string | boolean | null = null;
       let mark = 0;
 
       if (q.type === 'multichoice') {

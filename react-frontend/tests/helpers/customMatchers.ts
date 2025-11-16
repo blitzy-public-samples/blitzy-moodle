@@ -879,9 +879,10 @@ expect.extend({
       if ('textContent' in received && typeof received.textContent === 'string' && received.textContent.includes('Loading')) {
         hasLoadingIndicator = true;
       } else if ('querySelector' in received && typeof received.querySelector === 'function') {
-        const loadingEl = received.querySelector('[data-testid="loading"]') ||
-          received.querySelector('.loading') ||
-          received.querySelector('[role="progressbar"]');
+        const container = received as { querySelector: (selector: string) => Element | null };
+        const loadingEl = container.querySelector('[data-testid="loading"]') ||
+          container.querySelector('.loading') ||
+          container.querySelector('[role="progressbar"]');
         hasLoadingIndicator = !!loadingEl;
       }
     }
@@ -959,8 +960,9 @@ expect.extend({
       }
       
       if (!hasEmptyIndicator && 'querySelector' in received && typeof received.querySelector === 'function') {
-        const emptyEl = received.querySelector('[data-testid="empty"]') ||
-          received.querySelector('.empty-state');
+        const container = received as { querySelector: (selector: string) => Element | null };
+        const emptyEl = container.querySelector('[data-testid="empty"]') ||
+          container.querySelector('.empty-state');
         hasEmptyIndicator = !!emptyEl;
       }
     }

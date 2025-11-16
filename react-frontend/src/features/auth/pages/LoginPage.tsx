@@ -18,6 +18,7 @@ import {
 } from '@mui/material';
 import { LoginForm } from '../components/LoginForm';
 import { loginSuccess } from '../store/authSlice';
+import type { LoginResponse } from '../types/auth.types';
 
 // ============================================================================
 // Component
@@ -60,7 +61,7 @@ export const LoginPage: React.FC = () => {
    * Handle successful login
    * Updates Redux auth state and navigates to the return URL.
    */
-  const handleLoginSuccess = async (response: { user: any; tokens: any }) => {
+  const handleLoginSuccess = async (response: LoginResponse) => {
     console.log('[LoginPage] handleLoginSuccess called with response:', response);
     console.log('[LoginPage] Return URL:', returnUrl);
     

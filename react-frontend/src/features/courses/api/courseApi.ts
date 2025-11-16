@@ -210,10 +210,10 @@ export function useEnrollInCourse() {
     mutationFn: enrollInCourse,
     onSuccess: (_, courseId) => {
       // Invalidate course detail to refresh enrollment status
-      queryClient.invalidateQueries({ queryKey: courseKeys.detail(courseId) });
+      void queryClient.invalidateQueries({ queryKey: courseKeys.detail(courseId) });
       
       // Invalidate course lists to update enrollment counts
-      queryClient.invalidateQueries({ queryKey: courseKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: courseKeys.lists() });
     },
   });
 }

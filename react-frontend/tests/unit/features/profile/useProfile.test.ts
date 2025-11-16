@@ -29,7 +29,7 @@ vi.mock('@/features/profile/api/profileApi', () => ({
 import { fetchUserProfile, updateUserProfile } from '@/features/profile/api/profileApi';
 
 // Import the hook to test
-import { useProfile, useUpdateProfile } from '@/features/profile/hooks/useProfile';
+import { useProfile, _useUpdateProfile } from '@/features/profile/hooks/useProfile';
 
 // Type definitions based on expected profile structure
 interface UserProfile {
@@ -126,6 +126,7 @@ describe('useProfile Hook', () => {
       expect(result.current.isError).toBe(false);
     });
 
+    // eslint-disable-next-line @typescript-eslint/require-await
     it('should not fetch data when userId is null', async () => {
       const { result } = renderHook(() => useProfile(null), {
         wrapper: createWrapper(),
@@ -217,7 +218,7 @@ describe('useProfile Hook', () => {
         staleTime: 0, // Data is immediately stale
       });
 
-      const { result, rerender } = renderHook(() => useProfile(789), {
+      const { result, _rerender } = renderHook(() => useProfile(789), {
         wrapper: createWrapper(),
       });
 
@@ -228,7 +229,7 @@ describe('useProfile Hook', () => {
       expect(fetchUserProfile).toHaveBeenCalledTimes(1);
 
       // Trigger a refetch - since data is stale (staleTime: 0), it should refetch
-      result.current.refetch();
+      void result.current.refetch();
 
       await waitFor(() => {
         expect(result.current.profile).toEqual(updatedProfile);
@@ -402,7 +403,7 @@ describe('useProfile Hook', () => {
       vi.mocked(fetchUserProfile).mockResolvedValue(mockProfile);
       
       // Mock API to fail immediately - React Query will handle retries
-      const updateSpy = vi.mocked(updateUserProfile).mockImplementation(() => {
+      const _updateSpy = vi.mocked(updateUserProfile).mockImplementation(() => {
         return Promise.reject(new Error('Update failed'));
       });
 
@@ -497,7 +498,7 @@ describe('useProfile Hook', () => {
       );
 
       // Trigger manual refetch
-      result.current.refetch();
+      void result.current.refetch();
 
       // Should be fetching but not loading (data already available)
       await waitFor(() => {
@@ -720,7 +721,7 @@ describe('useProfile Hook', () => {
 
       vi.mocked(fetchUserProfile).mockResolvedValue(mockProfile);
 
-      const { result, rerender } = renderHook(() => useProfile(1111), {
+      const { result, _rerender } = renderHook(() => useProfile(1111), {
         wrapper: staleWrapper,
       });
 
@@ -774,7 +775,7 @@ describe('useProfile Hook', () => {
       );
 
       // Trigger background refetch
-      const refetchPromise = result.current.refetch();
+      const _refetchPromise = result.current.refetch();
 
       // Wait for isFetching to become true (async state update)
       await waitFor(() => {
@@ -813,6 +814,7 @@ describe('useProfile Hook', () => {
       };
 
       vi.mocked(fetchUserProfile)
+        // eslint-disable-next-line @typescript-eslint/require-await
         .mockImplementation(async (userId: number) => {
           if (userId === 1313) {return profile1;}
           if (userId === 1414) {return profile2;}

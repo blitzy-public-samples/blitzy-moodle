@@ -61,6 +61,7 @@ describe('constants', () => {
     it('should define API_BASE_URL as a string', () => {
       expect(API_BASE_URL).toBeDefined();
       expect(typeof API_BASE_URL).toBe('string');
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       expect(API_BASE_URL.length).toBeGreaterThan(0);
     });
 
@@ -68,6 +69,7 @@ describe('constants', () => {
       expect(API_BASE_URL).toBeDefined();
       // Should either be /api/v1 or a full URL
       expect(
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         API_BASE_URL.startsWith('/') || API_BASE_URL.startsWith('http')
       ).toBe(true);
     });

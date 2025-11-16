@@ -83,9 +83,9 @@ async function initializeApp() {
     } catch (error) {
       // MSW initialization failed - log error but continue rendering app
       // This can happen in some browsers (e.g., WebKit) with dynamic imports
-      // eslint-disable-next-line no-console
+       
       console.error(`[App ${callId}] Failed to initialize MSW (continuing without mocking):`, error);
-      // eslint-disable-next-line no-console
+       
       console.warn(`[App ${callId}] E2E tests may fail due to unmocked API calls`);
     }
   }
@@ -113,7 +113,7 @@ async function initializeApp() {
 
 // Initialize and render the app
 initializeApp().catch((error) => {
-  // eslint-disable-next-line no-console
+   
   console.error('[App] Failed to initialize application:', error);
   // Last resort: render the app anyway
   const app = (
