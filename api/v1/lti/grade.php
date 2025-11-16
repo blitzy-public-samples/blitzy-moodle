@@ -256,7 +256,7 @@ class LtiGradeEndpoint extends ApiBase {
         
         // Step 1: Verify OAuth 1.0a signature
         // Extract consumer key from OAuth headers
-        $consumerkey = lti\get_oauth_key_from_headers(null, array(\mod_lti\local\ltiservice\service_base::SCOPE_BASIC_OUTCOMES));
+        $consumerkey = \moodle\mod\lti\get_oauth_key_from_headers(null, array(\mod_lti\local\ltiservice\service_base::SCOPE_BASIC_OUTCOMES));
         
         if ($consumerkey === false) {
             throw new Exception('Missing or invalid consumer key in OAuth headers');
