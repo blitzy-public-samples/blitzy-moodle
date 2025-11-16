@@ -1,4 +1,4 @@
-import { Page, Locator } from '@playwright/test';
+import type { Page, Locator } from '@playwright/test';
 
 /**
  * Interface representing quiz information displayed on the quiz page.
@@ -225,7 +225,7 @@ export class QuizPage {
     // Determine question number from URL or navigation
     const url = this.page.url();
     const pageMatch = url.match(/page=(\d+)/);
-    const questionNumber = pageMatch && pageMatch[1] ? parseInt(pageMatch[1], 10) + 1 : 1;
+    const questionNumber = pageMatch?.[1] ? parseInt(pageMatch[1], 10) + 1 : 1;
 
     // Determine question type by inspecting answer options
     const radioInputs = await this.page.locator('[data-testid="question-options"] input[type="radio"]').count();
@@ -443,11 +443,11 @@ export class QuizPage {
     let maxScore = 0;
     let percentage = 0;
     
-    if (scoreMatch && scoreMatch[1] && scoreMatch[2]) {
+    if (scoreMatch?.[1] && scoreMatch[2]) {
       score = parseFloat(scoreMatch[1]);
       maxScore = parseFloat(scoreMatch[2]);
       percentage = maxScore > 0 ? (score / maxScore) * 100 : 0;
-    } else if (percentageMatch && percentageMatch[1]) {
+    } else if (percentageMatch?.[1]) {
       percentage = parseFloat(percentageMatch[1]);
     }
 
@@ -498,14 +498,14 @@ export class QuizPage {
     
     // Extract attempt number
     const attemptMatch = summaryText.match(/Attempt\s+(\d+)/i);
-    const attemptNumber = attemptMatch && attemptMatch[1] ? parseInt(attemptMatch[1], 10) : 1;
+    const attemptNumber = attemptMatch?.[1] ? parseInt(attemptMatch[1], 10) : 1;
     
     // Extract time information
     const timeMatch = summaryText.match(/Time taken:?\s*([^,\n]+)/i);
-    const timeTaken = timeMatch && timeMatch[1] ? timeMatch[1].trim() : 'N/A';
+    const timeTaken = timeMatch?.[1] ? timeMatch[1].trim() : 'N/A';
     
     const startMatch = summaryText.match(/Started:?\s*([^,\n]+)/i);
-    const startTime = startMatch && startMatch[1] ? startMatch[1].trim() : 'N/A';
+    const startTime = startMatch?.[1] ? startMatch[1].trim() : 'N/A';
     
     // Count questions
     const questionButtons = await this.page.locator('.qnbutton, .question-nav button').count();

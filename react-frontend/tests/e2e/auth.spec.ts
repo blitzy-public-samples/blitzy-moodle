@@ -289,7 +289,7 @@ test.describe('Authentication E2E Tests', () => {
     const cookies = await page.context().cookies();
     const refreshCookie = cookies.find(c => c.name === 'refresh_token');
 
-    if (refreshCookie && refreshCookie.expires) {
+    if (refreshCookie?.expires) {
       const expirationDays = (refreshCookie.expires * 1000 - Date.now()) / (1000 * 60 * 60 * 24);
       expect(expirationDays).toBeGreaterThanOrEqual(6);
       expect(expirationDays).toBeLessThanOrEqual(8);

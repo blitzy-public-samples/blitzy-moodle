@@ -988,7 +988,7 @@ expect.extend({
   async toBeAccessible(received: unknown) {
     try {
       const results: AxeResults = await axeRun(received);
-      const violations = results.violations;
+      const {violations} = results;
       const pass = violations.length === 0;
 
       return {
@@ -1191,9 +1191,9 @@ expect.extend({
     let paginationData: unknown = undefined;
     
     if (isRecord(received) && 'meta' in received && isRecord(received.meta)) {
-      const meta = received.meta;
+      const {meta} = received;
       if ('pagination' in meta && isRecord(meta.pagination)) {
-        const pagination = meta.pagination;
+        const {pagination} = meta;
         paginationData = pagination;
         hasPagination = typeof pagination.page === 'number' &&
           typeof pagination.perPage === 'number' &&

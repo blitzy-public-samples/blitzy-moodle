@@ -672,7 +672,7 @@ test.describe('Course Catalog - Browsing and Search', () => {
       expect(courseCards.length).toBeGreaterThan(0);
 
       const firstCourse = courseCards[0];
-      const courseId = firstCourse.courseId;
+      const {courseId} = firstCourse;
 
       // Click on course card to navigate to detail page
       await catalogPage.clickCourseCard(courseId);
@@ -808,7 +808,7 @@ test.describe('Course Catalog - Browsing and Search', () => {
       
       // Verify search input receives focus
       const searchInputFocused = await page.evaluate(() => {
-        const activeElement = document.activeElement;
+        const {activeElement} = document;
         return activeElement?.getAttribute('data-testid') === 'course-search-input';
       });
       

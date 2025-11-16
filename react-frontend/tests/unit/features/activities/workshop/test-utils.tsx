@@ -11,8 +11,9 @@
  * - Helper functions for complex test scenarios
  */
 
-import { ReactElement, ReactNode } from 'react';
-import { render, RenderResult, RenderOptions } from '@testing-library/react';
+import type { ReactElement, ReactNode } from 'react';
+import type { RenderResult, RenderOptions } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Provider as ReduxProvider } from 'react-redux';
 import { MemoryRouter } from 'react-router-dom';

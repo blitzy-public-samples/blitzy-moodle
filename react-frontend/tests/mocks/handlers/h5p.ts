@@ -320,9 +320,9 @@ function sortAttempts(
 
     if (sortOrder === 'asc') {
       return aValue - bValue;
-    } else {
+    } 
       return bValue - aValue;
-    }
+    
   });
 
   return sorted;

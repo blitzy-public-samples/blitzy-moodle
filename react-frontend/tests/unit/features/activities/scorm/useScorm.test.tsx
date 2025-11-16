@@ -17,7 +17,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { useScorm } from '@/features/activities/scorm/hooks/useScorm';
 import type { Scorm, ScormSco, ScormAttempt, ScormUserData } from '@/features/activities/scorm/types/scorm.types';
 import * as scormApi from '@/features/activities/scorm/api/scormApi';
@@ -990,9 +990,9 @@ describe('useScorm Hook', () => {
       });
 
       // TypeScript should infer these types correctly
-      const scorm: Scorm | undefined = result.current.scorm;
-      const scoes: ScormSco[] | undefined = result.current.scoes;
-      const attempts: ScormAttempt[] | undefined = result.current.attempts;
+      const {scorm} = result.current;
+      const {scoes} = result.current;
+      const {attempts} = result.current;
 
       expect(scorm).toBeDefined();
       expect(Array.isArray(scoes)).toBe(true);

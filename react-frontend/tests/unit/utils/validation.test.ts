@@ -302,7 +302,7 @@ describe('isValidPassword', () => {
     });
 
     it('should validate very long password', () => {
-      const longPassword = 'P@ssw0rd' + 'a'.repeat(100);
+      const longPassword = `P@ssw0rd${  'a'.repeat(100)}`;
       const result = isValidPassword(longPassword);
       expect(result.valid).toBe(true);
     });

@@ -132,7 +132,7 @@ test.describe('Admin User Management', () => {
           
           if (users.length > 0) {
             const user = users.find(u => u.username === username);
-            if (user && user.id) {
+            if (user?.id) {
               await adminPage.deleteUser(user.id);
               await adminPage.confirmDeletion();
               await adminPage.waitForActionComplete();
@@ -1000,7 +1000,7 @@ test.describe('Admin User Management', () => {
       const users = await adminPage.getUsers();
       const adminUser = users.find(u => u.username === 'admin');
       
-      if (adminUser && adminUser.id) {
+      if (adminUser?.id) {
         // Attempt to delete admin user
         await adminPage.deleteUser(adminUser.id);
         

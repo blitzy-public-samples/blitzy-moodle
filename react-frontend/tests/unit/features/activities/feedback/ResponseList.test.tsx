@@ -132,7 +132,7 @@ vi.mock('@/components/feedback/Alert', () => ({
  */
 vi.mock('@/components/feedback/Modal', () => ({
   Modal: ({ open, title, children, actions, onClose }: any) => {
-    if (!open) return null;
+    if (!open) {return null;}
     return (
       <div role="dialog" aria-labelledby="modal-title">
         <h2 id="modal-title">{title}</h2>
@@ -220,7 +220,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -234,7 +234,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -250,7 +250,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -268,7 +268,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -290,7 +290,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -307,7 +307,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -329,7 +329,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -343,7 +343,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -357,7 +357,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -371,7 +371,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -391,7 +391,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -411,7 +411,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -425,7 +425,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -446,7 +446,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -462,7 +462,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -482,7 +482,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -496,7 +496,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -509,7 +509,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -524,7 +524,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -544,7 +544,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
           onViewDetails={mockOnViewDetails}
         />
       );
@@ -559,7 +559,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -589,7 +589,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
           onViewDetails={mockOnViewDetails}
         />
       );
@@ -612,7 +612,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -630,7 +630,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -649,7 +649,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={manyResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -668,7 +668,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={manyResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -692,7 +692,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -723,7 +723,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -743,7 +743,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -766,7 +766,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -802,7 +802,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -823,7 +823,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -844,7 +844,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -866,7 +866,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -895,7 +895,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -928,7 +928,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -946,7 +946,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -961,7 +961,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -987,7 +987,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -1018,7 +1018,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -1046,8 +1046,8 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={[]}
           onDelete={mockOnDelete}
-          canDelete={true}
-          loading={true}
+          canDelete
+          loading
         />
       );
 
@@ -1062,8 +1062,8 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
-          loading={true}
+          canDelete
+          loading
         />
       );
 
@@ -1076,7 +1076,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
           loading={false}
         />
       );
@@ -1096,7 +1096,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={[]}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -1109,7 +1109,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={[]}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -1123,7 +1123,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={[]}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -1138,7 +1138,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={[]}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -1159,7 +1159,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
           error={error}
         />
       );
@@ -1177,7 +1177,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
           error={error}
         />
       );
@@ -1193,7 +1193,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
           error={error}
         />
       );
@@ -1213,7 +1213,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -1274,7 +1274,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -1287,7 +1287,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -1300,7 +1300,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -1314,7 +1314,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -1333,7 +1333,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -1352,7 +1352,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -1389,7 +1389,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={manyResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -1419,7 +1419,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 
@@ -1453,7 +1453,7 @@ describe('ResponseList Component', () => {
           feedbackId={1}
           responses={mockResponses}
           onDelete={mockOnDelete}
-          canDelete={true}
+          canDelete
         />
       );
 

@@ -816,7 +816,7 @@ const createPostHandler = http.post('*/api/v1/forums/discussions/:id/posts', asy
     userPictureUrl: '/user/pic.jpg',
     created: Date.now() / 1000,
     modified: Date.now() / 1000,
-    subject: bodyData.subject || 'Re: ' + discussion.name,
+    subject: bodyData.subject || `Re: ${  discussion.name}`,
     message: bodyData.message,
     messageFormat: bodyData.messageFormat || 1,
     attachment: false,

@@ -427,7 +427,7 @@ describe('usePagination', () => {
       );
 
       // Should include first, last, current, and surrounding pages with ellipsis (-1)
-      const pageNumbers = result.current.pageNumbers;
+      const {pageNumbers} = result.current;
       expect(pageNumbers).toContain(1); // First page
       expect(pageNumbers).toContain(10); // Last page
       expect(pageNumbers).toContain(5); // Current page
@@ -447,7 +447,7 @@ describe('usePagination', () => {
         })
       );
 
-      const pageNumbers = result.current.pageNumbers;
+      const {pageNumbers} = result.current;
       expect(pageNumbers).toContain(1);
       expect(pageNumbers).toContain(2);
       expect(pageNumbers).toContain(3);
@@ -464,7 +464,7 @@ describe('usePagination', () => {
         })
       );
 
-      const pageNumbers = result.current.pageNumbers;
+      const {pageNumbers} = result.current;
       expect(pageNumbers).toContain(1); // First page
       expect(pageNumbers).toContain(-1); // Ellipsis after first page
       expect(pageNumbers).toContain(18);

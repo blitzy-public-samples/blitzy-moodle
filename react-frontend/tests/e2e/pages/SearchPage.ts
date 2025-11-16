@@ -7,7 +7,7 @@
  * @packageDocumentation
  */
 
-import { Page, Locator } from '@playwright/test';
+import type { Page, Locator } from '@playwright/test';
 
 /**
  * Interface representing a search result item

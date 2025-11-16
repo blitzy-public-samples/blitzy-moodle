@@ -1,4 +1,4 @@
-import { Page, Locator } from '@playwright/test';
+import type { Page, Locator } from '@playwright/test';
 import { getMimeTypeFromFilename } from '../utils/file-helpers';
 import { readFile } from 'fs/promises';
 

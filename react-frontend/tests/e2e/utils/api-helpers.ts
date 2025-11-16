@@ -383,13 +383,13 @@ export async function apiRequest<T = any>(
       factor: 2,
       shouldRetry: (error: Error) => {
         // Retry on network errors, timeouts, and 5xx server errors
-        const status = (error as any).status;
+        const {status} = (error as any);
         return !status || status >= 500;
       },
     });
-  } else {
+  } 
     return await makeRequest();
-  }
+  
 }
 
 // ============================================================================

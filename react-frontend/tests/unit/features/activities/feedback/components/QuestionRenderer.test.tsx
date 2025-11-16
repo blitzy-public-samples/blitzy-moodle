@@ -126,7 +126,7 @@ describe('QuestionRenderer', () => {
           {...getBaseProps()}
           required={1}
           error="This field is required"
-          touched={true}
+          touched
         />
       );
       
@@ -177,7 +177,7 @@ describe('QuestionRenderer', () => {
     });
 
     it('should disable all radio buttons when disabled=true', () => {
-      render(<QuestionRenderer {...getBaseProps()} disabled={true} />);
+      render(<QuestionRenderer {...getBaseProps()} disabled />);
       
       // All radio buttons should be disabled
       const radios = screen.getAllByRole('radio');
@@ -305,7 +305,7 @@ describe('QuestionRenderer', () => {
           {...getBaseProps()}
           required={1}
           error="Select at least one option"
-          touched={true}
+          touched
         />
       );
       
@@ -407,7 +407,7 @@ describe('QuestionRenderer', () => {
           {...getBaseProps()}
           required={1}
           error="Please select a rating"
-          touched={true}
+          touched
         />
       );
       
@@ -475,7 +475,7 @@ describe('QuestionRenderer', () => {
     it('should display numeric value correctly', () => {
       render(<QuestionRenderer {...getBaseProps()} value={42} />);
       
-      const input = screen.getByLabelText('Enter your score') as HTMLInputElement;
+      const input = screen.getByLabelText('Enter your score');
       expect(input.value).toBe('42');
     });
 
@@ -485,7 +485,7 @@ describe('QuestionRenderer', () => {
           {...getBaseProps()}
           required={1}
           error="Value must be between 0 and 100"
-          touched={true}
+          touched
         />
       );
       
@@ -522,7 +522,7 @@ describe('QuestionRenderer', () => {
         <QuestionRenderer
           {...getBaseProps()}
           error="Invalid value"
-          touched={true}
+          touched
         />
       );
       
@@ -586,7 +586,7 @@ describe('QuestionRenderer', () => {
       const longText = 'This is a longer feedback text that spans multiple lines.';
       render(<QuestionRenderer {...getBaseProps()} value={longText} />);
       
-      const textarea = screen.getByLabelText('Please provide your feedback') as HTMLTextAreaElement;
+      const textarea = screen.getByLabelText('Please provide your feedback');
       expect(textarea.value).toBe(longText);
     });
 
@@ -603,7 +603,7 @@ describe('QuestionRenderer', () => {
           {...getBaseProps()}
           required={1}
           error="This field is required"
-          touched={true}
+          touched
         />
       );
       
@@ -690,7 +690,7 @@ describe('QuestionRenderer', () => {
     it('should display textfield value correctly', () => {
       render(<QuestionRenderer {...getBaseProps()} value="Jane Smith" />);
       
-      const input = screen.getByLabelText('Enter your name') as HTMLInputElement;
+      const input = screen.getByLabelText('Enter your name');
       expect(input.value).toBe('Jane Smith');
     });
 
@@ -730,7 +730,7 @@ describe('QuestionRenderer', () => {
           {...getBaseProps()}
           required={1}
           error="Name is required"
-          touched={true}
+          touched
         />
       );
       
@@ -1357,7 +1357,7 @@ describe('QuestionRenderer', () => {
       
       render(<QuestionRenderer {...props} />);
       
-      const input = screen.getByLabelText('Number') as HTMLInputElement;
+      const input = screen.getByLabelText('Number');
       expect(input.value).toBe('0');
     });
 
@@ -1378,7 +1378,7 @@ describe('QuestionRenderer', () => {
       
       render(<QuestionRenderer {...props} />);
       
-      const input = screen.getByLabelText('Optional') as HTMLInputElement;
+      const input = screen.getByLabelText('Optional');
       expect(input.value).toBe('');
     });
   });

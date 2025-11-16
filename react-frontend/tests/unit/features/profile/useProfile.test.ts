@@ -814,8 +814,8 @@ describe('useProfile Hook', () => {
 
       vi.mocked(fetchUserProfile)
         .mockImplementation(async (userId: number) => {
-          if (userId === 1313) return profile1;
-          if (userId === 1414) return profile2;
+          if (userId === 1313) {return profile1;}
+          if (userId === 1414) {return profile2;}
           throw new Error('Unknown user');
         });
 

@@ -1,5 +1,7 @@
-import { test, expect, Page } from '@playwright/test';
-import { AssignmentPage, AssignmentInfo, SubmissionStatus, SubmittedFile, FeedbackInfo, SubmissionHistoryEntry } from './pages/AssignmentPage';
+import type { Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
+import type { AssignmentInfo, SubmissionStatus, SubmittedFile, FeedbackInfo, SubmissionHistoryEntry } from './pages/AssignmentPage';
+import { AssignmentPage } from './pages/AssignmentPage';
 import { login, loginAsStudent, logout, clearAuthenticationState } from './utils/auth';
 import { 
   uploadFile, 
@@ -45,7 +47,7 @@ import { testStudent, testTeacher, TEST_PASSWORD } from './fixtures/users';
 test.describe('Assignment Submission E2E Tests', () => {
   let page: Page;
   let assignmentPage: AssignmentPage;
-  let testFilePaths: string[] = [];
+  const testFilePaths: string[] = [];
 
   /**
    * Setup: Authenticate student user and prepare test environment
@@ -454,7 +456,7 @@ test.describe('Assignment Submission E2E Tests', () => {
     await assignmentPage.waitForAssignment();
     
     // Check if submission exists, create one if not
-    let status = await assignmentPage.getSubmissionStatus();
+    const status = await assignmentPage.getSubmissionStatus();
     if (!status.hasSubmission) {
       await assignmentPage.clickAddSubmission();
       const testFilePath = await generateTestFile('pdf', 'small');

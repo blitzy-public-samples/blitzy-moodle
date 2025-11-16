@@ -519,7 +519,7 @@ const addLatency = () => new Promise(resolve => setTimeout(resolve, Math.random(
  * Helper function to calculate grade based on grade method
  */
 const calculateFinalGrade = (attempts: number[], method: GradeMethod): number => {
-  if (attempts.length === 0) return 0;
+  if (attempts.length === 0) {return 0;}
   
   switch (method) {
     case GradeMethod.HIGHEST:
@@ -549,9 +549,9 @@ const getOverallFeedback = (percentage: number): string => {
     return '<p>Satisfactory. Consider reviewing the material to strengthen your understanding.</p>';
   } else if (percentage >= 50) {
     return '<p>You have a basic understanding but need more practice. Please review the course material.</p>';
-  } else {
+  } 
     return '<p>Additional study is needed. Please review the course material and consider seeking help from your instructor.</p>';
-  }
+  
 };
 
 /**
@@ -782,7 +782,7 @@ export const quizzesHandlers = [
       data: {
         attempt: newAttempt,
         questions: transformedQuestions,
-        timeRemaining: timeRemaining,
+        timeRemaining,
       },
       meta: {},
     });
@@ -920,7 +920,7 @@ export const quizzesHandlers = [
         },
         meta: {},
       });
-    } else {
+    } 
       // Auto-save
       attempt.timemodified = Math.floor(Date.now() / 1000); // Unix timestamp in seconds
       return HttpResponse.json({
@@ -932,7 +932,7 @@ export const quizzesHandlers = [
         },
         meta: {},
       });
-    }
+    
   }),
 
   /**
@@ -1015,7 +1015,7 @@ export const quizzesHandlers = [
         state: attempt.state,
         timestart: attempt.timestart,
         timefinish: attempt.timefinish,
-        sumgrades: sumgrades,
+        sumgrades,
         maxgrade: quiz.sumgrades,
         grade: Number(grade.toFixed(quiz.decimalpoints)),
         percentage: Number(percentage.toFixed(2)),
@@ -1237,14 +1237,14 @@ export const quizzesHandlers = [
           state: attempt.state,
           timestart: attempt.timestart,
           timefinish: attempt.timefinish,
-          sumgrades: sumgrades,
-          grade: grade,
+          sumgrades,
+          grade,
         },
         quiz: transformedQuiz,
         questions: reviewQuestions,
-        grade: grade,
+        grade,
         maxGrade: quiz.grade,
-        percentage: percentage,
+        percentage,
         feedback: quiz.reviewoverallfeedback ? getOverallFeedback(percentage) : '',
       },
       meta: {},

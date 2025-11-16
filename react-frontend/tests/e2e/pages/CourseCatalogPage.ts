@@ -7,7 +7,7 @@
  * @module CourseCatalogPage
  */
 
-import { Page, Locator } from '@playwright/test';
+import type { Page, Locator } from '@playwright/test';
 
 /**
  * Interface representing course card data extracted from the catalog
@@ -562,7 +562,7 @@ export class CourseCatalogPage {
         category: category?.trim(),
         duration: duration?.trim()
       };
-    } else {
+    } 
       // If no preview popup, extract data from the card itself
       const title = await targetCard.locator('[data-testid="course-title"]').textContent() || '';
       const description = await targetCard.locator('[data-testid="course-description"]').textContent().catch(() => undefined);
@@ -572,6 +572,6 @@ export class CourseCatalogPage {
         title: title.trim(),
         description: description?.trim()
       };
-    }
+    
   }
 }

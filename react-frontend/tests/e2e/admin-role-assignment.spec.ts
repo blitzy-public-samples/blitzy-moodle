@@ -13,7 +13,8 @@
  * @module tests/e2e/admin-role-assignment.spec
  */
 
-import { test, expect, Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import { AdminRolePage } from './pages/AdminRolePage';
 import { CoursePage } from './pages/CoursePage';
 import { loginAsAdmin, loginAsStudent, logout, isAuthenticated } from './utils/auth';

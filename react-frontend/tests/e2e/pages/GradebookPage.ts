@@ -11,7 +11,7 @@
  * - public/grade/edit/tree/index.php (Grade tree editing)
  */
 
-import { Page, Locator } from '@playwright/test';
+import type { Page, Locator } from '@playwright/test';
 
 /**
  * Represents a single grade item with all associated data
@@ -534,7 +534,7 @@ export class GradebookPage {
     // Verify each category total
     for (const category of categories) {
       const calculatedTotal = this.calculateCategoryTotal(category.items);
-      const displayedTotal = typeof category.total === 'number' ? category.total : parseFloat(category.total as string);
+      const displayedTotal = typeof category.total === 'number' ? category.total : parseFloat(category.total);
 
       // Allow for small rounding differences (0.01)
       if (Math.abs(calculatedTotal - displayedTotal) > 0.01) {
@@ -564,7 +564,7 @@ export class GradebookPage {
   async getGradePercentage(itemId: string): Promise<number | null> {
     const gradeItem = await this.getGradeItem(itemId);
     
-    if (!gradeItem || gradeItem.percentage === undefined) {
+    if (gradeItem?.percentage === undefined) {
       return null;
     }
 
@@ -580,7 +580,7 @@ export class GradebookPage {
   async getLetterGrade(itemId: string): Promise<string | null> {
     const gradeItem = await this.getGradeItem(itemId);
     
-    if (!gradeItem || !gradeItem.letterGrade) {
+    if (!gradeItem?.letterGrade) {
       return null;
     }
 

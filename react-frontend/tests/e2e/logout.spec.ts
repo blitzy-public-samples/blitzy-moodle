@@ -206,7 +206,7 @@ test.describe('Logout Workflow', () => {
       const keys: string[] = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key) keys.push(key);
+        if (key) {keys.push(key);}
       }
       return keys;
     });
@@ -511,7 +511,7 @@ test.describe('Logout Workflow', () => {
       
       return {
         reactQueryEmpty: !reactQueryCache || Object.keys(reactQueryCache).length === 0,
-        reduxStoreCleared: !reduxStore || !reduxStore.getState()?.auth?.user
+        reduxStoreCleared: !reduxStore?.getState()?.auth?.user
       };
     });
 

@@ -1081,7 +1081,7 @@ describe('ScormReportCard - Detailed Report View', () => {
     vi.mocked(fetchAttemptReport).mockResolvedValue(mockReport);
 
     renderWithQueryClient(
-      <ScormReportCard scormId={1} userId={100} attemptNumber={1} showDetailed={true} />
+      <ScormReportCard scormId={1} userId={100} attemptNumber={1} showDetailed />
     );
 
     // Verify interaction tracking section is displayed
@@ -1128,7 +1128,7 @@ describe('ScormReportCard - Detailed Report View', () => {
     vi.mocked(fetchAttemptReport).mockResolvedValue(mockReport);
 
     renderWithQueryClient(
-      <ScormReportCard scormId={1} userId={100} attemptNumber={1} showDetailed={true} />
+      <ScormReportCard scormId={1} userId={100} attemptNumber={1} showDetailed />
     );
 
     // Find the Interaction Tracking section
@@ -1157,7 +1157,7 @@ describe('ScormReportCard - Detailed Report View', () => {
     vi.mocked(fetchAttemptReport).mockResolvedValue(mockReport);
 
     renderWithQueryClient(
-      <ScormReportCard scormId={1} userId={100} attemptNumber={1} showDetailed={true} />
+      <ScormReportCard scormId={1} userId={100} attemptNumber={1} showDetailed />
     );
 
     // Verify correct result is shown (component uses Chip with success color)
@@ -1178,7 +1178,7 @@ describe('ScormReportCard - Detailed Report View', () => {
     vi.mocked(fetchAttemptReport).mockResolvedValue(mockReport);
 
     renderWithQueryClient(
-      <ScormReportCard scormId={1} userId={100} attemptNumber={1} showDetailed={true} />
+      <ScormReportCard scormId={1} userId={100} attemptNumber={1} showDetailed />
     );
 
     // Verify incorrect result is shown
@@ -1199,7 +1199,7 @@ describe('ScormReportCard - Detailed Report View', () => {
     vi.mocked(fetchAttemptReport).mockResolvedValue(mockReport);
 
     renderWithQueryClient(
-      <ScormReportCard scormId={1} userId={100} attemptNumber={1} showDetailed={true} />
+      <ScormReportCard scormId={1} userId={100} attemptNumber={1} showDetailed />
     );
 
     // Verify latency is formatted and displayed
@@ -1231,7 +1231,7 @@ describe('ScormReportCard - Objectives Completion Status', () => {
     vi.mocked(fetchAttemptReport).mockResolvedValue(mockReport);
 
     renderWithQueryClient(
-      <ScormReportCard scormId={1} userId={100} attemptNumber={1} showDetailed={true} />
+      <ScormReportCard scormId={1} userId={100} attemptNumber={1} showDetailed />
     );
 
     // Verify objectives section is displayed
@@ -1259,7 +1259,7 @@ describe('ScormReportCard - Objectives Completion Status', () => {
     vi.mocked(fetchAttemptReport).mockResolvedValue(mockReport);
 
     renderWithQueryClient(
-      <ScormReportCard scormId={1} userId={100} attemptNumber={1} showDetailed={true} />
+      <ScormReportCard scormId={1} userId={100} attemptNumber={1} showDetailed />
     );
 
     // Verify objective data is displayed
@@ -1282,7 +1282,7 @@ describe('ScormReportCard - Objectives Completion Status', () => {
     vi.mocked(fetchAttemptReport).mockResolvedValue(mockReport);
 
     renderWithQueryClient(
-      <ScormReportCard scormId={1} userId={100} attemptNumber={1} showDetailed={true} />
+      <ScormReportCard scormId={1} userId={100} attemptNumber={1} showDetailed />
     );
 
     // Verify objective score is displayed
@@ -1301,7 +1301,7 @@ describe('ScormReportCard - Objectives Completion Status', () => {
     vi.mocked(fetchAttemptReport).mockResolvedValue(mockReport);
 
     renderWithQueryClient(
-      <ScormReportCard scormId={1} userId={100} attemptNumber={1} showDetailed={true} />
+      <ScormReportCard scormId={1} userId={100} attemptNumber={1} showDetailed />
     );
 
     // Verify objectives count is displayed (2 of 3 completed)
@@ -1317,7 +1317,7 @@ describe('ScormReportCard - Objectives Completion Status', () => {
     vi.mocked(fetchAttemptReport).mockResolvedValue(mockReport);
 
     renderWithQueryClient(
-      <ScormReportCard scormId={1} userId={100} attemptNumber={1} showDetailed={true} />
+      <ScormReportCard scormId={1} userId={100} attemptNumber={1} showDetailed />
     );
 
     // Verify info message about no detailed data
@@ -1350,7 +1350,7 @@ describe('ScormReportCard - SCORM Format Support', () => {
     vi.mocked(fetchAttemptReport).mockResolvedValue(mockReport);
 
     renderWithQueryClient(
-      <ScormReportCard scormId={1} userId={100} attemptNumber={1} showDetailed={true} />
+      <ScormReportCard scormId={1} userId={100} attemptNumber={1} showDetailed />
     );
 
     // Component should handle SCORM 1.2 data appropriately
@@ -1378,7 +1378,7 @@ describe('ScormReportCard - SCORM Format Support', () => {
     vi.mocked(fetchAttemptReport).mockResolvedValue(mockReport);
 
     renderWithQueryClient(
-      <ScormReportCard scormId={1} userId={100} attemptNumber={1} showDetailed={true} />
+      <ScormReportCard scormId={1} userId={100} attemptNumber={1} showDetailed />
     );
 
     // Verify SCORM 2004 data is displayed
@@ -1580,7 +1580,7 @@ describe('ScormReportCard - Edge Cases and Data Validation', () => {
     vi.mocked(fetchAttemptReport).mockResolvedValue(mockReport);
 
     renderWithQueryClient(
-      <ScormReportCard scormId={1} userId={100} attemptNumber={1} showDetailed={true} />
+      <ScormReportCard scormId={1} userId={100} attemptNumber={1} showDetailed />
     );
 
     // Component should render without crashing
@@ -1619,7 +1619,7 @@ describe('ScormReportCard - Edge Cases and Data Validation', () => {
     vi.mocked(fetchAttemptReport).mockResolvedValue(mockReport);
 
     renderWithQueryClient(
-      <ScormReportCard scormId={1} userId={100} attemptNumber={1} showDetailed={true} />
+      <ScormReportCard scormId={1} userId={100} attemptNumber={1} showDetailed />
     );
 
     // Verify section shows correct count

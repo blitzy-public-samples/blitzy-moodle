@@ -328,7 +328,7 @@ describe('PostCard Component', () => {
     });
 
     it('should render "Show more" button for long posts', () => {
-      const longMessage = '<p>' + 'Lorem ipsum dolor sit amet. '.repeat(100) + '</p>';
+      const longMessage = `<p>${  'Lorem ipsum dolor sit amet. '.repeat(100)  }</p>`;
       const post = createMockPost({ message: longMessage });
       render(<PostCard post={post} {...mockHandlers} />);
       
@@ -337,7 +337,7 @@ describe('PostCard Component', () => {
     });
 
     it('should expand long post content when "Show more" is clicked', async () => {
-      const longMessage = '<p>' + 'Lorem ipsum dolor sit amet. '.repeat(100) + '</p>';
+      const longMessage = `<p>${  'Lorem ipsum dolor sit amet. '.repeat(100)  }</p>`;
       const post = createMockPost({ message: longMessage });
       render(<PostCard post={post} {...mockHandlers} />);
       
@@ -817,7 +817,7 @@ describe('PostCard Component', () => {
     });
 
     it('should handle posts with extremely long content', () => {
-      const veryLongMessage = '<p>' + 'A'.repeat(10000) + '</p>';
+      const veryLongMessage = `<p>${  'A'.repeat(10000)  }</p>`;
       const post = createMockPost({ message: veryLongMessage });
       
       expect(() => render(<PostCard post={post} {...mockHandlers} />)).not.toThrow();

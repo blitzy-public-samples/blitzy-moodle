@@ -17,7 +17,7 @@
  * - public/mod/workshop/form/numerrors/lib.php
  */
 
-import React from 'react';
+import type React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';

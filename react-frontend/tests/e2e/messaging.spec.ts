@@ -29,7 +29,7 @@ test.describe('Private Messaging System E2E Tests', () => {
   let user2Page: Page;
   let user1MessagingPage: MessagingPage;
   let user2MessagingPage: MessagingPage;
-  let testConversationIds: string[] = [];
+  const testConversationIds: string[] = [];
 
   test.beforeAll(async ({ browser }) => {
     // Setup: Login as user1 (testStudent) in first browser context
@@ -162,7 +162,7 @@ test.describe('Private Messaging System E2E Tests', () => {
       await user1MessagingPage.selectRecipient(testStudent2.username);
       
       // Type and send message
-      const messageContent = 'Test message for sending verification at ' + new Date().toISOString();
+      const messageContent = `Test message for sending verification at ${  new Date().toISOString()}`;
       await user1MessagingPage.typeMessage(messageContent);
       await user1MessagingPage.sendMessage();
       
@@ -179,7 +179,7 @@ test.describe('Private Messaging System E2E Tests', () => {
       await user1MessagingPage.selectRecipient(testStudent2.username);
       
       // Send message
-      const messageContent = 'Message content verification test at ' + new Date().toISOString();
+      const messageContent = `Message content verification test at ${  new Date().toISOString()}`;
       await user1MessagingPage.typeMessage(messageContent);
       await user1MessagingPage.sendMessage();
       await user1MessagingPage.waitForMessageSent();
@@ -213,7 +213,7 @@ test.describe('Private Messaging System E2E Tests', () => {
       await user1MessagingPage.composeMessage();
       await user1MessagingPage.selectRecipient(testStudent2.username);
       
-      const messageContent = 'Notification test message at ' + new Date().toISOString();
+      const messageContent = `Notification test message at ${  new Date().toISOString()}`;
       await user1MessagingPage.typeMessage(messageContent);
       await user1MessagingPage.sendMessage();
       await user1MessagingPage.waitForMessageSent();
@@ -325,7 +325,7 @@ test.describe('Private Messaging System E2E Tests', () => {
       const initialCount = initialMessages.length;
       
       // Reply to the message
-      const replyContent = 'This is a reply from user2 at ' + new Date().toISOString();
+      const replyContent = `This is a reply from user2 at ${  new Date().toISOString()}`;
       const firstMessageId = initialMessages[0]?.id || '';
       await user2MessagingPage.replyToMessage(firstMessageId, replyContent);
       
@@ -373,7 +373,7 @@ test.describe('Private Messaging System E2E Tests', () => {
       
       await user1MessagingPage.clickConversation(user2ConversationForUser1!.id);
       
-      const realTimeMessageContent = 'Real-time test message at ' + new Date().toISOString();
+      const realTimeMessageContent = `Real-time test message at ${  new Date().toISOString()}`;
       await user1MessagingPage.typeMessage(realTimeMessageContent);
       await user1MessagingPage.sendMessage();
       await user1MessagingPage.waitForMessageSent();
@@ -404,7 +404,7 @@ test.describe('Private Messaging System E2E Tests', () => {
       await user1MessagingPage.waitForMessaging();
       
       // Define unique search keyword
-      const searchKeyword = 'unique_search_keyword_' + Date.now();
+      const searchKeyword = `unique_search_keyword_${  Date.now()}`;
       
       // Send a message with the search keyword
       await user1MessagingPage.composeMessage();
@@ -433,7 +433,7 @@ test.describe('Private Messaging System E2E Tests', () => {
 
     test('should verify empty search results for non-existent keyword', async () => {
       // Search for non-existent keyword
-      const nonExistentKeyword = 'nonexistent_keyword_xyz_' + Date.now();
+      const nonExistentKeyword = `nonexistent_keyword_xyz_${  Date.now()}`;
       await user1MessagingPage.searchMessages(nonExistentKeyword);
       
       // Get search results
@@ -496,7 +496,7 @@ test.describe('Private Messaging System E2E Tests', () => {
       await user1MessagingPage.composeMessage();
       await user1MessagingPage.selectRecipient(testStudent2.username);
       
-      const notificationTestMessage = 'Notification test at ' + new Date().toISOString();
+      const notificationTestMessage = `Notification test at ${  new Date().toISOString()}`;
       await user1MessagingPage.typeMessage(notificationTestMessage);
       await user1MessagingPage.sendMessage();
       await user1MessagingPage.waitForMessageSent();
@@ -570,7 +570,7 @@ test.describe('Private Messaging System E2E Tests', () => {
       await user1MessagingPage.composeMessage();
       await user1MessagingPage.selectRecipient(testStudent3.username);
       
-      const deleteTestMessage = 'Message for deletion test at ' + new Date().toISOString();
+      const deleteTestMessage = `Message for deletion test at ${  new Date().toISOString()}`;
       await user1MessagingPage.typeMessage(deleteTestMessage);
       await user1MessagingPage.sendMessage();
       await user1MessagingPage.waitForMessageSent();
@@ -761,7 +761,7 @@ test.describe('Private Messaging System E2E Tests', () => {
       await user1MessagingPage.composeMessage();
       await user1MessagingPage.selectRecipient(testStudent2.username);
       
-      const updateTestMessage = 'Conversation list update test at ' + new Date().toISOString();
+      const updateTestMessage = `Conversation list update test at ${  new Date().toISOString()}`;
       await user1MessagingPage.typeMessage(updateTestMessage);
       await user1MessagingPage.sendMessage();
       await user1MessagingPage.waitForMessageSent();

@@ -19,7 +19,7 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import React from 'react';
+import type React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -466,7 +466,7 @@ describe('Breadcrumbs', () => {
     expect(longText).toBeDefined();
 
     // Verify truncation styles through parent element
-    const parentElement = longText.parentElement;
+    const {parentElement} = longText;
     expect(parentElement).toBeDefined();
   });
 

@@ -542,7 +542,7 @@ const handleRenameFile = http.put('*/api/v1/files/:id', async ({ request, params
       {
         success: true,
         data: {
-          file: file,
+          file,
         },
       },
       { status: 200 }

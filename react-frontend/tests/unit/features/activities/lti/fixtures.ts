@@ -16,12 +16,13 @@
  * @subpackage tests/unit/features/activities/lti
  */
 
-import {
-  LaunchContainer,
+import type {
   LtiTool,
   LtiToolProxy,
   LtiLaunchData,
-  LtiGradeResult,
+  LtiGradeResult} from '@/features/activities/lti/types/lti.types';
+import {
+  LaunchContainer,
   LtiToolProxyState,
 } from '@/features/activities/lti/types/lti.types';
 import type { User } from '@/features/admin/users/types/user.types';
@@ -350,7 +351,7 @@ export const mockGradePassbackRequest = {
  */
 export const mockGradePassbackResponse = {
   success: true,
-  messageIdentifier: 'msg-' + Date.now(),
+  messageIdentifier: `msg-${  Date.now()}`,
   message: 'Grade successfully updated',
   grade: 85.5,
   gradepercent: 85.5,

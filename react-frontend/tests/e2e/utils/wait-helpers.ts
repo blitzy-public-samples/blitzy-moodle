@@ -15,7 +15,7 @@
  * - Page load synchronization
  */
 
-import { Page, Response } from '@playwright/test';
+import type { Page, Response } from '@playwright/test';
 
 // ============================================================================
 // Type Definitions
@@ -431,13 +431,13 @@ export async function waitForText(
     await waitForCondition(
       async () => {
         const content = await locator.textContent();
-        if (!content) return false;
+        if (!content) {return false;}
         
         if (typeof text === 'string') {
           return content.includes(text);
-        } else {
+        } 
           return text.test(content);
-        }
+        
       },
       { timeout, interval: options.interval }
     );
@@ -522,13 +522,13 @@ export async function waitForAttributeValue(
     await waitForCondition(
       async () => {
         const value = await locator.getAttribute(attribute);
-        if (value === null) return false;
+        if (value === null) {return false;}
         
         if (typeof expectedValue === 'string') {
           return value === expectedValue;
-        } else {
+        } 
           return expectedValue.test(value);
-        }
+        
       },
       { timeout, interval: options.interval }
     );
@@ -577,13 +577,13 @@ export async function waitForCssProperty(
           property
         );
         
-        if (!value) return false;
+        if (!value) {return false;}
         
         if (typeof expectedValue === 'string') {
           return value === expectedValue;
-        } else {
+        } 
           return expectedValue.test(value);
-        }
+        
       },
       { timeout, interval: options.interval }
     );

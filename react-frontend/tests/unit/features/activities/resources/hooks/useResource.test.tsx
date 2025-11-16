@@ -1364,7 +1364,7 @@ describe('TypeScript type safety', () => {
       });
 
       // Type should be inferred as Resource
-      const data = result.current.data;
+      const {data} = result.current;
       if (data) {
         expect(data.id).toBeDefined();
         expect(data.name).toBeDefined();
@@ -1385,7 +1385,7 @@ describe('TypeScript type safety', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      const data = result.current.data;
+      const {data} = result.current;
       if (data) {
         expect(data.type).toBe('resource');
         expect(data.files).toBeDefined();
@@ -1405,7 +1405,7 @@ describe('TypeScript type safety', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      const data = result.current.data;
+      const {data} = result.current;
       if (data) {
         expect(data.type).toBe('page');
         expect(data.content).toBeDefined();

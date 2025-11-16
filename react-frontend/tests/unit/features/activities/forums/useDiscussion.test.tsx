@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query';
-import React from 'react';
+import type React from 'react';
 import { useDiscussion } from '@/features/activities/forums/hooks/useDiscussion';
 import * as forumApi from '@/features/activities/forums/api/forumApi';
 import type { Discussion, Post, DiscussionPost } from '@/features/activities/forums/types/forum.types';
@@ -200,8 +200,8 @@ describe('useDiscussion Hook', () => {
       // Verify the root post has 2 replies
       expect(result.current.posts[0].replies).toHaveLength(2);
       expect(result.current.posts[0].id).toBe(1);
-      expect(result.current.posts[0].replies![0].id).toBe(2);
-      expect(result.current.posts[0].replies![1].id).toBe(3);
+      expect(result.current.posts[0].replies[0].id).toBe(2);
+      expect(result.current.posts[0].replies[1].id).toBe(3);
     });
 
     it('should reconstruct nested post hierarchy from flat API response', async () => {
@@ -443,9 +443,9 @@ describe('useDiscussion Hook', () => {
 
       await waitFor(() => {
         expect(forumApi.createPost).toHaveBeenCalledWith({ 
-          discussionId: discussionId, 
+          discussionId, 
           message: 'This is a new reply', 
-          parentPostId: parentPostId 
+          parentPostId 
         });
       });
     });
@@ -598,7 +598,7 @@ describe('useDiscussion Hook', () => {
 
       await waitFor(() => {
         expect(forumApi.updatePost).toHaveBeenCalledWith({
-          postId: postId,
+          postId,
           ...postData
         });
         expect(onEditSuccess).toHaveBeenCalled();
@@ -1627,13 +1627,13 @@ describe('useDiscussion Hook', () => {
             discussion: mockDiscussion,
             posts: initialPosts,
           };
-        } else {
+        } 
           // After mutations - return all posts
           return {
             discussion: mockDiscussion,
             posts: [...initialPosts, reply1, reply2],
           };
-        }
+        
       });
 
       const { result } = renderHook(
@@ -1808,9 +1808,9 @@ describe('useDiscussion Hook', () => {
       });
 
       // Type assertions to verify TypeScript types
-      const discussion: Discussion | undefined = result.current.discussion;
-      const posts: DiscussionPost[] | undefined = result.current.posts;
-      const isLoading: boolean = result.current.isLoading;
+      const {discussion} = result.current;
+      const {posts} = result.current;
+      const {isLoading} = result.current;
       const error: Error | null = result.current.error as any;
 
       expect(typeof isLoading).toBe('boolean');

@@ -269,7 +269,7 @@ const getChoiceResultsHandler = http.get('*/api/v1/choices/:id/results', async (
   console.log('[MSW Handler] choiceId:', choiceId, 'groupId:', groupId, 'includeinactive:', includeinactive);
   
   // Check if choice exists
-  let results = MOCK_CHOICE_RESULTS[choiceId];
+  const results = MOCK_CHOICE_RESULTS[choiceId];
   
   console.log('[MSW Handler] results found:', !!results);
   

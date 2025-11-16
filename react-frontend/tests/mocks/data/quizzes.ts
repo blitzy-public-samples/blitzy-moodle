@@ -520,7 +520,7 @@ export function mockAttemptArray(
       ...baseOverrides,
       id: i + 1, // Sequential IDs starting from 1
       quiz: quizid,
-      userid: userid,
+      userid,
       attempt: i + 1, // Sequential attempt numbers
       uniqueid: generateUniqueId(),
     });

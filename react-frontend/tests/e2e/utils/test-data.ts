@@ -395,7 +395,7 @@ export function generateQuiz(
   // Generate questions with multiple choice answers
   const questions: QuestionData[] = [];
   for (let i = 0; i < questionCount; i++) {
-    const questiontext = faker.lorem.sentence() + '?';
+    const questiontext = `${faker.lorem.sentence()  }?`;
     const answerCount = faker.number.int({ min: 3, max: 5 });
     const correctAnswerIndex = faker.number.int({ min: 0, max: answerCount - 1 });
     

@@ -343,8 +343,8 @@ function formatMessageWithUsers(message: Message) {
  */
 function getConversationIdForUsers(user1: number, user2: number): number {
   // Simple deterministic conversation ID based on user IDs
-  if (user1 === 1 && user2 === 2 || user1 === 2 && user2 === 1) return 1;
-  if (user1 === 1 && user2 === 3 || user1 === 3 && user2 === 1) return 2;
+  if (user1 === 1 && user2 === 2 || user1 === 2 && user2 === 1) {return 1;}
+  if (user1 === 1 && user2 === 3 || user1 === 3 && user2 === 1) {return 2;}
   return Math.abs(user1 * 1000 + user2); // Fallback
 }
 
@@ -604,7 +604,7 @@ const getConversationHandler = http.get(
     const currentUserId = 1;
 
     // Find messages in this conversation
-    let conversationMessages = mockMessages.filter((msg) => {
+    const conversationMessages = mockMessages.filter((msg) => {
       const msgConvId = getConversationIdForUsers(msg.useridfrom, msg.useridto);
       return msgConvId === conversationId;
     });

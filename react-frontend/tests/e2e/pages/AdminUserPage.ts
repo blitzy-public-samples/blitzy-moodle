@@ -7,7 +7,7 @@
  * Reference: public/admin/user.php, public/admin/user/user_bulk.php
  */
 
-import { Locator, Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
 /**
  * User data structure for creating and editing users
@@ -264,14 +264,14 @@ export class AdminUserPage {
 
       users.push({
         id: userId,
-        username: username,
-        email: email,
+        username,
+        email,
         firstname: firstname || undefined,
         lastname: lastname || undefined,
         fullname: fullname || undefined,
         auth: auth || undefined,
-        suspended: suspended,
-        roles: roles,
+        suspended,
+        roles,
       });
     }
 

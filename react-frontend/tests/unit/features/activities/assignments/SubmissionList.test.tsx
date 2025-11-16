@@ -12,7 +12,7 @@
  * - Responsive design and accessibility features
  */
 
-import React from 'react';
+import type React from 'react';
 import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -119,12 +119,12 @@ const sortSubmissions = (submissions: Submission[], field: keyof Submission, ord
     const aVal = a[field];
     const bVal = b[field];
     
-    if (aVal === undefined && bVal === undefined) return 0;
-    if (aVal === undefined) return order === 'asc' ? 1 : -1;
-    if (bVal === undefined) return order === 'asc' ? -1 : 1;
+    if (aVal === undefined && bVal === undefined) {return 0;}
+    if (aVal === undefined) {return order === 'asc' ? 1 : -1;}
+    if (bVal === undefined) {return order === 'asc' ? -1 : 1;}
     
-    if (aVal < bVal) return order === 'asc' ? -1 : 1;
-    if (aVal > bVal) return order === 'asc' ? 1 : -1;
+    if (aVal < bVal) {return order === 'asc' ? -1 : 1;}
+    if (aVal > bVal) {return order === 'asc' ? 1 : -1;}
     return 0;
   });
   
@@ -1043,7 +1043,7 @@ describe('SubmissionList Component', () => {
           submissions={[]}
           assignment={mockAssignment}
           viewMode="teacher"
-          loading={true}
+          loading
         />
       );
 
@@ -1058,7 +1058,7 @@ describe('SubmissionList Component', () => {
           submissions={[]}
           assignment={mockAssignment}
           viewMode="student"
-          loading={true}
+          loading
         />
       );
 
@@ -1073,7 +1073,7 @@ describe('SubmissionList Component', () => {
           submissions={mockSubmissions}
           assignment={mockAssignment}
           viewMode="teacher"
-          loading={true}
+          loading
         />
       );
 

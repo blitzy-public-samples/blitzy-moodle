@@ -499,14 +499,14 @@ export class MessagingPage {
         throw new Error('Unread badge should be visible but is not');
       }
       return true;
-    } else {
+    } 
       // Badge should be hidden when no unread messages
       const isVisible = await this.unreadBadge.isVisible().catch(() => false);
       if (isVisible) {
         throw new Error('Unread badge should be hidden but is visible');
       }
       return true;
-    }
+    
   }
   
   /**

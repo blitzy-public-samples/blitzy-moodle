@@ -620,15 +620,15 @@ const listUsersHandler = http.get('/api/v1/users', async ({ request }) => {
         user.username.toLowerCase().includes(searchLower) ||
         user.email.toLowerCase().includes(searchLower) ||
         user.fullname.toLowerCase().includes(searchLower);
-      if (!matchesSearch) return false;
+      if (!matchesSearch) {return false;}
     }
 
     if (role) {
-      if (!user.roles.includes(role)) return false;
+      if (!user.roles.includes(role)) {return false;}
     }
 
     // Filter by suspended status (exclude suspended users by default)
-    if (user.suspended) return false;
+    if (user.suspended) {return false;}
 
     return true;
   });

@@ -417,7 +417,7 @@ function generateMockToken(userId: number, type: 'access' | 'refresh'): string {
 export function extractUserIdFromToken(token: string): number | null {
   try {
     const parts = token.split('.');
-    if (parts.length !== 3 || !parts[1]) return null;
+    if (parts.length !== 3 || !parts[1]) {return null;}
     const payload = JSON.parse(atob(parts[1]));
     return payload.sub || null; // Changed from payload.userId to payload.sub to match token generation
   } catch {
@@ -691,7 +691,7 @@ const logoutHandler = http.post('*/api/v1/auth/logout', async ({ request }) => {
     
     // Also blacklist the refresh token for this user
     const userTokenPair = userTokens.get(userId);
-    if (userTokenPair && userTokenPair.refreshToken) {
+    if (userTokenPair?.refreshToken) {
       console.log('[MSW LOGOUT] Also blacklisting refresh token for user:', userId);
       blacklistToken(userTokenPair.refreshToken);
     }

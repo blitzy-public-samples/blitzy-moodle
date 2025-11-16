@@ -154,7 +154,7 @@ export function mockUser(overrides: DeepPartial<User> = {}): User {
     // Localization settings
     country: overrides.country ?? 'US',
     lang: overrides.lang ?? 'en',
-    timezone: (overrides.timezone ?? 'UTC') as Timezone,
+    timezone: (overrides.timezone ?? 'UTC'),
     
     // Access timestamps
     firstaccess,

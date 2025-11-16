@@ -313,7 +313,7 @@ describe('QuizNavigation Component', () => {
       const props = createDefaultProps({ currentQuestionIndex: 2 });
       const { container, rerender } = render(<QuizNavigation {...props} />);
 
-      let currentButton = container.querySelector('[data-question-index="2"]');
+      const currentButton = container.querySelector('[data-question-index="2"]');
       expect(currentButton).toHaveClass('MuiButton-contained');
 
       // Change current question

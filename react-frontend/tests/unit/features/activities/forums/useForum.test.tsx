@@ -15,7 +15,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../../../mocks/server';
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { useForum } from '@/features/activities/forums/hooks/useForum';
 
 // Mock API base URL

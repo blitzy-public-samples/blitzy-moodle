@@ -466,7 +466,7 @@ const isAuthorized = (request: Request): boolean => {
 const hasGradingPermission = (request: Request): boolean => {
   // Mock: Check if Authorization header contains 'teacher' or 'admin'
   const authHeader = request.headers.get('Authorization');
-  if (!authHeader) return false;
+  if (!authHeader) {return false;}
   return authHeader.includes('teacher') || authHeader.includes('admin');
 };
 
@@ -478,7 +478,7 @@ const getCurrentUserId = (request: Request): number => {
   const authHeader = request.headers.get('Authorization');
   if (authHeader && authHeader.includes('user:')) {
     const match = authHeader.match(/user:(\d+)/);
-    if (match && match[1]) return parseInt(match[1], 10);
+    if (match?.[1]) {return parseInt(match[1], 10);}
   }
   return 101; // Default student user
 };
@@ -534,7 +534,7 @@ const getAssignmentHandler = http.get(
     const currentUserId = getCurrentUserId(request);
     const isTeacher = hasGradingPermission(request);
 
-    let responseData: Assignment = { ...assignment };
+    const responseData: Assignment = { ...assignment };
 
     if (!isTeacher) {
       // Student view: Include their submission and grade
@@ -682,7 +682,7 @@ const submitAssignmentHandler = http.post(
       if (fileType.acceptedfiletypes) {
         const acceptedTypes = fileType.acceptedfiletypes.split(',');
         for (const file of body.files) {
-          const extension = '.' + file.filename.split('.').pop();
+          const extension = `.${  file.filename.split('.').pop()}`;
           if (!acceptedTypes.includes(extension)) {
             return HttpResponse.json(
               {

@@ -8,7 +8,7 @@
  * Used by profile.spec.ts E2E test.
  */
 
-import { Page, Locator } from '@playwright/test';
+import type { Page, Locator } from '@playwright/test';
 
 /**
  * Profile information data structure

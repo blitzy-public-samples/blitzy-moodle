@@ -21,7 +21,7 @@
  * @module file-helpers
  */
 
-import { Page, Download } from '@playwright/test';
+import type { Page, Download } from '@playwright/test';
 import { writeFile, readFile, unlink, readdir, stat, mkdir } from 'fs/promises';
 import { join, resolve, extname, basename } from 'path';
 import { randomBytes } from 'crypto';
@@ -835,14 +835,14 @@ export async function verifyFileProperties(
       if (sizeText) {
         // Parse size from text (e.g., "1.5 MB" -> bytes)
         const sizeMatch = sizeText.match(/([\d.]+)\s*(KB|MB|GB)/i);
-        if (sizeMatch && sizeMatch[1] && sizeMatch[2]) {
+        if (sizeMatch?.[1] && sizeMatch[2]) {
           const value = parseFloat(sizeMatch[1]);
           const unit = sizeMatch[2].toUpperCase();
           let displayedSize = value;
           
-          if (unit === 'KB') displayedSize *= 1024;
-          else if (unit === 'MB') displayedSize *= 1024 * 1024;
-          else if (unit === 'GB') displayedSize *= 1024 * 1024 * 1024;
+          if (unit === 'KB') {displayedSize *= 1024;}
+          else if (unit === 'MB') {displayedSize *= 1024 * 1024;}
+          else if (unit === 'GB') {displayedSize *= 1024 * 1024 * 1024;}
           
           // Allow 5% tolerance for size differences
           const tolerance = expectedProperties.size * 0.05;
@@ -980,7 +980,7 @@ export async function getUploadProgress(
     const text = await progressBar.textContent();
     if (text) {
       const match = text.match(/(\d+)%/);
-      if (match && match[1]) {
+      if (match?.[1]) {
         return parseFloat(match[1]);
       }
     }

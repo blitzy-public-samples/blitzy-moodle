@@ -13,7 +13,7 @@
  * @subpackage tests/unit/features/profile
  */
 
-import React from 'react';
+import type React from 'react';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
@@ -115,7 +115,7 @@ describe('AvatarUpload Component', () => {
       
       // Simulate image loading when src is set
       Object.defineProperty(this, 'src', {
-        set: function(value: string) {
+        set(value: string) {
           this._src = value;
           // Trigger onload asynchronously to simulate real behavior
           setTimeout(() => {
@@ -124,7 +124,7 @@ describe('AvatarUpload Component', () => {
             }
           }, 0);
         },
-        get: function() {
+        get() {
           return this._src;
         }
       });
@@ -940,7 +940,7 @@ describe('AvatarUpload Component', () => {
           <AvatarUpload 
             userId={1} 
             currentAvatarUrl="https://example.com/avatar.jpg"
-            allowDelete={true}
+            allowDelete
           />
         </Wrapper>
       );
@@ -995,7 +995,7 @@ describe('AvatarUpload Component', () => {
           <AvatarUpload 
             userId={1} 
             currentAvatarUrl="https://example.com/avatar.jpg"
-            allowDelete={true}
+            allowDelete
           />
         </Wrapper>
       );

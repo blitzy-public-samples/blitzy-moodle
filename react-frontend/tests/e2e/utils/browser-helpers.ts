@@ -585,8 +585,8 @@ export async function switchToTab(
       }
     }
 
-    await targetPage!.bringToFront();
-    return targetPage!
+    await targetPage.bringToFront();
+    return targetPage
   } catch (error) {
     throw new Error(
       `Failed to switch to tab: ${error instanceof Error ? error.message : String(error)}`

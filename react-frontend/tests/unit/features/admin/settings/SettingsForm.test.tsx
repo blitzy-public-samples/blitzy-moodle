@@ -277,13 +277,13 @@ const renderWithProviders = (
   const queryClient = options.queryClient || createTestQueryClient();
   const store = options.store || createTestStore();
 
-  const Wrapper = ({ children }: { children: React.ReactNode }) => (
-    <Provider store={store}>
+  function Wrapper({ children }: { children: React.ReactNode }) {
+  return <Provider store={store}>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider theme={theme}>{children}</ThemeProvider>
       </QueryClientProvider>
     </Provider>
-  );
+}
 
   return {
     ...render(ui, { wrapper: Wrapper }),
