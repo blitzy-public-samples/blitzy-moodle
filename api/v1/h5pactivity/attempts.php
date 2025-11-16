@@ -225,9 +225,6 @@ class H5PActivityAttemptsEndpoint extends ApiBase {
                 }
             }
             
-            // Count total attempts for pagination metadata
-            $totalAttempts = $manager->count_attempts();
-            
             // Build response data
             $responseData = [
                 'activityid' => $instance->id,
@@ -235,14 +232,20 @@ class H5PActivityAttemptsEndpoint extends ApiBase {
                 'warnings' => $warnings
             ];
             
-            // Add pagination metadata
-            $meta = [
-                'pagination' => [
-                    'page' => $page,
-                    'perpage' => $perpage,
-                    'total' => $totalAttempts
-                ]
-            ];
+            // Add pagination metadata only when viewing all users (teacher mode)
+            $meta = null;
+            if ($canViewAll && $userid === null) {
+                // Count total enrolled users for pagination
+                $totalUsers = count_enrolled_users($context, 'mod/h5pactivity:view');
+                
+                $meta = [
+                    'pagination' => [
+                        'page' => $page,
+                        'perpage' => $perpage,
+                        'total' => $totalUsers
+                    ]
+                ];
+            }
             
             // Send success response
             $this->success($responseData, 200, $meta);
