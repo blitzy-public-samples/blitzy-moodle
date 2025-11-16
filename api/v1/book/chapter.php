@@ -176,8 +176,8 @@ class BookChapterEndpoint extends ApiBase {
         // Get the preloaded chapter with navigation data
         $preloadedChapter = $chapters[$chapterid];
         
-        // Format chapter title with numbering based on book settings
-        $formattedTitle = $this->formatChapterTitle($chapter, $preloadedChapter, $book, $context);
+        // Format chapter title with numbering using Moodle's book function
+        $formattedTitle = book_get_chapter_title($chapterid, $chapters, $book, $context);
         
         // Format chapter content for HTML display
         $formattedContent = format_text(
@@ -238,34 +238,6 @@ class BookChapterEndpoint extends ApiBase {
         
         // Send success response
         $this->success($responseData);
-    }
-    
-    /**
-     * Format chapter title with numbering based on book settings.
-     *
-     * Applies chapter numbering according to book's numbering type
-     * (none, numbers, bullets, indented). Handles subchapter numbering
-     * and hidden chapter indicators.
-     *
-     * @param stdClass $chapter         Original chapter record
-     * @param stdClass $preloadedChapter Preloaded chapter with navigation data
-     * @param stdClass $book            Book record
-     * @param context  $context         Module context for format_string
-     * @return string Formatted chapter title with numbering
-     */
-    private function formatChapterTitle($chapter, $preloadedChapter, $book, $context) {
-        // Get base title formatted for display
-        $title = trim(format_string($chapter->title, true, ['context' => $context]));
-        
-        // Add numbering based on book settings
-        if ($book->numbering == BOOK_NUM_NUMBERS) {
-            // Numbered chapters: "1. Chapter" or "1.1 Subchapter"
-            if (!empty($preloadedChapter->number)) {
-                $title = $preloadedChapter->number . '. ' . $title;
-            }
-        }
-        
-        return $title;
     }
     
     /**
