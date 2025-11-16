@@ -72,13 +72,16 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-// Load API base class and exception classes
-require_once(__DIR__ . '/../../lib/api_base.php');
-require_once(__DIR__ . '/../../lib/api_exception.php');
-
-// Load Moodle data module functions
+// Include Moodle configuration and required libraries
+require_once(__DIR__ . '/../../../../config.php');
 require_once($CFG->dirroot . '/mod/data/lib.php');
 require_once($CFG->dirroot . '/mod/data/locallib.php');
+
+// Include API framework classes
+require_once(__DIR__ . '/../../../lib/api_base.php');
+require_once(__DIR__ . '/../../../lib/auth_jwt.php');
+require_once(__DIR__ . '/../../../lib/api_response.php');
+require_once(__DIR__ . '/../../../lib/api_exception.php');
 
 /**
  * Database activity record update endpoint.
@@ -173,6 +176,10 @@ class DataUpdateRecordEndpoint extends ApiBase {
         
         // Create context for permission checking
         $context = context_module::instance($cm->id);
+        
+        // Check user has base capability to view database entries
+        // This uses the checkCapability() method from ApiBase which wraps require_capability()
+        $this->checkCapability('mod/data:viewentry', $context);
         
         // Check time availability restrictions
         // Throws moodle_exception if database is not available

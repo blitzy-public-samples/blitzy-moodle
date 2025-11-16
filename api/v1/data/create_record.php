@@ -52,14 +52,17 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-// Load API infrastructure
-require_once(__DIR__ . '/../../lib/api_base.php');
-require_once(__DIR__ . '/../../lib/api_exception.php');
-
-// Load Moodle database activity libraries
+// Include Moodle configuration and required libraries
+require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->dirroot . '/mod/data/lib.php');
 require_once($CFG->dirroot . '/mod/data/locallib.php');
 require_once($CFG->libdir . '/grouplib.php');
+
+// Include API framework classes
+require_once(__DIR__ . '/../../lib/api_base.php');
+require_once(__DIR__ . '/../../lib/auth_jwt.php');
+require_once(__DIR__ . '/../../lib/api_response.php');
+require_once(__DIR__ . '/../../lib/api_exception.php');
 
 /**
  * Database activity record creation endpoint.
@@ -141,6 +144,10 @@ class DataCreateRecordEndpoint extends ApiBase {
         // Get course, course module, and context for this database
         list($course, $cm) = get_course_and_cm_from_instance($database, 'data');
         $context = context_module::instance($cm->id);
+        
+        // Check user has base capability to view database entries
+        // This uses the checkCapability() method from ApiBase which wraps require_capability()
+        $this->checkCapability('mod/data:viewentry', $context);
         
         // Check database time availability restrictions
         try {
