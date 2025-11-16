@@ -214,9 +214,15 @@ class DataUpdateRecordEndpoint extends ApiBase {
             }
             
             // Get subfield suffix (e.g., "_editor" for text fields, "" for simple fields)
-            $subfield = isset($fielddata['subfield']) && $fielddata['subfield'] !== '' 
-                ? '_' . $fielddata['subfield'] 
-                : '';
+            // If subfield already starts with underscore, don't add another one
+            $subfield = '';
+            if (isset($fielddata['subfield']) && $fielddata['subfield'] !== '') {
+                // Check if subfield already starts with underscore
+                if (substr($fielddata['subfield'], 0, 1) !== '_') {
+                    $subfield = '_';
+                }
+                $subfield .= $fielddata['subfield'];
+            }
             
             // Build field property name: field_{fieldid}{subfield}
             // Examples: field_1, field_2_editor, field_3_format
