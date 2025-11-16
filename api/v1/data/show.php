@@ -354,11 +354,11 @@ class DataShowEndpoint extends ApiBase {
         $access->numentries = data_numentries($data);
         
         // Calculate entries left to add for this user (if maxentries is set)
-        $entrieslefttoadd = data_get_entries_left_to_add($data, $access->numentries, $userid);
+        $entrieslefttoadd = data_get_entries_left_to_add($data, $access->numentries, $access->canmanageentries);
         $access->entrieslefttoadd = $entrieslefttoadd === null ? 0 : (int)$entrieslefttoadd;
         
         // Calculate entries left to view before user can add (if requiredentriestoview is set)
-        $entrieslefttoview = data_get_entries_left_to_view($data, $access->numentries, $userid);
+        $entrieslefttoview = data_get_entries_left_to_view($data, $access->numentries, $access->canmanageentries);
         $access->entrieslefttoview = $entrieslefttoview === null ? 0 : (int)$entrieslefttoview;
         
         return $access;
