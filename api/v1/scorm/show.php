@@ -335,10 +335,10 @@ class ScormShowEndpoint extends ApiBase {
     private function getAttemptHistory($scormid, $userid) {
         global $DB;
         
-        // Query user's attempts from scorm_scoes_track table using existing schema
-        // This retrieves attempt numbers from the tracking data
+        // Query user's attempts from scorm_attempt table (correct table per install.xml)
+        // The scorm_attempt table contains the primary attempt records
         $sql = "SELECT DISTINCT attempt
-                FROM {scorm_scoes_track}
+                FROM {scorm_attempt}
                 WHERE scormid = :scormid AND userid = :userid
                 ORDER BY attempt ASC";
         
@@ -349,9 +349,6 @@ class ScormShowEndpoint extends ApiBase {
         foreach ($attempts as $attempt) {
             $attempt_number = $attempt->attempt;
             
-            // Get attempt details using existing SCORM tracking functions
-            $attempt_data = scorm_get_tracks($scormid, $userid, $attempt_number);
-            
             // Extract key information from attempt
             $attempt_info = [
                 'attempt' => (int)$attempt_number,
@@ -361,30 +358,38 @@ class ScormShowEndpoint extends ApiBase {
                 'timecompleted' => null,
             ];
             
-            // Parse attempt data to extract status and score
-            if (!empty($attempt_data)) {
-                foreach ($attempt_data as $sco) {
-                    // Check for completion status
-                    if (isset($sco->{'cmi.core.lesson_status'})) {
-                        $attempt_info['status'] = $sco->{'cmi.core.lesson_status'};
-                    } else if (isset($sco->{'cmi.completion_status'})) {
-                        $attempt_info['status'] = $sco->{'cmi.completion_status'};
-                    }
+            // Get all SCOs for this SCORM activity using existing function
+            $scoes = scorm_get_scoes($scormid);
+            
+            if (!empty($scoes)) {
+                // Loop through each SCO and get tracking data
+                foreach ($scoes as $sco) {
+                    // Get tracking data for this specific SCO
+                    $sco_tracks = scorm_get_tracks($sco->id, $userid, $attempt_number);
                     
-                    // Check for score
-                    if (isset($sco->{'cmi.core.score.raw'})) {
-                        $attempt_info['score'] = (float)$sco->{'cmi.core.score.raw'};
-                    } else if (isset($sco->{'cmi.score.raw'})) {
-                        $attempt_info['score'] = (float)$sco->{'cmi.score.raw'};
-                    }
-                    
-                    // Get timestamps
-                    if (isset($sco->timemodified)) {
-                        if ($attempt_info['timestarted'] === null || $sco->timemodified < $attempt_info['timestarted']) {
-                            $attempt_info['timestarted'] = (int)$sco->timemodified;
+                    if (!empty($sco_tracks)) {
+                        // Check for completion status
+                        if (isset($sco_tracks->{'cmi.core.lesson_status'})) {
+                            $attempt_info['status'] = $sco_tracks->{'cmi.core.lesson_status'};
+                        } else if (isset($sco_tracks->{'cmi.completion_status'})) {
+                            $attempt_info['status'] = $sco_tracks->{'cmi.completion_status'};
                         }
-                        if ($attempt_info['timecompleted'] === null || $sco->timemodified > $attempt_info['timecompleted']) {
-                            $attempt_info['timecompleted'] = (int)$sco->timemodified;
+                        
+                        // Check for score
+                        if (isset($sco_tracks->{'cmi.core.score.raw'})) {
+                            $attempt_info['score'] = (float)$sco_tracks->{'cmi.core.score.raw'};
+                        } else if (isset($sco_tracks->{'cmi.score.raw'})) {
+                            $attempt_info['score'] = (float)$sco_tracks->{'cmi.score.raw'};
+                        }
+                        
+                        // Get timestamps
+                        if (isset($sco_tracks->timemodified)) {
+                            if ($attempt_info['timestarted'] === null || $sco_tracks->timemodified < $attempt_info['timestarted']) {
+                                $attempt_info['timestarted'] = (int)$sco_tracks->timemodified;
+                            }
+                            if ($attempt_info['timecompleted'] === null || $sco_tracks->timemodified > $attempt_info['timecompleted']) {
+                                $attempt_info['timecompleted'] = (int)$sco_tracks->timemodified;
+                            }
                         }
                     }
                 }

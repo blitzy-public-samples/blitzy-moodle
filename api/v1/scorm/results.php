@@ -69,7 +69,7 @@ class ScormResultsEndpoint extends ApiBase {
      * - Attempt metadata (ID, number, user, timestamps)
      * - Overall status (incomplete, completed, passed, failed)
      * - Calculated grade using configured grading method
-     * - Complete tracking data from scorm_scoes_track table
+     * - Complete tracking data from scorm_attempt and scorm_scoes_value tables
      * - SCO-level results with scores, times, and interactions
      * - Overall metrics (total time, completion percentage)
      *
@@ -97,37 +97,25 @@ class ScormResultsEndpoint extends ApiBase {
             );
         }
         
-        // Retrieve attempt record from database
+        // Retrieve attempt record from scorm_attempt table
         $attempt = $DB->get_record(
-            'scorm_scoes_track',
+            'scorm_attempt',
             ['id' => $attemptid],
-            '*'
+            '*',
+            MUST_EXIST
         );
         
         if (!$attempt) {
-            // Try alternative: attempt ID might be from scorm_attempt table
-            // In Moodle, SCORM attempts are tracked differently - let's handle both cases
             throw new NotFoundException(
                 'SCORM attempt not found',
                 ['attemptId' => $attemptid]
             );
         }
         
-        // For SCORM, we need to get attempt details differently
-        // The tracking data is stored in scorm_scoes_track table
-        // Let's get the SCORM activity and user attempt information
-        
-        // Get scorm_scoes_track entry to find the scorm and user
-        if (!isset($attempt->scormid) || !isset($attempt->userid)) {
-            throw new NotFoundException(
-                'Invalid attempt record structure',
-                ['attemptId' => $attemptid]
-            );
-        }
-        
+        // Extract attempt details
         $scormid = $attempt->scormid;
         $attemptuserid = $attempt->userid;
-        $attemptnumber = isset($attempt->attempt) ? $attempt->attempt : 1;
+        $attemptnumber = $attempt->attempt;
         
         // Retrieve SCORM record
         $scorm = $DB->get_record('scorm', ['id' => $scormid], '*', MUST_EXIST);
@@ -161,14 +149,9 @@ class ScormResultsEndpoint extends ApiBase {
         // Enforce base permission check for viewing scores
         $this->checkCapability('mod/scorm:viewscores', $context);
         
-        // Calculate grade for this attempt using existing Moodle function
-        // Note: scorm_grade_user returns grade for user's best attempt based on grading method
-        // We need to get grade specifically for this attempt
-        $gradedata = scorm_grade_user($scorm, $attemptuserid);
-        
-        // Get all tracking data for this specific attempt
-        // scorm_get_tracks returns tracking data for all SCOs in an attempt
-        $tracks = scorm_get_tracks(0, $attemptuserid, $attemptnumber, $scormid);
+        // Calculate grade for this specific attempt using existing Moodle function
+        // scorm_grade_user_attempt calculates grade for a specific attempt number
+        $gradedata = scorm_grade_user_attempt($scorm, $attemptuserid, $attemptnumber);
         
         // Get all SCOs for this SCORM package
         $scoes = $DB->get_records('scorm_scoes', ['scorm' => $scormid], 'sortorder');
@@ -203,9 +186,11 @@ class ScormResultsEndpoint extends ApiBase {
                 'interactions' => []
             ];
             
-            // Get tracking data for this SCO
-            if (isset($tracks[$sco->id])) {
-                $scotrack = $tracks[$sco->id];
+            // Get tracking data for this SCO using existing Moodle function
+            // scorm_get_tracks($scoid, $userid, $attempt) returns tracking data for one SCO
+            $scotrack = scorm_get_tracks($sco->id, $attemptuserid, $attemptnumber);
+            
+            if ($scotrack) {
                 
                 // Extract CMI core elements
                 if (isset($scotrack->status)) {
@@ -328,14 +313,11 @@ class ScormResultsEndpoint extends ApiBase {
         $timestarted = null;
         $timefinished = null;
         
-        // Try to get times from first and last track entries
+        // Get times from scorm_scoes_value table (correct table for tracking data)
+        // Use attemptid (which is the id from scorm_attempt table)
         $attempttracks = $DB->get_records(
-            'scorm_scoes_track',
-            [
-                'userid' => $attemptuserid,
-                'scormid' => $scormid,
-                'attempt' => $attemptnumber
-            ],
+            'scorm_scoes_value',
+            ['attemptid' => $attemptid],
             'timemodified ASC'
         );
         
