@@ -560,3 +560,28 @@ The API module is now fully testable and all endpoints have been validated. Howe
 3. **Best Practice**: Separate test concerns from production code
 
 These infrastructure improvements would benefit all future API development and maintenance.
+
+## API Module Validation - Out of Scope Issues
+
+### Database Collation Test Failure (Expected Behavior)
+**File:** `public/lib/dml/tests/dml_test.php:4020`
+**Test:** `core\dml_test::test_unique_index_collation_trouble`
+**Issue:** Test fails with message "Unique index is accent insensitive, this may cause problems for non-ascii languages"
+**Status:** EXPECTED BEHAVIOR - Not a bug or configuration problem
+**Root Cause Analysis:**
+- Current collation: `utf8mb4_unicode_ci` (Moodle's official recommendation per config-dist.php)
+- Test purpose: Warning test to document known MySQL/MariaDB limitation with accent-insensitive unique indexes
+- Test code contains TODO comment: "ignore case insensitive uniqueness problems for now"
+- This is a deliberate design trade-off by Moodle core team
+
+**Why Current Configuration is Correct:**
+1. `utf8mb4_unicode_ci` provides better multilingual search and sorting capabilities
+2. This is Moodle's officially recommended collation (see config-dist.php line 109)
+3. Alternative `utf8mb4_bin` would pass the test but degrade international language support
+4. Moodle core team accepts this limitation as documented in the test code
+
+**Impact:** Does not affect API module functionality
+**Scope:** Out of scope - this is intentional Moodle core behavior
+**Recommendation:** NO ACTION REQUIRED - configuration is already optimal per Moodle's official guidance
+**Reference:** See `config-dist.php` for official collation recommendation
+
