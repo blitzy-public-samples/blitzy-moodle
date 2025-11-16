@@ -40,17 +40,23 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-// Load Moodle configuration
-require_once(__DIR__ . '/../../../config.php');
-
-// Load core Moodle libraries
-require_once($CFG->libdir . '/moodlelib.php');
-require_once($CFG->dirroot . '/mod/book/lib.php');
-require_once($CFG->dirroot . '/mod/book/locallib.php');
+// Load Moodle configuration and libraries
+// In test environment, these are already loaded by PHPUnit bootstrap
+if (!defined('PHPUNIT_TEST')) {
+    require_once(__DIR__ . '/../../../config.php');
+    require_once($CFG->libdir . '/moodlelib.php');
+    require_once($CFG->dirroot . '/mod/book/lib.php');
+    require_once($CFG->dirroot . '/mod/book/locallib.php');
+}
 
 // Load API base class and exception handlers
-require_once(__DIR__ . '/../../lib/api_base.php');
-require_once(__DIR__ . '/../../lib/api_exception.php');
+// These need to be loaded even in tests if not already present
+if (!class_exists('ApiBase')) {
+    require_once(__DIR__ . '/../../lib/api_base.php');
+}
+if (!class_exists('ApiException')) {
+    require_once(__DIR__ . '/../../lib/api_exception.php');
+}
 
 /**
  * Book detail endpoint implementation.

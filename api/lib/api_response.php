@@ -371,11 +371,15 @@ class ApiResponse {
      * @return void           This method terminates script execution after output
      */
     private static function json($response, $status) {
-        // Set HTTP status code
-        http_response_code($status);
+        // Set HTTP status code (skip in test environment where headers are already sent)
+        if (!defined('PHPUNIT_TEST') || !headers_sent()) {
+            http_response_code($status);
+        }
         
-        // Set Content-Type header to application/json with UTF-8 charset
-        header('Content-Type: application/json; charset=utf-8');
+        // Set Content-Type header to application/json with UTF-8 charset (skip in test environment)
+        if (!defined('PHPUNIT_TEST') || !headers_sent()) {
+            header('Content-Type: application/json; charset=utf-8');
+        }
         
         // Encode response to JSON with proper options for readability and character handling
         $json = json_encode($response, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
@@ -396,6 +400,10 @@ class ApiResponse {
         
         // Output JSON and terminate execution
         echo $json;
-        exit;
+        
+        // Don't exit during tests - PHPUnit needs to continue running
+        if (!defined('PHPUNIT_TEST')) {
+            exit;
+        }
     }
 }

@@ -225,15 +225,23 @@ abstract class ApiBase {
      * @return void Outputs response directly
      */
     protected function handleOptions() {
-        // Set CORS headers
-        $corsHeaders = $this->getCorsHeaders();
-        foreach ($corsHeaders as $header => $value) {
-            header("$header: $value");
+        // Set CORS headers (skip in test environment)
+        if (!defined('PHPUNIT_TEST') || !headers_sent()) {
+            $corsHeaders = $this->getCorsHeaders();
+            foreach ($corsHeaders as $header => $value) {
+                if (!headers_sent()) {
+                    header("$header: $value");
+                }
+            }
+            
+            // Return 200 OK with no content
+            http_response_code(200);
         }
         
-        // Return 200 OK with no content
-        http_response_code(200);
-        exit;
+        // Don't exit in test environment
+        if (!defined('PHPUNIT_TEST')) {
+            exit;
+        }
     }
     
     /**
@@ -461,10 +469,17 @@ abstract class ApiBase {
      * @return void
      */
     private function setCorsHeaders() {
+        // Skip setting headers in test environment where headers are already sent
+        if (defined('PHPUNIT_TEST') && headers_sent()) {
+            return;
+        }
+        
         $corsHeaders = $this->getCorsHeaders();
         
         foreach ($corsHeaders as $header => $value) {
-            header("$header: $value");
+            if (!headers_sent()) {
+                header("$header: $value");
+            }
         }
     }
     
@@ -547,21 +562,29 @@ abstract class ApiBase {
  * @return void Outputs response and exits
  */
 function noContent() {
-    // Set CORS headers (create temporary ApiBase instance to get headers)
-    $corsHeaders = [
-        'Access-Control-Allow-Origin' => $_SERVER['HTTP_ORIGIN'] ?? '*',
-        'Access-Control-Allow-Methods' => 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers' => 'Content-Type, Authorization',
-        'Access-Control-Allow-Credentials' => 'true',
-    ];
-    
-    foreach ($corsHeaders as $header => $value) {
-        header("$header: $value");
+    // Set CORS headers (skip in test environment)
+    if (!defined('PHPUNIT_TEST') || !headers_sent()) {
+        $corsHeaders = [
+            'Access-Control-Allow-Origin' => $_SERVER['HTTP_ORIGIN'] ?? '*',
+            'Access-Control-Allow-Methods' => 'GET, POST, PUT, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers' => 'Content-Type, Authorization',
+            'Access-Control-Allow-Credentials' => 'true',
+        ];
+        
+        foreach ($corsHeaders as $header => $value) {
+            if (!headers_sent()) {
+                header("$header: $value");
+            }
+        }
+        
+        // Send 204 No Content
+        http_response_code(204);
     }
     
-    // Send 204 No Content
-    http_response_code(204);
-    exit;
+    // Don't exit in test environment
+    if (!defined('PHPUNIT_TEST')) {
+        exit;
+    }
 }
 
 
