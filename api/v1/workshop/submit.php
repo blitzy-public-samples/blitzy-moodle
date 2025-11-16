@@ -731,6 +731,39 @@ class WorkshopSubmitEndpoint extends ApiBase {
                 'Submission updated successfully'
         ];
     }
+    
+    /**
+     * Handle GET requests - not supported for submission endpoint.
+     *
+     * @throws MethodNotAllowedException
+     */
+    protected function handle_get() {
+        throw new MethodNotAllowedException(
+            'GET method not supported for workshop submission. Use POST to submit work.'
+        );
+    }
+    
+    /**
+     * Handle PUT requests - not supported for submission endpoint.
+     *
+     * @throws MethodNotAllowedException
+     */
+    protected function handle_put() {
+        throw new MethodNotAllowedException(
+            'PUT method not supported for workshop submission. Use POST to submit work.'
+        );
+    }
+    
+    /**
+     * Handle DELETE requests - not supported for submission endpoint.
+     *
+     * @throws MethodNotAllowedException
+     */
+    protected function handle_delete() {
+        throw new MethodNotAllowedException(
+            'DELETE method not supported for workshop submission.'
+        );
+    }
 }
 
 // Execute the endpoint
