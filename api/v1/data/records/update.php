@@ -73,9 +73,11 @@
  */
 
 // Include Moodle configuration and required libraries
-require_once(__DIR__ . '/../../../../config.php');
-require_once($CFG->dirroot . '/mod/data/lib.php');
-require_once($CFG->dirroot . '/mod/data/locallib.php');
+if (!defined('API_TEST_MODE')) {
+    require_once(__DIR__ . '/../../../../config.php');
+    require_once($CFG->dirroot . '/mod/data/lib.php');
+    require_once($CFG->dirroot . '/mod/data/locallib.php');
+}
 
 // Include API framework classes
 require_once(__DIR__ . '/../../../lib/api_base.php');

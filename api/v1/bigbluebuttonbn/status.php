@@ -46,9 +46,12 @@
  */
 
 // Load Moodle configuration and core libraries
-require_once(__DIR__ . '/../../../config.php');
-require_once($CFG->dirroot . '/lib/moodlelib.php');
-require_once($CFG->dirroot . '/lib/accesslib.php');
+// In test environment, config is already loaded by PHPUnit bootstrap or test script
+if (!defined('PHPUNIT_TEST') && !defined('API_TEST_MODE')) {
+    require_once(__DIR__ . '/../../../config.php');
+    require_once($CFG->dirroot . '/lib/moodlelib.php');
+    require_once($CFG->dirroot . '/lib/accesslib.php');
+}
 
 // Load API base class and exceptions
 require_once(__DIR__ . '/../../lib/api_base.php');

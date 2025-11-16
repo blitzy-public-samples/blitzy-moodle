@@ -42,9 +42,11 @@
 require_once(__DIR__ . '/../../lib/api_base.php');
 require_once(__DIR__ . '/../../lib/api_exception.php');
 
-// Load Moodle book module functions
-require_once($CFG->dirroot . '/mod/book/lib.php');
-require_once($CFG->dirroot . '/mod/book/locallib.php');
+// Load Moodle book module functions (skip in test mode)
+if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
+    require_once($CFG->dirroot . '/mod/book/lib.php');
+    require_once($CFG->dirroot . '/mod/book/locallib.php');
+}
 
 /**
  * Book chapter endpoint class.

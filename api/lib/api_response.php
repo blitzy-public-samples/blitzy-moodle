@@ -56,8 +56,10 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-// Include Moodle configuration
-require_once(__DIR__ . '/../../config.php');
+// Include Moodle configuration (skip in test mode)
+if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
+    require_once(__DIR__ . '/../../config.php');
+}
 
 require_once(__DIR__ . '/api_exception.php');
 
@@ -332,7 +334,15 @@ class ApiResponse {
         $details = null;
         
         // Include debug details only in development mode for security
-        if (isset($CFG->debug) && $CFG->debug === DEBUG_DEVELOPER) {
+        // In test mode, skip debug details as $CFG may not be available
+        $isDebugMode = false;
+        if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
+            if (isset($CFG->debug) && defined('DEBUG_DEVELOPER') && $CFG->debug === DEBUG_DEVELOPER) {
+                $isDebugMode = true;
+            }
+        }
+        
+        if ($isDebugMode) {
             $exceptionDetails = $e->getDetails();
             
             // Extract relevant debug information
@@ -372,12 +382,13 @@ class ApiResponse {
      */
     private static function json($response, $status) {
         // Set HTTP status code (skip in test environment where headers are already sent)
-        if (!defined('PHPUNIT_TEST') || !headers_sent()) {
+        $isTestMode = defined('PHPUNIT_TEST') || defined('API_TEST_MODE');
+        if (!$isTestMode || !headers_sent()) {
             http_response_code($status);
         }
         
         // Set Content-Type header to application/json with UTF-8 charset (skip in test environment)
-        if (!defined('PHPUNIT_TEST') || !headers_sent()) {
+        if (!$isTestMode || !headers_sent()) {
             header('Content-Type: application/json; charset=utf-8');
         }
         
@@ -402,7 +413,7 @@ class ApiResponse {
         echo $json;
         
         // Don't exit during tests - PHPUnit needs to continue running
-        if (!defined('PHPUNIT_TEST')) {
+        if (!$isTestMode) {
             exit;
         }
     }

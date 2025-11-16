@@ -84,18 +84,20 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+// Load Moodle configuration and core libraries
+// In test environment, these are already loaded by PHPUnit bootstrap or test script
+if (!defined('PHPUNIT_TEST') && !defined('API_TEST_MODE')) {
+    require_once(__DIR__ . '/../../../config.php');
+    require_once($CFG->dirroot . '/mod/h5pactivity/lib.php');
+    require_once($CFG->dirroot . '/mod/h5pactivity/classes/local/manager.php');
+    require_once($CFG->dirroot . '/mod/h5pactivity/classes/local/attempt.php');
+    require_once($CFG->dirroot . '/mod/h5pactivity/classes/local/grader.php');
+    require_once($CFG->dirroot . '/lib/xapi/classes/local/statement.php');
+    require_once($CFG->dirroot . '/lib/xapi/classes/local/statement/item.php');
+}
+
 // Load API base class and dependencies
 require_once(__DIR__ . '/../../lib/api_base.php');
-
-// Load Moodle H5P activity classes
-require_once($CFG->dirroot . '/mod/h5pactivity/lib.php');
-require_once($CFG->dirroot . '/mod/h5pactivity/classes/local/manager.php');
-require_once($CFG->dirroot . '/mod/h5pactivity/classes/local/attempt.php');
-require_once($CFG->dirroot . '/mod/h5pactivity/classes/local/grader.php');
-
-// Load xAPI core classes
-require_once($CFG->dirroot . '/lib/xapi/classes/local/statement.php');
-require_once($CFG->dirroot . '/lib/xapi/classes/local/statement/item.php');
 
 use mod_h5pactivity\local\manager;
 use mod_h5pactivity\local\attempt;

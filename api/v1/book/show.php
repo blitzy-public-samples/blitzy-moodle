@@ -41,8 +41,8 @@
  */
 
 // Load Moodle configuration and libraries
-// In test environment, these are already loaded by PHPUnit bootstrap
-if (!defined('PHPUNIT_TEST')) {
+// In test environment, these are already loaded by PHPUnit bootstrap or test script
+if (!defined('PHPUNIT_TEST') && !defined('API_TEST_MODE')) {
     require_once(__DIR__ . '/../../../config.php');
     require_once($CFG->libdir . '/moodlelib.php');
     require_once($CFG->dirroot . '/mod/book/lib.php');
@@ -260,5 +260,8 @@ class BookShowEndpoint extends ApiBase {
 // Instantiate and execute the endpoint
 // The ApiBase constructor handles JWT authentication automatically
 // The execute() method routes to handle_get() and handles exceptions
-$endpoint = new BookShowEndpoint();
-$endpoint->execute();
+// Skip execution in test mode to allow testing the class directly
+if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
+    $endpoint = new BookShowEndpoint();
+    $endpoint->execute();
+}

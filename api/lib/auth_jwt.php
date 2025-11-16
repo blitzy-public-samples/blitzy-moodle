@@ -38,8 +38,10 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-// Include Moodle configuration
-require_once(__DIR__ . '/../../config.php');
+// Include Moodle configuration (skip in test mode)
+if (!defined('API_TEST_MODE')) {
+    require_once(__DIR__ . '/../../config.php');
+}
 
 // Import firebase/php-jwt library classes
 use Firebase\JWT\JWT;
@@ -115,6 +117,11 @@ class JwtAuth {
     public function __construct() {
         $this->redis = null;
         
+        // Skip Redis connection in test mode
+        if (defined('API_TEST_MODE') && API_TEST_MODE) {
+            return;
+        }
+        
         // Attempt to connect to Redis if extension is loaded
         if (extension_loaded('redis')) {
             try {
@@ -165,17 +172,26 @@ class JwtAuth {
         // Get JWT secret from configuration
         $secret = $this->getJwtSecret();
         
-        // Fetch user roles if not provided
+        // Fetch user roles if not provided (skip in test mode)
         if ($roles === null) {
-            $roles = $this->getUserRoles($userid);
+            if (defined('API_TEST_MODE') && API_TEST_MODE) {
+                $roles = []; // Default empty roles in test mode
+            } else {
+                $roles = $this->getUserRoles($userid);
+            }
         }
         
         // Current timestamp
         $now = time();
         
+        // Determine issuer (use test value in test mode)
+        $issuer = (defined('API_TEST_MODE') && API_TEST_MODE) 
+            ? 'http://test.moodle.local' 
+            : $CFG->wwwroot;
+        
         // Build JWT payload
         $payload = [
-            'iss' => $CFG->wwwroot,                    // Issuer
+            'iss' => $issuer,                           // Issuer
             'iat' => $now,                              // Issued at
             'exp' => $now + self::ACCESS_TOKEN_EXPIRY, // Expiration
             'sub' => $userid,                           // Subject (user ID)
@@ -204,15 +220,24 @@ class JwtAuth {
         // Get JWT secret from configuration
         $secret = $this->getJwtSecret();
         
-        // Fetch user roles
-        $roles = $this->getUserRoles($userid);
+        // Fetch user roles (skip in test mode)
+        if (defined('API_TEST_MODE') && API_TEST_MODE) {
+            $roles = []; // Default empty roles in test mode
+        } else {
+            $roles = $this->getUserRoles($userid);
+        }
         
         // Current timestamp
         $now = time();
         
+        // Determine issuer (use test value in test mode)
+        $issuer = (defined('API_TEST_MODE') && API_TEST_MODE) 
+            ? 'http://test.moodle.local' 
+            : $CFG->wwwroot;
+        
         // Build JWT payload for refresh token
         $payload = [
-            'iss' => $CFG->wwwroot,                      // Issuer
+            'iss' => $issuer,                             // Issuer
             'iat' => $now,                                // Issued at
             'exp' => $now + self::REFRESH_TOKEN_EXPIRY,  // Expiration (7 days)
             'sub' => $userid,                             // Subject (user ID)
@@ -501,6 +526,11 @@ class JwtAuth {
      * @throws ServerException If JWT secret is not configured
      */
     public function getJwtSecret() {
+        // Return test secret in test mode
+        if (defined('API_TEST_MODE') && API_TEST_MODE) {
+            return 'test_jwt_secret_minimum_32_characters_required_for_security';
+        }
+        
         global $CFG;
         
         if (!isset($CFG->jwt_secret) || empty($CFG->jwt_secret)) {

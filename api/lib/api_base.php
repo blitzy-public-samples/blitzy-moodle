@@ -49,10 +49,12 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-// Load Moodle configuration and core libraries
-require_once(__DIR__ . '/../../config.php');
-require_once($CFG->libdir . '/moodlelib.php');
-require_once($CFG->libdir . '/accesslib.php');
+// Load Moodle configuration and core libraries (skip in test mode)
+if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
+    require_once(__DIR__ . '/../../config.php');
+    require_once($CFG->libdir . '/moodlelib.php');
+    require_once($CFG->libdir . '/accesslib.php');
+}
 
 // Load API utilities
 require_once(__DIR__ . '/api_exception.php');
@@ -115,7 +117,23 @@ abstract class ApiBase {
         // Authenticate user via JWT token if required
         $this->user = null;
         
-        if ($this->requireAuth) {
+        // In test mode, bypass JWT authentication and use test user
+        if (defined('API_TEST_MODE') && API_TEST_MODE) {
+            global $USER;
+            // In test mode, use the global $USER object which should be set by the test
+            // If not set, we'll create a mock admin user
+            if (isset($USER) && $USER->id > 0) {
+                $this->user = $USER;
+            } else {
+                // Create a mock admin user for testing
+                $this->user = (object)[
+                    'id' => 2, // Standard admin user ID
+                    'username' => 'admin',
+                    'firstname' => 'Admin',
+                    'lastname' => 'User',
+                ];
+            }
+        } elseif ($this->requireAuth) {
             try {
                 // Extract JWT token from Authorization header
                 $token = $this->jwtAuth->extractTokenFromRequest();
@@ -225,8 +243,10 @@ abstract class ApiBase {
      * @return void Outputs response directly
      */
     protected function handleOptions() {
+        $isTestMode = defined('PHPUNIT_TEST') || defined('API_TEST_MODE');
+        
         // Set CORS headers (skip in test environment)
-        if (!defined('PHPUNIT_TEST') || !headers_sent()) {
+        if (!$isTestMode || !headers_sent()) {
             $corsHeaders = $this->getCorsHeaders();
             foreach ($corsHeaders as $header => $value) {
                 if (!headers_sent()) {
@@ -239,7 +259,7 @@ abstract class ApiBase {
         }
         
         // Don't exit in test environment
-        if (!defined('PHPUNIT_TEST')) {
+        if (!$isTestMode) {
             exit;
         }
     }
@@ -393,8 +413,11 @@ abstract class ApiBase {
         
         $headers = [];
         
-        // Get allowed origins from configuration
-        $allowedOrigins = $CFG->api_cors_origins ?? '*';
+        // Get allowed origins from configuration (default to * in test mode)
+        $allowedOrigins = '*';
+        if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
+            $allowedOrigins = $CFG->api_cors_origins ?? '*';
+        }
         
         // Get origin from request
         $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -470,7 +493,7 @@ abstract class ApiBase {
      */
     private function setCorsHeaders() {
         // Skip setting headers in test environment where headers are already sent
-        if (defined('PHPUNIT_TEST') && headers_sent()) {
+        if ((defined('PHPUNIT_TEST') || defined('API_TEST_MODE')) && headers_sent()) {
             return;
         }
         
@@ -562,8 +585,10 @@ abstract class ApiBase {
  * @return void Outputs response and exits
  */
 function noContent() {
+    $isTestMode = defined('PHPUNIT_TEST') || defined('API_TEST_MODE');
+    
     // Set CORS headers (skip in test environment)
-    if (!defined('PHPUNIT_TEST') || !headers_sent()) {
+    if (!$isTestMode || !headers_sent()) {
         $corsHeaders = [
             'Access-Control-Allow-Origin' => $_SERVER['HTTP_ORIGIN'] ?? '*',
             'Access-Control-Allow-Methods' => 'GET, POST, PUT, DELETE, OPTIONS',
@@ -582,7 +607,7 @@ function noContent() {
     }
     
     // Don't exit in test environment
-    if (!defined('PHPUNIT_TEST')) {
+    if (!$isTestMode) {
         exit;
     }
 }

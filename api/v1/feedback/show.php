@@ -62,8 +62,11 @@
  */
 
 // Include Moodle configuration and required libraries
-require_once(__DIR__ . '/../../../config.php');
-require_once($CFG->dirroot . '/mod/feedback/lib.php');
+// In test environment, these are already loaded by PHPUnit bootstrap or test script
+if (!defined('PHPUNIT_TEST') && !defined('API_TEST_MODE')) {
+    require_once(__DIR__ . '/../../../config.php');
+    require_once($CFG->dirroot . '/mod/feedback/lib.php');
+}
 
 // Include API framework classes
 require_once(__DIR__ . '/../../lib/api_base.php');

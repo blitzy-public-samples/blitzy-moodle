@@ -73,12 +73,13 @@ require_once(__DIR__ . '/../../lib/api_base.php');
 require_once(__DIR__ . '/../../lib/api_exception.php');
 
 // Load Moodle configuration and database activity libraries
-require_once(__DIR__ . '/../../../config.php');
-require_once($CFG->dirroot . '/mod/data/locallib.php');
-require_once($CFG->dirroot . '/mod/data/lib.php');
-
-// Load database activity field exporter
-require_once($CFG->dirroot . '/mod/data/classes/external/field_exporter.php');
+// In test environment, these are already loaded by PHPUnit bootstrap or test script
+if (!defined('PHPUNIT_TEST') && !defined('API_TEST_MODE')) {
+    require_once(__DIR__ . '/../../../config.php');
+    require_once($CFG->dirroot . '/mod/data/locallib.php');
+    require_once($CFG->dirroot . '/mod/data/lib.php');
+    require_once($CFG->dirroot . '/mod/data/classes/external/field_exporter.php');
+}
 
 use mod_data\external\field_exporter;
 

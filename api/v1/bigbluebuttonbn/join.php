@@ -38,7 +38,10 @@
  */
 
 // Load Moodle configuration and dependencies
-require_once(__DIR__ . '/../../../config.php');
+// In test environment, config is already loaded by PHPUnit bootstrap or test script
+if (!defined('PHPUNIT_TEST') && !defined('API_TEST_MODE')) {
+    require_once(__DIR__ . '/../../../config.php');
+}
 require_once(__DIR__ . '/../../lib/api_base.php');
 require_once(__DIR__ . '/../../lib/api_exception.php');
 

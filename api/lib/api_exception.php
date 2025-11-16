@@ -27,8 +27,10 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-// Include Moodle configuration
-require_once(__DIR__ . '/../../config.php');
+// Include Moodle configuration (skip in test mode)
+if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
+    require_once(__DIR__ . '/../../config.php');
+}
 
 /**
  * Base API Exception class for all REST API errors.
@@ -92,6 +94,18 @@ class ApiException extends Exception {
     }
     
     /**
+     * Get the HTTP status code for this exception (alias for getHttpStatus).
+     *
+     * This method provides an alternative naming convention for compatibility
+     * with code that expects getStatusCode() instead of getHttpStatus().
+     *
+     * @return int HTTP status code (e.g., 400, 401, 403, 404, 500)
+     */
+    public function getStatusCode() {
+        return $this->httpstatus;
+    }
+    
+    /**
      * Get the machine-readable error code.
      *
      * This code is intended for programmatic error handling on the client side.
@@ -149,7 +163,15 @@ class ApiException extends Exception {
         ];
         
         // Include debug details only in development mode
-        if (isset($CFG->debug) && $CFG->debug === DEBUG_DEVELOPER) {
+        // In test mode, skip debug details as $CFG may not be available
+        $isDebugMode = false;
+        if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
+            if (isset($CFG->debug) && defined('DEBUG_DEVELOPER') && $CFG->debug === DEBUG_DEVELOPER) {
+                $isDebugMode = true;
+            }
+        }
+        
+        if ($isDebugMode) {
             $error['details'] = [
                 'file' => $this->getFile(),
                 'line' => $this->getLine(),
@@ -304,6 +326,42 @@ class ValidationException extends ApiException {
      */
     public function __construct($message = 'Validation Failed', $debuginfo = null) {
         parent::__construct(400, 'VALIDATION_ERROR', $message, $debuginfo);
+    }
+}
+
+/**
+ * Exception for bad request errors (HTTP 400 Bad Request).
+ *
+ * This exception should be thrown when the client sends an invalid request that
+ * cannot be processed. This includes malformed JSON, invalid parameters, missing
+ * required fields, or any other client-side error that doesn't fit more specific
+ * exception types like ValidationException.
+ *
+ * Example usage:
+ * <code>
+ * if (!isset($request['required_field'])) {
+ *     throw new BadRequestException('Missing required field: required_field');
+ * }
+ * if (!json_decode($body)) {
+ *     throw new BadRequestException('Invalid JSON in request body');
+ * }
+ * </code>
+ *
+ * @package    core
+ * @subpackage api
+ * @copyright  2024 Moodle Pty Ltd
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+class BadRequestException extends ApiException {
+    
+    /**
+     * Constructor for BadRequestException.
+     *
+     * @param string $message   Human-readable error message (default: 'Bad Request')
+     * @param mixed  $debuginfo Optional debug information (e.g., invalid fields, error details)
+     */
+    public function __construct($message = 'Bad Request', $debuginfo = null) {
+        parent::__construct(400, 'BAD_REQUEST', $message, $debuginfo);
     }
 }
 

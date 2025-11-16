@@ -73,12 +73,12 @@
 require_once(__DIR__ . '/../../lib/api_base.php');
 require_once(__DIR__ . '/../../lib/api_exception.php');
 
-// Load Moodle configuration
-require_once(__DIR__ . '/../../../config.php');
-
-// Load book module libraries
-require_once($CFG->dirroot . '/mod/book/lib.php');
-require_once($CFG->dirroot . '/mod/book/locallib.php');
+// Load Moodle configuration (skip in test mode)
+if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
+    require_once(__DIR__ . '/../../../config.php');
+    require_once($CFG->dirroot . '/mod/book/lib.php');
+    require_once($CFG->dirroot . '/mod/book/locallib.php');
+}
 
 /**
  * Book Table of Contents API Endpoint.

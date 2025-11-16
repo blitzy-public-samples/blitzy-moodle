@@ -74,12 +74,16 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+// Load Moodle configuration and core libraries
+// In test environment, these are already loaded by PHPUnit bootstrap or test script
+if (!defined('PHPUNIT_TEST') && !defined('API_TEST_MODE')) {
+    require_once(__DIR__ . '/../../../config.php');
+    require_once($CFG->dirroot . '/mod/h5pactivity/lib.php');
+}
+
 // Load API base classes and utilities
 require_once(__DIR__ . '/../../lib/api_base.php');
 require_once(__DIR__ . '/../../lib/api_exception.php');
-
-// Load Moodle core libraries
-require_once($CFG->dirroot . '/mod/h5pactivity/lib.php');
 
 // Import H5P activity management classes
 use mod_h5pactivity\local\manager;
