@@ -413,6 +413,49 @@ class ScormAttemptEndpoint extends ApiBase {
         // Return success response using ApiBase helper method
         $this->success($response);
     }
+    
+    /**
+     * Handle GET request - not supported for this endpoint.
+     *
+     * SCORM attempts cannot be retrieved via GET. Use dedicated query endpoints
+     * for retrieving attempt data. This endpoint is specifically for creating
+     * or initializing attempts via POST.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always throws as GET is not supported
+     */
+    protected function handle_get() {
+        throw new MethodNotAllowedException('GET method is not supported for SCORM attempt creation. Use POST to create or initialize attempts.');
+    }
+    
+    /**
+     * Handle PUT request - not supported for this endpoint.
+     *
+     * SCORM attempts cannot be updated via PUT. Tracking data should be updated
+     * through dedicated tracking endpoints. This endpoint is specifically for
+     * creating or initializing attempts via POST.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always throws as PUT is not supported
+     */
+    protected function handle_put() {
+        throw new MethodNotAllowedException('PUT method is not supported for SCORM attempt creation. Use POST to create or initialize attempts.');
+    }
+    
+    /**
+     * Handle DELETE request - not supported for this endpoint.
+     *
+     * SCORM attempts cannot be deleted via this endpoint. Attempt deletion
+     * should be handled through administrative interfaces with proper
+     * validation and logging. This endpoint is specifically for creating
+     * or initializing attempts via POST.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always throws as DELETE is not supported
+     */
+    protected function handle_delete() {
+        throw new MethodNotAllowedException('DELETE method is not supported for SCORM attempt creation. Use POST to create or initialize attempts.');
+    }
 }
 
 // Instantiate and execute the endpoint
