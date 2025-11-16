@@ -255,8 +255,10 @@ class ChoiceSubmitEndpoint extends ApiBase {
     }
 }
 
-// Instantiate and execute the endpoint
+// Instantiate and execute the endpoint (skip during testing)
 // ApiBase constructor handles JWT validation and authentication
 // ApiBase::execute() routes to appropriate handle_* method based on HTTP method
-$endpoint = new ChoiceSubmitEndpoint();
-$endpoint->execute();
+if (!defined('API_TESTING') && php_sapi_name() !== 'cli') {
+    $endpoint = new ChoiceSubmitEndpoint();
+    $endpoint->execute();
+}

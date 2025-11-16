@@ -231,11 +231,12 @@ class ChoiceMyResponseEndpoint extends ApiBase {
     }
 }
 
-// Instantiate and execute the endpoint
-try {
-    $endpoint = new ChoiceMyResponseEndpoint();
-    $endpoint->execute();
-} catch (Exception $e) {
+// Instantiate and execute the endpoint (skip during testing)
+if (!defined('API_TESTING') && php_sapi_name() !== 'cli') {
+    try {
+        $endpoint = new ChoiceMyResponseEndpoint();
+        $endpoint->execute();
+    } catch (Exception $e) {
     // Handle any uncaught exceptions during instantiation
     // This should rarely happen as ApiBase and execute() handle most exceptions
     http_response_code(500);
@@ -253,4 +254,5 @@ try {
         ]
     ]);
     exit;
+    }
 }

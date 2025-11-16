@@ -276,6 +276,8 @@ class ChoiceShowEndpoint extends ApiBase {
     }
 }
 
-// Instantiate and execute the endpoint
-$endpoint = new ChoiceShowEndpoint();
-$endpoint->execute();
+// Instantiate and execute the endpoint (skip during testing)
+if (!defined('API_TESTING') && php_sapi_name() !== 'cli') {
+    $endpoint = new ChoiceShowEndpoint();
+    $endpoint->execute();
+}
