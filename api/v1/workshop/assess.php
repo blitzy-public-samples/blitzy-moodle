@@ -703,6 +703,30 @@ class WorkshopAssessEndpoint extends ApiBase {
     }
     
     /**
+     * Handle PUT requests - not supported for this endpoint.
+     *
+     * @throws MethodNotAllowedException Always throws as PUT is not supported
+     */
+    protected function handle_put() {
+        throw new MethodNotAllowedException(
+            'PUT method is not supported for this endpoint. Use POST to create or update assessments.',
+            ['allowed_methods' => ['POST']]
+        );
+    }
+    
+    /**
+     * Handle DELETE requests - not supported for this endpoint.
+     *
+     * @throws MethodNotAllowedException Always throws as DELETE is not supported
+     */
+    protected function handle_delete() {
+        throw new MethodNotAllowedException(
+            'DELETE method is not supported for this endpoint. Assessments cannot be deleted via API.',
+            ['allowed_methods' => ['POST']]
+        );
+    }
+    
+    /**
      * Get human-readable workshop phase name.
      *
      * @param int $phase Workshop phase constant

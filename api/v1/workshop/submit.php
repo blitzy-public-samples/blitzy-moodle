@@ -66,8 +66,8 @@ require_once($CFG->libdir . '/completionlib.php');
 require_once($CFG->libdir . '/filelib.php');
 
 // Load API base classes
-require_once($CFG->dirroot . '/api/lib/api_base.php');
-require_once($CFG->dirroot . '/api/lib/api_exception.php');
+require_once(__DIR__ . '/../../lib/api_base.php');
+require_once(__DIR__ . '/../../lib/api_exception.php');
 
 /**
  * Workshop submission endpoint class.

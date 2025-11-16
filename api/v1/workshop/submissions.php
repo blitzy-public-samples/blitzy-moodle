@@ -39,16 +39,28 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-// Load Moodle configuration and workshop libraries
-require_once(__DIR__ . '/../../../config.php');
-require_once($CFG->dirroot . '/mod/workshop/locallib.php');
-require_once($CFG->dirroot . '/mod/workshop/lib.php');
-require_once($CFG->libdir . '/filelib.php');
-require_once($CFG->dirroot . '/user/lib.php');
-
-// Load API base class and exception handlers
-require_once(__DIR__ . '/../../lib/api_base.php');
-require_once(__DIR__ . '/../../lib/api_exception.php');
+// Load Moodle configuration and workshop libraries (skip in test mode)
+if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
+    require_once(__DIR__ . '/../../../config.php');
+    require_once($CFG->dirroot . '/mod/workshop/locallib.php');
+    require_once($CFG->dirroot . '/mod/workshop/lib.php');
+    require_once($CFG->libdir . '/filelib.php');
+    require_once($CFG->dirroot . '/user/lib.php');
+    
+    // Load API base class and exception handlers
+    require_once(__DIR__ . '/../../lib/api_base.php');
+    require_once(__DIR__ . '/../../lib/api_exception.php');
+} else {
+    // In test mode, these should already be loaded by the test script
+    // Just ensure workshop libraries are loaded
+    global $CFG;
+    if (!class_exists('workshop')) {
+        require_once($CFG->dirroot . '/mod/workshop/locallib.php');
+        require_once($CFG->dirroot . '/mod/workshop/lib.php');
+        require_once($CFG->libdir . '/filelib.php');
+        require_once($CFG->dirroot . '/user/lib.php');
+    }
+}
 
 /**
  * Workshop submissions list API endpoint.
@@ -600,9 +612,56 @@ class WorkshopSubmissionsEndpoint extends ApiBase {
                 return 'unknown';
         }
     }
+    
+    /**
+     * Handle POST requests.
+     *
+     * POST method is not supported for this endpoint.
+     * This endpoint only supports GET requests to retrieve submissions.
+     *
+     * @throws MethodNotAllowedException Always thrown as POST is not allowed
+     */
+    protected function handle_post() {
+        throw new MethodNotAllowedException(
+            'POST method is not supported for this endpoint. Use GET to retrieve submissions.',
+            ['allowed_methods' => ['GET']]
+        );
+    }
+    
+    /**
+     * Handle PUT requests.
+     *
+     * PUT method is not supported for this endpoint.
+     * This endpoint only supports GET requests to retrieve submissions.
+     *
+     * @throws MethodNotAllowedException Always thrown as PUT is not allowed
+     */
+    protected function handle_put() {
+        throw new MethodNotAllowedException(
+            'PUT method is not supported for this endpoint. Use GET to retrieve submissions.',
+            ['allowed_methods' => ['GET']]
+        );
+    }
+    
+    /**
+     * Handle DELETE requests.
+     *
+     * DELETE method is not supported for this endpoint.
+     * This endpoint only supports GET requests to retrieve submissions.
+     *
+     * @throws MethodNotAllowedException Always thrown as DELETE is not allowed
+     */
+    protected function handle_delete() {
+        throw new MethodNotAllowedException(
+            'DELETE method is not supported for this endpoint. Use GET to retrieve submissions.',
+            ['allowed_methods' => ['GET']]
+        );
+    }
 }
 
-// Instantiate and execute the endpoint
-$endpoint = new WorkshopSubmissionsEndpoint();
-$endpoint->execute();
+// Instantiate and execute the endpoint (skip in test mode)
+if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
+    $endpoint = new WorkshopSubmissionsEndpoint();
+    $endpoint->execute();
+}
 
