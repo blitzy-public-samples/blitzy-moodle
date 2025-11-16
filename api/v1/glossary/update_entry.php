@@ -208,6 +208,9 @@ class GlossaryUpdateEntryEndpoint extends ApiBase {
             'text' => $definition,
             'format' => $definitionformat,
         ];
+        
+        // Update modification timestamp
+        $entry->timemodified = time();
 
         // Process optional parameters
         // Handle inlineattachmentsid for definition inline attachments
