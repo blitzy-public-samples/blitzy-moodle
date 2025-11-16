@@ -68,10 +68,13 @@
 
 // Load API base class and dependencies
 require_once(__DIR__ . '/../../lib/api_base.php');
+require_once(__DIR__ . '/../../lib/api_exception.php');
 
 // Load Moodle feedback module classes and functions
 require_once($CFG->dirroot . '/mod/feedback/lib.php');
 require_once($CFG->dirroot . '/mod/feedback/classes/structure.php');
+require_once($CFG->dirroot . '/mod/feedback/classes/responses_table.php');
+require_once($CFG->dirroot . '/mod/feedback/classes/responses_anon_table.php');
 
 // Load group library for group mode support
 require_once($CFG->libdir . '/grouplib.php');
@@ -113,16 +116,16 @@ class FeedbackResultsEndpoint extends ApiBase {
         $feedbackid = $this->getParam('id', PARAM_INT, true);
         
         // Extract optional pagination parameters
-        $page = $this->getParam('page', PARAM_INT, false, 1);
+        $page = $this->getParam('page', PARAM_INT, false, 0);
         $perpage = $this->getParam('per_page', PARAM_INT, false, 20);
         $groupid = $this->getParam('groupid', PARAM_INT, false, 0);
         
         // Validate pagination parameters
-        if ($page < 1) {
+        if ($page < 0) {
             throw new ValidationException('Invalid page number', [
                 'parameter' => 'page',
                 'value' => $page,
-                'minimum' => 1
+                'minimum' => 0
             ]);
         }
         
@@ -152,17 +155,7 @@ class FeedbackResultsEndpoint extends ApiBase {
         $user = $this->getUser();
         
         // Check if user has permission to view feedback reports
-        // Try both viewreports and viewanalysepage capabilities
-        $canviewreports = has_capability('mod/feedback:viewreports', $context, $user->id);
-        $canviewanalysis = has_capability('mod/feedback:viewanalysepage', $context, $user->id);
-        
-        if (!$canviewreports && !$canviewanalysis) {
-            throw new ForbiddenException('You do not have permission to view feedback results', [
-                'requiredCapability' => 'mod/feedback:viewreports OR mod/feedback:viewanalysepage',
-                'contextId' => $context->id,
-                'userId' => $user->id
-            ]);
-        }
+        $this->checkCapability('mod/feedback:viewreports', $context);
         
         // Get feedback record
         $feedback = $DB->get_record('feedback', ['id' => $feedbackid], '*', MUST_EXIST);
@@ -176,177 +169,62 @@ class FeedbackResultsEndpoint extends ApiBase {
         // Get course record for group mode checking
         $course = $DB->get_record('course', ['id' => $cm->course], '*', MUST_EXIST);
         
+        // Validate group access if groupid specified
+        if (!empty($groupid)) {
+            // Determine if the group is visible to user
+            if (!groups_group_visible($groupid, $course, $cm)) {
+                throw new ForbiddenException('You do not have access to this group', [
+                    'groupId' => $groupid
+                ]);
+            }
+        } else {
+            // Check to see if groups are being used here
+            if ($groupmode = groups_get_activity_groupmode($cm)) {
+                $groupid = groups_get_activity_group($cm);
+                // Determine if the group is visible to user
+                if (!groups_group_visible($groupid, $course, $cm)) {
+                    throw new ForbiddenException('You do not have access to this group', [
+                        'groupId' => $groupid
+                    ]);
+                }
+            } else {
+                $groupid = 0;
+            }
+        }
+        
         // Create feedback structure instance to access feedback methods
         $feedbackstructure = new mod_feedback_structure($feedback, $cm, $course->id);
         
         // Check if feedback is anonymous
         $isanonymous = $feedback->anonymous == FEEDBACK_ANONYMOUS_YES;
         
-        // Get group mode for this activity
-        $groupmode = groups_get_activity_groupmode($cm);
+        // Use existing Moodle table classes to get responses
+        // This follows the pattern from mod_feedback_external::get_responses_analysis()
+        $responsestable = new mod_feedback_responses_table($feedbackstructure, $groupid);
         
-        // Determine which groups the user can access
-        $accessiblegroups = [];
-        if ($groupmode != NOGROUPS) {
-            if ($groupid > 0) {
-                // Verify user has access to specified group
-                $accessiblegroups = groups_get_activity_allowed_groups($cm, $user->id);
-                $groupids = array_keys($accessiblegroups);
-                
-                if (!in_array($groupid, $groupids)) {
-                    throw new ForbiddenException('You do not have access to this group', [
-                        'groupId' => $groupid,
-                        'accessibleGroups' => $groupids
-                    ]);
-                }
-                
-                $filtergroupids = [$groupid];
-            } else {
-                // Get all groups user can access
-                $accessiblegroups = groups_get_activity_allowed_groups($cm, $user->id);
-                $filtergroupids = array_keys($accessiblegroups);
-            }
-        } else {
-            // No group mode - all responses visible
-            $filtergroupids = null;
-        }
+        // Ensure responses number is correct prior returning them
+        $feedbackstructure->shuffle_anonym_responses();
+        $anonresponsestable = new mod_feedback_responses_anon_table($feedbackstructure, $groupid);
         
-        // Build SQL query to get completed feedback responses
-        $sql = "SELECT fc.id, fc.userid, fc.timemodified, fc.courseid, fc.anonymous_response
-                  FROM {feedback_completed} fc
-                 WHERE fc.feedback = :feedbackid";
-        
-        $params = ['feedbackid' => $feedbackid];
-        
-        // Apply group filtering if necessary
-        if ($filtergroupids !== null && !empty($filtergroupids)) {
-            list($groupsql, $groupparams) = $DB->get_in_or_equal($filtergroupids, SQL_PARAMS_NAMED, 'grp');
-            $sql .= " AND fc.userid IN (
-                        SELECT gm.userid 
-                          FROM {groups_members} gm 
-                         WHERE gm.groupid $groupsql
-                      )";
-            $params = array_merge($params, $groupparams);
-        }
-        
-        // Add ordering
-        $sql .= " ORDER BY fc.timemodified DESC";
-        
-        // Get total count for pagination
-        $countsql = "SELECT COUNT(fc.id)
-                       FROM {feedback_completed} fc
-                      WHERE fc.feedback = :feedbackid";
-        
-        $countparams = ['feedbackid' => $feedbackid];
-        
-        // Apply same group filtering to count query
-        if ($filtergroupids !== null && !empty($filtergroupids)) {
-            list($groupsql, $groupparams) = $DB->get_in_or_equal($filtergroupids, SQL_PARAMS_NAMED, 'grp');
-            $countsql .= " AND fc.userid IN (
-                             SELECT gm.userid 
-                               FROM {groups_members} gm 
-                              WHERE gm.groupid $groupsql
-                           )";
-            $countparams = array_merge($countparams, $groupparams);
-        }
-        
-        $totalcount = $DB->count_records_sql($countsql, $countparams);
+        // Get total counts
+        $totalresponses = $responsestable->get_total_responses_count();
+        $totalanon = $anonresponsestable->get_total_responses_count();
         
         // Calculate pagination
-        $offset = ($page - 1) * $perpage;
-        $totalpages = ceil($totalcount / $perpage);
+        $totalpages = $perpage > 0 ? ceil($totalresponses / $perpage) : 1;
         
-        // For anonymous feedback, return only aggregated data
-        if ($isanonymous) {
-            $responsedata = [
-                'feedback_id' => $feedbackid,
-                'is_anonymous' => true,
-                'total_responses' => $totalcount,
-                'results' => null,
-                'message' => 'This feedback is anonymous. Individual responses are not available.'
-            ];
-            
-            $meta = [
-                'pagination' => [
-                    'page' => $page,
-                    'per_page' => $perpage,
-                    'total_count' => $totalcount,
-                    'total_pages' => $totalpages
-                ]
-            ];
-            
-            $this->success($responsedata, 200, $meta);
-            return;
-        }
-        
-        // For non-anonymous feedback, retrieve completed responses with pagination
-        $completedresponses = $DB->get_records_sql($sql, $params, $offset, $perpage);
-        
-        $results = [];
-        
-        foreach ($completedresponses as $completed) {
-            $resultentry = [
-                'completed_id' => $completed->id,
-                'timemodified' => $completed->timemodified,
-                'courseid' => $completed->courseid,
-                'anonymous_response' => $completed->anonymous_response
-            ];
-            
-            // Add user information for non-anonymous responses
-            if (!$completed->anonymous_response && $completed->userid > 0) {
-                $responseuser = $DB->get_record('user', ['id' => $completed->userid], 
-                    'id, firstname, lastname, email, picture, imagealt', IGNORE_MISSING);
-                
-                if ($responseuser) {
-                    $resultentry['user'] = [
-                        'id' => $responseuser->id,
-                        'firstname' => $responseuser->firstname,
-                        'lastname' => $responseuser->lastname,
-                        'email' => $responseuser->email,
-                        'fullname' => fullname($responseuser)
-                    ];
-                } else {
-                    $resultentry['user'] = null;
-                }
-            } else {
-                $resultentry['user'] = null;
-            }
-            
-            // Get feedback item responses for this completion
-            $itemresponses = $DB->get_records('feedback_value', 
-                ['completed' => $completed->id], 
-                'item ASC'
-            );
-            
-            $responsevalues = [];
-            
-            foreach ($itemresponses as $itemresponse) {
-                // Get item details
-                $item = $DB->get_record('feedback_item', ['id' => $itemresponse->item]);
-                
-                if ($item) {
-                    $responsevalues[] = [
-                        'item_id' => $item->id,
-                        'item_name' => $item->name,
-                        'item_label' => $item->label,
-                        'item_type' => $item->typ,
-                        'value' => $itemresponse->value,
-                        'position' => $item->position
-                    ];
-                }
-            }
-            
-            $resultentry['response_data'] = $responsevalues;
-            
-            $results[] = $resultentry;
-        }
+        // Export structured data using existing Moodle methods
+        $attempts = $responsestable->export_external_structure($page, $perpage);
+        $anonattempts = $anonresponsestable->export_external_structure($page, $perpage);
         
         // Build response data
         $responsedata = [
             'feedback_id' => $feedbackid,
-            'is_anonymous' => false,
-            'results' => $results,
-            'total_responses' => $totalcount
+            'is_anonymous' => $isanonymous,
+            'attempts' => $attempts,
+            'total_attempts' => $totalresponses,
+            'anon_attempts' => $anonattempts,
+            'total_anon_attempts' => $totalanon
         ];
         
         // Build pagination metadata
@@ -354,7 +232,7 @@ class FeedbackResultsEndpoint extends ApiBase {
             'pagination' => [
                 'page' => $page,
                 'per_page' => $perpage,
-                'total_count' => $totalcount,
+                'total_count' => $totalresponses,
                 'total_pages' => $totalpages
             ]
         ];

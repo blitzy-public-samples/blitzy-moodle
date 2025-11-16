@@ -414,6 +414,54 @@ class FeedbackAnalysisEndpoint extends ApiBase {
         $variance = $sumSquaredDiff / $count;
         return round(sqrt($variance), 2);
     }
+    
+    /**
+     * Handle POST requests - not supported for this endpoint.
+     *
+     * This endpoint only supports GET requests for retrieving feedback analysis.
+     * Feedback responses are handled by separate endpoints.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always throws exception
+     */
+    protected function handle_post() {
+        throw new MethodNotAllowedException('POST method not supported for feedback analysis endpoint', [
+            'allowedMethods' => ['GET'],
+            'suggestion' => 'Use GET method to retrieve feedback analysis'
+        ]);
+    }
+    
+    /**
+     * Handle PUT requests - not supported for this endpoint.
+     *
+     * This endpoint only supports GET requests for retrieving feedback analysis.
+     * Feedback updates are handled by separate admin endpoints.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always throws exception
+     */
+    protected function handle_put() {
+        throw new MethodNotAllowedException('PUT method not supported for feedback analysis endpoint', [
+            'allowedMethods' => ['GET'],
+            'suggestion' => 'Use GET method to retrieve feedback analysis'
+        ]);
+    }
+    
+    /**
+     * Handle DELETE requests - not supported for this endpoint.
+     *
+     * This endpoint only supports GET requests for retrieving feedback analysis.
+     * Feedback deletion is handled by separate admin endpoints.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always throws exception
+     */
+    protected function handle_delete() {
+        throw new MethodNotAllowedException('DELETE method not supported for feedback analysis endpoint', [
+            'allowedMethods' => ['GET'],
+            'suggestion' => 'Use GET method to retrieve feedback analysis'
+        ]);
+    }
 }
 
 // Execute the endpoint
