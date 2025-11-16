@@ -169,14 +169,31 @@ class ChoiceShowEndpoint extends ApiBase {
         // This calls existing Moodle function - no business logic duplication
         $currentresponse = choice_get_my_response($choice);
         
-        // Prepare options array with proper structure
+        // Get group mode for this activity
+        $groupmode = groups_get_activity_groupmode($cm);
+        
+        // Determine if we should only include active users
+        $onlyactive = $choice->includeinactive ? false : true;
+        
+        // Get all responses data (needed for choice_prepare_options)
+        // This calls existing Moodle function - no business logic duplication
+        $allresponses = choice_get_response_data($choice, $cm, $groupmode, $onlyactive);
+        
+        // Prepare options array with proper structure using Moodle function
+        // This calls existing Moodle function - no business logic duplication
+        $preparedoptions = choice_prepare_options($choice, $user, $cm, $allresponses);
+        
+        // Extract options from prepared data for API response
         $options = [];
-        if (isset($choice->option) && is_array($choice->option)) {
-            foreach ($choice->option as $optionid => $optiontext) {
+        if (isset($preparedoptions['options']) && is_array($preparedoptions['options'])) {
+            foreach ($preparedoptions['options'] as $option) {
                 $options[] = [
-                    'id' => $optionid,
-                    'text' => $optiontext,
-                    'maxanswers' => $choice->maxanswers[$optionid] ?? 0
+                    'id' => $option->attributes->value,
+                    'text' => $option->text,
+                    'maxanswers' => $option->maxanswers ?? 0,
+                    'countanswers' => $option->countanswers ?? 0,
+                    'checked' => isset($option->attributes->checked) ? (bool)$option->attributes->checked : false,
+                    'disabled' => isset($option->attributes->disabled) ? (bool)$option->attributes->disabled : false
                 ];
             }
         }
