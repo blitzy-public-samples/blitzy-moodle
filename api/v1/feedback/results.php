@@ -66,18 +66,19 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-// Load API base class and dependencies
-require_once(__DIR__ . '/../../lib/api_base.php');
-require_once(__DIR__ . '/../../lib/api_exception.php');
-
-// Load Moodle feedback module classes and functions
+// Include Moodle configuration and required libraries
+require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->dirroot . '/mod/feedback/lib.php');
 require_once($CFG->dirroot . '/mod/feedback/classes/structure.php');
 require_once($CFG->dirroot . '/mod/feedback/classes/responses_table.php');
 require_once($CFG->dirroot . '/mod/feedback/classes/responses_anon_table.php');
-
-// Load group library for group mode support
 require_once($CFG->libdir . '/grouplib.php');
+
+// Include API framework classes
+require_once(__DIR__ . '/../../lib/api_base.php');
+require_once(__DIR__ . '/../../lib/auth_jwt.php');
+require_once(__DIR__ . '/../../lib/api_response.php');
+require_once(__DIR__ . '/../../lib/api_exception.php');
 
 /**
  * API endpoint class for retrieving feedback submission results.
@@ -105,9 +106,9 @@ class FeedbackResultsEndpoint extends ApiBase {
      * returns only aggregated count without individual response details.
      *
      * @return void Outputs JSON response directly via success() or error()
-     * @throws NotFoundException If feedback with specified ID does not exist
-     * @throws ForbiddenException If user lacks permission to view results
-     * @throws ValidationException If invalid parameters are provided
+     * @throws NotFoundException If feedback with specified ID does not exist (extends ApiException)
+     * @throws ForbiddenException If user lacks permission to view results (extends ApiException)
+     * @throws ValidationException If invalid parameters are provided (extends ApiException)
      */
     protected function handle_get() {
         global $DB, $CFG;

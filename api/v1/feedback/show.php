@@ -61,13 +61,15 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-// Load API base class and dependencies
-require_once(__DIR__ . '/../../lib/api_base.php');
-require_once(__DIR__ . '/../../lib/api_exception.php');
-
-// Load Moodle feedback module dependencies
-global $CFG;
+// Include Moodle configuration and required libraries
+require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->dirroot . '/mod/feedback/lib.php');
+
+// Include API framework classes
+require_once(__DIR__ . '/../../lib/api_base.php');
+require_once(__DIR__ . '/../../lib/auth_jwt.php');
+require_once(__DIR__ . '/../../lib/api_response.php');
+require_once(__DIR__ . '/../../lib/api_exception.php');
 
 /**
  * Feedback Show Endpoint class.
@@ -117,10 +119,10 @@ class FeedbackShowEndpoint extends ApiBase {
      * - mod_feedback_completion: Handles completion and submission tracking
      *
      * @return void Outputs JSON response directly via success() method
-     * @throws ValidationException If feedback ID parameter is invalid or missing
-     * @throws NotFoundException If feedback activity does not exist
-     * @throws ForbiddenException If user lacks 'mod/feedback:view' capability
-     * @throws ServerException If unexpected error occurs during processing
+     * @throws ValidationException If feedback ID parameter is invalid or missing (extends ApiException)
+     * @throws NotFoundException If feedback activity does not exist (extends ApiException)
+     * @throws ForbiddenException If user lacks 'mod/feedback:view' capability (extends ApiException)
+     * @throws ServerException If unexpected error occurs during processing (extends ApiException)
      */
     protected function handle_get() {
         global $DB;
