@@ -285,13 +285,14 @@ class BigBlueButtonShowEndpoint extends ApiBase {
     }
 }
 
-// Instantiate and execute the endpoint.
+// Instantiate and execute the endpoint (skip during testing)
 // ApiBase constructor handles JWT validation automatically.
 // execute() method routes to appropriate handle_* method.
-try {
-    $endpoint = new BigBlueButtonShowEndpoint();
-    $endpoint->execute();
-} catch (Exception $e) {
+if (!defined('API_TESTING') && php_sapi_name() !== 'cli') {
+    try {
+        $endpoint = new BigBlueButtonShowEndpoint();
+        $endpoint->execute();
+    } catch (Exception $e) {
     // If exception wasn't caught by ApiBase error handling,
     // ensure it's properly logged and returned as JSON.
     if ($e instanceof ApiException) {
@@ -318,5 +319,6 @@ try {
         // Log the full exception for debugging.
         error_log('BigBlueButton API Error: ' . $e->getMessage());
         error_log($e->getTraceAsString());
+    }
     }
 }

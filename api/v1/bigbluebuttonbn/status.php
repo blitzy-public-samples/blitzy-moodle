@@ -253,8 +253,10 @@ class BigBlueButtonStatusEndpoint extends ApiBase {
     }
 }
 
-// Instantiate and execute the endpoint
+// Instantiate and execute the endpoint (skip during testing)
 // ApiBase constructor handles JWT validation and user authentication
 // ApiBase::execute() method routes to appropriate handle_* method
-$endpoint = new BigBlueButtonStatusEndpoint();
-$endpoint->execute();
+if (!defined('API_TESTING') && php_sapi_name() !== 'cli') {
+    $endpoint = new BigBlueButtonStatusEndpoint();
+    $endpoint->execute();
+}
