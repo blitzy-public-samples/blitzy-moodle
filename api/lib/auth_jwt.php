@@ -41,9 +41,6 @@
 // Include Moodle configuration
 require_once(__DIR__ . '/../../config.php');
 
-// Standard Moodle internal check - ensures this file is loaded from proper context
-defined('MOODLE_INTERNAL') || die();
-
 // Import firebase/php-jwt library classes
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
