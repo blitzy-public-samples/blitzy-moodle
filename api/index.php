@@ -208,8 +208,9 @@ try {
     }
     
     // Try specific resource handler (e.g., /api/v1/courses/123 → courses/show.php)
+    // Also supports nested resources (e.g., /api/v1/data/records/123 → data/records/update.php)
     if ($endpointFile === null && count($resourceParts) >= 2) {
-        // Assume second part is resource ID and look for show.php, update.php, delete.php
+        // Assume last part is resource ID and look for show.php, update.php, delete.php
         $actionMap = [
             'GET' => 'show.php',
             'PUT' => 'update.php',
@@ -217,7 +218,18 @@ try {
         ];
         
         if (isset($actionMap[$method])) {
-            $actionFile = __DIR__ . '/' . $apiVersion . '/' . $resourceName . '/' . $actionMap[$method];
+            // Check if last part is numeric (resource ID)
+            $lastPart = end($resourceParts);
+            if (is_numeric($lastPart)) {
+                // Use all parts except last as resource path to support nested resources
+                $resourcePathParts = array_slice($resourceParts, 0, -1);
+                $resourcePathStr = implode('/', $resourcePathParts);
+                $actionFile = __DIR__ . '/' . $apiVersion . '/' . $resourcePathStr . '/' . $actionMap[$method];
+            } else {
+                // Original logic: use first part only for non-numeric second part
+                $actionFile = __DIR__ . '/' . $apiVersion . '/' . $resourceName . '/' . $actionMap[$method];
+            }
+            
             if (file_exists($actionFile)) {
                 $endpointFile = $actionFile;
             }
