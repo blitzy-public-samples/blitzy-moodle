@@ -464,6 +464,8 @@ class FeedbackAnalysisEndpoint extends ApiBase {
     }
 }
 
-// Execute the endpoint
-$endpoint = new FeedbackAnalysisEndpoint();
-$endpoint->execute();
+// Execute the endpoint (skip during testing)
+if (!defined('API_TESTING') && php_sapi_name() !== 'cli') {
+    $endpoint = new FeedbackAnalysisEndpoint();
+    $endpoint->execute();
+}

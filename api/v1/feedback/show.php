@@ -278,7 +278,9 @@ class FeedbackShowEndpoint extends ApiBase {
     }
 }
 
-// Instantiate and execute the endpoint
+// Instantiate and execute the endpoint (skip during testing)
 // This pattern allows the endpoint to be included directly or via routing
-$endpoint = new FeedbackShowEndpoint();
-$endpoint->execute();
+if (!defined('API_TESTING') && php_sapi_name() !== 'cli') {
+    $endpoint = new FeedbackShowEndpoint();
+    $endpoint->execute();
+}

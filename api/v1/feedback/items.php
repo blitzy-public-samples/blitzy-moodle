@@ -340,11 +340,12 @@ class FeedbackItemsEndpoint extends ApiBase {
     }
 }
 
-// Execute the endpoint
-try {
-    $endpoint = new FeedbackItemsEndpoint();
-    $endpoint->execute();
-} catch (Exception $e) {
+// Execute the endpoint (skip during testing)
+if (!defined('API_TESTING') && php_sapi_name() !== 'cli') {
+    try {
+        $endpoint = new FeedbackItemsEndpoint();
+        $endpoint->execute();
+    } catch (Exception $e) {
     // Log unexpected errors
     if (debugging('', DEBUG_DEVELOPER)) {
         error_log('Feedback items endpoint error: ' . $e->getMessage());
@@ -362,4 +363,5 @@ try {
         ]
     ]);
     exit;
+    }
 }
