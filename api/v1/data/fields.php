@@ -125,7 +125,7 @@ class DataFieldsEndpoint extends ApiBase {
      * 9. Export fields using field_exporter for consistent formatting
      * 10. Return JSON response with fields array and warnings
      *
-     * @return void Outputs JSON response directly via parent::success()
+     * @return void Outputs JSON response directly via $this->success()
      * @throws ValidationException If database ID is invalid or missing
      * @throws NotFoundException If database record does not exist
      * @throws ForbiddenException If user lacks required capability or time restrictions apply
@@ -311,9 +311,9 @@ class DataFieldsEndpoint extends ApiBase {
         ];
         
         // Return success response with fields and warnings
-        // The parent::success() method formats the response according to the
+        // The $this->success() method formats the response according to the
         // standard API envelope structure and sets appropriate HTTP headers
-        parent::success($responseData);
+        $this->success($responseData);
     }
     
     /**
@@ -366,6 +366,8 @@ class DataFieldsEndpoint extends ApiBase {
     }
 }
 
-// Instantiate and execute the endpoint
-$endpoint = new DataFieldsEndpoint();
-$endpoint->execute();
+// Instantiate and execute the endpoint (skip during testing)
+if (!defined('API_TESTING') && php_sapi_name() !== 'cli') {
+    $endpoint = new DataFieldsEndpoint();
+    $endpoint->execute();
+}
