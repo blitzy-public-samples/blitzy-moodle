@@ -124,29 +124,53 @@ class PluginIndexEndpoint extends ApiBase {
             $plugindata[$plugintype] = array();
             
             foreach ($plugins as $pluginname => $plugininfo) {
-                // Build plugin metadata
+                // Build plugin metadata with all required fields
                 $pluginentry = array(
+                    // Core identification
                     'component' => $plugininfo->component,
                     'type' => $plugininfo->type,
-                    'name' => $plugininfo->displayname,
-                    'rootdir' => $plugininfo->rootdir,
-                    'version' => $plugininfo->versiondisk,
+                    'name' => $pluginname,
+                    'displayname' => $plugininfo->displayname,
+                    
+                    // Version information
+                    'versiondisk' => $plugininfo->versiondisk,
+                    'versiondb' => $plugininfo->versiondb,
+                    
+                    // Plugin source (standard vs extension)
+                    'source' => $this->format_plugin_source($plugininfo->source),
+                    
+                    // Release information
                     'release' => $plugininfo->release,
-                    'enabled' => $plugininfo->is_enabled(),
+                    
+                    // Required Moodle version
+                    'requires' => $plugininfo->versionrequires,
+                    
+                    // Plugin status
                     'status' => $this->get_plugin_status_string($plugininfo),
+                    
+                    // Settings availability
+                    'hasSettings' => $this->check_has_settings($plugininfo),
+                    
+                    // Update availability
+                    'availableUpdate' => $this->get_available_update($plugininfo),
                 );
                 
-                // Add version database information if available
-                if ($plugininfo->versiondb !== null) {
-                    $pluginentry['versiondb'] = $plugininfo->versiondb;
+                // Add optional root directory (useful for debugging)
+                if (isset($plugininfo->rootdir)) {
+                    $pluginentry['rootdir'] = $plugininfo->rootdir;
                 }
-                
-                // Add availability information
-                $pluginentry['available'] = $plugininfo->is_enabled();
                 
                 // Add dependency information if present
                 if (!empty($plugininfo->dependencies)) {
                     $pluginentry['dependencies'] = $plugininfo->dependencies;
+                }
+                
+                // Add enabled status for plugins that support enabling/disabling
+                if (method_exists($plugininfo, 'is_enabled')) {
+                    $pluginentry['enabled'] = $plugininfo->is_enabled();
+                } else {
+                    // Plugins without is_enabled() are considered always enabled
+                    $pluginentry['enabled'] = true;
                 }
                 
                 $plugindata[$plugintype][] = $pluginentry;
@@ -227,6 +251,108 @@ class PluginIndexEndpoint extends ApiBase {
             default:
                 return 'unknown';
         }
+    }
+    
+    /**
+     * Format plugin source type to human-readable string.
+     *
+     * Converts Moodle core plugin source constants to string format.
+     * Standard plugins are core Moodle plugins, extensions are third-party.
+     *
+     * @param int $source Plugin source constant from plugin manager
+     * @return string 'standard' or 'extension'
+     */
+    private function format_plugin_source($source) {
+        if ($source === core_plugin_manager::PLUGIN_SOURCE_STANDARD) {
+            return 'standard';
+        } else if ($source === core_plugin_manager::PLUGIN_SOURCE_EXTENSION) {
+            return 'extension';
+        } else {
+            // Fallback for any unexpected values
+            return 'unknown';
+        }
+    }
+    
+    /**
+     * Check if plugin has a settings page.
+     *
+     * Determines whether the plugin provides a settings/configuration interface
+     * by checking if it is enabled and has a settings URL. Uses existing Moodle
+     * plugin info methods without duplicating business logic.
+     *
+     * @param \core\plugininfo\base $plugininfo Plugin information object
+     * @return bool True if plugin has accessible settings, false otherwise
+     */
+    private function check_has_settings($plugininfo) {
+        // Plugin must be enabled to have accessible settings
+        if (method_exists($plugininfo, 'is_enabled') && !$plugininfo->is_enabled()) {
+            return false;
+        }
+        
+        // Check if plugin provides a settings URL using existing method
+        if (method_exists($plugininfo, 'get_settings_url')) {
+            $settingsurl = $plugininfo->get_settings_url();
+            return ($settingsurl !== null);
+        }
+        
+        // Plugins without get_settings_url() method have no settings
+        return false;
+    }
+    
+    /**
+     * Get available update information for plugin.
+     *
+     * Checks if there is an available update for the plugin from the Moodle
+     * plugins directory. Returns false if no update available, or an array
+     * with update details if an update is available. Uses existing Moodle
+     * update detection without reimplementing logic.
+     *
+     * @param \core\plugininfo\base $plugininfo Plugin information object
+     * @return bool|array False if no update, array with update info if available
+     */
+    private function get_available_update($plugininfo) {
+        // Check if plugin manager has update information method
+        if (!method_exists($plugininfo, 'available_updates')) {
+            return false;
+        }
+        
+        // Get available updates from existing Moodle method
+        $updates = $plugininfo->available_updates();
+        
+        // No updates available
+        if (empty($updates)) {
+            return false;
+        }
+        
+        // Get the latest available update (first in array)
+        $latestupdate = reset($updates);
+        
+        // Format update information for API response
+        if ($latestupdate && is_object($latestupdate)) {
+            $updateinfo = array();
+            
+            // Only include properties that exist on the update object
+            if (isset($latestupdate->version)) {
+                $updateinfo['version'] = $latestupdate->version;
+            }
+            
+            if (isset($latestupdate->release)) {
+                $updateinfo['release'] = $latestupdate->release;
+            }
+            
+            if (isset($latestupdate->maturity)) {
+                $updateinfo['maturity'] = $latestupdate->maturity;
+            }
+            
+            if (isset($latestupdate->downloadurl)) {
+                $updateinfo['url'] = $latestupdate->downloadurl;
+            }
+            
+            // Return update info if we have at least one property
+            return !empty($updateinfo) ? $updateinfo : false;
+        }
+        
+        return false;
     }
 }
 
