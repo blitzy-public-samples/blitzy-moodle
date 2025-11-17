@@ -295,4 +295,40 @@ class WikiShowEndpoint extends ApiBase {
         // Return comprehensive wiki data via standard success response
         $this->success($responseData);
     }
+    
+    /**
+     * Handle POST requests - not supported for wiki show endpoint.
+     *
+     * @throws MethodNotAllowedException Always thrown as POST is not supported
+     */
+    protected function handle_post() {
+        throw new MethodNotAllowedException('POST method is not supported for wiki show endpoint', [
+            'allowedMethods' => ['GET'],
+            'endpoint' => '/api/v1/wiki/{id}'
+        ]);
+    }
+    
+    /**
+     * Handle PUT requests - not supported for wiki show endpoint.
+     *
+     * @throws MethodNotAllowedException Always thrown as PUT is not supported
+     */
+    protected function handle_put() {
+        throw new MethodNotAllowedException('PUT method is not supported for wiki show endpoint', [
+            'allowedMethods' => ['GET'],
+            'endpoint' => '/api/v1/wiki/{id}'
+        ]);
+    }
+    
+    /**
+     * Handle DELETE requests - not supported for wiki show endpoint.
+     *
+     * @throws MethodNotAllowedException Always thrown as DELETE is not supported
+     */
+    protected function handle_delete() {
+        throw new MethodNotAllowedException('DELETE method is not supported for wiki show endpoint', [
+            'allowedMethods' => ['GET'],
+            'endpoint' => '/api/v1/wiki/{id}'
+        ]);
+    }
 }
