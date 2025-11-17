@@ -109,13 +109,13 @@ class GlobalSearchEndpoint extends ApiBase {
         }
         
         // Retrieve and validate search parameters.
-        $query = $this->getParam('q', PARAM_NOTAGS, null, true); // Required parameter
-        $page = $this->getParam('page', PARAM_INT, 0, false);
-        $perpage = $this->getParam('perpage', PARAM_INT, 10, false);
-        $areaids = $this->getParam('areaids', PARAM_ALPHANUMEXT, null, false);
-        $courseids = $this->getParam('courseids', PARAM_INT, null, false);
-        $timestart = $this->getParam('timestart', PARAM_INT, null, false);
-        $timeend = $this->getParam('timeend', PARAM_INT, null, false);
+        $query = $this->getParam('q', PARAM_NOTAGS, true, null); // Required parameter
+        $page = $this->getParam('page', PARAM_INT, false, 0);
+        $perpage = $this->getParam('perpage', PARAM_INT, false, 10);
+        $areaids = $this->getParam('areaids', PARAM_ALPHANUMEXT, false, null);
+        $courseids = $this->getParam('courseids', PARAM_INT, false, null);
+        $timestart = $this->getParam('timestart', PARAM_INT, false, null);
+        $timeend = $this->getParam('timeend', PARAM_INT, false, null);
         $title = $this->getParam('title', PARAM_BOOL, false, false);
         
         // Validate query string.
