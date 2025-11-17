@@ -73,7 +73,7 @@
  */
 
 // Load Moodle configuration and libraries
-require_once(__DIR__ . '/../../../config.php');
+require_once(__DIR__ . '/../../../../config.php');
 require_once($CFG->dirroot . '/user/lib.php');
 require_once($CFG->libdir . '/moodlelib.php');
 require_once($CFG->libdir . '/accesslib.php');
