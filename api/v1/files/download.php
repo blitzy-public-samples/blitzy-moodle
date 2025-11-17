@@ -60,6 +60,7 @@ require_once($CFG->libdir . '/accesslib.php');
 
 // Load API base class and exceptions
 require_once(__DIR__ . '/../../lib/api_base.php');
+require_once(__DIR__ . '/../../lib/api_response.php');
 require_once(__DIR__ . '/../../lib/api_exception.php');
 
 /**
