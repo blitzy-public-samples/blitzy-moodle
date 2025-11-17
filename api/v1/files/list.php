@@ -15,125 +15,64 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * REST API endpoint for file listing.
+ * REST API endpoint for file listing
  *
- * Implements GET /api/v1/files for retrieving hierarchical file and directory
- * information from Moodle's file storage system. Returns file metadata including
- * permissions, timestamps, sizes, and author information. Supports filtering by
- * modification time for incremental synchronization and pagination for large
- * file listings.
+ * GET /api/v1/files
+ * Returns hierarchical file and directory information for a given context,
+ * component, and file area with support for filtering by modification time
+ * for incremental synchronization.
  *
- * This endpoint wraps Moodle's get_file_browser() and file_info API to provide
- * JSON-formatted file listings with parent breadcrumb trails and children
- * file/folder lists compatible with React frontend file browser components.
- *
- * @package    core
- * @subpackage api
+ * @package    core_files
+ * @category   api
  * @copyright  2024 Moodle Pty Ltd
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-// Include required dependencies
-require_once(__DIR__ . '/../../../config.php');
-require_once($CFG->dirroot . '/lib/moodlelib.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->dirroot . '/lib/filelib.php');
 require_once($CFG->dirroot . '/api/lib/api_base.php');
 require_once($CFG->dirroot . '/api/lib/api_response.php');
 require_once($CFG->dirroot . '/api/lib/api_exception.php');
 
 /**
- * File listing API endpoint.
+ * File listing API endpoint class
  *
- * Retrieves file and directory listings from Moodle's file storage with support
- * for context-based filtering, incremental synchronization via modification time,
- * and pagination for large result sets.
+ * Extends ApiBase to provide JWT authentication, parameter validation,
+ * and error handling for file browsing operations. Uses existing Moodle
+ * file browser (get_file_browser()) to access file metadata including
+ * permissions, timestamps, file sizes, and author information.
  *
- * Query Parameters:
- * - contextid (int, required): Context ID for file location
- * - component (string, optional): Component name (e.g., 'mod_assign', 'course')
- * - filearea (string, optional): File area name (e.g., 'submission', 'intro')
- * - itemid (int, optional): Item ID associated with the file area
- * - filepath (string, optional): Directory path within the file area
- * - filename (string, optional): Specific filename to retrieve
- * - modified (int, optional): Unix timestamp for incremental sync (returns only files modified after this time)
- * - page (int, optional): Page number for pagination (default: 1)
- * - perPage (int, optional): Results per page (default: 50, max: 200)
- *
- * Response Structure:
- * {
- *   "success": true,
- *   "data": {
- *     "parents": [
- *       {
- *         "contextid": 123,
- *         "component": "course",
- *         "filearea": "legacy",
- *         "itemid": 0,
- *         "filepath": "/",
- *         "filename": "Files"
- *       }
- *     ],
- *     "files": [
- *       {
- *         "contextid": 123,
- *         "component": "mod_assign",
- *         "filearea": "submission",
- *         "itemid": 456,
- *         "filepath": "/submissions/",
- *         "filename": "document.pdf",
- *         "url": "https://moodle.example.com/pluginfile.php/...",
- *         "isdir": false,
- *         "timemodified": 1234567890,
- *         "timecreated": 1234567800,
- *         "filesize": 102400,
- *         "author": "John Doe",
- *         "license": "allrightsreserved"
- *       }
- *     ]
- *   },
- *   "meta": {
- *     "pagination": {
- *       "page": 1,
- *       "perPage": 50,
- *       "total": 150,
- *       "totalPages": 3
- *     }
- *   }
- * }
- *
- * Error Responses:
- * - 400 Bad Request: Invalid parameters (ValidationException)
- * - 403 Forbidden: No permission to access files (ForbiddenException)
- * - 404 Not Found: File location does not exist (NotFoundException)
- *
- * @package    core
- * @subpackage api
+ * @package    core_files
  * @copyright  2024 Moodle Pty Ltd
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class FileListEndpoint extends ApiBase {
+class FilesListEndpoint extends ApiBase {
 
     /**
-     * Handle GET request for file listing.
+     * Handle GET request for file listing
      *
-     * Processes the file listing request by:
-     * 1. Validating and extracting query parameters
-     * 2. Resolving context from contextid
-     * 3. Checking file access permissions
-     * 4. Retrieving file browser and file information
-     * 5. Building parent breadcrumb trail
-     * 6. Extracting metadata for children files/folders
-     * 7. Filtering by modification time if specified
-     * 8. Paginating results if necessary
-     * 9. Returning formatted JSON response
+     * Retrieves file and directory information from Moodle's file storage system
+     * for a given context, component, and file area. Returns structured JSON
+     * with parent breadcrumb trail and children file/folder list.
      *
-     * @return void Outputs JSON response via ApiResponse
-     * @throws ValidationException If required parameters are missing or invalid
-     * @throws NotFoundException If file location does not exist
-     * @throws ForbiddenException If user lacks permission to access files
+     * Query Parameters:
+     * - contextid (int, required): Context ID for file location
+     * - component (string, optional): Component name (e.g., 'mod_assign', 'course')
+     * - filearea (string, optional): File area name (e.g., 'submission', 'intro')
+     * - itemid (int, optional): Item ID associated with files
+     * - filepath (string, optional): Path within file area (e.g., '/', '/folder/')
+     * - filename (string, optional): Specific filename to retrieve
+     * - modified (int, optional): Unix timestamp to filter files modified after this time
+     * - page (int, optional): Page number for pagination (default: 1)
+     * - perPage (int, optional): Items per page (default: 20, max: 100)
+     *
+     * @return void Outputs JSON response
+     * @throws ValidationException If parameters are invalid
+     * @throws ForbiddenException If user lacks permissions
+     * @throws NotFoundException If file_info not found
      */
     protected function handle_get() {
-        global $DB;
+        global $CFG;
 
         // Extract and validate query parameters
         $contextid = $this->getParam('contextid', PARAM_INT, true);
@@ -143,49 +82,23 @@ class FileListEndpoint extends ApiBase {
         $filepath = $this->getParam('filepath', PARAM_PATH, false);
         $filename = $this->getParam('filename', PARAM_FILE, false);
         $modified = $this->getParam('modified', PARAM_INT, false);
-        $page = $this->getParam('page', PARAM_INT, false) ?: 1;
-        $perPage = $this->getParam('perPage', PARAM_INT, false) ?: 50;
+        $page = $this->getParam('page', PARAM_INT, false, 1);
+        $perPage = $this->getParam('perPage', PARAM_INT, false, 20);
 
         // Validate pagination parameters
         if ($page < 1) {
-            throw new ValidationException('Page number must be greater than 0', [
-                'field' => 'page',
-                'value' => $page,
-                'rule' => 'Must be a positive integer'
-            ]);
+            throw new ValidationException('Page parameter must be greater than 0');
         }
-
-        if ($perPage < 1 || $perPage > 200) {
-            throw new ValidationException('Results per page must be between 1 and 200', [
-                'field' => 'perPage',
-                'value' => $perPage,
-                'rule' => 'Must be between 1 and 200'
-            ]);
+        if ($perPage < 1 || $perPage > 100) {
+            throw new ValidationException('Per page parameter must be between 1 and 100');
         }
 
         // Validate contextid is provided
         if (empty($contextid)) {
-            throw new ValidationException('Context ID is required', [
-                'field' => 'contextid',
-                'rule' => 'Cannot be empty'
-            ]);
+            throw new ValidationException('Context ID is required');
         }
 
-        // Resolve context from contextid
-        try {
-            $context = context::instance_by_id($contextid);
-        } catch (dml_missing_record_exception $e) {
-            throw new NotFoundException('Context not found', [
-                'contextid' => $contextid
-            ]);
-        } catch (Exception $e) {
-            throw new ValidationException('Invalid context ID', [
-                'contextid' => $contextid,
-                'error' => $e->getMessage()
-            ]);
-        }
-
-        // Normalize empty string parameters to null for Moodle file browser API
+        // Convert empty strings to null for optional parameters (Moodle pattern)
         if (empty($component)) {
             $component = null;
         }
@@ -198,16 +111,41 @@ class FileListEndpoint extends ApiBase {
         if (empty($filename)) {
             $filename = null;
         }
+        if (empty($itemid)) {
+            $itemid = 0;  // Default itemid to 0 if not provided
+        }
 
-        // Check file access permissions based on context
-        // Different contexts require different capabilities
-        $this->checkFileAccessCapability($context);
+        // Get context from contextid
+        try {
+            $context = context::instance_by_id($contextid);
+        } catch (Exception $e) {
+            throw new NotFoundException('Invalid context ID: ' . $e->getMessage());
+        }
 
-        // Get file browser instance (uses existing Moodle function)
+        // Check file access permissions - context-appropriate capability
+        // For course contexts, check course:managefiles
+        // For system/user contexts, check appropriate capabilities
+        if ($context->contextlevel == CONTEXT_COURSE) {
+            $this->checkCapability('moodle/course:managefiles', $context);
+        } else if ($context->contextlevel == CONTEXT_USER) {
+            // Users can access their own files
+            $user = $this->getUser();
+            if ($context->instanceid != $user->id) {
+                $this->checkCapability('moodle/user:manageownfiles', $context);
+            }
+        } else if ($context->contextlevel == CONTEXT_MODULE) {
+            // For module contexts, check general file access capability
+            $this->checkCapability('moodle/course:managefiles', $context);
+        } else {
+            // For system and other contexts, check system-level capability
+            $this->checkCapability('moodle/site:config', $context);
+        }
+
+        // Get file browser instance
         $browser = get_file_browser();
 
-        // Get file information for the requested location
-        $file_info = $browser->get_file_info(
+        // Get file info from browser
+        $fileinfo = $browser->get_file_info(
             $context,
             $component,
             $filearea,
@@ -216,180 +154,96 @@ class FileListEndpoint extends ApiBase {
             $filename
         );
 
-        // Throw 404 if file location doesn't exist
-        if (!$file_info) {
-            throw new NotFoundException('File location not found', [
-                'contextid' => $contextid,
-                'component' => $component,
-                'filearea' => $filearea,
-                'itemid' => $itemid,
-                'filepath' => $filepath,
-                'filename' => $filename
-            ]);
+        // If file_info not found, return error
+        if (!$fileinfo) {
+            throw new NotFoundException(
+                'File or directory not found for the specified parameters'
+            );
         }
 
-        // Build parent breadcrumb trail by traversing up the hierarchy
+        // Build parents breadcrumb trail
         $parents = [];
-        $level = $file_info->get_parent();
+        $level = $fileinfo->get_parent();
         while ($level) {
             $params = $level->get_params();
             $params['filename'] = $level->get_visible_name();
-            array_unshift($parents, $params);
+            array_unshift($parents, $params);  // Add to beginning of array
             $level = $level->get_parent();
         }
 
-        // Get children files and folders
-        $children = $file_info->get_children();
-        $files = [];
+        // Get children files and directories
+        $children = $fileinfo->get_children();
+        $filelist = [];
 
-        if ($children) {
-            foreach ($children as $child) {
-                $params = $child->get_params();
-                $timemodified = $child->get_timemodified();
-                $timecreated = $child->get_timecreated();
+        foreach ($children as $child) {
+            $params = $child->get_params();
+            $timemodified = $child->get_timemodified();
+            $timecreated = $child->get_timecreated();
 
-                // Filter by modification time if specified (for incremental sync)
-                if (!is_null($modified) && $timemodified <= $modified) {
-                    continue;
-                }
-
-                // Build file/folder metadata structure
-                if ($child->is_directory()) {
-                    // Directory entry
-                    $node = [
-                        'contextid' => $params['contextid'],
-                        'component' => $params['component'],
-                        'filearea' => $params['filearea'],
-                        'itemid' => $params['itemid'],
-                        'filepath' => $params['filepath'],
-                        'filename' => $child->get_visible_name(),
-                        'url' => null,
-                        'isdir' => true,
-                        'timemodified' => $timemodified,
-                        'timecreated' => $timecreated,
-                        'filesize' => 0,
-                        'author' => null,
-                        'license' => null
-                    ];
-                } else {
-                    // File entry with full metadata
-                    $node = [
-                        'contextid' => $params['contextid'],
-                        'component' => $params['component'],
-                        'filearea' => $params['filearea'],
-                        'itemid' => $params['itemid'],
-                        'filepath' => $params['filepath'],
-                        'filename' => $child->get_visible_name(),
-                        'url' => $child->get_url() ? $child->get_url()->out() : null,
-                        'isdir' => false,
-                        'timemodified' => $timemodified,
-                        'timecreated' => $timecreated,
-                        'filesize' => $child->get_filesize(),
-                        'author' => $child->get_author(),
-                        'license' => $child->get_license()
-                    ];
-                }
-
-                $files[] = $node;
+            // Filter by modified timestamp if provided
+            if (!is_null($modified) && $timemodified <= $modified) {
+                continue;  // Skip files not modified after the specified timestamp
             }
+
+            // Build file/directory node
+            if ($child->is_directory()) {
+                $node = [
+                    'contextid' => $params['contextid'],
+                    'component' => $params['component'],
+                    'filearea' => $params['filearea'],
+                    'itemid' => $params['itemid'],
+                    'filepath' => $params['filepath'],
+                    'filename' => $child->get_visible_name(),
+                    'url' => null,  // Directories don't have download URLs
+                    'isdir' => true,
+                    'timemodified' => $timemodified,
+                    'timecreated' => $timecreated,
+                    'filesize' => 0,
+                    'author' => null,
+                    'license' => null,
+                ];
+            } else {
+                // Regular file
+                $node = [
+                    'contextid' => $params['contextid'],
+                    'component' => $params['component'],
+                    'filearea' => $params['filearea'],
+                    'itemid' => $params['itemid'],
+                    'filepath' => $params['filepath'],
+                    'filename' => $child->get_visible_name(),
+                    'url' => $child->get_url(),
+                    'isdir' => false,
+                    'timemodified' => $timemodified,
+                    'timecreated' => $timecreated,
+                    'filesize' => $child->get_filesize(),
+                    'author' => $child->get_author(),
+                    'license' => $child->get_license(),
+                ];
+            }
+
+            $filelist[] = $node;
         }
 
-        // Sort files by name for consistent ordering
-        usort($files, function($a, $b) {
-            // Directories first, then files
-            if ($a['isdir'] !== $b['isdir']) {
-                return $b['isdir'] ? 1 : -1;
-            }
-            return strcasecmp($a['filename'], $b['filename']);
-        });
-
-        // Apply pagination
-        $totalFiles = count($files);
-        $totalPages = ceil($totalFiles / $perPage);
+        // Apply pagination to file list
+        $total = count($filelist);
+        $totalPages = ceil($total / $perPage);
         $offset = ($page - 1) * $perPage;
-        $paginatedFiles = array_slice($files, $offset, $perPage);
+        $paginatedFiles = array_slice($filelist, $offset, $perPage);
 
-        // Build response data structure
+        // Build response data
         $responseData = [
             'parents' => $parents,
-            'files' => $paginatedFiles
+            'files' => $paginatedFiles,
         ];
 
-        // Add pagination metadata if results were paginated
-        $meta = null;
-        if ($totalFiles > 0) {
-            $meta = [
-                'pagination' => ApiResponse::formatPagination($page, $perPage, $totalFiles)
-            ];
-        }
+        // Build pagination metadata
+        $paginationMeta = ApiResponse::formatPagination($page, $perPage, $total);
 
-        // Return success response with standard envelope
-        $this->success($responseData, $meta);
-    }
-
-    /**
-     * Check file access capability based on context type.
-     *
-     * Different context types require different capabilities for file access.
-     * This method determines the appropriate capability and checks if the user
-     * has permission to access files in the given context.
-     *
-     * @param context $context The context to check permissions for
-     * @return void
-     * @throws ForbiddenException If user lacks required capability
-     */
-    private function checkFileAccessCapability($context) {
-        // Determine required capability based on context level
-        switch ($context->contextlevel) {
-            case CONTEXT_SYSTEM:
-                // System-wide file access (typically admins only)
-                $capability = 'moodle/site:config';
-                break;
-            
-            case CONTEXT_COURSECAT:
-                // Category file access
-                $capability = 'moodle/category:manage';
-                break;
-            
-            case CONTEXT_COURSE:
-                // Course file access - check if user can manage files
-                // If not, check if they can at least view the course
-                if (has_capability('moodle/course:managefiles', $context)) {
-                    $capability = 'moodle/course:managefiles';
-                } else {
-                    $capability = 'moodle/course:view';
-                }
-                break;
-            
-            case CONTEXT_MODULE:
-                // Activity module file access
-                $capability = 'moodle/course:view';
-                break;
-            
-            case CONTEXT_USER:
-                // User file access - check if accessing own files or has user:viewdetails
-                $user = $this->getUser();
-                $contextuser = $context->instanceid;
-                
-                if ($user->id == $contextuser) {
-                    // User accessing their own files - always allowed
-                    return;
-                } else {
-                    $capability = 'moodle/user:viewdetails';
-                }
-                break;
-            
-            default:
-                // For other context levels, require basic course view capability
-                $capability = 'moodle/course:view';
-                break;
-        }
-
-        // Check the determined capability
-        $this->checkCapability($capability, $context);
+        // Return success response with pagination metadata
+        $this->success($responseData, ['pagination' => $paginationMeta]);
     }
 }
 
 // Execute the endpoint
-$endpoint = new FileListEndpoint();
+$endpoint = new FilesListEndpoint();
 $endpoint->execute();
