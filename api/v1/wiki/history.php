@@ -310,6 +310,15 @@ class WikiHistoryEndpoint extends ApiBase {
     }
 }
 
+/**
+ * Endpoint execution block.
+ *
+ * Instantiates the WikiHistoryEndpoint class and executes the request handler.
+ * This code runs immediately when the file is accessed as an API endpoint,
+ * processing the incoming HTTP request and outputting the JSON response.
+ *
+ * @see WikiHistoryEndpoint::execute()
+ */
 // Instantiate and execute the endpoint
 $endpoint = new WikiHistoryEndpoint();
 $endpoint->execute();
