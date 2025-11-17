@@ -662,5 +662,8 @@ class WorkshopAssessmentsEndpoint extends ApiBase {
 }
 
 // Instantiate and execute the endpoint
-$endpoint = new WorkshopAssessmentsEndpoint();
-$endpoint->execute();
+// Skip auto-execution in test mode to allow manual instantiation
+if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
+    $endpoint = new WorkshopAssessmentsEndpoint();
+    $endpoint->execute();
+}

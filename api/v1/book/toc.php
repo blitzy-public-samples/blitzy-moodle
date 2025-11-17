@@ -391,5 +391,8 @@ class BookTocEndpoint extends ApiBase {
 }
 
 // Instantiate endpoint and execute request
-$endpoint = new BookTocEndpoint();
-$endpoint->execute();
+// Skip auto-execution in test mode to allow manual instantiation
+if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
+    $endpoint = new BookTocEndpoint();
+    $endpoint->execute();
+}

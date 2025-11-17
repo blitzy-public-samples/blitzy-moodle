@@ -339,5 +339,8 @@ class LtiShowEndpoint extends ApiBase {
 // - Exception handling
 // - Response formatting
 // - CORS headers
-$endpoint = new LtiShowEndpoint();
-$endpoint->execute();
+// Skip auto-execution in test mode to allow manual instantiation
+if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
+    $endpoint = new LtiShowEndpoint();
+    $endpoint->execute();
+}

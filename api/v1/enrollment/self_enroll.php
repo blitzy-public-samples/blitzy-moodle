@@ -388,5 +388,8 @@ class SelfEnrollEndpoint extends ApiBase {
 
 // Instantiate and execute the endpoint
 // ApiBase::execute() handles routing, error handling, and response formatting
-$endpoint = new SelfEnrollEndpoint();
-$endpoint->execute();
+// Skip auto-execution in test mode to allow manual instantiation
+if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
+    $endpoint = new SelfEnrollEndpoint();
+    $endpoint->execute();
+}

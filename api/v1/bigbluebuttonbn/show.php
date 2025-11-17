@@ -293,8 +293,11 @@ class BigBlueButtonShowEndpoint extends ApiBase {
 // execute() method routes to appropriate handle_* method.
 if (!defined('API_TESTING') && php_sapi_name() !== 'cli') {
     try {
-        $endpoint = new BigBlueButtonShowEndpoint();
-        $endpoint->execute();
+        // Skip auto-execution in test mode to allow manual instantiation
+if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
+    $endpoint = new BigBlueButtonShowEndpoint();
+    $endpoint->execute();
+}
     } catch (Exception $e) {
     // If exception wasn't caught by ApiBase error handling,
     // ensure it's properly logged and returned as JSON.

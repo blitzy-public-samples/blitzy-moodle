@@ -358,6 +358,9 @@ class DataCreateRecordEndpoint extends ApiBase {
 
 // Instantiate and execute the endpoint (skip during testing)
 if (!defined('API_TESTING') && php_sapi_name() !== 'cli') {
+    // Skip auto-execution in test mode to allow manual instantiation
+if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
     $endpoint = new DataCreateRecordEndpoint();
     $endpoint->execute();
+}
 }

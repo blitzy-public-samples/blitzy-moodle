@@ -332,5 +332,8 @@ class EnrolledUsersEndpoint extends ApiBase {
 // 2. Route to appropriate HTTP method handler (handle_get in this case)
 // 3. Handle any exceptions and format error responses
 // 4. Output JSON response with appropriate HTTP headers
-$endpoint = new EnrolledUsersEndpoint();
-$endpoint->execute();
+// Skip auto-execution in test mode to allow manual instantiation
+if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
+    $endpoint = new EnrolledUsersEndpoint();
+    $endpoint->execute();
+}

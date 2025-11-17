@@ -560,8 +560,11 @@ class LtiGradeEndpoint extends ApiBase {
 }
 
 // Instantiate and execute endpoint
-$endpoint = new LtiGradeEndpoint();
-$endpoint->execute();
+// Skip auto-execution in test mode to allow manual instantiation
+if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
+    $endpoint = new LtiGradeEndpoint();
+    $endpoint->execute();
+}
 
 
 

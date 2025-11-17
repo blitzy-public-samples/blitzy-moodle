@@ -351,5 +351,8 @@ class H5PActivityContentEndpoint extends ApiBase {
 
 // Instantiate and execute the endpoint
 // This is the entry point when the PHP file is accessed directly
-$endpoint = new H5PActivityContentEndpoint();
-$endpoint->execute();
+// Skip auto-execution in test mode to allow manual instantiation
+if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
+    $endpoint = new H5PActivityContentEndpoint();
+    $endpoint->execute();
+}

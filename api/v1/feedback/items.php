@@ -346,8 +346,11 @@ class FeedbackItemsEndpoint extends ApiBase {
 // Execute the endpoint (skip during testing)
 if (!defined('API_TESTING') && php_sapi_name() !== 'cli') {
     try {
-        $endpoint = new FeedbackItemsEndpoint();
-        $endpoint->execute();
+        // Skip auto-execution in test mode to allow manual instantiation
+if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
+    $endpoint = new FeedbackItemsEndpoint();
+    $endpoint->execute();
+}
     } catch (Exception $e) {
     // Log unexpected errors
     if (debugging('', DEBUG_DEVELOPER)) {

@@ -320,5 +320,8 @@ class WikiHistoryEndpoint extends ApiBase {
  * @see WikiHistoryEndpoint::execute()
  */
 // Instantiate and execute the endpoint
-$endpoint = new WikiHistoryEndpoint();
-$endpoint->execute();
+// Skip auto-execution in test mode to allow manual instantiation
+if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
+    $endpoint = new WikiHistoryEndpoint();
+    $endpoint->execute();
+}

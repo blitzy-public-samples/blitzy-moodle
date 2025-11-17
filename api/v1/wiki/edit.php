@@ -282,5 +282,8 @@ class WikiEditPageEndpoint extends ApiBase {
 }
 
 // Initialize and execute endpoint
-$endpoint = new WikiEditPageEndpoint();
-$endpoint->execute();
+// Skip auto-execution in test mode to allow manual instantiation
+if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
+    $endpoint = new WikiEditPageEndpoint();
+    $endpoint->execute();
+}
