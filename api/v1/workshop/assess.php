@@ -149,6 +149,10 @@ class WorkshopAssessEndpoint extends ApiBase {
         // Instantiate workshop class for business logic access
         $workshopInstance = new workshop($workshop, $cm, $course);
         
+        // Check peer assessment capability
+        $context = context_module::instance($cm->id);
+        $this->checkCapability('mod/workshop:peerassess', $context);
+        
         // Validate workshop phase is ASSESSMENT (phase 30)
         if ($workshopInstance->phase != workshop::PHASE_ASSESSMENT) {
             throw new ValidationException('Assessment not allowed in current workshop phase', [

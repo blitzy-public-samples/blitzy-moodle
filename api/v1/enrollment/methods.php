@@ -121,6 +121,10 @@ class EnrollmentMethodsEndpoint extends ApiBase {
             // MUST_EXIST flag throws exception if course not found
             $course = $DB->get_record('course', ['id' => $courseid], '*', MUST_EXIST);
             
+            // Check capability to view course enrollment methods
+            $coursecontext = context_course::instance($courseid);
+            $this->checkCapability('moodle/course:view', $coursecontext);
+            
             if (!$course) {
                 throw new NotFoundException('Course not found', [
                     'courseid' => $courseid

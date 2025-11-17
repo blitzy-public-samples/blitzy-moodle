@@ -398,25 +398,8 @@ class LtiContentEndpoint extends ApiBase {
 }
 
 // Instantiate and execute the endpoint
-try {
-    // Skip auto-execution in test mode to allow manual instantiation
+// ApiBase execute() method handles all exceptions internally
 if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
     $endpoint = new LtiContentEndpoint();
     $endpoint->execute();
-}
-} catch (Exception $e) {
-    // This should not happen as execute() handles all exceptions
-    // But catch anyway for safety
-    http_response_code(500);
-    header('Content-Type: application/json');
-    echo json_encode([
-        'success' => false,
-        'error' => [
-            'code' => 'FATAL_ERROR',
-            'message' => 'An unexpected fatal error occurred',
-            'details' => [
-                'error' => $e->getMessage()
-            ]
-        ]
-    ]);
 }

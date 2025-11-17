@@ -201,6 +201,9 @@ class UnenrollEndpoint extends ApiBase {
             // Validate context to ensure it's properly initialized
             self::validate_context($context);
             
+            // Check capability to manage enrollments in this course
+            $this->checkCapability('moodle/course:enrolreview', $context);
+            
             // Load enrollment management library
             require_once($CFG->dirroot . '/enrol/locallib.php');
             

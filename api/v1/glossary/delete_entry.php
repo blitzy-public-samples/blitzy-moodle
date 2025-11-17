@@ -169,6 +169,9 @@ class GlossaryDeleteEntryEndpoint extends ApiBase {
                 ]);
             }
             
+            // Check base glossary view capability
+            $this->checkCapability('mod/glossary:view', $context);
+            
             // Verify the entry belongs to the glossary from the course module
             // This prevents deletion attempts via incorrect course module IDs
             if ($cm->instance != $entry->glossaryid) {

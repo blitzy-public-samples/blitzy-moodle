@@ -83,6 +83,9 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+// Load Moodle configuration
+require_once(__DIR__ . '/../../config.php');
+
 // Load API base class and exceptions
 require_once(__DIR__ . '/../../lib/api_base.php');
 require_once(__DIR__ . '/../../lib/api_exception.php');

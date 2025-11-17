@@ -366,8 +366,11 @@ class LtiGradeEndpoint extends ApiBase {
         // Set XML content type header
         header('Content-Type: application/xml; charset=UTF-8');
         
-        // Output XML response
+        // Output XML response and exit
+        // Note: Direct output is required for LTI 1.1 XML protocol compliance
+        // This bypasses the standard JSON response system intentionally
         echo $responsexml->asXML();
+        exit;
     }
     
     /**

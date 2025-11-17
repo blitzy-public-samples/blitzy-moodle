@@ -344,30 +344,10 @@ class FeedbackItemsEndpoint extends ApiBase {
 }
 
 // Execute the endpoint (skip during testing)
+// ApiBase::execute() handles all exceptions internally
 if (!defined('API_TESTING') && php_sapi_name() !== 'cli') {
-    try {
-        // Skip auto-execution in test mode to allow manual instantiation
-if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
-    $endpoint = new FeedbackItemsEndpoint();
-    $endpoint->execute();
-}
-    } catch (Exception $e) {
-    // Log unexpected errors
-    if (debugging('', DEBUG_DEVELOPER)) {
-        error_log('Feedback items endpoint error: ' . $e->getMessage());
-        error_log($e->getTraceAsString());
-    }
-    
-    // Return generic error response
-    http_response_code(500);
-    header('Content-Type: application/json');
-    echo json_encode([
-        'success' => false,
-        'error' => [
-            'code' => 'INTERNAL_SERVER_ERROR',
-            'message' => 'An unexpected error occurred'
-        ]
-    ]);
-    exit;
+    if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
+        $endpoint = new FeedbackItemsEndpoint();
+        $endpoint->execute();
     }
 }

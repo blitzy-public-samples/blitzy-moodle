@@ -123,6 +123,9 @@ class WorkshopAssessmentsEndpoint extends ApiBase {
         // Instantiate workshop class for access to assessment methods
         $workshop = new workshop($workshoprecord, $cm, $course);
         
+        // Check base workshop view capability
+        $this->checkCapability('mod/workshop:view', $workshop->context);
+        
         // Determine access permissions
         $is_author = ($USER->id == $submission->authorid);
         $can_view_all = has_capability('mod/workshop:viewallassessments', $workshop->context);

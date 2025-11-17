@@ -176,6 +176,9 @@ class H5PActivityAttemptsEndpoint extends ApiBase {
             // Get module context
             $context = context_module::instance($cm->id);
             
+            // Check base H5P activity view capability
+            $this->checkCapability('mod/h5pactivity:view', $context);
+            
             // Create H5P activity manager
             $manager = manager::create_from_coursemodule($cm);
             $instance = $manager->get_instance();

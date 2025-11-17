@@ -239,30 +239,10 @@ class ChoiceMyResponseEndpoint extends ApiBase {
 }
 
 // Instantiate and execute the endpoint (skip during testing)
+// ApiBase::execute() handles all exceptions internally
 if (!defined('API_TESTING') && php_sapi_name() !== 'cli') {
-    try {
-        // Skip auto-execution in test mode to allow manual instantiation
-if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
-    $endpoint = new ChoiceMyResponseEndpoint();
-    $endpoint->execute();
-}
-    } catch (Exception $e) {
-    // Handle any uncaught exceptions during instantiation
-    // This should rarely happen as ApiBase and execute() handle most exceptions
-    http_response_code(500);
-    header('Content-Type: application/json');
-    echo json_encode([
-        'success' => false,
-        'error' => [
-            'code' => 'ENDPOINT_INITIALIZATION_ERROR',
-            'message' => 'Failed to initialize API endpoint',
-            'details' => [
-                'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine()
-            ]
-        ]
-    ]);
-    exit;
+    if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
+        $endpoint = new ChoiceMyResponseEndpoint();
+        $endpoint->execute();
     }
 }

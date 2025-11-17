@@ -162,6 +162,9 @@ class SelfEnrollEndpoint extends ApiBase {
             // Create course context for permission checks
             $context = context_course::instance($courseid);
             
+            // Check self-enrollment capability
+            $this->checkCapability('enrol/self:enrolself', $context);
+            
             // Check if user is already enrolled in this course
             // Use is_enrolled() to check active enrollment
             if (is_enrolled($context, $user, '', true)) {

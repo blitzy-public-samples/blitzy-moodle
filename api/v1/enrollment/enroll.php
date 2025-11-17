@@ -248,6 +248,9 @@ class EnrollEndpoint extends ApiBase {
             // Step 6: Create course context for capability checking
             $context = context_course::instance($courseid);
             
+            // Check basic enrollment capability
+            $this->checkCapability('moodle/course:enrolconfig', $context);
+            
             // Step 7: Check enrollment capability
             // Different plugins may require different capabilities
             // Try the plugin-specific capability first, fall back to general enrollment config

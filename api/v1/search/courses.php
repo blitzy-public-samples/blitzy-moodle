@@ -188,6 +188,12 @@ class CourseSearchEndpoint extends ApiBase {
                 $sortby = 'relevance';
             }
             
+            // Check course search capability if user is authenticated
+            global $USER;
+            if (isloggedin() && !isguestuser()) {
+                $this->checkCapability('moodle/course:view', context_system::instance());
+            }
+            
             // Build search criteria array following Moodle pattern
             $searchcriteria = array();
             

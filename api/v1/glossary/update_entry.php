@@ -162,6 +162,9 @@ class GlossaryUpdateEntryEndpoint extends ApiBase {
         // This function throws exception if glossary doesn't exist or user lacks view access
         list($glossary, $context, $course, $cm) = mod_glossary_external::validate_glossary($entry->glossaryid);
 
+        // Check base glossary view capability
+        $this->checkCapability('mod/glossary:view', $context);
+
         // Check if user has permission to update this entry
         // Checks: user is owner AND within edit time window, OR has mod/glossary:manageentries
         // Setting return=false makes it throw exception on failure

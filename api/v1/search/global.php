@@ -100,6 +100,9 @@ class GlobalSearchEndpoint extends ApiBase {
             throw new UnauthorizedException('Authentication required for global search');
         }
         
+        // Check capability to perform global search
+        $this->checkCapability('moodle/search:query', context_system::instance());
+        
         // Check if global search is enabled in site configuration.
         if (!\core_search\manager::is_global_search_enabled()) {
             throw new ServerException('Global search is not enabled', [
