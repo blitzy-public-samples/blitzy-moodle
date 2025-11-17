@@ -516,7 +516,10 @@ class FileDeleteEndpoint extends ApiBase {
     }
 }
 
-// Create endpoint instance and execute request
+// Create endpoint instance and execute request only if called directly
+// (not when included by tests or other scripts)
 // ApiBase::execute() handles method routing, authentication, and exception catching
-$endpoint = new FileDeleteEndpoint();
-$endpoint->execute();
+if (!defined('API_TEST_MODE') && !defined('PHPUNIT_TEST')) {
+    $endpoint = new FileDeleteEndpoint();
+    $endpoint->execute();
+}

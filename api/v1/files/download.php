@@ -418,6 +418,9 @@ class FileDownloadEndpoint extends ApiBase {
     }
 }
 
-// Instantiate and execute the endpoint
-$endpoint = new FileDownloadEndpoint();
-$endpoint->execute();
+// Instantiate and execute the endpoint only if called directly
+// (not when included by tests or other scripts)
+if (!defined('API_TEST_MODE') && !defined('PHPUNIT_TEST')) {
+    $endpoint = new FileDownloadEndpoint();
+    $endpoint->execute();
+}

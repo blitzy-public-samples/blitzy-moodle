@@ -687,8 +687,54 @@ class FilesUploadEndpoint extends ApiBase {
         
         return $url->out(false);
     }
+    
+    /**
+     * Handle GET request - not supported for file upload endpoint.
+     *
+     * File upload only supports POST method. GET requests are not allowed.
+     *
+     * @throws MethodNotAllowedException Always, as GET is not supported
+     */
+    protected function handle_get() {
+        throw new MethodNotAllowedException('GET method not supported for file upload', [
+            'allowed_methods' => ['POST'],
+            'reason' => 'File upload requires POST method with multipart/form-data'
+        ]);
+    }
+    
+    /**
+     * Handle PUT request - not supported for file upload endpoint.
+     *
+     * File upload only supports POST method. PUT requests are not allowed.
+     *
+     * @throws MethodNotAllowedException Always, as PUT is not supported
+     */
+    protected function handle_put() {
+        throw new MethodNotAllowedException('PUT method not supported for file upload', [
+            'allowed_methods' => ['POST'],
+            'reason' => 'File upload requires POST method with multipart/form-data'
+        ]);
+    }
+    
+    /**
+     * Handle DELETE request - not supported for file upload endpoint.
+     *
+     * File upload only supports POST method. DELETE requests are not allowed.
+     * Use the /api/v1/files/delete endpoint to delete files.
+     *
+     * @throws MethodNotAllowedException Always, as DELETE is not supported
+     */
+    protected function handle_delete() {
+        throw new MethodNotAllowedException('DELETE method not supported for file upload', [
+            'allowed_methods' => ['POST'],
+            'reason' => 'File upload requires POST method. Use /api/v1/files/delete to delete files'
+        ]);
+    }
 }
 
-// Execute the endpoint
-$endpoint = new FilesUploadEndpoint();
-$endpoint->execute();
+// Execute the endpoint only if called directly
+// (not when included by tests or other scripts)
+if (!defined('API_TEST_MODE') && !defined('PHPUNIT_TEST')) {
+    $endpoint = new FilesUploadEndpoint();
+    $endpoint->execute();
+}

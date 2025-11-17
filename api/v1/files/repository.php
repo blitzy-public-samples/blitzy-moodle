@@ -602,6 +602,9 @@ class RepositoryEndpoint extends ApiBase {
     }
 }
 
-// Execute the endpoint
-$endpoint = new RepositoryEndpoint();
-$endpoint->execute();
+// Execute the endpoint only if called directly
+// (not when included by tests or other scripts)
+if (!defined('API_TEST_MODE') && !defined('PHPUNIT_TEST')) {
+    $endpoint = new RepositoryEndpoint();
+    $endpoint->execute();
+}
