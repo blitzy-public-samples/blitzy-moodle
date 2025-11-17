@@ -244,7 +244,7 @@ class AdminCoursesIndexEndpoint extends ApiBase {
             $pagination = ApiResponse::formatPagination($page, $perPage, $total);
             
             // Return success response with courses data and pagination
-            $this->success(
+            return $this->success(
                 ['courses' => $courses],
                 200,
                 ['pagination' => $pagination]
@@ -260,6 +260,42 @@ class AdminCoursesIndexEndpoint extends ApiBase {
                 ]
             );
         }
+    }
+    
+    /**
+     * Handle POST requests - not supported for this endpoint.
+     *
+     * @throws MethodNotAllowedException Always throws as POST is not supported
+     */
+    protected function handle_post() {
+        throw new MethodNotAllowedException(
+            'POST method is not supported for this endpoint',
+            ['allowedMethods' => ['GET']]
+        );
+    }
+    
+    /**
+     * Handle PUT requests - not supported for this endpoint.
+     *
+     * @throws MethodNotAllowedException Always throws as PUT is not supported
+     */
+    protected function handle_put() {
+        throw new MethodNotAllowedException(
+            'PUT method is not supported for this endpoint',
+            ['allowedMethods' => ['GET']]
+        );
+    }
+    
+    /**
+     * Handle DELETE requests - not supported for this endpoint.
+     *
+     * @throws MethodNotAllowedException Always throws as DELETE is not supported
+     */
+    protected function handle_delete() {
+        throw new MethodNotAllowedException(
+            'DELETE method is not supported for this endpoint',
+            ['allowedMethods' => ['GET']]
+        );
     }
 }
 
