@@ -437,3 +437,80 @@ class MethodNotAllowedException extends ApiException {
     }
 }
 
+/**
+ * Exception for resource conflict errors (HTTP 409 Conflict).
+ *
+ * This exception should be thrown when a request conflicts with the current state
+ * of the resource. Common scenarios include duplicate key violations, version
+ * conflicts, or attempting to create a resource that already exists.
+ *
+ * Example usage:
+ * <code>
+ * if ($DB->record_exists('user', ['username' => $username])) {
+ *     throw new ConflictException('Username already exists', [
+ *         'field' => 'username',
+ *         'value' => $username
+ *     ]);
+ * }
+ * if ($course->version !== $expectedVersion) {
+ *     throw new ConflictException('Resource has been modified by another user', [
+ *         'expectedVersion' => $expectedVersion,
+ *         'currentVersion' => $course->version
+ *     ]);
+ * }
+ * </code>
+ *
+ * @package    core
+ * @subpackage api
+ * @copyright  2024 Moodle Pty Ltd
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+class ConflictException extends ApiException {
+    
+    /**
+     * Constructor for ConflictException.
+     *
+     * @param string $message   Human-readable error message (default: 'Conflict')
+     * @param mixed  $debuginfo Optional debug information (e.g., conflicting field, current state)
+     */
+    public function __construct($message = 'Conflict', $debuginfo = null) {
+        parent::__construct(409, 'CONFLICT', $message, $debuginfo);
+    }
+}
+
+/**
+ * Exception for rate limiting errors (HTTP 429 Too Many Requests).
+ *
+ * This exception should be thrown when a client exceeds the allowed rate limit
+ * for API requests. It indicates the client should wait before making additional
+ * requests and should include retry-after information when possible.
+ *
+ * Example usage:
+ * <code>
+ * if ($requestCount > $rateLimit) {
+ *     throw new TooManyRequestsException('Rate limit exceeded', [
+ *         'limit' => $rateLimit,
+ *         'window' => '1 hour',
+ *         'retryAfter' => 3600 // seconds
+ *     ]);
+ * }
+ * </code>
+ *
+ * @package    core
+ * @subpackage api
+ * @copyright  2024 Moodle Pty Ltd
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+class TooManyRequestsException extends ApiException {
+    
+    /**
+     * Constructor for TooManyRequestsException.
+     *
+     * @param string $message   Human-readable error message (default: 'Too Many Requests')
+     * @param mixed  $debuginfo Optional debug information (e.g., limit, retry time)
+     */
+    public function __construct($message = 'Too Many Requests', $debuginfo = null) {
+        parent::__construct(429, 'TOO_MANY_REQUESTS', $message, $debuginfo);
+    }
+}
+
