@@ -76,8 +76,9 @@
  */
 
 // Load Moodle configuration and core libraries
+// This loads config.php which triggers lib/setup.php, which in turn loads
+// all core Moodle libraries including accesslib.php, moodlelib.php, etc.
 require_once(__DIR__ . '/../../../../config.php');
-require_once($CFG->libdir . '/accesslib.php');
 
 // Load API base class and exception handlers
 require_once(__DIR__ . '/../../../lib/api_base.php');
