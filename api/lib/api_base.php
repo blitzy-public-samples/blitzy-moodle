@@ -115,6 +115,21 @@ abstract class ApiBase {
         $this->requestUri = $_SERVER['REQUEST_URI'] ?? '';
         
         // Authenticate user via JWT token if required
+        $this->authenticate();
+    }
+    
+    /**
+     * Authenticate user via JWT token.
+     *
+     * Validates JWT token from Authorization header and loads user context.
+     * Sets $this->user with authenticated user object. Skips authentication
+     * in test mode for easier unit testing, or if $requireAuth is false.
+     *
+     * @return void
+     * @throws UnauthorizedException If authentication fails and auth is required
+     */
+    protected function authenticate() {
+        // Initialize user as null
         $this->user = null;
         
         // In test mode with explicit mock auth flag, bypass JWT authentication and use test user

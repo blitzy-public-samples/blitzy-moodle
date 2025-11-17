@@ -119,7 +119,7 @@ class AdminSettingsUpdateEndpoint extends ApiBase {
     }
     
     /**
-     * Handle PUT requests to update system settings.
+     * Handle PUT requests to modify system configuration.
      *
      * Main endpoint handler that:
      * 1. Enforces moodle/site:config capability in system context
@@ -241,25 +241,16 @@ class AdminSettingsUpdateEndpoint extends ApiBase {
             ]);
         }
         
-        // Validate setting value against type constraints
-        $validationError = $this->validateSettingValue($setting, $settingvalue);
-        if (!empty($validationError)) {
-            throw new ValidationException($validationError, [
-                'field' => 'value',
-                'settingName' => $settingname,
-                'value' => $settingvalue,
-                'settingType' => get_class($setting)
-            ]);
-        }
-        
         // Persist setting change using existing Moodle function
-        // Use write_setting() method from admin_setting which handles validation and persistence
+        // write_setting() method from admin_setting handles ALL validation and persistence
+        // This follows the thin wrapper pattern - we delegate to existing Moodle functions
         try {
             // write_setting() returns empty string on success, error message on failure
+            // It performs all necessary validation internally (type, constraints, choices, etc.)
             $writeresult = $setting->write_setting($settingvalue);
             
             if ($writeresult !== '') {
-                // write_setting returned error message
+                // write_setting returned error message - validation or persistence failed
                 throw new ValidationException('Failed to save setting: ' . $writeresult, [
                     'settingName' => $settingname,
                     'value' => $settingvalue,
@@ -317,70 +308,6 @@ class AdminSettingsUpdateEndpoint extends ApiBase {
             'allowedMethods' => ['PUT'],
             'endpoint' => '/api/v1/admin/settings'
         ]);
-    }
-    
-    /**
-     * Validate setting value against type constraints.
-     *
-     * Checks the setting value against the admin_setting object's validation rules
-     * including parameter type (PARAM_*), min/max ranges for numbers, regex patterns
-     * for text, and valid options for select settings. Delegates validation to the
-     * setting object's validate() method when available.
-     *
-     * This is a helper method that provides pre-validation before calling write_setting()
-     * to give more detailed error messages to API clients.
-     *
-     * @param admin_setting $setting Admin setting object from settings tree
-     * @param mixed $value Value to validate
-     * @return string Empty string if valid, error message if validation fails
-     */
-    protected function validateSettingValue($setting, $value) {
-        // Check if setting has a validate() method and use it
-        if (method_exists($setting, 'validate')) {
-            $validationresult = $setting->validate($value);
-            
-            // validate() returns true on success, error string on failure
-            if ($validationresult !== true) {
-                return is_string($validationresult) ? $validationresult : 'Validation failed';
-            }
-        }
-        
-        // Additional type-specific validation based on setting class
-        $settingclass = get_class($setting);
-        
-        // Validate boolean settings
-        if (strpos($settingclass, 'admin_setting_configcheckbox') !== false) {
-            if (!in_array($value, [0, 1, '0', '1', true, false, 'true', 'false'], true)) {
-                return 'Value must be boolean (0, 1, true, or false)';
-            }
-        }
-        
-        // Validate integer settings
-        if (strpos($settingclass, 'admin_setting_configtext') !== false && 
-            property_exists($setting, 'paramtype') && 
-            $setting->paramtype === PARAM_INT) {
-            if (!is_numeric($value) || (string)(int)$value !== (string)$value) {
-                return 'Value must be an integer';
-            }
-        }
-        
-        // Validate select/dropdown settings
-        if (method_exists($setting, 'get_choices')) {
-            $choices = $setting->get_choices();
-            if (is_array($choices) && !array_key_exists($value, $choices)) {
-                return 'Value must be one of: ' . implode(', ', array_keys($choices));
-            }
-        }
-        
-        // Validate text length constraints
-        if (property_exists($setting, 'maxlength') && $setting->maxlength > 0) {
-            if (strlen($value) > $setting->maxlength) {
-                return "Value exceeds maximum length of {$setting->maxlength} characters";
-            }
-        }
-        
-        // All validation passed
-        return '';
     }
 }
 
