@@ -79,9 +79,9 @@
  */
 
 require_once(__DIR__ . '/../../../config.php');
-require_once($CFG->dirroot . '/api/lib/api_base.php');
-require_once($CFG->dirroot . '/api/lib/api_response.php');
-require_once($CFG->dirroot . '/api/lib/api_exception.php');
+require_once(__DIR__ . '/../../lib/api_base.php');
+require_once(__DIR__ . '/../../lib/api_response.php');
+require_once(__DIR__ . '/../../lib/api_exception.php');
 require_once($CFG->dirroot . '/mod/glossary/lib.php');
 require_once($CFG->dirroot . '/mod/glossary/classes/external.php');
 
@@ -458,8 +458,43 @@ class GlossaryEntriesEndpoint extends ApiBase {
 
         return $modes;
     }
+
+    /**
+     * Handle POST requests.
+     *
+     * POST method is not supported for this endpoint.
+     *
+     * @throws MethodNotAllowedException Always thrown as POST is not supported
+     */
+    protected function handle_post() {
+        throw new MethodNotAllowedException('POST method is not supported for glossary entries listing');
+    }
+
+    /**
+     * Handle PUT requests.
+     *
+     * PUT method is not supported for this endpoint.
+     *
+     * @throws MethodNotAllowedException Always thrown as PUT is not supported
+     */
+    protected function handle_put() {
+        throw new MethodNotAllowedException('PUT method is not supported for glossary entries listing');
+    }
+
+    /**
+     * Handle DELETE requests.
+     *
+     * DELETE method is not supported for this endpoint.
+     *
+     * @throws MethodNotAllowedException Always thrown as DELETE is not supported
+     */
+    protected function handle_delete() {
+        throw new MethodNotAllowedException('DELETE method is not supported for glossary entries listing');
+    }
 }
 
-// Execute the endpoint
-$endpoint = new GlossaryEntriesEndpoint();
-$endpoint->execute();
+// Instantiate and execute the endpoint (skip during testing)
+if (!defined('API_TESTING') && php_sapi_name() !== 'cli') {
+    $endpoint = new GlossaryEntriesEndpoint();
+    $endpoint->execute();
+}
