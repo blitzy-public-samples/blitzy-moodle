@@ -533,7 +533,7 @@ const createUserHandler = http.post('*/api/v1/admin/users', async ({ request }) 
   const body = await request.json() as CreateUserBody;
   
   // Validate required fields
-  const requiredFields = ['username', 'email', 'firstName', 'lastName', 'password'];
+  const requiredFields: (keyof CreateUserBody)[] = ['username', 'email', 'firstName', 'lastName', 'password'];
   const missingFields = requiredFields.filter(field => !body[field]);
   
   if (missingFields.length > 0) {

@@ -609,7 +609,7 @@ describe('Feedback API Client', () => {
       expect(response.success).toBe(true);
       expect(response.data.feedbackId).toBe(feedbackId);
       expect(response.data.totalResponses).toBe(45);
-      expect(response.data.completionRate).toBe(0.75);
+      expect(response.data.statistics.completionRate).toBe(75);
     });
 
     it('should include statistics and charts data in response', async () => {

@@ -246,13 +246,13 @@ export interface Discussion {
   /** User ID who created the discussion */
   userid: number;
   /** Group ID if this is a group discussion (0 for all participants) */
-  groupid: number;
+  groupid?: number;
   /** Whether the discussion is assessed */
-  assessed: boolean;
+  assessed?: boolean;
   /** Timestamp of last modification */
   timemodified: number;
   /** User ID who last modified the discussion */
-  usermodified: number;
+  usermodified?: number;
   /** Start time for timed discussions */
   timestart: number;
   /** End time for timed discussions */
@@ -261,6 +261,7 @@ export interface Discussion {
   pinned: boolean;
   /** Timestamp when discussion was locked (0 if not locked) */
   timelocked: number;
+}
 
 /**
  * Enriched Discussion entity returned from API
@@ -302,8 +303,14 @@ export interface DiscussionEnriched {
   groupid?: number;
   /** Timestamp of last modification */
   timemodified: number;
-}
-
+  /** Whether the discussion is assessed */
+  assessed?: boolean;
+  /** User ID who last modified the discussion */
+  usermodified?: number;
+  /** Start time for timed discussions */
+  timestart?: number;
+  /** End time for timed discussions */
+  timeend?: number;
 }
 
 /**

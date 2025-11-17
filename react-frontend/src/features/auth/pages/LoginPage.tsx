@@ -18,7 +18,7 @@ import {
 } from '@mui/material';
 import { LoginForm } from '../components/LoginForm';
 import { loginSuccess } from '../store/authSlice';
-import type { LoginResponse } from '../types/auth.types';
+import type { LoginResponse } from '../api/authApi';
 
 // ============================================================================
 // Component

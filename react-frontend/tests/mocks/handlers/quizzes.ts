@@ -1189,8 +1189,8 @@ export const quizzesHandlers = [
       if (q.type === 'multichoice') {
         const opts = q.options as MultichoiceOptions;
         // Simulate user selecting first answer
-        userAnswer = opts.answers[0]?.id;
-        correctAnswer = opts.answers.find(a => a.fraction === 1.0)?.id || null;
+        userAnswer = opts.answers[0]?.id ?? null;
+        correctAnswer = opts.answers.find(a => a.fraction === 1.0)?.id ?? null;
         mark = (opts.answers[0]?.fraction ?? 0) * q.maxmark;
       } else if (q.type === 'truefalse') {
         userAnswer = false;

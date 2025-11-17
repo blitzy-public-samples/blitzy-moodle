@@ -20,7 +20,7 @@ import {
   Checkbox,
   CircularProgress,
 } from '@mui/material';
-import { useLoginMutation } from '../api/authApi';
+import { useLoginMutation, type LoginResponse } from '../api/authApi';
 import type { LoginCredentials } from '../types/auth.types';
 
 // ============================================================================
@@ -30,10 +30,9 @@ import type { LoginCredentials } from '../types/auth.types';
 export interface LoginFormProps {
   /**
    * Callback fired after successful login
-   * @param user - The authenticated user
-   * @param tokens - JWT authentication tokens
+   * @param response - Login response containing user data and tokens
    */
-  onSuccess?: (response: { user: any; tokens: any }) => void;
+  onSuccess?: (response: LoginResponse) => void;
 
   /**
    * Callback fired when login fails

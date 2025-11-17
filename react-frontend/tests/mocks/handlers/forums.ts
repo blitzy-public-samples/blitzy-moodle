@@ -345,7 +345,7 @@ function loadPosts(): Record<number, Post> {
   try {
     const stored = sessionStorage.getItem(POSTS_STORAGE_KEY);
     if (stored) {
-      const parsed = JSON.parse(stored) as Record<number, Discussion> as Record<number, Post>;
+      const parsed = JSON.parse(stored) as Record<number, Post>;
       console.log('[MSW Forums] Loaded posts from sessionStorage:', Object.keys(parsed).length, 'posts');
       return parsed;
     }
@@ -674,35 +674,32 @@ const createDiscussionHandler = http.post('*/api/v1/forums/:id/discussions', asy
     );
   }
   
+  // Calculate next available post ID for firstpost
+  const firstPostId = Object.keys(MOCK_POSTS).length + 1;
+  
   const newDiscussion: Discussion = {
     id: Object.keys(MOCK_DISCUSSIONS).length + 1,
     forumId: id,
-     
-    name: bodyData.name,
-     
-    message: bodyData.message,
-     
-    messageFormat: bodyData.messageFormat || 1,
+    name: bodyData.name as string,
+    message: bodyData.message as string,
+    messageFormat: (bodyData.messageFormat as number) || 1,
     userId: 5,
     userFullName: 'Test User',
     userPictureUrl: '/user/pic.jpg',
     created: Date.now() / 1000,
     modified: Date.now() / 1000,
-     
-    timeStart: bodyData.timeStart || 0,
-     
-    timeEnd: bodyData.timeEnd || 0,
-    pinned: false,
+    timeStart: (bodyData.timeStart as number) || 0,
+    timeEnd: (bodyData.timeEnd as number) || 0,
+    pinned: (bodyData.pinned as boolean) || false,
     locked: false,
-     
-    groupId: bodyData.groupId || -1,
+    groupId: (bodyData.groupId as number) || 0,
     numReplies: 0,
     numUnreadPosts: 0,
     canReply: true,
     canEdit: true,
     canDelete: true,
-    canPin: false,
-    canLock: false
+    canPin: true,
+    canLock: true
   };
   
   // Add the new discussion to MOCK_DISCUSSIONS so it can be found by subsequent requests
@@ -712,7 +709,7 @@ const createDiscussionHandler = http.post('*/api/v1/forums/:id/discussions', asy
   
   // Create the first post (the discussion content itself)
   const firstPost: Post = {
-    id: Object.keys(MOCK_POSTS).length + 1,
+    id: firstPostId,
     discussionId: newDiscussion.id,
     parentId: 0,
     userId: newDiscussion.userId,
@@ -721,14 +718,13 @@ const createDiscussionHandler = http.post('*/api/v1/forums/:id/discussions', asy
     created: newDiscussion.created,
     modified: newDiscussion.modified,
     subject: newDiscussion.name,
-    message: newDiscussion.message,
-    messageFormat: newDiscussion.messageFormat,
+    message: bodyData.message as string,
+    messageFormat: (bodyData.messageFormat as number) || 1,
     attachment: false,
     attachments: [],
     canEdit: true,
     canDelete: true,
-    canReply: true,
-    replies: []
+    canReply: true
   };
   
   MOCK_POSTS[firstPost.id] = firstPost;
@@ -822,26 +818,20 @@ const createPostHandler = http.post('*/api/v1/forums/discussions/:id/posts', asy
   const newPost: Post = {
     id: Object.keys(MOCK_POSTS).length + 1,
     discussionId: id,
-     
-    parentId: bodyData.parentId || 0,
+    parentId: (bodyData.parentId as number) || 0,
     userId: 5,
     userFullName: 'Test User',
     userPictureUrl: '/user/pic.jpg',
     created: Date.now() / 1000,
     modified: Date.now() / 1000,
-     
-    subject: bodyData.subject || `Re: ${  discussion.name}`,
-     
-    message: bodyData.message,
-     
-    messageFormat: bodyData.messageFormat || 1,
+    subject: (bodyData.subject as string) || `Re: ${discussion.name}`,
+    message: bodyData.message as string,
+    messageFormat: (bodyData.messageFormat as number) || 1,
     attachment: false,
-     
-    attachments: bodyData.attachments || [],
+    attachments: (bodyData.attachments as PostAttachment[]) || [],
     canEdit: true,
     canDelete: true,
-    canReply: true,
-    replies: []
+    canReply: true
   };
   
   // Add the new post to MOCK_POSTS so it can be found by subsequent requests

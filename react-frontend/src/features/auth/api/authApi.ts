@@ -11,7 +11,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/services/api/client';
 import { AUTH_ENDPOINTS } from '@/services/api/endpoints';
 import type { ApiResponse } from '@/types/api';
-import type { AuthTokens } from '../types/auth.types';
+import type { AuthTokens, User } from '../types/auth.types';
 
 // ============================================================================
 // Types
@@ -19,19 +19,9 @@ import type { AuthTokens } from '../types/auth.types';
 
 /**
  * User data returned from authentication endpoints
+ * Re-exports User type from auth.types for consistency
  */
-export interface AuthUser {
-  id: number;
-  pictureitemid: number;
-  firstname: string;
-  lastname: string;
-  fullname: string;
-  email: string;
-  username?: string;
-  roles?: string[];
-  capabilities?: string[];
-  deleted?: boolean;
-}
+export type AuthUser = User;
 
 /**
  * Login request parameters

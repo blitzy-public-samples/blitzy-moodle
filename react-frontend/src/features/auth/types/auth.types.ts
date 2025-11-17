@@ -47,6 +47,12 @@ export interface User {
   lastname: string;
 
   /**
+   * User's full name (derived from firstname + lastname)
+   * Typically formatted as "firstname lastname"
+   */
+  fullname: string;
+
+  /**
    * Authentication method used (mdl_user.auth)
    * Examples: 'manual', 'ldap', 'oauth2', 'saml'
    */

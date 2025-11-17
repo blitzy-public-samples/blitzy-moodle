@@ -478,7 +478,7 @@ function findUserById(userId: number): (User & { password: string; status: 'acti
  * @returns User object without sensitive fields
  */
 function sanitizeUser(user: User & { password: string; status: string }): User {
-  const { _password, _status, ...sanitized } = user;
+  const { password, status, ...sanitized } = user;
   return sanitized as User;
 }
 

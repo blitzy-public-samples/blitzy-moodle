@@ -141,6 +141,7 @@ export function AuthInitializer({ children }: { children: ReactNode }): ReactNod
         email: '', // Not in token payload
         firstname: '', // Not in token payload
         lastname: '', // Not in token payload
+        fullname: tokenUser.username || '', // Use username as fallback
         auth: 'jwt',
         confirmed: true,
         suspended: false,

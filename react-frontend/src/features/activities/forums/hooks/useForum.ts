@@ -36,6 +36,7 @@ import {
 import type {
   Forum,
   Discussion,
+  DiscussionEnriched,
   DiscussionListOptions,
   CreateDiscussionData,
 } from '../types/forum.types';
@@ -106,8 +107,8 @@ export interface UseForumReturn {
   error: Error | null;
 
   // Discussions data
-  /** Array of discussions in the forum */
-  discussions: Discussion[] | undefined;
+  /** Array of discussions in the forum (enriched with user info and reply counts) */
+  discussions: DiscussionEnriched[] | undefined;
   /** Pagination metadata */
   pagination:
     | {
