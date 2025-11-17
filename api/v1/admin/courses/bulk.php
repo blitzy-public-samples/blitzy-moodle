@@ -60,8 +60,8 @@
  */
 
 // Include API base class and exception handling
-require_once(__DIR__ . '/../../lib/api_base.php');
-require_once(__DIR__ . '/../../lib/api_exception.php');
+require_once(__DIR__ . '/../../../lib/api_base.php');
+require_once(__DIR__ . '/../../../lib/api_exception.php');
 
 // Include Moodle course library functions
 global $CFG;
