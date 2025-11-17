@@ -117,8 +117,10 @@ abstract class ApiBase {
         // Authenticate user via JWT token if required
         $this->user = null;
         
-        // In test mode, bypass JWT authentication and use test user
-        if (defined('API_TEST_MODE') && API_TEST_MODE) {
+        // In test mode with explicit mock auth flag, bypass JWT authentication and use test user
+        // This allows testing authenticated functionality without real JWT tokens
+        // But still allows testing authentication failures by not setting the mock flag
+        if (defined('API_TEST_MODE') && API_TEST_MODE && defined('API_TEST_MOCK_AUTH') && API_TEST_MOCK_AUTH) {
             global $USER;
             // In test mode, use the global $USER object which should be set by the test
             // If not set, we'll create a mock admin user

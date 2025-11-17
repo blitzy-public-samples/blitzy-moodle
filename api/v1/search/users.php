@@ -286,7 +286,30 @@ class UserSearchEndpoint extends ApiBase {
     }
 }
 
-// Instantiate and execute the endpoint
-// The execute() method handles routing, error handling, and response formatting
-$endpoint = new UserSearchEndpoint();
-$endpoint->execute();
+// Instantiate and execute the endpoint with error handling
+// Skip automatic execution in test mode to allow manual instantiation
+if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
+    // Wrap in try-catch to handle exceptions thrown during instantiation (e.g., auth failures)
+    try {
+        $endpoint = new UserSearchEndpoint();
+        $endpoint->execute();
+    } catch (ApiException $e) {
+        // Handle API exceptions with formatted error response
+        ApiResponse::fromException($e);
+    } catch (moodle_exception $e) {
+        // Handle Moodle exceptions
+        $apiException = new ForbiddenException($e->getMessage(), [
+            'errorcode' => $e->errorcode,
+            'module' => $e->module ?? 'moodle'
+        ]);
+        ApiResponse::fromException($apiException);
+    } catch (Exception $e) {
+        // Handle unexpected exceptions
+        $apiException = new ServerException('Internal server error', [
+            'message' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine()
+        ]);
+        ApiResponse::fromException($apiException);
+    }
+}
