@@ -1338,6 +1338,21 @@ $CFG->admin = 'admin';
 //      ];
 //
 //=========================================================================
+// 8. PHPUNIT TEST ENVIRONMENT SETTINGS
+//=========================================================================
+// PHPUnit test environment configuration
+// Used for running automated unit tests
+// Uncomment and configure these settings to enable PHPUnit testing
+
+// Directory for PHPUnit test data files
+// Example: $CFG->phpunit_dataroot = '/home/example/phpu_moodledata';
+// $CFG->phpunit_dataroot = '/path/to/phpunit_moodledata';
+
+// Database table prefix for PHPUnit tests
+// Uses a different prefix to avoid conflicts with development database
+// $CFG->phpunit_prefix = 'phpu_';
+
+//=========================================================================
 // ALL DONE!  To continue installation, visit your main page with a browser
 //=========================================================================
 
