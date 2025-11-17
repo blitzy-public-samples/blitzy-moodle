@@ -44,8 +44,6 @@
 
 // Load Moodle configuration and core libraries
 require_once(__DIR__ . '/../../../config.php');
-require_once($CFG->dirroot . '/mod/workshop/locallib.php');
-require_once($CFG->libdir . '/filelib.php');
 
 // Load API utilities
 require_once(__DIR__ . '/../../lib/api_base.php');
@@ -96,6 +94,10 @@ class WorkshopAssessmentsEndpoint extends ApiBase {
      */
     protected function handle_get() {
         global $DB, $USER, $CFG;
+        
+        // Load workshop libraries
+        require_once($CFG->dirroot . '/mod/workshop/locallib.php');
+        require_once($CFG->libdir . '/filelib.php');
         
         // Get submission ID from URL parameter
         $submissionid = $this->getParam('id', PARAM_INT);

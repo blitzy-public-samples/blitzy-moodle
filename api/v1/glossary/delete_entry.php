@@ -65,14 +65,14 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-// Include Moodle configuration and required libraries
-require_once(__DIR__ . '/../../../config.php');
-require_once($CFG->dirroot . '/mod/glossary/lib.php');
-require_once($CFG->dirroot . '/mod/glossary/classes/external.php');
-
-// Include API base class and exception handlers
+// Load API utilities first
 require_once(__DIR__ . '/../../lib/api_base.php');
 require_once(__DIR__ . '/../../lib/api_exception.php');
+
+// Load Moodle configuration (skip in test mode if needed)
+if (!defined('CLI_SCRIPT')) {
+    require_once(__DIR__ . '/../../../config.php');
+}
 
 /**
  * API endpoint class for glossary entry deletion.
@@ -132,7 +132,11 @@ class GlossaryDeleteEntryEndpoint extends ApiBase {
      * @throws ServerException If deletion operation fails unexpectedly
      */
     protected function handle_delete() {
-        global $DB;
+        global $DB, $CFG;
+        
+        // Load Moodle glossary libraries
+        require_once($CFG->dirroot . '/mod/glossary/lib.php');
+        require_once($CFG->dirroot . '/mod/glossary/classes/external.php');
         
         try {
             // Extract entry ID from request URI
@@ -320,8 +324,55 @@ class GlossaryDeleteEntryEndpoint extends ApiBase {
         
         return null;
     }
+    
+    /**
+     * Handle GET request - Not supported for glossary delete endpoint
+     *
+     * Glossary entry retrieval is handled through other endpoints.
+     * This endpoint is specifically for deleting entries via DELETE.
+     *
+     * @throws MethodNotAllowedException Always throws as GET is not supported
+     */
+    protected function handle_get() {
+        throw new MethodNotAllowedException('GET method not supported for glossary delete endpoint', [
+            'allowed_methods' => ['DELETE'],
+            'endpoint' => '/api/v1/glossary/entries/{id}'
+        ]);
+    }
+    
+    /**
+     * Handle POST request - Not supported for glossary delete endpoint
+     *
+     * Creating new glossary entries is handled through a separate endpoint.
+     * This endpoint is specifically for deleting existing entries via DELETE.
+     *
+     * @throws MethodNotAllowedException Always throws as POST is not supported
+     */
+    protected function handle_post() {
+        throw new MethodNotAllowedException('POST method not supported for glossary delete endpoint', [
+            'allowed_methods' => ['DELETE'],
+            'endpoint' => '/api/v1/glossary/entries/{id}'
+        ]);
+    }
+    
+    /**
+     * Handle PUT request - Not supported for glossary delete endpoint
+     *
+     * Updating glossary entries is handled through a separate endpoint.
+     * This endpoint is specifically for deleting existing entries via DELETE.
+     *
+     * @throws MethodNotAllowedException Always throws as PUT is not supported
+     */
+    protected function handle_put() {
+        throw new MethodNotAllowedException('PUT method not supported for glossary delete endpoint', [
+            'allowed_methods' => ['DELETE'],
+            'endpoint' => '/api/v1/glossary/entries/{id}'
+        ]);
+    }
 }
 
 // Instantiate and execute the endpoint
-$endpoint = new GlossaryDeleteEntryEndpoint();
-$endpoint->execute();
+if (!defined('API_TEST_MODE')) {
+    $endpoint = new GlossaryDeleteEntryEndpoint();
+    $endpoint->execute();
+}

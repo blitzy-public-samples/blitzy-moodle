@@ -75,9 +75,6 @@
 
 // Load Moodle configuration and required libraries
 require_once(__DIR__ . '/../../../config.php');
-require_once($CFG->dirroot . '/mod/workshop/locallib.php');
-require_once($CFG->libdir . '/filelib.php');
-require_once($CFG->libdir . '/gradelib.php');
 
 // Load API base class and exceptions
 require_once(__DIR__ . '/../../lib/api_base.php');
@@ -114,7 +111,12 @@ class WorkshopAssessEndpoint extends ApiBase {
      * @throws NotFoundException If submission, dimension, or other resource not found
      */
     protected function handle_post() {
-        global $DB, $USER;
+        global $DB, $USER, $CFG;
+        
+        // Load workshop libraries
+        require_once($CFG->dirroot . '/mod/workshop/locallib.php');
+        require_once($CFG->libdir . '/filelib.php');
+        require_once($CFG->libdir . '/gradelib.php');
         
         // Get authenticated user from JWT token
         $currentUser = $this->getUser();

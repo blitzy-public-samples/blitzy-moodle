@@ -93,10 +93,6 @@
 require_once(__DIR__ . '/../../lib/api_base.php');
 require_once(__DIR__ . '/../../lib/api_exception.php');
 
-// Load SCORM module libraries
-require_once($CFG->dirroot . '/mod/scorm/lib.php');
-require_once($CFG->dirroot . '/mod/scorm/locallib.php');
-
 /**
  * SCORM SCO List API Endpoint.
  *
@@ -120,7 +116,11 @@ class ScormScosEndpoint extends ApiBase {
      * @throws ValidationException If parameters are invalid
      */
     protected function handle_get() {
-        global $DB;
+        global $DB, $CFG;
+        
+        // Load SCORM module libraries
+        require_once($CFG->dirroot . '/mod/scorm/lib.php');
+        require_once($CFG->dirroot . '/mod/scorm/locallib.php');
         
         // Extract and validate SCORM ID from URL parameter
         $scormid = $this->getParam('id', PARAM_INT);

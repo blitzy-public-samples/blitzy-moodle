@@ -82,8 +82,6 @@ require_once(__DIR__ . '/../../../config.php');
 require_once(__DIR__ . '/../../lib/api_base.php');
 require_once(__DIR__ . '/../../lib/api_response.php');
 require_once(__DIR__ . '/../../lib/api_exception.php');
-require_once($CFG->dirroot . '/mod/glossary/lib.php');
-require_once($CFG->dirroot . '/mod/glossary/classes/external.php');
 
 /**
  * Glossary Entries API Endpoint
@@ -110,7 +108,11 @@ class GlossaryEntriesEndpoint extends ApiBase {
      * @throws ValidationException If parameters are invalid
      */
     protected function handle_get() {
-        global $USER;
+        global $USER, $CFG;
+
+        // Load Moodle glossary libraries
+        require_once($CFG->dirroot . '/mod/glossary/lib.php');
+        require_once($CFG->dirroot . '/mod/glossary/classes/external.php');
 
         // Extract glossary ID from URI path
         // Expected format: /api/v1/glossary/{id}/entries

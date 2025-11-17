@@ -60,10 +60,6 @@
 
 // Load Moodle configuration and workshop libraries
 require_once(__DIR__ . '/../../../config.php');
-require_once($CFG->dirroot . '/mod/workshop/lib.php');
-require_once($CFG->dirroot . '/mod/workshop/locallib.php');
-require_once($CFG->libdir . '/completionlib.php');
-require_once($CFG->libdir . '/filelib.php');
 
 // Load API base classes
 require_once(__DIR__ . '/../../lib/api_base.php');
@@ -92,7 +88,13 @@ class WorkshopSubmitEndpoint extends ApiBase {
      * @throws ValidationException If submission data is invalid
      */
     protected function handle_post() {
-        global $DB, $USER;
+        global $DB, $USER, $CFG;
+        
+        // Load workshop libraries
+        require_once($CFG->dirroot . '/mod/workshop/lib.php');
+        require_once($CFG->dirroot . '/mod/workshop/locallib.php');
+        require_once($CFG->libdir . '/completionlib.php');
+        require_once($CFG->libdir . '/filelib.php');
         
         // Step 1: Extract and validate workshop ID from URL parameter
         $workshopid = $this->getParam('id', PARAM_INT);

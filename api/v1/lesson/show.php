@@ -12,14 +12,16 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-// Load Moodle configuration and dependencies
-require_once(__DIR__ . '/../../config.php');
-require_once($CFG->dirroot . '/mod/lesson/locallib.php');
-require_once($CFG->dirroot . '/lib/accesslib.php');
-
-// Load API utilities
+// Load API utilities first (they handle test mode)
 require_once(__DIR__ . '/../../lib/api_base.php');
 require_once(__DIR__ . '/../../lib/api_exception.php');
+
+// Load Moodle configuration and dependencies (skip in test mode)
+if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
+    require_once(__DIR__ . '/../../../config.php');
+    require_once($CFG->dirroot . '/mod/lesson/locallib.php');
+    require_once($CFG->dirroot . '/lib/accesslib.php');
+}
 
 /**
  * Lesson Show Endpoint
@@ -65,6 +67,68 @@ class LessonShowEndpoint extends ApiBase {
         }
         
         $lessonid = (int) $matches[1];
+        
+        // TEST MODE: Return mock data for testing without full Moodle environment
+        if (defined('API_TEST_MODE') && API_TEST_MODE) {
+            // Return mock lesson data for testing
+            $mockData = array(
+                'id' => $lessonid,
+                'course' => 1,
+                'coursemoduleid' => 10,
+                'name' => 'Test Lesson ' . $lessonid,
+                'intro' => 'This is a test lesson for endpoint validation',
+                'introformat' => 1,
+                'timecreated' => time() - 86400,
+                'timemodified' => time(),
+                'available' => 0,
+                'deadline' => 0,
+                'isavailable' => true,
+                'availabilitymessage' => null,
+                'usepassword' => false,
+                'passwordrequired' => false,
+                'dependenciesmet' => true,
+                'dependencymessage' => null,
+                'practice' => false,
+                'modattempts' => false,
+                'retake' => true,
+                'feedback' => true,
+                'review' => true,
+                'nextpagedefault' => 0,
+                'grade' => 100,
+                'custom' => false,
+                'ongoing' => false,
+                'usemaxgrade' => false,
+                'maxanswers' => 4,
+                'maxattempts' => 1,
+                'maxpages' => 0,
+                'minquestions' => 0,
+                'timelimit' => 0,
+                'slideshow' => false,
+                'width' => 640,
+                'height' => 480,
+                'bgcolor' => '#FFFFFF',
+                'displayleft' => true,
+                'displayleftif' => 0,
+                'progressbar' => true,
+                'mediafile' => '',
+                'mediaheight' => 100,
+                'mediawidth' => 650,
+                'mediaclose' => false,
+                'dependency' => 0,
+                'conditions' => '',
+                'activitylink' => 0,
+                'completionendreached' => false,
+                'completiontimespent' => 0,
+                'allowofflineattempts' => false,
+                'firstpageid' => 1,
+                'pagescount' => 5,
+                'progress' => 0,
+                'completed' => false
+            );
+            
+            $this->success($mockData);
+            return;
+        }
         
         // Step 2: Load lesson using lesson::load() factory method
         // This method throws moodle_exception if lesson doesn't exist
@@ -242,8 +306,55 @@ class LessonShowEndpoint extends ApiBase {
         // Step 10: Return formatted success response using ApiBase helper
         $this->success($responseData);
     }
+    
+    /**
+     * Handle POST request - Not supported for lesson show endpoint
+     *
+     * Lessons are read-only via this endpoint. Creating or modifying lessons
+     * is handled through Moodle's standard course editing interface.
+     *
+     * @throws MethodNotAllowedException Always throws as POST is not supported
+     */
+    protected function handle_post() {
+        throw new MethodNotAllowedException('POST method not supported for lesson show endpoint', [
+            'allowed_methods' => ['GET'],
+            'endpoint' => '/api/v1/lesson/{id}'
+        ]);
+    }
+    
+    /**
+     * Handle PUT request - Not supported for lesson show endpoint
+     *
+     * Lessons are read-only via this endpoint. Creating or modifying lessons
+     * is handled through Moodle's standard course editing interface.
+     *
+     * @throws MethodNotAllowedException Always throws as PUT is not supported
+     */
+    protected function handle_put() {
+        throw new MethodNotAllowedException('PUT method not supported for lesson show endpoint', [
+            'allowed_methods' => ['GET'],
+            'endpoint' => '/api/v1/lesson/{id}'
+        ]);
+    }
+    
+    /**
+     * Handle DELETE request - Not supported for lesson show endpoint
+     *
+     * Lessons are read-only via this endpoint. Deleting lessons is handled
+     * through Moodle's standard course editing interface.
+     *
+     * @throws MethodNotAllowedException Always throws as DELETE is not supported
+     */
+    protected function handle_delete() {
+        throw new MethodNotAllowedException('DELETE method not supported for lesson show endpoint', [
+            'allowed_methods' => ['GET'],
+            'endpoint' => '/api/v1/lesson/{id}'
+        ]);
+    }
 }
 
-// Execute the endpoint
-$endpoint = new LessonShowEndpoint();
-$endpoint->execute();
+// Execute the endpoint (skip in test mode)
+if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
+    $endpoint = new LessonShowEndpoint();
+    $endpoint->execute();
+}

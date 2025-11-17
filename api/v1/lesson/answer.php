@@ -64,9 +64,6 @@
 require_once(__DIR__ . '/../../lib/api_base.php');
 require_once(__DIR__ . '/../../lib/api_exception.php');
 
-// Load Moodle lesson library for lesson class and constants
-require_once($CFG->dirroot . '/mod/lesson/locallib.php');
-
 /**
  * API endpoint class for lesson answer submission.
  *
@@ -109,7 +106,10 @@ class LessonAnswerEndpoint extends ApiBase {
      * @throws ForbiddenException If user lacks mod/lesson:view capability
      */
     protected function handle_post() {
-        global $DB, $USER, $PAGE;
+        global $DB, $USER, $PAGE, $CFG;
+        
+        // Load Moodle lesson library for lesson class and constants
+        require_once($CFG->dirroot . '/mod/lesson/locallib.php');
         
         // Step 1: Extract page ID from request URI
         // Pattern matches: /api/v1/lesson/pages/123/answer

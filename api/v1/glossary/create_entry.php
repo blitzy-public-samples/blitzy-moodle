@@ -63,8 +63,6 @@
 
 // Include required Moodle core files
 require_once(__DIR__ . '/../../../config.php');
-require_once($CFG->dirroot . '/mod/glossary/lib.php');
-require_once($CFG->dirroot . '/mod/glossary/classes/external.php');
 
 // Include API infrastructure
 require_once(__DIR__ . '/../../lib/api_base.php');
@@ -115,6 +113,10 @@ class GlossaryCreateEntryEndpoint extends ApiBase {
      */
     protected function handle_post() {
         global $CFG, $DB;
+        
+        // Load Moodle glossary libraries
+        require_once($CFG->dirroot . '/mod/glossary/lib.php');
+        require_once($CFG->dirroot . '/mod/glossary/classes/external.php');
         
         // Extract glossary ID from request URI
         // URI pattern: /api/v1/glossary/{id}/entries

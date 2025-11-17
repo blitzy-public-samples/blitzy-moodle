@@ -77,8 +77,6 @@
 
 // Load Moodle configuration and core libraries
 require_once(__DIR__ . '/../../../config.php');
-require_once($CFG->dirroot . '/mod/glossary/lib.php');
-require_once($CFG->libdir . '/accesslib.php');
 
 // Load API infrastructure
 require_once(__DIR__ . '/../../lib/api_base.php');
@@ -118,7 +116,11 @@ class GlossaryShowEndpoint extends ApiBase {
      * @throws ForbiddenException If user lacks view permission
      */
     protected function handle_get() {
-        global $DB;
+        global $DB, $CFG;
+        
+        // Load Moodle glossary library and access library
+        require_once($CFG->dirroot . '/mod/glossary/lib.php');
+        require_once($CFG->libdir . '/accesslib.php');
         
         // Extract glossary ID from request URI
         // Expected URI format: /api/v1/glossary/123 or /api/v1/glossary/show.php?id=123

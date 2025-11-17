@@ -50,10 +50,6 @@
 require_once(__DIR__ . '/../../lib/api_base.php');
 require_once(__DIR__ . '/../../lib/api_exception.php');
 
-// Load Moodle workshop libraries
-require_once($CFG->dirroot . '/mod/workshop/lib.php');
-require_once($CFG->dirroot . '/mod/workshop/locallib.php');
-
 /**
  * Workshop calculate endpoint class.
  *
@@ -105,7 +101,11 @@ class WorkshopCalculateEndpoint extends ApiBase {
      * @throws ServerException If calculation fails
      */
     protected function handle_post() {
-        global $DB;
+        global $DB, $CFG;
+        
+        // Load workshop libraries
+        require_once($CFG->dirroot . '/mod/workshop/lib.php');
+        require_once($CFG->dirroot . '/mod/workshop/locallib.php');
         
         // Record start time for performance tracking
         $startTime = microtime(true);

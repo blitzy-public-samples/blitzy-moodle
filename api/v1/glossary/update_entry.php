@@ -63,12 +63,14 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-// Load required Moodle core and API infrastructure
-require_once(__DIR__ . '/../../../config.php');
-require_once($CFG->dirroot . '/mod/glossary/lib.php');
-require_once($CFG->dirroot . '/lib/filelib.php');
+// Load API utilities first
 require_once(__DIR__ . '/../../lib/api_base.php');
 require_once(__DIR__ . '/../../lib/api_exception.php');
+
+// Load Moodle configuration (skip in test mode if needed)
+if (!defined('CLI_SCRIPT')) {
+    require_once(__DIR__ . '/../../../config.php');
+}
 
 /**
  * API endpoint class for updating glossary entries.
@@ -116,7 +118,11 @@ class GlossaryUpdateEntryEndpoint extends ApiBase {
      * @throws ValidationException If duplicate concept detected and not allowed
      */
     protected function handle_put() {
-        global $DB;
+        global $DB, $CFG;
+
+        // Load Moodle glossary libraries
+        require_once($CFG->dirroot . '/mod/glossary/lib.php');
+        require_once($CFG->dirroot . '/lib/filelib.php');
 
         // Extract entry ID from request URI
         // Expected URI format: /api/v1/glossary/entries/{id}
@@ -317,8 +323,55 @@ class GlossaryUpdateEntryEndpoint extends ApiBase {
         
         return null;
     }
+    
+    /**
+     * Handle GET request - Not supported for glossary update endpoint
+     *
+     * Glossary entry retrieval is handled through other endpoints.
+     * This endpoint is specifically for updating entries via PUT.
+     *
+     * @throws MethodNotAllowedException Always throws as GET is not supported
+     */
+    protected function handle_get() {
+        throw new MethodNotAllowedException('GET method not supported for glossary update endpoint', [
+            'allowed_methods' => ['PUT'],
+            'endpoint' => '/api/v1/glossary/entries/{id}'
+        ]);
+    }
+    
+    /**
+     * Handle POST request - Not supported for glossary update endpoint
+     *
+     * Creating new glossary entries is handled through a separate endpoint.
+     * This endpoint is specifically for updating existing entries via PUT.
+     *
+     * @throws MethodNotAllowedException Always throws as POST is not supported
+     */
+    protected function handle_post() {
+        throw new MethodNotAllowedException('POST method not supported for glossary update endpoint', [
+            'allowed_methods' => ['PUT'],
+            'endpoint' => '/api/v1/glossary/entries/{id}'
+        ]);
+    }
+    
+    /**
+     * Handle DELETE request - Not supported for glossary update endpoint
+     *
+     * Deleting glossary entries is handled through a separate endpoint.
+     * This endpoint is specifically for updating existing entries via PUT.
+     *
+     * @throws MethodNotAllowedException Always throws as DELETE is not supported
+     */
+    protected function handle_delete() {
+        throw new MethodNotAllowedException('DELETE method not supported for glossary update endpoint', [
+            'allowed_methods' => ['PUT'],
+            'endpoint' => '/api/v1/glossary/entries/{id}'
+        ]);
+    }
 }
 
 // Instantiate and execute the endpoint
-$endpoint = new GlossaryUpdateEntryEndpoint();
-$endpoint->execute();
+if (!defined('API_TEST_MODE')) {
+    $endpoint = new GlossaryUpdateEntryEndpoint();
+    $endpoint->execute();
+}

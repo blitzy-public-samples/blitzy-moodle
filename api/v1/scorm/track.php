@@ -68,8 +68,6 @@ require_once(__DIR__ . '/../../lib/api_exception.php');
 
 // Include Moodle SCORM functions
 require_once(__DIR__ . '/../../../config.php');
-require_once($CFG->dirroot . '/mod/scorm/lib.php');
-require_once($CFG->dirroot . '/mod/scorm/locallib.php');
 
 /**
  * SCORM Tracking API Endpoint.
@@ -293,6 +291,10 @@ class ScormTrackEndpoint extends ApiBase {
      */
     protected function handle_put() {
         global $DB, $CFG;
+        
+        // Load SCORM libraries
+        require_once($CFG->dirroot . '/mod/scorm/lib.php');
+        require_once($CFG->dirroot . '/mod/scorm/locallib.php');
         
         // Get authenticated user from JWT token (validated by ApiBase constructor)
         $user = $this->getUser();

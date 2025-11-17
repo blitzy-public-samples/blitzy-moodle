@@ -36,8 +36,6 @@
 
 // Include required files
 require_once(__DIR__ . '/../../../config.php');
-require_once($CFG->dirroot . '/mod/scorm/lib.php');
-require_once($CFG->dirroot . '/mod/scorm/locallib.php');
 require_once(__DIR__ . '/../../lib/api_base.php');
 require_once(__DIR__ . '/../../lib/api_exception.php');
 
@@ -82,7 +80,11 @@ class ScormResultsEndpoint extends ApiBase {
      * @throws ForbiddenException If user lacks permission to view this attempt
      */
     protected function handle_get() {
-        global $DB;
+        global $DB, $CFG;
+        
+        // Load SCORM libraries
+        require_once($CFG->dirroot . '/mod/scorm/lib.php');
+        require_once($CFG->dirroot . '/mod/scorm/locallib.php');
         
         // Get authenticated user from JWT token (provided by ApiBase constructor)
         $user = $this->getUser();

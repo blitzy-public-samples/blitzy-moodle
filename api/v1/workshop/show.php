@@ -27,12 +27,14 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-// Include Moodle configuration and required libraries
-require_once(__DIR__ . '/../../../config.php');
-require_once($CFG->dirroot . '/mod/workshop/lib.php');
-require_once($CFG->dirroot . '/mod/workshop/locallib.php');
+// Load API utilities first
 require_once(__DIR__ . '/../../lib/api_base.php');
 require_once(__DIR__ . '/../../lib/api_exception.php');
+
+// Load Moodle configuration (skip in test mode if needed)
+if (!defined('CLI_SCRIPT')) {
+    require_once(__DIR__ . '/../../../config.php');
+}
 
 /**
  * Workshop show endpoint class
@@ -58,7 +60,11 @@ class WorkshopShowEndpoint extends ApiBase {
      * @throws ForbiddenException If user lacks permission to view
      */
     protected function handle_get() {
-        global $DB, $USER;
+        global $DB, $USER, $CFG;
+
+        // Load workshop libraries
+        require_once($CFG->dirroot . '/mod/workshop/lib.php');
+        require_once($CFG->dirroot . '/mod/workshop/locallib.php');
 
         // Get workshop ID from URL parameter
         $workshopid = $this->getParam('id', PARAM_INT);
@@ -345,8 +351,55 @@ class WorkshopShowEndpoint extends ApiBase {
         // Return standardized success response
         $this->success($response_data);
     }
+    
+    /**
+     * Handle POST request - Not supported for workshop show endpoint
+     *
+     * Workshops are read-only via this endpoint. Creating or modifying workshops
+     * is handled through Moodle's standard course editing interface.
+     *
+     * @throws MethodNotAllowedException Always throws as POST is not supported
+     */
+    protected function handle_post() {
+        throw new MethodNotAllowedException('POST method not supported for workshop show endpoint', [
+            'allowed_methods' => ['GET'],
+            'endpoint' => '/api/v1/workshop/{id}'
+        ]);
+    }
+    
+    /**
+     * Handle PUT request - Not supported for workshop show endpoint
+     *
+     * Workshops are read-only via this endpoint. Creating or modifying workshops
+     * is handled through Moodle's standard course editing interface.
+     *
+     * @throws MethodNotAllowedException Always throws as PUT is not supported
+     */
+    protected function handle_put() {
+        throw new MethodNotAllowedException('PUT method not supported for workshop show endpoint', [
+            'allowed_methods' => ['GET'],
+            'endpoint' => '/api/v1/workshop/{id}'
+        ]);
+    }
+    
+    /**
+     * Handle DELETE request - Not supported for workshop show endpoint
+     *
+     * Workshops are read-only via this endpoint. Deleting workshops is handled
+     * through Moodle's standard course editing interface.
+     *
+     * @throws MethodNotAllowedException Always throws as DELETE is not supported
+     */
+    protected function handle_delete() {
+        throw new MethodNotAllowedException('DELETE method not supported for workshop show endpoint', [
+            'allowed_methods' => ['GET'],
+            'endpoint' => '/api/v1/workshop/{id}'
+        ]);
+    }
 }
 
-// Execute the endpoint
-$endpoint = new WorkshopShowEndpoint();
-$endpoint->execute();
+// Execute the endpoint (skip in test mode)
+if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
+    $endpoint = new WorkshopShowEndpoint();
+    $endpoint->execute();
+}
