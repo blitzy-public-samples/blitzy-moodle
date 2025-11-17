@@ -38,7 +38,7 @@ require_once(__DIR__ . '/../../../../config.php');
 require_once(__DIR__ . '/../../../lib/api_base.php');
 require_once(__DIR__ . '/../../../lib/api_exception.php');
 require_once($CFG->dirroot . '/course/lib.php');
-require_once($CFG->libdir . '/coursecatlib.php');
+// Note: core_course_category is autoloaded from /course/classes/category.php in Moodle 4.x
 
 /**
  * Course Categories API Endpoint.
@@ -511,6 +511,8 @@ class CourseCategoriesEndpoint extends ApiBase {
     }
 }
 
-// Instantiate and execute endpoint
-$endpoint = new CourseCategoriesEndpoint();
-$endpoint->execute();
+// Instantiate and execute endpoint only if this file is accessed directly (not included for testing)
+if (!defined('PHPUNIT_TEST') && (php_sapi_name() !== 'cli' || (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) === realpath(__FILE__)))) {
+    $endpoint = new CourseCategoriesEndpoint();
+    $endpoint->execute();
+}
