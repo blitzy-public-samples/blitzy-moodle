@@ -376,5 +376,7 @@ class GradebookExportEndpoint extends ApiBase {
 }
 
 // Instantiate and execute the endpoint
-$endpoint = new GradebookExportEndpoint();
-$endpoint->execute();
+if (!defined('API_TEST_MODE')) {
+    $endpoint = new GradebookExportEndpoint();
+    $endpoint->execute();
+}

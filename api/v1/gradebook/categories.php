@@ -76,10 +76,26 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-define('AJAX_SCRIPT', true);
-define('NO_MOODLE_COOKIES', true);
+// Define constants before loading config (they must be set before setup.php runs)
+// In test mode, config is already loaded by test script
+// In production, we need to load it here
+if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
+    define('AJAX_SCRIPT', true);
+    define('NO_MOODLE_COOKIES', true);
+    require_once(__DIR__ . '/../../../public/config.php');
+} else {
+    // In test mode, only define if not already defined (config was pre-loaded)
+    if (!defined('AJAX_SCRIPT')) {
+        define('AJAX_SCRIPT', true);
+    }
+    if (!defined('NO_MOODLE_COOKIES')) {
+        define('NO_MOODLE_COOKIES', true);
+    }
+}
 
-require_once(__DIR__ . '/../../../public/config.php');
+// Access global $CFG variable (required when file is included)
+global $CFG;
+
 require_once($CFG->libdir . '/gradelib.php');
 require_once(__DIR__ . '/../../lib/api_base.php');
 require_once(__DIR__ . '/../../lib/api_exception.php');
@@ -198,6 +214,36 @@ class GradeCategoriesEndpoint extends ApiBase {
     }
     
     /**
+     * Handle POST request - not supported for this read-only endpoint
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always throws since POST is not supported
+     */
+    protected function handle_post() {
+        throw new MethodNotAllowedException('POST method is not supported for grade categories endpoint');
+    }
+    
+    /**
+     * Handle PUT request - not supported for this read-only endpoint
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always throws since PUT is not supported
+     */
+    protected function handle_put() {
+        throw new MethodNotAllowedException('PUT method is not supported for grade categories endpoint');
+    }
+    
+    /**
+     * Handle DELETE request - not supported for this read-only endpoint
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always throws since DELETE is not supported
+     */
+    protected function handle_delete() {
+        throw new MethodNotAllowedException('DELETE method is not supported for grade categories endpoint');
+    }
+    
+    /**
      * Handle GET request to retrieve grade category hierarchy
      *
      * Implements the required endpoint logic:
@@ -273,5 +319,8 @@ class GradeCategoriesEndpoint extends ApiBase {
 // Instantiate endpoint and execute request
 // ApiBase::execute() will route to handle_get() for GET requests
 // and handle authentication, error handling, and response formatting
-$endpoint = new GradeCategoriesEndpoint();
-$endpoint->execute();
+// Guard against execution in test mode to allow unit testing
+if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
+    $endpoint = new GradeCategoriesEndpoint();
+    $endpoint->execute();
+}
