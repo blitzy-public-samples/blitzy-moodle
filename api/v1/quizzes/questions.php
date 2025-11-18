@@ -15,31 +15,31 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * REST API endpoint for retrieving quiz attempt questions.
+ * REST API endpoint for retrieving quiz questions structure.
  *
- * Provides GET /api/v1/quizzes/attempts/{id}/questions endpoint that retrieves
- * all questions for a specific quiz attempt. This endpoint enables React quiz
- * interface to display questions with their current state, answer data, and
- * navigation information during an active attempt or when reviewing a completed
- * attempt.
+ * Provides GET /api/v1/quizzes/{id}/questions endpoint that retrieves
+ * all questions in a quiz to display quiz structure and question metadata
+ * before students attempt the quiz. This endpoint enables React quiz
+ * interface to show quiz overview, question distribution, question types,
+ * and help students understand what to expect in the quiz.
  *
  * Delegates to existing Moodle quiz functions without duplicating business logic:
- * - quiz_create_attempt_handling_errors() for attempt object creation
- * - quiz_attempt::get_slots() for question slot retrieval
- * - question_display_options for determining what can be shown
- * - require_capability() for permission validation
+ * - mod_quiz\quiz_settings::create() for quiz object instantiation
+ * - quiz_settings::preload_questions() for loading question data
+ * - quiz_settings::get_questions() for question slot retrieval
+ * - require_capability() for permission validation (mod/quiz:view, mod/quiz:preview)
  *
- * Returns comprehensive question data including:
- * - Question text and format
- * - Question type and behavior
- * - Current answer state and responses
- * - Marks and grading information (if available)
- * - Feedback (if available based on display options)
- * - Navigation state (flagged, answered, current page)
- * - Display options determining what student can see
+ * Returns comprehensive question metadata including:
+ * - Question slot number and ID
+ * - Question type (multichoice, truefalse, shortanswer, essay, etc.)
+ * - Question text (formatted HTML or plain text based on permissions)
+ * - Maximum marks for each question
+ * - Page number within the quiz
+ * - Question options/choices (if applicable and permitted)
+ * - Question bank category information
  *
- * Handles both active attempts (in-progress) and review of finished attempts,
- * adapting what information is shown based on quiz settings and attempt state.
+ * Respects quiz settings for question visibility before attempts start.
+ * Some quizzes may restrict viewing questions until attempt is active.
  *
  * @package    api
  * @subpackage quizzes
@@ -50,7 +50,6 @@
 // Load Moodle configuration and quiz libraries
 require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->dirroot . '/mod/quiz/locallib.php');
-require_once($CFG->dirroot . '/mod/quiz/accessmanager.php');
 
 // Load API base classes
 require_once(__DIR__ . '/../../lib/api_base.php');
@@ -59,24 +58,21 @@ require_once(__DIR__ . '/../../lib/api_exception.php');
 /**
  * Quiz Questions API Endpoint.
  *
- * Handles GET requests to /api/v1/quizzes/attempts/{id}/questions for retrieving
- * all questions for a quiz attempt. Returns question data with current state,
- * answers, and feedback appropriate for the attempt state and quiz settings.
+ * Handles GET requests to /api/v1/quizzes/{id}/questions for retrieving
+ * all questions in a quiz to display quiz structure and question metadata.
+ * Returns question data with type, text, marks, and page information to help
+ * students understand the quiz before attempting it.
  *
  * Authentication: Required via JWT token
- * Authorization: User must own the attempt or have mod/quiz:viewreports capability
+ * Authorization: User must have mod/quiz:view capability (and optionally mod/quiz:preview)
  * HTTP Method: GET only
  *
- * Query Parameters:
- * - page: Optional page number to retrieve (0-based)
- * - slot: Optional specific question slot to retrieve
- *
  * Response includes:
- * - attempt: Basic attempt information
- * - questions: Array of question data with slots, text, state, answers
- * - navigation: Page navigation information
- * - displayOptions: What can be shown based on quiz settings
- * - timing: Time remaining if time limit exists
+ * - questions: Array of question metadata with slot, type, text, marks, page
+ * - totalQuestions: Total number of questions in the quiz
+ * - totalPages: Number of pages in the quiz
+ * - questionTypes: Summary of question types used
+ * - totalMarks: Sum of all question marks
  *
  * @package    api
  * @subpackage quizzes
@@ -86,274 +82,207 @@ require_once(__DIR__ . '/../../lib/api_exception.php');
 class QuizQuestionsEndpoint extends ApiBase {
     
     /**
-     * Handle GET request for quiz attempt questions.
+     * Handle GET request for quiz questions structure.
      *
-     * Extracts attempt ID from URL path, validates user has permission to view
-     * the attempt's questions, retrieves question data using existing Moodle
-     * quiz functions, determines what can be displayed based on quiz settings
-     * and attempt state, and returns formatted question information for React
-     * quiz interface.
+     * Extracts quiz ID from URL path, validates user has permission to view
+     * the quiz, retrieves question data using existing Moodle quiz functions,
+     * enriches questions with metadata like type, marks, and page number,
+     * and returns formatted question information for React quiz interface.
      *
-     * URL Pattern: /api/v1/quizzes/attempts/{id}/questions
-     * Example: /api/v1/quizzes/attempts/123/questions?page=0
+     * URL Pattern: /api/v1/quizzes/{id}/questions
+     * Example: /api/v1/quizzes/123/questions
      *
-     * @return void Outputs JSON response with questions data
-     * @throws ValidationException If attempt ID is invalid
-     * @throws NotFoundException If attempt does not exist
-     * @throws ForbiddenException If user lacks permission to view questions
+     * @return void Outputs JSON response with questions metadata
+     * @throws ValidationException If quiz ID is invalid
+     * @throws NotFoundException If quiz does not exist
+     * @throws ForbiddenException If user lacks permission to view quiz
      * @throws ApiException If questions cannot be retrieved
      */
     protected function handle_get() {
-        global $DB, $USER, $PAGE;
+        global $DB, $USER;
         
         // Validate user is authenticated via JWT token
         $authenticatedUser = $this->getUser();
         
-        // Extract attempt ID from URL path using regex
-        // Pattern matches: /attempts/{attemptid}/questions
-        if (!preg_match('/\/attempts\/(\d+)\/questions$/', $this->requestUri, $matches)) {
+        // Extract quiz ID from URL path using regex
+        // Pattern matches: /quizzes/{quizid}/questions
+        if (!preg_match('/\/quizzes\/(\d+)\/questions$/', $this->requestUri, $matches)) {
             throw new ValidationException('Invalid URL format', [
-                'expected' => '/api/v1/quizzes/attempts/{id}/questions',
+                'expected' => '/api/v1/quizzes/{id}/questions',
                 'received' => $this->requestUri,
-                'reason' => 'Attempt ID must be specified in URL path'
+                'reason' => 'Quiz ID must be specified in URL path'
             ]);
         }
         
-        $attemptid = (int)$matches[1];
+        $quizid = intval($matches[1]);
         
-        // Validate attempt ID is positive integer
-        if ($attemptid <= 0) {
-            throw new ValidationException('Invalid attempt ID', [
-                'attemptId' => $attemptid,
-                'reason' => 'Attempt ID must be a positive integer'
+        // Validate quiz ID is positive integer
+        if (!$quizid || $quizid <= 0) {
+            throw new ValidationException('Invalid quiz ID', [
+                'quizId' => $quizid,
+                'reason' => 'Quiz ID must be a positive integer'
             ]);
         }
         
-        // Parse query parameters
-        $requestedPage = isset($_GET['page']) ? (int)$_GET['page'] : null;
-        $requestedSlot = isset($_GET['slot']) ? (int)$_GET['slot'] : null;
-        
-        // Load attempt object using existing Moodle function
+        // Create quiz settings object using existing Moodle function
+        // This delegates to Moodle core without duplicating business logic
         try {
-            $attemptobj = quiz_create_attempt_handling_errors($attemptid);
+            $quizobj = mod_quiz\quiz_settings::create($quizid, $USER->id);
         } catch (moodle_exception $e) {
-            throw new NotFoundException('Quiz attempt not found', [
-                'attemptId' => $attemptid,
+            throw new NotFoundException('Quiz not found', [
+                'quizId' => $quizid,
                 'reason' => $e->getMessage()
             ]);
         }
         
         // Get context for capability checking
-        $context = $attemptobj->get_context();
+        $context = $quizobj->get_context();
         
-        // Check if user has permission to view this attempt's questions
-        $isOwnAttempt = $attemptobj->get_userid() == $USER->id;
-        $canViewReports = has_capability('mod/quiz:viewreports', $context);
-        
-        if (!$isOwnAttempt && !$canViewReports) {
-            throw new ForbiddenException('You do not have permission to view this attempt', [
-                'attemptId' => $attemptid,
-                'reason' => 'You can only view your own attempts unless you have viewreports capability'
+        // Check if user has permission to view quiz
+        // This enforces the same permission checks as PHP pages
+        try {
+            require_capability('mod/quiz:view', $context);
+        } catch (moodle_exception $e) {
+            throw new ForbiddenException('You do not have permission to view this quiz', [
+                'quizId' => $quizid,
+                'capability' => 'mod/quiz:view',
+                'reason' => $e->getMessage()
             ]);
         }
         
-        // For own attempts, check if attempt is in progress or can be reviewed
-        if ($isOwnAttempt) {
-            if ($attemptobj->is_finished()) {
-                // Attempt is finished - check if review is allowed
-                if (!$attemptobj->is_review_allowed()) {
-                    throw new ForbiddenException('Review is not currently allowed for this attempt', [
-                        'attemptId' => $attemptid,
-                        'reason' => 'Quiz settings do not allow review at this time'
-                    ]);
-                }
-            } else {
-                // Attempt is in progress - check if user can attempt
-                try {
-                    require_capability('mod/quiz:attempt', $context);
-                } catch (moodle_exception $e) {
-                    throw new ForbiddenException('You do not have permission to attempt this quiz', [
-                        'attemptId' => $attemptid,
-                        'capability' => 'mod/quiz:attempt',
-                        'reason' => $e->getMessage()
-                    ]);
-                }
-            }
-        }
+        // Check if user has preview capability to view question details
+        // Some quizzes may restrict viewing questions before attempt starts
+        $canPreview = has_capability('mod/quiz:preview', $context);
         
-        // Set up page context for Moodle functions
-        $PAGE->set_context($context);
+        // Load question data using existing Moodle functions
+        // preload_questions() loads the question bank data for all questions
+        $quizobj->preload_questions();
         
-        // Get display options based on attempt state
-        $displayoptions = $attemptobj->get_display_options(true);
+        // Get questions array from quiz object
+        // Second parameter false means we don't want only visible questions
+        $questions = $quizobj->get_questions(null, false);
         
-        // Determine which page to display
-        $page = $requestedPage !== null ? $requestedPage : $attemptobj->get_currentpage();
+        // Track statistics for summary
+        $totalMarks = 0;
+        $questionTypes = [];
+        $pageNumbers = [];
         
-        // Validate page number
-        if ($page < 0 || $page >= $attemptobj->get_num_pages()) {
-            throw new ValidationException('Invalid page number', [
-                'page' => $page,
-                'totalPages' => $attemptobj->get_num_pages(),
-                'reason' => 'Page number is out of range'
-            ]);
-        }
-        
-        // Get question usage
-        $quba = $attemptobj->get_question_usage();
-        
-        // Get all slots or specific slot
-        if ($requestedSlot !== null) {
-            // Validate slot exists
-            if (!in_array($requestedSlot, $attemptobj->get_slots())) {
-                throw new ValidationException('Invalid question slot', [
-                    'slot' => $requestedSlot,
-                    'reason' => 'Question slot does not exist in this attempt'
-                ]);
-            }
-            $slots = [$requestedSlot];
-        } else {
-            // Get all slots for the requested page
-            $slots = $attemptobj->get_slots($page);
-        }
-        
-        // Build questions array
+        // Build enriched questions array with metadata
         $questionsData = [];
         
-        foreach ($slots as $slot) {
-            $qa = $quba->get_question_attempt($slot);
-            $question = $qa->get_question();
+        foreach ($questions as $question) {
+            // Extract question type name
+            $questionType = $question->qtype;
             
-            // Build question data
+            // Track question types for summary
+            if (!isset($questionTypes[$questionType])) {
+                $questionTypes[$questionType] = 0;
+            }
+            $questionTypes[$questionType]++;
+            
+            // Get maximum marks for this question
+            $maxmark = $question->maxmark;
+            $totalMarks += $maxmark;
+            
+            // Get page number
+            $page = $question->page;
+            if (!in_array($page, $pageNumbers)) {
+                $pageNumbers[] = $page;
+            }
+            
+            // Build base question data
             $questionData = [
-                'slot' => $slot,
-                'page' => $attemptobj->get_question_page($slot),
-                'number' => $attemptobj->get_question_number($slot),
-                'type' => $question->qtype->name(),
+                'id' => $question->id,
+                'slot' => $question->slot,
+                'page' => $page,
+                'questionNumber' => $question->number,
+                'type' => $questionType,
                 'name' => $question->name,
-                'questionText' => $attemptobj->render_question($slot, false, $displayoptions),
-                'state' => $qa->get_state()->__toString(),
-                'stateName' => (string)$qa->get_state(),
-                'isFlagged' => $attemptobj->is_question_flagged($slot),
-                'maxMark' => $qa->get_max_mark(),
+                'maxMark' => (float)$maxmark,
             ];
             
-            // Add current mark if visible
-            if ($displayoptions->marks >= question_display_options::MARK_AND_MAX) {
-                $questionData['mark'] = $qa->get_mark();
-                $questionData['fraction'] = $qa->get_fraction();
+            // Add question text if user has preview capability or quiz allows viewing
+            // Some quizzes may hide question text until attempt starts
+            if ($canPreview || !empty($question->questiontext)) {
+                // Format question text for display
+                // Use format_text to handle HTML and plugins
+                $questionData['questionText'] = format_text(
+                    $question->questiontext,
+                    $question->questiontextformat,
+                    ['context' => $context]
+                );
+                $questionData['questionTextFormat'] = $question->questiontextformat;
             }
             
-            // Add answer state information
-            $questionData['answered'] = $qa->get_state()->is_answered();
-            $questionData['needsGrading'] = $qa->get_state()->is_finished() && !$qa->get_state()->is_graded();
-            $questionData['complete'] = $qa->get_state()->is_finished();
-            
-            // Add behaviour name
-            $questionData['behaviour'] = $qa->get_behaviour_name();
-            
-            // Add response summary if available
-            if ($displayoptions->responses) {
-                $questionData['responseSummary'] = $qa->get_response_summary();
+            // Add question category information if available
+            if (!empty($question->category)) {
+                $questionData['categoryId'] = $question->category;
             }
             
-            // Add right answer if available
-            if ($displayoptions->rightanswer) {
-                $questionData['rightAnswer'] = $qa->get_right_answer_summary();
+            // Add length (estimated time) if set
+            if (!empty($question->length)) {
+                $questionData['length'] = $question->length;
             }
             
-            // Add feedback if available
-            if ($displayoptions->feedback) {
-                $questionData['feedback'] = [
-                    'general' => $qa->get_behaviour()->get_general_feedback($qa),
-                    'specific' => $qa->get_behaviour()->get_specific_feedback($qa),
-                ];
-            }
-            
-            // Add correctness information if available
-            if ($displayoptions->correctness) {
-                $state = $qa->get_state();
-                $questionData['correctness'] = [
-                    'correct' => $state->is_correct(),
-                    'partiallyCorrect' => $state->is_partially_correct(),
-                    'incorrect' => $state->is_incorrect(),
-                ];
+            // Add question options for certain question types if user can preview
+            if ($canPreview && in_array($questionType, ['multichoice', 'truefalse', 'shortanswer'])) {
+                // Get question type plugin to access options
+                try {
+                    $qtypeclass = 'qtype_' . $questionType;
+                    if (class_exists($qtypeclass)) {
+                        // Load question options from database
+                        $optionsTable = 'qtype_' . $questionType . '_options';
+                        
+                        // Check if options table exists and load options
+                        if ($DB->get_manager()->table_exists($optionsTable)) {
+                            $options = $DB->get_record($optionsTable, ['questionid' => $question->id]);
+                            
+                            if ($options) {
+                                $questionData['questionOptions'] = [
+                                    'shuffleAnswers' => isset($options->shuffleanswers) ? (bool)$options->shuffleanswers : false,
+                                ];
+                                
+                                // For multichoice, include answer count
+                                if ($questionType === 'multichoice') {
+                                    $answerCount = $DB->count_records('question_answers', ['question' => $question->id]);
+                                    $questionData['questionOptions']['answerCount'] = $answerCount;
+                                    $questionData['questionOptions']['single'] = isset($options->single) ? (bool)$options->single : false;
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception $e) {
+                    // If we can't load options, just skip them
+                    // Don't fail the entire request due to optional data
+                }
             }
             
             $questionsData[] = $questionData;
         }
         
-        // Build navigation data
-        $navigationData = [
-            'currentPage' => $page,
-            'totalPages' => $attemptobj->get_num_pages(),
-            'totalQuestions' => count($attemptobj->get_slots()),
-            'questionsPerPage' => $attemptobj->get_quiz()->questionsperpage,
-            'canNavigateFreely' => $attemptobj->get_navigation_method() === QUIZ_NAVMETHOD_FREE,
-            'hasNextPage' => $page < ($attemptobj->get_num_pages() - 1),
-            'hasPreviousPage' => $page > 0,
-        ];
+        // Sort page numbers to get total pages count
+        sort($pageNumbers);
+        $totalPages = !empty($pageNumbers) ? max($pageNumbers) + 1 : 1;
         
-        // Build display options data
-        $displayOptionsData = [
-            'attempt' => $displayoptions->attempt == question_display_options::VISIBLE,
-            'correctness' => $displayoptions->correctness == question_display_options::VISIBLE,
-            'marks' => $displayoptions->marks == question_display_options::VISIBLE,
-            'feedback' => $displayoptions->feedback == question_display_options::VISIBLE,
-            'rightAnswer' => $displayoptions->rightanswer == question_display_options::VISIBLE,
-            'responses' => $displayoptions->responses == question_display_options::VISIBLE,
-            'generalFeedback' => $displayoptions->generalfeedback == question_display_options::VISIBLE,
-            'overallFeedback' => $displayoptions->overallfeedback == question_display_options::VISIBLE,
-        ];
-        
-        // Build timing data
-        $timingData = [
-            'timeStart' => $attemptobj->get_attempt()->timestart,
-            'timeFinish' => $attemptobj->get_attempt()->timefinish,
-            'hasTimeLimit' => (bool)$attemptobj->get_quiz()->timelimit,
-        ];
-        
-        if ($attemptobj->get_quiz()->timelimit) {
-            $timingData['timeLimit'] = $attemptobj->get_quiz()->timelimit;
-            
-            if (!$attemptobj->is_finished()) {
-                $now = time();
-                $deadline = $attemptobj->get_attempt()->timestart + $attemptobj->get_quiz()->timelimit;
-                
-                // Consider quiz close time if set
-                if ($attemptobj->get_quiz()->timeclose) {
-                    $deadline = min($deadline, $attemptobj->get_quiz()->timeclose);
-                }
-                
-                $timingData['deadline'] = $deadline;
-                $timingData['timeRemaining'] = max(0, $deadline - $now);
-                $timingData['isOvertime'] = $deadline < $now;
-            }
+        // Build question types summary array
+        $questionTypesSummary = [];
+        foreach ($questionTypes as $type => $count) {
+            $questionTypesSummary[] = [
+                'type' => $type,
+                'count' => $count,
+            ];
         }
         
-        // Build attempt data
-        $attemptData = [
-            'id' => $attemptobj->get_attemptid(),
-            'quizId' => $attemptobj->get_quizid(),
-            'userId' => $attemptobj->get_userid(),
-            'attemptNumber' => $attemptobj->get_attempt_number(),
-            'state' => $attemptobj->get_state(),
-            'stateName' => quiz_attempt_state_name($attemptobj->get_state()),
-            'isFinished' => $attemptobj->is_finished(),
-            'isPreview' => $attemptobj->is_preview(),
-            'currentPage' => $attemptobj->get_currentpage(),
-        ];
-        
-        // Build complete response
+        // Build complete response with questions and summary data
         $responseData = [
-            'attempt' => $attemptData,
             'questions' => $questionsData,
-            'navigation' => $navigationData,
-            'displayOptions' => $displayOptionsData,
-            'timing' => $timingData,
+            'totalQuestions' => count($questionsData),
+            'totalPages' => $totalPages,
+            'totalMarks' => (float)$totalMarks,
+            'questionTypes' => $questionTypesSummary,
         ];
         
-        // Return success response with questions data
+        // Return success response with questions metadata
         $this->success($responseData, 200);
     }
     
