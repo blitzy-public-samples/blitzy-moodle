@@ -250,6 +250,22 @@ class JwtAuth {
     }
     
     /**
+     * Generate a JWT token (defaults to access token).
+     *
+     * Convenience method that generates an access token. This is a wrapper
+     * around generateAccessToken() for backward compatibility and simplified
+     * API usage when only access tokens are needed.
+     *
+     * @param int $userid User ID for whom to generate the token
+     * @param array|null $roles Optional array of user roles (auto-fetched if null)
+     * @return string JWT access token
+     * @throws InvalidArgumentException If userid is invalid
+     */
+    public function generateToken($userid, $roles = null) {
+        return $this->generateAccessToken($userid, $roles);
+    }
+    
+    /**
      * Validate a JWT token and return its decoded payload.
      *
      * Verifies the token's signature, checks expiration, validates temporal
@@ -403,6 +419,21 @@ class JwtAuth {
         
         // Generate and return new access token
         return $this->generateAccessToken($userid, $roles);
+    }
+    
+    /**
+     * Refresh a token using a refresh token.
+     *
+     * Convenience method that is an alias for refreshAccessToken().
+     * This provides a simplified method name for API usage.
+     *
+     * @param string $refreshToken Valid refresh token
+     * @return string New access token
+     * @throws ValidationException If token type is not 'refresh'
+     * @throws UnauthorizedException If token is invalid or expired
+     */
+    public function refreshToken($refreshToken) {
+        return $this->refreshAccessToken($refreshToken);
     }
     
     /**
