@@ -95,7 +95,7 @@ require_once($CFG->libdir . '/filelib.php');
  * @copyright  2024 Moodle Pty Ltd
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class FolderResourceApi extends ApiBase {
+class FolderResourceApiEndpoint extends ApiBase {
     
     /**
      * Handle GET request for folder contents.

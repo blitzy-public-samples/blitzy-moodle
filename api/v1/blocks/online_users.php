@@ -56,7 +56,7 @@ use block_online_users\fetcher;
  * Extends ApiBase to provide JWT authentication, capability checking,
  * and standardized response formatting for online users data.
  */
-class OnlineUsersApi extends ApiBase {
+class OnlineUsersApiEndpoint extends ApiBase {
     
     /**
      * Handle GET request for online users data.

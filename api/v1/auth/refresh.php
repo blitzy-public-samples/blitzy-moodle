@@ -64,7 +64,7 @@ require_once(__DIR__ . '/../../lib/auth_jwt.php');
  * @package    core
  * @subpackage api
  */
-class AuthRefresh extends ApiBase {
+class AuthRefreshEndpoint extends ApiBase {
     
     /**
      * Handle POST request for token refresh.

@@ -60,7 +60,7 @@ require_once(__DIR__ . '/../../lib/auth_jwt.php');
  * @package    core
  * @subpackage api
  */
-class AuthLogout extends ApiBase {
+class AuthLogoutEndpoint extends ApiBase {
     
     /**
      * Handle POST request for user logout.

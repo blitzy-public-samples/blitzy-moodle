@@ -77,7 +77,7 @@ require_once(__DIR__ . '/../../lib/auth_jwt.php');
  * @package    core
  * @subpackage api
  */
-class AuthMe extends ApiBase {
+class AuthMeEndpoint extends ApiBase {
     
     /**
      * Handle GET request for current user information.

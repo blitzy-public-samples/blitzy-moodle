@@ -30,7 +30,7 @@ require_once($CFG->libdir . '/badgeslib.php');
  * Extends ApiBase to inherit JWT authentication, capability checking,
  * parameter validation, and standardized response formatting.
  */
-class BadgesBlockApi extends ApiBase {
+class BadgesBlockApiEndpoint extends ApiBase {
     
     /**
      * Handle GET requests for badges data.

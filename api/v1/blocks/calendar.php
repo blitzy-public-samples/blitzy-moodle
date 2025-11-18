@@ -48,7 +48,7 @@ require_once($CFG->dirroot . '/lib/moodlelib.php');
  * @copyright  2024 Moodle Pty Ltd
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class calendar_block_api extends ApiBase {
+class CalendarBlockApiEndpoint extends ApiBase {
     
     /**
      * Handle GET request for calendar widget data.
