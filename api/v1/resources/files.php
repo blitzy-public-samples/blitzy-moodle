@@ -327,8 +327,10 @@ class ResourceFilesEndpoint extends ApiBase {
     }
 }
 
-// Instantiate endpoint and execute request
+// Instantiate endpoint and execute request only when not in test mode
 // ApiBase constructor handles JWT authentication automatically
 // execute() method routes to appropriate handle_* method based on HTTP verb
-$endpoint = new ResourceFilesEndpoint();
-$endpoint->execute();
+if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
+    $endpoint = new ResourceFilesEndpoint();
+    $endpoint->execute();
+}
