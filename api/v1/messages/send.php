@@ -260,6 +260,9 @@ class MessageSendEndpoint extends ApiBase {
                     'reason' => 'User is not a member of the conversation or does not have messaging permissions'
                 ]);
             }
+        } catch (ApiException $e) {
+            // Re-throw ApiException to preserve the specific error type
+            throw $e;
         } catch (moodle_exception $e) {
             // Convert Moodle exception to appropriate API exception
             if ($e->errorcode === 'invalidrecord' || strpos($e->getMessage(), 'not found') !== false) {
@@ -275,6 +278,13 @@ class MessageSendEndpoint extends ApiBase {
                     'originalError' => $e->getMessage()
                 ]);
             }
+        } catch (Exception $e) {
+            // Handle any unexpected exceptions
+            throw new ServerException('Unexpected error during conversation permission check: ' . $e->getMessage(), [
+                'conversationid' => $conversationid,
+                'userid' => $user->id,
+                'originalError' => $e->getMessage()
+            ]);
         }
         
         // Step 11: Delegate to existing Moodle function to send the message
@@ -292,6 +302,9 @@ class MessageSendEndpoint extends ApiBase {
                 $textformat
             );
             
+        } catch (ApiException $e) {
+            // Re-throw ApiException to preserve the specific error type
+            throw $e;
         } catch (moodle_exception $e) {
             // Handle message sending failures
             if (strpos($e->getMessage(), 'cannot send') !== false) {
@@ -317,6 +330,13 @@ class MessageSendEndpoint extends ApiBase {
                     'originalError' => $e->getMessage()
                 ]);
             }
+        } catch (Exception $e) {
+            // Handle any unexpected exceptions during message sending
+            throw new ServerException('Unexpected error while sending message: ' . $e->getMessage(), [
+                'conversationid' => $conversationid,
+                'userid' => $user->id,
+                'originalError' => $e->getMessage()
+            ]);
         }
         
         // Step 12: Format the response with message details
