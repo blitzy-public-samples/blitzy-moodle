@@ -440,5 +440,7 @@ class UpdateGradeEndpoint extends ApiBase {
 }
 
 // Instantiate and execute the endpoint
-$endpoint = new UpdateGradeEndpoint();
-$endpoint->execute();
+if (!defined('API_TEST_MODE')) {
+    $endpoint = new UpdateGradeEndpoint();
+    $endpoint->execute();
+}

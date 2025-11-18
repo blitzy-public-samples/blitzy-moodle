@@ -569,5 +569,7 @@ class GradeReportEndpoint extends ApiBase {
 }
 
 // Instantiate and execute the endpoint
-$endpoint = new GradeReportEndpoint();
-$endpoint->execute();
+if (!defined('API_TEST_MODE')) {
+    $endpoint = new GradeReportEndpoint();
+    $endpoint->execute();
+}
