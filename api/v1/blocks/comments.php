@@ -199,6 +199,30 @@ class BlockCommentsEndpoint extends ApiBase {
     }
     
     /**
+     * Handle PUT requests (not supported for comments endpoint).
+     *
+     * Comments cannot be edited via this endpoint. Throws MethodNotAllowedException.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown as PUT is not supported
+     */
+    protected function handle_put() {
+        throw new MethodNotAllowedException('PUT method is not supported for comments endpoint');
+    }
+    
+    /**
+     * Handle DELETE requests (not supported for comments endpoint).
+     *
+     * Comments cannot be deleted via this endpoint. Throws MethodNotAllowedException.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown as DELETE is not supported
+     */
+    protected function handle_delete() {
+        throw new MethodNotAllowedException('DELETE method is not supported for comments endpoint');
+    }
+    
+    /**
      * Handle POST request to add a new comment.
      *
      * Creates a new comment for the specified item using the core_comment\manager
