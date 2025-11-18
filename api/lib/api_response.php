@@ -78,6 +78,52 @@ require_once(__DIR__ . '/api_exception.php');
 class ApiResponse {
     
     /**
+     * Instance properties for deferred sending pattern.
+     * 
+     * These properties allow ApiResponse to be instantiated and returned
+     * from handlers, then sent later by ApiBase::execute().
+     */
+    private $responseData;
+    private $responseStatus;
+    private $isSuccess;
+    
+    /**
+     * Constructor for instance usage pattern.
+     *
+     * Creates an ApiResponse object that can be returned from a handler
+     * and sent later by calling the send() method. This supports the
+     * execution pattern in ApiBase where handlers can return responses.
+     *
+     * @param mixed $data The response data or error information
+     * @param int $status HTTP status code
+     * @param bool $isSuccess True for success responses, false for errors
+     */
+    public function __construct($data, $status = 200, $isSuccess = true) {
+        $this->responseData = $data;
+        $this->responseStatus = $status;
+        $this->isSuccess = $isSuccess;
+    }
+    
+    /**
+     * Send the response (instance method).
+     *
+     * Outputs the JSON response and terminates execution. This method
+     * is called by ApiBase::execute() when a handler returns an
+     * ApiResponse instance.
+     *
+     * @return void Outputs JSON and exits
+     */
+    public function send() {
+        if ($this->isSuccess) {
+            // For success responses, data should be the complete response structure
+            self::json($this->responseData, $this->responseStatus);
+        } else {
+            // For error responses, data contains the error structure
+            self::json($this->responseData, $this->responseStatus);
+        }
+    }
+    
+    /**
      * Send a successful JSON response.
      *
      * Creates a standardized success response envelope with the provided data
