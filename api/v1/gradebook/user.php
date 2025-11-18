@@ -282,5 +282,5 @@ class UserGradebookEndpoint extends ApiBase {
 // Instantiate and handle the request
 if (!defined('API_TEST_MODE')) {
     $endpoint = new UserGradebookEndpoint();
-    $endpoint->handle_request();
+    $endpoint->execute();
 }

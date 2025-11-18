@@ -335,3 +335,7 @@ class WikiShowEndpoint extends ApiBase {
         ]);
     }
 }
+
+// Instantiate and execute the endpoint
+$endpoint = new WikiShowEndpoint();
+$endpoint->execute();

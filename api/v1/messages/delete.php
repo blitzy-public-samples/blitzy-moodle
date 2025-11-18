@@ -433,3 +433,4 @@ class MessageDeleteEndpoint extends ApiBase {
 
 // Initialize and execute the endpoint
 $endpoint = new MessageDeleteEndpoint();
+$endpoint->execute();

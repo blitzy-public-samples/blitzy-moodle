@@ -302,5 +302,5 @@ class CourseGradebookEndpoint extends ApiBase {
 // Instantiate and handle the request
 if (!defined('API_TEST_MODE')) {
     $endpoint = new CourseGradebookEndpoint();
-    $endpoint->handle_request();
+    $endpoint->execute();
 }

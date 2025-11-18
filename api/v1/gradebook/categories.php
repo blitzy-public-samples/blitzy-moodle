@@ -281,5 +281,5 @@ class GradeCategoriesEndpoint extends ApiBase {
 // Instantiate and handle the request
 if (!defined('API_TEST_MODE')) {
     $endpoint = new GradeCategoriesEndpoint();
-    $endpoint->handle_request();
+    $endpoint->execute();
 }
