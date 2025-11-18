@@ -17,388 +17,377 @@
 /**
  * REST API endpoint for creating new quiz attempts.
  *
- * Provides POST /api/v1/quizzes/{id}/attempt endpoint that creates a new quiz
- * attempt for the authenticated user. This endpoint validates all quiz access
- * restrictions (timing, password, number of attempts, etc.) before creating the
- * attempt, ensuring students can only start attempts when permitted.
+ * Implements POST /api/v1/quizzes/{id}/attempt to start a new quiz attempt
+ * with proper validation and initialization. Delegates to existing Moodle
+ * quiz functions without duplicating business logic.
  *
- * Delegates to existing Moodle quiz functions without duplicating business logic:
- * - quiz_create_attempt_object() for attempt creation
- * - quiz_prepare_and_start_new_attempt() to initialize the attempt
- * - quiz_access_manager for access rule validation
- * - require_capability() for permission validation
+ * Key responsibilities:
+ * - JWT authentication via ApiBase
+ * - Extract and validate quiz ID from URL path
+ * - Check mod/quiz:attempt capability
+ * - Validate attempt limits and access restrictions
+ * - Create attempt record and initialize question usage
+ * - Return attempt object with 201 Created status
  *
- * Validates multiple conditions before allowing attempt creation:
- * - User has mod/quiz:attempt capability
- * - Quiz is currently open (within timeopen/timeclose window)
- * - User has not exceeded attempt limits
- * - No active unfinished attempts exist
- * - Password and network restrictions are satisfied
- * - Delay between attempts is satisfied
- * - All other quiz access rules are satisfied
- *
- * Returns newly created attempt with initial state including questions, time
- * started, and navigation data for React quiz interface.
+ * Access restrictions validated:
+ * - Attempt limits (quiz->attempts setting)
+ * - Time windows (quiz open/close times)
+ * - Password requirements
+ * - IP address restrictions
+ * - Unfinished attempt checks
  *
  * @package    api
- * @subpackage quizzes
+ * @subpackage v1
  * @copyright  2024 Moodle Pty Ltd
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-// Load Moodle configuration and quiz libraries
+// Load Moodle configuration and core libraries
 require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->dirroot . '/mod/quiz/locallib.php');
-require_once($CFG->dirroot . '/mod/quiz/accessmanager.php');
+require_once($CFG->libdir . '/questionlib.php');
 
-// Load API base classes
+// Load API base class and exceptions
 require_once(__DIR__ . '/../../lib/api_base.php');
 require_once(__DIR__ . '/../../lib/api_exception.php');
 
+// Use quiz classes
+use mod_quiz\quiz_settings;
+use mod_quiz\quiz_attempt;
+use mod_quiz\access_manager;
+
 /**
- * Quiz Attempt Creation API Endpoint.
+ * Quiz Attempt Creation Endpoint
  *
- * Handles POST requests to /api/v1/quizzes/{id}/attempt for creating new quiz
- * attempts. Validates all access restrictions, creates the attempt record,
- * initializes questions, and returns attempt data for React interface to begin
- * displaying questions.
- *
- * Authentication: Required via JWT token
- * Authorization: User must have mod/quiz:attempt capability
- * HTTP Method: POST only
- *
- * Request Body (optional):
- * - password: Quiz password if required
- * - forcenew: Boolean to force new attempt even if unfinished exists
- *
- * Response includes:
- * - attempt: Created attempt record with ID, state, time started
- * - quiz: Basic quiz information
- * - questions: Question layout and count for navigation
- * - navigation: Available navigation actions
- * - timing: Time limit and deadline information
- *
- * @package    api
- * @subpackage quizzes
- * @copyright  2024 Moodle Pty Ltd
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * Handles POST requests to create new quiz attempts for authenticated users.
+ * Extends ApiBase to leverage JWT authentication, capability checking, and
+ * standardized error handling. Delegates all business logic to existing
+ * Moodle quiz functions.
  */
-class QuizAttemptEndpoint extends ApiBase {
+class QuizAttemptCreateEndpoint extends ApiBase {
     
     /**
-     * Handle GET requests.
+     * Handle POST request to create a new quiz attempt.
      *
-     * This endpoint does not support GET method as attempt creation requires POST.
+     * Workflow:
+     * 1. Extract and validate quiz ID from URL
+     * 2. Load quiz settings and context
+     * 3. Check mod/quiz:attempt capability
+     * 4. Create access manager and check restrictions
+     * 5. Validate attempt limits
+     * 6. Check for unfinished attempts
+     * 7. Create new attempt via quiz_prepare_and_start_new_attempt()
+     * 8. Return attempt object with 201 Created
      *
-     * @return void
-     * @throws MethodNotAllowedException Always thrown as GET is not supported
-     */
-    protected function handle_get() {
-        throw new MethodNotAllowedException(
-            'GET method is not allowed for quiz attempt creation endpoint',
-            [
-                'allowedMethods' => ['POST'],
-                'requestedMethod' => 'GET'
-            ]
-        );
-    }
-    
-    /**
-     * Handle POST request to create new quiz attempt.
-     *
-     * Extracts quiz ID from URL path, validates user has permission to attempt
-     * the quiz, checks all access restrictions (timing, password, attempt limits),
-     * creates new attempt record via existing Moodle functions, initializes
-     * questions, and returns attempt data for React interface.
-     *
-     * URL Pattern: /api/v1/quizzes/{id}/attempt
-     * Example: /api/v1/quizzes/42/attempt
-     *
-     * @return void Outputs JSON response with created attempt information
-     * @throws ValidationException If quiz ID is invalid or access rules violated
-     * @throws NotFoundException If quiz does not exist
-     * @throws ForbiddenException If user lacks attempt capability or access denied
-     * @throws ApiException If attempt creation fails
+     * @return void Outputs JSON response directly
+     * @throws ValidationException If quiz ID is invalid
+     * @throws NotFoundException If quiz doesn't exist
+     * @throws ForbiddenException If user lacks permission or access is denied
+     * @throws ServerException If attempt creation fails
      */
     protected function handle_post() {
-        global $DB, $USER, $PAGE;
+        global $DB, $USER;
         
-        // Validate user is authenticated via JWT token
-        $authenticatedUser = $this->getUser();
+        // Get authenticated user from JWT token
+        $user = $this->getUser();
         
-        // Extract quiz ID from URL path using regex
-        // Pattern matches: /quizzes/{quizid}/attempt
-        if (!preg_match('/\/quizzes\/(\d+)\/attempt$/', $this->requestUri, $matches)) {
-            throw new ValidationException('Invalid URL format', [
-                'expected' => '/api/v1/quizzes/{id}/attempt',
-                'received' => $this->requestUri,
-                'reason' => 'Quiz ID must be specified in URL path'
-            ]);
-        }
+        // Set global USER for Moodle functions
+        $USER = $user;
         
-        $quizid = (int)$matches[1];
+        // Extract quiz ID from URL path (/api/v1/quizzes/{id}/attempt)
+        $quizid = $this->extractQuizIdFromUrl();
         
         // Validate quiz ID is positive integer
-        if ($quizid <= 0) {
-            throw new ValidationException('Invalid quiz ID', [
+        if (!$quizid || $quizid <= 0) {
+            throw new ValidationException('Invalid or missing quiz ID', [
                 'quizId' => $quizid,
                 'reason' => 'Quiz ID must be a positive integer'
             ]);
         }
         
-        // Parse request body for optional parameters
-        $requestData = $this->parseRequestBody();
-        $password = isset($requestData['password']) ? $requestData['password'] : null;
-        $forcenew = isset($requestData['forcenew']) ? (bool)$requestData['forcenew'] : false;
-        
-        // Retrieve quiz record from database
-        $quiz = $DB->get_record('quiz', ['id' => $quizid]);
-        
-        if (!$quiz) {
-            throw new NotFoundException('Quiz not found', [
+        try {
+            // Create quiz settings object (validates quiz exists)
+            $quizobj = quiz_settings::create($quizid, $user->id);
+            
+        } catch (moodle_exception $e) {
+            // Quiz not found or user doesn't have basic access
+            throw new NotFoundException("Quiz not found: {$e->getMessage()}", [
                 'quizId' => $quizid,
-                'reason' => 'No quiz exists with this ID'
+                'errorcode' => $e->errorcode ?? 'quiznotfound'
             ]);
         }
         
-        // Get course module for context
-        $cm = get_coursemodule_from_instance('quiz', $quiz->id, $quiz->course);
-        
-        if (!$cm) {
-            throw new NotFoundException('Course module not found', [
-                'quizId' => $quizid,
-                'reason' => 'Quiz course module could not be loaded'
-            ]);
-        }
-        
-        // Get course record
-        $course = $DB->get_record('course', ['id' => $quiz->course], '*', MUST_EXIST);
-        
-        // Get context for capability checking
-        $context = context_module::instance($cm->id);
+        // Get quiz and context
+        $quiz = $quizobj->get_quiz();
+        $context = $quizobj->get_context();
         
         // Check if user has permission to attempt this quiz
         try {
-            require_capability('mod/quiz:attempt', $context);
-        } catch (moodle_exception $e) {
+            $this->checkCapability('mod/quiz:attempt', $context);
+            
+        } catch (ForbiddenException $e) {
+            // Re-throw with quiz-specific context
             throw new ForbiddenException('You do not have permission to attempt this quiz', [
                 'quizId' => $quizid,
                 'capability' => 'mod/quiz:attempt',
-                'reason' => $e->getMessage()
+                'userId' => $user->id,
+                'contextId' => $context->id
             ]);
         }
         
-        // Set up page context for Moodle functions
-        $PAGE->set_context($context);
-        
-        // Create quiz object for access manager
-        try {
-            $quizobj = quiz::create($quiz->id, $USER->id);
-        } catch (moodle_exception $e) {
-            throw new ApiException('Failed to load quiz', [
+        // Check if quiz has questions
+        if (!$quizobj->has_questions()) {
+            throw new ValidationException('Cannot start quiz with no questions', [
                 'quizId' => $quizid,
-                'reason' => $e->getMessage()
-            ], 500);
-        }
-        
-        // Create access manager to check quiz access rules
-        $accessmanager = $quizobj->get_access_manager(time());
-        
-        // Check if password is required and validate it
-        if ($quiz->password && $password !== $quiz->password) {
-            $reasons = $accessmanager->prevent_access();
-            throw new ForbiddenException('Quiz password required or incorrect', [
-                'quizId' => $quizid,
-                'requiresPassword' => true,
-                'reasons' => $reasons
+                'reason' => 'Quiz must have at least one question before attempts can be started'
             ]);
         }
         
-        // Check all access rules
-        $accesserrors = $accessmanager->prevent_access();
+        // Create access manager to check restrictions
+        $timenow = time();
         
-        if ($accesserrors) {
-            throw new ForbiddenException('Cannot start quiz attempt', [
+        // Check if user can ignore time limits (for teachers/admins)
+        $canignorelimits = has_capability('mod/quiz:ignoretimelimits', $context, $user->id);
+        
+        // Get access manager
+        $accessmanager = $quizobj->get_access_manager($timenow);
+        
+        // Get all existing attempts for this user
+        $attempts = quiz_get_user_attempts($quizid, $user->id, 'all', true);
+        $lastattempt = end($attempts);
+        
+        // Reset array pointer
+        if ($lastattempt !== false) {
+            reset($attempts);
+        } else {
+            $lastattempt = false;
+        }
+        
+        // Check if user has an unfinished attempt
+        if ($lastattempt && in_array($lastattempt->state, [
+            quiz_attempt::NOT_STARTED,
+            quiz_attempt::IN_PROGRESS,
+            quiz_attempt::OVERDUE
+        ])) {
+            // User has an unfinished attempt - must complete or abandon it first
+            throw new ValidationException('You have an unfinished attempt that must be completed first', [
                 'quizId' => $quizid,
-                'reasons' => $accesserrors,
-                'details' => 'Quiz access restrictions prevent you from starting an attempt'
+                'attemptId' => $lastattempt->id,
+                'attemptState' => $lastattempt->state,
+                'reason' => 'Complete or abandon the current attempt before starting a new one'
             ]);
         }
         
-        // Check for unfinished attempts
-        $attempts = quiz_get_user_attempts($quiz->id, $USER->id, 'unfinished', true);
-        
-        if (!empty($attempts) && !$forcenew) {
-            $unfinished = reset($attempts);
-            throw new ValidationException('Unfinished attempt exists', [
-                'quizId' => $quizid,
-                'attemptId' => $unfinished->id,
-                'reason' => 'You have an unfinished attempt. Please continue or abandon it before starting a new one.',
-                'unfinishedAttemptId' => $unfinished->id
-            ]);
+        // Filter out preview attempts to get real attempt count
+        $realattempts = [];
+        foreach ($attempts as $attempt) {
+            if (!$attempt->preview) {
+                $realattempts[] = $attempt;
+            }
         }
         
-        // Check attempt number
-        $attempts = quiz_get_user_attempts($quiz->id, $USER->id, 'all', true);
-        $numattempts = count($attempts);
-        
-        // Validate attempt limit
-        if ($quiz->attempts > 0 && $numattempts >= $quiz->attempts) {
-            throw new ForbiddenException('Attempt limit reached', [
-                'quizId' => $quizid,
-                'attemptsAllowed' => $quiz->attempts,
-                'attemptsMade' => $numattempts,
-                'reason' => 'You have used all your allowed attempts for this quiz'
-            ]);
-        }
-        
-        // Check timing restrictions
-        $now = time();
-        if ($quiz->timeopen && $now < $quiz->timeopen) {
-            throw new ForbiddenException('Quiz not yet open', [
-                'quizId' => $quizid,
-                'opensAt' => $quiz->timeopen,
-                'currentTime' => $now,
-                'reason' => 'This quiz is not yet open'
-            ]);
-        }
-        
-        if ($quiz->timeclose && $now >= $quiz->timeclose) {
-            throw new ForbiddenException('Quiz is closed', [
-                'quizId' => $quizid,
-                'closedAt' => $quiz->timeclose,
-                'currentTime' => $now,
-                'reason' => 'This quiz is closed'
-            ]);
-        }
-        
-        // Check delay between attempts
-        if ($numattempts > 0 && ($quiz->delay1 || $quiz->delay2)) {
-            $lastattempt = end($attempts);
-            $nextstarttime = $lastattempt->timefinish;
-            
-            if ($numattempts == 1 && $quiz->delay1) {
-                $nextstarttime += $quiz->delay1;
-            } else if ($numattempts > 1 && $quiz->delay2) {
-                $nextstarttime += $quiz->delay2;
+        // Determine next attempt number
+        if ($lastattempt && !$lastattempt->preview) {
+            $attemptnumber = $lastattempt->attempt + 1;
+        } else {
+            // Find the last non-preview attempt
+            $lastreal = false;
+            foreach ($realattempts as $attempt) {
+                if (!$attempt->preview) {
+                    $lastreal = $attempt;
+                }
             }
             
-            if ($now < $nextstarttime) {
-                throw new ForbiddenException('Must wait before next attempt', [
+            if ($lastreal) {
+                $attemptnumber = $lastreal->attempt + 1;
+                $lastattempt = $lastreal;
+            } else {
+                $attemptnumber = 1;
+                $lastattempt = false;
+            }
+        }
+        
+        // Check access restrictions using access manager
+        $messages = $accessmanager->prevent_access();
+        
+        if ($messages) {
+            // Access is denied - collect all restriction messages
+            $reasons = [];
+            foreach ($messages as $message) {
+                $reasons[] = $message;
+            }
+            
+            throw new ForbiddenException('Access to this quiz is restricted', [
+                'quizId' => $quizid,
+                'reasons' => $reasons,
+                'timeNow' => $timenow,
+                'quizOpen' => $quiz->timeopen ?? null,
+                'quizClose' => $quiz->timeclose ?? null
+            ]);
+        }
+        
+        // Check if user can start a new attempt
+        $messages = $accessmanager->prevent_new_attempt(count($realattempts), $lastattempt);
+        
+        if ($messages) {
+            // Cannot start new attempt - collect all restriction messages
+            $reasons = [];
+            foreach ($messages as $message) {
+                $reasons[] = $message;
+            }
+            
+            // Determine if this is an attempt limit issue
+            $isAttemptLimit = false;
+            if ($quiz->attempts > 0 && count($realattempts) >= $quiz->attempts) {
+                $isAttemptLimit = true;
+            }
+            
+            throw new ForbiddenException(
+                $isAttemptLimit 
+                    ? 'You have reached the maximum number of attempts for this quiz'
+                    : 'Cannot start a new quiz attempt',
+                [
                     'quizId' => $quizid,
-                    'canAttemptAt' => $nextstarttime,
-                    'currentTime' => $now,
-                    'waitSeconds' => $nextstarttime - $now,
-                    'reason' => 'You must wait before starting another attempt'
-                ]);
-            }
+                    'reasons' => $reasons,
+                    'attemptCount' => count($realattempts),
+                    'attemptLimit' => $quiz->attempts > 0 ? $quiz->attempts : 'unlimited',
+                    'isAttemptLimitReached' => $isAttemptLimit
+                ]
+            );
         }
         
-        // All validations passed - create the attempt
+        // All validations passed - create the new attempt
         try {
-            // Determine attempt number
-            $attemptnumber = $numattempts + 1;
-            
-            // Create attempt using existing Moodle function
-            $attempt = quiz_prepare_and_start_new_attempt($quizobj, $attemptnumber, null);
-            
-            // Get the created attempt record
-            $attemptobj = quiz_create_attempt_handling_errors($attempt->id, $cm->id);
+            // Use quiz_prepare_and_start_new_attempt to handle all the complexity
+            // This function will:
+            // - Delete any previous preview attempts
+            // - Create question usage object
+            // - Create attempt record
+            // - Initialize questions and question sequence
+            // - Apply quiz settings (shuffle, etc.)
+            // - Save attempt and question states to database
+            $attempt = quiz_prepare_and_start_new_attempt(
+                $quizobj,
+                $attemptnumber,
+                $lastattempt,
+                false,  // Not an offline attempt
+                [],     // No forced random questions (for API, use default random selection)
+                [],     // No forced variants (for API, use default variant selection)
+                $user->id
+            );
             
         } catch (moodle_exception $e) {
-            throw new ApiException('Failed to create quiz attempt', [
+            // Attempt creation failed - wrap in ServerException
+            throw new ServerException("Failed to create quiz attempt: {$e->getMessage()}", [
                 'quizId' => $quizid,
-                'reason' => $e->getMessage(),
-                'details' => 'An error occurred while creating the quiz attempt'
-            ], 500);
+                'userId' => $user->id,
+                'attemptNumber' => $attemptnumber,
+                'errorcode' => $e->errorcode ?? 'attemptcreatefailed',
+                'originalError' => $e->getMessage()
+            ]);
+            
+        } catch (Exception $e) {
+            // Unexpected error during attempt creation
+            throw new ServerException("Unexpected error creating quiz attempt: {$e->getMessage()}", [
+                'quizId' => $quizid,
+                'userId' => $user->id,
+                'attemptNumber' => $attemptnumber,
+                'originalError' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
         }
         
-        // Build response data
-        $attemptData = [
-            'attempt' => [
-                'id' => $attempt->id,
-                'quizId' => $quiz->id,
-                'userId' => $USER->id,
-                'attemptNumber' => $attemptnumber,
-                'state' => $attempt->state,
-                'timeStart' => $attempt->timestart,
-                'timeFinish' => $attempt->timefinish,
-                'currentPage' => $attemptobj->get_currentpage(),
-                'preview' => $attemptobj->is_preview(),
-            ],
-            'quiz' => [
-                'id' => $quiz->id,
-                'name' => format_string($quiz->name),
-                'timeLimit' => $quiz->timelimit ? (int)$quiz->timelimit : null,
-                'graceperiod' => $quiz->graceperiod ? (int)$quiz->graceperiod : null,
-            ],
-            'timing' => [
-                'hasTimeLimit' => (bool)$quiz->timelimit,
-                'timeLimit' => $quiz->timelimit ? (int)$quiz->timelimit : null,
-                'deadline' => null,
-            ],
-            'questions' => [
-                'count' => $attemptobj->get_num_questions_per_page(),
-                'totalCount' => $attemptobj->get_num_questions_per_attempt(),
-            ],
-            'navigation' => [
-                'canNavigateFreely' => $quiz->navmethod === QUIZ_NAVMETHOD_FREE,
-                'questionsPerPage' => (int)$quiz->questionsperpage,
-            ],
+        // Prepare response data
+        $responseData = [
+            'attemptId' => $attempt->id,
+            'quizId' => $attempt->quiz,
+            'userId' => $attempt->userid,
+            'attemptNumber' => $attempt->attempt,
+            'timeStart' => $attempt->timestart,
+            'timeModified' => $attempt->timemodified,
+            'currentPage' => $attempt->currentpage,
+            'state' => $attempt->state,
+            'preview' => (bool)$attempt->preview,
+            'layout' => $attempt->layout,
+            'uniqueId' => $attempt->uniqueid
         ];
         
-        // Calculate deadline if time limit exists
-        if ($quiz->timelimit) {
-            $deadline = $attempt->timestart + $quiz->timelimit;
-            if ($quiz->timeclose) {
-                $deadline = min($deadline, $quiz->timeclose);
-            }
-            $attemptData['timing']['deadline'] = $deadline;
-        } else if ($quiz->timeclose) {
-            $attemptData['timing']['deadline'] = $quiz->timeclose;
+        // Add time limit information if applicable
+        if ($quiz->timelimit > 0) {
+            $responseData['timeLimit'] = $quiz->timelimit;
+            $responseData['timeEnd'] = $attempt->timestart + $quiz->timelimit;
         }
         
-        // Return success response with attempt data
-        $this->success($attemptData, 201);
+        // Add metadata about the quiz
+        $responseData['quizInfo'] = [
+            'name' => $quiz->name,
+            'intro' => format_string($quiz->intro),
+            'timeopen' => $quiz->timeopen ?? null,
+            'timeclose' => $quiz->timeclose ?? null,
+            'gradeMethod' => $quiz->grademethod,
+            'questionsPerPage' => $quiz->questionsperpage,
+            'navMethod' => $quiz->navmethod,
+            'preferredBehaviour' => $quiz->preferredbehaviour
+        ];
+        
+        // Return 201 Created with attempt data
+        $this->success($responseData, 201);
     }
     
     /**
-     * Handle PUT requests.
+     * Extract quiz ID from URL path.
      *
-     * This endpoint does not support PUT method.
+     * Parses the request URI to extract the quiz ID from the path pattern
+     * /api/v1/quizzes/{id}/attempt. Uses regex to match the numeric ID.
      *
-     * @return void
-     * @throws MethodNotAllowedException Always thrown as PUT is not supported
+     * @return int|null Quiz ID if found, null otherwise
+     */
+    private function extractQuizIdFromUrl() {
+        // Match pattern: /api/v1/quizzes/{id}/attempt
+        if (preg_match('#/quizzes/(\d+)/attempt#', $this->requestUri, $matches)) {
+            return intval($matches[1]);
+        }
+        
+        return null;
+    }
+    
+    /**
+     * GET method not supported for attempt creation.
+     *
+     * @throws MethodNotAllowedException Always
+     */
+    protected function handle_get() {
+        throw new MethodNotAllowedException('GET method not supported. Use POST to create an attempt.', [
+            'allowedMethods' => ['POST']
+        ]);
+    }
+    
+    /**
+     * PUT method not supported for attempt creation.
+     *
+     * @throws MethodNotAllowedException Always
      */
     protected function handle_put() {
-        throw new MethodNotAllowedException(
-            'PUT method is not allowed for quiz attempt creation endpoint',
-            [
-                'allowedMethods' => ['POST'],
-                'requestedMethod' => 'PUT'
-            ]
-        );
+        throw new MethodNotAllowedException('PUT method not supported. Use POST to create an attempt.', [
+            'allowedMethods' => ['POST']
+        ]);
     }
     
     /**
-     * Handle DELETE requests.
+     * DELETE method not supported for attempt creation.
      *
-     * This endpoint does not support DELETE method.
-     *
-     * @return void
-     * @throws MethodNotAllowedException Always thrown as DELETE is not supported
+     * @throws MethodNotAllowedException Always
      */
     protected function handle_delete() {
-        throw new MethodNotAllowedException(
-            'DELETE method is not allowed for quiz attempt creation endpoint',
-            [
-                'allowedMethods' => ['POST'],
-                'requestedMethod' => 'DELETE'
-            ]
-        );
+        throw new MethodNotAllowedException('DELETE method not supported for attempt creation.', [
+            'allowedMethods' => ['POST']
+        ]);
     }
 }
 
-// Instantiate and execute the endpoint
-$endpoint = new QuizAttemptEndpoint();
-$endpoint->execute();
+// Execute the endpoint if called directly
+if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
+    $endpoint = new QuizAttemptCreateEndpoint();
+    $endpoint->execute();
+}
