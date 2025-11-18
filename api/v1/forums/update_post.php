@@ -16,6 +16,11 @@ require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->dirroot . '/mod/forum/lib.php');
 require_once($CFG->dirroot . '/lib/accesslib.php');
 
+// Include forum entity and manager classes for proper permission checking
+require_once($CFG->dirroot . '/mod/forum/classes/local/entities/discussion.php');
+require_once($CFG->dirroot . '/mod/forum/classes/local/entities/post.php');
+require_once($CFG->dirroot . '/mod/forum/classes/local/managers/capability.php');
+
 // Include API utilities
 require_once(__DIR__ . '/../../lib/api_base.php');
 require_once(__DIR__ . '/../../lib/api_exception.php');
@@ -86,25 +91,25 @@ class ForumUpdatePostEndpoint extends ApiBase {
             throw new ForbiddenException('User must be authenticated');
         }
 
-        // Check edit permissions
-        $caneditanypost = has_capability('mod/forum:editanypost', $context, $user);
+        // Use Moodle's capability manager for proper permission checking
+        // This handles: own post, edit time window, mail status, forum type special cases
+        $vaultfactory = \mod_forum\local\container::get_vault_factory();
+        $entityfactory = \mod_forum\local\container::get_entity_factory();
+        $managerfactory = \mod_forum\local\container::get_manager_factory();
         
-        // Check if user owns the post
-        $ownpost = ($post->userid == $user->id);
+        // Create forum entity
+        $forumentity = $entityfactory->get_forum_from_stdClass($forum, $context, $cm, null);
         
-        if (!$caneditanypost) {
-            // If user doesn't have editanypost capability, they must own the post
-            if (!$ownpost) {
-                throw new ForbiddenException('You can only edit your own posts');
-            }
-
-            // Check time window for editing own posts
-            if (isset($CFG->maxeditingtime) && $CFG->maxeditingtime > 0) {
-                $editcutoff = $post->created + $CFG->maxeditingtime;
-                if (time() > $editcutoff) {
-                    throw new ForbiddenException('The editing time limit has expired for this post');
-                }
-            }
+        // Create discussion and post entities
+        $discussionentity = $entityfactory->get_discussion_from_stdClass($discussion);
+        $postentity = $entityfactory->get_post_from_stdClass($post);
+        
+        // Get capability manager
+        $capabilitymanager = $managerfactory->get_capability_manager($forumentity);
+        
+        // Check if user can edit this post using Moodle's built-in logic
+        if (!$capabilitymanager->can_edit_post($user, $discussionentity, $postentity)) {
+            throw new ForbiddenException('You do not have permission to edit this post');
         }
 
         // Get JSON body with updated fields
@@ -221,6 +226,11 @@ class ForumUpdatePostEndpoint extends ApiBase {
     }
 }
 
-// Instantiate and run the endpoint
+// Instantiate and execute the endpoint
+// This runs the request through ApiBase::execute() which handles:
+// - JWT authentication
+// - HTTP method routing to handle_put()
+// - Exception catching and error response formatting
+// - CORS header management
 $endpoint = new ForumUpdatePostEndpoint();
-$endpoint->run();
+$endpoint->execute();
