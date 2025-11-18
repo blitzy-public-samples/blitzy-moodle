@@ -85,11 +85,13 @@
 require_once(__DIR__ . '/../../lib/api_base.php');
 require_once(__DIR__ . '/../../lib/api_exception.php');
 
-// Load Moodle configuration and core libraries
-require_once(__DIR__ . '/../../../config.php');
-require_once($CFG->dirroot . '/mod/resource/lib.php');
-require_once($CFG->dirroot . '/mod/resource/locallib.php');
-require_once($CFG->libdir . '/filelib.php');
+// Load Moodle configuration and core libraries (skip in test mode)
+if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
+    require_once(__DIR__ . '/../../../config.php');
+    require_once($CFG->dirroot . '/mod/resource/lib.php');
+    require_once($CFG->dirroot . '/mod/resource/locallib.php');
+    require_once($CFG->libdir . '/filelib.php');
+}
 
 /**
  * Resource show endpoint class.
