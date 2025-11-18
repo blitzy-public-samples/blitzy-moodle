@@ -347,13 +347,10 @@ class MessageDeleteEndpoint extends ApiBase {
         ];
 
         // Return detailed results
-        return jsonResponse([
-            'success' => true,
-            'data' => [
-                'deleted' => $deleted,
-                'failed' => $failed,
-                'summary' => $summary
-            ]
+        return $this->success([
+            'deleted' => $deleted,
+            'failed' => $failed,
+            'summary' => $summary
         ]);
     }
 
