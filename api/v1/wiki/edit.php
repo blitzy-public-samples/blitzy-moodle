@@ -282,6 +282,36 @@ class WikiEditPageEndpoint extends ApiBase {
         // Step 11: Return success response
         $this->success($responseData, 200);
     }
+    
+    /**
+     * Handle GET request - not allowed for wiki page edit endpoint.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always throws exception
+     */
+    protected function handle_get() {
+        throw new MethodNotAllowedException('GET method not allowed for wiki page edit endpoint');
+    }
+    
+    /**
+     * Handle POST request - not allowed for wiki page edit endpoint.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always throws exception
+     */
+    protected function handle_post() {
+        throw new MethodNotAllowedException('POST method not allowed for wiki page edit endpoint');
+    }
+    
+    /**
+     * Handle DELETE request - not allowed for wiki page edit endpoint.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always throws exception
+     */
+    protected function handle_delete() {
+        throw new MethodNotAllowedException('DELETE method not allowed for wiki page edit endpoint');
+    }
 }
 
 // Initialize and execute endpoint

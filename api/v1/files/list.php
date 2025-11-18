@@ -242,6 +242,36 @@ class FilesListEndpoint extends ApiBase {
         // Return success response with pagination metadata
         $this->success($responseData, ['pagination' => $paginationMeta]);
     }
+    
+    /**
+     * Handle POST request - not allowed for file listing endpoint.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always throws exception
+     */
+    protected function handle_post() {
+        throw new MethodNotAllowedException('POST method not allowed for file listing endpoint');
+    }
+    
+    /**
+     * Handle PUT request - not allowed for file listing endpoint.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always throws exception
+     */
+    protected function handle_put() {
+        throw new MethodNotAllowedException('PUT method not allowed for file listing endpoint');
+    }
+    
+    /**
+     * Handle DELETE request - not allowed for file listing endpoint.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always throws exception
+     */
+    protected function handle_delete() {
+        throw new MethodNotAllowedException('DELETE method not allowed for file listing endpoint');
+    }
 }
 
 // Execute the endpoint

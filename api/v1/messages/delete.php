@@ -399,6 +399,36 @@ class MessageDeleteEndpoint extends ApiBase {
             ]
         );
     }
+    
+    /**
+     * Handle GET request - not supported for this endpoint.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown as GET is not supported
+     */
+    protected function handle_get() {
+        throw new MethodNotAllowedException('GET method not allowed for delete endpoint. Use DELETE to remove messages.');
+    }
+    
+    /**
+     * Handle POST request - not supported for this endpoint.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown as POST is not supported
+     */
+    protected function handle_post() {
+        throw new MethodNotAllowedException('POST method not allowed for delete endpoint. Use DELETE to remove messages.');
+    }
+    
+    /**
+     * Handle PUT request - not supported for this endpoint.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown as PUT is not supported
+     */
+    protected function handle_put() {
+        throw new MethodNotAllowedException('PUT method not allowed for delete endpoint. Use DELETE to remove messages.');
+    }
 }
 
 // Initialize and execute the endpoint

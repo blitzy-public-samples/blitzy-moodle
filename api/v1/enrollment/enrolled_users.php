@@ -321,6 +321,36 @@ class EnrolledUsersEndpoint extends ApiBase {
             throw new ServerException('Unexpected error: ' . $e->getMessage());
         }
     }
+    
+    /**
+     * Handle POST request - not allowed for enrolled users endpoint.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always throws exception
+     */
+    protected function handle_post() {
+        throw new MethodNotAllowedException('POST method not allowed for enrolled users endpoint');
+    }
+    
+    /**
+     * Handle PUT request - not allowed for enrolled users endpoint.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always throws exception
+     */
+    protected function handle_put() {
+        throw new MethodNotAllowedException('PUT method not allowed for enrolled users endpoint');
+    }
+    
+    /**
+     * Handle DELETE request - not allowed for enrolled users endpoint.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always throws exception
+     */
+    protected function handle_delete() {
+        throw new MethodNotAllowedException('DELETE method not allowed for enrolled users endpoint');
+    }
 }
 
 // ============================================================================

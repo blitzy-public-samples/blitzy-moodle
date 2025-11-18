@@ -73,7 +73,7 @@ class MessageMarkReadEndpoint extends ApiBase {
      * @throws ValidationException If message ID is invalid
      * @throws ServerException If messaging API call fails
      */
-    public function handle_put() {
+    protected function handle_put() {
         global $CFG, $DB, $USER;
         
         // Get authenticated user from JWT token (validated by ApiBase constructor)
@@ -409,6 +409,36 @@ class MessageMarkReadEndpoint extends ApiBase {
             // This ensures the mark read operation succeeds even if count retrieval fails
             return 0;
         }
+    }
+    
+    /**
+     * Handle GET request - not supported for this endpoint.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown as GET is not supported
+     */
+    protected function handle_get() {
+        throw new MethodNotAllowedException('GET method not allowed for mark_read endpoint. Use PUT to mark messages as read.');
+    }
+    
+    /**
+     * Handle POST request - not supported for this endpoint.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown as POST is not supported
+     */
+    protected function handle_post() {
+        throw new MethodNotAllowedException('POST method not allowed for mark_read endpoint. Use PUT to mark messages as read.');
+    }
+    
+    /**
+     * Handle DELETE request - not supported for this endpoint.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown as DELETE is not supported
+     */
+    protected function handle_delete() {
+        throw new MethodNotAllowedException('DELETE method not allowed for mark_read endpoint. Use PUT to mark messages as read.');
     }
 }
 

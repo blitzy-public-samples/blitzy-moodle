@@ -501,6 +501,36 @@ class FileThumbnailEndpoint extends ApiBase {
                 ]);
         }
     }
+    
+    /**
+     * Handle POST request - not allowed for thumbnail endpoint.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always throws exception
+     */
+    protected function handle_post() {
+        throw new MethodNotAllowedException('POST method not allowed for thumbnail endpoint');
+    }
+    
+    /**
+     * Handle PUT request - not allowed for thumbnail endpoint.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always throws exception
+     */
+    protected function handle_put() {
+        throw new MethodNotAllowedException('PUT method not allowed for thumbnail endpoint');
+    }
+    
+    /**
+     * Handle DELETE request - not allowed for thumbnail endpoint.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always throws exception
+     */
+    protected function handle_delete() {
+        throw new MethodNotAllowedException('DELETE method not allowed for thumbnail endpoint');
+    }
 }
 
 // Execute the endpoint

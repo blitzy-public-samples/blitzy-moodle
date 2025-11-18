@@ -294,6 +294,36 @@ class WikiCreatePageEndpoint extends ApiBase {
         // Return success response with 201 Created status
         $this->success($responseData, 201);
     }
+    
+    /**
+     * Handle GET request - not allowed for wiki page creation endpoint.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always throws exception
+     */
+    protected function handle_get() {
+        throw new MethodNotAllowedException('GET method not allowed for wiki page creation endpoint');
+    }
+    
+    /**
+     * Handle PUT request - not allowed for wiki page creation endpoint.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always throws exception
+     */
+    protected function handle_put() {
+        throw new MethodNotAllowedException('PUT method not allowed for wiki page creation endpoint');
+    }
+    
+    /**
+     * Handle DELETE request - not allowed for wiki page creation endpoint.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always throws exception
+     */
+    protected function handle_delete() {
+        throw new MethodNotAllowedException('DELETE method not allowed for wiki page creation endpoint');
+    }
 }
 
 // Instantiate and execute the endpoint

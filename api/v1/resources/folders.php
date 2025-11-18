@@ -292,6 +292,36 @@ class FolderResourceApi extends ApiBase {
             'url' => $downloadurl->out(false),
         ];
     }
+    
+    /**
+     * Handle POST request - not allowed for folder resource endpoint.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always throws exception
+     */
+    protected function handle_post() {
+        throw new MethodNotAllowedException('POST method not allowed for folder resource endpoint');
+    }
+    
+    /**
+     * Handle PUT request - not allowed for folder resource endpoint.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always throws exception
+     */
+    protected function handle_put() {
+        throw new MethodNotAllowedException('PUT method not allowed for folder resource endpoint');
+    }
+    
+    /**
+     * Handle DELETE request - not allowed for folder resource endpoint.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always throws exception
+     */
+    protected function handle_delete() {
+        throw new MethodNotAllowedException('DELETE method not allowed for folder resource endpoint');
+    }
 }
 
 // Instantiate and execute the API endpoint

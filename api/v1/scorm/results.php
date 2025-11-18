@@ -393,6 +393,36 @@ class ScormResultsEndpoint extends ApiBase {
         // Return success response with attempt results
         $this->success($responsedata);
     }
+    
+    /**
+     * Handle POST request - not allowed for SCORM results endpoint.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always throws exception
+     */
+    protected function handle_post() {
+        throw new MethodNotAllowedException('POST method not allowed for SCORM results endpoint');
+    }
+    
+    /**
+     * Handle PUT request - not allowed for SCORM results endpoint.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always throws exception
+     */
+    protected function handle_put() {
+        throw new MethodNotAllowedException('PUT method not allowed for SCORM results endpoint');
+    }
+    
+    /**
+     * Handle DELETE request - not allowed for SCORM results endpoint.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always throws exception
+     */
+    protected function handle_delete() {
+        throw new MethodNotAllowedException('DELETE method not allowed for SCORM results endpoint');
+    }
 }
 
 // Execute the endpoint

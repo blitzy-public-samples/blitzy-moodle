@@ -487,6 +487,36 @@ class AdminSettingsIndexEndpoint extends ApiBase {
         // No options available for this setting type
         return null;
     }
+    
+    /**
+     * Handle POST request - not allowed for admin settings retrieval endpoint.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always throws exception
+     */
+    protected function handle_post() {
+        throw new MethodNotAllowedException('POST method not allowed for admin settings retrieval endpoint');
+    }
+    
+    /**
+     * Handle PUT request - not allowed for admin settings retrieval endpoint.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always throws exception
+     */
+    protected function handle_put() {
+        throw new MethodNotAllowedException('PUT method not allowed for admin settings retrieval endpoint');
+    }
+    
+    /**
+     * Handle DELETE request - not allowed for admin settings retrieval endpoint.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always throws exception
+     */
+    protected function handle_delete() {
+        throw new MethodNotAllowedException('DELETE method not allowed for admin settings retrieval endpoint');
+    }
 }
 
 // Instantiate endpoint and execute request
