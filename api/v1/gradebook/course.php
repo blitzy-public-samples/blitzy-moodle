@@ -149,13 +149,17 @@ class CourseGradebookEndpoint extends ApiBase {
         // Convert to integer (defensive programming)
         $courseid = (int)$courseid;
         
-        // Verify course exists in database
-        $course = $DB->get_record('course', ['id' => $courseid], '*', IGNORE_MISSING);
-        
-        if (!$course) {
+        // Verify course exists using existing Moodle function
+        // get_course() throws moodle_exception if course doesn't exist (MUST_EXIST)
+        // This is the proper Moodle way to validate and retrieve courses
+        try {
+            $course = get_course($courseid);
+        } catch (moodle_exception $e) {
+            // Convert Moodle exception to API NotFoundException for 404 response
             throw new NotFoundException('Course not found', [
                 'courseid' => $courseid,
-                'reason' => 'No course exists with this ID'
+                'reason' => 'No course exists with this ID',
+                'errorcode' => $e->errorcode
             ]);
         }
         
