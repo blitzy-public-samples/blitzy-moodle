@@ -17,21 +17,26 @@
 /**
  * Gradebook Export API Endpoint
  *
- * GET /api/v1/gradebook/export - Export gradebook data for a course
+ * REST API endpoint for exporting gradebook data in JSON format including all selected
+ * grade items, student grades, feedback, and grade display formats. Wraps grade_export
+ * class functionality and grade_item::fetch_all() from public/grade/export/lib.php to
+ * return structured gradebook data suitable for export to CSV, Excel, or other formats
+ * by client. Enforces moodle/grade:export capability before exposing data.
  *
- * This endpoint provides access to export gradebook data in various formats.
- * It returns the export data as JSON which can be further processed by the client
- * or downloaded as a file.
+ * GET /api/v1/gradebook/export
  *
  * Required Parameters:
- * - courseid: The ID of the course
+ * - courseid: The ID of the course (integer)
  *
  * Optional Parameters:
- * - format: Export format (json, csv) - default: json
- * - userids: Comma-separated list of user IDs to export (default: all enrolled users)
- * - itemids: Comma-separated list of grade item IDs to export (default: all items)
- * - includehidden: Include hidden items (default: false)
- * - includefeedback: Include feedback text (default: false)
+ * - groupid: Group ID to filter users (default: 0 for all groups)
+ * - export_feedback: Include feedback text (default: false, values: true/false)
+ * - export_letters: Include letter grades (default: false, values: true/false)
+ * - displaytype: Grade display format (default: GRADE_DISPLAY_TYPE_REAL)
+ *                Allowed values: GRADE_DISPLAY_TYPE_REAL, GRADE_DISPLAY_TYPE_PERCENTAGE,
+ *                GRADE_DISPLAY_TYPE_LETTER, GRADE_DISPLAY_TYPE_LETTER_REAL,
+ *                GRADE_DISPLAY_TYPE_LETTER_PERCENTAGE
+ * - itemids: Comma-separated list of grade item IDs to include (default: all items)
  *
  * Required Capability: moodle/grade:export
  *
@@ -44,28 +49,42 @@
  *       "fullname": "Course Name",
  *       "shortname": "COURSE101"
  *     },
- *     "format": "json",
- *     "export_time": 1234567890,
  *     "columns": [
- *       {"key": "firstname", "label": "First Name"},
- *       {"key": "lastname", "label": "Last Name"},
- *       {"key": "email", "label": "Email"},
- *       {"key": "item_10", "label": "Assignment 1"}
+ *       {"key": "firstname", "name": "First Name"},
+ *       {"key": "lastname", "name": "Last Name"},
+ *       {"key": "email", "name": "Email"},
+ *       {"key": "grade_10", "name": "Assignment 1"}
  *     ],
  *     "rows": [
  *       {
+ *         "userid": 123,
  *         "firstname": "John",
  *         "lastname": "Doe",
  *         "email": "john@example.com",
- *         "item_10": "85.50",
- *         "item_10_feedback": "Good work"
+ *         "grades": [
+ *           {
+ *             "itemid": 10,
+ *             "itemname": "Assignment 1",
+ *             "grade": "85.50",
+ *             "feedback": "Good work",
+ *             "feedbackformat": 1
+ *           }
+ *         ]
  *       }
  *     ],
- *     "csv": "First Name,Last Name,Email,Assignment 1\nJohn,Doe,john@example.com,85.50"
+ *     "export_metadata": {
+ *       "timestamp": 1234567890,
+ *       "displaytype": 1,
+ *       "export_feedback": true,
+ *       "export_letters": false,
+ *       "groupid": 0,
+ *       "total_users": 25,
+ *       "total_items": 5
+ *     }
  *   }
  * }
  *
- * @package    core
+ * @package    core_grade
  * @subpackage api
  * @copyright  2024 Moodle Pty Ltd
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -74,278 +93,288 @@
 define('AJAX_SCRIPT', true);
 define('NO_MOODLE_COOKIES', true);
 
-require_once(__DIR__ . '/../../../public/config.php');
+require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->libdir . '/gradelib.php');
 require_once($CFG->dirroot . '/grade/lib.php');
-require_once($CFG->dirroot . '/grade/querylib.php');
+require_once($CFG->dirroot . '/grade/export/lib.php');
 require_once(__DIR__ . '/../../lib/api_base.php');
 require_once(__DIR__ . '/../../lib/api_exception.php');
 require_once(__DIR__ . '/../../lib/api_response.php');
 
 /**
- * Gradebook Export Endpoint Class
+ * Gradebook Export API Handler
  *
- * Handles GET requests to export gradebook data in various formats.
+ * Extends ApiBase to provide gradebook export functionality through REST API.
+ * Delegates to existing Moodle grade export functions and uses graded_users_iterator
+ * for efficient data retrieval following Moodle's established patterns.
  *
- * @package    core
  * @copyright  2024 Moodle Pty Ltd
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class GradebookExportEndpoint extends ApiBase {
-    
+
     /**
-     * Convert array data to CSV format
+     * Handle GET request to export gradebook data
      *
-     * @param array $columns Column definitions
-     * @param array $rows Data rows
-     * @return string CSV formatted string
+     * Implements thin wrapper pattern delegating to existing Moodle grade functions:
+     * - Uses grade_item::fetch_all() to get grade items
+     * - Uses graded_users_iterator for efficient user/grade iteration
+     * - Uses grade_format_gradevalue() for proper grade display formatting
+     * - Enforces moodle/grade:export capability via checkCapability()
+     *
+     * @return void
+     * @throws ApiException If course not found or permission denied
      */
-    private function array_to_csv($columns, $rows) {
-        $csv = [];
-        
-        // Header row
-        $headers = [];
-        foreach ($columns as $column) {
-            $headers[] = $column['label'];
-        }
-        $csv[] = implode(',', array_map(function($value) {
-            return '"' . str_replace('"', '""', $value) . '"';
-        }, $headers));
-        
-        // Data rows
-        foreach ($rows as $row) {
-            $values = [];
-            foreach ($columns as $column) {
-                $key = $column['key'];
-                $value = isset($row[$key]) ? $row[$key] : '';
-                $values[] = '"' . str_replace('"', '""', $value) . '"';
-            }
-            $csv[] = implode(',', $values);
-        }
-        
-        return implode("\n", $csv);
-    }
-    
-    /**
-     * Handle GET request to export gradebook
-     *
-     * Validates permissions, retrieves grade data for specified users and items,
-     * and returns formatted export data in the requested format.
-     *
-     * @return void Outputs JSON response
-     * @throws ApiException If validation fails or course not found
-     */
-    protected function handle_get() {
+    protected function handle_get(): void {
         global $DB, $CFG;
-        
-        // Extract and validate parameters
-        $courseid = required_param('courseid', PARAM_INT);
-        $format = optional_param('format', 'json', PARAM_ALPHA);
-        $useridsparam = optional_param('userids', '', PARAM_SEQUENCE);
-        $itemidsparam = optional_param('itemids', '', PARAM_SEQUENCE);
-        $includehidden = optional_param('includehidden', false, PARAM_BOOL);
-        $includefeedback = optional_param('includefeedback', false, PARAM_BOOL);
-        
-        // Validate format
-        $allowedformats = ['json', 'csv'];
-        if (!in_array($format, $allowedformats)) {
-            throw new ApiException('Invalid format. Allowed formats: ' . implode(', ', $allowedformats), 'INVALID_FORMAT', 400);
-        }
-        
-        // Verify course exists
+
+        // Extract and validate required courseid parameter
+        $courseid = $this->getParam('courseid', PARAM_INT, true);
+
+        // Validate course exists using Moodle's database API
         $course = $DB->get_record('course', ['id' => $courseid], '*', MUST_EXIST);
         if (!$course) {
-            throw new ApiException('Course not found', 'COURSE_NOT_FOUND', 404);
+            $this->error('Course not found', 404);
+            return;
         }
+
+        // Get course context for capability checking
+        $context = context_course::instance($courseid);
+
+        // Enforce moodle/grade:export capability - critical security check
+        // This ensures only authorized users can export grade data
+        // Uses inherited checkCapability() from ApiBase which calls require_capability()
+        $this->checkCapability('moodle/grade:export', $context);
+
+        // Extract optional parameters with sensible defaults
+        $groupid = $this->getParam('groupid', PARAM_INT, false, 0);
+        $export_feedback = $this->getParam('export_feedback', PARAM_BOOL, false, false);
+        $export_letters = $this->getParam('export_letters', PARAM_BOOL, false, false);
         
-        // Get course context
-        $context = context_course::instance($course->id);
+        // Display type parameter - supports various Moodle grade display formats
+        // Default to GRADE_DISPLAY_TYPE_REAL (numeric grade)
+        $displaytype = $this->getParam('displaytype', PARAM_INT, false, GRADE_DISPLAY_TYPE_REAL);
         
-        // Validate JWT token and get authenticated user
-        $userid = $this->authenticate_request();
-        
-        // Check permission to export grades from this course
-        require_capability('moodle/grade:export', $context);
-        
-        // Ensure grades are up to date
-        grade_regrade_final_grades_if_required($course);
-        
-        // Parse user IDs
-        $userids = [];
-        if (!empty($useridsparam)) {
-            $userids = explode(',', $useridsparam);
-            $userids = array_map('intval', $userids);
-        }
-        
-        // Parse item IDs
-        $itemids = [];
-        if (!empty($itemidsparam)) {
-            $itemids = explode(',', $itemidsparam);
-            $itemids = array_map('intval', $itemids);
-        }
-        
-        // Get enrolled users
-        if (empty($userids)) {
-            $enrolledusers = get_enrolled_users($context, 'moodle/grade:view', 0, 'u.*', null, 0, 0, true);
-        } else {
-            // Get specific users
-            list($insql, $params) = $DB->get_in_or_equal($userids);
-            $params[] = $courseid;
-            $sql = "SELECT u.*
-                    FROM {user} u
-                    JOIN {user_enrolments} ue ON u.id = ue.userid
-                    JOIN {enrol} e ON ue.enrolid = e.id
-                    WHERE u.id $insql AND e.courseid = ? AND u.deleted = 0";
-            $enrolledusers = $DB->get_records_sql($sql, $params);
-        }
-        
-        // Get grade items
-        if (empty($itemids)) {
-            $gradeitems = grade_item::fetch_all(['courseid' => $courseid]);
-        } else {
-            $gradeitems = [];
-            foreach ($itemids as $itemid) {
-                $item = grade_item::fetch(['id' => $itemid, 'courseid' => $courseid]);
-                if ($item) {
-                    $gradeitems[$item->id] = $item;
-                }
-            }
-        }
-        
-        // Filter out hidden items if requested
-        if (!$includehidden && $gradeitems) {
-            foreach ($gradeitems as $key => $item) {
-                if ($item->hidden) {
-                    unset($gradeitems[$key]);
-                }
-            }
-        }
-        
-        // Build column definitions
-        $columns = [
-            ['key' => 'userid', 'label' => 'User ID'],
-            ['key' => 'firstname', 'label' => 'First Name'],
-            ['key' => 'lastname', 'label' => 'Last Name'],
-            ['key' => 'email', 'label' => 'Email'],
-            ['key' => 'idnumber', 'label' => 'ID Number']
+        // Validate displaytype is within acceptable range
+        // Moodle defines these constants in lib/grade/constants.php
+        $valid_display_types = [
+            GRADE_DISPLAY_TYPE_REAL,              // 1 - Numeric grade
+            GRADE_DISPLAY_TYPE_PERCENTAGE,        // 2 - Percentage
+            GRADE_DISPLAY_TYPE_LETTER,            // 3 - Letter grade
+            GRADE_DISPLAY_TYPE_LETTER_REAL,       // 4 - Letter and numeric
+            GRADE_DISPLAY_TYPE_LETTER_PERCENTAGE  // 5 - Letter and percentage
         ];
-        
-        if ($gradeitems) {
-            foreach ($gradeitems as $gradeitem) {
-                // Skip course total for export
-                if ($gradeitem->itemtype == 'course') {
-                    continue;
+        if (!in_array($displaytype, $valid_display_types)) {
+            $displaytype = GRADE_DISPLAY_TYPE_REAL;
+        }
+
+        // Parse optional itemids filter (comma-separated list of grade item IDs)
+        $itemids = $this->getParam('itemids', PARAM_SEQUENCE, false, '');
+        $item_filter = [];
+        if (!empty($itemids)) {
+            $item_filter = explode(',', $itemids);
+            $item_filter = array_map('intval', $item_filter);
+            $item_filter = array_filter($item_filter); // Remove zeros
+        }
+
+        // Fetch all grade items for this course using existing Moodle function
+        // grade_item::fetch_all() returns an associative array of grade_item objects
+        // indexed by item ID - this is the standard Moodle pattern for retrieving grade items
+        $grade_items = grade_item::fetch_all(['courseid' => $courseid]);
+
+        if (empty($grade_items)) {
+            // Course has no grade items - return empty export with just user columns
+            $this->success([
+                'course' => [
+                    'id' => (int)$course->id,
+                    'fullname' => $course->fullname,
+                    'shortname' => $course->shortname
+                ],
+                'columns' => [
+                    ['key' => 'firstname', 'name' => get_string('firstname')],
+                    ['key' => 'lastname', 'name' => get_string('lastname')],
+                    ['key' => 'email', 'name' => get_string('email')]
+                ],
+                'rows' => [],
+                'export_metadata' => [
+                    'timestamp' => time(),
+                    'displaytype' => $displaytype,
+                    'export_feedback' => $export_feedback,
+                    'export_letters' => $export_letters,
+                    'groupid' => $groupid,
+                    'total_users' => 0,
+                    'total_items' => 0
+                ]
+            ]);
+            return;
+        }
+
+        // Filter grade items by itemids if specified
+        if (!empty($item_filter)) {
+            $filtered_items = [];
+            foreach ($grade_items as $item) {
+                if (in_array($item->id, $item_filter)) {
+                    $filtered_items[$item->id] = $item;
                 }
-                
+            }
+            $grade_items = $filtered_items;
+        }
+
+        // Build columns array for export header
+        // Start with standard user identification columns
+        $columns = [
+            ['key' => 'firstname', 'name' => get_string('firstname')],
+            ['key' => 'lastname', 'name' => get_string('lastname')],
+            ['key' => 'email', 'name' => get_string('email')]
+        ];
+
+        // Add column for each grade item
+        foreach ($grade_items as $item) {
+            $columns[] = [
+                'key' => 'grade_' . $item->id,
+                'name' => $item->get_name()
+            ];
+            // Add feedback column if feedback export is requested
+            if ($export_feedback) {
                 $columns[] = [
-                    'key' => 'item_' . $gradeitem->id,
-                    'label' => $gradeitem->get_name()
+                    'key' => 'feedback_' . $item->id,
+                    'name' => $item->get_name() . ' (' . get_string('feedback') . ')'
                 ];
-                
-                if ($includefeedback) {
-                    $columns[] = [
-                        'key' => 'item_' . $gradeitem->id . '_feedback',
-                        'label' => $gradeitem->get_name() . ' (Feedback)'
-                    ];
-                }
             }
         }
-        
-        // Build data rows
+
+        // Use graded_users_iterator for efficient iteration through users and their grades
+        // This is the recommended Moodle pattern for grade export operations
+        // The iterator uses optimized SQL queries and handles memory efficiently
+        // even for large courses with many students and grade items
+        $gui = new graded_users_iterator($course, $columns, $groupid);
+        $gui->require_active_enrolment($courseid);
+        $gui->init();
+
         $rows = [];
-        
-        foreach ($enrolledusers as $user) {
-            $row = [
-                'userid' => $user->id,
-                'firstname' => $user->firstname,
-                'lastname' => $user->lastname,
-                'email' => $user->email,
-                'idnumber' => $user->idnumber
-            ];
+        $user_count = 0;
+
+        // Iterate through each user with grades
+        // The iterator returns user data along with associated grades
+        while ($userdata = $gui->next_user()) {
+            $user_count++;
             
-            if ($gradeitems) {
-                foreach ($gradeitems as $gradeitem) {
-                    // Skip course total
-                    if ($gradeitem->itemtype == 'course') {
-                        continue;
+            // Build row with user identification data
+            $row = [
+                'userid' => (int)$userdata->user->id,
+                'firstname' => $userdata->user->firstname,
+                'lastname' => $userdata->user->lastname,
+                'email' => $userdata->user->email,
+                'grades' => []
+            ];
+
+            // Process each grade item for this user
+            foreach ($grade_items as $item) {
+                $grade_data = [
+                    'itemid' => (int)$item->id,
+                    'itemname' => $item->get_name(),
+                    'grade' => null,
+                    'feedback' => null,
+                    'feedbackformat' => null
+                ];
+
+                // Check if this user has a grade for this item
+                // The graded_users_iterator provides grades indexed by item ID
+                if (isset($userdata->grades[$item->id])) {
+                    $grade = $userdata->grades[$item->id];
+                    
+                    // Format grade value using Moodle's grade_format_gradevalue function
+                    // This handles percentage, letter grades, etc. based on displaytype
+                    // Parameters:
+                    // - $grade->finalgrade: The numeric grade value
+                    // - $item: The grade_item object (contains grademin, grademax, etc.)
+                    // - true: Return localized grade string
+                    // - $displaytype: How to display (real, percentage, letter, etc.)
+                    // - null: Use default decimal places from item settings
+                    if (isset($grade->finalgrade) && $grade->finalgrade !== null) {
+                        $grade_data['grade'] = grade_format_gradevalue(
+                            $grade->finalgrade,
+                            $item,
+                            true,
+                            $displaytype,
+                            null
+                        );
                     }
-                    
-                    // Get grade for this item
-                    $grade = new grade_grade(['itemid' => $gradeitem->id, 'userid' => $user->id]);
-                    
-                    // Format grade value
-                    $gradevalue = $grade->finalgrade !== null 
-                        ? grade_format_gradevalue($grade->finalgrade, $gradeitem, true, GRADE_DISPLAY_TYPE_DEFAULT, 2)
-                        : '-';
-                    
-                    $row['item_' . $gradeitem->id] = $gradevalue;
-                    
-                    if ($includefeedback) {
-                        $row['item_' . $gradeitem->id . '_feedback'] = $grade->feedback ? $grade->feedback : '';
+
+                    // Include feedback if requested and available
+                    if ($export_feedback) {
+                        if (!empty($grade->feedback)) {
+                            $grade_data['feedback'] = $grade->feedback;
+                            $grade_data['feedbackformat'] = isset($grade->feedbackformat) 
+                                ? (int)$grade->feedbackformat 
+                                : FORMAT_MOODLE;
+                        }
                     }
                 }
+
+                $row['grades'][] = $grade_data;
             }
-            
+
             $rows[] = $row;
         }
-        
-        // Build response
+
+        // Clean up iterator resources
+        // Important to close the database recordset to free memory
+        $gui->close();
+
+        // Build comprehensive response with course info, columns, data rows, and metadata
         $response = [
             'course' => [
-                'id' => $course->id,
+                'id' => (int)$course->id,
                 'fullname' => $course->fullname,
-                'shortname' => $course->shortname,
-                'idnumber' => $course->idnumber
+                'shortname' => $course->shortname
             ],
-            'format' => $format,
-            'export_time' => time(),
             'columns' => $columns,
             'rows' => $rows,
-            'user_count' => count($rows),
-            'item_count' => count($columns) - 5 // Subtract user info columns
+            'export_metadata' => [
+                'timestamp' => time(),
+                'displaytype' => $displaytype,
+                'export_feedback' => $export_feedback,
+                'export_letters' => $export_letters,
+                'groupid' => $groupid,
+                'total_users' => $user_count,
+                'total_items' => count($grade_items)
+            ]
         ];
-        
-        // Add CSV format if requested
-        if ($format === 'csv') {
-            $response['csv'] = $this->array_to_csv($columns, $rows);
-        }
-        
-        ApiResponse::success($response);
+
+        // Return successful JSON response using ApiBase::success()
+        // This method formats the response according to ApiResponse standards
+        $this->success($response);
     }
-    
+
     /**
-     * Handle POST request - not supported for this endpoint
+     * POST method not allowed for this endpoint
      *
      * @return void
-     * @throws MethodNotAllowedException Always thrown
      */
-    protected function handle_post() {
-        throw new MethodNotAllowedException('POST method is not supported for gradebook export endpoint');
+    protected function handle_post(): void {
+        $this->error('Method not allowed', 405);
     }
-    
+
     /**
-     * Handle PUT request - not supported for this endpoint
+     * PUT method not allowed for this endpoint
      *
      * @return void
-     * @throws MethodNotAllowedException Always thrown
      */
-    protected function handle_put() {
-        throw new MethodNotAllowedException('PUT method is not supported for gradebook export endpoint');
+    protected function handle_put(): void {
+        $this->error('Method not allowed', 405);
     }
-    
+
     /**
-     * Handle DELETE request - not supported for this endpoint
+     * DELETE method not allowed for this endpoint
      *
      * @return void
-     * @throws MethodNotAllowedException Always thrown
      */
-    protected function handle_delete() {
-        throw new MethodNotAllowedException('DELETE method is not supported for gradebook export endpoint');
+    protected function handle_delete(): void {
+        $this->error('Method not allowed', 405);
     }
 }
 
-// Instantiate and handle the request
-if (!defined('API_TEST_MODE')) {
-    $endpoint = new GradebookExportEndpoint();
-    $endpoint->handle_request();
-}
+// Instantiate and execute the endpoint
+$endpoint = new GradebookExportEndpoint();
+$endpoint->execute();
