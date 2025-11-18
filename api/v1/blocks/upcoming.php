@@ -371,6 +371,39 @@ class UpcomingEventsEndpoint extends ApiBase {
         
         return $grouped;
     }
+    
+    /**
+     * Handle POST requests - not supported for this endpoint.
+     *
+     * @throws MethodNotAllowedException Always throws to indicate POST not allowed
+     */
+    protected function handle_post() {
+        throw new MethodNotAllowedException('POST method is not supported for this endpoint', [
+            'allowedMethods' => ['GET']
+        ]);
+    }
+    
+    /**
+     * Handle PUT requests - not supported for this endpoint.
+     *
+     * @throws MethodNotAllowedException Always throws to indicate PUT not allowed
+     */
+    protected function handle_put() {
+        throw new MethodNotAllowedException('PUT method is not supported for this endpoint', [
+            'allowedMethods' => ['GET']
+        ]);
+    }
+    
+    /**
+     * Handle DELETE requests - not supported for this endpoint.
+     *
+     * @throws MethodNotAllowedException Always throws to indicate DELETE not allowed
+     */
+    protected function handle_delete() {
+        throw new MethodNotAllowedException('DELETE method is not supported for this endpoint', [
+            'allowedMethods' => ['GET']
+        ]);
+    }
 }
 
 // Instantiate and execute the endpoint
