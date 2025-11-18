@@ -83,6 +83,13 @@ class TimelineEndpoint extends ApiBase {
         // Get authenticated user
         $user = $this->getUser();
         
+        // Permission check: User must be able to view their own profile
+        // This ensures authenticated users can access their own timeline
+        $usercontext = \context_user::instance($user->id);
+        if (!has_capability('moodle/user:viewownprofile', $usercontext)) {
+            $this->error('You do not have permission to view your timeline', 403);
+        }
+        
         // Get query parameters with defaults from user preferences
         $sort = $this->getParam('sort', PARAM_ALPHA, false, 
             get_user_preferences('block_timeline_user_sort_preference', BLOCK_TIMELINE_SORT_BY_DATES));

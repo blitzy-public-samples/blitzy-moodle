@@ -135,6 +135,15 @@ class MyOverviewEndpoint extends ApiBase {
         $user = $this->getUser();
         $userid = $user->id;
         
+        // Permission check: User must be able to view their own profile
+        // This ensures authenticated users can access their own course overview
+        // Note: This endpoint returns only the user's own enrolled courses,
+        // and enrollment itself provides the authorization for each course
+        $usercontext = \context_user::instance($userid);
+        if (!has_capability('moodle/user:viewownprofile', $usercontext)) {
+            $this->error('You do not have permission to view your course overview', 403);
+        }
+        
         // Extract and validate query parameters
         // Classification (filter) parameter - determines which courses to show
         $classification = $this->getParam('classification', PARAM_ALPHA, false, null);
