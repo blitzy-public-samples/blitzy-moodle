@@ -86,7 +86,7 @@ require_once(__DIR__ . '/../../lib/api_base.php');
  * @copyright  2024 Moodle Pty Ltd
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class api_v1_urls_parameters extends api_base {
+class api_v1_urls_parameters extends ApiBase {
     
     /**
      * Handle GET request for URL parameters.
