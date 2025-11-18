@@ -17,61 +17,60 @@
 /**
  * User Gradebook API Endpoint
  *
- * GET /api/v1/gradebook/user - Get grades for a specific user across courses
+ * GET /api/v1/gradebook/user/{id} - Get grades for a specific user across courses
  *
- * This endpoint provides access to a user's grades, either across all enrolled courses
- * or for a specific course. Users can view their own grades (moodle/grade:view) or
- * teachers/admins can view any user's grades (moodle/grade:viewall).
+ * This endpoint provides a thin wrapper around Moodle's existing grade retrieval functions.
+ * It calls grade_get_course_grade() from public/grade/querylib.php to obtain grade data
+ * for a user across one or more courses. The endpoint enforces proper capability checks
+ * (moodle/grade:view for own grades, moodle/grade:viewall for viewing others' grades).
  *
- * Required Parameters:
- * - None (defaults to authenticated user)
+ * URI Pattern:
+ * - GET /api/v1/gradebook/user/{userid}
  *
- * Optional Parameters:
- * - userid: The ID of the user to view grades for (requires moodle/grade:viewall)
- * - courseid: Filter grades to a specific course
+ * Optional Query Parameters:
+ * - courseid: integer - Filter grades to a specific course (default: all enrolled courses)
  *
  * Required Capability:
- * - moodle/grade:view (to view own grades)
- * - moodle/grade:viewall (to view other users' grades)
+ * - moodle/grade:view (to view own grades in user context)
+ * - moodle/grade:viewall (to view other users' grades in system context)
  *
  * Response Format:
  * {
  *   "success": true,
  *   "data": {
+ *     "userid": 123,
  *     "user": {
  *       "id": 123,
  *       "firstname": "John",
  *       "lastname": "Doe",
- *       "email": "john@example.com"
+ *       "email": "john@example.com",
+ *       "idnumber": "STU12345"
  *     },
  *     "courses": [
  *       {
  *         "courseid": 5,
- *         "coursename": "Course Name",
- *         "shortname": "COURSE101",
- *         "grade_items": [
- *           {
- *             "id": 10,
- *             "itemname": "Assignment 1",
- *             "itemtype": "mod",
- *             "itemmodule": "assign",
- *             "grade": 85.50,
- *             "str_grade": "85.50",
- *             "percentage": 85.50,
- *             "grademax": 100.00,
- *             "feedback": ""
- *           }
- *         ],
- *         "course_grade": {
- *           "grade": 85.50,
- *           "str_grade": "85.50 / 100.00",
- *           "percentage": 85.50,
- *           "letter": "B+"
- *         }
+ *         "coursename": "Introduction to Programming",
+ *         "shortname": "CS101",
+ *         "idnumber": "CS-101-2024",
+ *         "finalgrade": 85.50,
+ *         "str_grade": "85.50",
+ *         "rawgrade": 85.50,
+ *         "percentage": 85.50,
+ *         "letter": "B+",
+ *         "locked": false,
+ *         "hidden": false,
+ *         "feedback": "Good work overall",
+ *         "feedbackformat": 1,
+ *         "timemodified": 1701234567
  *       }
  *     ]
  *   }
  * }
+ *
+ * Error Responses:
+ * - 400 Bad Request: Invalid user ID in URI
+ * - 403 Forbidden: Missing required capability
+ * - 404 Not Found: User does not exist or has been deleted
  *
  * @package    core
  * @subpackage api
@@ -83,17 +82,18 @@ define('AJAX_SCRIPT', true);
 define('NO_MOODLE_COOKIES', true);
 
 require_once(__DIR__ . '/../../../public/config.php');
-require_once($CFG->libdir . '/gradelib.php');
-require_once($CFG->dirroot . '/grade/lib.php');
 require_once($CFG->dirroot . '/grade/querylib.php');
+require_once($CFG->dirroot . '/grade/lib.php');
+require_once($CFG->libdir . '/gradelib.php');
 require_once(__DIR__ . '/../../lib/api_base.php');
 require_once(__DIR__ . '/../../lib/api_exception.php');
-require_once(__DIR__ . '/../../lib/api_response.php');
 
 /**
  * User Gradebook Endpoint Class
  *
- * Handles GET requests to retrieve grade data for a specific user.
+ * Thin wrapper that delegates all grade retrieval to existing Moodle function
+ * grade_get_course_grade() from public/grade/querylib.php. Enforces capability
+ * checks before exposing grade data.
  *
  * @package    core
  * @copyright  2024 Moodle Pty Ltd
@@ -102,184 +102,194 @@ require_once(__DIR__ . '/../../lib/api_response.php');
 class UserGradebookEndpoint extends ApiBase {
     
     /**
-     * Handle GET request to retrieve user grades
+     * Handle GET request to retrieve user grades across courses
      *
-     * Validates permissions, retrieves all grades for the specified user,
-     * and returns formatted grade data organized by course.
+     * This method implements the thin wrapper pattern by:
+     * 1. Extracting user ID from URI path using regex
+     * 2. Validating user exists in database
+     * 3. Determining if authenticated user is viewing own grades or another user's
+     * 4. Enforcing appropriate capability (moodle/grade:view or moodle/grade:viewall)
+     * 5. Calling existing grade_get_course_grade() function with optional courseid filter
+     * 6. Formatting and returning grade data as JSON
      *
-     * @return void Outputs JSON response
-     * @throws ApiException If validation fails or user not found
+     * NO business logic is duplicated - all grade calculations, aggregations,
+     * and data retrieval are delegated to existing Moodle core functions.
+     *
+     * @return void Outputs JSON response via ApiBase::success()
+     * @throws ValidationException If user ID in URI is invalid
+     * @throws NotFoundException If user does not exist
+     * @throws ForbiddenException If user lacks required capability
      */
     protected function handle_get() {
-        global $DB, $CFG;
+        global $DB;
         
-        // Validate JWT token and get authenticated user
-        $authenticateduserid = $this->authenticate_request();
+        // Extract user ID from URI path using regex
+        // Expected pattern: /api/v1/gradebook/user/{userid}
+        $requesturi = $_SERVER['REQUEST_URI'];
         
-        // Extract and validate parameters
-        $userid = optional_param('userid', $authenticateduserid, PARAM_INT);
-        $courseid = optional_param('courseid', 0, PARAM_INT);
-        
-        // Verify user exists
-        $user = $DB->get_record('user', ['id' => $userid, 'deleted' => 0], '*', MUST_EXIST);
-        if (!$user) {
-            throw new ApiException('User not found', 'USER_NOT_FOUND', 404);
+        if (!preg_match('#/api/v1/gradebook/user/(\d+)#', $requesturi, $matches)) {
+            throw new ValidationException('Invalid URI format. Expected: /api/v1/gradebook/user/{userid}');
         }
         
-        // Permission check: viewing another user's grades requires viewall capability
-        $viewingotheruser = ($userid != $authenticateduserid);
+        $userid = intval($matches[1]);
         
-        // Get user's enrolled courses (or specific course if provided)
-        if ($courseid > 0) {
-            // Verify course exists
-            $course = $DB->get_record('course', ['id' => $courseid], '*', MUST_EXIST);
+        if ($userid <= 0) {
+            throw new ValidationException('User ID must be a positive integer');
+        }
+        
+        // Verify user exists and is not deleted
+        $user = $DB->get_record('user', ['id' => $userid, 'deleted' => 0]);
+        
+        if (!$user) {
+            throw new NotFoundException('User not found or has been deleted');
+        }
+        
+        // Get authenticated user from JWT token
+        $authuser = $this->getUser();
+        $authuserid = $authuser->id;
+        
+        // Determine if viewing own grades or another user's grades
+        $viewingown = ($userid == $authuserid);
+        
+        // Enforce capability based on whose grades are being viewed
+        if ($viewingown) {
+            // Viewing own grades: check moodle/grade:view in user context
+            $usercontext = context_user::instance($userid);
+            $this->checkCapability('moodle/grade:view', $usercontext);
+        } else {
+            // Viewing another user's grades: check moodle/grade:viewall in system context
+            $systemcontext = context_system::instance();
+            $this->checkCapability('moodle/grade:viewall', $systemcontext);
+        }
+        
+        // Get optional courseid parameter from query string
+        // If provided, filter grades to specific course; otherwise return all courses
+        $courseid = $this->getParam('courseid', PARAM_INT, false);
+        
+        // Call existing Moodle function grade_get_course_grade() from public/grade/querylib.php
+        // This function returns grade data for the user across courses
+        // Parameters: $userid (int), $courseid (int|array|null)
+        // Returns: object|array of grade_grade objects with course information
+        if ($courseid) {
+            // Single course filter - verify course exists
+            $course = $DB->get_record('course', ['id' => $courseid]);
             if (!$course) {
-                throw new ApiException('Course not found', 'COURSE_NOT_FOUND', 404);
+                throw new NotFoundException('Course not found');
             }
             
-            $courses = [$course];
+            // Call existing function for single course
+            $gradedata = grade_get_course_grade($userid, $courseid);
         } else {
-            // Get all enrolled courses for this user
-            $courses = enrol_get_users_courses($userid, true);
+            // No filter - get all enrolled courses for this user
+            $enrolledcourses = enrol_get_users_courses($userid, true);
+            
+            if (empty($enrolledcourses)) {
+                // User has no course enrollments
+                $gradedata = [];
+            } else {
+                // Get course IDs array
+                $courseids = array_keys($enrolledcourses);
+                
+                // Call existing function with array of course IDs
+                $gradedata = grade_get_course_grade($userid, $courseids);
+            }
         }
         
+        // Format response data
+        // grade_get_course_grade() returns an object or array of objects
+        // Each object contains: courseid, grade (finalgrade), rawgrade, str_grade, etc.
         $coursesdata = [];
         
-        foreach ($courses as $course) {
-            // Get course context
-            $context = context_course::instance($course->id);
+        if ($gradedata) {
+            // Handle both single object and array of objects
+            $gradedataarray = is_array($gradedata) ? $gradedata : [$gradedata];
             
-            // Check permission for this course
-            if ($viewingotheruser) {
-                // Viewing another user requires viewall capability
-                if (!has_capability('moodle/grade:viewall', $context)) {
-                    continue; // Skip courses where user doesn't have permission
+            foreach ($gradedataarray as $coursegrade) {
+                // Get course details
+                $course = $DB->get_record('course', ['id' => $coursegrade->courseid], 
+                    'id, fullname, shortname, idnumber');
+                
+                // Get letter grade if available
+                $lettergrade = null;
+                if (isset($coursegrade->grade) && $coursegrade->grade !== null) {
+                    $coursecontext = context_course::instance($coursegrade->courseid);
+                    $lettergrade = grade_format_gradevalue(
+                        $coursegrade->grade,
+                        $coursegrade->grade_item ?? null,
+                        true,
+                        GRADE_DISPLAY_TYPE_LETTER
+                    );
                 }
-            } else {
-                // Viewing own grades requires view capability
-                require_capability('moodle/grade:view', $context);
+                
+                // Build course grade data structure
+                $coursesdata[] = [
+                    'courseid' => intval($coursegrade->courseid),
+                    'coursename' => $course ? $course->fullname : '',
+                    'shortname' => $course ? $course->shortname : '',
+                    'idnumber' => $course ? $course->idnumber : '',
+                    'finalgrade' => isset($coursegrade->grade) ? floatval($coursegrade->grade) : null,
+                    'str_grade' => $coursegrade->str_grade ?? '',
+                    'rawgrade' => isset($coursegrade->rawgrade) ? floatval($coursegrade->rawgrade) : null,
+                    'percentage' => isset($coursegrade->percentage) ? floatval($coursegrade->percentage) : null,
+                    'letter' => $lettergrade,
+                    'locked' => isset($coursegrade->locked) ? (bool)$coursegrade->locked : false,
+                    'hidden' => isset($coursegrade->hidden) ? (bool)$coursegrade->hidden : false,
+                    'feedback' => $coursegrade->feedback ?? '',
+                    'feedbackformat' => isset($coursegrade->feedbackformat) ? intval($coursegrade->feedbackformat) : FORMAT_MOODLE,
+                    'timemodified' => isset($coursegrade->timemodified) ? intval($coursegrade->timemodified) : null
+                ];
             }
-            
-            // Ensure grades are up to date
-            grade_regrade_final_grades_if_required($course);
-            
-            // Get all grade items for this course
-            $gradeitems = grade_item::fetch_all(['courseid' => $course->id]);
-            $gradeitemsdata = [];
-            $coursegrade = null;
-            
-            if ($gradeitems) {
-                foreach ($gradeitems as $gradeitem) {
-                    // Get grade for this item
-                    $grade = new grade_grade(['itemid' => $gradeitem->id, 'userid' => $userid]);
-                    
-                    if ($gradeitem->itemtype == 'course') {
-                        // This is the course total
-                        $lettergrade = null;
-                        if ($grade->finalgrade !== null) {
-                            // Try to get letter grade
-                            $letters = grade_get_letters($context);
-                            if ($letters) {
-                                foreach ($letters as $boundary => $letter) {
-                                    $percentage = ($grade->finalgrade / $gradeitem->grademax) * 100;
-                                    if ($percentage >= $boundary) {
-                                        $lettergrade = $letter;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                        
-                        $coursegrade = [
-                            'grade' => $grade->finalgrade !== null ? floatval($grade->finalgrade) : null,
-                            'str_grade' => grade_format_gradevalue($grade->finalgrade, $gradeitem, true),
-                            'percentage' => $grade->finalgrade !== null && $gradeitem->grademax > 0 
-                                ? round(($grade->finalgrade / $gradeitem->grademax) * 100, 2) 
-                                : null,
-                            'letter' => $lettergrade,
-                            'feedback' => $grade->feedback,
-                            'timemodified' => $grade->timemodified ? intval($grade->timemodified) : null
-                        ];
-                    } else {
-                        // Regular grade item
-                        $gradeitemsdata[] = [
-                            'id' => $gradeitem->id,
-                            'itemname' => $gradeitem->get_name(),
-                            'itemtype' => $gradeitem->itemtype,
-                            'itemmodule' => $gradeitem->itemmodule,
-                            'iteminstance' => $gradeitem->iteminstance,
-                            'grade' => $grade->finalgrade !== null ? floatval($grade->finalgrade) : null,
-                            'str_grade' => grade_format_gradevalue($grade->finalgrade, $gradeitem, true),
-                            'percentage' => $grade->finalgrade !== null && $gradeitem->grademax > 0 
-                                ? round(($grade->finalgrade / $gradeitem->grademax) * 100, 2) 
-                                : null,
-                            'grademax' => floatval($gradeitem->grademax),
-                            'grademin' => floatval($gradeitem->grademin),
-                            'gradepass' => $gradeitem->gradepass ? floatval($gradeitem->gradepass) : null,
-                            'feedback' => $grade->feedback,
-                            'timemodified' => $grade->timemodified ? intval($grade->timemodified) : null
-                        ];
-                    }
-                }
-            }
-            
-            $coursesdata[] = [
-                'courseid' => $course->id,
-                'coursename' => $course->fullname,
-                'shortname' => $course->shortname,
-                'idnumber' => $course->idnumber,
-                'grade_items' => $gradeitemsdata,
-                'course_grade' => $coursegrade
-            ];
         }
         
-        // Build response
+        // Build final response
         $response = [
+            'userid' => intval($userid),
             'user' => [
-                'id' => $user->id,
+                'id' => intval($user->id),
                 'firstname' => $user->firstname,
                 'lastname' => $user->lastname,
                 'email' => $user->email,
-                'idnumber' => $user->idnumber
+                'idnumber' => $user->idnumber ?? ''
             ],
             'courses' => $coursesdata
         ];
         
-        ApiResponse::success($response);
+        // Return success response using ApiBase method
+        $this->success($response);
     }
     
     /**
-     * Handle POST request - not supported for this endpoint
+     * Handle POST request - not supported
      *
      * @return void
-     * @throws MethodNotAllowedException Always throws
+     * @throws MethodNotAllowedException Always
      */
     protected function handle_post() {
         throw new MethodNotAllowedException('POST method is not supported for user gradebook endpoint');
     }
     
     /**
-     * Handle PUT request - not supported for this endpoint
+     * Handle PUT request - not supported
      *
      * @return void
-     * @throws MethodNotAllowedException Always throws
+     * @throws MethodNotAllowedException Always
      */
     protected function handle_put() {
         throw new MethodNotAllowedException('PUT method is not supported for user gradebook endpoint');
     }
     
     /**
-     * Handle DELETE request - not supported for this endpoint
+     * Handle DELETE request - not supported
      *
      * @return void
-     * @throws MethodNotAllowedException Always throws
+     * @throws MethodNotAllowedException Always
      */
     protected function handle_delete() {
         throw new MethodNotAllowedException('DELETE method is not supported for user gradebook endpoint');
     }
 }
 
-// Instantiate and handle the request
+// Instantiate and execute endpoint (unless in test mode)
 if (!defined('API_TEST_MODE')) {
     $endpoint = new UserGradebookEndpoint();
     $endpoint->execute();
