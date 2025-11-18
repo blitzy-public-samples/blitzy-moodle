@@ -264,6 +264,60 @@ class QuizAttemptResultsEndpoint extends ApiBase {
     }
     
     /**
+     * Handle POST requests.
+     *
+     * This endpoint does not support POST method as it is read-only.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown as POST is not supported
+     */
+    protected function handle_post() {
+        throw new MethodNotAllowedException(
+            'POST method is not allowed for quiz attempt results endpoint',
+            [
+                'allowedMethods' => ['GET'],
+                'requestedMethod' => 'POST'
+            ]
+        );
+    }
+    
+    /**
+     * Handle PUT requests.
+     *
+     * This endpoint does not support PUT method as it is read-only.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown as PUT is not supported
+     */
+    protected function handle_put() {
+        throw new MethodNotAllowedException(
+            'PUT method is not allowed for quiz attempt results endpoint',
+            [
+                'allowedMethods' => ['GET'],
+                'requestedMethod' => 'PUT'
+            ]
+        );
+    }
+    
+    /**
+     * Handle DELETE requests.
+     *
+     * This endpoint does not support DELETE method as it is read-only.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown as DELETE is not supported
+     */
+    protected function handle_delete() {
+        throw new MethodNotAllowedException(
+            'DELETE method is not allowed for quiz attempt results endpoint',
+            [
+                'allowedMethods' => ['GET'],
+                'requestedMethod' => 'DELETE'
+            ]
+        );
+    }
+    
+    /**
      * Get summary of questions in the attempt.
      *
      * Extracts question-level information including marks, state,

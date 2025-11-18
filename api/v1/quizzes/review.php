@@ -449,6 +449,60 @@ class QuizAttemptReviewEndpoint extends ApiBase {
         // Return success response with review data
         $this->success($reviewData, 200);
     }
+    
+    /**
+     * Handle POST requests.
+     *
+     * This endpoint does not support POST method as it is read-only.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown as POST is not supported
+     */
+    protected function handle_post() {
+        throw new MethodNotAllowedException(
+            'POST method is not allowed for quiz attempt review endpoint',
+            [
+                'allowedMethods' => ['GET'],
+                'requestedMethod' => 'POST'
+            ]
+        );
+    }
+    
+    /**
+     * Handle PUT requests.
+     *
+     * This endpoint does not support PUT method as it is read-only.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown as PUT is not supported
+     */
+    protected function handle_put() {
+        throw new MethodNotAllowedException(
+            'PUT method is not allowed for quiz attempt review endpoint',
+            [
+                'allowedMethods' => ['GET'],
+                'requestedMethod' => 'PUT'
+            ]
+        );
+    }
+    
+    /**
+     * Handle DELETE requests.
+     *
+     * This endpoint does not support DELETE method as it is read-only.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown as DELETE is not supported
+     */
+    protected function handle_delete() {
+        throw new MethodNotAllowedException(
+            'DELETE method is not allowed for quiz attempt review endpoint',
+            [
+                'allowedMethods' => ['GET'],
+                'requestedMethod' => 'DELETE'
+            ]
+        );
+    }
 }
 
 // Instantiate and execute the endpoint
