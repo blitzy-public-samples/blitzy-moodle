@@ -242,10 +242,11 @@ class WorkshopAssessmentsEndpoint extends ApiBase {
             $assessments_data[] = $assessment_data;
         }
         
-        // Calculate aggregated submission grade if in evaluation phase or later
+        // Get aggregated submission grade (pre-calculated by Moodle core)
+        // The grade is calculated by workshop's internal aggregation during evaluation phase
         $aggregated_grade = null;
-        if ($workshop->phase >= workshop::PHASE_EVALUATION) {
-            $aggregated_grade = $this->calculate_aggregated_grade($workshop, $submission, $assessments);
+        if ($workshop->phase >= workshop::PHASE_EVALUATION && isset($submission->grade)) {
+            $aggregated_grade = $submission->grade;
         }
         
         // Get submission author information
@@ -547,61 +548,7 @@ class WorkshopAssessmentsEndpoint extends ApiBase {
         
         return $files_data;
     }
-    
-    /**
-     * Calculate aggregated submission grade from all assessments.
-     *
-     * Uses workshop's configured grading evaluation method to calculate
-     * the final submission grade from all assessment grades.
-     *
-     * @param workshop $workshop Workshop instance
-     * @param object $submission Submission record
-     * @param array $assessments Array of assessment records
-     * @return float|null Aggregated grade or null if not calculable
-     */
-    private function calculate_aggregated_grade($workshop, $submission, $assessments) {
-        if (empty($assessments)) {
-            return null;
-        }
-        
-        // Collect weighted grades from completed assessments
-        $grades = [];
-        $weights = [];
-        
-        foreach ($assessments as $assessment) {
-            if ($assessment->grade !== null) {
-                $grades[] = (float)$assessment->grade;
-                $weights[] = (float)$assessment->weight;
-            }
-        }
-        
-        if (empty($grades)) {
-            return null;
-        }
-        
-        // Calculate aggregated grade based on workshop evaluation method
-        // Method stored in workshop->evaluation (default is 'best')
-        $evaluation_method = $workshop->evaluation ?? 'best';
-        
-        switch ($evaluation_method) {
-            case 'best':
-                // Use the best (highest) grade
-                return max($grades);
-                
-            default:
-                // Default to weighted mean
-                $weighted_sum = 0;
-                $weight_sum = 0;
-                
-                for ($i = 0; $i < count($grades); $i++) {
-                    $weighted_sum += $grades[$i] * $weights[$i];
-                    $weight_sum += $weights[$i];
-                }
-                
-                return $weight_sum > 0 ? $weighted_sum / $weight_sum : null;
-        }
-    }
-    
+
     /**
      * Get user profile picture URL.
      *
