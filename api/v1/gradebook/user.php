@@ -121,8 +121,6 @@ class UserGradebookEndpoint extends ApiBase {
      * @throws ForbiddenException If user lacks required capability
      */
     protected function handle_get() {
-        global $DB;
-        
         // Extract user ID from URI path using regex
         // Expected pattern: /api/v1/gradebook/user/{userid}
         $requesturi = $_SERVER['REQUEST_URI'];
@@ -137,11 +135,16 @@ class UserGradebookEndpoint extends ApiBase {
             throw new ValidationException('User ID must be a positive integer');
         }
         
-        // Verify user exists and is not deleted
-        $user = $DB->get_record('user', ['id' => $userid, 'deleted' => 0]);
-        
-        if (!$user) {
-            throw new NotFoundException('User not found or has been deleted');
+        // Verify user exists and is active using existing Moodle function
+        // \core_user::get_user() handles special users (noreply, support) and returns user record
+        try {
+            $user = \core_user::get_user($userid, '*', MUST_EXIST);
+            // Ensure user is not deleted, is confirmed, and is not guest
+            \core_user::require_active_user($user);
+        } catch (dml_missing_record_exception $e) {
+            throw new NotFoundException('User not found');
+        } catch (moodle_exception $e) {
+            throw new NotFoundException($e->getMessage());
         }
         
         // Get authenticated user from JWT token
@@ -171,9 +174,11 @@ class UserGradebookEndpoint extends ApiBase {
         // Parameters: $userid (int), $courseid (int|array|null)
         // Returns: object|array of grade_grade objects with course information
         if ($courseid) {
-            // Single course filter - verify course exists
-            $course = $DB->get_record('course', ['id' => $courseid]);
-            if (!$course) {
+            // Single course filter - verify course exists using existing Moodle function
+            // get_course() from public/lib/datalib.php validates and retrieves course record
+            try {
+                $course = get_course($courseid);
+            } catch (dml_missing_record_exception $e) {
                 throw new NotFoundException('Course not found');
             }
             
@@ -205,9 +210,14 @@ class UserGradebookEndpoint extends ApiBase {
             $gradedataarray = is_array($gradedata) ? $gradedata : [$gradedata];
             
             foreach ($gradedataarray as $coursegrade) {
-                // Get course details
-                $course = $DB->get_record('course', ['id' => $coursegrade->courseid], 
-                    'id, fullname, shortname, idnumber');
+                // Get course details using existing Moodle function
+                // get_course() from public/lib/datalib.php retrieves course record
+                try {
+                    $course = get_course($coursegrade->courseid);
+                } catch (dml_missing_record_exception $e) {
+                    // Course not found - skip this grade entry
+                    continue;
+                }
                 
                 // Get letter grade if available
                 $lettergrade = null;
