@@ -364,7 +364,7 @@ class ApiResponse {
      * - getHttpStatus() for HTTP status code
      * - getErrorCode() for the error code string
      * - getMessage() for the error message
-     * - getDetails() for additional error details (if in development mode)
+     * - getFullDetails() for comprehensive error details (if in development mode)
      *
      * @param ApiException $e The API exception to convert to error response
      * @return void           This method terminates script execution after sending response
@@ -389,7 +389,7 @@ class ApiResponse {
         }
         
         if ($isDebugMode) {
-            $exceptionDetails = $e->getDetails();
+            $exceptionDetails = $e->getFullDetails();
             
             // Extract relevant debug information
             $details = [
@@ -463,4 +463,42 @@ class ApiResponse {
             exit;
         }
     }
+}
+
+/**
+ * Format response data into standardized envelope structure.
+ *
+ * This standalone helper function provides a simple way to format API responses
+ * without immediately sending them. It returns the formatted response array
+ * instead of outputting JSON and exiting, which is useful for testing and
+ * scenarios where the response needs further processing before being sent.
+ *
+ * @param bool  $success True for success responses, false for errors
+ * @param mixed $data    The data payload for success responses
+ * @param int   $status  HTTP status code (not used in return value, for compatibility)
+ * @param array $meta    Optional metadata (e.g., pagination)
+ * @param array $error   Error information for error responses
+ * @return array         Formatted response envelope
+ */
+function api_format_response($success, $data = null, $status = 200, $meta = null, $error = null) {
+    if ($success) {
+        // Success response structure
+        $response = [
+            'success' => true,
+            'data' => $data,
+        ];
+        
+        // Include metadata if provided
+        if ($meta !== null) {
+            $response['meta'] = $meta;
+        }
+    } else {
+        // Error response structure
+        $response = [
+            'success' => false,
+            'error' => $error,
+        ];
+    }
+    
+    return $response;
 }

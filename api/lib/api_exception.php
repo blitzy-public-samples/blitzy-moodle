@@ -69,14 +69,14 @@ class ApiException extends Exception {
     /**
      * Constructor for ApiException.
      *
-     * @param int    $httpstatus HTTP status code (default: 500)
-     * @param string $errorcode  Machine-readable error code (e.g., 'INTERNAL_ERROR')
      * @param string $message    Human-readable error message
+     * @param string $errorcode  Machine-readable error code (e.g., 'INTERNAL_ERROR')
+     * @param int    $httpstatus HTTP status code (default: 500)
      * @param mixed  $debuginfo  Optional debug information (array, string, or object)
      */
-    public function __construct($httpstatus = 500, $errorcode = 'API_ERROR', $message = 'An error occurred', $debuginfo = null) {
-        // Call parent Exception constructor with message and code
-        parent::__construct($message, $httpstatus);
+    public function __construct($message = 'An error occurred', $errorcode = 'API_ERROR', $httpstatus = 500, $debuginfo = null) {
+        // Call parent Exception constructor with message and code 0 (not used for HTTP APIs)
+        parent::__construct($message, 0);
         
         // Store API-specific properties
         $this->httpstatus = $httpstatus;
@@ -117,14 +117,29 @@ class ApiException extends Exception {
     }
     
     /**
-     * Get detailed error information including all properties.
+     * Get the custom debug/details information passed to the exception.
+     *
+     * Returns the debug information that was provided when the exception was
+     * created. This is typically used for validation errors or other scenarios
+     * where additional context about the error is needed.
+     *
+     * @return array Debug information array, or empty array if none provided
+     */
+    public function getDetails() {
+        return $this->debuginfo !== null ? $this->debuginfo : [];
+    }
+    
+    /**
+     * Get comprehensive error information including all properties.
      *
      * Returns an associative array containing all error details suitable for
      * logging, debugging, or detailed error responses in development mode.
+     * This includes HTTP status, error code, message, file location, and any
+     * custom debug information.
      *
-     * @return array Array with keys: 'httpStatus', 'errorCode', 'message', 'debugInfo'
+     * @return array Array with keys: 'httpStatus', 'errorCode', 'message', 'file', 'line', 'debugInfo'
      */
-    public function getDetails() {
+    public function getFullDetails() {
         $details = [
             'httpStatus' => $this->httpstatus,
             'errorCode' => $this->errorcode,
@@ -220,7 +235,7 @@ class UnauthorizedException extends ApiException {
      * @param mixed  $debuginfo Optional debug information
      */
     public function __construct($message = 'Unauthorized', $debuginfo = null) {
-        parent::__construct(401, 'UNAUTHORIZED', $message, $debuginfo);
+        parent::__construct($message, 'UNAUTHORIZED', 401, $debuginfo);
     }
 }
 
@@ -255,7 +270,7 @@ class ForbiddenException extends ApiException {
      * @param mixed  $debuginfo Optional debug information (e.g., required capability)
      */
     public function __construct($message = 'Forbidden', $debuginfo = null) {
-        parent::__construct(403, 'FORBIDDEN', $message, $debuginfo);
+        parent::__construct($message, 'FORBIDDEN', 403, $debuginfo);
     }
 }
 
@@ -289,7 +304,7 @@ class NotFoundException extends ApiException {
      * @param mixed  $debuginfo Optional debug information (e.g., resource ID)
      */
     public function __construct($message = 'Not Found', $debuginfo = null) {
-        parent::__construct(404, 'NOT_FOUND', $message, $debuginfo);
+        parent::__construct($message, 'NOT_FOUND', 404, $debuginfo);
     }
 }
 
@@ -325,7 +340,7 @@ class ValidationException extends ApiException {
      * @param mixed  $debuginfo Optional debug information (e.g., field errors, validation rules)
      */
     public function __construct($message = 'Validation Failed', $debuginfo = null) {
-        parent::__construct(400, 'VALIDATION_ERROR', $message, $debuginfo);
+        parent::__construct($message, 'VALIDATION_ERROR', 400, $debuginfo);
     }
 }
 
@@ -361,7 +376,7 @@ class BadRequestException extends ApiException {
      * @param mixed  $debuginfo Optional debug information (e.g., invalid fields, error details)
      */
     public function __construct($message = 'Bad Request', $debuginfo = null) {
-        parent::__construct(400, 'BAD_REQUEST', $message, $debuginfo);
+        parent::__construct($message, 'BAD_REQUEST', 400, $debuginfo);
     }
 }
 
@@ -398,7 +413,7 @@ class ServerException extends ApiException {
      * @param mixed  $debuginfo Optional debug information (e.g., stack trace, underlying error)
      */
     public function __construct($message = 'Internal Server Error', $debuginfo = null) {
-        parent::__construct(500, 'INTERNAL_ERROR', $message, $debuginfo);
+        parent::__construct($message, 'INTERNAL_ERROR', 500, $debuginfo);
     }
 }
 
@@ -433,7 +448,7 @@ class MethodNotAllowedException extends ApiException {
      * @param mixed  $debuginfo Optional debug information (e.g., allowed methods)
      */
     public function __construct($message = 'Method Not Allowed', $debuginfo = null) {
-        parent::__construct(405, 'METHOD_NOT_ALLOWED', $message, $debuginfo);
+        parent::__construct($message, 'METHOD_NOT_ALLOWED', 405, $debuginfo);
     }
 }
 
@@ -474,7 +489,7 @@ class ConflictException extends ApiException {
      * @param mixed  $debuginfo Optional debug information (e.g., conflicting field, current state)
      */
     public function __construct($message = 'Conflict', $debuginfo = null) {
-        parent::__construct(409, 'CONFLICT', $message, $debuginfo);
+        parent::__construct($message, 'CONFLICT', 409, $debuginfo);
     }
 }
 
@@ -510,7 +525,7 @@ class TooManyRequestsException extends ApiException {
      * @param mixed  $debuginfo Optional debug information (e.g., limit, retry time)
      */
     public function __construct($message = 'Too Many Requests', $debuginfo = null) {
-        parent::__construct(429, 'TOO_MANY_REQUESTS', $message, $debuginfo);
+        parent::__construct($message, 'TOO_MANY_REQUESTS', 429, $debuginfo);
     }
 }
 

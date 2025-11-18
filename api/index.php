@@ -264,12 +264,8 @@ try {
 } catch (ApiException $e) {
     // Handle ApiException instances with proper HTTP status and error formatting
     // ApiException provides structured error information suitable for JSON responses
-    ApiResponse::error(
-        $e->getErrorCode(),
-        $e->getMessage(),
-        $e->getHttpStatus(),
-        $e->getDetails()
-    );
+    // Use fromException() for proper exception handling
+    ApiResponse::fromException($e);
     
 } catch (moodle_exception $e) {
     // Handle Moodle-specific exceptions (thrown by Moodle core functions)

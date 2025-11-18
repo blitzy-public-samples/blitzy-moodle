@@ -163,10 +163,11 @@ class JwtAuth {
      *
      * @param int   $userid User ID for whom to generate the token
      * @param array $roles  Optional array of roles (auto-fetched if not provided)
+     * @param int   $customExpiry Optional custom expiration time in seconds (for testing)
      * @return string JWT access token
      * @throws ServerException If JWT secret is not configured
      */
-    public function generateAccessToken($userid, $roles = null) {
+    public function generateAccessToken($userid, $roles = null, $customExpiry = null) {
         global $CFG, $DB;
         
         // Get JWT secret from configuration
@@ -189,11 +190,16 @@ class JwtAuth {
             ? 'http://test.moodle.local' 
             : $CFG->wwwroot;
         
+        // Determine expiration (use custom expiry if provided, for testing)
+        $expiration = $customExpiry !== null 
+            ? $now + $customExpiry 
+            : $now + self::ACCESS_TOKEN_EXPIRY;
+        
         // Build JWT payload
         $payload = [
             'iss' => $issuer,                           // Issuer
             'iat' => $now,                              // Issued at
-            'exp' => $now + self::ACCESS_TOKEN_EXPIRY, // Expiration
+            'exp' => $expiration,                       // Expiration
             'sub' => $userid,                           // Subject (user ID)
             'type' => 'access',                         // Token type
             'roles' => $roles                           // User roles
@@ -295,7 +301,7 @@ class JwtAuth {
             
         } catch (ExpiredException $e) {
             // Token has expired
-            throw new UnauthorizedException('Token has expired', [
+            throw new UnauthorizedException('Expired token', [
                 'originalError' => $e->getMessage(),
                 'action' => 'Please refresh your token or re-authenticate'
             ]);
@@ -647,4 +653,53 @@ class JwtAuth {
         
         return $headers;
     }
+}
+
+/**
+ * Generate a JWT access token for a user.
+ *
+ * Convenience wrapper function for generating JWT tokens. Creates a JwtAuth
+ * instance and calls generateAccessToken(). This provides a simpler interface
+ * for common token generation operations.
+ *
+ * @param int   $userid        User ID to include in token
+ * @param array $roles         Array of user roles to include in token
+ * @param int   $customExpiry  Optional custom expiry time in seconds (for testing)
+ * @return string              JWT access token
+ */
+function generate_jwt_token($userid, $roles = [], $customExpiry = null) {
+    $jwtAuth = new JwtAuth();
+    
+    // If custom expiry provided (for testing), use it
+    if ($customExpiry !== null) {
+        // Store original secret for restoration
+        global $CFG;
+        $originalExpiry = defined('JWT_ACCESS_TOKEN_EXPIRY') ? JWT_ACCESS_TOKEN_EXPIRY : null;
+        
+        // Temporarily override expiry constant
+        define('JWT_CUSTOM_EXPIRY', $customExpiry);
+        
+        // Generate token with custom expiry
+        $token = $jwtAuth->generateAccessToken($userid, $roles, $customExpiry);
+        
+        return $token;
+    }
+    
+    return $jwtAuth->generateAccessToken($userid, $roles);
+}
+
+/**
+ * Validate a JWT token and return the decoded payload.
+ *
+ * Convenience wrapper function for validating JWT tokens. Creates a JwtAuth
+ * instance and calls validateToken(). This provides a simpler interface for
+ * common token validation operations.
+ *
+ * @param string $token JWT token to validate
+ * @return object       Decoded token payload
+ * @throws ApiException If token is invalid, expired, or malformed
+ */
+function validate_jwt_token($token) {
+    $jwtAuth = new JwtAuth();
+    return $jwtAuth->validateToken($token);
 }
