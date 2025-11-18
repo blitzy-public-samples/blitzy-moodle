@@ -66,7 +66,7 @@ require_once(__DIR__ . '/../../lib/api_exception.php');
  *
  * Query Parameters:
  * - userid: Optional user ID (requires mod/quiz:viewreports capability)
- * - state: Optional filter by state (finished, inprogress, abandoned, all)
+ * - status: Optional filter by status (finished, inprogress, abandoned, unfinished, all)
  *
  * Response includes:
  * - attempts: Array of attempt records with details
@@ -90,7 +90,7 @@ class QuizAttemptsEndpoint extends ApiBase {
      * returns formatted attempt history for display in React interface.
      *
      * URL Pattern: /api/v1/quizzes/{id}/attempts
-     * Example: /api/v1/quizzes/42/attempts?userid=123&state=finished
+     * Example: /api/v1/quizzes/42/attempts?userid=123&status=finished
      *
      * @return void Outputs JSON response with attempts list
      * @throws ValidationException If quiz ID is invalid or state filter invalid
@@ -124,17 +124,17 @@ class QuizAttemptsEndpoint extends ApiBase {
             ]);
         }
         
-        // Parse query parameters
-        $requestedUserId = isset($_GET['userid']) ? (int)$_GET['userid'] : null;
-        $stateFilter = isset($_GET['state']) ? $_GET['state'] : 'all';
+        // Parse query parameters using ApiBase helper method
+        $requestedUserId = $this->getParam('userid', PARAM_INT, false);
+        $statusFilter = $this->getParam('status', PARAM_ALPHA, false) ?: 'all';
         
-        // Validate state filter
-        $validStates = ['all', 'finished', 'inprogress', 'abandoned', 'unfinished'];
-        if (!in_array($stateFilter, $validStates)) {
-            throw new ValidationException('Invalid state filter', [
-                'state' => $stateFilter,
-                'validStates' => $validStates,
-                'reason' => 'State must be one of: ' . implode(', ', $validStates)
+        // Validate status filter
+        $validStatuses = ['all', 'finished', 'inprogress', 'abandoned', 'unfinished'];
+        if (!in_array($statusFilter, $validStatuses)) {
+            throw new ValidationException('Invalid status filter', [
+                'status' => $statusFilter,
+                'validStatuses' => $validStatuses,
+                'reason' => 'Status must be one of: ' . implode(', ', $validStatuses)
             ]);
         }
         
@@ -195,7 +195,7 @@ class QuizAttemptsEndpoint extends ApiBase {
         
         // Retrieve user attempts using existing Moodle function
         try {
-            $attempts = quiz_get_user_attempts($quiz->id, $targetUserId, $stateFilter, true);
+            $attempts = quiz_get_user_attempts($quiz->id, $targetUserId, $statusFilter, true);
         } catch (moodle_exception $e) {
             throw new ApiException('Failed to retrieve quiz attempts', [
                 'quizId' => $quizid,
