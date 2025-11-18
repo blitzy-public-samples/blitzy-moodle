@@ -98,7 +98,7 @@ class QuizShowEndpoint extends ApiBase {
      * @throws ApiException If quiz data cannot be retrieved
      */
     protected function handle_get() {
-        global $DB, $USER, $PAGE;
+        global $USER, $PAGE;
         
         // Validate user is authenticated via JWT token
         $authenticatedUser = $this->getUser();
@@ -123,31 +123,22 @@ class QuizShowEndpoint extends ApiBase {
             ]);
         }
         
-        // Retrieve quiz record from database
-        $quiz = $DB->get_record('quiz', ['id' => $quizid]);
-        
-        if (!$quiz) {
+        // Create quiz settings object using Moodle's official API
+        // This loads quiz, course module, course, and context with user-specific overrides
+        try {
+            $quizobj = \mod_quiz\quiz_settings::create($quizid, $USER->id);
+        } catch (moodle_exception $e) {
             throw new NotFoundException('Quiz not found', [
                 'quizId' => $quizid,
-                'reason' => 'No quiz exists with this ID'
+                'reason' => $e->getMessage()
             ]);
         }
         
-        // Get course module for context
-        $cm = get_coursemodule_from_instance('quiz', $quiz->id, $quiz->course);
-        
-        if (!$cm) {
-            throw new NotFoundException('Course module not found', [
-                'quizId' => $quizid,
-                'reason' => 'Quiz course module could not be loaded'
-            ]);
-        }
-        
-        // Get course record
-        $course = $DB->get_record('course', ['id' => $quiz->course], '*', MUST_EXIST);
-        
-        // Get context for capability checking
-        $context = context_module::instance($cm->id);
+        // Get quiz, course, course module, and context from quiz settings object
+        $quiz = $quizobj->get_quiz();
+        $course = $quizobj->get_course();
+        $cm = $quizobj->get_cm();
+        $context = $quizobj->get_context();
         
         // Check if user has permission to view this quiz
         try {
@@ -283,8 +274,7 @@ class QuizShowEndpoint extends ApiBase {
             'availableInfo' => $cminfo->availableinfo ? format_string($cminfo->availableinfo) : null,
         ];
         
-        // Add question count
-        $quizobj = quiz::create($quiz->id, $USER->id);
+        // Add question count using existing quiz settings object
         $quizData['questions'] = [
             'count' => $quizobj->get_num_questions_per_attempt(),
             'shuffled' => (bool)$quiz->shuffleanswers,

@@ -22,8 +22,8 @@ require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->dirroot . '/mod/quiz/locallib.php');
 
 // Include API base class and exception handling
-require_once($CFG->dirroot . '/api/lib/api_base.php');
-require_once($CFG->dirroot . '/api/lib/api_exception.php');
+require_once(__DIR__ . '/../../lib/api_base.php');
+require_once(__DIR__ . '/../../lib/api_exception.php');
 
 /**
  * Quiz Attempt Results Endpoint
@@ -88,10 +88,10 @@ class QuizAttemptResultsEndpoint extends ApiBase {
             );
         }
         
-        // Step 2: Load attempt object using existing Moodle function
-        // This function creates quiz_attempt object and validates attempt exists
+        // Step 2: Load attempt object using quiz_attempt::create static method
+        // This creates quiz_attempt object and validates attempt exists
         try {
-            $attemptobj = quiz_create_attempt_handling_errors($attemptid);
+            $attemptobj = quiz_attempt::create($attemptid);
         } catch (moodle_exception $e) {
             // Convert Moodle exception to API exception
             if ($e->errorcode === 'invalidattemptid' || strpos($e->getMessage(), 'not found') !== false) {

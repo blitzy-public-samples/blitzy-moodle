@@ -87,7 +87,7 @@ use mod_quiz\quiz_attempt;
  * - Time-up submissions: Handle forced submission when time expires
  *
  * All business logic is delegated to existing Moodle functions:
- * - quiz_create_attempt_handling_errors() - Load and validate attempt
+ * - quiz_attempt::create() - Load and validate attempt
  * - $attemptobj->process_attempt() - Process responses and update state
  * - $attemptobj->get_grade() - Calculate final grade
  *
@@ -206,10 +206,10 @@ class QuizSubmitEndpoint extends ApiBase {
         
         $timeup = (bool) $requestBody['timeup'];
         
-        // Load quiz attempt object using existing Moodle function
-        // This function validates attempt exists and handles errors
+        // Load quiz attempt object using quiz_attempt::create static method
+        // This validates attempt exists and returns the attempt object
         try {
-            $attemptobj = quiz_create_attempt_handling_errors($attemptid);
+            $attemptobj = quiz_attempt::create($attemptid);
         } catch (moodle_exception $e) {
             // Convert to NotFoundException if attempt doesn't exist
             if ($e->errorcode === 'invalidattemptid' || $e->errorcode === 'attempterror') {

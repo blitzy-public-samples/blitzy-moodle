@@ -121,12 +121,11 @@ class QuizAttemptCreateEndpoint extends ApiBase {
         $quiz = $quizobj->get_quiz();
         $context = $quizobj->get_context();
         
-        // Check if user has permission to attempt this quiz
-        try {
-            $this->checkCapability('mod/quiz:attempt', $context);
-            
-        } catch (ForbiddenException $e) {
-            // Re-throw with quiz-specific context
+        // Check if user has permission to attempt this quiz (standard Moodle pattern)
+        // Verify can_attempt capability using has_capability
+        $canattempt = has_capability('mod/quiz:attempt', $context, $user->id);
+        
+        if (!$canattempt) {
             throw new ForbiddenException('You do not have permission to attempt this quiz', [
                 'quizId' => $quizid,
                 'capability' => 'mod/quiz:attempt',
@@ -146,114 +145,59 @@ class QuizAttemptCreateEndpoint extends ApiBase {
         // Create access manager to check restrictions
         $timenow = time();
         
-        // Check if user can ignore time limits (for teachers/admins)
-        $canignorelimits = has_capability('mod/quiz:ignoretimelimits', $context, $user->id);
-        
         // Get access manager
         $accessmanager = $quizobj->get_access_manager($timenow);
         
-        // Get all existing attempts for this user
-        $attempts = quiz_get_user_attempts($quizid, $user->id, 'all', true);
-        $lastattempt = end($attempts);
-        
-        // Reset array pointer
-        if ($lastattempt !== false) {
-            reset($attempts);
-        } else {
-            $lastattempt = false;
+        // Use Moodle's standard quiz_validate_new_attempt function to validate
+        // that a new attempt can be created. This function checks:
+        // - Existing attempts (in-progress, not-started, overdue)
+        // - Attempt limits
+        // - Time windows and access restrictions
+        // - Password requirements
+        // Returns: [$currentattemptid, $attemptnumber, $lastattempt, $messages, $page]
+        try {
+            list($currentattemptid, $attemptnumber, $lastattempt, $messages, $page) = 
+                quiz_validate_new_attempt(
+                    $quizobj,
+                    $accessmanager,
+                    false,  // $forcenew - not forcing a new attempt
+                    -1,     // $page - not specifying a page
+                    false   // $redirect - don't redirect, throw exception instead
+                );
+            
+        } catch (moodle_exception $e) {
+            // quiz_validate_new_attempt threw an exception (e.g., attempt already closed)
+            throw new ValidationException("Cannot start new quiz attempt: {$e->getMessage()}", [
+                'quizId' => $quizid,
+                'userId' => $user->id,
+                'errorcode' => $e->errorcode ?? 'validationfailed',
+                'originalError' => $e->getMessage()
+            ]);
         }
         
-        // Check if user has an unfinished attempt
-        if ($lastattempt && in_array($lastattempt->state, [
-            quiz_attempt::NOT_STARTED,
-            quiz_attempt::IN_PROGRESS,
-            quiz_attempt::OVERDUE
-        ])) {
+        // Check if there's an existing in-progress attempt
+        if ($currentattemptid !== null) {
             // User has an unfinished attempt - must complete or abandon it first
             throw new ValidationException('You have an unfinished attempt that must be completed first', [
                 'quizId' => $quizid,
-                'attemptId' => $lastattempt->id,
-                'attemptState' => $lastattempt->state,
+                'attemptId' => $currentattemptid,
                 'reason' => 'Complete or abandon the current attempt before starting a new one'
             ]);
         }
         
-        // Filter out preview attempts to get real attempt count
-        $realattempts = [];
-        foreach ($attempts as $attempt) {
-            if (!$attempt->preview) {
-                $realattempts[] = $attempt;
-            }
-        }
-        
-        // Determine next attempt number
-        if ($lastattempt && !$lastattempt->preview) {
-            $attemptnumber = $lastattempt->attempt + 1;
-        } else {
-            // Find the last non-preview attempt
-            $lastreal = false;
-            foreach ($realattempts as $attempt) {
-                if (!$attempt->preview) {
-                    $lastreal = $attempt;
-                }
-            }
-            
-            if ($lastreal) {
-                $attemptnumber = $lastreal->attempt + 1;
-                $lastattempt = $lastreal;
-            } else {
-                $attemptnumber = 1;
-                $lastattempt = false;
-            }
-        }
-        
-        // Check access restrictions using access manager
-        $messages = $accessmanager->prevent_access();
-        
-        if ($messages) {
-            // Access is denied - collect all restriction messages
+        // Check if there are any access restriction messages
+        if (!empty($messages)) {
+            // Access is denied or new attempt cannot be created
             $reasons = [];
             foreach ($messages as $message) {
                 $reasons[] = $message;
             }
             
-            throw new ForbiddenException('Access to this quiz is restricted', [
+            throw new ForbiddenException('Cannot start a new quiz attempt', [
                 'quizId' => $quizid,
                 'reasons' => $reasons,
-                'timeNow' => $timenow,
-                'quizOpen' => $quiz->timeopen ?? null,
-                'quizClose' => $quiz->timeclose ?? null
+                'userId' => $user->id
             ]);
-        }
-        
-        // Check if user can start a new attempt
-        $messages = $accessmanager->prevent_new_attempt(count($realattempts), $lastattempt);
-        
-        if ($messages) {
-            // Cannot start new attempt - collect all restriction messages
-            $reasons = [];
-            foreach ($messages as $message) {
-                $reasons[] = $message;
-            }
-            
-            // Determine if this is an attempt limit issue
-            $isAttemptLimit = false;
-            if ($quiz->attempts > 0 && count($realattempts) >= $quiz->attempts) {
-                $isAttemptLimit = true;
-            }
-            
-            throw new ForbiddenException(
-                $isAttemptLimit 
-                    ? 'You have reached the maximum number of attempts for this quiz'
-                    : 'Cannot start a new quiz attempt',
-                [
-                    'quizId' => $quizid,
-                    'reasons' => $reasons,
-                    'attemptCount' => count($realattempts),
-                    'attemptLimit' => $quiz->attempts > 0 ? $quiz->attempts : 'unlimited',
-                    'isAttemptLimitReached' => $isAttemptLimit
-                ]
-            );
         }
         
         // All validations passed - create the new attempt

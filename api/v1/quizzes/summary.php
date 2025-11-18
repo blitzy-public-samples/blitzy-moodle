@@ -27,7 +27,7 @@
  * questions, time remaining if applicable, and submission readiness flags.
  *
  * Delegates to existing Moodle quiz functions without duplicating business logic:
- * - quiz_create_attempt_handling_errors() for attempt object creation
+ * - quiz_attempt::create() for attempt object creation
  * - $attemptobj methods for all data retrieval and validation
  * - Existing capability checking via require_capability()
  * - Time expiration handling via handle_if_time_expired()
@@ -123,9 +123,9 @@ class QuizAttemptSummaryEndpoint extends ApiBase {
         }
         
         try {
-            // Create attempt object using existing Moodle function
-            // This function handles attempt validation and loading
-            $attemptobj = quiz_create_attempt_handling_errors($attemptid);
+            // Create attempt object using quiz_attempt::create static method
+            // This handles attempt validation and loading
+            $attemptobj = quiz_attempt::create($attemptid);
             
         } catch (moodle_exception $e) {
             // Convert Moodle exception to API exception

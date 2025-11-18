@@ -25,7 +25,7 @@
  * their performance.
  *
  * Delegates to existing Moodle quiz functions without duplicating business logic:
- * - quiz_create_attempt_handling_errors() for attempt object creation
+ * - quiz_attempt::create() for attempt object creation
  * - $attemptobj->check_review_capability() for permission validation
  * - $attemptobj->get_display_options(true) for review option enforcement
  * - attempt_summary_information::create_for_attempt() for summary data
@@ -153,9 +153,9 @@ class QuizAttemptReviewEndpoint extends ApiBase {
         }
         
         try {
-            // Create attempt object using existing Moodle function
-            // This function validates attempt exists and loads all necessary data
-            $attemptobj = quiz_create_attempt_handling_errors($attemptid);
+            // Create attempt object using quiz_attempt::create static method
+            // This validates attempt exists and loads all necessary data
+            $attemptobj = quiz_attempt::create($attemptid);
             
         } catch (moodle_exception $e) {
             // Convert Moodle exception to API exception
@@ -179,6 +179,17 @@ class QuizAttemptReviewEndpoint extends ApiBase {
         
         // Get context for capability checking
         $context = $attemptobj->get_context();
+        
+        // Check if user has permission to view this quiz
+        try {
+            $this->checkCapability('mod/quiz:view', $context);
+        } catch (ForbiddenException $e) {
+            throw new ForbiddenException('You do not have permission to view this quiz', [
+                'attemptId' => $attemptid,
+                'capability' => 'mod/quiz:view',
+                'reason' => $e->getMessage()
+            ]);
+        }
         
         // Check review capability
         // This validates user owns attempt and has mod/quiz:reviewmyattempts
