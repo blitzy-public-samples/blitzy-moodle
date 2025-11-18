@@ -17,19 +17,17 @@
 /**
  * Grade Categories API Endpoint
  *
- * GET /api/v1/gradebook/categories - Get all grade categories for a course
+ * GET /api/v1/gradebook/categories - Retrieve grade category hierarchy for a course
  *
- * This endpoint provides access to all grade categories configured in a course's
- * gradebook, including their hierarchical structure, aggregation settings, and
- * weighting rules.
+ * This endpoint retrieves the grade category structure for a course including
+ * category hierarchy, aggregation methods, weights, and nested children. It wraps
+ * existing Moodle grade category functions to provide a JSON API interface.
  *
  * Required Parameters:
- * - courseid: The ID of the course
+ * - courseid: The ID of the course (integer)
  *
- * Optional Parameters:
- * - includetree: Return categories in tree structure (default: false)
- *
- * Required Capability: moodle/grade:view or moodle/grade:viewall
+ * Required Capability:
+ * - moodle/grade:view in course context
  *
  * Response Format:
  * {
@@ -40,30 +38,39 @@
  *       "fullname": "Course Name",
  *       "shortname": "COURSE101"
  *     },
- *     "categories": [
- *       {
- *         "id": 1,
- *         "fullname": "?",
- *         "aggregation": 13,
- *         "aggregation_name": "Weighted mean of grades",
- *         "aggregationcoef": 0.00,
- *         "aggregationcoef2": 0.00,
- *         "aggregateonlygraded": 1,
- *         "aggregateoutcomes": 0,
- *         "droplow": 0,
- *         "keephigh": 0,
- *         "hidden": 0,
- *         "parent": null,
- *         "depth": 1,
- *         "path": "/1/",
- *         "children": [2, 3],
- *         "item_count": 5
- *       }
- *     ]
+ *     "root_category": {
+ *       "id": 1,
+ *       "name": "Course Name",
+ *       "aggregation": 13,
+ *       "aggregation_name": "Weighted mean of grades",
+ *       "aggregationcoef": 0.00,
+ *       "aggregationcoef2": 0.00,
+ *       "droplow": 0,
+ *       "keephigh": 0,
+ *       "hidden": 0,
+ *       "parent": null,
+ *       "depth": 1,
+ *       "path": "/1/",
+ *       "children": [
+ *         {
+ *           "type": "category",
+ *           "id": 2,
+ *           "name": "Assignments",
+ *           "aggregation": 10,
+ *           "children": []
+ *         },
+ *         {
+ *           "type": "item",
+ *           "id": 3,
+ *           "itemname": "Final Exam",
+ *           "itemtype": "manual"
+ *         }
+ *       ]
+ *     }
  *   }
  * }
  *
- * @package    core
+ * @package    core_grades
  * @subpackage api
  * @copyright  2024 Moodle Pty Ltd
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -74,8 +81,6 @@ define('NO_MOODLE_COOKIES', true);
 
 require_once(__DIR__ . '/../../../public/config.php');
 require_once($CFG->libdir . '/gradelib.php');
-require_once($CFG->dirroot . '/grade/lib.php');
-require_once($CFG->dirroot . '/grade/querylib.php');
 require_once(__DIR__ . '/../../lib/api_base.php');
 require_once(__DIR__ . '/../../lib/api_exception.php');
 require_once(__DIR__ . '/../../lib/api_response.php');
@@ -83,9 +88,10 @@ require_once(__DIR__ . '/../../lib/api_response.php');
 /**
  * Grade Categories Endpoint Class
  *
- * Handles GET requests to retrieve all grade categories for a course.
+ * Handles GET requests to retrieve grade category hierarchy for a course.
+ * Wraps existing Moodle grade_category methods following thin wrapper pattern.
  *
- * @package    core
+ * @package    core_grades
  * @copyright  2024 Moodle Pty Ltd
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -94,8 +100,10 @@ class GradeCategoriesEndpoint extends ApiBase {
     /**
      * Get human-readable name for aggregation type
      *
-     * @param int $aggregation Aggregation constant
-     * @return string Aggregation name
+     * Maps Moodle aggregation constants to descriptive names.
+     *
+     * @param int $aggregation Aggregation constant from Moodle core
+     * @return string Human-readable aggregation method name
      */
     private function get_aggregation_name($aggregation) {
         $names = [
@@ -114,172 +122,156 @@ class GradeCategoriesEndpoint extends ApiBase {
     }
     
     /**
-     * Build tree structure from flat category list
+     * Recursively build category tree structure with children
      *
-     * @param array $categories Flat array of categories
-     * @return array Tree structure with children
+     * Uses the existing grade_category::get_children() method to retrieve
+     * nested categories and grade items. Follows the thin wrapper pattern
+     * by delegating all data retrieval to Moodle core functions.
+     *
+     * @param grade_category $category The category to process
+     * @return array Category data with nested children array
      */
-    private function build_category_tree($categories) {
-        $tree = [];
-        $indexed = [];
+    private function buildCategoryTree($category) {
+        // Build base category data structure
+        $categorydata = [
+            'id' => intval($category->id),
+            'name' => $category->get_name(),
+            'aggregation' => intval($category->aggregation),
+            'aggregation_name' => $this->get_aggregation_name($category->aggregation),
+            'aggregationcoef' => floatval($category->aggregationcoef),
+            'aggregationcoef2' => floatval($category->aggregationcoef2),
+            'aggregateonlygraded' => intval($category->aggregateonlygraded),
+            'aggregateoutcomes' => intval($category->aggregateoutcomes),
+            'droplow' => intval($category->droplow),
+            'keephigh' => intval($category->keephigh),
+            'hidden' => intval($category->hidden),
+            'parent' => $category->parent ? intval($category->parent) : null,
+            'depth' => intval($category->depth),
+            'path' => $category->path,
+            'timecreated' => intval($category->timecreated),
+            'timemodified' => intval($category->timemodified)
+        ];
         
-        // Index categories by id
-        foreach ($categories as $category) {
-            $indexed[$category['id']] = $category;
-            $indexed[$category['id']]['children_data'] = [];
-        }
+        // Recursively get all children using existing Moodle method
+        $children = $category->get_children();
+        $categorydata['children'] = [];
         
-        // Build tree structure
-        foreach ($indexed as $id => $category) {
-            if ($category['parent'] === null) {
-                // Root category
-                $tree[] = &$indexed[$id];
-            } else {
-                // Child category
-                if (isset($indexed[$category['parent']])) {
-                    $indexed[$category['parent']]['children_data'][] = &$indexed[$id];
+        if ($children) {
+            foreach ($children as $child) {
+                // Check if child is a category or grade item
+                if ($child instanceof grade_category) {
+                    // Recursively process child category
+                    $childdata = $this->buildCategoryTree($child);
+                    $childdata['type'] = 'category';
+                    $categorydata['children'][] = $childdata;
+                } else if ($child instanceof grade_item) {
+                    // Process grade item (leaf node)
+                    $itemdata = [
+                        'type' => 'item',
+                        'id' => intval($child->id),
+                        'itemname' => $child->itemname,
+                        'itemtype' => $child->itemtype,
+                        'itemmodule' => $child->itemmodule,
+                        'iteminstance' => $child->iteminstance ? intval($child->iteminstance) : null,
+                        'itemnumber' => $child->itemnumber ? intval($child->itemnumber) : null,
+                        'idnumber' => $child->idnumber,
+                        'calculation' => $child->calculation,
+                        'gradetype' => intval($child->gradetype),
+                        'grademax' => floatval($child->grademax),
+                        'grademin' => floatval($child->grademin),
+                        'gradepass' => floatval($child->gradepass),
+                        'multfactor' => floatval($child->multfactor),
+                        'plusfactor' => floatval($child->plusfactor),
+                        'aggregationcoef' => floatval($child->aggregationcoef),
+                        'aggregationcoef2' => floatval($child->aggregationcoef2),
+                        'hidden' => intval($child->hidden),
+                        'locked' => intval($child->locked),
+                        'weightoverride' => intval($child->weightoverride),
+                        'needsupdate' => intval($child->needsupdate)
+                    ];
+                    $categorydata['children'][] = $itemdata;
                 }
             }
         }
         
-        return $tree;
+        return $categorydata;
     }
     
     /**
-     * Handle GET request to retrieve grade categories
+     * Handle GET request to retrieve grade category hierarchy
      *
-     * Validates permissions, retrieves all grade categories for a course,
-     * and returns formatted category configuration data with optional tree structure.
+     * Implements the required endpoint logic:
+     * 1. Extract and validate courseid parameter
+     * 2. Verify course exists
+     * 3. Check moodle/grade:view capability in course context
+     * 4. Call grade_category::fetch_course_category() to get root category
+     * 5. Recursively build category tree using get_children()
+     * 6. Return JSON-formatted hierarchical structure
      *
-     * @return void Outputs JSON response
-     * @throws ApiException If validation fails or course not found
+     * All business logic is delegated to existing Moodle grade_category methods.
+     * No grade calculation or permission logic is duplicated.
+     *
+     * @return void Outputs JSON response via ApiResponse::success()
+     * @throws NotFoundException If course not found (404)
+     * @throws ForbiddenException If user lacks permission (403)
+     * @throws ValidationException If courseid parameter invalid (400)
      */
     protected function handle_get() {
-        global $DB, $CFG;
+        global $DB;
         
-        // Extract and validate parameters
-        $courseid = required_param('courseid', PARAM_INT);
-        $includetree = optional_param('includetree', false, PARAM_BOOL);
+        // Extract required courseid parameter using ApiBase method
+        $courseid = $this->getParam('courseid', PARAM_INT);
         
-        // Verify course exists
-        $course = $DB->get_record('course', ['id' => $courseid], '*', MUST_EXIST);
-        if (!$course) {
-            throw new ApiException('Course not found', 'COURSE_NOT_FOUND', 404);
+        // Validate courseid is provided
+        if (empty($courseid)) {
+            throw new ValidationException('Required parameter courseid is missing');
         }
         
-        // Get course context
+        // Verify course exists using Moodle database API
+        $course = $DB->get_record('course', ['id' => $courseid]);
+        if (!$course) {
+            throw new NotFoundException('Course not found');
+        }
+        
+        // Get course context for capability checking
         $context = context_course::instance($course->id);
         
-        // Validate JWT token and get authenticated user
-        $userid = $this->authenticate_request();
+        // Check permission using ApiBase method which wraps require_capability()
+        // This enforces moodle/grade:view capability in course context
+        $this->checkCapability('moodle/grade:view', $context);
         
-        // Check permission to view grades in this course
-        if (!has_capability('moodle/grade:view', $context) && 
-            !has_capability('moodle/grade:viewall', $context)) {
-            throw new ApiException(
-                'You do not have permission to view grades in this course',
-                'PERMISSION_DENIED',
-                403
-            );
+        // Call existing Moodle static method to fetch root course category
+        // This is the entry point specified in requirements
+        $rootcategory = grade_category::fetch_course_category($courseid);
+        
+        // Handle case where category fetch returns false (should not happen for valid course)
+        if (!$rootcategory) {
+            throw new NotFoundException('Grade category not found for this course');
         }
         
-        // Get all grade categories for this course
-        $categories = grade_category::fetch_all(['courseid' => $courseid]);
-        $categoriesdata = [];
+        // Recursively build category tree using get_children() method
+        // This delegates all structure retrieval to existing grade_category methods
+        $categorytree = $this->buildCategoryTree($rootcategory);
         
-        if ($categories) {
-            foreach ($categories as $category) {
-                // Get child categories
-                $children = [];
-                $childcategories = $DB->get_records('grade_categories', ['parent' => $category->id], '', 'id');
-                if ($childcategories) {
-                    $children = array_keys($childcategories);
-                }
-                
-                // Count grade items in this category
-                $itemcount = $DB->count_records('grade_items', [
-                    'courseid' => $courseid,
-                    'categoryid' => $category->id
-                ]);
-                
-                $categorydata = [
-                    'id' => intval($category->id),
-                    'fullname' => $category->get_name(),
-                    'aggregation' => intval($category->aggregation),
-                    'aggregation_name' => $this->get_aggregation_name($category->aggregation),
-                    'aggregationcoef' => floatval($category->aggregationcoef),
-                    'aggregationcoef2' => floatval($category->aggregationcoef2),
-                    'aggregateonlygraded' => intval($category->aggregateonlygraded),
-                    'aggregateoutcomes' => intval($category->aggregateoutcomes),
-                    'droplow' => intval($category->droplow),
-                    'keephigh' => intval($category->keephigh),
-                    'hidden' => intval($category->hidden),
-                    'parent' => $category->parent ? intval($category->parent) : null,
-                    'depth' => intval($category->depth),
-                    'path' => $category->path,
-                    'children' => $children,
-                    'item_count' => $itemcount,
-                    'timecreated' => intval($category->timecreated),
-                    'timemodified' => intval($category->timemodified)
-                ];
-                
-                $categoriesdata[] = $categorydata;
-            }
-        }
-        
-        // Build tree structure if requested
-        if ($includetree) {
-            $categoriesdata = $this->build_category_tree($categoriesdata);
-        }
-        
-        // Build response
+        // Build complete response with course info and category hierarchy
         $response = [
             'course' => [
-                'id' => $course->id,
+                'id' => intval($course->id),
                 'fullname' => $course->fullname,
                 'shortname' => $course->shortname,
                 'idnumber' => $course->idnumber
             ],
-            'categories' => $categoriesdata,
-            'is_tree' => $includetree
+            'root_category' => $categorytree
         ];
         
-        ApiResponse::success($response);
+        // Return standardized JSON success response
+        $this->success($response);
     }
     
-    /**
-     * Handle POST request - not supported for this endpoint
-     *
-     * @return void
-     * @throws MethodNotAllowedException Always thrown
-     */
-    protected function handle_post() {
-        throw new MethodNotAllowedException('POST method is not supported for grade categories endpoint');
-    }
-    
-    /**
-     * Handle PUT request - not supported for this endpoint
-     *
-     * @return void
-     * @throws MethodNotAllowedException Always thrown
-     */
-    protected function handle_put() {
-        throw new MethodNotAllowedException('PUT method is not supported for grade categories endpoint');
-    }
-    
-    /**
-     * Handle DELETE request - not supported for this endpoint
-     *
-     * @return void
-     * @throws MethodNotAllowedException Always thrown
-     */
-    protected function handle_delete() {
-        throw new MethodNotAllowedException('DELETE method is not supported for grade categories endpoint');
-    }
 }
 
-// Instantiate and handle the request
-if (!defined('API_TEST_MODE')) {
-    $endpoint = new GradeCategoriesEndpoint();
-    $endpoint->execute();
-}
+// Instantiate endpoint and execute request
+// ApiBase::execute() will route to handle_get() for GET requests
+// and handle authentication, error handling, and response formatting
+$endpoint = new GradeCategoriesEndpoint();
+$endpoint->execute();
