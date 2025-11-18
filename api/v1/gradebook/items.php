@@ -20,68 +20,55 @@
  * GET /api/v1/gradebook/items - Get all grade items for a course
  *
  * This endpoint provides access to all grade items (assignments, quizzes, manual items, etc.)
- * configured in a course's gradebook, including their properties, weightings, and settings.
+ * configured in a course's gradebook. Wraps existing grade_item::fetch_all() from gradelib.php
+ * to return JSON-formatted list of grade items with comprehensive properties including names,
+ * categories, grade ranges, scales, item types, and aggregation settings.
  *
  * Required Parameters:
- * - courseid: The ID of the course
+ * - courseid: The ID of the course (integer)
  *
  * Optional Parameters:
- * - includeoutcomes: Include outcome items (default: false)
- * - includecategories: Include grade category items (default: true)
+ * - include_categories: Include grade category items (boolean, default: false)
+ * - include_course_item: Include course total item (boolean, default: false)
  *
- * Required Capability: moodle/grade:view or moodle/grade:viewall
+ * Required Capability: moodle/grade:view
  *
  * Response Format:
  * {
  *   "success": true,
- *   "data": {
- *     "course": {
- *       "id": 5,
- *       "fullname": "Course Name",
- *       "shortname": "COURSE101"
- *     },
- *     "items": [
- *       {
- *         "id": 10,
- *         "itemname": "Assignment 1",
- *         "itemtype": "mod",
- *         "itemmodule": "assign",
- *         "iteminstance": 5,
- *         "categoryid": 3,
- *         "grademax": 100.00,
- *         "grademin": 0.00,
- *         "gradepass": 50.00,
- *         "multfactor": 1.00,
- *         "plusfactor": 0.00,
- *         "aggregationcoef": 0.00,
- *         "aggregationcoef2": 0.00,
- *         "weightoverride": 0,
- *         "sortorder": 1,
- *         "display": 1,
- *         "decimals": 2,
- *         "hidden": 0,
- *         "locked": 0,
- *         "locktime": 0,
- *         "needsupdate": 0,
- *         "calculation": null
- *       }
- *     ],
- *     "categories": [
- *       {
- *         "id": 3,
- *         "fullname": "Assignments",
- *         "aggregation": 10,
- *         "aggregationcoef": 0.00,
- *         "aggregationcoef2": 0.00,
- *         "aggregateonlygraded": 1,
- *         "aggregateoutcomes": 0,
- *         "droplow": 0,
- *         "keephigh": 0,
- *         "parent": 1
- *       }
- *     ]
- *   }
+ *   "data": [
+ *     {
+ *       "id": 10,
+ *       "courseid": 5,
+ *       "itemname": "Assignment 1",
+ *       "itemtype": "mod",
+ *       "itemmodule": "assign",
+ *       "iteminstance": 15,
+ *       "categoryid": 3,
+ *       "categoryname": "Assignments",
+ *       "gradetype": 1,
+ *       "grademax": 100.00,
+ *       "grademin": 0.00,
+ *       "gradepass": 50.00,
+ *       "scaleid": null,
+ *       "locked": false,
+ *       "hidden": false,
+ *       "aggregationcoef": 0.00,
+ *       "aggregationcoef2": 0.00,
+ *       "weightoverride": 0,
+ *       "sortorder": 1,
+ *       "display": 1,
+ *       "decimals": 2,
+ *       "timecreated": 1234567890,
+ *       "timemodified": 1234567890
+ *     }
+ *   ]
  * }
+ *
+ * Error Responses:
+ * - 400: Missing or invalid courseid parameter
+ * - 403: Permission denied (missing moodle/grade:view capability)
+ * - 404: Course not found
  *
  * @package    core
  * @subpackage api
@@ -89,21 +76,21 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+// Define constants for API context
 define('AJAX_SCRIPT', true);
 define('NO_MOODLE_COOKIES', true);
 
-require_once(__DIR__ . '/../../../public/config.php');
+// Load Moodle configuration and required libraries
+require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->libdir . '/gradelib.php');
-require_once($CFG->dirroot . '/grade/lib.php');
-require_once($CFG->dirroot . '/grade/querylib.php');
 require_once(__DIR__ . '/../../lib/api_base.php');
-require_once(__DIR__ . '/../../lib/api_exception.php');
-require_once(__DIR__ . '/../../lib/api_response.php');
 
 /**
  * Grade Items Endpoint Class
  *
  * Handles GET requests to retrieve all grade items for a course.
+ * Extends ApiBase to inherit JWT authentication, permission checking,
+ * parameter extraction, and response formatting.
  *
  * @package    core
  * @copyright  2024 Moodle Pty Ltd
@@ -112,195 +99,194 @@ require_once(__DIR__ . '/../../lib/api_response.php');
 class GradeItemsEndpoint extends ApiBase {
     
     /**
-     * Handle GET request to retrieve grade items
+     * Handle GET request to retrieve grade items for a course.
      *
-     * Validates permissions, retrieves all grade items and categories for a course,
-     * and returns formatted grade item configuration data.
+     * Thin wrapper around existing Moodle grading functions. Performs the following:
+     * 1. Extracts and validates courseid parameter
+     * 2. Verifies course exists and user has moodle/grade:view capability
+     * 3. Calls grade_item::fetch_all() to retrieve grade items (existing function)
+     * 4. Filters out GRADE_TYPE_NONE items and optionally category/course items
+     * 5. Enriches items with formatted names and category information
+     * 6. Returns JSON response with grade item data
      *
-     * @return void Outputs JSON response
-     * @throws ApiException If validation fails or course not found
+     * No business logic duplication - all grade retrieval uses existing Moodle functions.
+     *
+     * @return void Outputs JSON response directly via $this->success()
+     * @throws ValidationException If courseid parameter is missing or invalid
+     * @throws NotFoundException If course does not exist
+     * @throws ForbiddenException If user lacks moodle/grade:view capability
      */
     protected function handle_get() {
-        global $DB, $CFG;
+        global $DB;
         
-        // Extract and validate parameters
-        $courseid = required_param('courseid', PARAM_INT);
-        $includeoutcomes = optional_param('includeoutcomes', false, PARAM_BOOL);
-        $includecategories = optional_param('includecategories', true, PARAM_BOOL);
+        // Extract and validate required courseid parameter
+        $courseid = $this->getParam('courseid', PARAM_INT, true);
         
-        // Verify course exists
-        $course = $DB->get_record('course', ['id' => $courseid], '*', MUST_EXIST);
+        // Extract optional filter parameters
+        $includecategories = $this->getParam('include_categories', PARAM_BOOL, false, false);
+        $includecourseitem = $this->getParam('include_course_item', PARAM_BOOL, false, false);
+        
+        // Verify course exists using existing Moodle database query
+        $course = $DB->get_record('course', ['id' => $courseid]);
+        
         if (!$course) {
-            throw new ApiException('Course not found', 'COURSE_NOT_FOUND', 404);
-        }
-        
-        // Get course context
-        $context = context_course::instance($course->id);
-        
-        // Validate JWT token and get authenticated user
-        $userid = $this->authenticate_request();
-        
-        // Check permission to view grades in this course
-        // Users need either view (own grades) or viewall (all grades) capability
-        if (!has_capability('moodle/grade:view', $context) && 
-            !has_capability('moodle/grade:viewall', $context)) {
-            throw new ApiException(
-                'You do not have permission to view grades in this course',
-                'PERMISSION_DENIED',
-                403
+            $this->error(
+                'COURSE_NOT_FOUND',
+                'The specified course does not exist',
+                404,
+                ['courseid' => $courseid]
             );
+            return;
         }
         
-        // Get all grade items for this course
-        $gradeitems = grade_item::fetch_all(['courseid' => $courseid]);
-        $gradeitemsdata = [];
+        // Get course context for capability checking
+        $context = context_course::instance($courseid);
         
+        // Check user has permission to view grades in this course
+        // Uses existing Moodle require_capability() via ApiBase->checkCapability()
+        $this->checkCapability('moodle/grade:view', $context);
+        
+        // Retrieve all grade items for the course using existing Moodle function
+        // grade_item::fetch_all() is the authoritative source for grade item data
+        $gradeitems = grade_item::fetch_all(['courseid' => $courseid]);
+        
+        // Initialize array for filtered and enriched grade items
+        $items = [];
+        
+        // Process grade items if any exist
         if ($gradeitems) {
             foreach ($gradeitems as $gradeitem) {
-                // Skip outcomes if not requested
-                if (!$includeoutcomes && $gradeitem->itemtype == 'outcome') {
+                // Filter out items with GRADE_TYPE_NONE (not actual grade items)
+                if ($gradeitem->gradetype == GRADE_TYPE_NONE) {
                     continue;
                 }
                 
-                // Skip course item (it's not a real gradeable item)
-                if ($gradeitem->itemtype == 'course') {
+                // Filter out category items unless explicitly requested
+                if (!$includecategories && $gradeitem->is_category_item()) {
                     continue;
                 }
                 
-                // Skip category items if not requested
-                if (!$includecategories && $gradeitem->itemtype == 'category') {
+                // Filter out course total item unless explicitly requested
+                if (!$includecourseitem && $gradeitem->is_course_item()) {
                     continue;
                 }
                 
+                // Build enriched item data using existing grade_item methods
                 $itemdata = [
-                    'id' => intval($gradeitem->id),
+                    'id' => (int)$gradeitem->id,
+                    'courseid' => (int)$gradeitem->courseid,
+                    // Use get_name() method for formatted display name
                     'itemname' => $gradeitem->get_name(),
                     'itemtype' => $gradeitem->itemtype,
                     'itemmodule' => $gradeitem->itemmodule,
-                    'iteminstance' => $gradeitem->iteminstance ? intval($gradeitem->iteminstance) : null,
-                    'categoryid' => intval($gradeitem->categoryid),
-                    'grademax' => floatval($gradeitem->grademax),
-                    'grademin' => floatval($gradeitem->grademin),
-                    'gradepass' => $gradeitem->gradepass ? floatval($gradeitem->gradepass) : null,
-                    'multfactor' => floatval($gradeitem->multfactor),
-                    'plusfactor' => floatval($gradeitem->plusfactor),
-                    'aggregationcoef' => floatval($gradeitem->aggregationcoef),
-                    'aggregationcoef2' => floatval($gradeitem->aggregationcoef2),
-                    'weightoverride' => intval($gradeitem->weightoverride),
-                    'sortorder' => intval($gradeitem->sortorder),
-                    'display' => intval($gradeitem->display),
-                    'decimals' => $gradeitem->decimals !== null ? intval($gradeitem->decimals) : null,
-                    'hidden' => intval($gradeitem->hidden),
-                    'locked' => intval($gradeitem->locked),
-                    'locktime' => intval($gradeitem->locktime),
-                    'needsupdate' => intval($gradeitem->needsupdate),
-                    'calculation' => $gradeitem->calculation,
-                    'timecreated' => intval($gradeitem->timecreated),
-                    'timemodified' => intval($gradeitem->timemodified)
+                    'iteminstance' => $gradeitem->iteminstance ? (int)$gradeitem->iteminstance : null,
+                    'itemnumber' => $gradeitem->itemnumber ? (int)$gradeitem->itemnumber : 0,
+                    'categoryid' => (int)$gradeitem->categoryid,
+                    // Use get_parent_category() method to get category object, then get_name()
+                    'categoryname' => $gradeitem->get_parent_category()->get_name(),
+                    'gradetype' => (int)$gradeitem->gradetype,
+                    'grademax' => (float)$gradeitem->grademax,
+                    'grademin' => (float)$gradeitem->grademin,
+                    'gradepass' => $gradeitem->gradepass ? (float)$gradeitem->gradepass : null,
+                    'scaleid' => $gradeitem->scaleid ? (int)$gradeitem->scaleid : null,
+                    // Use is_locked() method to check lock status
+                    'locked' => $gradeitem->is_locked(),
+                    // Use is_hidden() method to check visibility status
+                    'hidden' => $gradeitem->is_hidden(),
+                    'aggregationcoef' => (float)$gradeitem->aggregationcoef,
+                    'aggregationcoef2' => (float)$gradeitem->aggregationcoef2,
+                    'weightoverride' => (int)$gradeitem->weightoverride,
+                    'sortorder' => (int)$gradeitem->sortorder,
+                    'display' => (int)$gradeitem->display,
+                    'decimals' => $gradeitem->decimals !== null ? (int)$gradeitem->decimals : null,
+                    'multfactor' => (float)$gradeitem->multfactor,
+                    'plusfactor' => (float)$gradeitem->plusfactor,
+                    'timecreated' => (int)$gradeitem->timecreated,
+                    'timemodified' => (int)$gradeitem->timemodified
                 ];
                 
-                // Add outcome-specific data if this is an outcome
-                if ($gradeitem->itemtype == 'outcome' && $gradeitem->outcomeid) {
-                    $outcome = grade_outcome::fetch(['id' => $gradeitem->outcomeid]);
-                    if ($outcome) {
-                        $itemdata['outcome'] = [
-                            'id' => intval($outcome->id),
-                            'shortname' => $outcome->shortname,
-                            'fullname' => $outcome->fullname,
-                            'scaleid' => intval($outcome->scaleid)
-                        ];
-                    }
-                }
-                
-                // Add scale information if this item uses a scale
+                // Add scale information if this grade item uses a scale
                 if ($gradeitem->gradetype == GRADE_TYPE_SCALE && $gradeitem->scaleid) {
                     $scale = $DB->get_record('scale', ['id' => $gradeitem->scaleid]);
                     if ($scale) {
                         $itemdata['scale'] = [
-                            'id' => intval($scale->id),
+                            'id' => (int)$scale->id,
                             'name' => $scale->name,
-                            'scale' => $scale->scale
+                            'scale' => $scale->scale,
+                            'description' => $scale->description
                         ];
                     }
                 }
                 
-                $gradeitemsdata[] = $itemdata;
+                // Add outcome information if this is an outcome item
+                if ($gradeitem->itemtype === 'outcome' && $gradeitem->outcomeid) {
+                    // Use grade_outcome::fetch() to get outcome details (existing function)
+                    $outcome = grade_outcome::fetch(['id' => $gradeitem->outcomeid]);
+                    if ($outcome) {
+                        $itemdata['outcome'] = [
+                            'id' => (int)$outcome->id,
+                            'shortname' => $outcome->shortname,
+                            'fullname' => $outcome->fullname,
+                            'description' => $outcome->description
+                        ];
+                    }
+                }
+                
+                // Add calculation formula if present
+                if (!empty($gradeitem->calculation)) {
+                    $itemdata['calculation'] = $gradeitem->calculation;
+                }
+                
+                $items[] = $itemdata;
             }
         }
         
-        // Get grade categories for this course
-        $categories = grade_category::fetch_all(['courseid' => $courseid]);
-        $categoriesdata = [];
-        
-        if ($categories) {
-            foreach ($categories as $category) {
-                $categoriesdata[] = [
-                    'id' => intval($category->id),
-                    'fullname' => $category->get_name(),
-                    'aggregation' => intval($category->aggregation),
-                    'aggregationcoef' => floatval($category->aggregationcoef),
-                    'aggregationcoef2' => floatval($category->aggregationcoef2),
-                    'aggregateonlygraded' => intval($category->aggregateonlygraded),
-                    'aggregateoutcomes' => intval($category->aggregateoutcomes),
-                    'droplow' => intval($category->droplow),
-                    'keephigh' => intval($category->keephigh),
-                    'hidden' => intval($category->hidden),
-                    'parent' => $category->parent ? intval($category->parent) : null,
-                    'depth' => intval($category->depth),
-                    'path' => $category->path,
-                    'timecreated' => intval($category->timecreated),
-                    'timemodified' => intval($category->timemodified)
-                ];
-            }
-        }
-        
-        // Build response
-        $response = [
-            'course' => [
-                'id' => $course->id,
-                'fullname' => $course->fullname,
-                'shortname' => $course->shortname,
-                'idnumber' => $course->idnumber
-            ],
-            'items' => $gradeitemsdata,
-            'categories' => $categoriesdata
-        ];
-        
-        ApiResponse::success($response);
+        // Return success response with grade items array
+        // Uses ApiBase->success() for consistent JSON formatting
+        $this->success($items);
     }
     
     /**
-     * Handle POST request - not supported for this endpoint
+     * Handle POST request - not supported for this endpoint.
+     *
+     * Grade items are managed through course activities and manual grade items,
+     * not created directly through this API endpoint.
      *
      * @return void
      * @throws MethodNotAllowedException Always throws
      */
     protected function handle_post() {
-        throw new MethodNotAllowedException('POST method is not supported for grade items endpoint');
+        throw new MethodNotAllowedException('POST method is not supported for grade items retrieval endpoint');
     }
     
     /**
-     * Handle PUT request - not supported for this endpoint
+     * Handle PUT request - not supported for this endpoint.
+     *
+     * Grade item updates should use dedicated update endpoints for specific
+     * item types (assignments, quizzes, manual items, etc.).
      *
      * @return void
      * @throws MethodNotAllowedException Always throws
      */
     protected function handle_put() {
-        throw new MethodNotAllowedException('PUT method is not supported for grade items endpoint');
+        throw new MethodNotAllowedException('PUT method is not supported for grade items retrieval endpoint');
     }
     
     /**
-     * Handle DELETE request - not supported for this endpoint
+     * Handle DELETE request - not supported for this endpoint.
+     *
+     * Grade items are deleted through their parent activities or through
+     * the gradebook management interface, not directly via this endpoint.
      *
      * @return void
      * @throws MethodNotAllowedException Always throws
      */
     protected function handle_delete() {
-        throw new MethodNotAllowedException('DELETE method is not supported for grade items endpoint');
+        throw new MethodNotAllowedException('DELETE method is not supported for grade items retrieval endpoint');
     }
 }
 
-// Instantiate and handle the request
+// Instantiate and execute the endpoint (skip in test mode)
 if (!defined('API_TEST_MODE')) {
     $endpoint = new GradeItemsEndpoint();
     $endpoint->execute();
