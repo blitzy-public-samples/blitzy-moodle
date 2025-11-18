@@ -55,6 +55,9 @@ require_once($CFG->dirroot . '/mod/quiz/locallib.php');
 require_once(__DIR__ . '/../../lib/api_base.php');
 require_once(__DIR__ . '/../../lib/api_exception.php');
 
+// Import quiz namespace classes
+use mod_quiz\quiz_settings;
+
 /**
  * Quiz Questions API Endpoint.
  *
@@ -127,7 +130,7 @@ class QuizQuestionsEndpoint extends ApiBase {
         // Create quiz settings object using existing Moodle function
         // This delegates to Moodle core without duplicating business logic
         try {
-            $quizobj = mod_quiz\quiz_settings::create($quizid, $USER->id);
+            $quizobj = quiz_settings::create($quizid, $USER->id);
         } catch (moodle_exception $e) {
             throw new NotFoundException('Quiz not found', [
                 'quizId' => $quizid,
