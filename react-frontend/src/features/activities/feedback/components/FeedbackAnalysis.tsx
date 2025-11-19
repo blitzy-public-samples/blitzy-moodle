@@ -322,12 +322,24 @@ export const FeedbackAnalysis: React.FC<FeedbackAnalysisProps> = ({
    * Based on question type, creates appropriate visualization
    */
   const generateChartConfig = (item: FeedbackItemAnalysis): ChartConfig | null => {
-    if (!item.distribution || item.distribution.length === 0) {
+    // Determine labels and values based on question type
+    let labels: string[];
+    let values: number[];
+
+    // For numeric questions, use chartData if available
+    if (item.type === 'numeric' && item.chartData) {
+      labels = item.chartData.labels;
+      values = item.chartData.values;
+    } 
+    // For choice-based questions, use distribution if available
+    else if (item.distribution && item.distribution.length > 0) {
+      labels = item.distribution.map((d) => d.value);
+      values = item.distribution.map((d) => d.count);
+    } 
+    // No data available for chart
+    else {
       return null;
     }
-
-    const labels = item.distribution.map((d) => d.value);
-    const values = item.distribution.map((d) => d.count);
 
     // Color palette for charts
     const colors = [
@@ -499,12 +511,13 @@ export const FeedbackAnalysis: React.FC<FeedbackAnalysisProps> = ({
 
     switch (config.type) {
       case 'bar':
+        return <Bar {...chartProps} data-testid="bar-chart" />;
       case 'horizontalBar':
-        return <Bar {...chartProps} />;
+        return <Bar {...chartProps} data-testid="horizontal-bar-chart" />;
       case 'line':
-        return <Line {...chartProps} />;
+        return <Line {...chartProps} data-testid="line-chart" />;
       case 'pie':
-        return <Pie {...chartProps} />;
+        return <Pie {...chartProps} data-testid="pie-chart" />;
       default:
         return null;
     }
@@ -519,7 +532,7 @@ export const FeedbackAnalysis: React.FC<FeedbackAnalysisProps> = ({
     }
 
     return (
-      <Box sx={{ mt: 2, display: { xs: 'block', md: 'none', print: 'block' } }}>
+      <Box sx={{ mt: 2 }}>
         <Typography variant="subtitle2" gutterBottom>
           Data Table (Alternative to Chart)
         </Typography>
@@ -922,3 +935,5 @@ export const FeedbackAnalysis: React.FC<FeedbackAnalysisProps> = ({
     </Box>
   );
 };
+
+export default FeedbackAnalysis;
