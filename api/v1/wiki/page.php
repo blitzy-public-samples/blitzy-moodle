@@ -84,7 +84,7 @@
  */
 
 // Load Moodle configuration
-require_once(__DIR__ . '/../../config.php');
+require_once(__DIR__ . '/../../../config.php');
 
 // Load API base class and exceptions
 require_once(__DIR__ . '/../../lib/api_base.php');

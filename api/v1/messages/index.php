@@ -34,7 +34,7 @@
 
 // Load Moodle configuration and core libraries.
 require_once(__DIR__ . '/../../../config.php');
-require_once($CFG->dirroot . '/api/lib/api_base.php');
+require_once(__DIR__ . '/../../lib/api_base.php');
 
 /**
  * REST API endpoint class for retrieving user message conversations.

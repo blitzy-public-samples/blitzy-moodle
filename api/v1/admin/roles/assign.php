@@ -62,12 +62,12 @@
  */
 
 // Load Moodle configuration and core functions
-require_once(__DIR__ . '/../../../config.php');
+require_once(__DIR__ . '/../../../../config.php');
 require_once($CFG->libdir . '/accesslib.php');
 
 // Load API base class and exception handling
-require_once(__DIR__ . '/../../lib/api_base.php');
-require_once(__DIR__ . '/../../lib/api_exception.php');
+require_once(__DIR__ . '/../../../lib/api_base.php');
+require_once(__DIR__ . '/../../../lib/api_exception.php');
 
 /**
  * Role assignment endpoint class.

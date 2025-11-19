@@ -32,9 +32,9 @@
 require_once(__DIR__ . '/../../../../config.php');
 
 // Require API base classes
-require_once($CFG->dirroot . '/api/lib/api_base.php');
-require_once($CFG->dirroot . '/api/lib/api_response.php');
-require_once($CFG->dirroot . '/api/lib/api_exception.php');
+require_once(__DIR__ . '/../../../lib/api_base.php');
+require_once(__DIR__ . '/../../../lib/api_response.php');
+require_once(__DIR__ . '/../../../lib/api_exception.php');
 
 // Require Moodle core libraries
 require_once($CFG->dirroot . '/user/lib.php');
