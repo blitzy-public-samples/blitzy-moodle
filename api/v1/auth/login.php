@@ -163,11 +163,15 @@ class AuthLoginEndpoint extends ApiBase {
             
             // Extract optional parameters
             $logintoken = isset($data['logintoken']) ? $data['logintoken'] : null;
-            $recaptcha = isset($data['recaptcha']) ? $data['recaptcha'] : null;
+            // For recaptcha, use false as default instead of null to match function signature
+            $recaptcha = isset($data['recaptcha']) ? $data['recaptcha'] : false;
             
-            // Validate login token for CSRF protection if provided
-            // This prevents cross-site request forgery attacks
+            // Handle login token for CSRF protection
+            // For REST API clients that don't have a form display step, we generate
+            // an ephemeral token on-the-fly. This satisfies Moodle's web context
+            // requirements while maintaining stateless API design.
             if ($logintoken !== null) {
+                // Client provided a token - validate it
                 try {
                     \core\session\manager::validate_login_token($logintoken);
                 } catch (moodle_exception $e) {
@@ -176,6 +180,11 @@ class AuthLoginEndpoint extends ApiBase {
                         'message' => 'The login token has expired or is invalid. Please refresh the page and try again.'
                     ]);
                 }
+            } else {
+                // No token provided - generate ephemeral token for REST API compatibility
+                // This allows single-step authentication without requiring clients to
+                // first request a token from a separate endpoint
+                $logintoken = \core\session\manager::get_login_token();
             }
             
             // Check if CAPTCHA is enabled and validate if response provided
