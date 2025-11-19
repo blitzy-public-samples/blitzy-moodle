@@ -27,7 +27,7 @@
  * - phone1: Primary phone number
  * - phone2: Secondary phone number
  * - address: Street address
- * - url: Personal website URL (must be valid URL format)
+
  *
  * Request Body Example:
  * {
@@ -41,7 +41,7 @@
  *   "institution": "Example University",
  *   "department": "Computer Science",
  *   "phone1": "+61412345678",
- *   "url": "https://example.com"
+
  * }
  *
  * Success Response (200 OK):
@@ -257,16 +257,6 @@ class UserUpdateEndpoint extends ApiBase {
             }
         }
         
-        // Validate URL format
-        if (property_exists($requestdata, 'url')) {
-            $url = trim($requestdata->url);
-            if (!empty($url)) {
-                // Validate URL format using PHP's built-in filter
-                if (!filter_var($url, FILTER_VALIDATE_URL)) {
-                    $validationerrors['url'] = 'Invalid URL format';
-                }
-            }
-        }
         
         // If there are any validation errors, throw ValidationException
         if (!empty($validationerrors)) {
@@ -295,8 +285,7 @@ class UserUpdateEndpoint extends ApiBase {
             'department',
             'phone1',
             'phone2',
-            'address',
-            'url'
+            'address'
         ];
         
         // Copy updatable fields from request to user update object
