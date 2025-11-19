@@ -304,9 +304,9 @@ class CoursesShowEndpoint extends ApiBase {
             if ($includecontacts) {
                 $coursecontacts = [];
                 try {
-                    // Get course contacts using existing Moodle function.
+                    // Get course contacts using core_course_list_element method.
                     // Course contacts are typically teachers with specific roles.
-                    $contacts = get_course_contacts($courseid);
+                    $contacts = $course_obj->get_course_contacts();
                     
                     if (!empty($contacts)) {
                         foreach ($contacts as $contact) {
