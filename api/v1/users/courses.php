@@ -179,9 +179,9 @@ class UserCoursesEndpoint extends ApiBase {
                     'shortname' => $course->shortname,
                     'category' => (int) $course->category,
                     'visible' => (int) $course->visible,
-                    'format' => $course->format,
+                    'format' => $course->format ?? 'topics',
                     'startdate' => (int) $course->startdate,
-                    'enddate' => (int) $course->enddate,
+                    'enddate' => (int) ($course->enddate ?? 0),
                 ];
                 
                 // Add category name if requested
@@ -193,7 +193,7 @@ class UserCoursesEndpoint extends ApiBase {
                 }
                 
                 // Add course progress if completion tracking is enabled
-                if ($course->enablecompletion) {
+                if (!empty($course->enablecompletion)) {
                     // Load completion information for the target user
                     $completion = new completion_info($course);
                     
