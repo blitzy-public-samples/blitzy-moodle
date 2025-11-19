@@ -15,34 +15,42 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * REST API endpoint for refreshing expired JWT access tokens.
+ * REST API endpoint for refreshing expired JWT access tokens using valid refresh tokens.
  *
- * This endpoint allows clients to obtain a new access token using a valid
- * refresh token without requiring the user to re-authenticate. This enables
- * seamless user experience when access tokens expire (after 1 hour) while
- * maintaining security through short-lived access tokens.
+ * This endpoint implements token rotation for stateless JWT authentication, allowing
+ * clients to obtain new access and refresh token pairs without requiring full
+ * re-authentication. This enables seamless long-lived SPA sessions while maintaining
+ * security through short-lived access tokens (1 hour) and renewable refresh tokens (7 days).
+ *
+ * Security features:
+ * - Validates refresh token signature and expiration
+ * - Verifies token type to prevent access token misuse
+ * - Checks token blacklist to prevent reuse after logout
+ * - Validates user account status (not suspended/deleted)
+ * - Generates new token pair for rotation
  *
  * Endpoint: POST /api/v1/auth/refresh
  *
  * Request body (JSON):
  * {
- *   "refreshToken": "eyJ0eXAiOiJKV1..."
+ *   "refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGc..."
  * }
  *
  * Success response (200):
  * {
  *   "success": true,
  *   "data": {
- *     "accessToken": "eyJ0eXAiOiJKV1...",
- *     "expiresIn": 3600,
- *     "tokenType": "Bearer"
+ *     "access_token": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+ *     "refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+ *     "token_type": "Bearer",
+ *     "expires_in": 3600
  *   }
  * }
  *
  * Error responses:
- * - 400: Missing refresh token
- * - 401: Invalid or expired refresh token
- * - 500: Token generation failed
+ * - 400 Bad Request: Missing or empty refresh_token field
+ * - 401 Unauthorized: Invalid/expired token, wrong token type, blacklisted token
+ * - 404 Not Found: User account no longer exists
  *
  * @package    core
  * @subpackage api
@@ -50,140 +58,143 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-// Include API base class and utilities
+// Include required API infrastructure
 require_once(__DIR__ . '/../../lib/api_base.php');
 require_once(__DIR__ . '/../../lib/auth_jwt.php');
+require_once(__DIR__ . '/../../lib/api_exception.php');
 
 /**
- * Authentication token refresh endpoint class.
+ * Token refresh endpoint for JWT authentication rotation.
  *
- * Handles refresh token validation and generation of new access tokens.
- * This allows the React frontend to maintain authentication without
- * requiring users to re-login every time their access token expires.
+ * Extends ApiBase to handle POST /api/v1/auth/refresh requests. Validates
+ * incoming refresh tokens and generates new access/refresh token pairs,
+ * enabling seamless authentication renewal without forcing user re-login.
+ *
+ * This endpoint does NOT require JWT authentication (sets $requireAuth = false)
+ * since the refresh token itself serves as the authentication credential.
  *
  * @package    core
  * @subpackage api
  */
-class AuthRefreshEndpoint extends ApiBase {
+class RefreshEndpoint extends ApiBase {
     
     /**
-     * Handle POST request for token refresh.
+     * Constructor for RefreshEndpoint.
      *
-     * This method:
-     * 1. Extracts refresh token from request body
-     * 2. Validates the refresh token
-     * 3. Verifies token type is 'refresh' not 'access'
-     * 4. Generates a new access token
-     * 5. Returns the new access token
+     * Disables automatic JWT authentication since refresh token validation
+     * replaces the standard authentication flow for this endpoint.
+     */
+    public function __construct() {
+        parent::__construct(false); // $requireAuth = false
+    }
+    
+    /**
+     * Handle POST request for JWT token refresh.
      *
-     * The refresh token itself is not renewed and continues to be valid
-     * until its expiration (7 days). This follows OAuth 2.0 patterns.
+     * Implements secure token rotation flow:
+     * 1. Extract and validate refresh_token from request body
+     * 2. Verify token signature and expiration using JwtAuth
+     * 3. Confirm token type is 'refresh' (not 'access')
+     * 4. Check token is not blacklisted (revoked during logout)
+     * 5. Extract and validate user from token payload
+     * 6. Generate new access token (1-hour expiration)
+     * 7. Generate new refresh token (7-day expiration)
+     * 8. Return both tokens in standard response envelope
      *
-     * @return void Outputs JSON response
-     * @throws BadRequestException If refresh token is missing
-     * @throws UnauthorizedException If refresh token is invalid or expired
+     * Token rotation strategy: Both tokens are renewed on each refresh,
+     * providing defense against token replay attacks while maintaining
+     * seamless user experience.
+     *
+     * @return array Response data array for ApiBase::success() method
+     * @throws ValidationException If refresh_token field is missing or empty (400)
+     * @throws UnauthorizedException If token is invalid, expired, wrong type, or blacklisted (401)
+     * @throws NotFoundException If user from token no longer exists (404)
      */
     protected function handle_post() {
-        global $DB;
+        // Step 1: Extract JSON request body
+        $body = $this->getJsonBody();
         
-        // Get JSON request body
-        $data = $this->getJsonBody();
-        
-        // Validate refresh token is provided
-        if (empty($data['refreshToken'])) {
-            throw new BadRequestException('Missing required field: refreshToken', [
-                'field' => 'refreshToken',
-                'message' => 'Refresh token is required to obtain a new access token'
-            ]);
+        // Step 2: Validate refresh_token field presence
+        if (empty($body['refresh_token'])) {
+            throw new ValidationException(
+                'Refresh token is required',
+                [
+                    'field' => 'refresh_token',
+                    'message' => 'The refresh_token field must be provided in request body',
+                    'example' => '{"refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGc..."}'
+                ]
+            );
         }
         
-        $refreshToken = $data['refreshToken'];
+        $refreshToken = $body['refresh_token'];
         
-        // Get JWT auth instance
-        $jwtAuth = new JwtAuth();
-        
-        // Validate the refresh token
+        // Step 3: Validate token signature and expiration
         try {
-            $payload = $jwtAuth->validateToken($refreshToken);
+            $decoded = $this->jwtAuth->validateToken($refreshToken);
         } catch (Exception $e) {
-            throw new UnauthorizedException('Invalid or expired refresh token', [
-                'originalError' => $e->getMessage(),
-                'action' => 'Please log in again to obtain new tokens'
-            ]);
+            throw new UnauthorizedException(
+                'Invalid or expired refresh token',
+                [
+                    'reason' => $e->getMessage(),
+                    'action' => 'Please log in again to obtain new authentication tokens'
+                ]
+            );
         }
         
-        // Verify token type is 'refresh'
-        if (!isset($payload->type) || $payload->type !== 'refresh') {
-            throw new UnauthorizedException('Invalid token type', [
-                'reason' => 'Expected refresh token, received ' . ($payload->type ?? 'unknown'),
-                'action' => 'Please provide a valid refresh token'
-            ]);
+        // Step 4: Verify token type is 'refresh' (prevent access token misuse)
+        if (!isset($decoded->type) || $decoded->type !== 'refresh') {
+            throw new UnauthorizedException(
+                'Token is not a refresh token',
+                [
+                    'expected' => 'refresh',
+                    'received' => $decoded->type ?? 'unknown',
+                    'message' => 'Only refresh tokens can be used for token renewal'
+                ]
+            );
         }
         
-        // Extract user ID from token payload
-        $userid = $payload->sub;
-        
-        // Verify user still exists and is not suspended/deleted
-        $user = $DB->get_record('user', ['id' => $userid], '*', MUST_EXIST);
-        
-        if (!empty($user->suspended)) {
-            throw new UnauthorizedException('User account is suspended', [
-                'reason' => 'Account has been suspended by administrator',
-                'action' => 'Please contact your site administrator'
-            ]);
+        // Step 5: Check token is not blacklisted (revoked after logout)
+        if ($this->jwtAuth->isTokenBlacklisted($refreshToken)) {
+            throw new UnauthorizedException(
+                'Refresh token has been revoked',
+                [
+                    'reason' => 'Token was blacklisted after logout',
+                    'action' => 'Please log in again to obtain new authentication tokens'
+                ]
+            );
         }
         
-        if (!empty($user->deleted)) {
-            throw new UnauthorizedException('User account has been deleted', [
-                'reason' => 'Account no longer exists',
-                'action' => 'Please contact your site administrator'
-            ]);
+        // Step 6: Extract user from token payload and validate user exists
+        try {
+            $user = $this->jwtAuth->getUserFromToken($refreshToken);
+        } catch (NotFoundException $e) {
+            throw new NotFoundException(
+                'User account not found',
+                [
+                    'reason' => 'The user associated with this token no longer exists',
+                    'action' => 'Please contact your site administrator'
+                ]
+            );
         }
         
-        // Generate new access token
-        $newAccessToken = $jwtAuth->generateAccessToken($userid);
+        // Step 7: Generate new access token with 1-hour expiration
+        $newAccessToken = $this->jwtAuth->generateAccessToken($user->id);
         
-        // Return success response with new access token
-        $this->success([
-            'accessToken' => $newAccessToken,
-            'expiresIn' => JwtAuth::ACCESS_TOKEN_EXPIRY,
-            'tokenType' => 'Bearer'
+        // Step 8: Generate new refresh token with 7-day expiration
+        $newRefreshToken = $this->jwtAuth->generateRefreshToken($user->id);
+        
+        // Step 9: Return both tokens in standard response format
+        return $this->success([
+            'access_token' => $newAccessToken,
+            'refresh_token' => $newRefreshToken,
+            'token_type' => 'Bearer',
+            'expires_in' => 3600  // Access token expires in 1 hour (3600 seconds)
         ]);
-    }
-    
-    /**
-     * GET method not allowed for refresh endpoint.
-     *
-     * @return void
-     * @throws MethodNotAllowedException Always throws this exception
-     */
-    protected function handle_get() {
-        throw new MethodNotAllowedException('GET method not allowed for refresh. Use POST instead.');
-    }
-    
-    /**
-     * PUT method not allowed for refresh endpoint.
-     *
-     * @return void
-     * @throws MethodNotAllowedException Always throws this exception
-     */
-    protected function handle_put() {
-        throw new MethodNotAllowedException('PUT method not allowed for refresh. Use POST instead.');
-    }
-    
-    /**
-     * DELETE method not allowed for refresh endpoint.
-     *
-     * @return void
-     * @throws MethodNotAllowedException Always throws this exception
-     */
-    protected function handle_delete() {
-        throw new MethodNotAllowedException('DELETE method not allowed for refresh. Use POST instead.');
     }
 }
 
-// Execute the endpoint if not in test mode
+// Execute endpoint if not in test mode
 if (!defined('API_TEST_MODE')) {
-    $endpoint = new AuthRefreshEndpoint();
+    $endpoint = new RefreshEndpoint();
     $endpoint->execute();
 }
