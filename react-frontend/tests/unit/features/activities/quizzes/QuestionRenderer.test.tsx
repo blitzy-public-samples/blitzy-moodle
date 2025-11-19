@@ -49,6 +49,36 @@ describe('QuestionRenderer Component', () => {
   };
 
   /**
+   * Controlled wrapper component for testing QuestionRenderer with proper state management.
+   * This component maintains internal state and properly updates the value prop,
+   * simulating how QuestionRenderer would be used in a real parent component.
+   */
+  const ControlledQuestionRenderer: React.FC<{
+    question: QuizQuestion;
+    initialValue?: string;
+    onChange: (value: string) => void;
+    onFlag?: (flagged: boolean) => void;
+    disabled?: boolean;
+  }> = ({ question, initialValue = '', onChange, onFlag, disabled }) => {
+    const [value, setValue] = React.useState(initialValue);
+
+    const handleChange = (newValue: string) => {
+      setValue(newValue);
+      onChange(newValue);
+    };
+
+    return (
+      <QuestionRenderer
+        question={question}
+        value={value}
+        onChange={handleChange}
+        onFlag={onFlag}
+        disabled={disabled}
+      />
+    );
+  };
+
+  /**
    * Create multiple choice question options
    */
   const createMultipleChoiceOptions = () => [
@@ -146,12 +176,14 @@ describe('QuestionRenderer Component', () => {
       );
 
       // Verify the correct radio button is selected
-      const londonOption = screen.getByTestId('option-2') as HTMLInputElement;
-      expect(londonOption.checked).toBe(true);
+      const londonOption = screen.getByTestId('option-2');
+      const londonInput = londonOption.querySelector('input') as HTMLInputElement;
+      expect(londonInput.checked).toBe(true);
 
       // Verify other options are not selected
-      const parisOption = screen.getByTestId('option-1') as HTMLInputElement;
-      expect(parisOption.checked).toBe(false);
+      const parisOption = screen.getByTestId('option-1');
+      const parisInput = parisOption.querySelector('input') as HTMLInputElement;
+      expect(parisInput.checked).toBe(false);
     });
 
     it('should allow changing selection between options', async () => {
@@ -170,7 +202,7 @@ describe('QuestionRenderer Component', () => {
       );
 
       // Click on a different option
-      const berlinOption = screen.getByTestId('option-3');
+      let berlinOption = screen.getByTestId('option-3');
       await user.click(berlinOption);
 
       // Verify onChange was called with new value
@@ -187,9 +219,10 @@ describe('QuestionRenderer Component', () => {
         />
       );
 
-      // Verify new selection
-      const berlinRadio = screen.getByTestId('option-3') as HTMLInputElement;
-      expect(berlinRadio.checked).toBe(true);
+      // Verify new selection - re-query after rerender
+      berlinOption = screen.getByTestId('option-3');
+      const berlinInput = berlinOption.querySelector('input') as HTMLInputElement;
+      expect(berlinInput.checked).toBe(true);
     });
 
     it('should render question text with HTML content', () => {
@@ -228,10 +261,12 @@ describe('QuestionRenderer Component', () => {
       );
 
       // Verify all radio buttons are disabled
-      const option1 = screen.getByTestId('option-1') as HTMLInputElement;
-      const option2 = screen.getByTestId('option-2') as HTMLInputElement;
-      expect(option1.disabled).toBe(true);
-      expect(option2.disabled).toBe(true);
+      const option1 = screen.getByTestId('option-1');
+      const input1 = option1.querySelector('input') as HTMLInputElement;
+      const option2 = screen.getByTestId('option-2');
+      const input2 = option2.querySelector('input') as HTMLInputElement;
+      expect(input1.disabled).toBe(true);
+      expect(input2.disabled).toBe(true);
     });
   });
 
@@ -366,13 +401,16 @@ describe('QuestionRenderer Component', () => {
       );
 
       // Verify correct checkboxes are checked
-      const option1 = screen.getByTestId('option-1') as HTMLInputElement;
-      const option2 = screen.getByTestId('option-2') as HTMLInputElement;
-      const option3 = screen.getByTestId('option-3') as HTMLInputElement;
+      const option1 = screen.getByTestId('option-1');
+      const input1 = option1.querySelector('input') as HTMLInputElement;
+      const option2 = screen.getByTestId('option-2');
+      const input2 = option2.querySelector('input') as HTMLInputElement;
+      const option3 = screen.getByTestId('option-3');
+      const input3 = option3.querySelector('input') as HTMLInputElement;
 
-      expect(option1.checked).toBe(true);
-      expect(option2.checked).toBe(false);
-      expect(option3.checked).toBe(true);
+      expect(input1.checked).toBe(true);
+      expect(input2.checked).toBe(false);
+      expect(input3.checked).toBe(true);
     });
   });
 
@@ -464,8 +502,9 @@ describe('QuestionRenderer Component', () => {
       );
 
       // Verify true is selected
-      const trueOption = screen.getByTestId('option-true') as HTMLInputElement;
-      expect(trueOption.checked).toBe(true);
+      const trueOption = screen.getByTestId('option-true');
+      const trueInput = trueOption.querySelector('input') as HTMLInputElement;
+      expect(trueInput.checked).toBe(true);
 
       // Rerender with false
       rerender(
@@ -477,8 +516,9 @@ describe('QuestionRenderer Component', () => {
       );
 
       // Verify false is selected
-      const falseOption = screen.getByTestId('option-false') as HTMLInputElement;
-      expect(falseOption.checked).toBe(true);
+      const falseOption = screen.getByTestId('option-false');
+      const falseInput = falseOption.querySelector('input') as HTMLInputElement;
+      expect(falseInput.checked).toBe(true);
     });
   });
 
@@ -502,7 +542,8 @@ describe('QuestionRenderer Component', () => {
       );
 
       // Verify text field is rendered
-      const textField = screen.getByTestId('short-answer-input');
+      const textFieldWrapper = screen.getByTestId('short-answer-input');
+      const textField = textFieldWrapper.querySelector('input') as HTMLInputElement;
       expect(textField).toBeInTheDocument();
       expect(textField).toHaveAttribute('placeholder', 'Enter your answer');
     });
@@ -515,14 +556,15 @@ describe('QuestionRenderer Component', () => {
       });
 
       render(
-        <QuestionRenderer
+        <ControlledQuestionRenderer
           question={question}
-          value=""
+          initialValue=""
           onChange={mockOnChange}
         />
       );
 
-      const textField = screen.getByTestId('short-answer-input');
+      const textFieldWrapper = screen.getByTestId('short-answer-input');
+      const textField = textFieldWrapper.querySelector('input') as HTMLInputElement;
       await user.type(textField, 'H2O');
 
       await waitFor(() => {
@@ -546,7 +588,8 @@ describe('QuestionRenderer Component', () => {
         />
       );
 
-      const textField = screen.getByTestId('short-answer-input') as HTMLInputElement;
+      const textFieldWrapper = screen.getByTestId('short-answer-input');
+      const textField = textFieldWrapper.querySelector('input') as HTMLInputElement;
       expect(textField.value).toBe('H2O');
     });
 
@@ -564,7 +607,8 @@ describe('QuestionRenderer Component', () => {
         />
       );
 
-      const textField = screen.getByTestId('short-answer-input');
+      const textFieldWrapper = screen.getByTestId('short-answer-input');
+      const textField = textFieldWrapper.querySelector('input') as HTMLInputElement;
       await user.clear(textField);
 
       await waitFor(() => {
@@ -586,7 +630,8 @@ describe('QuestionRenderer Component', () => {
         />
       );
 
-      const textField = screen.getByTestId('short-answer-input') as HTMLInputElement;
+      const textFieldWrapper = screen.getByTestId('short-answer-input');
+      const textField = textFieldWrapper.querySelector('input') as HTMLInputElement;
       expect(textField.disabled).toBe(true);
     });
   });
@@ -610,7 +655,8 @@ describe('QuestionRenderer Component', () => {
         />
       );
 
-      const numberField = screen.getByTestId('numerical-input');
+      const numberFieldWrapper = screen.getByTestId('numerical-input');
+      const numberField = numberFieldWrapper.querySelector('input') as HTMLInputElement;
       expect(numberField).toBeInTheDocument();
       expect(numberField).toHaveAttribute('type', 'number');
       expect(numberField).toHaveAttribute('placeholder', 'Enter a number');
@@ -624,14 +670,15 @@ describe('QuestionRenderer Component', () => {
       });
 
       render(
-        <QuestionRenderer
+        <ControlledQuestionRenderer
           question={question}
-          value=""
+          initialValue=""
           onChange={mockOnChange}
         />
       );
 
-      const numberField = screen.getByTestId('numerical-input');
+      const numberFieldWrapper = screen.getByTestId('numerical-input');
+      const numberField = numberFieldWrapper.querySelector('input') as HTMLInputElement;
       await user.type(numberField, '42');
 
       await waitFor(() => {
@@ -654,7 +701,8 @@ describe('QuestionRenderer Component', () => {
         />
       );
 
-      const numberField = screen.getByTestId('numerical-input') as HTMLInputElement;
+      const numberFieldWrapper = screen.getByTestId('numerical-input');
+      const numberField = numberFieldWrapper.querySelector('input') as HTMLInputElement;
       expect(numberField.value).toBe('3.14159');
     });
 
@@ -665,14 +713,15 @@ describe('QuestionRenderer Component', () => {
       });
 
       render(
-        <QuestionRenderer
+        <ControlledQuestionRenderer
           question={question}
-          value=""
+          initialValue=""
           onChange={mockOnChange}
         />
       );
 
-      const numberField = screen.getByTestId('numerical-input');
+      const numberFieldWrapper = screen.getByTestId('numerical-input');
+      const numberField = numberFieldWrapper.querySelector('input') as HTMLInputElement;
       await user.type(numberField, '-25');
 
       await waitFor(() => {
@@ -688,14 +737,15 @@ describe('QuestionRenderer Component', () => {
       });
 
       render(
-        <QuestionRenderer
+        <ControlledQuestionRenderer
           question={question}
-          value=""
+          initialValue=""
           onChange={mockOnChange}
         />
       );
 
-      const numberField = screen.getByTestId('numerical-input');
+      const numberFieldWrapper = screen.getByTestId('numerical-input');
+      const numberField = numberFieldWrapper.querySelector('input') as HTMLInputElement;
       await user.type(numberField, '3.14');
 
       await waitFor(() => {
@@ -724,7 +774,11 @@ describe('QuestionRenderer Component', () => {
         />
       );
 
-      const essayField = screen.getByTestId('essay-input');
+      const essayFieldWrapper = screen.getByTestId('essay-input');
+      expect(essayFieldWrapper).toBeInTheDocument();
+      
+      // Query the actual textarea element inside the wrapper
+      const essayField = essayFieldWrapper.querySelector('textarea') as HTMLTextAreaElement;
       expect(essayField).toBeInTheDocument();
       expect(essayField).toHaveAttribute('placeholder', 'Write your essay here');
       expect(essayField.tagName).toBe('TEXTAREA');
@@ -738,14 +792,15 @@ describe('QuestionRenderer Component', () => {
       });
 
       render(
-        <QuestionRenderer
+        <ControlledQuestionRenderer
           question={question}
-          value=""
+          initialValue=""
           onChange={mockOnChange}
         />
       );
 
-      const essayField = screen.getByTestId('essay-input');
+      const essayFieldWrapper = screen.getByTestId('essay-input');
+      const essayField = essayFieldWrapper.querySelector('textarea') as HTMLTextAreaElement;
       const essayText = 'Climate change has significant impacts on agriculture worldwide.';
       await user.type(essayField, essayText);
 
@@ -763,14 +818,15 @@ describe('QuestionRenderer Component', () => {
       });
 
       render(
-        <QuestionRenderer
+        <ControlledQuestionRenderer
           question={question}
-          value=""
+          initialValue=""
           onChange={mockOnChange}
         />
       );
 
-      const essayField = screen.getByTestId('essay-input');
+      const essayFieldWrapper = screen.getByTestId('essay-input');
+      const essayField = essayFieldWrapper.querySelector('textarea') as HTMLTextAreaElement;
       await user.type(essayField, 'Line 1{Enter}Line 2{Enter}Line 3');
 
       await waitFor(() => {
@@ -794,7 +850,8 @@ describe('QuestionRenderer Component', () => {
         />
       );
 
-      const essayField = screen.getByTestId('essay-input') as HTMLTextAreaElement;
+      const essayFieldWrapper = screen.getByTestId('essay-input');
+      const essayField = essayFieldWrapper.querySelector('textarea') as HTMLTextAreaElement;
       expect(essayField.value).toBe(existingEssay);
     });
 
@@ -812,7 +869,8 @@ describe('QuestionRenderer Component', () => {
         />
       );
 
-      const essayField = screen.getByTestId('essay-input') as HTMLTextAreaElement;
+      const essayFieldWrapper = screen.getByTestId('essay-input');
+      const essayField = essayFieldWrapper.querySelector('textarea') as HTMLTextAreaElement;
       expect(essayField.value).toBe(longEssay);
       expect(essayField.value.length).toBeGreaterThan(1000);
     });
@@ -978,7 +1036,7 @@ describe('QuestionRenderer Component', () => {
 
   describe('Disabled State', () => {
     it('should prevent interactions when disabled', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ pointerEventsCheck: 0 });
       const question = createBaseQuestion({
         type: 'multichoice',
         options: createMultipleChoiceOptions(),
@@ -994,6 +1052,8 @@ describe('QuestionRenderer Component', () => {
       );
 
       const option1 = screen.getByTestId('option-1');
+      
+      // Click should be possible but disabled component shouldn't respond
       await user.click(option1);
 
       // onChange should not be called when disabled
@@ -1014,7 +1074,8 @@ describe('QuestionRenderer Component', () => {
         />
       );
 
-      const textField = screen.getByTestId('short-answer-input') as HTMLInputElement;
+      const textFieldWrapper = screen.getByTestId('short-answer-input');
+      const textField = textFieldWrapper.querySelector('input') as HTMLInputElement;
       expect(textField.disabled).toBe(true);
     });
 
@@ -1032,7 +1093,8 @@ describe('QuestionRenderer Component', () => {
         />
       );
 
-      const essayField = screen.getByTestId('essay-input') as HTMLTextAreaElement;
+      const essayFieldWrapper = screen.getByTestId('essay-input');
+      const essayField = essayFieldWrapper.querySelector('textarea') as HTMLTextAreaElement;
       expect(essayField.disabled).toBe(true);
     });
 
@@ -1050,7 +1112,8 @@ describe('QuestionRenderer Component', () => {
         />
       );
 
-      const numberField = screen.getByTestId('numerical-input') as HTMLInputElement;
+      const numberFieldWrapper = screen.getByTestId('numerical-input');
+      const numberField = numberFieldWrapper.querySelector('input') as HTMLInputElement;
       expect(numberField.disabled).toBe(true);
     });
   });
@@ -1095,8 +1158,11 @@ describe('QuestionRenderer Component', () => {
       const trueOption = screen.getByTestId('option-true');
       const falseOption = screen.getByTestId('option-false');
 
-      expect(trueOption).toHaveAttribute('type', 'radio');
-      expect(falseOption).toHaveAttribute('type', 'radio');
+      const trueInput = trueOption.querySelector('input') as HTMLInputElement;
+      const falseInput = falseOption.querySelector('input') as HTMLInputElement;
+      
+      expect(trueInput).toHaveAttribute('type', 'radio');
+      expect(falseInput).toHaveAttribute('type', 'radio');
     });
 
     it('should have accessible text inputs with labels', () => {
@@ -1113,7 +1179,11 @@ describe('QuestionRenderer Component', () => {
         />
       );
 
-      const textField = screen.getByTestId('short-answer-input');
+      const textFieldWrapper = screen.getByTestId('short-answer-input');
+      expect(textFieldWrapper).toBeInTheDocument();
+      
+      // Query the actual input element inside the wrapper
+      const textField = textFieldWrapper.querySelector('input') as HTMLInputElement;
       expect(textField).toBeInTheDocument();
       expect(textField).toHaveAttribute('placeholder');
     });
@@ -1125,20 +1195,20 @@ describe('QuestionRenderer Component', () => {
       });
 
       render(
-        <QuestionRenderer
+        <ControlledQuestionRenderer
           question={question}
-          value={undefined}
+          initialValue={undefined}
           onChange={mockOnChange}
         />
       );
 
-      // Tab to true option
-      await user.tab();
-      const trueOption = screen.getByTestId('option-true');
-      expect(trueOption).toHaveFocus();
+      // Focus on the True radio option using label
+      const trueRadio = screen.getByLabelText('True');
+      trueRadio.focus();
+      expect(trueRadio).toHaveFocus();
 
-      // Press Enter to select
-      await user.keyboard('{Enter}');
+      // Press Space to select (use space character, not {Space})
+      await user.keyboard(' ');
 
       await waitFor(() => {
         expect(mockOnChange).toHaveBeenCalledWith('true');
@@ -1203,7 +1273,8 @@ describe('QuestionRenderer Component', () => {
         />
       );
 
-      const textField = screen.getByTestId('short-answer-input') as HTMLInputElement;
+      const textFieldWrapper = screen.getByTestId('short-answer-input');
+      const textField = textFieldWrapper.querySelector('input') as HTMLInputElement;
       expect(textField.value).toBe('');
     });
 
@@ -1221,7 +1292,8 @@ describe('QuestionRenderer Component', () => {
         />
       );
 
-      const textField = screen.getByTestId('short-answer-input') as HTMLInputElement;
+      const textFieldWrapper = screen.getByTestId('short-answer-input');
+      const textField = textFieldWrapper.querySelector('input') as HTMLInputElement;
       // Should convert to empty string
       expect(textField.value).toBe('');
     });
@@ -1236,7 +1308,7 @@ describe('QuestionRenderer Component', () => {
       render(
         <QuestionRenderer
           question={question}
-          value="1" as any}
+          value={"1" as any}
           onChange={mockOnChange}
         />
       );
