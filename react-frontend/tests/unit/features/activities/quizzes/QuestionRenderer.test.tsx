@@ -831,7 +831,8 @@ describe('QuestionRenderer Component', () => {
 
       await waitFor(() => {
         const calls = mockOnChange.mock.calls;
-        const finalValue = calls[calls.length - 1][0];
+        const finalCall = calls[calls.length - 1];
+        const finalValue = finalCall ? (finalCall[0] as string) : '';
         expect(finalValue).toContain('\n');
       });
     });
