@@ -335,11 +335,8 @@ class CourseGradebookEndpoint extends ApiBase {
     }
 }
 
-// Instantiate endpoint and execute request
-// ApiBase::execute() handles:
-// - JWT authentication
-// - HTTP method routing to handle_get()
-// - Exception catching and error response formatting
-// - CORS headers
-$endpoint = new CourseGradebookEndpoint();
-$endpoint->execute();
+// Execute the endpoint if not in test mode
+if (!defined('API_TEST_MODE')) {
+    $endpoint = new CourseGradebookEndpoint();
+    $endpoint->execute();
+}

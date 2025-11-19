@@ -303,6 +303,8 @@ class OnlineUsersApiEndpoint extends ApiBase {
     }
 }
 
-// Instantiate and execute the API endpoint
-$api = new OnlineUsersApi();
-$api->execute();
+// Execute the endpoint if not in test mode
+if (!defined('API_TEST_MODE')) {
+    $api = new OnlineUsersApi();
+    $api->execute();
+}

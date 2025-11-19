@@ -232,5 +232,9 @@ class MessagesIndexEndpoint extends ApiBase {
 }
 
 // Instantiate endpoint and execute request handling.
-$endpoint = new MessagesIndexEndpoint();
-$endpoint->execute();
+
+// Execute the endpoint if not in test mode
+if (!defined('API_TEST_MODE')) {
+    $endpoint = new MessagesIndexEndpoint();
+    $endpoint->execute();
+}

@@ -327,5 +327,9 @@ class ResourceShowEndpoint extends ApiBase {
 
 // Instantiate endpoint and execute request
 // The ApiBase parent class handles all routing, authentication, and error handling
-$endpoint = new ResourceShowEndpoint();
-$endpoint->execute();
+
+// Execute the endpoint if not in test mode
+if (!defined('API_TEST_MODE')) {
+    $endpoint = new ResourceShowEndpoint();
+    $endpoint->execute();
+}

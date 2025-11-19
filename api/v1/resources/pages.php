@@ -315,5 +315,9 @@ class PageContentEndpoint extends ApiBase {
 }
 
 // Instantiate and execute the endpoint
-$endpoint = new PageContentEndpoint();
-$endpoint->execute();
+
+// Execute the endpoint if not in test mode
+if (!defined('API_TEST_MODE')) {
+    $endpoint = new PageContentEndpoint();
+    $endpoint->execute();
+}

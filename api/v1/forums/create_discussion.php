@@ -342,5 +342,9 @@ class ForumCreateDiscussionEndpoint extends ApiBase {
 // - HTTP method routing to handle_post()
 // - Exception catching and error response formatting
 // - CORS header management
-$endpoint = new ForumCreateDiscussionEndpoint();
-$endpoint->execute();
+
+// Execute the endpoint if not in test mode
+if (!defined('API_TEST_MODE')) {
+    $endpoint = new ForumCreateDiscussionEndpoint();
+    $endpoint->execute();
+}

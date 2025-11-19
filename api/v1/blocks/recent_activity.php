@@ -740,6 +740,8 @@ class RecentActivityEndpoint extends ApiBase {
     }
 }
 
-// Create endpoint instance and execute
-$endpoint = new RecentActivityEndpoint();
-$endpoint->execute();
+// Execute the endpoint if not in test mode
+if (!defined('API_TEST_MODE')) {
+    $endpoint = new RecentActivityEndpoint();
+    $endpoint->execute();
+}

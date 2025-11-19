@@ -336,6 +336,8 @@ class WikiShowEndpoint extends ApiBase {
     }
 }
 
-// Instantiate and execute the endpoint
-$endpoint = new WikiShowEndpoint();
-$endpoint->execute();
+// Execute the endpoint if not in test mode
+if (!defined('API_TEST_MODE')) {
+    $endpoint = new WikiShowEndpoint();
+    $endpoint->execute();
+}

@@ -345,5 +345,9 @@ class QuizQuestionsEndpoint extends ApiBase {
 }
 
 // Instantiate and execute the endpoint
-$endpoint = new QuizQuestionsEndpoint();
-$endpoint->execute();
+
+// Execute the endpoint if not in test mode
+if (!defined('API_TEST_MODE')) {
+    $endpoint = new QuizQuestionsEndpoint();
+    $endpoint->execute();
+}

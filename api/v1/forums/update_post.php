@@ -232,5 +232,9 @@ class ForumUpdatePostEndpoint extends ApiBase {
 // - HTTP method routing to handle_put()
 // - Exception catching and error response formatting
 // - CORS header management
-$endpoint = new ForumUpdatePostEndpoint();
-$endpoint->execute();
+
+// Execute the endpoint if not in test mode
+if (!defined('API_TEST_MODE')) {
+    $endpoint = new ForumUpdatePostEndpoint();
+    $endpoint->execute();
+}

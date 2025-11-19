@@ -453,6 +453,8 @@ class CalendarBlockApiEndpoint extends ApiBase {
     }
 }
 
-// Execute the API endpoint
-$api = new calendar_block_api();
-$api->execute();
+// Execute the endpoint if not in test mode
+if (!defined('API_TEST_MODE')) {
+    $api = new calendar_block_api();
+    $api->execute();
+}

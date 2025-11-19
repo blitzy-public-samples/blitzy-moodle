@@ -276,6 +276,8 @@ class AssignmentFilesEndpoint extends ApiBase {
     }
 }
 
-// Instantiate endpoint and execute request
-$endpoint = new AssignmentFilesEndpoint();
-$endpoint->execute();
+// Execute the endpoint if not in test mode
+if (!defined('API_TEST_MODE')) {
+    $endpoint = new AssignmentFilesEndpoint();
+    $endpoint->execute();
+}

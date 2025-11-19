@@ -768,7 +768,8 @@ class WorkshopSubmitEndpoint extends ApiBase {
     }
 }
 
-// Execute the endpoint
-$endpoint = new WorkshopSubmitEndpoint();
-$endpoint->execute();
-
+// Execute the endpoint if not in test mode
+if (!defined('API_TEST_MODE')) {
+    $endpoint = new WorkshopSubmitEndpoint();
+    $endpoint->execute();
+}

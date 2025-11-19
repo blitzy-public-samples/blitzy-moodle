@@ -489,6 +489,8 @@ class AssignmentGradeEndpoint extends ApiBase {
     }
 }
 
-// Instantiate endpoint and execute request
-$endpoint = new AssignmentGradeEndpoint();
-$endpoint->execute();
+// Execute the endpoint if not in test mode
+if (!defined('API_TEST_MODE')) {
+    $endpoint = new AssignmentGradeEndpoint();
+    $endpoint->execute();
+}

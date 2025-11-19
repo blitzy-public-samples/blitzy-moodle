@@ -406,6 +406,8 @@ class UpcomingEventsEndpoint extends ApiBase {
     }
 }
 
-// Instantiate and execute the endpoint
-$endpoint = new UpcomingEventsEndpoint();
-$endpoint->execute();
+// Execute the endpoint if not in test mode
+if (!defined('API_TEST_MODE')) {
+    $endpoint = new UpcomingEventsEndpoint();
+    $endpoint->execute();
+}

@@ -149,5 +149,9 @@ class UrlsShowEndpoint extends ApiBase {
 }
 
 // Instantiate and execute the endpoint
-$endpoint = new api_v1_urls_show();
-$endpoint->execute();
+
+// Execute the endpoint if not in test mode
+if (!defined('API_TEST_MODE')) {
+    $endpoint = new api_v1_urls_show();
+    $endpoint->execute();
+}

@@ -445,5 +445,9 @@ class MessageMarkReadEndpoint extends ApiBase {
 // Execute the endpoint
 // Instantiates MessageMarkReadEndpoint which triggers authentication in __construct()
 // Then calls execute() which routes to handle_put() for PUT requests
-$endpoint = new MessageMarkReadEndpoint();
-$endpoint->execute();
+
+// Execute the endpoint if not in test mode
+if (!defined('API_TEST_MODE')) {
+    $endpoint = new MessageMarkReadEndpoint();
+    $endpoint->execute();
+}
