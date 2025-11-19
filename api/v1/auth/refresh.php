@@ -79,13 +79,25 @@ require_once(__DIR__ . '/../../lib/api_exception.php');
 class RefreshEndpoint extends ApiBase {
     
     /**
+     * Override parent's $requireAuth property to disable JWT authentication.
+     *
+     * This endpoint does not require JWT authentication since the refresh token
+     * itself serves as the authentication credential. Setting this property at
+     * the class level ensures it's set before parent::__construct() is called,
+     * preventing the automatic JWT validation that would fail for this endpoint.
+     *
+     * @var bool
+     */
+    protected $requireAuth = false;
+    
+    /**
      * Constructor for RefreshEndpoint.
      *
-     * Disables automatic JWT authentication since refresh token validation
-     * replaces the standard authentication flow for this endpoint.
+     * Calls parent constructor which initializes JWT handler and extracts
+     * request metadata. Authentication is skipped due to $requireAuth = false.
      */
     public function __construct() {
-        parent::__construct(false); // $requireAuth = false
+        parent::__construct();
     }
     
     /**
@@ -190,6 +202,46 @@ class RefreshEndpoint extends ApiBase {
             'token_type' => 'Bearer',
             'expires_in' => 3600  // Access token expires in 1 hour (3600 seconds)
         ]);
+    }
+    
+    /**
+     * Handle GET requests (not supported for this endpoint).
+     *
+     * Token refresh is a state-changing operation and must use POST method
+     * per REST best practices. GET requests should be idempotent and cacheable,
+     * which doesn't apply to token generation.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown
+     */
+    protected function handle_get() {
+        throw new MethodNotAllowedException('GET method not supported for token refresh. Use POST instead.');
+    }
+    
+    /**
+     * Handle PUT requests (not supported for this endpoint).
+     *
+     * Token refresh creates new tokens rather than updating existing resources,
+     * so POST is the appropriate HTTP method rather than PUT.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown
+     */
+    protected function handle_put() {
+        throw new MethodNotAllowedException('PUT method not supported for token refresh. Use POST instead.');
+    }
+    
+    /**
+     * Handle DELETE requests (not supported for this endpoint).
+     *
+     * Token invalidation (logout) is handled by a separate endpoint.
+     * This endpoint only generates new tokens, not revokes existing ones.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown
+     */
+    protected function handle_delete() {
+        throw new MethodNotAllowedException('DELETE method not supported for token refresh. Use POST instead.');
     }
 }
 
