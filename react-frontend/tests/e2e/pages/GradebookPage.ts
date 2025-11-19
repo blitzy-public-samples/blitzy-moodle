@@ -137,13 +137,13 @@ export class GradebookPage {
     const grades: GradeItem[] = [];
 
     for (const item of gradeItems) {
-      const id = await item.getAttribute('data-item-id') || '';
-      const name = await item.locator('[data-testid="grade-item-name"]').textContent() || '';
-      const gradeText = await item.locator('[data-testid="grade-value"]').textContent() || '';
-      const maxGradeText = await item.locator('[data-testid="max-grade"]').textContent() || '0';
-      const percentageText = await item.locator('[data-testid="grade-percentage"]').textContent() || '';
-      const letterGrade = await item.locator('[data-testid="letter-grade"]').textContent() || '';
-      const feedbackText = await item.locator('[data-testid="grade-feedback"]').textContent() || '';
+      const id = await item.getAttribute('data-item-id') ?? '';
+      const name = await item.locator('[data-testid="grade-item-name"]').textContent() ?? '';
+      const gradeText = await item.locator('[data-testid="grade-value"]').textContent() ?? '';
+      const maxGradeText = await item.locator('[data-testid="max-grade"]').textContent() ?? '0';
+      const percentageText = await item.locator('[data-testid="grade-percentage"]').textContent() ?? '';
+      const letterGrade = await item.locator('[data-testid="letter-grade"]').textContent() ?? '';
+      const feedbackText = await item.locator('[data-testid="grade-feedback"]').textContent() ?? '';
       const hidden = await item.getAttribute('data-hidden') === 'true';
 
       grades.push({
@@ -176,12 +176,12 @@ export class GradebookPage {
       return null;
     }
 
-    const name = await item.locator('[data-testid="grade-item-name"]').textContent() || '';
-    const gradeText = await item.locator('[data-testid="grade-value"]').textContent() || '';
-    const maxGradeText = await item.locator('[data-testid="max-grade"]').textContent() || '0';
-    const percentageText = await item.locator('[data-testid="grade-percentage"]').textContent() || '';
-    const letterGrade = await item.locator('[data-testid="letter-grade"]').textContent() || '';
-    const feedbackText = await item.locator('[data-testid="grade-feedback"]').textContent() || '';
+    const name = await item.locator('[data-testid="grade-item-name"]').textContent() ?? '';
+    const gradeText = await item.locator('[data-testid="grade-value"]').textContent() ?? '';
+    const maxGradeText = await item.locator('[data-testid="max-grade"]').textContent() ?? '0';
+    const percentageText = await item.locator('[data-testid="grade-percentage"]').textContent() ?? '';
+    const letterGrade = await item.locator('[data-testid="letter-grade"]').textContent() ?? '';
+    const feedbackText = await item.locator('[data-testid="grade-feedback"]').textContent() ?? '';
     const hidden = await item.getAttribute('data-hidden') === 'true';
 
     return {
@@ -204,9 +204,9 @@ export class GradebookPage {
   async getCourseTotal(): Promise<{ grade: number | string; maxGrade: number; percentage: number }> {
     await this.waitForGradebook();
 
-    const totalText = await this.courseTotal.locator('[data-testid="total-grade"]').textContent() || '0';
-    const maxTotalText = await this.courseTotal.locator('[data-testid="max-total-grade"]').textContent() || '0';
-    const percentageText = await this.courseTotal.locator('[data-testid="total-percentage"]').textContent() || '0%';
+    const totalText = await this.courseTotal.locator('[data-testid="total-grade"]').textContent() ?? '0';
+    const maxTotalText = await this.courseTotal.locator('[data-testid="max-total-grade"]').textContent() ?? '0';
+    const percentageText = await this.courseTotal.locator('[data-testid="total-percentage"]').textContent() ?? '0%';
 
     return {
       grade: this.parseGrade(totalText) ?? 0,
@@ -227,21 +227,21 @@ export class GradebookPage {
     const categoryData: GradeCategory[] = [];
 
     for (const category of categories) {
-      const id = await category.getAttribute('data-category-id') || '';
-      const name = await category.locator('[data-testid="category-name"]').textContent() || '';
-      const weightText = await category.locator('[data-testid="category-weight"]').textContent() || '';
-      const totalText = await category.locator('[data-testid="category-total"]').textContent() || '0';
-      const maxTotalText = await category.locator('[data-testid="category-max-total"]').textContent() || '0';
+      const id = await category.getAttribute('data-category-id') ?? '';
+      const name = await category.locator('[data-testid="category-name"]').textContent() ?? '';
+      const weightText = await category.locator('[data-testid="category-weight"]').textContent() ?? '';
+      const totalText = await category.locator('[data-testid="category-total"]').textContent() ?? '0';
+      const maxTotalText = await category.locator('[data-testid="category-max-total"]').textContent() ?? '0';
 
       // Get items within this category
       const categoryItems = await category.locator('[data-testid="grade-item"]').all();
       const items: GradeItem[] = [];
 
       for (const item of categoryItems) {
-        const itemId = await item.getAttribute('data-item-id') || '';
-        const itemName = await item.locator('[data-testid="grade-item-name"]').textContent() || '';
-        const gradeText = await item.locator('[data-testid="grade-value"]').textContent() || '';
-        const maxGradeText = await item.locator('[data-testid="max-grade"]').textContent() || '0';
+        const itemId = await item.getAttribute('data-item-id') ?? '';
+        const itemName = await item.locator('[data-testid="grade-item-name"]').textContent() ?? '';
+        const gradeText = await item.locator('[data-testid="grade-value"]').textContent() ?? '';
+        const maxGradeText = await item.locator('[data-testid="max-grade"]').textContent() ?? '0';
 
         items.push({
           id: itemId,
@@ -288,12 +288,12 @@ export class GradebookPage {
     const feedbackElement = item.locator('[data-testid="grade-feedback"]');
     
     if (await feedbackElement.isVisible()) {
-      return (await feedbackElement.textContent()) || '';
+      return (await feedbackElement.textContent()) ?? '';
     }
 
     // Try opening detail modal to get feedback
     await this.clickGradeDetails(itemId);
-    const modalFeedback = await this.gradeDetailModal.locator('[data-testid="feedback-text"]').textContent() || '';
+    const modalFeedback = await this.gradeDetailModal.locator('[data-testid="feedback-text"]').textContent() ?? '';
     
     // Close modal
     await this.gradeDetailModal.locator('[data-testid="close-modal"]').click();
@@ -319,10 +319,10 @@ export class GradebookPage {
     const history: GradeHistoryRecord[] = [];
 
     for (const item of historyItems) {
-      const date = await item.locator('[data-testid="history-date"]').textContent() || '';
-      const grade = await item.locator('[data-testid="history-grade"]').textContent() || '';
-      const modifiedBy = await item.locator('[data-testid="history-user"]').textContent() || '';
-      const action = await item.locator('[data-testid="history-action"]').textContent() || '';
+      const date = await item.locator('[data-testid="history-date"]').textContent() ?? '';
+      const grade = await item.locator('[data-testid="history-grade"]').textContent() ?? '';
+      const modifiedBy = await item.locator('[data-testid="history-user"]').textContent() ?? '';
+      const action = await item.locator('[data-testid="history-action"]').textContent() ?? '';
 
       history.push({
         date: date.trim(),

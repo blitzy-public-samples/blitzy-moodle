@@ -136,7 +136,7 @@ export function generateUniqueId(prefix: string = 'E2E_TEST_'): string {
  * @returns Valid Moodle username (lowercase, alphanumeric + underscore)
  */
 export function generateUsername(config: TestDataConfig = {}): string {
-  const prefix = config.prefix || 'testuser';
+  const prefix = config.prefix ?? 'testuser';
   const timestamp = config.timestamp !== false ? Date.now() : '';
   const randomSuffix = randomBytes(3).toString('hex'); // 6 character hex string
   
@@ -154,7 +154,7 @@ export function generateUsername(config: TestDataConfig = {}): string {
  * @returns Valid email address for test user
  */
 export function generateEmail(identifier?: string): string {
-  const id = identifier || randomUUID().split('-')[0];
+  const id = identifier ?? randomUUID().split('-')[0];
   return `testuser_${id}@example.moodle`;
 }
 
@@ -205,7 +205,7 @@ export function generatePassword(): string {
  * @returns Course name with E2E_TEST_ prefix for identification
  */
 export function generateCourseName(config: TestDataConfig = {}): string {
-  const prefix = config.prefix || 'E2E_TEST_Course';
+  const prefix = config.prefix ?? 'E2E_TEST_Course';
   const uniqueId = config.uniqueIdentifier !== false ? `_${Date.now()}` : '';
   const courseName = faker.lorem.words(3);
   

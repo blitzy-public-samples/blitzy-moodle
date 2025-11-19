@@ -108,7 +108,7 @@ test.describe('Course Catalog - Browsing and Search', () => {
   /**
    * After each test: Clean up and take screenshot on failure
    */
-  test.afterEach(async ({ }, testInfo) => {
+  test.afterEach(async (_context, testInfo) => {
     // Take screenshot if test failed
     if (testInfo.status !== testInfo.expectedStatus) {
       const screenshotPath = `/tmp/blitzy/blitzy-moodle/blitzyd6458edab/blitzy/screenshots/course-catalog-failure-${testInfo.title.replace(/\s+/g, '-')}-${Date.now()}.png`;
@@ -675,7 +675,7 @@ test.describe('Course Catalog - Browsing and Search', () => {
       const {courseId} = firstCourse;
 
       // Click on course card to navigate to detail page
-      await catalogPage.clickCourseCard(courseId);
+      await catalogPage.clickCourseCard(String(courseId));
 
       // Wait for navigation to complete
       await page.waitForURL(`**/courses/${courseId}`, { timeout: 5000 });

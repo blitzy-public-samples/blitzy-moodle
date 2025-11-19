@@ -393,7 +393,6 @@ test.describe('Admin Role Assignment Workflow', () => {
     // This test runs the complete workflow to ensure end-to-end consistency
     
     const workflowRoleName = `E2E_Workflow_Role_${Date.now()}`;
-    let workflowRoleId: number;
     
     // Step 1: Already logged in as admin from beforeAll
     await adminRolePage.waitForRoleManagement();
@@ -407,7 +406,7 @@ test.describe('Admin Role Assignment Workflow', () => {
     const roles = await adminRolePage.getRoles();
     const workflowRole = roles.find(r => r.name === workflowRoleName);
     expect(workflowRole).toBeDefined();
-    workflowRoleId = workflowRole!.id;
+    const workflowRoleId = workflowRole!.id;
     
     // Step 3: Assign capabilities
     await adminRolePage.assignCapability(workflowRoleId, 'moodle/course:view');

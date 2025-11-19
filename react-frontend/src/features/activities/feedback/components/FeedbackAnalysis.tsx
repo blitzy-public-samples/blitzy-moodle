@@ -17,8 +17,10 @@
  * @module features/activities/feedback/components/FeedbackAnalysis
  */
 
+/* eslint-disable @typescript-eslint/no-unsafe-enum-comparison */
+
 import type React from 'react';
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import type {
   SelectChangeEvent} from '@mui/material';
 import {
@@ -573,7 +575,7 @@ export const FeedbackAnalysis: React.FC<FeedbackAnalysisProps> = ({
         </Box>
         {hasMore && (
           <Typography variant="caption" color="text.secondary">
-            Switch to "Responses" tab to view all {item.textResponses.length} responses
+            Switch to &ldquo;Responses&rdquo; tab to view all {item.textResponses.length} responses
           </Typography>
         )}
       </Box>
@@ -646,7 +648,7 @@ export const FeedbackAnalysis: React.FC<FeedbackAnalysisProps> = ({
    * Render individual question analysis accordion
    */
   const renderQuestionAnalysis = (item: FeedbackItemAnalysis, index: number) => {
-    const chartConfig = useMemo(() => generateChartConfig(item), [item]);
+    const chartConfig = generateChartConfig(item);
     const totalResponses = item.responseCount || 0;
 
     return (

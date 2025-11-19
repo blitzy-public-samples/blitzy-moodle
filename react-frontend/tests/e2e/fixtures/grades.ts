@@ -545,12 +545,13 @@ export function calculateCourseGrade(
         categoryTotal = percentageGrades.reduce((sum, g) => sum + g.percentage, 0) / percentageGrades.length;
         break;
         
-      case GRADE_AGGREGATION.WEIGHTED_MEAN:
+      case GRADE_AGGREGATION.WEIGHTED_MEAN: {
         // Weighted average
         const totalWeight = percentageGrades.reduce((sum, g) => sum + g.weight, 0);
         const weightedSum = percentageGrades.reduce((sum, g) => sum + (g.percentage * g.weight), 0);
         categoryTotal = weightedSum / totalWeight;
         break;
+      }
         
       case GRADE_AGGREGATION.SUM_OF_GRADES:
         // Sum all grades
@@ -562,7 +563,7 @@ export function calculateCourseGrade(
         categoryTotal = Math.max(...percentageGrades.map(g => g.percentage));
         break;
         
-      case GRADE_AGGREGATION.MEDIAN_OF_GRADES:
+      case GRADE_AGGREGATION.MEDIAN_OF_GRADES: {
         // Median grade
         const sorted = percentageGrades.map(g => g.percentage).sort((a, b) => a - b);
         const mid = Math.floor(sorted.length / 2);
@@ -570,6 +571,7 @@ export function calculateCourseGrade(
           ? (sorted[mid - 1] + sorted[mid]) / 2 
           : sorted[mid];
         break;
+      }
         
       default:
         // Default to mean

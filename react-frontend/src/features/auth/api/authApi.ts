@@ -8,6 +8,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import type { AxiosError } from 'axios';
 import { apiClient } from '@/services/api/client';
 import { AUTH_ENDPOINTS } from '@/services/api/endpoints';
 import type { ApiResponse } from '@/types/api';
@@ -148,9 +149,8 @@ export function useCurrentUser() {
     queryFn: fetchCurrentUser,
     enabled: hasToken, // Only fetch if token exists
     staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
-    retry: (failureCount, error: any) => {
+    retry: (failureCount, error: AxiosError) => {
       // Don't retry on authentication errors
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       if (error?.response?.status === 401) {
         return false;
       }

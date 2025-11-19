@@ -12,6 +12,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient, extractData } from '@/services/api/client';
 import { COURSE_ENDPOINTS } from '@/services/api/endpoints';
 import type { ApiResponse } from '@/types/api';
+import type { Course, Enrollment } from '@/types/entities';
 
 // ============================================================================
 // Types
@@ -96,8 +97,8 @@ export async function fetchCourses(params: CourseListParams = {}): Promise<Cours
  * @param id - Course ID
  * @returns Detailed course information
  */
-export async function fetchCourseDetail(id: number): Promise<any> {
-  const response = await apiClient.get<ApiResponse<any>>(
+export async function fetchCourseDetail(id: number): Promise<Course> {
+  const response = await apiClient.get<ApiResponse<Course>>(
     COURSE_ENDPOINTS.DETAIL(id)
   );
 
@@ -113,8 +114,8 @@ export async function fetchCourseDetail(id: number): Promise<any> {
  * @param courseId - Course ID to enroll in
  * @returns Enrollment result
  */
-export async function enrollInCourse(courseId: number): Promise<any> {
-  const response = await apiClient.post<ApiResponse<any>>(
+export async function enrollInCourse(courseId: number): Promise<Enrollment> {
+  const response = await apiClient.post<ApiResponse<Enrollment>>(
     COURSE_ENDPOINTS.ENROLL(courseId)
   );
 

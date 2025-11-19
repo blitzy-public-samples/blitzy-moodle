@@ -15,6 +15,8 @@
  * @module features/activities/book/components/ChapterList
  */
 
+/* eslint-disable @typescript-eslint/no-unsafe-enum-comparison */
+
 import type React from 'react';
 import { useMemo } from 'react';
 import {

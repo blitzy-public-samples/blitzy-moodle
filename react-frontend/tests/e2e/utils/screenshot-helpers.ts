@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /**
  * Screenshot and Video Capture Utilities for Playwright E2E Tests
  * 
@@ -145,7 +146,7 @@ export async function takeScreenshot(
     console.log(`Screenshot saved: ${screenshotPath}`);
     return path.resolve(screenshotPath);
   } catch (error) {
-    console.error(`Failed to capture screenshot: ${error}`);
+    console.error(`Failed to capture screenshot: ${error instanceof Error ? error.message : String(error)}`);
     throw new Error(`Screenshot capture failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
@@ -207,7 +208,7 @@ export async function takeElementScreenshot(
     console.log(`Element screenshot saved: ${screenshotPath}`);
     return path.resolve(screenshotPath);
   } catch (error) {
-    console.error(`Failed to capture element screenshot: ${error}`);
+    console.error(`Failed to capture element screenshot: ${error instanceof Error ? error.message : String(error)}`);
     throw new Error(`Element screenshot failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
@@ -250,7 +251,7 @@ export async function captureOnFailure(
       console.log(`Failure screenshot captured for test: ${testInfo.title}`);
     } catch (error) {
       // Don't fail the test if screenshot capture fails
-      console.warn(`Failed to capture failure screenshot: ${error}`);
+      console.warn(`Failed to capture failure screenshot: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 }
@@ -351,7 +352,7 @@ export async function stopVideoRecording(
     console.log(`Video recording stopped: ${videoPath}`);
     return path.resolve(videoPath);
   } catch (error) {
-    console.warn(`Failed to stop video recording: ${error}`);
+    console.warn(`Failed to stop video recording: ${error instanceof Error ? error.message : String(error)}`);
     throw new Error(`Video recording stop failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
@@ -444,7 +445,7 @@ export async function compareScreenshots(
       diffImagePath: path.resolve(diffImagePath),
     };
   } catch (error) {
-    console.error(`Screenshot comparison failed: ${error}`);
+    console.error(`Screenshot comparison failed: ${error instanceof Error ? error.message : String(error)}`);
     throw new Error(`Visual regression test failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
@@ -537,14 +538,14 @@ export async function cleanupScreenshots(
           console.log(`Deleted old screenshot: ${file}`);
         }
       } catch (error) {
-        console.warn(`Failed to process file ${file}: ${error}`);
+        console.warn(`Failed to process file ${file}: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
 
     console.log(`Cleanup complete: deleted ${deletedCount} old screenshots`);
     return deletedCount;
   } catch (error) {
-    console.error(`Screenshot cleanup failed: ${error}`);
+    console.error(`Screenshot cleanup failed: ${error instanceof Error ? error.message : String(error)}`);
     throw new Error(`Cleanup failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
@@ -584,7 +585,7 @@ export async function attachScreenshotToReport(
 
     console.log(`Screenshot attached to report: ${name}`);
   } catch (error) {
-    console.error(`Failed to attach screenshot to report: ${error}`);
+    console.error(`Failed to attach screenshot to report: ${error instanceof Error ? error.message : String(error)}`);
     throw new Error(`Attachment failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
@@ -644,7 +645,7 @@ export async function screenshotWithHighlight(
     console.log(`Highlighted screenshot saved: ${screenshotPath}`);
     return screenshotPath;
   } catch (error) {
-    console.error(`Failed to capture highlighted screenshot: ${error}`);
+    console.error(`Failed to capture highlighted screenshot: ${error instanceof Error ? error.message : String(error)}`);
     throw new Error(`Highlight screenshot failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
@@ -716,7 +717,7 @@ export async function screenshotWithMask(
     console.log(`Masked screenshot saved: ${screenshotPath} (${maskElements.length} elements masked)`);
     return screenshotPath;
   } catch (error) {
-    console.error(`Failed to capture masked screenshot: ${error}`);
+    console.error(`Failed to capture masked screenshot: ${error instanceof Error ? error.message : String(error)}`);
     throw new Error(`Mask screenshot failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }

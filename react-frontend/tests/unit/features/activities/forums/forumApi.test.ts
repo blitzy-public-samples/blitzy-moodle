@@ -28,8 +28,10 @@ import type {
   CreateDiscussionData,
   CreatePostData,
   UpdatePostData,
-  SubscriptionPreferences
+  SubscriptionPreferences,
+  DiscussionEnriched
 } from '@/features/activities/forums/types/forum.types';
+import type { PaginatedResponse } from '@/types/api';
 
 /* eslint-disable @typescript-eslint/unbound-method */
 
@@ -80,7 +82,7 @@ const mockForum: Forum = {
   participants: 10
 };
 
-const mockDiscussions: Discussion[] = [
+const mockDiscussions: DiscussionEnriched[] = [
   {
     id: 1,
     forumId: 1,
@@ -236,25 +238,24 @@ const handlers = [
   http.get(`*${API_BASE_URL}/forums/:id/discussions`, ({ params, request }) => {
     const { _id } = params;
     const url = new URL(request.url);
-    const page = parseInt(url.searchParams.get('page') || '1');
-    const perPage = parseInt(url.searchParams.get('perPage') || '20');
-    const sortBy = url.searchParams.get('sortBy') || 'date';
-    const filter = url.searchParams.get('filter') || 'all';
+    const page = parseInt(url.searchParams.get('page') ?? '1');
+    const perPage = parseInt(url.searchParams.get('perPage') ?? '20');
+    const sortBy = url.searchParams.get('sortBy') ?? 'date';
+    const filter = url.searchParams.get('filter') ?? 'all';
     
     // Filter discussions based on filter parameter
-    let filteredDiscussions = [...mockDiscussions];
+    let filteredDiscussions: DiscussionEnriched[] = [...mockDiscussions];
     if (filter === 'unread') {
-      filteredDiscussions = filteredDiscussions.filter(d => d.numUnreadPosts > 0);
+      filteredDiscussions = filteredDiscussions.filter(d => (d.numUnreadPosts ?? 0) > 0);
     } else if (filter === 'pinned') {
       filteredDiscussions = filteredDiscussions.filter(d => d.pinned);
     }
     
     // Sort discussions
     if (sortBy === 'replies') {
-      filteredDiscussions.sort((a, b) => b.numReplies - a.numReplies);
+      filteredDiscussions.sort((a: DiscussionEnriched, b: DiscussionEnriched) => (b.numReplies ?? 0) - (a.numReplies ?? 0));
     } else if (sortBy === 'author') {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      filteredDiscussions.sort((a, b) => a.userFullName.localeCompare(b.userFullName));
+      filteredDiscussions.sort((a: DiscussionEnriched, b: DiscussionEnriched) => (a.userFullName ?? '').localeCompare(b.userFullName ?? ''));
     }
     
     // Pagination
@@ -265,7 +266,10 @@ const handlers = [
     
     return HttpResponse.json({
       success: true,
-      data: paginatedDiscussions,
+      data: {
+        items: paginatedDiscussions,
+        total
+      },
       meta: {
         pagination: {
           page,
@@ -707,11 +711,10 @@ describe('forumApi', () => {
 
   describe('getDiscussions', () => {
     it('should fetch discussion list with default options', async () => {
-      const result = await forumApi.getDiscussions(1);
+      const result: PaginatedResponse<DiscussionEnriched> = await forumApi.getDiscussions(1);
       
-      expect(result.data).toHaveLength(2);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      expect(result.data[0].name).toBe('First Discussion');
+      expect(result.data.items).toHaveLength(2);
+      expect(result.data.items[0].name).toBe('First Discussion');
       expect(result.meta.pagination.page).toBe(1);
       expect(result.meta.pagination.perPage).toBe(20);
     });
@@ -722,11 +725,11 @@ describe('forumApi', () => {
         perPage: 1
       };
       
-      const result = await forumApi.getDiscussions(1, options);
+      const result: PaginatedResponse<DiscussionEnriched> = await forumApi.getDiscussions(1, options);
       
       expect(result.meta.pagination.page).toBe(2);
       expect(result.meta.pagination.perPage).toBe(1);
-      expect(result.data).toHaveLength(1);
+      expect(result.data.items).toHaveLength(1);
     });
 
     it('should support sorting by date', async () => {
@@ -734,10 +737,10 @@ describe('forumApi', () => {
         sortBy: 'date'
       };
       
-      const result = await forumApi.getDiscussions(1, options);
+      const result: PaginatedResponse<DiscussionEnriched> = await forumApi.getDiscussions(1, options);
       
-      expect(result.data).toBeDefined();
-      expect(Array.isArray(result.data)).toBe(true);
+      expect(result.data.items).toBeDefined();
+      expect(Array.isArray(result.data.items)).toBe(true);
     });
 
     it('should support sorting by replies', async () => {
@@ -745,12 +748,13 @@ describe('forumApi', () => {
         sortBy: 'replies'
       };
       
-      const result = await forumApi.getDiscussions(1, options);
+      const result: PaginatedResponse<DiscussionEnriched> = await forumApi.getDiscussions(1, options);
       
       // Verify sorted by replies (descending)
-      if (result.data.length > 1) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        expect(result.data[0].numReplies).toBeGreaterThanOrEqual(result.data[1].numReplies);
+      if (result.data.items.length > 1) {
+        const firstReplies = result.data.items[0].numReplies ?? 0;
+        const secondReplies = result.data.items[1].numReplies ?? 0;
+        expect(firstReplies).toBeGreaterThanOrEqual(secondReplies);
       }
     });
 
@@ -771,7 +775,7 @@ describe('forumApi', () => {
       
       const result = await forumApi.getDiscussions(1, options);
       
-      expect(result.data).toHaveLength(2);
+      expect(result.data.items).toHaveLength(2);
     });
 
     it('should filter discussions by "unread"', async () => {
@@ -779,11 +783,10 @@ describe('forumApi', () => {
         filter: 'unread'
       };
       
-      const result = await forumApi.getDiscussions(1, options);
+      const result: PaginatedResponse<DiscussionEnriched> = await forumApi.getDiscussions(1, options);
       
       // Only discussions with unread posts
-      result.data.forEach(discussion => {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      result.data.items.forEach((discussion: DiscussionEnriched) => {
         expect(discussion.numUnreadPosts).toBeGreaterThan(0);
       });
     });
@@ -793,11 +796,10 @@ describe('forumApi', () => {
         filter: 'pinned'
       };
       
-      const result = await forumApi.getDiscussions(1, options);
+      const result: PaginatedResponse<DiscussionEnriched> = await forumApi.getDiscussions(1, options);
       
       // Only pinned discussions
-      result.data.forEach(discussion => {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      result.data.items.forEach((discussion: DiscussionEnriched) => {
         expect(discussion.pinned).toBe(true);
       });
     });
@@ -1498,7 +1500,7 @@ describe('forumApi', () => {
       const result = await forumApi.getDiscussions(1);
       
       // TypeScript should enforce array of Discussion
-      const discussions: Discussion[] = result.data;
+      const discussions: Discussion[] = result.data.items;
       expect(Array.isArray(discussions)).toBe(true);
     });
 

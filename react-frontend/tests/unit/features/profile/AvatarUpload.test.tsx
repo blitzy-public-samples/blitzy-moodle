@@ -45,9 +45,11 @@ const createWrapper = () => {
     },
   });
 
-  return ({ children }: { children: React.ReactNode }) => (
+  const Wrapper = ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
+  Wrapper.displayName = 'TestWrapper';
+  return Wrapper;
 };
 
 describe('AvatarUpload Component', () => {
@@ -146,16 +148,17 @@ describe('AvatarUpload Component', () => {
       
       // Simulate image loading when src is set
       Object.defineProperty(this, 'src', {
-        set(value: string) {
+        set(this: MockImageType, value: string) {
           this._src = value;
           // Trigger onload asynchronously to simulate real behavior
           setTimeout(() => {
-            if (this.onload) {
-              this.onload();
+            const onloadFn = this.onload;
+            if (onloadFn) {
+              onloadFn();
             }
           }, 0);
         },
-        get() {
+        get(this: MockImageType) {
           return this._src;
         }
       });

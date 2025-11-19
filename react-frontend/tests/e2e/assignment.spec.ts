@@ -1,5 +1,7 @@
 import type { Page } from '@playwright/test';
 import { test, expect } from '@playwright/test';
+import { writeFileSync, mkdirSync } from 'fs';
+import { join } from 'path';
 import type { AssignmentInfo, SubmissionStatus, SubmittedFile, FeedbackInfo, SubmissionHistoryEntry } from './pages/AssignmentPage';
 import { AssignmentPage } from './pages/AssignmentPage';
 import { _login, loginAsStudent, logout, _clearAuthenticationState } from './utils/auth';
@@ -772,7 +774,11 @@ test.describe('Assignment Submission E2E Tests', () => {
     await assignmentPage.clickAddSubmission();
     
     // Generate a file with an uncommon/invalid extension
-    const invalidFilePath = await generateTestFile('exe' as any, 'small');
+    // Note: We create this manually as .exe is not a supported FileType
+    const testDir = join(process.cwd(), 'tests', 'e2e', 'test-files');
+    mkdirSync(testDir, { recursive: true });
+    const invalidFilePath = join(testDir, `invalid-test-${Date.now()}.exe`);
+    writeFileSync(invalidFilePath, Buffer.from('Mock executable content for testing'));
     testFilePaths.push(invalidFilePath);
     
     // Attempt to upload the invalid file type

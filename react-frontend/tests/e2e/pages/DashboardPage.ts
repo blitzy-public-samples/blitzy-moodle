@@ -140,14 +140,14 @@ export class DashboardPage {
     for (let i = 0; i < count; i++) {
       const eventElement = eventElements.nth(i);
       
-      const eventId = await eventElement.getAttribute('data-event-id') || '';
-      const title = await eventElement.locator('[data-testid="event-title"]').textContent() || '';
-      const dateStr = await eventElement.getAttribute('data-event-date') || '';
-      const type = await eventElement.getAttribute('data-event-type') || '';
-      const courseId = await eventElement.getAttribute('data-course-id') || undefined;
-      const courseName = await eventElement.locator('[data-testid="event-course"]').textContent() || undefined;
-      const url = await eventElement.getAttribute('href') || undefined;
-      const description = await eventElement.locator('[data-testid="event-description"]').textContent() || undefined;
+      const eventId = await eventElement.getAttribute('data-event-id') ?? '';
+      const title = await eventElement.locator('[data-testid="event-title"]').textContent() ?? '';
+      const dateStr = await eventElement.getAttribute('data-event-date') ?? '';
+      const type = await eventElement.getAttribute('data-event-type') ?? '';
+      const courseId = await eventElement.getAttribute('data-course-id') ?? undefined;
+      const courseName = await eventElement.locator('[data-testid="event-course"]').textContent() ?? undefined;
+      const url = await eventElement.getAttribute('href') ?? undefined;
+      const description = await eventElement.locator('[data-testid="event-description"]').textContent() ?? undefined;
 
       events.push({
         eventId,
@@ -196,16 +196,16 @@ export class DashboardPage {
     for (let i = 0; i < count; i++) {
       const itemElement = itemElements.nth(i);
       
-      const itemId = await itemElement.getAttribute('data-item-id') || '';
-      const type = await itemElement.getAttribute('data-item-type') || '';
-      const activityType = await itemElement.getAttribute('data-activity-type') || '';
-      const title = await itemElement.locator('[data-testid="timeline-title"]').textContent() || '';
-      const courseName = await itemElement.locator('[data-testid="timeline-course"]').textContent() || '';
-      const courseId = await itemElement.getAttribute('data-course-id') || '';
-      const dueDateStr = await itemElement.getAttribute('data-due-date') || undefined;
-      const timestampStr = await itemElement.getAttribute('data-timestamp') || '';
-      const iconUrl = await itemElement.locator('[data-testid="timeline-icon"]').getAttribute('src') || undefined;
-      const url = await itemElement.locator('[data-testid="timeline-link"]').getAttribute('href') || '';
+      const itemId = await itemElement.getAttribute('data-item-id') ?? '';
+      const type = await itemElement.getAttribute('data-item-type') ?? '';
+      const activityType = await itemElement.getAttribute('data-activity-type') ?? '';
+      const title = await itemElement.locator('[data-testid="timeline-title"]').textContent() ?? '';
+      const courseName = await itemElement.locator('[data-testid="timeline-course"]').textContent() ?? '';
+      const courseId = await itemElement.getAttribute('data-course-id') ?? '';
+      const dueDateStr = await itemElement.getAttribute('data-due-date') ?? undefined;
+      const timestampStr = await itemElement.getAttribute('data-timestamp') ?? '';
+      const iconUrl = await itemElement.locator('[data-testid="timeline-icon"]').getAttribute('src') ?? undefined;
+      const url = await itemElement.locator('[data-testid="timeline-link"]').getAttribute('href') ?? '';
       const isOverdue = await itemElement.getAttribute('data-overdue') === 'true';
 
       items.push({
@@ -258,15 +258,15 @@ export class DashboardPage {
     for (let i = 0; i < count; i++) {
       const activityElement = activityElements.nth(i);
       
-      const activityId = await activityElement.getAttribute('data-activity-id') || '';
-      const type = await activityElement.getAttribute('data-activity-type') || '';
-      const description = await activityElement.locator('[data-testid="activity-description"]').textContent() || '';
-      const courseName = await activityElement.locator('[data-testid="activity-course"]').textContent() || '';
-      const courseId = await activityElement.getAttribute('data-course-id') || '';
-      const timestampStr = await activityElement.getAttribute('data-timestamp') || '';
-      const userFullName = await activityElement.locator('[data-testid="activity-user"]').textContent() || undefined;
-      const userId = await activityElement.getAttribute('data-user-id') || undefined;
-      const url = await activityElement.locator('[data-testid="activity-link"]').getAttribute('href') || undefined;
+      const activityId = await activityElement.getAttribute('data-activity-id') ?? '';
+      const type = await activityElement.getAttribute('data-activity-type') ?? '';
+      const description = await activityElement.locator('[data-testid="activity-description"]').textContent() ?? '';
+      const courseName = await activityElement.locator('[data-testid="activity-course"]').textContent() ?? '';
+      const courseId = await activityElement.getAttribute('data-course-id') ?? '';
+      const timestampStr = await activityElement.getAttribute('data-timestamp') ?? '';
+      const userFullName = await activityElement.locator('[data-testid="activity-user"]').textContent() ?? undefined;
+      const userId = await activityElement.getAttribute('data-user-id') ?? undefined;
+      const url = await activityElement.locator('[data-testid="activity-link"]').getAttribute('href') ?? undefined;
 
       activities.push({
         activityId,
@@ -298,10 +298,10 @@ export class DashboardPage {
     for (let i = 0; i < count; i++) {
       const userElement = userElements.nth(i);
       
-      const userId = await userElement.getAttribute('data-user-id') || '';
-      const fullName = await userElement.locator('[data-testid="user-name"]').textContent() || '';
-      const profileImageUrl = await userElement.locator('[data-testid="user-avatar"]').getAttribute('src') || '';
-      const lastAccessStr = await userElement.getAttribute('data-last-access') || '';
+      const userId = await userElement.getAttribute('data-user-id') ?? '';
+      const fullName = await userElement.locator('[data-testid="user-name"]').textContent() ?? '';
+      const profileImageUrl = await userElement.locator('[data-testid="user-avatar"]').getAttribute('src') ?? '';
+      const lastAccessStr = await userElement.getAttribute('data-last-access') ?? '';
       const isOnline = await userElement.getAttribute('data-is-online') === 'true';
 
       users.push({
@@ -330,16 +330,16 @@ export class DashboardPage {
     for (let i = 0; i < count; i++) {
       const courseElement = courseElements.nth(i);
       
-      const courseId = await courseElement.getAttribute('data-course-id') || '';
-      const courseName = await courseElement.locator('[data-testid="course-name"]').textContent() || '';
-      const courseImageUrl = await courseElement.locator('[data-testid="course-image"]').getAttribute('src') || undefined;
+      const courseId = await courseElement.getAttribute('data-course-id') ?? '';
+      const courseName = await courseElement.locator('[data-testid="course-name"]').textContent() ?? '';
+      const courseImageUrl = await courseElement.locator('[data-testid="course-image"]').getAttribute('src') ?? undefined;
       const progressStr = await courseElement.getAttribute('data-progress') || '0';
       const totalActivitiesStr = await courseElement.getAttribute('data-total-activities') || '0';
       const completedActivitiesStr = await courseElement.getAttribute('data-completed-activities') || '0';
       const upcomingDeadlinesStr = await courseElement.getAttribute('data-upcoming-deadlines') || '0';
-      const lastAccessedStr = await courseElement.getAttribute('data-last-accessed') || undefined;
-      const instructorName = await courseElement.locator('[data-testid="course-instructor"]').textContent() || undefined;
-      const url = await courseElement.getAttribute('href') || '';
+      const lastAccessedStr = await courseElement.getAttribute('data-last-accessed') ?? undefined;
+      const instructorName = await courseElement.locator('[data-testid="course-instructor"]').textContent() ?? undefined;
+      const url = await courseElement.getAttribute('href') ?? '';
 
       courses.push({
         courseId,

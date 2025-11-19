@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as forumApi from '../../../../../src/features/activities/forums/api/forumApi';
+import type { PostResponse } from '../../../../../src/features/activities/forums/api/forumApi';
 import { useDiscussion } from '../../../../../src/features/activities/forums/hooks/useDiscussion';
 import type { DiscussionPost } from '../../../../../src/features/activities/forums/types/forum.types';
 
@@ -93,11 +94,12 @@ describe('Concurrent Reply Test', () => {
         },
       },
     });
-    return ({ children }: { children: React.ReactNode }) => (
+    const Wrapper = ({ children }: { children: React.ReactNode }) => (
       <QueryClientProvider client={qc}>
         {children}
       </QueryClientProvider>
     );
+    return Wrapper;
   };
 
   it('should handle concurrent reply creation from multiple users', async () => {
@@ -113,12 +115,12 @@ describe('Concurrent Reply Test', () => {
     });
 
     // Set up delayed API response to observe optimistic update
-    let resolveCreate: (value: any) => void;
-    const createPromise = new Promise((resolve) => {
+    let resolveCreate: (value: PostResponse) => void;
+    const createPromise = new Promise<PostResponse>((resolve) => {
       resolveCreate = resolve;
     });
     
-    vi.mocked(forumApi.createPost).mockReturnValue(createPromise as any);
+    vi.mocked(forumApi.createPost).mockReturnValue(createPromise);
 
     const { result } = renderHook(
       () => useDiscussion(discussionId),

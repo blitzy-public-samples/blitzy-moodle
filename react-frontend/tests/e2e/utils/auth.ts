@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /**
  * Authentication Utilities for Playwright E2E Tests
  * 
@@ -604,7 +605,7 @@ export async function refreshToken(page: Page): Promise<string> {
     throw new Error('Invalid response from refresh token endpoint');
   }
 
-  const newAccessToken = responseData.data.accessToken as string;
+  const newAccessToken = responseData.data.accessToken;
 
   // Update access token in storage
   await page.evaluate(

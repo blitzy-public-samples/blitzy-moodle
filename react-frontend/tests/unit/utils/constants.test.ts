@@ -68,9 +68,9 @@ describe('constants', () => {
     it('should have API_BASE_URL as a valid URL path', () => {
       expect(API_BASE_URL).toBeDefined();
       // Should either be /api/v1 or a full URL
+      const url = String(API_BASE_URL);
       expect(
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        API_BASE_URL.startsWith('/') || API_BASE_URL.startsWith('http')
+        url.startsWith('/') || url.startsWith('http')
       ).toBe(true);
     });
 

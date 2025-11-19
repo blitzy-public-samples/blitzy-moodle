@@ -1010,7 +1010,7 @@ expect.extend({
     } catch (error) {
       return {
         pass: false,
-        message: () => `Failed to run accessibility check: ${error}`,
+        message: () => `Failed to run accessibility check: ${String(error)}`,
       };
     }
   },

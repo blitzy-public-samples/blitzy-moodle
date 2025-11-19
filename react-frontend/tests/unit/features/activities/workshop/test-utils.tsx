@@ -35,6 +35,7 @@ import type {
   WorkshopPhase,
   GradingStrategy,
 } from '@/features/activities/workshop/types/workshop.types';
+import type { AuthState } from '@/features/auth/store/authSlice';
 
 /**
  * Workshop phase constants matching Moodle's workshop module
@@ -446,9 +447,18 @@ function createTestQueryClient(): QueryClient {
  * Creates a test-specific Redux store
  */
 function createTestStore() {
+  const mockAuthState: AuthState = {
+    user: { id: 100, name: 'Test User', email: 'test@example.com', roles: ['student'] },
+    tokens: { accessToken: 'test-access-token', refreshToken: 'test-refresh-token' },
+    isAuthenticated: true,
+    isLoading: false,
+    error: null,
+    status: 'authenticated',
+  };
+
   return configureStore({
     reducer: {
-      auth: (state = { user: { id: 100, name: 'Test User' }, token: 'test-token' }) => state,
+      auth: (state: AuthState = mockAuthState): AuthState => state,
     },
   });
 }

@@ -19,6 +19,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   formatDate,

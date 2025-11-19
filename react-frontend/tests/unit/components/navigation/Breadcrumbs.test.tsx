@@ -27,8 +27,10 @@ import { MemoryRouter } from 'react-router-dom';
 import Breadcrumbs from '@/components/navigation/Breadcrumbs';
 
 // Mock react-router-dom hooks
-const mockUseMatches = vi.fn();
-const mockUseLocation = vi.fn();
+import type { Location, UIMatch } from 'react-router-dom';
+
+const mockUseMatches = vi.fn<[], UIMatch[]>();
+const mockUseLocation = vi.fn<[], Location>();
 const mockNavigate = vi.fn();
 
 vi.mock('react-router-dom', async () => {
@@ -42,7 +44,7 @@ vi.mock('react-router-dom', async () => {
 });
 
 // Mock MUI useMediaQuery for responsive testing
-const mockUseMediaQuery = vi.fn();
+const mockUseMediaQuery = vi.fn<[], boolean>();
 
 vi.mock('@mui/material', async () => {
   const actual = await vi.importActual<typeof import('@mui/material')>('@mui/material');

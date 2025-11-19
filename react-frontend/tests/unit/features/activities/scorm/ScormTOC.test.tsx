@@ -35,7 +35,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 
 import ScormTOC from '@/features/activities/scorm/components/ScormTOC';
-import type { ScormTOCNode, Scorm } from '@/features/activities/scorm/types/scorm.types';
+import type { ScormTOCNode, Scorm, ScormToc } from '@/features/activities/scorm/types/scorm.types';
 import { ScormStatus, ScoType, ScormTocDisplay } from '@/features/activities/scorm/types/scorm.types';
 
 // ============================================================================
@@ -53,9 +53,9 @@ vi.mock('react-router-dom', async () => {
 });
 
 // Mock SCORM API module
-const mockFetchScormToc = vi.fn();
+const mockFetchScormToc = vi.fn<[number, unknown?], Promise<ScormToc>>();
 vi.mock('@/features/activities/scorm/api/scormApi', () => ({
-  fetchScormToc: (scormId: number, params?: unknown) => mockFetchScormToc(scormId, params),
+  fetchScormToc: (scormId: number, params?: unknown): Promise<ScormToc> => mockFetchScormToc(scormId, params),
 }));
 
 // Mock SCORM hooks

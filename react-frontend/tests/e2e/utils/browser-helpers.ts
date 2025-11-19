@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /**
  * Browser Context Management Utilities for Playwright E2E Tests
  * 
@@ -159,15 +160,15 @@ export async function createIsolatedContext(
     // Create context with default isolation settings
     const context = await browser.newContext({
       viewport: options.viewport !== undefined ? options.viewport : VIEWPORT_SIZES.desktop,
-      locale: options.locale || 'en-US',
-      timezoneId: options.timezoneId || 'America/New_York',
-      permissions: options.permissions || [],
+      locale: options.locale ?? 'en-US',
+      timezoneId: options.timezoneId ?? 'America/New_York',
+      permissions: options.permissions ?? [],
       geolocation: options.geolocation,
       userAgent: options.userAgent,
-      deviceScaleFactor: options.deviceScaleFactor || 1,
-      isMobile: options.isMobile || false,
-      hasTouch: options.hasTouch || false,
-      acceptDownloads: options.acceptDownloads !== undefined ? options.acceptDownloads : true,
+      deviceScaleFactor: options.deviceScaleFactor ?? 1,
+      isMobile: options.isMobile ?? false,
+      hasTouch: options.hasTouch ?? false,
+      acceptDownloads: options.acceptDownloads ?? true,
     });
 
     return context;
@@ -252,12 +253,12 @@ export async function setCookie(
     const cookie: Cookie = {
       name: options.name,
       value: options.value,
-      domain: options.domain || 'localhost',
-      path: options.path || '/',
-      expires: options.expires || -1,
-      httpOnly: options.httpOnly !== undefined ? options.httpOnly : false,
-      secure: options.secure !== undefined ? options.secure : false,
-      sameSite: options.sameSite || 'Lax',
+      domain: options.domain ?? 'localhost',
+      path: options.path ?? '/',
+      expires: options.expires ?? -1,
+      httpOnly: options.httpOnly ?? false,
+      secure: options.secure ?? false,
+      sameSite: options.sameSite ?? 'Lax',
     };
 
     await context.addCookies([cookie]);

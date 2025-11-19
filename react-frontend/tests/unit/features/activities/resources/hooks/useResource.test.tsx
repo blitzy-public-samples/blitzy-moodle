@@ -152,9 +152,11 @@ const createWrapper = () => {
     },
   });
 
-  return ({ children }: { children: ReactNode }) => (
+  const Wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
+  
+  return Wrapper;
 };
 
 describe('useResource hook', () => {
@@ -1026,12 +1028,12 @@ describe('useTrackResourceView mutation hook', () => {
   describe('mutation states', () => {
     it('should show loading state during mutation', async () => {
       // Create a promise we can control
-      let resolveMutation: (value: any) => void;
-      const mutationPromise = new Promise((resolve) => {
+      let resolveMutation: (value: unknown) => void;
+      const mutationPromise = new Promise<unknown>((resolve) => {
         resolveMutation = resolve;
       });
 
-      vi.mocked(apiClient.post).mockReturnValue(mutationPromise as any);
+      vi.mocked(apiClient.post).mockReturnValue(mutationPromise);
 
       const { result } = renderHook(() => useTrackResourceView(), {
         wrapper: createWrapper(),

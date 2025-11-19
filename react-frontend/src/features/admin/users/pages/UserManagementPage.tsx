@@ -537,7 +537,7 @@ export function UserManagementPage() {
       // Close dialog on success
       setEditDialogOpen(false);
       setEditingUser(null);
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Handle API errors
       console.error('Failed to update user:', error);
     }
@@ -581,7 +581,7 @@ export function UserManagementPage() {
       // Close dialog on success
       setDeleteDialogOpen(false);
       setDeletingUserId(null);
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Handle API errors
       console.error('Failed to delete user:', error);
       setDeleteDialogOpen(false);
@@ -621,7 +621,7 @@ export function UserManagementPage() {
       
       setSelectedUsers([]);
       handleBulkMenuClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to suspend/unsuspend users:', error);
       handleBulkMenuClose();
     }
@@ -651,7 +651,7 @@ export function UserManagementPage() {
       
       setSelectedUsers([]);
       handleBulkMenuClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to delete users:', error);
       handleBulkMenuClose();
     }
@@ -1088,7 +1088,7 @@ export function UserManagementPage() {
         <DialogTitle>Confirm User Deletion</DialogTitle>
         <DialogContent>
           <Alert severity="warning" sx={{ mb: 2 }}>
-            This action cannot be undone. The user's data will be anonymized.
+            This action cannot be undone. The user&apos;s data will be anonymized.
           </Alert>
           <Typography>Are you sure you want to delete this user?</Typography>
         </DialogContent>

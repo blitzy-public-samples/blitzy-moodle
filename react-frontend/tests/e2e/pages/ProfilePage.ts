@@ -19,7 +19,7 @@ export interface ProfileInfo {
   email: string;
   bio?: string;
   avatarUrl?: string;
-  customFields?: Record<string, any>;
+  customFields?: Record<string, unknown>;
 }
 
 /**
@@ -263,7 +263,7 @@ export class ProfilePage {
    * 
    * @param fields - Record of field names to values
    */
-  async updateCustomFields(fields: Record<string, any>): Promise<void> {
+  async updateCustomFields(fields: Record<string, unknown>): Promise<void> {
     for (const [fieldName, fieldValue] of Object.entries(fields)) {
       const fieldInput = this.page.locator(`[data-testid="custom-field-${fieldName}"]`);
       

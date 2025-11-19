@@ -407,7 +407,7 @@ function convertFixtureQuestionToMSW(fixtureQuestion: FixtureQuizQuestion): Ques
     type: fixtureQuestion.type as Question['type'],
     questiontext: fixtureQuestion.questiontext,
     questiontextformat: 1,
-    generalfeedback: fixtureQuestion.feedback || '',
+    generalfeedback: fixtureQuestion.feedback ?? '',
     defaultmark: fixtureQuestion.defaultmark,
     maxmark: fixtureQuestion.defaultmark,
     page: 0,
@@ -426,15 +426,15 @@ function convertFixtureQuestionToMSW(fixtureQuestion: FixtureQuizQuestion): Ques
         id: ans.id,
         answer: ans.text,
         fraction: ans.fraction,
-        feedback: ans.feedback || '',
+        feedback: ans.feedback ?? '',
       })),
     } as MultichoiceOptions;
   } else if (fixtureQuestion.type === 'truefalse' && fixtureQuestion.answers) {
     const trueAnswer = fixtureQuestion.answers.find(a => a.text.toLowerCase() === 'true');
     const falseAnswer = fixtureQuestion.answers.find(a => a.text.toLowerCase() === 'false');
     baseQuestion.options = {
-      truefeedback: trueAnswer?.feedback || '',
-      falsefeedback: falseAnswer?.feedback || '',
+      truefeedback: trueAnswer?.feedback ?? '',
+      falsefeedback: falseAnswer?.feedback ?? '',
     } as TrueFalseOptions;
   } else if (fixtureQuestion.type === 'shortanswer' && fixtureQuestion.correctanswer) {
     baseQuestion.options = {
@@ -449,7 +449,7 @@ function convertFixtureQuestionToMSW(fixtureQuestion: FixtureQuizQuestion): Ques
     } as ShortAnswerOptions;
   } else if (fixtureQuestion.type === 'essay') {
     baseQuestion.options = {
-      responseformat: fixtureQuestion.responseformat || 'editor',
+      responseformat: fixtureQuestion.responseformat ?? 'editor',
       responserequired: true,
       responsefieldlines: 15,
       attachments: 0,
@@ -484,7 +484,6 @@ function transformQuestionForFrontend(question: Question): TransformedQuestion {
   if (question.type === 'multichoice' && question.options) {
     const mcOptions = question.options as MultichoiceOptions;
     // Convert MultichoiceOptions.answers to simple options array
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     baseTransformed.options = mcOptions.answers.map(ans => ({
       id: ans.id,
       text: ans.answer,
@@ -492,7 +491,6 @@ function transformQuestionForFrontend(question: Question): TransformedQuestion {
     }));
   } else if (question.type === 'truefalse' && question.options) {
     // Convert TrueFalseOptions to two simple options
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     baseTransformed.options = [
       { id: 1, text: 'True', correct: false },
       { id: 2, text: 'False', correct: false },
@@ -500,17 +498,13 @@ function transformQuestionForFrontend(question: Question): TransformedQuestion {
   } else if (question.type === 'shortanswer' && question.options) {
     const saOptions = question.options as ShortAnswerOptions;
     // For shortanswer, we don't show options in the UI
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     baseTransformed.options = [];
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     baseTransformed.correctanswer = saOptions.answers[0]?.answer;
   } else if (question.type === 'essay') {
     // Essay questions don't have options
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     baseTransformed.options = [];
   } else {
     // Default: empty options array
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     baseTransformed.options = [];
   }
 
@@ -553,9 +547,9 @@ const calculateFinalGrade = (attempts: number[], method: GradeMethod): number =>
     case GradeMethod.AVERAGE:
       return attempts.reduce((a, b) => a + b, 0) / attempts.length;
     case GradeMethod.FIRST:
-      return attempts[0]!;
+      return attempts[0] ?? 0;
     case GradeMethod.LAST:
-      return attempts[attempts.length - 1]!;
+      return attempts[attempts.length - 1] ?? 0;
     default:
       return Math.max(...attempts);
   }
@@ -654,7 +648,7 @@ export const quizzesHandlers = [
     const attemptsRemaining = quiz.attempts === 0 ? null : quiz.attempts - attemptsUsed;
 
     // Determine if user can attempt quiz
-    const canAttempt = quiz.attempts === 0 || attemptsRemaining! > 0;
+    const canAttempt = quiz.attempts === 0 || (attemptsRemaining ?? 0) > 0;
 
     return HttpResponse.json({
       success: true,
@@ -684,7 +678,7 @@ export const quizzesHandlers = [
     let body: { password?: string; preview?: boolean } = {};
     try {
       const text = await request.text();
-      if (text && text.trim()) {
+      if (text?.trim()) {
         body = JSON.parse(text) as { password?: string; preview?: boolean };
       }
     } catch (error) {
@@ -759,7 +753,7 @@ export const quizzesHandlers = [
     }
 
     // Create new attempt
-    const attemptNumber = (quiz.userattempts?.attemptsmade || 0) + 1;
+    const attemptNumber = (quiz.userattempts?.attemptsmade ?? 0) + 1;
     const newAttemptId = mockAttempts.size + 1;
     const newAttempt: QuizAttempt = {
       id: newAttemptId,
@@ -769,7 +763,7 @@ export const quizzesHandlers = [
       uniqueid: 1000 + newAttemptId,
       layout: Array.from({ length: quiz.questioncount }, (_, i) => i + 1).join(','),
       currentpage: 0,
-      preview: body.preview || false,
+      preview: body.preview ?? false,
       state: 'inprogress',
       timestart: Math.floor(Date.now() / 1000), // Unix timestamp in seconds
       timefinish: null,
@@ -782,12 +776,15 @@ export const quizzesHandlers = [
     mockAttempts.set(newAttemptId, newAttempt);
 
     // Get questions for this quiz
-    const questions = mockQuestions.get(quizId) || [];
+    const questions = mockQuestions.get(quizId) ?? [];
     
     // Debug logging to verify questions are being returned
+    // eslint-disable-next-line no-console
     console.log(`[MSW] Creating quiz attempt for quiz ${quizId}`);
+    // eslint-disable-next-line no-console
     console.log(`[MSW] Found ${questions.length} questions for quiz ${quizId}`);
     if (questions.length > 0) {
+      // eslint-disable-next-line no-console
       console.log('[MSW] First question (before transform):', JSON.stringify(questions[0], null, 2));
     }
     
@@ -795,6 +792,7 @@ export const quizzesHandlers = [
     const transformedQuestions = questions.map(transformQuestionForFrontend);
     
     if (transformedQuestions.length > 0) {
+      // eslint-disable-next-line no-console
       console.log('[MSW] First question (after transform):', JSON.stringify(transformedQuestions[0], null, 2));
     }
     
@@ -823,8 +821,8 @@ export const quizzesHandlers = [
 
     const quizId = Number(params.id);
     const url = new URL(request.url);
-    const attemptId = Number(url.searchParams.get('attemptid') || url.searchParams.get('attemptId'));
-    const page = Number(url.searchParams.get('page') || '0');
+    const attemptId = Number(url.searchParams.get('attemptid') ?? url.searchParams.get('attemptId'));
+    const page = Number(url.searchParams.get('page') ?? '0');
 
     const quiz = mockQuizzes.get(quizId);
     const attempt = mockAttempts.get(attemptId);
@@ -883,13 +881,13 @@ export const quizzesHandlers = [
     const body = await request.json() as {
       attemptId?: number;
       attemptid?: number;
-      answers: Record<number, any>;
+      answers: Record<number, unknown>;
       finalize: boolean;
     };
 
-    const attemptId = body.attemptId || body.attemptid;
+    const attemptId = body.attemptId ?? body.attemptid;
     const quiz = mockQuizzes.get(quizId);
-    const attempt = mockAttempts.get(attemptId!);
+    const attempt = mockAttempts.get(attemptId ?? 0);
 
     if (!quiz || !attempt) {
       return HttpResponse.json(
@@ -1029,7 +1027,7 @@ export const quizzesHandlers = [
       );
     }
 
-    const sumgrades = attempt.sumgrades || 0;
+    const sumgrades = attempt.sumgrades ?? 0;
     const percentage = (sumgrades / quiz.sumgrades) * 100;
     const grade = (percentage / 100) * quiz.grade;
 
@@ -1107,7 +1105,7 @@ export const quizzesHandlers = [
     userAttempts.sort((a, b) => b.attempt - a.attempt);
 
     // Calculate best grade based on grade method
-    const grades = userAttempts.filter(a => a.grade !== null).map(a => a.grade!);
+    const grades = userAttempts.filter(a => a.grade !== null).map(a => a.grade as number);
     const bestGrade = grades.length > 0 ? calculateFinalGrade(grades, quiz.grademethod) : null;
 
     return HttpResponse.json({
@@ -1217,7 +1215,7 @@ export const quizzesHandlers = [
       };
     });
 
-    const sumgrades = attempt.sumgrades || 0;
+    const sumgrades = attempt.sumgrades ?? 0;
     const percentage = (sumgrades / quiz.sumgrades) * 100;
     const grade = (percentage / 100) * quiz.grade;
 

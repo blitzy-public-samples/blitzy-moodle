@@ -18,6 +18,9 @@
  * @module e2e/utils/api-helpers
  */
 
+/* eslint-disable no-console */
+// Console logging is intentionally used in this E2E test utility file for test debugging and tracing
+
 import { retryOperation } from './wait-helpers';
 
 // ============================================================================
@@ -33,7 +36,7 @@ export interface ApiRequestOptions {
   /** API endpoint path (relative to base URL) */
   endpoint: string;
   /** Request body data (for POST, PUT requests) */
-  body?: Record<string, any> | FormData;
+  body?: Record<string, unknown> | FormData;
   /** Additional request headers */
   headers?: Record<string, string>;
   /** Request timeout in milliseconds (default: 30000) */
@@ -47,7 +50,7 @@ export interface ApiRequestOptions {
 /**
  * Standard API response envelope structure
  */
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   /** Success status flag */
   success: boolean;
   /** Response data payload */
@@ -59,7 +62,7 @@ export interface ApiResponse<T = any> {
     /** Human-readable error message */
     message: string;
     /** Additional error details */
-    details?: Record<string, any>;
+    details?: Record<string, unknown>;
   };
   /** Metadata (pagination, etc.) */
   meta?: {
@@ -70,6 +73,18 @@ export interface ApiResponse<T = any> {
       totalPages: number;
     };
   };
+}
+
+/**
+ * Extended Error type for API errors with additional context
+ */
+export interface ApiError extends Error {
+  /** Error code identifier */
+  code?: string;
+  /** Additional error details */
+  details?: Record<string, unknown>;
+  /** HTTP status code */
+  status?: number;
 }
 
 /**
@@ -197,7 +212,7 @@ export interface TestEnvironment {
 // ============================================================================
 
 /** API base URL from environment or default */
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost/api/v1';
+const API_BASE_URL = process.env.API_BASE_URL ?? 'http://localhost/api/v1';
 
 /** Default request timeout in milliseconds */
 const DEFAULT_TIMEOUT = 30000; // 30 seconds
@@ -258,7 +273,7 @@ const createdQuizzes = new Set<number>();
  *   endpoint: '/courses/5'
  * });
  */
-export async function apiRequest<T = any>(
+export async function apiRequest<T = unknown>(
   options: ApiRequestOptions
 ): Promise<T> {
   const {
@@ -289,7 +304,7 @@ export async function apiRequest<T = any>(
     if (typeof window !== 'undefined') {
       // Browser context - this won't work in Node.js
       // Must match ACCESS_TOKEN_KEY in authService.ts and client.ts
-      authToken = localStorage.getItem('moodle_access_token') || undefined;
+      authToken = localStorage.getItem('moodle_access_token') ?? undefined;
     }
   }
 
@@ -348,14 +363,11 @@ export async function apiRequest<T = any>(
 
       // Check if response indicates success
       if (!response.ok || !responseData.success) {
-        const errorMessage = responseData.error?.message || `API request failed with status ${response.status}`;
-        const error = new Error(errorMessage);
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        (error as any).code = responseData.error?.code || 'API_ERROR';
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        (error as any).details = responseData.error?.details;
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        (error as any).status = response.status;
+        const errorMessage = responseData.error?.message ?? `API request failed with status ${response.status}`;
+        const error = new Error(errorMessage) as ApiError;
+        error.code = responseData.error?.code ?? 'API_ERROR';
+        error.details = responseData.error?.details;
+        error.status = response.status;
         throw error;
       }
 
@@ -413,7 +425,7 @@ export async function apiRequest<T = any>(
  * @example
  * verifyApiResponse(responseData);
  */
-export function verifyApiResponse<T = any>(response: ApiResponse<T>): void {
+export function verifyApiResponse<T = unknown>(response: ApiResponse<T>): void {
   // Check that response is an object
   if (!response || typeof response !== 'object') {
     throw new Error('Invalid API response: response is not an object');
@@ -462,7 +474,7 @@ export async function createTestCourse(
   token?: string
 ): Promise<{ id: number; name: string; shortname: string }> {
   // Generate shortname if not provided
-  const shortname = courseData.shortname || 
+  const shortname = courseData.shortname ?? 
     `test_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
   const course = await apiRequest<{ id: number; name: string; shortname: string }>({
@@ -471,8 +483,8 @@ export async function createTestCourse(
     body: {
       ...courseData,
       shortname,
-      category: courseData.category || 1,
-      visible: courseData.visible !== undefined ? courseData.visible : 1,
+      category: courseData.category ?? 1,
+      visible: courseData.visible ?? 1,
     },
     token,
   });
@@ -617,8 +629,8 @@ export async function createTestAssignment(
     endpoint: '/assignments',
     body: {
       ...assignmentData,
-      intro: assignmentData.intro || 'Test assignment description',
-      grade: assignmentData.grade || 100,
+      intro: assignmentData.intro ?? 'Test assignment description',
+      grade: assignmentData.grade ?? 100,
     },
     token,
   });
@@ -692,9 +704,9 @@ export async function createTestQuiz(
     endpoint: '/quizzes',
     body: {
       ...quizData,
-      intro: quizData.intro || 'Test quiz description',
-      grade: quizData.grade || 100,
-      attempts: quizData.attempts !== undefined ? quizData.attempts : 0, // Unlimited by default
+      intro: quizData.intro ?? 'Test quiz description',
+      grade: quizData.grade ?? 100,
+      attempts: quizData.attempts ?? 0, // Unlimited by default
     },
     token,
   });
@@ -770,9 +782,9 @@ export async function createTestUser(
     endpoint: '/admin/users',
     body: {
       ...userData,
-      city: userData.city || 'Test City',
-      country: userData.country || 'US',
-      timezone: userData.timezone || 'UTC',
+      city: userData.city ?? 'Test City',
+      country: userData.country ?? 'US',
+      timezone: userData.timezone ?? 'UTC',
     },
     token,
   });
@@ -840,7 +852,7 @@ export async function deleteTestUser(
  * // Get grades
  * const grades = await getTestData('/gradebook/user/15');
  */
-export async function getTestData<T = any>(
+export async function getTestData<T = unknown>(
   endpoint: string,
   token?: string
 ): Promise<T> {
@@ -927,7 +939,7 @@ export async function setupTestEnvironment(
 
   // Create test course
   console.log('[Test Environment] Creating test course...');
-  const courseName = options.courseName || `E2E Test Course ${timestamp}`;
+  const courseName = options.courseName ?? `E2E Test Course ${timestamp}`;
   const course = await createTestCourse(
     {
       name: courseName,

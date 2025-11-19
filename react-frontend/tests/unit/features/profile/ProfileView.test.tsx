@@ -4,18 +4,20 @@ import { axe, toHaveNoViolations } from 'jest-axe';
 import '@testing-library/jest-dom';
 import ProfileView from '@/features/profile/components/ProfileView';
 import type { User } from '@/types/entities';
+import type { UseProfileResult } from '@/features/profile/hooks/useProfile';
+import type { UseAuthReturn } from '@/features/auth/hooks/useAuth';
 
 // Extend expect matchers
 expect.extend(toHaveNoViolations);
 
 // Mock the useProfile hook
-const mockUseProfile = vi.fn();
+const mockUseProfile = vi.fn<[], UseProfileResult>();
 vi.mock('@/features/profile/hooks/useProfile', () => ({
   useProfile: () => mockUseProfile(),
 }));
 
 // Mock the useAuth hook for permission checks
-const mockUseAuth = vi.fn();
+const mockUseAuth = vi.fn<[], UseAuthReturn>();
 vi.mock('@/features/auth/hooks/useAuth', () => ({
   useAuth: () => mockUseAuth(),
 }));

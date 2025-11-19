@@ -20,6 +20,9 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -67,11 +70,13 @@ function createTestQueryClient(): QueryClient {
  * Used by renderHook to wrap the hook under test
  */
 function createWrapper(queryClient: QueryClient) {
-  return ({ children }: { children: ReactNode }) => (
+  const Wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>
       {children}
     </QueryClientProvider>
   );
+  Wrapper.displayName = 'QueryClientWrapper';
+  return Wrapper;
 }
 
 // ============================================================================
@@ -163,7 +168,8 @@ const mockH5PAttemptsResponse = mockApiResponseUserAttempts;
 const mockH5PAttemptsData = mockApiResponseUserAttempts.data;
 
 // Create a reference to the mocked API client for easier access in tests
-const mockApiClient = vi.mocked(apiClient);
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+const mockApiClient = apiClient as any;
 
 // ============================================================================
 // Test Suite: Basic Fetching Functionality
@@ -370,7 +376,6 @@ describe('useH5PAttempts - Filtering', () => {
     // All attempts should have first names starting with 'J'
     expect(result.current.attempts.length).toBe(2);
     result.current.attempts.forEach(attempt => {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       expect(attempt.firstname.toUpperCase()).toMatch(/^J/);
     });
   });
@@ -398,7 +403,6 @@ describe('useH5PAttempts - Filtering', () => {
     // All attempts should have last names starting with 'J'
     expect(result.current.attempts.length).toBe(1);
     result.current.attempts.forEach(attempt => {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       expect(attempt.lastname.toUpperCase()).toMatch(/^J/);
     });
   });
@@ -432,7 +436,6 @@ describe('useH5PAttempts - Filtering', () => {
     expect(result.current.attempts.length).toBe(1);
     result.current.attempts.forEach(attempt => {
       expect(attempt.userid).toBe(101);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       expect(attempt.firstname.toUpperCase()).toMatch(/^J/);
     });
   });

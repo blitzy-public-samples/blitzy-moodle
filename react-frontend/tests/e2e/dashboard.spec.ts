@@ -743,7 +743,6 @@ test.describe('Dashboard E2E Tests', () => {
       // Cleanup: Remove test assignment via API
       await apiRequest({
         token: authToken,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         endpoint: `/api/v1/assignments/${newAssignment.id}`,
         method: 'DELETE'
       });

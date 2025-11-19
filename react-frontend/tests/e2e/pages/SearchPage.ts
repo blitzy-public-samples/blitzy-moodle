@@ -279,7 +279,7 @@ export class SearchPage {
         this.emptyStateMessage.waitFor({ state: 'visible', timeout })
       ]);
     } catch (error) {
-      throw new Error(`Search results failed to load within ${timeout}ms: ${error}`);
+      throw new Error(`Search results failed to load within ${timeout}ms: ${String(error)}`);
     }
   }
 }

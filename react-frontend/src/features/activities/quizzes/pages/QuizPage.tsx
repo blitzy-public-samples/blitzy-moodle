@@ -41,7 +41,7 @@ import {
   Grade as GradeIcon,
 } from '@mui/icons-material';
 import { useQuiz, useStartQuizAttempt } from '../api/quizApi';
-import { GradeMethod } from '../types/quiz.types';
+import { GradeMethod, QuizAttemptState } from '../types/quiz.types';
 import { format } from 'date-fns';
 
 /**
@@ -376,7 +376,7 @@ export function QuizPage(): React.ReactElement {
                       </Grid>
                     </Grid>
                   </CardContent>
-                  {attempt.state === 'finished' && (
+                  {attempt.state === QuizAttemptState.FINISHED && (
                     <CardActions>
                       <Button
                         size="small"

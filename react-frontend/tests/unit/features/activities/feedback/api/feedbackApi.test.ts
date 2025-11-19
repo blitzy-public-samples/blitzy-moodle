@@ -33,7 +33,6 @@ import {
   type FeedbackUserResponses,
   type FeedbackResponses,
   type AnalysisOptions,
-  type QuestionAnalysis,
 } from '@/features/activities/feedback/api/feedbackApi';
 import type { ApiResponse } from '@/types/api';
 import type {

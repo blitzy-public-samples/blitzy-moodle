@@ -209,9 +209,10 @@ const createTestQueryClient = () =>
  */
 const createWrapper = () => {
   const queryClient = createTestQueryClient();
-  return ({ children }: { children: React.ReactNode }) => (
+  const Wrapper = ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
+  return Wrapper;
 };
 
 /**
@@ -262,6 +263,7 @@ describe('ScormReportCard - Loading and Error States', () => {
 
   it('should display info alert when no report data is available', async () => {
     // Mock API to return null (no data)
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     vi.mocked(fetchAttemptReport).mockResolvedValue(null as any);
 
     renderWithQueryClient(

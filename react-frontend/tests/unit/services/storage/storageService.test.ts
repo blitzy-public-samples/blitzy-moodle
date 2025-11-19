@@ -13,6 +13,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import type { MockInstance } from 'vitest';
 
 // Import types for TypeScript
 type StorageService = typeof import('@/services/storage/storageService');
@@ -101,8 +102,8 @@ describe('storageService', () => {
   let mockSessionStorage: MockStorage;
   let originalLocalStorage: Storage;
   let originalSessionStorage: Storage;
-  let consoleErrorSpy: any;
-  let consoleWarnSpy: any;
+  let consoleErrorSpy: MockInstance;
+  let consoleWarnSpy: MockInstance;
   
   // Storage service functions (dynamically imported in beforeEach)
   let getItem: StorageService['getItem'];
@@ -171,9 +172,7 @@ describe('storageService', () => {
     });
 
     // Restore console methods
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     consoleErrorSpy.mockRestore();
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     consoleWarnSpy.mockRestore();
 
     // Clear all mocks

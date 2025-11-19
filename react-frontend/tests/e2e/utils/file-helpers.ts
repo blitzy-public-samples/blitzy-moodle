@@ -858,7 +858,7 @@ export async function verifyFileProperties(
       const typeText = await fileItem.locator('[data-testid="file-type"], .file-type').textContent();
       const filenameText = await fileItem.locator('[data-testid="file-name"], .file-name').textContent();
       
-      const displayedType = typeText || (filenameText ? extname(filenameText).replace('.', '') : '');
+      const displayedType = typeText ?? (filenameText ? extname(filenameText).replace('.', '') : '');
       
       if (displayedType && displayedType.toLowerCase() !== expectedProperties.type.toLowerCase()) {
         errors.push(`File type mismatch: expected ${expectedProperties.type}, got ${displayedType}`);

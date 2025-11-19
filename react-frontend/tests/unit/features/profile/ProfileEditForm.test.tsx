@@ -1,22 +1,22 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { UseMutationResult } from '@tanstack/react-query';
 import { ProfileEditForm } from '@/features/profile/components/ProfileEditForm';
 import type { User } from '@/features/profile/types/profile.types';
+import type { UpdateProfilePayload } from '@/features/profile/api/profileApi';
 
 // Mock the useUpdateProfile hook
 const mockUpdateProfile = vi.fn();
-const mockUseUpdateProfile = vi.fn();
+const mockUseUpdateProfile = vi.fn<[], UseMutationResult<User, Error, UpdateProfilePayload, unknown>>();
 
 vi.mock('@/features/profile/hooks/useUpdateProfile', () => ({
   useUpdateProfile: (options?: { onSuccess?: () => void; onError?: (error: any) => void }) => {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const result = mockUseUpdateProfile();
     // Store the callbacks to trigger them when mutate is called
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
     const originalMutate = result.mutate;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     result.mutate = (...args: any[]) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       originalMutate(...args);
       // Simulate successful mutation by calling onSuccess callback
       if (options?.onSuccess) {

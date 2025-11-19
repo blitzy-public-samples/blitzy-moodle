@@ -478,7 +478,7 @@ function findUserById(userId: number): (User & { password: string; status: 'acti
  * @returns User object without sensitive fields
  */
 function sanitizeUser(user: User & { password: string; status: string }): User {
-  const { password, status, ...sanitized } = user;
+  const { password: _password, status: _status, ...sanitized } = user;
   return sanitized as User;
 }
 
@@ -1187,7 +1187,7 @@ const passwordResetSetHandler = http.post('*/api/v1/auth/password-reset/set', as
     }
 
     // Mock password validation against policy
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
     if (!passwordRegex.test(password)) {
       return HttpResponse.json(
         {

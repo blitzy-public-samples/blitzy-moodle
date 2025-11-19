@@ -331,9 +331,11 @@ const createTestQueryClient = () =>
 
 // Helper to create wrapper with QueryClientProvider
 const createWrapper = (queryClient: QueryClient) => {
-  return ({ children }: { children: ReactNode }) => (
+  const Wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
+  Wrapper.displayName = 'ForumTestWrapper';
+  return Wrapper;
 };
 
 describe('useForum', () => {

@@ -39,11 +39,13 @@ const createWrapper = (client?: QueryClient) => {
     },
   });
 
-  return ({ children }: { children: React.ReactNode }) => (
+  const Wrapper = ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={queryClient}>
       {children}
     </QueryClientProvider>
   );
+  
+  return Wrapper;
 };
 
 // Mock data factory functions
@@ -247,12 +249,13 @@ describe('useDiscussion Hook', () => {
 
     it('should handle loading state during initial fetch', async () => {
       const discussionId = 100;
-      let resolvePromise: (value: any) => void;
-      const promise = new Promise((resolve) => {
+      let resolvePromise: (value: DiscussionWithPosts) => void;
+      const promise = new Promise<DiscussionWithPosts>((resolve) => {
         resolvePromise = resolve;
       });
 
-      vi.mocked(forumApi.getDiscussionPosts).mockReturnValue(promise as any);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      vi.mocked(forumApi.getDiscussionPosts).mockReturnValue(promise);
 
       const { result } = renderHook(
         () => useDiscussion(discussionId),
@@ -467,11 +470,12 @@ describe('useDiscussion Hook', () => {
       });
 
       // Delay API response to observe optimistic update
-      let resolveCreate: (value: any) => void;
-      const createPromise = new Promise((resolve) => {
+      let resolveCreate: (value: PostResponse) => void;
+      const createPromise = new Promise<PostResponse>((resolve) => {
         resolveCreate = resolve;
       });
-      vi.mocked(forumApi.createPost).mockReturnValue(createPromise as any);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      vi.mocked(forumApi.createPost).mockReturnValue(createPromise);
 
       const onCreateSuccess = vi.fn();
 
@@ -983,11 +987,12 @@ describe('useDiscussion Hook', () => {
       });
 
       // Delay API response
-      let resolveSubscribe: (value: any) => void;
-      const subscribePromise = new Promise((resolve) => {
+      let resolveSubscribe: (value: SubscriptionResponse) => void;
+      const subscribePromise = new Promise<SubscriptionResponse>((resolve) => {
         resolveSubscribe = resolve;
       });
-      vi.mocked(forumApi.subscribeDiscussion).mockReturnValue(subscribePromise as any);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      vi.mocked(forumApi.subscribeDiscussion).mockReturnValue(subscribePromise);
 
       const onSubscribeSuccess = vi.fn();
 

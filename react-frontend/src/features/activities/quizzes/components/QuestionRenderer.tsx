@@ -286,7 +286,7 @@ export function QuestionRenderer({
     return (
       <Paper variant="outlined" sx={{ p: 2, bgcolor: 'warning.light' }}>
         <Typography>
-          Question type "{question.type}" is not supported yet.
+          Question type &quot;{question.type}&quot; is not supported yet.
         </Typography>
       </Paper>
     );
