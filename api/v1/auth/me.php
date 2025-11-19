@@ -100,70 +100,126 @@ class AuthMeEndpoint extends ApiBase {
     protected function handle_get() {
         global $DB, $CFG, $PAGE, $OUTPUT;
         
-        // Authenticate request and get user
-        $user = $this->authenticate();
+        try {
+            // Get authenticated user from validated JWT token
+            // Authentication is already handled by ApiBase constructor
+            $user = $this->getUser();
+            
+            if (!$user || !$user->id) {
+                throw new NotFoundException('User not found', [
+                    'reason' => 'User associated with token does not exist',
+                    'action' => 'Please log in again'
+                ]);
+            }
+            
+            // Reload complete user record from database to ensure fresh data
+            // Using recommended Moodle database access pattern
+            $userRecord = $DB->get_record('user', ['id' => $user->id], '*', MUST_EXIST);
+            
+            // Filter out sensitive fields from user record
+            unset($userRecord->password);
+            unset($userRecord->secret);
+            unset($userRecord->mnetkey);
+            unset($userRecord->sesskey);
         
-        if (!$user) {
+            // Get user roles using existing Moodle function
+            // This returns roles in system context (site-wide roles)
+            $roles = [];
+            $userRoles = get_user_roles(context_system::instance(), $userRecord->id, true);
+            foreach ($userRoles as $role) {
+                $roles[] = [
+                    'id' => (int)$role->roleid,
+                    'name' => $role->name,
+                    'shortname' => $role->shortname,
+                    'archetype' => isset($role->archetype) ? $role->archetype : null
+                ];
+            }
+            
+            // Get user preferences using existing Moodle functions
+            // These are commonly needed preferences for frontend personalization
+            $preferences = [
+                'timezone' => get_user_timezone($userRecord->timezone),
+                'lang' => $userRecord->lang,
+                'theme' => get_user_preferences('theme', null, $userRecord->id),
+                'mailformat' => (int)$userRecord->mailformat,
+                'maildisplay' => (int)$userRecord->maildisplay,
+                'maildigest' => (int)$userRecord->maildigest,
+                'autosubscribe' => (int)$userRecord->autosubscribe
+            ];
+            
+            // Generate profile image URL using existing Moodle user_picture class
+            // This ensures consistent image URLs with proper caching and fallbacks
+            $userpicture = new user_picture($userRecord);
+            $userpicture->size = 100; // Large size for profile display
+            $profileImageUrl = $userpicture->get_url($PAGE)->out(false);
+            
+            // Prepare comprehensive response data
+            // All data comes from existing Moodle user record and helper functions
+            $responseData = [
+                'id' => (int)$userRecord->id,
+                'username' => $userRecord->username,
+                'firstname' => $userRecord->firstname,
+                'lastname' => $userRecord->lastname,
+                'fullname' => fullname($userRecord),
+                'email' => $userRecord->email,
+                'emailstop' => (int)$userRecord->emailstop,
+                'profileImageUrl' => $profileImageUrl,
+                'roles' => $roles,
+                'preferences' => $preferences,
+                'firstaccess' => (int)$userRecord->firstaccess,
+                'lastaccess' => (int)$userRecord->lastaccess,
+                'lastlogin' => (int)$userRecord->lastlogin,
+                'currentlogin' => (int)$userRecord->currentlogin,
+                'suspended' => (int)$userRecord->suspended,
+                'confirmed' => (int)$userRecord->confirmed
+            ];
+            
+            // Add optional profile fields if present
+            if (!empty($userRecord->city)) {
+                $responseData['city'] = $userRecord->city;
+            }
+            if (!empty($userRecord->country)) {
+                $responseData['country'] = $userRecord->country;
+            }
+            if (!empty($userRecord->description)) {
+                $responseData['description'] = $userRecord->description;
+            }
+            if (!empty($userRecord->descriptionformat)) {
+                $responseData['descriptionformat'] = (int)$userRecord->descriptionformat;
+            }
+            if (!empty($userRecord->url)) {
+                $responseData['url'] = $userRecord->url;
+            }
+            if (!empty($userRecord->institution)) {
+                $responseData['institution'] = $userRecord->institution;
+            }
+            if (!empty($userRecord->department)) {
+                $responseData['department'] = $userRecord->department;
+            }
+            if (!empty($userRecord->phone1)) {
+                $responseData['phone1'] = $userRecord->phone1;
+            }
+            if (!empty($userRecord->phone2)) {
+                $responseData['phone2'] = $userRecord->phone2;
+            }
+            
+            // Return success response using parent class method
+            // This formats the response with standard JSON envelope structure
+            return $this->success($responseData);
+            
+        } catch (dml_missing_record_exception $e) {
+            // User record not found in database
             throw new NotFoundException('User not found', [
-                'reason' => 'User associated with token does not exist',
-                'action' => 'Please log in again'
+                'reason' => 'User record does not exist in database',
+                'userid' => $user->id ?? null
+            ]);
+        } catch (Exception $e) {
+            // Catch any unexpected errors during user data retrieval
+            throw new ServerException('Failed to retrieve user profile', [
+                'error' => $e->getMessage(),
+                'trace' => $CFG->debugdisplay ? $e->getTraceAsString() : null
             ]);
         }
-        
-        // Get comprehensive user details using existing Moodle function
-        require_once($CFG->dirroot . '/user/lib.php');
-        $userDetails = user_get_user_details($user, null);
-        
-        // Get user roles
-        $roles = [];
-        $userRoles = get_user_roles(context_system::instance(), $user->id, true);
-        foreach ($userRoles as $role) {
-            $roles[] = [
-                'id' => (int)$role->roleid,
-                'name' => $role->name,
-                'shortname' => $role->shortname
-            ];
-        }
-        
-        // Get user preferences
-        $preferences = [
-            'timezone' => get_user_timezone($user->timezone),
-            'lang' => $user->lang,
-            'theme' => get_user_preferences('theme', null, $user->id),
-            'mailformat' => $user->mailformat
-        ];
-        
-        // Generate profile image URL
-        $userpicture = new user_picture($user);
-        $userpicture->size = 100; // Large size
-        $profileImageUrl = $userpicture->get_url($PAGE)->out(false);
-        
-        // Prepare response data
-        $responseData = [
-            'id' => (int)$user->id,
-            'username' => $user->username,
-            'firstname' => $user->firstname,
-            'lastname' => $user->lastname,
-            'fullname' => fullname($user),
-            'email' => $user->email,
-            'profileImageUrl' => $profileImageUrl,
-            'roles' => $roles,
-            'preferences' => $preferences
-        ];
-        
-        // Add additional fields if available from user_get_user_details
-        if (isset($userDetails['city'])) {
-            $responseData['city'] = $userDetails['city'];
-        }
-        if (isset($userDetails['country'])) {
-            $responseData['country'] = $userDetails['country'];
-        }
-        if (isset($userDetails['description'])) {
-            $responseData['description'] = $userDetails['description'];
-        }
-        
-        // Return success response
-        $this->success($responseData);
     }
     
     /**
