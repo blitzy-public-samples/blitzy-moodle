@@ -69,7 +69,10 @@ require_once(__DIR__ . '/../../lib/api_base.php');
 require_once(__DIR__ . '/../../lib/api_exception.php');
 
 // Load Moodle configuration and libraries
-require_once(__DIR__ . '/../../../config.php');
+// Only require config if not already loaded (for test compatibility)
+if (!defined('MOODLE_INTERNAL')) {
+    require_once(__DIR__ . '/../../../config.php');
+}
 require_once($CFG->dirroot . '/mod/forum/lib.php');
 require_once($CFG->libdir . '/grouplib.php');
 
@@ -333,6 +336,35 @@ class ForumCreateDiscussionEndpoint extends ApiBase {
         // Return 201 Created status with discussion data
         // HTTP 201 indicates a new resource was successfully created
         return $this->success($response, 201);
+    }
+    /**
+     * Handle GET requests (not supported for this endpoint).
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown
+     */
+    protected function handle_get() {
+        throw new MethodNotAllowedException('GET method not supported for forum discussion creation');
+    }
+
+    /**
+     * Handle PUT requests (not supported for this endpoint).
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown
+     */
+    protected function handle_put() {
+        throw new MethodNotAllowedException('PUT method not supported for forum discussion creation');
+    }
+
+    /**
+     * Handle DELETE requests (not supported for this endpoint).
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown
+     */
+    protected function handle_delete() {
+        throw new MethodNotAllowedException('DELETE method not supported for forum discussion creation');
     }
 }
 

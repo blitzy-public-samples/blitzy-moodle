@@ -78,7 +78,10 @@
 // Load Moodle configuration and core libraries
 // This loads config.php which triggers lib/setup.php, which in turn loads
 // all core Moodle libraries including accesslib.php, moodlelib.php, etc.
-require_once(__DIR__ . '/../../../../config.php');
+// Only require config if not already loaded (for test compatibility)
+if (!defined('MOODLE_INTERNAL')) {
+    require_once(__DIR__ . '/../../../../config.php');
+}
 
 // Load API base class and exception handlers
 require_once(__DIR__ . '/../../../lib/api_base.php');
@@ -311,5 +314,9 @@ class RoleCapabilitiesEndpoint extends ApiBase {
 // 2. Routes request to appropriate handle_* method based on HTTP method
 // 3. Catches exceptions and formats error responses
 // 4. Outputs JSON response with CORS headers
+
+// Execute the endpoint if not in test mode
+if (!defined('API_TEST_MODE')) {
 $endpoint = new RoleCapabilitiesEndpoint();
 $endpoint->execute();
+}

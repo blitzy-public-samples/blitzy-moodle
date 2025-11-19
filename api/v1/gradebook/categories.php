@@ -76,6 +76,11 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+// Always load API base classes (needed for class definition)
+require_once(__DIR__ . '/../../lib/api_base.php');
+require_once(__DIR__ . '/../../lib/api_exception.php');
+require_once(__DIR__ . '/../../lib/api_response.php');
+
 // Define constants before loading config (they must be set before setup.php runs)
 // In test mode, config is already loaded by test script
 // In production, we need to load it here
@@ -83,6 +88,10 @@ if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
     define('AJAX_SCRIPT', true);
     define('NO_MOODLE_COOKIES', true);
     require_once(__DIR__ . '/../../../public/config.php');
+    global $CFG;
+    
+    // Load Moodle grade libraries
+    require_once($CFG->libdir . '/gradelib.php');
 } else {
     // In test mode, only define if not already defined (config was pre-loaded)
     if (!defined('AJAX_SCRIPT')) {
@@ -92,14 +101,6 @@ if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
         define('NO_MOODLE_COOKIES', true);
     }
 }
-
-// Access global $CFG variable (required when file is included)
-global $CFG;
-
-require_once($CFG->libdir . '/gradelib.php');
-require_once(__DIR__ . '/../../lib/api_base.php');
-require_once(__DIR__ . '/../../lib/api_exception.php');
-require_once(__DIR__ . '/../../lib/api_response.php');
 
 /**
  * Grade Categories Endpoint Class

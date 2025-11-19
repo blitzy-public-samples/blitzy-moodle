@@ -59,6 +59,11 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+// Load Moodle configuration if not already loaded (for test compatibility)
+if (!defined('MOODLE_INTERNAL')) {
+    require_once(__DIR__ . '/../../../../config.php');
+}
+
 // Include API base class and exception handling
 require_once(__DIR__ . '/../../../lib/api_base.php');
 require_once(__DIR__ . '/../../../lib/api_exception.php');
@@ -493,6 +498,8 @@ class BulkCourseOperationsEndpoint extends ApiBase {
     }
 }
 
-// Instantiate and execute the endpoint
-$endpoint = new BulkCourseOperationsEndpoint();
-$endpoint->execute();
+// Execute the endpoint if not in test mode
+if (!defined('API_TEST_MODE')) {
+    $endpoint = new BulkCourseOperationsEndpoint();
+    $endpoint->execute();
+}

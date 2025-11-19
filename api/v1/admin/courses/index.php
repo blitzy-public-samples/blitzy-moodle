@@ -28,7 +28,10 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
+// Load Moodle configuration if not already loaded (for test compatibility)
+if (!defined('MOODLE_INTERNAL')) {
+    require_once(__DIR__ . '/../../../../config.php');
+}
 
 require_once(__DIR__ . '/../../../lib/api_base.php');
 require_once(__DIR__ . '/../../../lib/api_exception.php');
@@ -299,6 +302,8 @@ class AdminCoursesIndexEndpoint extends ApiBase {
     }
 }
 
-// Execute the endpoint
-$endpoint = new AdminCoursesIndexEndpoint();
-$endpoint->execute();
+// Execute the endpoint if not in test mode
+if (!defined('API_TEST_MODE')) {
+    $endpoint = new AdminCoursesIndexEndpoint();
+    $endpoint->execute();
+}

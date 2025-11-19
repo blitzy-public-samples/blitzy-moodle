@@ -74,21 +74,27 @@
 
 // Load API base class and dependencies
 require_once(__DIR__ . '/../../lib/api_base.php');
+require_once(__DIR__ . '/../../lib/api_exception.php');
 
-// Load Moodle course library for enrol_get_users_courses()
-require_once($CFG->dirroot . '/lib/enrollib.php');
-
-// Load course library for course helper functions
-require_once($CFG->dirroot . '/course/lib.php');
-
-// Load completion library for progress tracking
-require_once($CFG->libdir . '/completionlib.php');
-
-// Load blocks myoverview library for constants and helper functions
-require_once($CFG->dirroot . '/blocks/myoverview/lib.php');
-
-// Load favourite service for checking starred courses
-require_once($CFG->dirroot . '/lib/classes/favourites.php');
+// Load Moodle configuration and libraries (skip in test mode)
+if (!defined('API_TEST_MODE')) {
+    require_once(__DIR__ . '/../../../config.php');
+    global $CFG;
+    
+    // Load Moodle course library for enrol_get_users_courses()
+    require_once($CFG->dirroot . '/lib/enrollib.php');
+    
+    // Load course library for course helper functions
+    require_once($CFG->dirroot . '/course/lib.php');
+    
+    // Load completion library for progress tracking
+    require_once($CFG->libdir . '/completionlib.php');
+    
+    // Load blocks myoverview library for constants and helper functions
+    require_once($CFG->dirroot . '/blocks/myoverview/lib.php');
+    
+    // Favourite service is autoloaded by Moodle (core\favourites class)
+}
 
 /**
  * API endpoint class for course overview block data.
@@ -633,7 +639,7 @@ class MyOverviewEndpoint extends ApiBase {
 }
 
 // Execute the endpoint if not in test mode
-if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
+if (!defined('API_TEST_MODE')) {
     $endpoint = new MyOverviewEndpoint();
     $endpoint->execute();
 }

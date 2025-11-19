@@ -67,7 +67,10 @@
  */
 
 // Load Moodle configuration and required libraries
-require_once(__DIR__ . '/../../../../config.php');
+// Only require config if not already loaded (for test compatibility)
+if (!defined('MOODLE_INTERNAL')) {
+    require_once(__DIR__ . '/../../../../config.php');
+}
 require_once($CFG->libdir . '/adminlib.php');
 require_once($CFG->libdir . '/accesslib.php');
 
@@ -356,6 +359,8 @@ class PluginIndexEndpoint extends ApiBase {
     }
 }
 
-// Instantiate and execute the endpoint
-$endpoint = new PluginIndexEndpoint();
-$endpoint->execute();
+// Execute the endpoint if not in test mode
+if (!defined('API_TEST_MODE')) {
+    $endpoint = new PluginIndexEndpoint();
+    $endpoint->execute();
+}

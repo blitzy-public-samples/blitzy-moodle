@@ -45,11 +45,19 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-// Load Moodle configuration and API base class
+// Load API base class and dependencies
 require_once(__DIR__ . '/../../lib/api_base.php');
-require_once($CFG->dirroot . '/course/lib.php');
-require_once($CFG->libdir . '/completionlib.php');
-require_once($CFG->dirroot . '/blocks/recent_activity/lib.php');
+require_once(__DIR__ . '/../../lib/api_exception.php');
+
+// Load Moodle configuration and libraries (skip in test mode)
+if (!defined('API_TEST_MODE')) {
+    require_once(__DIR__ . '/../../../config.php');
+    global $CFG;
+    
+    require_once($CFG->dirroot . '/course/lib.php');
+    require_once($CFG->libdir . '/completionlib.php');
+    // Block functions accessed via block_recent_activity class (autoloaded)
+}
 
 /**
  * Recent Activity Block API Endpoint.

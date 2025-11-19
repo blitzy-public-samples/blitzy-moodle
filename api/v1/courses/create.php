@@ -20,8 +20,8 @@ require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->dirroot . '/lib/moodlelib.php');
 require_once($CFG->dirroot . '/course/lib.php');
 require_once($CFG->dirroot . '/enrol/locallib.php');
-require_once($CFG->dirroot . '/api/lib/api_base.php');
-require_once($CFG->dirroot . '/api/lib/api_exception.php');
+require_once($CFG->apiroot . '/lib/api_base.php');
+require_once($CFG->apiroot . '/lib/api_exception.php');
 
 /**
  * Course Create Endpoint Handler
@@ -81,6 +81,16 @@ require_once($CFG->dirroot . '/api/lib/api_exception.php');
  * - 500 Internal Server Error: Unexpected server errors during course creation
  */
 class CourseCreateEndpoint extends ApiBase {
+    
+    /**
+     * Handle GET requests - not allowed for course creation.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown as GET is not supported
+     */
+    protected function handle_get() {
+        throw new MethodNotAllowedException('GET method not allowed for course creation. Use POST to create courses.');
+    }
     
     /**
      * Handle POST requests to create a new course.
@@ -555,6 +565,32 @@ class CourseCreateEndpoint extends ApiBase {
                 'trace' => $CFG->debugdeveloper ? $e->getTraceAsString() : null
             ]);
         }
+    }
+    
+    /**
+     * Handle PUT requests - not allowed for course creation.
+     *
+     * PUT requests are used for updating existing resources. For updating courses,
+     * use the PUT /api/v1/courses/{id} endpoint instead.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown as PUT is not supported
+     */
+    protected function handle_put() {
+        throw new MethodNotAllowedException('PUT method not allowed for course creation. Use PUT /api/v1/courses/{id} to update an existing course.');
+    }
+    
+    /**
+     * Handle DELETE requests - not allowed for course creation.
+     *
+     * DELETE requests are used for deleting existing resources. For deleting courses,
+     * use the DELETE /api/v1/courses/{id} endpoint instead.
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown as DELETE is not supported
+     */
+    protected function handle_delete() {
+        throw new MethodNotAllowedException('DELETE method not allowed for course creation. Use DELETE /api/v1/courses/{id} to delete a course.');
     }
 }
 

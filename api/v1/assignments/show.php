@@ -99,7 +99,10 @@
  */
 
 // Load Moodle configuration and dependencies
-require_once(__DIR__ . '/../../../config.php');
+// Only require config if not already loaded (for test compatibility)
+if (!defined('MOODLE_INTERNAL')) {
+    require_once(__DIR__ . '/../../../config.php');
+}
 require_once($CFG->dirroot . '/mod/assign/locallib.php');
 require_once($CFG->dirroot . '/lib/gradelib.php');
 
@@ -405,6 +408,8 @@ class AssignmentShowEndpoint extends ApiBase {
     }
 }
 
-// Instantiate and execute endpoint
-$endpoint = new AssignmentShowEndpoint();
-$endpoint->execute();
+// Execute the endpoint if not in test mode
+if (!defined('API_TEST_MODE')) {
+    $endpoint = new AssignmentShowEndpoint();
+    $endpoint->execute();
+}

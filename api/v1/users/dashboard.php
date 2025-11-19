@@ -41,17 +41,23 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-// Load Moodle configuration and required libraries
-require_once(__DIR__ . '/../../../config.php');
-require_once($CFG->dirroot . '/lib/moodlelib.php');
-require_once($CFG->dirroot . '/lib/enrollib.php');
-require_once($CFG->dirroot . '/calendar/lib.php');
-require_once($CFG->dirroot . '/message/lib.php');
-require_once($CFG->dirroot . '/blocks/myoverview/lib.php');
+// Always load API base classes (needed for class definition)
+require_once(__DIR__ . '/../../lib/api_base.php');
+require_once(__DIR__ . '/../../lib/api_exception.php');
 
-// Load API infrastructure
-require_once($CFG->dirroot . '/api/lib/api_base.php');
-require_once($CFG->dirroot . '/api/lib/api_exception.php');
+// Prevent direct execution during testing
+if (!defined('API_TEST_MODE')) {
+    // Load Moodle configuration and required libraries
+    require_once(__DIR__ . '/../../../public/config.php');
+    require_login();
+    
+    global $CFG;
+    require_once($CFG->dirroot . '/lib/moodlelib.php');
+    require_once($CFG->dirroot . '/lib/enrollib.php');
+    require_once($CFG->dirroot . '/calendar/lib.php');
+    require_once($CFG->dirroot . '/message/lib.php');
+    require_once($CFG->dirroot . '/blocks/myoverview/lib.php');
+}
 
 /**
  * Dashboard API endpoint class.
@@ -674,6 +680,8 @@ class DashboardEndpoint extends ApiBase {
     }
 }
 
-// Instantiate and execute the endpoint
-$endpoint = new DashboardEndpoint();
-$endpoint->execute();
+// Instantiate and execute the endpoint (only if not in test mode)
+if (!defined('API_TEST_MODE')) {
+    $endpoint = new DashboardEndpoint();
+    $endpoint->execute();
+}

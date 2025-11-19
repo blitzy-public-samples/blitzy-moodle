@@ -66,7 +66,10 @@
  */
 
 // Load Moodle configuration and initialize environment
-require_once(__DIR__ . '/../../../../config.php');
+// Only require config if not already loaded (for test compatibility)
+if (!defined('MOODLE_INTERNAL')) {
+    require_once(__DIR__ . '/../../../../config.php');
+}
 
 // Load API base class and exception handlers
 require_once(__DIR__ . '/../../../lib/api_base.php');
@@ -282,5 +285,9 @@ class RolesListEndpoint extends ApiBase {
 }
 
 // Instantiate endpoint handler and execute request
+
+// Execute the endpoint if not in test mode
+if (!defined('API_TEST_MODE')) {
 $endpoint = new RolesListEndpoint();
 $endpoint->execute();
+}

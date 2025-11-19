@@ -77,11 +77,18 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-// Load API base class
+// Load API base class and dependencies
 require_once(__DIR__ . '/../../lib/api_base.php');
+require_once(__DIR__ . '/../../lib/api_exception.php');
 
-// Load Moodle message library for message_get_messages() and constants
-require_once($CFG->dirroot . '/message/lib.php');
+// Load Moodle configuration and libraries (skip in test mode)
+if (!defined('API_TEST_MODE')) {
+    require_once(__DIR__ . '/../../../config.php');
+    global $CFG;
+    
+    // Load Moodle message library for message_get_messages() and constants
+    require_once($CFG->dirroot . '/message/lib.php');
+}
 
 /**
  * Notifications endpoint class.

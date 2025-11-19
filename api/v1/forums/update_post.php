@@ -12,7 +12,10 @@
  */
 
 // Include required Moodle files
-require_once(__DIR__ . '/../../../config.php');
+// Only require config if not already loaded (for test compatibility)
+if (!defined('MOODLE_INTERNAL')) {
+    require_once(__DIR__ . '/../../../config.php');
+}
 require_once($CFG->dirroot . '/mod/forum/lib.php');
 require_once($CFG->dirroot . '/lib/accesslib.php');
 
@@ -223,6 +226,35 @@ class ForumUpdatePostEndpoint extends ApiBase {
 
         // Return success response with updated post
         $this->success($updatedpost, 200);
+    }
+    /**
+     * Handle GET requests (not supported for this endpoint).
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown
+     */
+    protected function handle_get() {
+        throw new MethodNotAllowedException('GET method not supported for forum post update');
+    }
+
+    /**
+     * Handle POST requests (not supported for this endpoint).
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown
+     */
+    protected function handle_post() {
+        throw new MethodNotAllowedException('POST method not supported for forum post update');
+    }
+
+    /**
+     * Handle DELETE requests (not supported for this endpoint).
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown
+     */
+    protected function handle_delete() {
+        throw new MethodNotAllowedException('DELETE method not supported for forum post update');
     }
 }
 

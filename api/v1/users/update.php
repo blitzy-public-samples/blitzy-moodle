@@ -73,14 +73,17 @@
  */
 
 // Include Moodle configuration and required libraries
-require_once(__DIR__ . '/../../../config.php');
+// Only require config if not already loaded (for test compatibility)
+if (!defined('MOODLE_INTERNAL')) {
+    require_once(__DIR__ . '/../../../config.php');
+}
 require_once($CFG->dirroot . '/user/lib.php');
 require_once($CFG->dirroot . '/user/profile/lib.php');
 require_once($CFG->libdir . '/moodlelib.php');
 
 // Include API framework classes
-require_once($CFG->dirroot . '/api/lib/api_base.php');
-require_once($CFG->dirroot . '/api/lib/api_exception.php');
+require_once(__DIR__ . '/../../lib/api_base.php');
+require_once(__DIR__ . '/../../lib/api_exception.php');
 
 /**
  * User Update API Endpoint.
@@ -378,13 +381,45 @@ class UserUpdateEndpoint extends ApiBase {
             'message' => 'User profile updated successfully'
         ]);
     }
+
+    /**
+     * Handle GET requests (not supported for this endpoint).
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown
+     */
+    protected function handle_get() {
+        throw new MethodNotAllowedException('GET method not supported for user update');
+    }
+
+    /**
+     * Handle POST requests (not supported for this endpoint).
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown
+     */
+    protected function handle_post() {
+        throw new MethodNotAllowedException('POST method not supported for user update');
+    }
+
+    /**
+     * Handle DELETE requests (not supported for this endpoint).
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown
+     */
+    protected function handle_delete() {
+        throw new MethodNotAllowedException('DELETE method not supported for user update');
+    }
 }
 
-// Initialize and execute the endpoint
-// ApiBase constructor will:
-// 1. Validate JWT token from Authorization header
-// 2. Route to appropriate handle_* method based on HTTP method
-// 3. Catch and format any exceptions
-// 4. Output JSON response with appropriate HTTP status code
-$endpoint = new UserUpdateEndpoint();
-$endpoint->execute();
+// Initialize and execute the endpoint (only if not in test mode)
+if (!defined('API_TEST_MODE')) {
+    // ApiBase constructor will:
+    // 1. Validate JWT token from Authorization header
+    // 2. Route to appropriate handle_* method based on HTTP method
+    // 3. Catch and format any exceptions
+    // 4. Output JSON response with appropriate HTTP status code
+    $endpoint = new UserUpdateEndpoint();
+    $endpoint->execute();
+}

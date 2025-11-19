@@ -43,9 +43,16 @@
 
 // Load API base class
 require_once(__DIR__ . '/../../lib/api_base.php');
+require_once(__DIR__ . '/../../lib/api_exception.php');
 
-// Load Moodle core libraries for context and user operations
-require_once($CFG->dirroot . '/lib/outputlib.php');
+// Load Moodle configuration and libraries (skip in test mode)
+if (!defined('API_TEST_MODE')) {
+    require_once(__DIR__ . '/../../../config.php');
+    global $CFG;
+    
+    // Load Moodle core libraries for context and user operations
+    require_once($CFG->dirroot . '/lib/outputlib.php');
+}
 
 // Import online users fetcher class
 use block_online_users\fetcher;

@@ -14,7 +14,10 @@
  */
 
 // Load Moodle configuration and libraries
-require_once(__DIR__ . '/../../../config.php');
+// Only require config if not already loaded (for test compatibility)
+if (!defined('MOODLE_INTERNAL')) {
+    require_once(__DIR__ . '/../../../config.php');
+}
 require_once($CFG->dirroot . '/lib/filelib.php');
 require_once($CFG->dirroot . '/mod/assign/locallib.php');
 
@@ -200,6 +203,36 @@ class AssignmentSubmitEndpoint extends ApiBase {
 
         // Step 15: Return success response with 201 status
         $this->success($responseData, 201);
+    }
+
+    /**
+     * Handle GET requests (not supported for this endpoint).
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown
+     */
+    protected function handle_get() {
+        throw new MethodNotAllowedException('GET method not supported for assignment submission');
+    }
+
+    /**
+     * Handle PUT requests (not supported for this endpoint).
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown
+     */
+    protected function handle_put() {
+        throw new MethodNotAllowedException('PUT method not supported for assignment submission');
+    }
+
+    /**
+     * Handle DELETE requests (not supported for this endpoint).
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown
+     */
+    protected function handle_delete() {
+        throw new MethodNotAllowedException('DELETE method not supported for assignment submission');
     }
 }
 

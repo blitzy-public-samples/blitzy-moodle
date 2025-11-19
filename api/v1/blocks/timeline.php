@@ -42,13 +42,20 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-// Load Moodle configuration and API base
+// Load API base class and dependencies
 require_once(__DIR__ . '/../../lib/api_base.php');
+require_once(__DIR__ . '/../../lib/api_exception.php');
 
-// Load Moodle core libraries
-require_once($CFG->dirroot . '/blocks/timeline/lib.php');
-require_once($CFG->dirroot . '/calendar/lib.php');
-require_once($CFG->libdir . '/completionlib.php');
+// Load Moodle configuration and libraries (skip in test mode)
+if (!defined('API_TEST_MODE')) {
+    require_once(__DIR__ . '/../../../config.php');
+    global $CFG;
+    
+    // Load Moodle core libraries
+    require_once($CFG->dirroot . '/blocks/timeline/lib.php');
+    require_once($CFG->dirroot . '/calendar/lib.php');
+    require_once($CFG->libdir . '/completionlib.php');
+}
 
 /**
  * Timeline block API endpoint class.

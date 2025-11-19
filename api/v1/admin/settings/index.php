@@ -82,7 +82,10 @@
  */
 
 // Load Moodle configuration and establish environment
-require_once(__DIR__ . '/../../../../config.php');
+// Only require config if not already loaded (for test compatibility)
+if (!defined('MOODLE_INTERNAL')) {
+    require_once(__DIR__ . '/../../../../config.php');
+}
 
 // Load required Moodle libraries for admin settings access
 require_once($CFG->libdir . '/adminlib.php');
@@ -521,5 +524,9 @@ class AdminSettingsIndexEndpoint extends ApiBase {
 
 // Instantiate endpoint and execute request
 // ApiBase::execute() handles HTTP method routing and exception handling
+
+// Execute the endpoint if not in test mode
+if (!defined('API_TEST_MODE')) {
 $endpoint = new AdminSettingsIndexEndpoint();
 $endpoint->execute();
+}

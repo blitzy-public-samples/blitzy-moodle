@@ -546,8 +546,8 @@ class BulkUserEndpoint extends ApiBase {
 }
 
 // Execute the endpoint
-// Skip auto-execution in test mode to allow manual instantiation
-if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
+// Execute the endpoint if not in test mode
+if (!defined('API_TEST_MODE')) {
     $endpoint = new BulkUserEndpoint();
     $endpoint->execute();
 }

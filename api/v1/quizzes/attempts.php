@@ -45,9 +45,12 @@
  */
 
 // Load Moodle configuration and quiz libraries
-require_once(__DIR__ . '/../../../config.php');
+// Only require config if not already loaded (for test compatibility)
+if (!defined('MOODLE_INTERNAL')) {
+    require_once(__DIR__ . '/../../../config.php');
+}
 require_once($CFG->dirroot . '/mod/quiz/locallib.php');
-require_once($CFG->dirroot . '/mod/quiz/accessmanager.php');
+// Note: accessmanager.php removed - class not used and file doesn't exist in standard location
 
 // Load API base classes
 require_once(__DIR__ . '/../../lib/api_base.php');

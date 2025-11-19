@@ -78,7 +78,10 @@
  */
 
 // Load Moodle configuration and core libraries
-require_once(__DIR__ . '/../../../config.php');
+// Only require config if not already loaded (for test compatibility)
+if (!defined('MOODLE_INTERNAL')) {
+    require_once(__DIR__ . '/../../../config.php');
+}
 require_once($CFG->dirroot . '/lib/moodlelib.php');
 require_once($CFG->dirroot . '/lib/accesslib.php');
 require_once($CFG->dirroot . '/mod/forum/lib.php');
@@ -358,6 +361,35 @@ class ForumPostsEndpoint extends ApiBase {
                 'type' => $forum->type,
             ],
         ], 200);
+    }
+    /**
+     * Handle POST requests (not supported for this endpoint).
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown
+     */
+    protected function handle_post() {
+        throw new MethodNotAllowedException('POST method not supported for forum posts listing');
+    }
+
+    /**
+     * Handle PUT requests (not supported for this endpoint).
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown
+     */
+    protected function handle_put() {
+        throw new MethodNotAllowedException('PUT method not supported for forum posts listing');
+    }
+
+    /**
+     * Handle DELETE requests (not supported for this endpoint).
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown
+     */
+    protected function handle_delete() {
+        throw new MethodNotAllowedException('DELETE method not supported for forum posts listing');
     }
 }
 

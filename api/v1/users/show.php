@@ -70,15 +70,16 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-// Load Moodle configuration and core libraries
-require_once(__DIR__ . '/../../../config.php');
-require_once($CFG->dirroot . '/lib/moodlelib.php');
-require_once($CFG->dirroot . '/user/lib.php');
-require_once($CFG->dirroot . '/user/profile/lib.php');
-
-// Load API infrastructure
+// Always load API base classes (needed for class definition)
 require_once(__DIR__ . '/../../lib/api_base.php');
 require_once(__DIR__ . '/../../lib/api_exception.php');
+
+// Prevent direct execution during testing
+if (!defined('API_TEST_MODE')) {
+    // Load Moodle configuration
+    require_once(__DIR__ . '/../../../public/config.php');
+    require_login();
+}
 
 /**
  * User show endpoint - retrieve detailed user information by ID.
@@ -211,13 +212,44 @@ class UserShowEndpoint extends ApiBase {
             'user' => $userdetails
         ]);
     }
+    /**
+     * Handle POST requests (not supported for this endpoint).
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown
+     */
+    protected function handle_post() {
+        throw new MethodNotAllowedException('POST method not supported for user details');
+    }
+
+    /**
+     * Handle PUT requests (not supported for this endpoint).
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown
+     */
+    protected function handle_put() {
+        throw new MethodNotAllowedException('PUT method not supported for user details');
+    }
+
+    /**
+     * Handle DELETE requests (not supported for this endpoint).
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown
+     */
+    protected function handle_delete() {
+        throw new MethodNotAllowedException('DELETE method not supported for user details');
+    }
 }
 
-// Instantiate and execute the endpoint
-// The execute() method in ApiBase handles:
-// - JWT token validation (already done in constructor)
-// - HTTP method routing to handle_get()
-// - Exception catching and error response formatting
-// - CORS header management
-$endpoint = new UserShowEndpoint();
-$endpoint->execute();
+// Instantiate and execute the endpoint (only if not in test mode)
+if (!defined('API_TEST_MODE')) {
+    // The execute() method in ApiBase handles:
+    // - JWT token validation (already done in constructor)
+    // - HTTP method routing to handle_get()
+    // - Exception catching and error response formatting
+    // - CORS header management
+    $endpoint = new UserShowEndpoint();
+    $endpoint->execute();
+}

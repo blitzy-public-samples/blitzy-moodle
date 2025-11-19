@@ -39,27 +39,18 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+// Always load API base classes (needed for class definition)
+require_once(__DIR__ . '/../../lib/api_base.php');
+require_once(__DIR__ . '/../../lib/api_exception.php');
+
 // Load Moodle configuration and workshop libraries (skip in test mode)
 if (!defined('API_TEST_MODE') || !API_TEST_MODE) {
     require_once(__DIR__ . '/../../../config.php');
+    global $CFG;
     require_once($CFG->dirroot . '/mod/workshop/locallib.php');
     require_once($CFG->dirroot . '/mod/workshop/lib.php');
     require_once($CFG->libdir . '/filelib.php');
     require_once($CFG->dirroot . '/user/lib.php');
-    
-    // Load API base class and exception handlers
-    require_once(__DIR__ . '/../../lib/api_base.php');
-    require_once(__DIR__ . '/../../lib/api_exception.php');
-} else {
-    // In test mode, these should already be loaded by the test script
-    // Just ensure workshop libraries are loaded
-    global $CFG;
-    if (!class_exists('workshop')) {
-        require_once($CFG->dirroot . '/mod/workshop/locallib.php');
-        require_once($CFG->dirroot . '/mod/workshop/lib.php');
-        require_once($CFG->libdir . '/filelib.php');
-        require_once($CFG->dirroot . '/user/lib.php');
-    }
 }
 
 /**

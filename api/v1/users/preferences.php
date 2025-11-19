@@ -94,9 +94,16 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-// Load required libraries
+// Always load API base classes (needed for class definition)
 require_once(__DIR__ . '/../../lib/api_base.php');
 require_once(__DIR__ . '/../../lib/api_exception.php');
+
+// Prevent direct execution during testing
+if (!defined('API_TEST_MODE')) {
+    // Load Moodle configuration
+    require_once(__DIR__ . '/../../../public/config.php');
+    require_login();
+}
 
 /**
  * User preferences API endpoint class.
@@ -475,6 +482,9 @@ class UserPreferencesEndpoint extends ApiBase {
     }
 }
 
+// Instantiate and execute the endpoint (only if not in test mode)
+if (!defined('API_TEST_MODE')) {
 // Instantiate and execute the endpoint
 $endpoint = new UserPreferencesEndpoint();
 $endpoint->execute();
+}

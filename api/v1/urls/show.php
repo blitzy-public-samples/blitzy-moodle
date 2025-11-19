@@ -68,7 +68,10 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-require_once(__DIR__ . '/../../../config.php');
+// Only require config if not already loaded (for test compatibility)
+if (!defined('MOODLE_INTERNAL')) {
+    require_once(__DIR__ . '/../../../config.php');
+}
 require_once($CFG->dirroot . '/lib/filelib.php');
 require_once($CFG->dirroot . '/mod/url/lib.php');
 require_once(__DIR__ . '/../../lib/api_base.php');
@@ -145,6 +148,35 @@ class UrlsShowEndpoint extends ApiBase {
             'cm_id' => $url->cm_id,
             'course_module' => $url->course_module
         ]);
+    }
+    /**
+     * Handle POST requests (not supported for this endpoint).
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown
+     */
+    protected function handle_post() {
+        throw new MethodNotAllowedException('POST method not supported for URL details');
+    }
+
+    /**
+     * Handle PUT requests (not supported for this endpoint).
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown
+     */
+    protected function handle_put() {
+        throw new MethodNotAllowedException('PUT method not supported for URL details');
+    }
+
+    /**
+     * Handle DELETE requests (not supported for this endpoint).
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown
+     */
+    protected function handle_delete() {
+        throw new MethodNotAllowedException('DELETE method not supported for URL details');
     }
 }
 

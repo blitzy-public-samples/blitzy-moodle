@@ -80,16 +80,21 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-// Load Moodle configuration and initialize environment
-require_once(__DIR__ . '/../../../config.php');
-
-// Load core grade libraries (existing Moodle functions - no duplication)
-require_once($CFG->libdir . '/gradelib.php');
-require_once($CFG->dirroot . '/grade/querylib.php');
-
-// Load API infrastructure
+// Always load API base classes (needed for class definition)
 require_once(__DIR__ . '/../../lib/api_base.php');
 require_once(__DIR__ . '/../../lib/api_exception.php');
+
+// Prevent direct execution during testing
+if (!defined('API_TEST_MODE')) {
+    // Load Moodle configuration and initialize environment
+    require_once(__DIR__ . '/../../../config.php');
+    require_login();
+    
+    // Load core grade libraries (existing Moodle functions - no duplication)
+    global $CFG;
+    require_once($CFG->libdir . '/gradelib.php');
+    require_once($CFG->dirroot . '/grade/querylib.php');
+}
 
 /**
  * Course gradebook API endpoint implementation.

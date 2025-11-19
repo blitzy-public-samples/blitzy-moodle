@@ -75,14 +75,16 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-// Load Moodle configuration and libraries
-require_once(__DIR__ . '/../../../config.php');
-require_once($CFG->dirroot . '/lib/datalib.php');
-require_once($CFG->dirroot . '/user/lib.php');
-
-// Import API base class and exception handlers
+// Always load API base classes (needed for class definition)
 require_once(__DIR__ . '/../../lib/api_base.php');
 require_once(__DIR__ . '/../../lib/api_exception.php');
+
+// Prevent direct execution during testing
+if (!defined('API_TEST_MODE')) {
+    // Load Moodle configuration
+    require_once(__DIR__ . '/../../../public/config.php');
+    require_login();
+}
 
 /**
  * Users Index API Endpoint.
@@ -307,14 +309,47 @@ class UsersIndexEndpoint extends ApiBase {
             );
         }
     }
+
+    /**
+     * Handle POST requests (not supported for this endpoint).
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown
+     */
+    protected function handle_post() {
+        throw new MethodNotAllowedException('POST method not supported for users listing');
+    }
+
+    /**
+     * Handle PUT requests (not supported for this endpoint).
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown
+     */
+    protected function handle_put() {
+        throw new MethodNotAllowedException('PUT method not supported for users listing');
+    }
+
+    /**
+     * Handle DELETE requests (not supported for this endpoint).
+     *
+     * @return void
+     * @throws MethodNotAllowedException Always thrown
+     */
+    protected function handle_delete() {
+        throw new MethodNotAllowedException('DELETE method not supported for users listing');
+    }
 }
 
 // ============================================================
 // ENDPOINT INSTANTIATION AND EXECUTION
 // ============================================================
 
-// Create endpoint instance (ApiBase constructor handles JWT validation)
-$endpoint = new UsersIndexEndpoint();
+// Instantiate and execute the endpoint (only if not in test mode)
+if (!defined('API_TEST_MODE')) {
+    // Create endpoint instance (ApiBase constructor handles JWT validation)
+    $endpoint = new UsersIndexEndpoint();
 
-// Execute the request (routes to handle_get() for GET requests)
-$endpoint->execute();
+    // Execute the request (routes to handle_get() for GET requests)
+    $endpoint->execute();
+}

@@ -78,15 +78,25 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-define('AJAX_SCRIPT', true);
-define('NO_MOODLE_COOKIES', true);
-
-require_once(__DIR__ . '/../../../public/config.php');
-require_once($CFG->dirroot . '/grade/querylib.php');
-require_once($CFG->dirroot . '/grade/lib.php');
-require_once($CFG->libdir . '/gradelib.php');
+// Always load API base classes (needed for class definition)
 require_once(__DIR__ . '/../../lib/api_base.php');
 require_once(__DIR__ . '/../../lib/api_exception.php');
+
+// Prevent direct execution during testing
+if (!defined('API_TEST_MODE')) {
+    define('AJAX_SCRIPT', true);
+    define('NO_MOODLE_COOKIES', true);
+    
+    // Only require config if not already loaded (for test compatibility)
+    if (!defined('MOODLE_INTERNAL')) {
+        require_once(__DIR__ . '/../../../public/config.php');
+    }
+    
+    global $CFG;
+    require_once($CFG->dirroot . '/grade/querylib.php');
+    require_once($CFG->dirroot . '/grade/lib.php');
+    require_once($CFG->libdir . '/gradelib.php');
+}
 
 /**
  * User Gradebook Endpoint Class

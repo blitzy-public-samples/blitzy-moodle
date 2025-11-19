@@ -73,7 +73,10 @@
  */
 
 // Load Moodle configuration and libraries
-require_once(__DIR__ . '/../../../../config.php');
+// Only require config if not already loaded (for test compatibility)
+if (!defined('MOODLE_INTERNAL')) {
+    require_once(__DIR__ . '/../../../../config.php');
+}
 require_once($CFG->dirroot . '/user/lib.php');
 require_once($CFG->libdir . '/moodlelib.php');
 require_once($CFG->libdir . '/accesslib.php');
@@ -449,5 +452,9 @@ class UserUpdateEndpoint extends ApiBase {
 }
 
 // Instantiate and execute the endpoint
+
+// Execute the endpoint if not in test mode
+if (!defined('API_TEST_MODE')) {
 $endpoint = new UserUpdateEndpoint();
 $endpoint->execute();
+}
