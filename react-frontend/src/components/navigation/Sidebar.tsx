@@ -77,8 +77,9 @@ import {
   ExpandMore,
   ExpandLess,
 } from '@mui/icons-material';
-import { useSelector } from 'react-redux';
+import { useAppDispatch, useAppSelector } from '@/app/store';
 import { selectUser } from '@/features/auth/store/authSlice';
+import { closeSidebar, selectSidebarIsOpen } from '@/app/slices/sidebarSlice';
 
 // ============================================================================
 // Constants
@@ -365,7 +366,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ width = DRAWER_WIDTH }) => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   // Redux state: Current user data including roles for menu filtering
-  const user = useSelector(selectUser);
+  const user = useAppSelector(selectUser);
+
+  // Redux dispatch for sidebar actions
+  const dispatch = useAppDispatch();
+
+  // Redux state: Sidebar open/close state for responsive drawer control
+  const sidebarOpen = useAppSelector(selectSidebarIsOpen);
 
   // ==========================================================================
   // Local State
@@ -390,25 +397,26 @@ export const Sidebar: React.FC<SidebarProps> = ({ width = DRAWER_WIDTH }) => {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
   /**
-   * Mobile drawer open state
+   * Sidebar open/close state is now managed by Redux
    *
-   * Controls visibility of temporary drawer on mobile devices.
-   * Not used on desktop where drawer is permanent.
+   * The sidebar visibility state has been migrated from local component state
+   * to global Redux state for consistent control across the application.
    *
-   * State Type: boolean
-   * - true: Drawer is visible with overlay
-   * - false: Drawer is hidden
+   * State Location: Redux store via sidebarSlice
+   * - Read: sidebarOpen = useAppSelector(selectSidebarIsOpen)
+   * - Write: dispatch(closeSidebar()), dispatch(openSidebar()), dispatch(toggleSidebar())
    *
-   * Integration Point for Redux:
-   * TODO: Replace with Redux state when sidebar slice is available
-   * - Read: useSelector(selectSidebarOpen)
-   * - Write: dispatch(toggleSidebar())
+   * Usage Pattern:
+   * - Desktop (md+): Permanent drawer, always visible (ignores Redux state)
+   * - Mobile (<md): Temporary drawer, visibility controlled by sidebarOpen Redux state
+   * - On navigation: Automatically closes on mobile via dispatch(closeSidebar())
+   * - On overlay click: Closes via dispatch(closeSidebar())
    *
-   * Current Implementation:
-   * - Local state for self-contained component
-   * - Mobile-only behavior (desktop uses permanent drawer)
+   * Redux Integration Complete:
+   * ✓ State read from Redux via useAppSelector(selectSidebarIsOpen)
+   * ✓ State updates via dispatch(closeSidebar())
+   * ✓ Removed local useState for mobileOpen
    */
-  const [mobileOpen, setMobileOpen] = useState(false);
 
   // ==========================================================================
   // Helper Functions
@@ -451,8 +459,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ width = DRAWER_WIDTH }) => {
 
     // Check if user has at least one of the required roles
     // Use Array.some() for efficient checking (stops on first match)
+    // Compare role shortnames since user.roles is Role[] objects
     return item.roles.some((requiredRole) =>
-      user.roles.includes(requiredRole)
+      user.roles.some((userRole) => userRole.shortname === requiredRole)
     );
   };
 
@@ -549,8 +558,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ width = DRAWER_WIDTH }) => {
       navigate(item.path);
 
       // Close mobile drawer after navigation (temporary drawer only)
+      // Redux action dispatched to update global sidebar state
       if (isMobile) {
-        setMobileOpen(false);
+        dispatch(closeSidebar());
       }
     }
   };
@@ -561,12 +571,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ width = DRAWER_WIDTH }) => {
    * Closes the temporary drawer on mobile devices.
    * Called when user clicks overlay or presses Escape key.
    *
-   * Integration Point for Redux:
-   * TODO: Replace with Redux action when sidebar slice is available
-   * dispatch(closeSidebar())
+   * Redux Integration:
+   * Dispatches closeSidebar() action to update global sidebar state.
+   * This triggers a re-render with sidebarOpen set to false.
    */
   const handleDrawerClose = (): void => {
-    setMobileOpen(false);
+    dispatch(closeSidebar());
   };
 
   // ==========================================================================
@@ -757,31 +767,31 @@ export const Sidebar: React.FC<SidebarProps> = ({ width = DRAWER_WIDTH }) => {
         }}
       >
         {/* Dashboard */}
-        {renderMenuItem(menuItems[0], 0)}
+        {renderMenuItem(menuItems[0]!, 0)}
 
         {/* My Courses */}
-        {renderMenuItem(menuItems[1], 0)}
+        {renderMenuItem(menuItems[1]!, 0)}
 
         {/* Divider after primary navigation */}
         <Divider sx={{ marginY: 1 }} />
 
         {/* Calendar */}
-        {renderMenuItem(menuItems[2], 0)}
+        {renderMenuItem(menuItems[2]!, 0)}
 
         {/* Messages */}
-        {renderMenuItem(menuItems[3], 0)}
+        {renderMenuItem(menuItems[3]!, 0)}
 
         {/* Divider after communication tools */}
         <Divider sx={{ marginY: 1 }} />
 
         {/* Gradebook (teachers/admins only) */}
-        {renderMenuItem(menuItems[4], 0)}
+        {renderMenuItem(menuItems[4]!, 0)}
 
         {/* Divider before admin section */}
-        {user?.roles?.includes('admin') && <Divider sx={{ marginY: 1 }} />}
+        {user?.roles?.some((role) => role.shortname === 'admin') && <Divider sx={{ marginY: 1 }} />}
 
         {/* Administration (admins only) */}
-        {renderMenuItem(menuItems[5], 0)}
+        {renderMenuItem(menuItems[5]!, 0)}
       </List>
     </>
   );
@@ -818,7 +828,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ width = DRAWER_WIDTH }) => {
   return (
     <Drawer
       variant={isMobile ? 'temporary' : 'permanent'}
-      open={isMobile ? mobileOpen : true}
+      open={isMobile ? sidebarOpen : true}
       onClose={handleDrawerClose}
       ModalProps={{
         keepMounted: true, // Better mobile performance

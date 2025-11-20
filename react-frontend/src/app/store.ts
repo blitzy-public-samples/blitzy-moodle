@@ -42,6 +42,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import { useDispatch, useSelector } from 'react-redux';
 import type { TypedUseSelectorHook } from 'react-redux';
 import { authReducer } from '@/features/auth/store/authSlice';
+import { sidebarReducer } from '@/app/slices/sidebarSlice';
 
 // ============================================================================
 // Store Configuration
@@ -96,6 +97,26 @@ export const store = configureStore({
      * - selectUserId, selectUserRoles, selectAccessToken
      */
     auth: authReducer,
+
+    /**
+     * Sidebar navigation reducer
+     *
+     * Manages sidebar open/close state for the main navigation drawer.
+     * Controls visibility across desktop (permanent) and mobile (temporary) modes.
+     *
+     * State:
+     * - isOpen: Boolean flag for sidebar visibility
+     *
+     * Actions:
+     * - toggleSidebar: Invert current state
+     * - openSidebar: Explicitly open
+     * - closeSidebar: Explicitly close
+     * - setSidebarOpen: Set to specific boolean value
+     *
+     * Selectors:
+     * - selectSidebarIsOpen: Get current open state
+     */
+    sidebar: sidebarReducer,
 
     // Note: Additional reducers will be added by other feature agents:
     // user: userReducer,  // User preferences and profile management
