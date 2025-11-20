@@ -66,7 +66,6 @@
 
 import { useMemo, useCallback } from 'react';
 import { useAppSelector } from '../app/store';
-import type { User } from '../features/auth/types/auth.types';
 
 // ============================================================================
 // Type Definitions
