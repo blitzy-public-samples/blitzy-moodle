@@ -331,8 +331,8 @@ export function mockCourseModuleArray(
       section: moduleNumber,
       instance: moduleNumber,
       idnumber: `MOD-${String(moduleNumber).padStart(3, '0')}`,
-      name: `${baseOverrides.modname || 'Activity'} ${moduleNumber}`,
-      url: `/mod/${baseOverrides.modname || 'assign'}/view.php?id=${moduleNumber}`,
+      name: `${baseOverrides.modname ?? 'Activity'} ${moduleNumber}`,
+      url: `/mod/${baseOverrides.modname ?? 'assign'}/view.php?id=${moduleNumber}`,
     });
   });
 }
