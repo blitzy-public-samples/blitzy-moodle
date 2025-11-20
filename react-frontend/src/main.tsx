@@ -1,7 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router-dom';
-import { Providers } from './app/providers';
+import AppProviders from './app/providers';
 import { router } from './app/router';
 
 const rootElement = document.getElementById('root');
@@ -96,9 +96,9 @@ async function initializeApp() {
   // eslint-disable-next-line no-console
   console.log(`[App ${callId}] About to render app, StrictMode:`, import.meta.env.DEV && !isE2ETest);
   const app = (
-    <Providers>
+    <AppProviders>
       <RouterProvider router={router} />
-    </Providers>
+    </AppProviders>
   );
   
   root.render(
@@ -117,9 +117,9 @@ initializeApp().catch((error) => {
   console.error('[App] Failed to initialize application:', error);
   // Last resort: render the app anyway
   const app = (
-    <Providers>
+    <AppProviders>
       <RouterProvider router={router} />
-    </Providers>
+    </AppProviders>
   );
   const isE2ETest = import.meta.env.VITE_E2E_TEST === 'true';
   root.render(

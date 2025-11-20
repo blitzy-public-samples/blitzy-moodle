@@ -36,7 +36,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { ThemeProvider, CssBaseline } from '@mui/material';
 import { store } from './store';
-import { theme } from '../styles/theme';
+import theme from '../styles/theme';
 
 // ============================================================================
 // React Query Configuration
@@ -69,7 +69,7 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 5 * 60 * 1000, // 5 minutes
-      cacheTime: 10 * 60 * 1000, // 10 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime in v4)
       refetchOnWindowFocus: false,
       retry: 1,
     },
