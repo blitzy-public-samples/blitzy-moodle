@@ -160,8 +160,8 @@ const FileUploadZone: React.FC<FileUploadZoneProps> = ({
    */
   const validateFile = useCallback(
     (file: File): { valid: boolean; error?: string } => {
-      // Check file size
-      if (file.size > maxFileSize) {
+      // Check file size (maxFileSize = 0 means unlimited)
+      if (maxFileSize > 0 && file.size > maxFileSize) {
         return {
           valid: false,
           error: `File "${file.name}" is too large. Maximum size is ${formatFileSize(maxFileSize)}.`,
@@ -170,8 +170,16 @@ const FileUploadZone: React.FC<FileUploadZoneProps> = ({
 
       // Check file type if acceptedFileTypes is specified
       if (acceptedFileTypes && acceptedFileTypes.length > 0) {
-        const fileExtension = `.${file.name.split('.').pop()?.toLowerCase()}`;
+        // Extract file name and extensions (handle compound extensions like .tar.gz)
+        const fileName = file.name.toLowerCase();
+        const nameParts = fileName.split('.');
         const fileMimeType = file.type.toLowerCase();
+
+        // Get both simple extension (.gz) and potential compound extension (.tar.gz)
+        const simpleExtension = nameParts.length > 1 ? `.${nameParts[nameParts.length - 1]}` : '';
+        const compoundExtension = nameParts.length > 2 
+          ? `.${nameParts[nameParts.length - 2]}.${nameParts[nameParts.length - 1]}` 
+          : simpleExtension;
 
         const isAccepted = acceptedFileTypes.some((acceptedType) => {
           const normalizedType = acceptedType.toLowerCase().trim();
@@ -179,7 +187,7 @@ const FileUploadZone: React.FC<FileUploadZoneProps> = ({
           // Check for wildcard MIME types (e.g., "image/*")
           if (normalizedType.includes('*')) {
             const [category] = normalizedType.split('/');
-            return fileMimeType.startsWith(`${category  }/`);
+            return fileMimeType.startsWith(`${category}/`);
           }
 
           // Check for exact MIME type match
@@ -187,13 +195,13 @@ const FileUploadZone: React.FC<FileUploadZoneProps> = ({
             return fileMimeType === normalizedType;
           }
 
-          // Check for file extension match
+          // Check for file extension match (try compound first, then simple)
           if (normalizedType.startsWith('.')) {
-            return fileExtension === normalizedType;
+            return compoundExtension === normalizedType || simpleExtension === normalizedType;
           }
 
-          // Check for extension without dot
-          return fileExtension === `.${normalizedType}`;
+          // Check for extension without dot (try compound first, then simple)
+          return compoundExtension === `.${normalizedType}` || simpleExtension === `.${normalizedType}`;
         });
 
         if (!isAccepted) {
@@ -554,19 +562,34 @@ const FileUploadZone: React.FC<FileUploadZoneProps> = ({
           }}
         />
 
-        <Typography
-          variant="h6"
-          color={isDragActive ? 'primary' : 'textPrimary'}
-          gutterBottom
-          sx={{
-            fontWeight: 500,
-            transition: 'color 0.3s ease',
-          }}
-        >
-          {isDragActive
-            ? 'Drop files here'
-            : 'Drag and drop files here, or click to select'}
-        </Typography>
+        {!disabled && (
+          <Typography
+            variant="h6"
+            color={isDragActive ? 'primary' : 'textPrimary'}
+            gutterBottom
+            sx={{
+              fontWeight: 500,
+              transition: 'color 0.3s ease',
+            }}
+          >
+            {isDragActive
+              ? 'Drop files here'
+              : 'Drag and drop files here, or click to select'}
+          </Typography>
+        )}
+        
+        {disabled && (
+          <Typography
+            variant="h6"
+            color="textSecondary"
+            gutterBottom
+            sx={{
+              fontWeight: 500,
+            }}
+          >
+            Upload disabled
+          </Typography>
+        )}
 
         <Typography
           variant="body2"
