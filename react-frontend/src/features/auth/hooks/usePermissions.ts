@@ -43,7 +43,6 @@
 
 import { useMemo } from 'react';
 import { useAppSelector } from '@/app/store';
-import type { User } from '@/features/auth/types/auth.types';
 
 // ============================================================================
 // Type Definitions
@@ -378,10 +377,16 @@ export function usePermissions(): PermissionsHook {
      * Check if user has ALL of the provided capabilities
      *
      * Returns true only if every capability is granted
+     * Per vacuous truth, returns true for empty array
      */
     const hasAllCapabilities = (capabilities: Capability[], context: Context): boolean => {
-      if (!user || !isAuthenticated || !capabilities || capabilities.length === 0) {
+      if (!user || !isAuthenticated || !capabilities) {
         return false;
+      }
+
+      // Empty array returns true (vacuous truth: all zero elements satisfy the condition)
+      if (capabilities.length === 0) {
+        return true;
       }
 
       return capabilities.every((capability) => hasCapability(capability, context));
