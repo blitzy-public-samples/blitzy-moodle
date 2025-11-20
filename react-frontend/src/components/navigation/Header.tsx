@@ -9,7 +9,7 @@ import {
   Menu as MenuIcon,
 } from '@mui/icons-material';
 import { useSelector } from 'react-redux';
-import { UserMenu } from './UserMenu';
+import UserMenu from './UserMenu';
 import type { RootState } from '../../app/store';
 
 interface HeaderProps {

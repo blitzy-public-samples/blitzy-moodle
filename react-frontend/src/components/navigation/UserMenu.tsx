@@ -30,7 +30,8 @@
  * @module components/navigation/UserMenu
  */
 
-import React, { useState } from 'react';
+import type React from 'react';
+import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   IconButton,
@@ -106,7 +107,7 @@ export interface UserMenuProps {
  * @param props - Component props
  * @returns UserMenu component with dropdown functionality
  */
-export default function UserMenu({ className }: UserMenuProps): React.ReactElement {
+export default function UserMenu({ className }: UserMenuProps): React.ReactElement | null {
   // ============================================================================
   // Hooks
   // ============================================================================
@@ -117,10 +118,16 @@ export default function UserMenu({ className }: UserMenuProps): React.ReactEleme
 
   // Access current user from Redux auth state
   const user = useAppSelector((state) => state.auth.user);
+  const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
 
   // Local state for menu anchor element (controls open/close)
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
+
+  // Early return if user is not authenticated
+  if (!isAuthenticated || !user) {
+    return null;
+  }
 
   // ============================================================================
   // Event Handlers
@@ -132,6 +139,19 @@ export default function UserMenu({ className }: UserMenuProps): React.ReactEleme
    */
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>): void => {
     setAnchorEl(event.currentTarget);
+  };
+
+  /**
+   * Handle keyboard events for menu button
+   * Opens menu on Enter or Space key press for accessibility
+   *
+   * @param event - Keyboard event
+   */
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>): void => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      setAnchorEl(event.currentTarget);
+    }
   };
 
   /**
@@ -198,7 +218,8 @@ export default function UserMenu({ className }: UserMenuProps): React.ReactEleme
 
   /**
    * Get user initials from firstname and lastname
-   * Falls back to 'U' if names are not available
+   * Falls back to parsing fullname if firstname/lastname not available
+   * Falls back to 'U' if no name information available
    *
    * @returns Two-letter initials or fallback
    */
@@ -207,6 +228,7 @@ export default function UserMenu({ className }: UserMenuProps): React.ReactEleme
       return 'U';
     }
 
+    // Try to get initials from firstname and lastname
     const firstInitial = user.firstname?.charAt(0)?.toUpperCase() || '';
     const lastInitial = user.lastname?.charAt(0)?.toUpperCase() || '';
 
@@ -214,7 +236,23 @@ export default function UserMenu({ className }: UserMenuProps): React.ReactEleme
       return `${firstInitial}${lastInitial}`;
     }
 
-    return firstInitial || lastInitial || 'U';
+    // If firstname or lastname exists, use what we have
+    if (firstInitial || lastInitial) {
+      return firstInitial || lastInitial;
+    }
+
+    // Fall back to parsing fullname
+    if (user.fullname) {
+      const nameParts = user.fullname.trim().split(/\s+/);
+      if (nameParts.length >= 2 && nameParts[0] && nameParts[1]) {
+        return `${nameParts[0].charAt(0).toUpperCase()}${nameParts[1].charAt(0).toUpperCase()}`;
+      }
+      if (nameParts.length === 1 && nameParts[0]) {
+        return nameParts[0].charAt(0).toUpperCase();
+      }
+    }
+
+    return 'U';
   };
 
   /**
@@ -257,7 +295,7 @@ export default function UserMenu({ className }: UserMenuProps): React.ReactEleme
 
   const userInitials = getUserInitials();
   const userFullName = getUserFullName();
-  const userEmail = user?.email || '';
+  const userEmail = user?.email ?? '';
 
   // ============================================================================
   // Render
@@ -268,16 +306,18 @@ export default function UserMenu({ className }: UserMenuProps): React.ReactEleme
       {/* Avatar Button - Opens Menu */}
       <IconButton
         onClick={handleMenuOpen}
+        onKeyDown={handleKeyDown}
         size="small"
         className={className}
         sx={{ ml: 2 }}
-        aria-controls={open ? 'user-menu' : undefined}
+        aria-controls="user-menu"
         aria-haspopup="true"
-        aria-expanded={open ? 'true' : undefined}
+        aria-expanded={open}
         aria-label={`User menu for ${userFullName}`}
         data-testid="user-menu-button"
       >
         <Avatar
+          src={(user as any).profileimageurl || undefined}
           sx={{
             width: 36,
             height: 36,
@@ -331,8 +371,6 @@ export default function UserMenu({ className }: UserMenuProps): React.ReactEleme
         }}
         transformOrigin={{ horizontal: 'right', vertical: 'top' }}
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-        // Keyboard navigation support
-        autoFocus
       >
         {/* User Info Header */}
         <Box
