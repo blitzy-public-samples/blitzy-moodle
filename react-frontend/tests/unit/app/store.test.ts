@@ -684,17 +684,17 @@ describe('Redux Store Configuration', () => {
       // Get state before
       const stateBefore = store.getState();
 
-      // Dispatch invalid action (should handle gracefully)
+      // Dispatch invalid action (Redux should throw error)
       // Note: TypeScript would prevent this, but test runtime behavior
+      // Redux correctly throws an error for actions without type property
       expect(() => {
         store.dispatch({} as { type: string });
-      }).not.toThrow();
+      }).toThrow('Actions may not have an undefined "type" property');
 
-      // State should remain valid
+      // State should remain unchanged after error
       const stateAfter = store.getState();
       expect(stateAfter).toBeDefined();
-      expect(stateAfter.auth).toBeDefined();
-      expect(stateAfter.sidebar).toBeDefined();
+      expect(stateAfter).toEqual(stateBefore);
     });
 
     it('should maintain store integrity after errors', () => {
