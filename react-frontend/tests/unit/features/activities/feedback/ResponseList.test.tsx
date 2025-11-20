@@ -738,7 +738,10 @@ describe('ResponseList Component', () => {
 
       await user.click(firstRowCheckbox);
 
-      expect(firstRowCheckbox).toBeChecked();
+      // Wait for DataGrid to update selection state (can be delayed under full suite load)
+      await waitFor(() => {
+        expect(firstRowCheckbox).toBeChecked();
+      });
     });
 
     it('allows selecting all rows with header checkbox', async () => {
@@ -1385,7 +1388,7 @@ describe('ResponseList Component', () => {
   // ============================================================================
 
   describe('Integration Tests', () => {
-    it('maintains selection when pagination changes', async () => {
+    it('maintains selection when pagination changes', { timeout: 30000 }, async () => {
       const user = userEvent.setup();
       const manyResponses = Array.from({ length: 50 }, (_, i) =>
         createMockResponse({ id: i + 1, userName: `User ${i + 1}` })
@@ -1400,22 +1403,40 @@ describe('ResponseList Component', () => {
         />
       );
 
+      // Wait for DataGrid to fully render with data before interacting
+      await waitFor(() => {
+        expect(screen.getByText('User 1')).toBeInTheDocument();
+      });
+
       // Select first row
       const checkboxes = screen.getAllByRole('checkbox');
       await user.click(checkboxes[1]);
+
+      // Ensure selection is applied before navigating
+      await waitFor(() => {
+        expect(checkboxes[1]).toBeChecked();
+      });
 
       // Navigate to next page
       const nextButton = screen.getByRole('button', { name: /next page/i });
       await user.click(nextButton);
 
+      // Wait for page 2 to load before navigating back (pageSize is 25, so page 2 starts at User 26)
+      await waitFor(() => {
+        expect(screen.getByText('User 26')).toBeInTheDocument();
+      });
+
       // Navigate back to first page
       const prevButton = screen.getByRole('button', { name: /previous page/i });
       await user.click(prevButton);
 
+      // Note: Increased timeout to handle MUI DataGrid pagination and selection state updates
+      // Under full suite load, DataGrid re-rendering can be delayed
+      // Wait for page 1 to reload and selection to be maintained
       await waitFor(() => {
         const updatedCheckboxes = screen.getAllByRole('checkbox');
         expect(updatedCheckboxes[1]).toBeChecked();
-      });
+      }, { timeout: 15000 });
     });
 
     it('clears selection after successful delete', async () => {

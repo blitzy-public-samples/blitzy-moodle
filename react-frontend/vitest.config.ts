@@ -128,7 +128,14 @@ export default defineConfig({
     },
     
     // Enable concurrent test execution for faster runs
+    // Use single-threaded mode to avoid DataCloneError with axios instances
+    // Axios instances contain functions (transformRequest, etc.) that cannot be serialized between threads
     pool: 'threads',
+    poolOptions: {
+      threads: {
+        singleThread: true
+      }
+    },
     
     // Test timeout (milliseconds)
     testTimeout: 10000,

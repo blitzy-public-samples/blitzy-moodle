@@ -34,7 +34,9 @@ console.log('[Setup] Test setup file loaded, applying mocks...');
  */
 beforeAll(() => {
   // Start MSW server to intercept API requests during tests
+  console.log('[Setup] Starting MSW server...');
   server.listen({ onUnhandledRequest: 'warn' });
+  console.log('[Setup] MSW server started');
 });
 
 afterEach(() => {
@@ -44,6 +46,7 @@ afterEach(() => {
 
 afterAll(() => {
   // Clean up and close the server after all tests complete
+  console.log('[Setup] Closing MSW server...');
   server.close();
 });
 
@@ -349,6 +352,29 @@ beforeAll(() => {
           minimumFractionDigits: options?.minimumFractionDigits || 0,
           maximumFractionDigits: options?.maximumFractionDigits || 3,
         })),
+      };
+    }) as any,
+    // Mock Collator for locale-aware string comparison (required by MUI DataGrid sorting)
+    Collator: vi.fn((locale?: string | string[], options?: Intl.CollatorOptions) => {
+      // Use the original Collator if available (Node.js has full Intl support)
+      if (originalIntl && originalIntl.Collator) {
+        return new originalIntl.Collator(locale, options);
+      }
+      // Fallback mock for environments without Intl.Collator
+      return {
+        compare: (a: string, b: string) => {
+          // Simple lexicographic comparison as fallback
+          return a.localeCompare(b);
+        },
+        resolvedOptions: () => ({
+          locale: locale || 'en-US',
+          usage: options?.usage || 'sort',
+          sensitivity: options?.sensitivity || 'variant',
+          ignorePunctuation: options?.ignorePunctuation || false,
+          collation: 'default',
+          numeric: options?.numeric || false,
+          caseFirst: options?.caseFirst || 'false',
+        }),
       };
     }) as any,
   });

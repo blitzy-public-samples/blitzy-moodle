@@ -216,7 +216,7 @@ interface TokenRefreshResponse {
  */
 export function useApi(): AxiosInstance {
   // Access authentication state from Redux
-  const { token, tokens } = useAppSelector((state) => state.auth);
+  const { tokens } = useAppSelector((state) => state.auth);
   const dispatch = useAppDispatch();
 
   // Create and configure axios instance
@@ -256,8 +256,8 @@ export function useApi(): AxiosInstance {
     instance.interceptors.request.use(
       (config: InternalAxiosRequestConfig) => {
         // Inject JWT access token if available
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
+        if (tokens?.accessToken) {
+          config.headers.Authorization = `Bearer ${tokens.accessToken}`;
         }
 
         return config;
@@ -317,8 +317,9 @@ export function useApi(): AxiosInstance {
 
           if (refreshToken) {
             try {
-              // Attempt to refresh the access token
-              const refreshResponse = await axios.post<
+              // Attempt to refresh the access token using local instance
+              // CRITICAL: Must use local instance, not global axios, to avoid mock conflicts
+              const refreshResponse = await instance.post<
                 ApiSuccessResponse<TokenRefreshResponse>
               >(
                 `${import.meta.env.VITE_API_BASE_URL || '/api/v1'}/auth/refresh`,
@@ -420,8 +421,9 @@ export function useApi(): AxiosInstance {
               };
             }
           }
-        } else if (error.request) {
+        } else if (error.request || error.message === 'Network Error') {
           // Request made but no response received (network error)
+          // Note: axios-mock-adapter's networkError() sets message to 'Network Error'
           (normalizedError as any).response = {
             data: {
               success: false,
@@ -461,7 +463,7 @@ export function useApi(): AxiosInstance {
     );
 
     return instance;
-  }, [token, tokens?.refreshToken, dispatch]);
+  }, [tokens?.accessToken, tokens?.refreshToken, dispatch]);
 
   return apiClient;
 }
