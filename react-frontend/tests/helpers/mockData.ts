@@ -25,7 +25,6 @@
  */
 
 import type {
-  User,
   Course,
   Assignment,
   AssignmentSubmission,
@@ -38,6 +37,9 @@ import type {
   GradeItem,
   Message,
 } from '@/types/entities';
+import type { Timestamp } from '@/types/common';
+import type { User } from '@/features/auth/types/auth.types';
+import { RoleArchetype } from '@/features/auth/types/auth.types';
 import type { Conversation } from '@/features/messaging/types/message.types';
 import type { Question } from '@/features/activities/quizzes/types/quiz.types';
 import type { Resource } from '@/features/activities/resources/types/resource.types';
@@ -122,7 +124,6 @@ export function createMockUser(overrides: Partial<User> = {}): User {
     lastname,
     fullname: overrides.fullname ?? `${firstname} ${lastname}`,
     email: overrides.email ?? `${username}@example.com`,
-    emailstop: overrides.emailstop ?? false,
     phone1: overrides.phone1,
     phone2: overrides.phone2,
     institution: overrides.institution,
@@ -138,8 +139,6 @@ export function createMockUser(overrides: Partial<User> = {}): User {
     currentlogin: overrides.currentlogin ?? generateMockDate(0),
     picture: overrides.picture,
     imagealt: overrides.imagealt,
-    profileimageurl: overrides.profileimageurl,
-    profileimageurlsmall: overrides.profileimageurlsmall,
     suspended: overrides.suspended ?? false,
     confirmed: overrides.confirmed ?? true,
     auth: overrides.auth ?? 'manual',
@@ -153,12 +152,10 @@ export function createMockUser(overrides: Partial<User> = {}): User {
     trackforums: overrides.trackforums ?? false,
     timecreated: overrides.timecreated ?? generateMockDate(-90),
     timemodified: overrides.timemodified ?? generateMockDate(-1),
-    trustbitmask: overrides.trustbitmask ?? 0,
     deleted: overrides.deleted ?? false,
     calendartype: overrides.calendartype ?? 'gregorian',
-    preferences: overrides.preferences ?? {},
-    customfields: overrides.customfields ?? [],
     roles: overrides.roles ?? [],
+    capabilities: overrides.capabilities ?? [],
   };
 }
 
@@ -189,8 +186,14 @@ export function createMockStudent(overrides: Partial<User> = {}): User {
         shortname: 'student',
         description: '',
         sortorder: 5,
-        archetype: 'student',
+        archetype: RoleArchetype.STUDENT,
       },
+    ],
+    capabilities: [
+      { capability: 'moodle/course:view', contextId: 1, granted: true },
+      { capability: 'mod/assign:submit', contextId: 1, granted: true },
+      { capability: 'mod/quiz:attempt', contextId: 1, granted: true },
+      { capability: 'mod/forum:startdiscussion', contextId: 1, granted: true },
     ],
     ...overrides,
   });
@@ -223,8 +226,16 @@ export function createMockTeacher(overrides: Partial<User> = {}): User {
         shortname: 'editingteacher',
         description: '',
         sortorder: 3,
-        archetype: 'editingteacher',
+        archetype: RoleArchetype.EDITINGTEACHER,
       },
+    ],
+    capabilities: [
+      { capability: 'moodle/course:view', contextId: 1, granted: true },
+      { capability: 'moodle/course:update', contextId: 1, granted: true },
+      { capability: 'mod/assign:grade', contextId: 1, granted: true },
+      { capability: 'mod/quiz:manage', contextId: 1, granted: true },
+      { capability: 'mod/forum:replypost', contextId: 1, granted: true },
+      { capability: 'moodle/grade:edit', contextId: 1, granted: true },
     ],
     ...overrides,
   });
@@ -257,8 +268,17 @@ export function createMockAdmin(overrides: Partial<User> = {}): User {
         shortname: 'manager',
         description: '',
         sortorder: 1,
-        archetype: 'manager',
+        archetype: RoleArchetype.MANAGER,
       },
+    ],
+    capabilities: [
+      { capability: 'moodle/site:config', contextId: 1, granted: true },
+      { capability: 'moodle/course:create', contextId: 1, granted: true },
+      { capability: 'moodle/course:delete', contextId: 1, granted: true },
+      { capability: 'moodle/user:create', contextId: 1, granted: true },
+      { capability: 'moodle/user:delete', contextId: 1, granted: true },
+      { capability: 'moodle/role:assign', contextId: 1, granted: true },
+      { capability: 'moodle/grade:manage', contextId: 1, granted: true },
     ],
     ...overrides,
   });

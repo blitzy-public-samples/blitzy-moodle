@@ -49,9 +49,8 @@ import {
   createMockStudent,
   createMockTeacher,
   createMockAdmin,
-} from '@/tests/helpers/mockData';
-import type { User } from '@/types/entities';
-import type { AuthTokens, AuthStatus } from '@/features/auth/types/auth.types';
+} from './mockData';
+import type { User, AuthStatus } from '@/features/auth/types/auth.types';
 
 // ============================================================================
 // Type Definitions
@@ -121,43 +120,45 @@ export function createInitialState(): RootState {
  *
  * @example
  * ```typescript
- * const state = createAuthenticatedState();
- * const customUserState = createAuthenticatedState(createMockUser({ email: 'test@example.com' }));
+ * const store = createMockStore(createAuthenticatedState());
+ * expect(getAuthState(store).isAuthenticated).toBe(true);
  * ```
  */
 export function createAuthenticatedState(user?: User): Partial<RootState> {
-  const mockUser = user ?? createMockUser();
-  const now = Math.floor(Date.now() / 1000);
+  const mockUser = user || createMockUser();
 
   return {
     auth: {
       user: mockUser,
       tokens: {
-        accessToken: 'mock-access-token-' + mockUser.id,
-        refreshToken: 'mock-refresh-token-' + mockUser.id,
-        expiresAt: now + 3600, // 1 hour from now
-        refreshExpiresAt: now + 604800, // 7 days from now
+        accessToken: 'test-access-token',
+        refreshToken: 'test-refresh-token',
+        expiresIn: 3600, // 1 hour in seconds
+        tokenType: 'Bearer',
       },
       isAuthenticated: true,
       isLoading: false,
       error: null,
       status: 'authenticated' as AuthStatus,
     },
+    sidebar: {
+      isOpen: true,
+    },
   };
 }
 
 /**
- * Creates state without authentication
+ * Creates state with no authenticated user
  *
- * Returns partial state representing a logged-out user.
- * Useful for testing login flows and unauthenticated views.
+ * Returns partial state with unauthenticated state.
+ * Useful for testing login pages and guest-accessible components.
  *
  * @returns {Partial<RootState>} State without authentication
  *
  * @example
  * ```typescript
  * const store = createMockStore(createUnauthenticatedState());
- * render(<LoginPage />, { store });
+ * expect(getAuthState(store).isAuthenticated).toBe(false);
  * ```
  */
 export function createUnauthenticatedState(): Partial<RootState> {
@@ -168,7 +169,10 @@ export function createUnauthenticatedState(): Partial<RootState> {
       isAuthenticated: false,
       isLoading: false,
       error: null,
-      status: 'unauthenticated' as AuthStatus,
+      status: 'idle' as AuthStatus,
+    },
+    sidebar: {
+      isOpen: true,
     },
   };
 }
@@ -176,58 +180,233 @@ export function createUnauthenticatedState(): Partial<RootState> {
 /**
  * Creates state for a student user
  *
- * Returns partial state with authenticated student user having student role.
+ * Returns partial state with authenticated student user.
  * Useful for testing student-specific features and permissions.
  *
- * @returns {Partial<RootState>} State with authenticated student
+ * @returns {Partial<RootState>} State with student user
  *
  * @example
  * ```typescript
  * const store = createMockStore(createStudentState());
- * render(<StudentDashboard />, { store });
+ * const user = getAuthState(store).user;
+ * expect(user?.roles).toContain('student');
  * ```
  */
 export function createStudentState(): Partial<RootState> {
-  const student = createMockStudent();
-  return createAuthenticatedState(student);
+  return createAuthenticatedState(createMockStudent());
 }
 
 /**
  * Creates state for a teacher user
  *
- * Returns partial state with authenticated teacher user having editingteacher role.
- * Useful for testing teacher-specific features like grading interfaces.
+ * Returns partial state with authenticated teacher user.
+ * Useful for testing teacher-specific features like grading and course management.
  *
- * @returns {Partial<RootState>} State with authenticated teacher
+ * @returns {Partial<RootState>} State with teacher user
  *
  * @example
  * ```typescript
  * const store = createMockStore(createTeacherState());
- * render(<GradingInterface />, { store });
+ * const user = getAuthState(store).user;
+ * expect(user?.roles).toContain('teacher');
  * ```
  */
 export function createTeacherState(): Partial<RootState> {
-  const teacher = createMockTeacher();
-  return createAuthenticatedState(teacher);
+  return createAuthenticatedState(createMockTeacher());
 }
 
 /**
  * Creates state for an admin user
  *
- * Returns partial state with authenticated admin user having site administrator role.
- * Useful for testing admin-only interfaces and permission-gated features.
+ * Returns partial state with authenticated admin user.
+ * Useful for testing admin-only features like user management and system settings.
  *
- * @returns {Partial<RootState>} State with authenticated admin
+ * @returns {Partial<RootState>} State with admin user
  *
  * @example
  * ```typescript
  * const store = createMockStore(createAdminState());
- * render(<UserManagementPage />, { store });
+ * const user = getAuthState(store).user;
+ * expect(user?.roles).toContain('admin');
  * ```
  */
 export function createAdminState(): Partial<RootState> {
-  const admin = createMockAdmin();
-  return createAuthenticatedState(admin);
+  return createAuthenticatedState(createMockAdmin());
+}
+
+// ============================================================================
+// User State Helpers (Placeholder for Future User Slice)
+// ============================================================================
+
+/**
+ * User state interface (placeholder for future user slice)
+ *
+ * Note: This is a placeholder for the planned user state slice.
+ * Once the user slice is implemented in the store, this should be imported from there.
+ */
+export interface UserState {
+  preferences: UserPreferences;
+  profile: User | null;
+  isLoading: boolean;
+  error: string | null;
+}
+
+/**
+ * User preferences interface
+ */
+export interface UserPreferences {
+  language: string;
+  timezone: string;
+  emailNotifications: boolean;
+  dateFormat: string;
+}
+
+/**
+ * Creates user state with custom overrides
+ *
+ * Note: This is a placeholder for the planned user slice.
+ * Returns mock user state for testing purposes.
+ *
+ * @param {Partial<UserState>} [overrides] - Custom user state overrides
+ * @returns {UserState} User state
+ *
+ * @example
+ * ```typescript
+ * const userState = createUserState({ isLoading: true });
+ * expect(userState.isLoading).toBe(true);
+ * ```
+ */
+export function createUserState(overrides: Partial<UserState> = {}): UserState {
+  const defaultState: UserState = {
+    preferences: {
+      language: 'en',
+      timezone: 'UTC',
+      emailNotifications: true,
+      dateFormat: 'YYYY-MM-DD',
+    },
+    profile: null,
+    isLoading: false,
+    error: null,
+  };
+
+  return {
+    ...defaultState,
+    ...overrides,
+    preferences: {
+      ...defaultState.preferences,
+      ...(overrides.preferences ?? {}),
+    },
+  };
+}
+
+/**
+ * Creates user preferences with custom overrides
+ *
+ * @param {Partial<UserPreferences>} [overrides] - Custom preferences
+ * @returns {UserPreferences} User preferences
+ *
+ * @example
+ * ```typescript
+ * const prefs = createUserPreferences({ language: 'es' });
+ * expect(prefs.language).toBe('es');
+ * ```
+ */
+export function createUserPreferences(
+  overrides: Partial<UserPreferences> = {}
+): UserPreferences {
+  return {
+    language: 'en',
+    timezone: 'UTC',
+    emailNotifications: true,
+    dateFormat: 'YYYY-MM-DD',
+    ...overrides,
+  };
+}
+
+/**
+ * Creates user state with user profile
+ *
+ * @param {User} user - User object for profile
+ * @returns {UserState} User state with profile
+ *
+ * @example
+ * ```typescript
+ * const user = createMockUser();
+ * const userState = createUserProfile(user);
+ * expect(userState.profile).toEqual(user);
+ * ```
+ */
+export function createUserProfile(user: User): UserState {
+  return createUserState({ profile: user });
+}
+
+// ============================================================================
+// Theme State Helpers (Placeholder for Future Theme Slice)
+// ============================================================================
+
+/**
+ * Theme state interface (placeholder for future theme slice)
+ *
+ * Note: This is a placeholder for the planned theme slice.
+ * Once the theme slice is implemented in the store, this should be imported from there.
+ */
+export interface ThemeState {
+  mode: 'light' | 'dark';
+  customColors: Record<string, string>;
+  fontSize: 'small' | 'medium' | 'large';
+}
+
+/**
+ * Creates theme state with custom mode
+ *
+ * Note: This is a placeholder for the planned theme slice.
+ * Returns mock theme state for testing purposes.
+ *
+ * @param {'light' | 'dark'} [mode='light'] - Theme mode
+ * @returns {ThemeState} Theme state
+ *
+ * @example
+ * ```typescript
+ * const themeState = createThemeState('dark');
+ * expect(themeState.mode).toBe('dark');
+ * ```
+ */
+export function createThemeState(mode: 'light' | 'dark' = 'light'): ThemeState {
+  return {
+    mode,
+    customColors: {},
+    fontSize: 'medium',
+  };
+}
+
+/**
+ * Creates light theme state
+ *
+ * @returns {ThemeState} Light theme state
+ *
+ * @example
+ * ```typescript
+ * const themeState = createLightThemeState();
+ * expect(themeState.mode).toBe('light');
+ * ```
+ */
+export function createLightThemeState(): ThemeState {
+  return createThemeState('light');
+}
+
+/**
+ * Creates dark theme state
+ *
+ * @returns {ThemeState} Dark theme state
+ *
+ * @example
+ * ```typescript
+ * const themeState = createDarkThemeState();
+ * expect(themeState.mode).toBe('dark');
+ * ```
+ */
+export function createDarkThemeState(): ThemeState {
+  return createThemeState('dark');
 }
 
 // ============================================================================
@@ -282,15 +461,13 @@ export function createAuthState(overrides: Partial<AuthState> = {}): AuthState {
  * ```
  */
 export function createAuthStateWithToken(token: string, user: User): AuthState {
-  const now = Math.floor(Date.now() / 1000);
-
   return {
     user,
     tokens: {
       accessToken: token,
       refreshToken: 'refresh-' + token,
-      expiresAt: now + 3600,
-      refreshExpiresAt: now + 604800,
+      expiresIn: 3600, // 1 hour in seconds
+      tokenType: 'Bearer',
     },
     isAuthenticated: true,
     isLoading: false,
@@ -316,15 +493,14 @@ export function createAuthStateWithToken(token: string, user: User): AuthState {
  */
 export function createExpiredAuthState(): AuthState {
   const user = createMockUser();
-  const now = Math.floor(Date.now() / 1000);
 
   return {
     user,
     tokens: {
       accessToken: 'expired-access-token',
       refreshToken: 'valid-refresh-token',
-      expiresAt: now - 3600, // Expired 1 hour ago
-      refreshExpiresAt: now + 604800, // Refresh still valid
+      expiresIn: -3600, // Negative value indicates expired (1 hour ago)
+      tokenType: 'Bearer',
     },
     isAuthenticated: true, // Still authenticated, just needs refresh
     isLoading: false,
@@ -342,8 +518,14 @@ export function createExpiredAuthState(): AuthState {
  *
  * @param {boolean} [isOpen=true] - Whether sidebar is open
  * @returns {SidebarState} Sidebar state
+ *
+ * @example
+ * ```typescript
+ * const sidebarState = createSidebarState(false);
+ * // Returns: { isOpen: false }
+ * ```
  */
-function createSidebarState(isOpen: boolean = true): SidebarState {
+export function createSidebarState(isOpen: boolean = true): SidebarState {
   return { isOpen };
 }
 
@@ -470,13 +652,17 @@ export function createMockStoreWithTracking(
      * Gets all dispatched actions, optionally filtered by type
      *
      * @param {string} [actionType] - Filter by action type (e.g., 'auth/loginSuccess')
+     *                                 Can be exact match or prefix (e.g., 'auth/' for all auth actions)
      * @returns {Action[]} Array of matching actions
      */
     getDispatchedActions: (actionType?: string) => {
       if (!actionType) {
         return [...dispatchedActions];
       }
-      return dispatchedActions.filter((action) => action.type === actionType);
+      // Support both exact match and prefix matching
+      return dispatchedActions.filter(
+        (action) => action.type === actionType || action.type.startsWith(actionType)
+      );
     },
 
     /**
@@ -540,6 +726,54 @@ export function getSidebarState(
 }
 
 /**
+ * Gets user state from store
+ *
+ * Convenience selector for accessing user state in tests.
+ *
+ * Note: This is a placeholder for the planned user slice.
+ * Currently returns mock user state.
+ *
+ * @param {EnhancedStore<RootState>} store - Redux store instance
+ * @returns {UserState} Current user state (placeholder)
+ *
+ * @example
+ * ```typescript
+ * const store = createMockStore();
+ * const userState = getUserState(store);
+ * expect(userState.preferences).toBeDefined();
+ * ```
+ */
+export function getUserState(_store: EnhancedStore<RootState>): UserState {
+  // Placeholder: Return mock user state since user slice doesn't exist yet
+  // Once user slice is added to store, this should return: _store.getState().user
+  return createUserState();
+}
+
+/**
+ * Gets theme state from store
+ *
+ * Convenience selector for accessing theme state in tests.
+ *
+ * Note: This is a placeholder for the planned theme slice.
+ * Currently returns mock theme state.
+ *
+ * @param {EnhancedStore<RootState>} store - Redux store instance
+ * @returns {ThemeState} Current theme state (placeholder)
+ *
+ * @example
+ * ```typescript
+ * const store = createMockStore();
+ * const themeState = getThemeState(store);
+ * expect(themeState.mode).toBe('light');
+ * ```
+ */
+export function getThemeState(_store: EnhancedStore<RootState>): ThemeState {
+  // Placeholder: Return mock theme state since theme slice doesn't exist yet
+  // Once theme slice is added to store, this should return: _store.getState().theme
+  return createThemeState('light');
+}
+
+/**
  * Gets complete state snapshot from store
  *
  * Returns current state of entire Redux store for comprehensive assertions.
@@ -588,7 +822,7 @@ export function resetStore(store: EnhancedStore<RootState>): void {
   // Dispatch reset actions for each slice
   // Note: This requires reset actions in each slice
   // Alternative: Just create a new store instance in tests
-  store.dispatch({ type: 'auth/clearAuth' });
+  store.dispatch({ type: 'auth/logout' });
   store.dispatch({ type: 'sidebar/setSidebarOpen', payload: initialState.sidebar.isOpen });
 }
 
@@ -626,14 +860,22 @@ export function updateStoreState(
 
   // To properly update, we'd need to dispatch actions
   if (updates.auth) {
-    // Would need to dispatch appropriate actions
-    Object.entries(updates.auth).forEach(([key, value]) => {
-      // This is not ideal, but for testing purposes:
+    // Check if we're authenticating or logging out
+    if (updates.auth.isAuthenticated && updates.auth.user && updates.auth.tokens) {
+      // Dispatch loginSuccess action
       store.dispatch({
-        type: `auth/set${key.charAt(0).toUpperCase() + key.slice(1)}`,
-        payload: value,
+        type: 'auth/loginSuccess',
+        payload: {
+          user: updates.auth.user,
+          tokens: updates.auth.tokens,
+        },
       });
-    });
+    } else if (updates.auth.isAuthenticated === false) {
+      // Dispatch logout action
+      store.dispatch({
+        type: 'auth/logout',
+      });
+    }
   }
 
   if (updates.sidebar) {
