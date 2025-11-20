@@ -256,7 +256,7 @@ describe('QuestionRenderer Component', () => {
           question={question}
           value={undefined}
           onChange={mockOnChange}
-          disabled={true}
+          disabled
         />
       );
 
@@ -570,7 +570,7 @@ describe('QuestionRenderer Component', () => {
       await waitFor(() => {
         expect(mockOnChange).toHaveBeenCalled();
         // Check that onChange was called with partial input as user types
-        const calls = mockOnChange.mock.calls;
+        const {calls} = mockOnChange.mock;
         expect(calls[calls.length - 1][0]).toBe('H2O');
       });
     });
@@ -626,7 +626,7 @@ describe('QuestionRenderer Component', () => {
           question={question}
           value=""
           onChange={mockOnChange}
-          disabled={true}
+          disabled
         />
       );
 
@@ -683,7 +683,7 @@ describe('QuestionRenderer Component', () => {
 
       await waitFor(() => {
         expect(mockOnChange).toHaveBeenCalled();
-        const calls = mockOnChange.mock.calls;
+        const {calls} = mockOnChange.mock;
         expect(calls[calls.length - 1][0]).toBe('42');
       });
     });
@@ -725,7 +725,7 @@ describe('QuestionRenderer Component', () => {
       await user.type(numberField, '-25');
 
       await waitFor(() => {
-        const calls = mockOnChange.mock.calls;
+        const {calls} = mockOnChange.mock;
         expect(calls[calls.length - 1][0]).toBe('-25');
       });
     });
@@ -749,7 +749,7 @@ describe('QuestionRenderer Component', () => {
       await user.type(numberField, '3.14');
 
       await waitFor(() => {
-        const calls = mockOnChange.mock.calls;
+        const {calls} = mockOnChange.mock;
         expect(calls[calls.length - 1][0]).toBe('3.14');
       });
     });
@@ -806,7 +806,7 @@ describe('QuestionRenderer Component', () => {
 
       await waitFor(() => {
         expect(mockOnChange).toHaveBeenCalled();
-        const calls = mockOnChange.mock.calls;
+        const {calls} = mockOnChange.mock;
         expect(calls[calls.length - 1][0]).toBe(essayText);
       });
     });
@@ -830,7 +830,7 @@ describe('QuestionRenderer Component', () => {
       await user.type(essayField, 'Line 1{Enter}Line 2{Enter}Line 3');
 
       await waitFor(() => {
-        const calls = mockOnChange.mock.calls;
+        const {calls} = mockOnChange.mock;
         const finalCall = calls[calls.length - 1];
         const finalValue = finalCall ? (finalCall[0] as string) : '';
         expect(finalValue).toContain('\n');
@@ -1048,7 +1048,7 @@ describe('QuestionRenderer Component', () => {
           question={question}
           value={undefined}
           onChange={mockOnChange}
-          disabled={true}
+          disabled
         />
       );
 
@@ -1071,7 +1071,7 @@ describe('QuestionRenderer Component', () => {
           question={question}
           value=""
           onChange={mockOnChange}
-          disabled={true}
+          disabled
         />
       );
 
@@ -1090,7 +1090,7 @@ describe('QuestionRenderer Component', () => {
           question={question}
           value=""
           onChange={mockOnChange}
-          disabled={true}
+          disabled
         />
       );
 
@@ -1109,7 +1109,7 @@ describe('QuestionRenderer Component', () => {
           question={question}
           value=""
           onChange={mockOnChange}
-          disabled={true}
+          disabled
         />
       );
 
@@ -1288,7 +1288,7 @@ describe('QuestionRenderer Component', () => {
       render(
         <QuestionRenderer
           question={question}
-          value={['invalid'] as any}
+          value={['invalid'] as unknown as string}
           onChange={mockOnChange}
         />
       );
@@ -1309,7 +1309,7 @@ describe('QuestionRenderer Component', () => {
       render(
         <QuestionRenderer
           question={question}
-          value={"1" as any}
+          value={"1" as unknown as string[]}
           onChange={mockOnChange}
         />
       );

@@ -268,7 +268,7 @@ describe('FileUploadZone Component', () => {
       });
       
       // Assert callback was called with the dropped file
-      const callArgs = onFilesChange.mock.calls[0][0];
+      const callArgs = (onFilesChange.mock.calls[0] as unknown as [File[]])[0];
       expect(callArgs).toHaveLength(1);
       expect(callArgs[0].name).toBe('document.pdf');
     });
@@ -306,7 +306,7 @@ describe('FileUploadZone Component', () => {
       // Assert all 3 files are added
       await waitFor(() => {
         expect(onFilesChange).toHaveBeenCalled();
-        const callArgs = onFilesChange.mock.calls[0][0];
+        const callArgs = (onFilesChange.mock.calls[0] as unknown as [File[]])[0];
         expect(callArgs).toHaveLength(3);
       });
     });
@@ -703,7 +703,7 @@ describe('FileUploadZone Component', () => {
       // Assert onFilesChange called with array of 1 file
       await waitFor(() => {
         expect(onFilesChange).toHaveBeenCalled();
-        const callArgs = onFilesChange.mock.calls[0][0];
+        const callArgs = (onFilesChange.mock.calls[0] as unknown as [File[]])[0];
         expect(callArgs).toHaveLength(1);
         expect(callArgs[0].name).toBe('file2.pdf');
       });
@@ -956,7 +956,7 @@ describe('FileUploadZone Component', () => {
   describe('Disabled State', () => {
     it('disables upload interactions when disabled=true', async () => {
       const user = userEvent.setup();
-      render(<FileUploadZone {...defaultProps} disabled={true} />);
+      render(<FileUploadZone {...defaultProps} disabled />);
       
       const uploadZone = screen.getByRole('button', { name: /file upload area/i });
       
@@ -969,7 +969,7 @@ describe('FileUploadZone Component', () => {
     });
 
     it('displays disabled visual state', () => {
-      render(<FileUploadZone {...defaultProps} disabled={true} />);
+      render(<FileUploadZone {...defaultProps} disabled />);
       
       const uploadZone = screen.getByRole('button', { name: /file upload area/i });
       
@@ -977,12 +977,12 @@ describe('FileUploadZone Component', () => {
       expect(uploadZone).toHaveAttribute('aria-disabled', 'true');
     });
 
-    it('disables delete buttons when disabled', async () => {
+    it('disables delete buttons when disabled', () => {
       const existingFiles: UploadedFile[] = [
         createMockUploadedFile('file.pdf', 1024),
       ];
       
-      render(<FileUploadZone {...defaultProps} existingFiles={existingFiles} disabled={true} />);
+      render(<FileUploadZone {...defaultProps} existingFiles={existingFiles} disabled />);
       
       // Assert delete button is disabled
       const deleteButton = screen.getByLabelText(/remove file.pdf/i);
@@ -990,7 +990,7 @@ describe('FileUploadZone Component', () => {
     });
 
     it('disables Select Files button when disabled', () => {
-      render(<FileUploadZone {...defaultProps} disabled={true} />);
+      render(<FileUploadZone {...defaultProps} disabled />);
       
       const selectButton = screen.getByRole('button', { name: /select files/i });
       
@@ -1089,7 +1089,7 @@ describe('FileUploadZone Component', () => {
     });
 
     it('removes tabIndex when disabled', () => {
-      render(<FileUploadZone {...defaultProps} disabled={true} />);
+      render(<FileUploadZone {...defaultProps} disabled />);
       
       const uploadZone = screen.getByRole('button', { name: /file upload area/i });
       
@@ -1108,9 +1108,7 @@ describe('FileUploadZone Component', () => {
       
       const selectButton = screen.getByRole('button', { name: /select files/i });
       
-      // Assert button has minimum touch-friendly size
-      const styles = window.getComputedStyle(selectButton);
-      // MUI's minHeight and minWidth should be set via sx prop
+      // Assert button has minimum touch-friendly size (MUI's minHeight and minWidth should be set via sx prop)
       expect(selectButton).toBeInTheDocument();
     });
 
@@ -1136,7 +1134,7 @@ describe('FileUploadZone Component', () => {
   // ==========================================================================
 
   describe('Performance', () => {
-    it('efficiently renders large file lists', async () => {
+    it('efficiently renders large file lists', () => {
       const existingFiles: UploadedFile[] = Array.from({ length: 20 }, (_, i) =>
         createMockUploadedFile(`file${i + 1}.pdf`, 1024)
       );
@@ -1317,7 +1315,7 @@ describe('FileUploadZone Component', () => {
       const uploadZone = screen.getByRole('button', { name: /file upload area/i });
       
       // Add file with very long name
-      const longName = 'a'.repeat(200) + '.pdf';
+      const longName = `${'a'.repeat(200)  }.pdf`;
       const file = createMockFile(longName, 1024, 'application/pdf');
       simulateDrop(uploadZone, [file]);
       

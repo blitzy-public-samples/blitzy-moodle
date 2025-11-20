@@ -34,9 +34,9 @@ vi.mock('@/features/activities/scorm/api/scormApi', () => ({
  * Create a wrapper component with QueryClientProvider for hook testing
  */
 const createWrapper = (queryClient: QueryClient) => {
-  const Wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  );
+  function Wrapper({ children }: { children: ReactNode }) {
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+}
   Wrapper.displayName = 'ScormTestWrapper';
   return Wrapper;
 };

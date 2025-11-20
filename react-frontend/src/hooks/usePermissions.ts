@@ -321,7 +321,7 @@ export function usePermissions(): UsePermissionsReturn {
    * Returns empty array if user is null or has no roles
    */
   const userRoles = useMemo(() => {
-    if (!user || !user.roles) {
+    if (!user?.roles) {
       return [];
     }
     return user.roles.map((role) => role.shortname as MoodleRole);
@@ -333,7 +333,7 @@ export function usePermissions(): UsePermissionsReturn {
    * Returns empty array if user is null or has no capabilities
    */
   const userCapabilities = useMemo(() => {
-    if (!user || !user.capabilities) {
+    if (!user?.capabilities) {
       return [];
     }
     return user.capabilities;

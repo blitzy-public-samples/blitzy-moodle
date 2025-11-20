@@ -37,7 +37,7 @@ vi.mock('@/features/activities/feedback/components/FeedbackSummary', () => ({
 }));
 
 vi.mock('@/features/activities/feedback/components/ResponseList', () => {
-  const MockResponseList = ({
+  function MockResponseList({
     responses,
     onDelete,
     canDelete,
@@ -45,12 +45,12 @@ vi.mock('@/features/activities/feedback/components/ResponseList', () => {
     responses: unknown[];
     onDelete: () => void;
     canDelete: boolean;
-  }) => (
-    <div data-testid="response-list">
+  }) {
+  return <div data-testid="response-list">
       <div data-testid="response-count">{responses.length}</div>
       {canDelete && <button onClick={onDelete}>Delete</button>}
     </div>
-  );
+}
 
   return {
     ResponseList: MockResponseList,
@@ -673,7 +673,7 @@ describe('FeedbackAnalysis Component', () => {
       // Wait for the chart to appear
       await waitFor(() => {
         const chart = screen.getByTestId('bar-chart');
-        const chartData = JSON.parse(chart.textContent || '{}');
+        const chartData = JSON.parse(chart.textContent || '{}') as { options?: unknown };
         expect(chartData.options).toBeDefined();
       });
     });
@@ -1390,7 +1390,7 @@ describe('FeedbackAnalysis Component', () => {
       expect(screen.getByText(/permission/i)).toBeInTheDocument();
     });
 
-    it('retry button in error state', async () => {
+    it('retry button in error state', () => {
       const refetch = vi.fn();
       vi.mocked(useFeedbackAnalysis).mockReturnValue({
         data: undefined,

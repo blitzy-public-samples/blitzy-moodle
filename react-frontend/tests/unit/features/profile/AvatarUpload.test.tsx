@@ -45,9 +45,9 @@ const createWrapper = () => {
     },
   });
 
-  const Wrapper = ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  );
+  function Wrapper({ children }: { children: React.ReactNode }) {
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+}
   Wrapper.displayName = 'TestWrapper';
   return Wrapper;
 };

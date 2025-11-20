@@ -94,11 +94,11 @@ describe('Concurrent Reply Test', () => {
         },
       },
     });
-    const Wrapper = ({ children }: { children: React.ReactNode }) => (
-      <QueryClientProvider client={qc}>
+    function Wrapper({ children }: { children: React.ReactNode }) {
+  return <QueryClientProvider client={qc}>
         {children}
       </QueryClientProvider>
-    );
+}
     return Wrapper;
   };
 

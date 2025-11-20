@@ -76,10 +76,10 @@ describe('Redux Store Configuration', () => {
       expect(store).not.toBeNull();
 
       // Verify store has required Redux store methods
-      expect(store.dispatch).toBeInstanceOf(Function);
-      expect(store.getState).toBeInstanceOf(Function);
-      expect(store.subscribe).toBeInstanceOf(Function);
-      expect(store.replaceReducer).toBeInstanceOf(Function);
+      expect(typeof store.dispatch).toBe('function');
+      expect(typeof store.getState).toBe('function');
+      expect(typeof store.subscribe).toBe('function');
+      expect(typeof store.replaceReducer).toBe('function');
     });
 
     it('should return state object from getState', () => {
@@ -286,9 +286,9 @@ describe('Redux Store Configuration', () => {
           asyncTest: asyncSlice.reducer,
         },
         middleware: (getDefaultMiddleware) =>
-          getDefaultMiddleware().concat((storeAPI) => (next) => (action) => {
+          getDefaultMiddleware().concat((_storeAPI) => (next: (action: unknown) => unknown) => (action: unknown) => {
             if (typeof action === 'object' && action !== null && 'type' in action) {
-              dispatchedActions.push(action.type as string);
+              dispatchedActions.push((action as { type: string }).type);
             }
             return next(action);
           }),
@@ -317,9 +317,9 @@ describe('Redux Store Configuration', () => {
       // Store is already configured with devTools: process.env.NODE_ENV !== 'production'
 
       // Verify store has standard Redux methods (DevTools uses these)
-      expect(store.dispatch).toBeDefined();
-      expect(store.getState).toBeDefined();
-      expect(store.subscribe).toBeDefined();
+      expect(typeof store.dispatch).toBe('function');
+      expect(typeof store.getState).toBe('function');
+      expect(typeof store.subscribe).toBe('function');
 
       // In production environment, devTools would be disabled
       // This test verifies the store is properly configured for DevTools integration
@@ -376,7 +376,7 @@ describe('Redux Store Configuration', () => {
 
     it('should export AppDispatch type correctly', () => {
       // Type assertion - if this compiles, type export works
-      const dispatch: AppDispatch = store.dispatch;
+      const {dispatch} = store;
 
       // Verify dispatch is a function
       expect(typeof dispatch).toBe('function');
@@ -444,7 +444,7 @@ describe('Redux Store Configuration', () => {
       // This test verifies the hook is properly typed (compilation check)
 
       // Type assertion - if this compiles, typing is correct
-      type SelectorHook = <Selected>(
+      type _SelectorHook = <Selected>(
         selector: (state: RootState) => Selected,
         equalityFn?: (left: Selected, right: Selected) => boolean
       ) => Selected;
@@ -543,7 +543,7 @@ describe('Redux Store Configuration', () => {
     it('should maintain state immutability with Immer', () => {
       // Get initial state reference
       const stateBefore = store.getState();
-      const authBefore = stateBefore.auth;
+      const _authBefore = stateBefore.auth;
       const sidebarBefore = stateBefore.sidebar;
 
       // Dispatch action that modifies state
@@ -739,10 +739,10 @@ describe('Redux Store Configuration', () => {
       // Type-safe state access
       const state: RootState = store.getState();
       const authUser: typeof state.auth.user = state.auth.user;
-      const isOpen: boolean = state.sidebar.isOpen;
+      const {isOpen} = state.sidebar;
 
       // Type-safe dispatch
-      const dispatch: AppDispatch = store.dispatch;
+      const {dispatch} = store;
 
       // All these type assertions should compile successfully
       expect(state).toBeDefined();

@@ -453,7 +453,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ width = DRAWER_WIDTH }) => {
     }
 
     // No user or no user roles - hide restricted items
-    if (!user || !user.roles || user.roles.length === 0) {
+    if (!user?.roles || user.roles.length === 0) {
       return false;
     }
 
@@ -485,10 +485,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ width = DRAWER_WIDTH }) => {
    * @returns true if item path matches current location, false otherwise
    */
   const isActive = (item: MenuItem): boolean => {
-    if (!item.path) return false;
+    if (!item.path) {return false;}
     return (
       location.pathname === item.path ||
-      location.pathname.startsWith(item.path + '/')
+      location.pathname.startsWith(`${item.path  }/`)
     );
   };
 

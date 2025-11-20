@@ -331,9 +331,9 @@ const createTestQueryClient = () =>
 
 // Helper to create wrapper with QueryClientProvider
 const createWrapper = (queryClient: QueryClient) => {
-  const Wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  );
+  function Wrapper({ children }: { children: ReactNode }) {
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+}
   Wrapper.displayName = 'ForumTestWrapper';
   return Wrapper;
 };
@@ -703,7 +703,7 @@ describe('useForum', () => {
 
       // Mark the query as stale to ensure refetch will happen on focus
       // React Query only refetches stale queries on window focus
-      queryClient.invalidateQueries({ queryKey: ['forums', 1] });
+      await queryClient.invalidateQueries({ queryKey: ['forums', 1] });
 
       // Wait for invalidation to complete
       await waitFor(() => {

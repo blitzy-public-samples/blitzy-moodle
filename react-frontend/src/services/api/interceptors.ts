@@ -35,7 +35,6 @@
  * @module services/api/interceptors
  */
 
-import axios from 'axios';
 import type {
   AxiosInstance,
   InternalAxiosRequestConfig,
@@ -47,17 +46,16 @@ import {
   refreshAccessToken,
   clearTokens,
 } from '../auth/authService';
-import { API_BASE_URL } from './endpoints';
 
 // ============================================================================
 // TypeScript Type Definitions
 // ============================================================================
 
 /**
- * Extend Axios request config to include retry flag
+ * Extend Axios request config to include custom properties
  *
- * The _retry flag prevents infinite refresh loops by tracking whether
- * a request has already been retried after token refresh.
+ * - _retry: Prevents infinite refresh loops by tracking retries
+ * - _requestStartTime: Tracks request start time for performance monitoring
  */
 declare module 'axios' {
   interface InternalAxiosRequestConfig {
@@ -66,6 +64,11 @@ declare module 'axios' {
      * Used to prevent infinite refresh loops when refresh itself fails with 401
      */
     _retry?: boolean;
+
+    /**
+     * Request start timestamp for performance tracking (development only)
+     */
+    _requestStartTime?: number;
   }
 }
 
@@ -85,6 +88,32 @@ interface QueuedRequest {
    * Reject callback - called with error on refresh failure
    */
   reject: (error: Error) => void;
+}
+
+/**
+ * API error response structure
+ *
+ * Defines the expected structure of error responses from the API
+ * following the standard error envelope format.
+ */
+interface ApiErrorResponse {
+  success: false;
+  error: {
+    code: string;
+    message: string;
+    details?: unknown;
+  };
+}
+
+/**
+ * Standard API success response envelope
+ *
+ * All API responses should follow this structure for consistency
+ */
+interface StandardApiResponse<T = unknown> {
+  success: true;
+  data: T;
+  meta?: Record<string, unknown>;
 }
 
 // ============================================================================
@@ -183,8 +212,12 @@ function processQueue(error: Error | null, token: string | null = null): void {
 function onRequest(
   config: InternalAxiosRequestConfig
 ): InternalAxiosRequestConfig {
+  console.log('[Interceptor onRequest] ENTRY - config.url:', config.url);
+  console.log('[Interceptor onRequest] ENTRY - config.baseURL:', config.baseURL);
+  
   // Retrieve access token from secure storage
   const token = getAccessToken();
+  console.log('[Interceptor onRequest] token retrieved:', token);
 
   // Inject token into Authorization header if available
   if (token) {
@@ -198,9 +231,11 @@ function onRequest(
 
   // Optional: Add request timestamp for performance tracking
   if (import.meta.env.DEV) {
-    (config as any)._requestStartTime = Date.now();
+    config._requestStartTime = Date.now();
   }
 
+  console.log('[Interceptor onRequest] EXIT - config.url:', config.url);
+  console.log('[Interceptor onRequest] EXIT - config.headers.Authorization:', config.headers.Authorization);
   return config;
 }
 
@@ -252,14 +287,17 @@ function onRequestError(error: AxiosError): Promise<never> {
  */
 function onResponse(response: AxiosResponse): AxiosResponse {
   // Track response time in development
-  if (import.meta.env.DEV && (response.config as any)._requestStartTime) {
-    const duration = Date.now() - (response.config as any)._requestStartTime;
+  if (import.meta.env.DEV && response.config._requestStartTime) {
+    const duration = Date.now() - response.config._requestStartTime;
+    // eslint-disable-next-line no-console
     console.debug(`[Interceptor] Request completed in ${duration}ms:`, response.config.url);
   }
 
   // Check if response follows standard envelope format
-  const hasStandardFormat =
-    response.data &&
+  // Type guard to check if data is already in StandardApiResponse format
+  const hasStandardFormat: boolean =
+    response.data !== null &&
+    response.data !== undefined &&
     typeof response.data === 'object' &&
     'success' in response.data &&
     'data' in response.data;
@@ -271,11 +309,14 @@ function onResponse(response: AxiosResponse): AxiosResponse {
 
   // Wrap non-standard responses in standard envelope
   // This ensures consistent data access patterns across the application
-  response.data = {
+  // Store original data before wrapping to satisfy type checker
+  const originalData: unknown = response.data;
+  const wrappedData: StandardApiResponse = {
     success: true,
-    data: response.data,
+    data: originalData,
     meta: {},
   };
+  response.data = wrappedData;
 
   return response;
 }
@@ -285,44 +326,55 @@ function onResponse(response: AxiosResponse): AxiosResponse {
 // ============================================================================
 
 /**
- * Response error interceptor with automatic token refresh on 401 errors
+ * Create response error handler with closure over axios instance
  *
- * This is the core interceptor that handles all API errors, with special
- * logic for 401 Unauthorized errors that trigger automatic token refresh.
+ * This factory function creates an error handler that has access to the specific
+ * axios instance via closure. This is necessary because the handler needs to use
+ * the same instance (with its baseURL and other config) when retrying requests.
  *
- * Error Handling by Status Code:
- * - 401: Attempt token refresh and retry request
- * - 403: Permission denied error
- * - 404: Not found error
- * - 5xx: Server error
- * - Network errors: Connection/timeout errors
- *
- * Token Refresh Flow:
- * 1. Detect 401 error (expired access token)
- * 2. Check if request was already retried (prevent infinite loops)
- * 3. Check if refresh is in progress (queue if so)
- * 4. Call refreshAccessToken() to get new token
- * 5. Retry original request with new token
- * 6. On refresh failure, clear tokens and redirect to login
- *
- * Race Condition Handling:
- * - If refresh is already in progress, queue the request
- * - Once refresh completes, process all queued requests
- * - All requests get the same new token
- *
- * @param error - Axios error object
- * @returns Promise that resolves with retried response or rejects with error
- *
- * @example
- * ```typescript
- * // Request fails with 401
- * // Interceptor automatically:
- * // 1. Refreshes token
- * // 2. Retries request with new token
- * // 3. Returns successful response (transparent to caller)
- * ```
+ * @param axiosInstance - The axios instance to use for retries
+ * @returns Error handler function configured for the given instance
  */
-async function onResponseError(error: AxiosError): Promise<any> {
+function createOnResponseError(axiosInstance: AxiosInstance) {
+  /**
+   * Response error interceptor with automatic token refresh on 401 errors
+   *
+   * This is the core interceptor that handles all API errors, with special
+   * logic for 401 Unauthorized errors that trigger automatic token refresh.
+   *
+   * Error Handling by Status Code:
+   * - 401: Attempt token refresh and retry request
+   * - 403: Permission denied error
+   * - 404: Not found error
+   * - 5xx: Server error
+   * - Network errors: Connection/timeout errors
+   *
+   * Token Refresh Flow:
+   * 1. Detect 401 error (expired access token)
+   * 2. Check if request was already retried (prevent infinite loops)
+   * 3. Check if refresh is in progress (queue if so)
+   * 4. Call refreshAccessToken() to get new token
+   * 5. Retry original request with new token
+   * 6. On refresh failure, clear tokens and redirect to login
+   *
+   * Race Condition Handling:
+   * - If refresh is already in progress, queue the request
+   * - Once refresh completes, process all queued requests
+   * - All requests get the same new token
+   *
+   * @param error - Axios error object
+   * @returns Promise that resolves with retried response or rejects with error
+   *
+   * @example
+   * ```typescript
+   * // Request fails with 401
+   * // Interceptor automatically:
+   * // 1. Refreshes token
+   * // 2. Retries request with new token
+   * // 3. Returns successful response (transparent to caller)
+   * ```
+   */
+  return async function onResponseError(error: AxiosError): Promise<AxiosResponse> {
   const originalRequest = error.config;
 
   // ============================================================================
@@ -351,7 +403,7 @@ async function onResponseError(error: AxiosError): Promise<any> {
           resolve: (token: string) => {
             // Update request with new token and retry
             originalRequest.headers.Authorization = `Bearer ${token}`;
-            resolve(axios(originalRequest));
+            resolve(axiosInstance.request(originalRequest));
           },
           reject: (err: Error) => {
             reject(err);
@@ -368,13 +420,25 @@ async function onResponseError(error: AxiosError): Promise<any> {
 
     try {
       if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
         console.debug('[Interceptor] Refreshing access token due to 401 error');
       }
 
       // Attempt to refresh the access token
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.debug('[Interceptor] Calling refreshAccessToken()...');
+      }
+      
       const newAccessToken = await refreshAccessToken();
+      
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.debug('[Interceptor] refreshAccessToken() returned:', newAccessToken ? 'token received' : 'null/undefined');
+      }
 
       if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
         console.debug('[Interceptor] Token refresh successful, retrying request');
       }
 
@@ -386,7 +450,31 @@ async function onResponseError(error: AxiosError): Promise<any> {
 
       // Update original request with new token and retry
       originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-      return axios(originalRequest);
+      
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.debug('[Interceptor] About to retry request. Details:', {
+          url: originalRequest.url,
+          baseURL: originalRequest.baseURL,
+          method: originalRequest.method,
+          fullConfig: JSON.stringify(originalRequest, null, 2),
+        });
+      }
+      
+      try {
+        const retryResponse = await axiosInstance.request(originalRequest);
+        if (import.meta.env.DEV) {
+          // eslint-disable-next-line no-console
+          console.debug('[Interceptor] Retry succeeded:', retryResponse.status);
+        }
+        return retryResponse;
+      } catch (retryError) {
+        if (import.meta.env.DEV) {
+           
+          console.error('[Interceptor] Retry failed with error:', retryError);
+        }
+        throw retryError;
+      }
     } catch (refreshError) {
       // Reset refresh flag
       isRefreshing = false;
@@ -490,10 +578,13 @@ async function onResponseError(error: AxiosError): Promise<any> {
   // Handle All Other Errors
   // ============================================================================
 
+  // Type cast to ApiErrorResponse to safely access error properties
+  const responseData = error.response?.data as ApiErrorResponse | undefined;
+  
   const defaultError = {
-    message: error.response?.data?.error?.message || error.message || 'An unexpected error occurred',
-    code: error.response?.data?.error?.code || 'UNKNOWN_ERROR',
-    status: error.response?.status || 0,
+    message: responseData?.error?.message ?? error.message ?? 'An unexpected error occurred',
+    code: responseData?.error?.code ?? 'UNKNOWN_ERROR',
+    status: error.response?.status ?? 0,
     details: import.meta.env.DEV ? error.response?.data : undefined,
   };
 
@@ -502,6 +593,7 @@ async function onResponseError(error: AxiosError): Promise<any> {
   }
 
   return Promise.reject(defaultError);
+  };
 }
 
 // ============================================================================
@@ -546,6 +638,9 @@ async function onResponseError(error: AxiosError): Promise<any> {
  * ```
  */
 export function setupInterceptors(axiosInstance: AxiosInstance): AxiosInstance {
+  // Create error handler with closure over this specific axios instance
+  const onResponseError = createOnResponseError(axiosInstance);
+
   // Register request interceptors
   axiosInstance.interceptors.request.use(onRequest, onRequestError);
 
@@ -553,6 +648,7 @@ export function setupInterceptors(axiosInstance: AxiosInstance): AxiosInstance {
   axiosInstance.interceptors.response.use(onResponse, onResponseError);
 
   if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
     console.debug('[Interceptor] API interceptors configured successfully');
   }
 

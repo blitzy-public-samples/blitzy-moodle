@@ -53,7 +53,6 @@
  * @module tests/mocks/utils/test-utils
  */
 
-import React from 'react';
 import type { ReactElement, ReactNode } from 'react';
 import { render } from '@testing-library/react';
 import type { RenderOptions } from '@testing-library/react';
@@ -145,18 +144,34 @@ export type AppStore = ReturnType<typeof setupStore>;
  * ```
  */
 export function setupStore(preloadedState?: PreloadedState<RootState>) {
+  // Create store without preloadedState if not provided
+  if (preloadedState === undefined) {
+    return configureStore({
+      reducer: {
+        auth: authReducer,
+        sidebar: sidebarReducer,
+      },
+      middleware: (getDefaultMiddleware) =>
+        getDefaultMiddleware({
+          serializableCheck: false,
+          immutableCheck: true,
+        }),
+    });
+  }
+  
+  // Create store with preloadedState - use type assertion to satisfy strict mode
   return configureStore({
     reducer: {
       auth: authReducer,
       sidebar: sidebarReducer,
     },
-    preloadedState,
-    // Use default middleware (includes thunk, immutability checks, serializability checks)
+    preloadedState: preloadedState as {
+      auth: ReturnType<typeof authReducer>;
+      sidebar: ReturnType<typeof sidebarReducer>;
+    },
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({
-        // Disable serialization checks in tests to allow non-serializable test data
         serializableCheck: false,
-        // Keep immutability checks to catch state mutation bugs
         immutableCheck: true,
       }),
   });
@@ -287,7 +302,7 @@ interface AllTheProvidersProps {
  * </AllTheProviders>
  * ```
  */
-function AllTheProviders({ children, preloadedState, initialRoutes = ['/'] }: AllTheProvidersProps) {
+function _AllTheProviders({ children, preloadedState, initialRoutes = ['/'] }: AllTheProvidersProps) {
   // Create a new store instance for this test with optional preloaded state
   const store = setupStore(preloadedState);
 

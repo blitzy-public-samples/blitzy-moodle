@@ -465,7 +465,7 @@ export function createAuthStateWithToken(token: string, user: User): AuthState {
     user,
     tokens: {
       accessToken: token,
-      refreshToken: 'refresh-' + token,
+      refreshToken: `refresh-${  token}`,
       expiresIn: 3600, // 1 hour in seconds
       tokenType: 'Bearer',
     },
@@ -891,12 +891,13 @@ export function updateStoreState(
 /**
  * Type guard to check if store has tracking capabilities
  *
- * @param {any} store - Store instance to check
+ * @param {unknown} store - Store instance to check
  * @returns {boolean} True if store has tracking
  */
-export function isTrackingStore(store: any): store is MockStoreWithTracking {
+export function isTrackingStore(store: unknown): store is MockStoreWithTracking {
   return (
-    store &&
+    typeof store === 'object' &&
+    store !== null &&
     'dispatchedActions' in store &&
     'clearDispatchedActions' in store
   );

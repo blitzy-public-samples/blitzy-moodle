@@ -166,6 +166,35 @@ interface TokenRefreshResponse {
 }
 
 // ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Creates a mock AxiosResponse for errors that don't have a server response
+ *
+ * This helper constructs a properly typed AxiosResponse object for network
+ * errors, timeouts, and request setup errors that don't receive a response
+ * from the server. This allows us to maintain consistent error handling
+ * throughout the application.
+ *
+ * @param errorData - The error data to include in the response
+ * @param config - The original request configuration
+ * @returns A properly typed mock AxiosResponse
+ */
+function createMockErrorResponse(
+  errorData: ApiErrorResponse,
+  config: InternalAxiosRequestConfig
+): AxiosResponse<ApiErrorResponse> {
+  return {
+    data: errorData,
+    status: 0,
+    statusText: 'Network Error',
+    headers: {},
+    config: config,
+  };
+}
+
+// ============================================================================
 // Custom Hook
 // ============================================================================
 
@@ -383,14 +412,14 @@ export function useApi(): AxiosInstance {
         // Add custom error properties for better debugging
         if (error.response) {
           // Server responded with error status
-          const status = error.response.status;
+          const {status} = error.response;
           const errorData = error.response.data;
 
           // Enhance error with status-specific messages
           if (status === 403) {
             // Forbidden - permission denied
             if (!errorData?.error) {
-              (normalizedError.response!.data as ApiErrorResponse) = {
+              (normalizedError.response!.data) = {
                 success: false,
                 error: {
                   code: 'PERMISSION_DENIED',
@@ -401,7 +430,7 @@ export function useApi(): AxiosInstance {
           } else if (status === 404) {
             // Not Found
             if (!errorData?.error) {
-              (normalizedError.response!.data as ApiErrorResponse) = {
+              (normalizedError.response!.data) = {
                 success: false,
                 error: {
                   code: 'NOT_FOUND',
@@ -412,7 +441,7 @@ export function useApi(): AxiosInstance {
           } else if (status >= 500) {
             // Server Error
             if (!errorData?.error) {
-              (normalizedError.response!.data as ApiErrorResponse) = {
+              (normalizedError.response!.data) = {
                 success: false,
                 error: {
                   code: 'SERVER_ERROR',
@@ -424,37 +453,46 @@ export function useApi(): AxiosInstance {
         } else if (error.request || error.message === 'Network Error') {
           // Request made but no response received (network error)
           // Note: axios-mock-adapter's networkError() sets message to 'Network Error'
-          (normalizedError as any).response = {
-            data: {
+          const mockResponse = createMockErrorResponse(
+            {
               success: false,
               error: {
                 code: 'NETWORK_ERROR',
                 message: 'Network error. Please check your connection and try again.',
               },
             },
-          };
+            normalizedError.config!
+          );
+          // Type-safe assignment of mock response
+          Object.assign(normalizedError, { response: mockResponse });
         } else if (error.code === 'ECONNABORTED') {
           // Request timeout
-          (normalizedError as any).response = {
-            data: {
+          const mockResponse = createMockErrorResponse(
+            {
               success: false,
               error: {
                 code: 'TIMEOUT',
                 message: 'Request timed out. Please try again.',
               },
             },
-          };
+            normalizedError.config!
+          );
+          // Type-safe assignment of mock response
+          Object.assign(normalizedError, { response: mockResponse });
         } else {
           // Request setup error
-          (normalizedError as any).response = {
-            data: {
+          const mockResponse = createMockErrorResponse(
+            {
               success: false,
               error: {
                 code: 'REQUEST_ERROR',
                 message: error.message || 'An error occurred while making the request.',
               },
             },
-          };
+            normalizedError.config!
+          );
+          // Type-safe assignment of mock response
+          Object.assign(normalizedError, { response: mockResponse });
         }
 
         // Reject with normalized error

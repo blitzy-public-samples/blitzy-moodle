@@ -4,21 +4,20 @@
  * responsive layout, and accessibility features
  */
 
-import React from 'react';
+import type React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, cleanup, within } from '@testing-library/react';
+import { render, screen, cleanup } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { formatDistanceToNow } from 'date-fns';
 import { H5PReportCard } from '@/features/activities/h5pactivity/components/H5PReportCard';
-import { H5PAttempt } from '@/features/activities/h5pactivity/types/h5p.types';
+import type { H5PAttempt } from '@/features/activities/h5pactivity/types/h5p.types';
 import { formatDuration } from '@/utils/date';
 
 // Mock utilities
 vi.mock('@/utils/date', () => ({
   formatDuration: vi.fn((seconds: number) => {
-    if (!seconds) return 'N/A';
+    if (!seconds) {return 'N/A';}
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
@@ -59,13 +58,16 @@ const createWrapper = () => {
     },
   });
 
-  return ({ children }: { children: React.ReactNode }) => (
+  const TestWrapper = ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={queryClient}>
       <MemoryRouter>
         {children}
       </MemoryRouter>
     </QueryClientProvider>
   );
+  TestWrapper.displayName = 'TestWrapper';
+
+  return TestWrapper;
 };
 
 describe('H5PReportCard', () => {
@@ -145,7 +147,7 @@ describe('H5PReportCard', () => {
 
     it('displays success badge in green when successful', () => {
       const attempt = createMockAttempt({ success: 1 });
-      const { container } = render(
+      render(
         <H5PReportCard 
           attempt={attempt} 
           reportUrl={`/report/${attempt.id}`}
@@ -485,7 +487,7 @@ describe('H5PReportCard', () => {
       expect(actionArea).toBeInTheDocument();
     });
 
-    it('navigates to detailed attempt view on click', async () => {
+    it('navigates to detailed attempt view on click', () => {
       const attempt = createMockAttempt({ id: 42 });
       const reportUrl = `/h5p/report/${attempt.id}`;
       
@@ -555,7 +557,7 @@ describe('H5PReportCard', () => {
         <H5PReportCard 
           attempt={attempt} 
           reportUrl={`/report/${attempt.id}`}
-          compact={true}
+          compact
         />,
         { wrapper: createWrapper() }
       );
@@ -909,8 +911,8 @@ describe('H5PReportCard', () => {
         <H5PReportCard 
           attempt={attempt} 
           reportUrl={`/report/${attempt.id}`}
-          compact={true}
-          isScored={true}
+          compact
+          isScored
           onClick={onClick}
           className="test-class"
         />,

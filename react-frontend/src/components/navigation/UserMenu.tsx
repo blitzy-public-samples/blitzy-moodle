@@ -317,7 +317,7 @@ export default function UserMenu({ className }: UserMenuProps): React.ReactEleme
         data-testid="user-menu-button"
       >
         <Avatar
-          src={(user as any).profileimageurl || undefined}
+          src={user.profileimageurl || undefined}
           sx={{
             width: 36,
             height: 36,

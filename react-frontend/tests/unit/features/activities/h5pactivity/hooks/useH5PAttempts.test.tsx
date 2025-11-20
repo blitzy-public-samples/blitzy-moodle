@@ -70,11 +70,11 @@ function createTestQueryClient(): QueryClient {
  * Used by renderHook to wrap the hook under test
  */
 function createWrapper(queryClient: QueryClient) {
-  const Wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
+  function Wrapper({ children }: { children: ReactNode }) {
+  return <QueryClientProvider client={queryClient}>
       {children}
     </QueryClientProvider>
-  );
+}
   Wrapper.displayName = 'QueryClientWrapper';
   return Wrapper;
 }

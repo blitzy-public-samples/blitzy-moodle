@@ -184,6 +184,18 @@ export interface User {
   picture?: number;
 
   /**
+   * Full URL to user's profile image
+   * Generated from picture revision and user ID
+   */
+  profileimageurl?: string;
+
+  /**
+   * URL to small profile image thumbnail
+   * Used for compact displays like navigation menus
+   */
+  profileimageurlsmall?: string;
+
+  /**
    * User's profile description (mdl_user.description)
    */
   description?: string;
