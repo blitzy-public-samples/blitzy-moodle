@@ -31,7 +31,6 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import type React from 'react';
 import {
   Card,
   CardContent,
@@ -56,6 +55,7 @@ import { Link } from 'react-router-dom';
 import type { H5PAttempt } from '../types/h5p.types';
 import { formatDuration } from '@/utils/date';
 import { formatNumber } from '@/utils/formatters';
+import { formatDistanceToNow } from 'date-fns';
 
 // ============================================================================
 // Type Definitions
@@ -113,26 +113,17 @@ function getScoreColor(percentage: number): 'error' | 'warning' | 'success' {
 }
 
 /**
- * Format timestamp to human-readable date/time string
+ * Format timestamp to human-readable relative time string
  *
  * @param timestamp - Unix timestamp in seconds
- * @returns Formatted date string
+ * @returns Formatted relative time string (e.g., "about 1 hour ago")
  */
 function formatTimestamp(timestamp: number): string {
   // Convert Unix timestamp (seconds) to milliseconds for Date constructor
   const date = new Date(timestamp * 1000);
   
-  // Format: "Dec 31, 2024 at 3:45 PM"
-  const options: Intl.DateTimeFormatOptions = {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  };
-  
-  return date.toLocaleString(undefined, options);
+  // Use formatDistanceToNow to get relative time (e.g., "about 1 hour ago")
+  return formatDistanceToNow(date, { addSuffix: true });
 }
 
 // ============================================================================
@@ -148,7 +139,7 @@ function formatTimestamp(timestamp: number): string {
  * @param props - Component properties
  * @returns React element
  */
-function H5PReportCard({
+export function H5PReportCard({
   attempt,
   reportUrl,
   compact = false,
@@ -174,9 +165,8 @@ function H5PReportCard({
   const formattedMaxScore = formatNumber(attempt.maxscore, 1);
 
   // Handle card click
-  const handleClick = (event: React.MouseEvent) => {
+  const handleClick = () => {
     if (onClick) {
-      event.preventDefault();
       onClick(attempt.id);
     }
   };
@@ -235,7 +225,7 @@ function H5PReportCard({
     return (
       <Chip
         icon={<RadioButtonUncheckedIcon />}
-        label="Not Passed"
+        label="Failed"
         color="error"
         size="small"
         aria-label="Attempt not successful"
@@ -333,6 +323,7 @@ function H5PReportCard({
   return (
     <Card
       className={className}
+      role="article"
       sx={{
         position: 'relative',
         ...(isScored && {
@@ -349,9 +340,14 @@ function H5PReportCard({
       elevation={2}
     >
       <CardActionArea
-        component={Link}
-        to={reportUrl}
-        onClick={handleClick}
+        {...(onClick
+          ? {
+              onClick: handleClick,
+            }
+          : {
+              component: Link,
+              to: reportUrl,
+            })}
         sx={{ height: '100%' }}
         aria-label={`View details for attempt ${attempt.attempt}`}
       >
@@ -383,7 +379,7 @@ function H5PReportCard({
             fontWeight="medium"
             sx={{ mb: 2 }}
           >
-            Attempt #{attempt.attempt}
+            Attempt {attempt.attempt}
           </Typography>
 
           {/* Score section */}

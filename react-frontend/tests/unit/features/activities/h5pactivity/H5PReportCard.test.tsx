@@ -536,8 +536,9 @@ describe('H5PReportCard', () => {
         { wrapper: createWrapper() }
       );
 
-      const card = screen.getByRole('article');
-      await user.click(card);
+      // When onClick is provided, CardActionArea renders as a button (not a link)
+      const button = screen.getByRole('button');
+      await user.click(button);
       
       expect(onClick).toHaveBeenCalledTimes(1);
     });
@@ -651,14 +652,16 @@ describe('H5PReportCard', () => {
         { wrapper: createWrapper() }
       );
 
-      const link = screen.getByRole('link');
-      link.focus();
+      // When onClick is provided, CardActionArea renders as a button (not a link)
+      const button = screen.getByRole('button');
+      button.focus();
       
       // Press Enter
       await user.keyboard('{Enter}');
       
-      // Should trigger navigation (onClick may or may not be called depending on implementation)
-      expect(link).toBeInTheDocument();
+      // Should trigger onClick handler
+      expect(onClick).toHaveBeenCalledTimes(1);
+      expect(onClick).toHaveBeenCalledWith(attempt.id);
     });
 
     it('has proper heading structure', () => {
@@ -733,7 +736,8 @@ describe('H5PReportCard', () => {
         { wrapper: createWrapper() }
       );
 
-      expect(screen.getByText(/9999.*10000/)).toBeInTheDocument();
+      // formatNumber adds commas and decimal places for better readability
+      expect(screen.getByText(/9,999.*10,000/)).toBeInTheDocument();
       // 99.99% but might be rounded
       expect(screen.getByText(/99/)).toBeInTheDocument();
     });
