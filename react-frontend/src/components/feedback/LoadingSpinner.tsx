@@ -173,6 +173,7 @@ export function LoadingSpinner({
    */
   const renderSpinnerContent = () => (
     <Box
+      data-testid="loading-spinner"
       sx={{
         display: 'flex',
         flexDirection: 'column',
