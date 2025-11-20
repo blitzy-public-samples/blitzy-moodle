@@ -300,7 +300,7 @@ describe('formatFileSize', () => {
 
   it('should format kilobytes correctly', () => {
     const result = formatFileSize(1024);
-    expect(result).toMatch(/1[.,]0 KB/);
+    expect(result).toBe('1 KB');
   });
 
   it('should format fractional kilobytes', () => {
@@ -310,7 +310,7 @@ describe('formatFileSize', () => {
 
   it('should format megabytes correctly', () => {
     const result = formatFileSize(1048576);
-    expect(result).toMatch(/1[.,]0 MB/);
+    expect(result).toBe('1 MB');
   });
 
   it('should format fractional megabytes', () => {
@@ -320,12 +320,12 @@ describe('formatFileSize', () => {
 
   it('should format gigabytes correctly', () => {
     const result = formatFileSize(1073741824);
-    expect(result).toMatch(/1[.,]0 GB/);
+    expect(result).toBe('1 GB');
   });
 
   it('should format terabytes correctly', () => {
     const result = formatFileSize(1099511627776);
-    expect(result).toMatch(/1[.,]0 TB/);
+    expect(result).toBe('1 TB');
   });
 
   it('should format zero bytes', () => {
