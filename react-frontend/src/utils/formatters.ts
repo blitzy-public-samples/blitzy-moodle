@@ -265,7 +265,8 @@ export function formatFileSize(bytes: number): string {
   const unitIndex = Math.min(i, units.length - 1);
 
   const value = bytes / Math.pow(k, unitIndex);
-  const decimals = unitIndex === 0 ? 0 : 1;
+  // Only show decimals for non-whole numbers (better UX: "2 MB" vs "2.0 MB")
+  const decimals = unitIndex === 0 ? 0 : (value % 1 === 0 ? 0 : 1);
 
   return `${formatNumber(value, decimals)} ${units[unitIndex]}`;
 }
