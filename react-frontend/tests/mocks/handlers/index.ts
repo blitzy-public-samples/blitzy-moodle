@@ -1,110 +1,157 @@
 /**
- * MSW Request Handlers - Central Barrel Export
+ * MSW Request Handlers - Barrel Export
  * 
- * This file aggregates and re-exports all Mock Service Worker (MSW) request
- * handlers from individual feature modules. It provides a single entry point
- * for importing all handlers when configuring the MSW server.
+ * This file aggregates and re-exports all MSW (Mock Service Worker) request handlers
+ * from individual handler modules. It provides a centralized access point for all API
+ * mock handlers used throughout the test suite.
  * 
- * Handler modules included:
- * - auth: Authentication endpoints (login, logout, refresh, me)
- * - users: User management endpoints (profile, dashboard, preferences)
- * - courses: Course management endpoints (CRUD, enrollment, contents)
- * - assignments: Assignment activity endpoints (view, submit, grade)
- * - quizzes: Quiz activity endpoints (attempt, submit, review)
- * - forums: Forum activity endpoints (discussions, posts, subscriptions)
- * - choices: Choice activity endpoints (results, responses)
- * - feedback: Feedback activity endpoints (questions, responses, analysis)
- * - h5p: H5P activity endpoints (attempts, user attempts)
- * - grades: Gradebook endpoints (course grades, user grades, items, categories, export, report)
- * - admin: Admin endpoints (settings, users, roles, plugins)
+ * Usage Examples:
  * 
- * Usage:
+ * 1. Import all handlers for comprehensive API mocking:
  * ```typescript
- * import { handlers } from './mocks/handlers';
+ * import { handlers } from '@/tests/mocks/handlers';
  * import { setupServer } from 'msw/node';
  * 
  * const server = setupServer(...handlers);
  * ```
  * 
- * @package    react-frontend
- * @subpackage tests/mocks/handlers
- * @copyright  2024 Moodle React Frontend
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * 2. Import specific module handlers for targeted testing:
+ * ```typescript
+ * import { authHandlers, coursesHandlers } from '@/tests/mocks/handlers';
+ * 
+ * const server = setupServer(...authHandlers, ...coursesHandlers);
+ * ```
+ * 
+ * 3. Import individual handler arrays for fine-grained control:
+ * ```typescript
+ * import { quizzesHandlers } from '@/tests/mocks/handlers';
+ * 
+ * // Use only quiz handlers in a specific test
+ * server.use(...quizzesHandlers);
+ * ```
+ * 
+ * Adding New Handler Modules:
+ * 
+ * 1. Create a new handler file in this directory (e.g., `forums.ts`)
+ * 2. Export a handler array (e.g., `export const forumsHandlers = [...]`)
+ * 3. Import the handler array in this file
+ * 4. Add it to the exports and the unified handlers array
+ * 
+ * @module tests/mocks/handlers
  */
 
-// Import individual handler arrays from feature modules
+import type { RestHandler } from 'msw';
+
+// ============================================================================
+// Authentication & Authorization
+// ============================================================================
+
+/**
+ * MSW handlers for authentication API endpoints.
+ * Includes login, logout, token refresh, and current user retrieval.
+ */
+export { authHandlers } from './auth';
+
+// ============================================================================
+// User Management
+// ============================================================================
+
+/**
+ * MSW handlers for user management API endpoints.
+ * Includes user profile retrieval, updates, dashboard data, courses, and preferences.
+ */
+export { usersHandlers } from './users';
+
+// ============================================================================
+// Course Management
+// ============================================================================
+
+/**
+ * MSW handlers for course management API endpoints.
+ * Includes course listing, details, CRUD operations, enrollment, and content retrieval.
+ */
+export { coursesHandlers } from './courses';
+
+// ============================================================================
+// Learning Activities
+// ============================================================================
+
+/**
+ * MSW handlers for assignment activity API endpoints.
+ * Includes assignment details, submission, grading, feedback, and file management.
+ */
+export { assignmentsHandlers } from './assignments';
+
+/**
+ * MSW handlers for quiz activity API endpoints.
+ * Includes quiz details, attempt management, question rendering, submission, and results review.
+ */
+export { quizzesHandlers } from './quizzes';
+
+// ============================================================================
+// Assessment & Grading
+// ============================================================================
+
+/**
+ * MSW handlers for gradebook API endpoints.
+ * Includes course grades, user grades, grade items, categories, and reports.
+ */
+export { gradesHandlers } from './grades';
+
+// ============================================================================
+// Communication
+// ============================================================================
+
+/**
+ * MSW handlers for messaging and notification API endpoints.
+ * Includes message sending, conversation management, read status, and notifications.
+ */
+export { messagesHandlers } from './messages';
+
+// ============================================================================
+// Unified Handler Collection
+// ============================================================================
+
+/**
+ * Import individual handler arrays for aggregation
+ */
 import { authHandlers } from './auth';
 import { usersHandlers } from './users';
 import { coursesHandlers } from './courses';
 import { assignmentsHandlers } from './assignments';
 import { quizzesHandlers } from './quizzes';
-import { forumsHandlers } from './forums';
-import { choicesHandlers } from './choices';
-import { feedbackHandlers } from './feedback';
-import { h5pHandlers } from './h5p';
 import { gradesHandlers } from './grades';
-import { adminHandlers } from './admin';
-import { filesHandlers } from './files';
+import { messagesHandlers } from './messages';
 
 /**
- * Combined array of all MSW request handlers
+ * Unified collection of all MSW request handlers.
  * 
- * This array contains all handlers from all feature modules, ready to be
- * passed to setupServer() or setupWorker() for MSW configuration.
+ * This array combines handlers from all modules into a single collection
+ * that can be passed directly to MSW's setupServer() function for comprehensive
+ * API mocking across the entire test suite.
  * 
- * The handlers are ordered by feature module:
- * 1. Authentication (4 handlers)
- * 2. Users (multiple handlers)
- * 3. Courses (multiple handlers)
- * 4. Assignments (multiple handlers)
- * 5. Quizzes (multiple handlers)
- * 6. Forums (multiple handlers)
- * 7. Choices (1 handler)
- * 8. Feedback (multiple handlers)
- * 9. H5P (2 handlers)
- * 10. Grades (9 handlers)
- * 11. Admin (multiple handlers)
+ * The handlers are ordered by functional area:
+ * 1. Authentication & Authorization
+ * 2. User Management
+ * 3. Course Management
+ * 4. Learning Activities (Assignments, Quizzes)
+ * 5. Assessment & Grading
+ * 6. Communication (Messages, Notifications)
  * 
- * Total handler count varies based on feature implementation.
+ * @type {RestHandler[]}
  */
-export const handlers = [
+export const handlers: RestHandler[] = [
   ...authHandlers,
   ...usersHandlers,
   ...coursesHandlers,
   ...assignmentsHandlers,
   ...quizzesHandlers,
-  ...forumsHandlers,
-  ...choicesHandlers,
-  ...feedbackHandlers,
-  ...h5pHandlers,
   ...gradesHandlers,
-  ...adminHandlers,
-  ...filesHandlers,
+  ...messagesHandlers,
 ];
 
 /**
- * Re-export individual handler arrays for granular test control
- * 
- * These exports allow tests to import specific handler groups when they
- * need fine-grained control over which endpoints are mocked.
- * 
- * @example
- * ```typescript
- * import { authHandlers } from './mocks/handlers';
- * const server = setupServer(...authHandlers); // Only mock auth endpoints
- * ```
+ * Default export of unified handlers collection.
+ * Provides convenient access when importing the entire handler set.
  */
-export {
-  authHandlers,
-  usersHandlers,
-  coursesHandlers,
-  assignmentsHandlers,
-  quizzesHandlers,
-  forumsHandlers,
-  choicesHandlers,
-  feedbackHandlers,
-  h5pHandlers,
-  gradesHandlers,
-  adminHandlers,
-  filesHandlers,
-};
+export default handlers;
