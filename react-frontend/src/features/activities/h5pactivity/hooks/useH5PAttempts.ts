@@ -16,40 +16,11 @@ import type { UseQueryResult } from '@tanstack/react-query';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/services/api/client';
 import type { ApiResponse } from '@/types/api';
+import type { H5PAttempt } from '../types/h5p.types';
 
 // ============================================================================
 // Type Definitions
 // ============================================================================
-
-/**
- * Represents a single H5P activity attempt with complete metadata.
- */
-interface H5PAttempt {
-  /** Unique attempt identifier */
-  id: number;
-  /** H5P activity instance ID */
-  h5pactivityid: number;
-  /** User ID who made the attempt */
-  userid: number;
-  /** Unix timestamp when attempt was created */
-  timecreated: number;
-  /** Unix timestamp when attempt was last modified */
-  timemodified: number;
-  /** Attempt number (1, 2, 3, etc.) */
-  attempt: number;
-  /** Raw score achieved */
-  rawscore: number;
-  /** Maximum possible score */
-  maxscore: number;
-  /** Duration of attempt in seconds */
-  duration: number;
-  /** Completion status (0 = incomplete, 1 = complete) - optional */
-  completion?: number;
-  /** Success status (0 = failed, 1 = passed) - optional */
-  success?: number;
-  /** Scaled score (0.0 to 1.0) */
-  scaled: number;
-}
 
 /**
  * Scored attempts information with grading metadata.
