@@ -30,7 +30,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import { useState, useMemo, useCallback, type FC } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -55,11 +55,11 @@ import {
 import { Chip } from '@mui/material';
 
 // Internal imports from dependencies
-import { H5PReportCard } from './H5PReportCard';
-import { useH5PAttempts } from '../hooks/useH5PAttempts';
+import H5PReportCard from './H5PReportCard';
+import useH5PAttempts from '../hooks/useH5PAttempts';
 import type { H5PAttempt } from '../types/h5p.types';
 import { DataTable, type DataTableColumn } from '../../../../components/data-display/DataTable';
-import { Pagination } from '../../../../components/data-display/Pagination';
+import Pagination from '../../../../components/data-display/Pagination';
 import { formatDuration } from '../../../../utils/date';
 import { formatNumber } from '../../../../utils/formatters';
 import { LoadingSpinner } from '../../../../components/feedback/LoadingSpinner';
@@ -79,6 +79,11 @@ type CompletionFilter = 'all' | 'completed' | 'incomplete';
  * Success status filter options
  */
 type SuccessFilter = 'all' | 'passed' | 'failed';
+
+/**
+ * Sort field options for attempts data
+ */
+type SortField = 'attempt' | 'timecreated' | 'score' | 'firstname' | 'lastname' | 'id';
 
 /**
  * Filter state interface for attempt filtering
@@ -149,12 +154,12 @@ export interface H5PResultsListProps {
  * Main component for displaying H5P activity attempts with filtering,
  * sorting, and dual view modes (table/card).
  */
-export const H5PResultsList: FC<H5PResultsListProps> = ({
+export function H5PResultsList({
   h5pActivityId,
   userId,
   initialViewMode = 'table',
   pageSize: initialPageSize = 10,
-}) => {
+}: H5PResultsListProps) {
   // ============================================================================
   // State Management
   // ============================================================================
@@ -168,30 +173,36 @@ export const H5PResultsList: FC<H5PResultsListProps> = ({
     success: 'all',
   });
 
-  const [sortField, setSortField] = useState<string>('attemptNumber');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [sortField, _setSortField] = useState<SortField>('attempt');
+  const [sortOrder, _setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // ============================================================================
   // Data Fetching
   // ============================================================================
 
   const {
-    data: attemptsData,
+    attempts: userAttemptsData,
     isLoading,
     isError,
     error,
     refetch,
   } = useH5PAttempts({
-    h5pActivityId,
-    userId,
+    activityId: h5pActivityId,
+    userIds: userId ? [userId] : undefined,
     page: page + 1, // Convert 0-indexed to 1-indexed
-    limit: pageSize,
-    sortBy: sortField as any,
+    perPage: pageSize,
+    sortBy: sortField,
     sortOrder,
   });
 
-  const attempts = attemptsData?.attempts || [];
-  const totalAttempts = attemptsData?.total || 0;
+  // Flatten UserAttempts[] to H5PAttempt[]
+  const attempts = useMemo(() => {
+    return (
+      userAttemptsData
+        ?.flatMap(userAttempts => userAttempts.attempts ?? [])
+        .filter((attempt): attempt is H5PAttempt => attempt != null) ?? []
+    );
+  }, [userAttemptsData]);
 
   // ============================================================================
   // Filtering Logic
@@ -220,20 +231,22 @@ export const H5PResultsList: FC<H5PResultsListProps> = ({
 
     // Filter by score range
     if (filters.minScore !== undefined) {
+      const { minScore } = filters;
       filtered = filtered.filter((attempt) => {
-        const percentage = attempt.maxScore > 0 
-          ? (attempt.score / attempt.maxScore) * 100 
+        const percentage = attempt.maxscore > 0 
+          ? (attempt.rawscore / attempt.maxscore) * 100 
           : 0;
-        return percentage >= filters.minScore!;
+        return percentage >= minScore;
       });
     }
 
     if (filters.maxScore !== undefined) {
+      const { maxScore } = filters;
       filtered = filtered.filter((attempt) => {
-        const percentage = attempt.maxScore > 0 
-          ? (attempt.score / attempt.maxScore) * 100 
+        const percentage = attempt.maxscore > 0 
+          ? (attempt.rawscore / attempt.maxscore) * 100 
           : 0;
-        return percentage <= filters.maxScore!;
+        return percentage <= maxScore;
       });
     }
 
@@ -280,7 +293,7 @@ export const H5PResultsList: FC<H5PResultsListProps> = ({
     
     // Calculate average score percentage
     const scorePercentages = filteredAttempts.map((attempt) =>
-      attempt.maxScore > 0 ? (attempt.score / attempt.maxScore) * 100 : 0
+      attempt.maxscore > 0 ? (attempt.rawscore / attempt.maxscore) * 100 : 0
     );
     const averageScore = scorePercentages.reduce((sum, pct) => sum + pct, 0) / total;
     
@@ -305,6 +318,18 @@ export const H5PResultsList: FC<H5PResultsListProps> = ({
       completionRate: Math.round(completionRate * 10) / 10,
       averageDuration,
     };
+  }, [filteredAttempts]);
+
+  /**
+   * Memoize rows for DataTable to prevent infinite re-render loop.
+   * Creating a new array on every render causes DataTable's useMemo dependencies
+   * to invalidate, triggering re-renders in a cascade.
+   */
+  const tableRows = useMemo(() => {
+    return filteredAttempts.map((attempt) => ({
+      ...attempt,
+      id: attempt.id,
+    }));
   }, [filteredAttempts]);
 
   // ============================================================================
@@ -337,7 +362,7 @@ export const H5PResultsList: FC<H5PResultsListProps> = ({
   }, []);
 
   const handleMinScoreChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = event.target.value;
+    const { value } = event.target;
     setFilters((prev) => ({
       ...prev,
       minScore: value ? parseFloat(value) : undefined,
@@ -346,7 +371,7 @@ export const H5PResultsList: FC<H5PResultsListProps> = ({
   }, []);
 
   const handleMaxScoreChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = event.target.value;
+    const { value } = event.target;
     setFilters((prev) => ({
       ...prev,
       maxScore: value ? parseFloat(value) : undefined,
@@ -367,12 +392,15 @@ export const H5PResultsList: FC<H5PResultsListProps> = ({
   /**
    * Handle pagination change
    */
-  const handlePageChange = useCallback((_event: unknown, newPage: number) => {
+  const handlePageChange = useCallback((newPage: number) => {
     setPage(newPage);
   }, []);
 
-  const handlePageSizeChange = useCallback((event: SelectChangeEvent<number>) => {
-    setPageSize(event.target.value as number);
+  /**
+   * Handle page size change
+   */
+  const handlePageSizeChange = useCallback((size: number) => {
+    setPageSize(size);
     setPage(0);
   }, []);
 
@@ -386,13 +414,13 @@ export const H5PResultsList: FC<H5PResultsListProps> = ({
   const columns: DataTableColumn<H5PAttempt>[] = useMemo(
     () => [
       {
-        field: 'attemptNumber',
+        field: 'attempt',
         headerName: 'Attempt',
         width: 100,
         sortable: true,
         renderCell: (params) => (
           <Typography variant="body2" fontWeight="medium">
-            #{params.row.attemptNumber}
+            #{params.row.attempt}
           </Typography>
         ),
       },
@@ -411,17 +439,17 @@ export const H5PResultsList: FC<H5PResultsListProps> = ({
         },
       },
       {
-        field: 'score',
+        field: 'rawscore',
         headerName: 'Score',
         width: 150,
         sortable: true,
         renderCell: (params) => {
-          const percentage = params.row.maxScore > 0
-            ? ((params.row.score / params.row.maxScore) * 100).toFixed(1)
+          const percentage = params.row.maxscore > 0
+            ? ((params.row.rawscore / params.row.maxscore) * 100).toFixed(1)
             : '0.0';
           return (
             <Typography variant="body2">
-              {formatNumber(params.row.score)} / {formatNumber(params.row.maxScore)}{' '}
+              {formatNumber(params.row.rawscore)} / {formatNumber(params.row.maxscore)}{' '}
               <Typography component="span" variant="caption" color="text.secondary">
                 ({percentage}%)
               </Typography>
@@ -579,7 +607,7 @@ export const H5PResultsList: FC<H5PResultsListProps> = ({
               type="number"
               size="small"
               fullWidth
-              value={filters.minScore || ''}
+              value={filters.minScore ?? ''}
               onChange={handleMinScoreChange}
               inputProps={{ min: 0, max: 100, step: 1 }}
             />
@@ -591,7 +619,7 @@ export const H5PResultsList: FC<H5PResultsListProps> = ({
               type="number"
               size="small"
               fullWidth
-              value={filters.maxScore || ''}
+              value={filters.maxScore ?? ''}
               onChange={handleMaxScoreChange}
               inputProps={{ min: 0, max: 100, step: 1 }}
             />
@@ -603,7 +631,7 @@ export const H5PResultsList: FC<H5PResultsListProps> = ({
               type="date"
               size="small"
               fullWidth
-              value={filters.dateFrom || ''}
+              value={filters.dateFrom ?? ''}
               onChange={handleDateFromChange}
               InputLabelProps={{ shrink: true }}
             />
@@ -615,7 +643,7 @@ export const H5PResultsList: FC<H5PResultsListProps> = ({
               type="date"
               size="small"
               fullWidth
-              value={filters.dateTo || ''}
+              value={filters.dateTo ?? ''}
               onChange={handleDateToChange}
               InputLabelProps={{ shrink: true }}
             />
@@ -674,19 +702,13 @@ export const H5PResultsList: FC<H5PResultsListProps> = ({
     return (
       <DataTable
         columns={columns}
-        rows={filteredAttempts.map((attempt, index) => ({
-          ...attempt,
-          id: attempt.id || `attempt-${index}`,
-        }))}
+        rows={tableRows}
         loading={isLoading}
         page={page}
         pageSize={pageSize}
         totalRows={filteredAttempts.length}
         onPageChange={handlePageChange}
-        onPageSizeChange={(size) => {
-          setPageSize(size);
-          setPage(0);
-        }}
+        onPageSizeChange={handlePageSizeChange}
       />
     );
   }
@@ -701,8 +723,11 @@ export const H5PResultsList: FC<H5PResultsListProps> = ({
           {filteredAttempts
             .slice(page * pageSize, (page + 1) * pageSize)
             .map((attempt) => (
-              <Grid item xs={12} sm={6} md={4} key={attempt.id || attempt.attemptNumber}>
-                <H5PReportCard attempt={attempt} h5pActivityId={h5pActivityId} />
+              <Grid item xs={12} sm={6} md={4} key={attempt.id || attempt.attempt}>
+                <H5PReportCard 
+                  attempt={attempt} 
+                  reportUrl={`/mod/h5pactivity/report.php?a=${h5pActivityId}&attemptid=${attempt.id}`}
+                />
               </Grid>
             ))}
         </Grid>
@@ -710,10 +735,10 @@ export const H5PResultsList: FC<H5PResultsListProps> = ({
         {/* Pagination for card view */}
         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
           <Pagination
-            count={Math.ceil(filteredAttempts.length / pageSize)}
+            variant="simple"
+            count={filteredAttempts.length}
             page={page + 1}
-            onChange={(_, newPage) => setPage(newPage - 1)}
-            color="primary"
+            onPageChange={(newPage: number) => setPage(newPage - 1)}
           />
         </Box>
       </>
@@ -762,6 +787,6 @@ export const H5PResultsList: FC<H5PResultsListProps> = ({
       {viewMode === 'table' ? renderTableView() : renderCardView()}
     </Box>
   );
-};
+}
 
 export default H5PResultsList;
