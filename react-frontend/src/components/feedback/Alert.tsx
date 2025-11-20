@@ -213,6 +213,7 @@ export function Alert({
   return (
     <Collapse in={open} timeout={300} unmountOnExit>
       <MuiAlert
+        data-testid={`alert-${severity}`}
         severity={severity}
         variant={variant}
         icon={icon}
