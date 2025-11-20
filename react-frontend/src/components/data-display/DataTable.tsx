@@ -665,24 +665,50 @@ export function DataTable<T extends { id: string | number }>({
   });
   const [internalSelectedRows, setInternalSelectedRows] = useState<GridRowSelectionModel>(selectedRows);
 
-  // Sync external state changes
+  // Sync external state changes - only update if values actually changed
   useEffect(() => {
-    setInternalSelectedRows(selectedRows);
+    setInternalSelectedRows((prev) => {
+      // Compare arrays by checking if they have same length and same elements
+      if (prev.length !== selectedRows.length || !prev.every((v, i) => v === selectedRows[i])) {
+        return selectedRows;
+      }
+      return prev;
+    });
   }, [selectedRows]);
 
   useEffect(() => {
-    setInternalPaginationModel({ page, pageSize });
+    setInternalPaginationModel((prev) => {
+      // Only create new object if values actually changed
+      if (prev.page !== page || prev.pageSize !== pageSize) {
+        return { page, pageSize };
+      }
+      return prev;
+    });
   }, [page, pageSize]);
 
   useEffect(() => {
     if (sortModel) {
-      setInternalSortModel([{ field: String(sortModel.field), sort: sortModel.order }]);
+      setInternalSortModel((prev) => {
+        // Check if sort model actually changed
+        const newModel = [{ field: String(sortModel.field), sort: sortModel.order }];
+        // Using non-null assertion because we just created newModel with one element
+        if (prev.length !== 1 || prev[0]?.field !== newModel[0]!.field || prev[0]?.sort !== newModel[0]!.sort) {
+          return newModel;
+        }
+        return prev;
+      });
     }
   }, [sortModel]);
 
   useEffect(() => {
     if (filterModel) {
-      setInternalFilterModel(filterModel);
+      setInternalFilterModel((prev) => {
+        // Simple reference check for filter model
+        if (prev !== filterModel) {
+          return filterModel;
+        }
+        return prev;
+      });
     }
   }, [filterModel]);
 
@@ -748,17 +774,20 @@ export function DataTable<T extends { id: string | number }>({
   // Handle pagination changes
   const handlePaginationModelChange = useCallback(
     (model: GridPaginationModel, _details: GridCallbackDetails) => {
-      setInternalPaginationModel(model);
+      setInternalPaginationModel((prev) => {
+        // Only call callbacks if values actually changed
+        if (onPageChange && model.page !== prev.page) {
+          onPageChange(model.page);
+        }
 
-      if (onPageChange && model.page !== internalPaginationModel.page) {
-        onPageChange(model.page);
-      }
+        if (onPageSizeChange && model.pageSize !== prev.pageSize) {
+          onPageSizeChange(model.pageSize);
+        }
 
-      if (onPageSizeChange && model.pageSize !== internalPaginationModel.pageSize) {
-        onPageSizeChange(model.pageSize);
-      }
+        return model;
+      });
     },
-    [onPageChange, onPageSizeChange, internalPaginationModel]
+    [onPageChange, onPageSizeChange]
   );
 
   // Handle selection changes
@@ -797,6 +826,44 @@ export function DataTable<T extends { id: string | number }>({
   );
 
   const NoRowsComponent = useMemo(() => createNoRowsComponent(emptyMessage), [emptyMessage]);
+
+  // Create stable slots object to avoid recreating on every render
+  const slots = useMemo(
+    () => ({
+      toolbar: ToolbarComponent,
+      noRowsOverlay: NoRowsComponent,
+    }),
+    [ToolbarComponent, NoRowsComponent]
+  );
+
+  // Create stable sx styles object to avoid recreating on every render
+  const sxStyles = useMemo(
+    () => ({
+      border: 1,
+      borderColor: 'divider',
+      '& .MuiDataGrid-cell:focus': {
+        outline: '2px solid',
+        outlineColor: 'primary.main',
+        outlineOffset: -1,
+      },
+      '& .MuiDataGrid-cell:focus-within': {
+        outline: '2px solid',
+        outlineColor: 'primary.main',
+        outlineOffset: -1,
+      },
+      '& .MuiDataGrid-columnHeader:focus': {
+        outline: '2px solid',
+        outlineColor: 'primary.main',
+        outlineOffset: -1,
+      },
+      '& .MuiDataGrid-columnHeader:focus-within': {
+        outline: '2px solid',
+        outlineColor: 'primary.main',
+        outlineOffset: -1,
+      },
+    }),
+    []
+  );
 
   // Render loading state
   if (loading && rows.length === 0) {
@@ -863,34 +930,8 @@ export function DataTable<T extends { id: string | number }>({
         hideFooter={hideFooter}
         hideFooterPagination={hideFooterPagination}
         hideFooterSelectedRowCount={hideFooterSelectedRowCount}
-        slots={{
-          toolbar: ToolbarComponent,
-          noRowsOverlay: NoRowsComponent,
-        }}
-        sx={{
-          border: 1,
-          borderColor: 'divider',
-          '& .MuiDataGrid-cell:focus': {
-            outline: '2px solid',
-            outlineColor: 'primary.main',
-            outlineOffset: -1,
-          },
-          '& .MuiDataGrid-cell:focus-within': {
-            outline: '2px solid',
-            outlineColor: 'primary.main',
-            outlineOffset: -1,
-          },
-          '& .MuiDataGrid-columnHeader:focus': {
-            outline: '2px solid',
-            outlineColor: 'primary.main',
-            outlineOffset: -1,
-          },
-          '& .MuiDataGrid-columnHeader:focus-within': {
-            outline: '2px solid',
-            outlineColor: 'primary.main',
-            outlineOffset: -1,
-          },
-        }}
+        slots={slots}
+        sx={sxStyles}
         aria-label={ariaLabel}
       />
     </Box>
