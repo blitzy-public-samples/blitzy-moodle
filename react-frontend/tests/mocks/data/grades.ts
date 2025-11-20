@@ -20,13 +20,9 @@ import type { Grade, GradeItem } from '@/types/entities';
 import type {
   GradeId,
   CourseId,
-  UserId,
   Id,
   Timestamp,
 } from '@/types/common';
-import { mockCourse } from './courses';
-import { mockUser } from './users';
-import { mockAssignment } from './assignments';
 
 // ============================================================================
 // Type Utilities
@@ -533,14 +529,16 @@ export function mockCourseGradebook(
       const userid = j + 2; // Start from userid 2
       
       // Generate varied grade distribution (mix of high, medium, low)
+      // gradepass is always defined by mockGradeItem with default of 50
+      const gradepass = item.gradepass ?? 50;
       let rawgrade: number;
       const rand = Math.random();
       if (rand < 0.7) {
         // 70% passing grades
-        rawgrade = generateRandomGrade(item.gradepass!, item.grademax);
+        rawgrade = generateRandomGrade(gradepass, item.grademax);
       } else {
         // 30% failing grades
-        rawgrade = generateRandomGrade(item.grademin, item.gradepass! - 1);
+        rawgrade = generateRandomGrade(item.grademin, gradepass - 1);
       }
       
       grades.push(mockGrade({
@@ -551,7 +549,7 @@ export function mockCourseGradebook(
         rawgrademax: item.grademax,
         rawgrademin: item.grademin,
         finalgrade: calculateFinalGrade(rawgrade, item.multfactor, item.plusfactor),
-        feedback: rawgrade >= item.gradepass! ? 'Good work!' : 'Needs improvement',
+        feedback: rawgrade >= gradepass ? 'Good work!' : 'Needs improvement',
       }));
     }
   }
