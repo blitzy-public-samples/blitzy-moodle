@@ -40,7 +40,7 @@
  * @module tests/mocks/handlers
  */
 
-import type { RestHandler } from 'msw';
+import type { RequestHandler } from 'msw';
 
 // ============================================================================
 // Authentication & Authorization
@@ -88,6 +88,30 @@ export { assignmentsHandlers } from './assignments';
  */
 export { quizzesHandlers } from './quizzes';
 
+/**
+ * MSW handlers for forum activity API endpoints.
+ * Includes forum discussions, posts, subscriptions, and read status management.
+ */
+export { forumsHandlers } from './forums';
+
+/**
+ * MSW handlers for choice activity API endpoints.
+ * Includes choice details, response submission, and results viewing.
+ */
+export { choicesHandlers } from './choices';
+
+/**
+ * MSW handlers for feedback activity API endpoints.
+ * Includes feedback form details, response submission, and results analysis.
+ */
+export { feedbackHandlers } from './feedback';
+
+/**
+ * MSW handlers for H5P interactive content API endpoints.
+ * Includes H5P content details, attempt tracking, and results retrieval.
+ */
+export { h5pHandlers } from './h5p';
+
 // ============================================================================
 // Assessment & Grading
 // ============================================================================
@@ -109,6 +133,26 @@ export { gradesHandlers } from './grades';
 export { messagesHandlers } from './messages';
 
 // ============================================================================
+// File Management
+// ============================================================================
+
+/**
+ * MSW handlers for file management API endpoints.
+ * Includes file upload, download, deletion, repository browsing, and thumbnail generation.
+ */
+export { filesHandlers } from './files';
+
+// ============================================================================
+// Administration
+// ============================================================================
+
+/**
+ * MSW handlers for administrative API endpoints.
+ * Includes user management, course administration, role assignment, settings, and plugin configuration.
+ */
+export { adminHandlers } from './admin';
+
+// ============================================================================
 // Unified Handler Collection
 // ============================================================================
 
@@ -120,8 +164,14 @@ import { usersHandlers } from './users';
 import { coursesHandlers } from './courses';
 import { assignmentsHandlers } from './assignments';
 import { quizzesHandlers } from './quizzes';
+import { forumsHandlers } from './forums';
+import { choicesHandlers } from './choices';
+import { feedbackHandlers } from './feedback';
+import { h5pHandlers } from './h5p';
 import { gradesHandlers } from './grades';
 import { messagesHandlers } from './messages';
+import { filesHandlers } from './files';
+import { adminHandlers } from './admin';
 
 /**
  * Unified collection of all MSW request handlers.
@@ -134,20 +184,28 @@ import { messagesHandlers } from './messages';
  * 1. Authentication & Authorization
  * 2. User Management
  * 3. Course Management
- * 4. Learning Activities (Assignments, Quizzes)
+ * 4. Learning Activities (Assignments, Quizzes, Forums, Choices, Feedback, H5P)
  * 5. Assessment & Grading
  * 6. Communication (Messages, Notifications)
+ * 7. File Management
+ * 8. Administration
  * 
- * @type {RestHandler[]}
+ * @type {RequestHandler[]}
  */
-export const handlers: RestHandler[] = [
+export const handlers: RequestHandler[] = [
   ...authHandlers,
   ...usersHandlers,
   ...coursesHandlers,
   ...assignmentsHandlers,
   ...quizzesHandlers,
+  ...forumsHandlers,
+  ...choicesHandlers,
+  ...feedbackHandlers,
+  ...h5pHandlers,
   ...gradesHandlers,
   ...messagesHandlers,
+  ...filesHandlers,
+  ...adminHandlers,
 ];
 
 /**
