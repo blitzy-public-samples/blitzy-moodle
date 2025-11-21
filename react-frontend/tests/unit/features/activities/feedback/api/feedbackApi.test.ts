@@ -168,14 +168,12 @@ const mockFeedbackAnalysis: FeedbackAnalysis = {
 };
 
 const mockFeedbackStatus: FeedbackStatus = {
+  isCompleted: false,
+  attemptCount: 0,
+  allowMultiple: false,
   isOpen: true,
-  canComplete: true,
-  canSubmit: true,
-  isSubmitted: false,
-  isAnonymous: false,
-  multipleSubmit: false,
-  resumePage: 0,
-  completedId: null,
+  timeOpen: 0,
+  timeClose: 0,
 };
 
 const mockFeedbackResponses: FeedbackUserResponses[] = [
@@ -414,11 +412,10 @@ describe('Feedback API Client', () => {
 
   describe('submitFeedbackResponse() / completeFeedback()', () => {
     const feedbackId = 1;
-    const validResponses: FeedbackResponses = {
+    const validResponses: Record<number, string | number> = {
       1: '4',
       2: 'Great content and well-structured',
       3: 'Yes',
-      gopage: 0,
     };
 
     it('should successfully submit feedback response', async () => {
@@ -464,7 +461,7 @@ describe('Feedback API Client', () => {
     });
 
     it('should handle validation errors for incomplete responses', async () => {
-      const incompleteResponses: FeedbackResponses = {
+      const incompleteResponses: Record<number, string | number> = {
         1: '4',
         // Missing required question 3
       };
@@ -491,7 +488,7 @@ describe('Feedback API Client', () => {
     });
 
     it('should handle validation errors for invalid data types', async () => {
-      const invalidResponses: FeedbackResponses = {
+      const invalidResponses: Record<number, string | number> = {
         1: 'not-a-number', // Should be numeric for rating
         2: 'Valid text',
         3: 'Yes',
@@ -792,9 +789,8 @@ describe('Feedback API Client', () => {
     it('should indicate completion state (completed/incomplete)', async () => {
       const completedStatus: FeedbackStatus = {
         ...mockFeedbackStatus,
-        isSubmitted: true,
-        canSubmit: false,
-        completedId: 1,
+        isCompleted: true,
+        attemptCount: 1,
       };
 
       server.use(
@@ -808,15 +804,13 @@ describe('Feedback API Client', () => {
 
       const response = await getFeedbackStatus(feedbackId);
 
-      expect(response.data.isSubmitted).toBe(true);
-      expect(response.data.canSubmit).toBe(false);
-      expect(response.data.completedId).toBe(1);
+      expect(response.data.isCompleted).toBe(true);
+      expect(response.data.attemptCount).toBe(1);
     });
 
     it('should handle anonymous feedback status', async () => {
       const anonymousStatus: FeedbackStatus = {
         ...mockFeedbackStatus,
-        isAnonymous: true,
       };
 
       server.use(
@@ -830,15 +824,15 @@ describe('Feedback API Client', () => {
 
       const response = await getFeedbackStatus(feedbackId);
 
-      expect(response.data.isAnonymous).toBe(true);
+      expect(response.data.isOpen).toBe(true);
     });
 
     it('should support multiple completion status', async () => {
       const multipleSubmitStatus: FeedbackStatus = {
         ...mockFeedbackStatus,
-        multipleSubmit: true,
-        isSubmitted: true,
-        canSubmit: true, // Can submit again
+        allowMultiple: true,
+        isCompleted: true,
+        attemptCount: 2,
       };
 
       server.use(
@@ -852,17 +846,16 @@ describe('Feedback API Client', () => {
 
       const response = await getFeedbackStatus(feedbackId);
 
-      expect(response.data.multipleSubmit).toBe(true);
-      expect(response.data.isSubmitted).toBe(true);
-      expect(response.data.canSubmit).toBe(true);
+      expect(response.data.allowMultiple).toBe(true);
+      expect(response.data.isCompleted).toBe(true);
+      expect(response.data.attemptCount).toBe(2);
     });
 
     it('should include response metadata (submission timestamp, attempt number)', async () => {
       const statusWithMetadata: FeedbackStatus = {
         ...mockFeedbackStatus,
-        isSubmitted: true,
-        completedId: 5,
-        resumePage: 0,
+        isCompleted: true,
+        attemptCount: 1,
       };
 
       server.use(
@@ -880,7 +873,8 @@ describe('Feedback API Client', () => {
 
       const response = await getFeedbackStatus(feedbackId);
 
-      expect(response.data.completedId).toBe(5);
+      expect(response.data.isCompleted).toBe(true);
+      expect(response.data.attemptCount).toBe(1);
       expect(response.meta).toHaveProperty('submissionTimestamp');
       expect(response.meta).toHaveProperty('attemptNumber');
     });
@@ -1080,10 +1074,9 @@ describe('Feedback API Client', () => {
 
   describe('saveProgress()', () => {
     const feedbackId = 1;
-    const partialResponses: FeedbackResponses = {
+    const partialResponses: Record<number, string | number> = {
       1: '4',
       2: 'Work in progress...',
-      gopage: 1,
     };
 
     it('should successfully save in-progress feedback responses', async () => {
@@ -1278,8 +1271,8 @@ describe('Feedback API Client', () => {
     it('should validate union types for different response states', async () => {
       // Test different status states
       const statuses: FeedbackStatus[] = [
-        { ...mockFeedbackStatus, isSubmitted: false, completedId: null },
-        { ...mockFeedbackStatus, isSubmitted: true, completedId: 1 },
+        { ...mockFeedbackStatus, isCompleted: false, attemptCount: 0 },
+        { ...mockFeedbackStatus, isCompleted: true, attemptCount: 1 },
       ];
 
       for (const status of statuses) {
