@@ -691,8 +691,8 @@ export function DataTable<T extends { id: string | number }>({
       setInternalSortModel((prev) => {
         // Check if sort model actually changed
         const newModel = [{ field: String(sortModel.field), sort: sortModel.order }];
-        const newSortItem = newModel[0]!; // Safe to assert: we just created the array with one element
-        if (prev.length !== 1 || prev[0]?.field !== newSortItem.field || prev[0]?.sort !== newSortItem.sort) {
+        const newSortItem = newModel[0];
+        if (newSortItem && (prev.length !== 1 || prev[0]?.field !== newSortItem.field || prev[0]?.sort !== newSortItem.sort)) {
           return newModel;
         }
         return prev;

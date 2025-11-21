@@ -68,7 +68,7 @@ test.describe('Private Messaging System E2E Tests', () => {
     await user1MessagingPage.waitForMessaging();
   });
 
-  test.afterEach(async ({}, testInfo) => {
+  test.afterEach(async (_, testInfo) => {
     // Capture screenshot on failure
     if (testInfo.status !== testInfo.expectedStatus) {
       const screenshot = await user1Page.screenshot();

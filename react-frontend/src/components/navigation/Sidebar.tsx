@@ -177,7 +177,7 @@ interface MenuItem {
    * Nested menu items displayed in a collapsible section
    * Creates hierarchical navigation structure
    */
-  children?: MenuItem[];
+  children?: readonly MenuItem[];
 
   /**
    * Required roles
@@ -185,7 +185,7 @@ interface MenuItem {
    * If undefined, item is visible to all authenticated users
    * If empty array, item is visible to all users
    */
-  roles?: string[];
+  roles?: readonly string[];
 }
 
 // ============================================================================
@@ -220,7 +220,7 @@ interface MenuItem {
  * Based on Moodle's global_navigation structure and drawer navigation
  * from theme_boost/layout/drawers.php (drawer-open-index user preference)
  */
-const menuItems: MenuItem[] = [
+const menuItems = [
   {
     id: 'dashboard',
     label: 'Dashboard',
@@ -314,7 +314,7 @@ const menuItems: MenuItem[] = [
       },
     ],
   },
-];
+] as const;
 
 // Destructure menu items for type-safe access without non-null assertions
 const [dashboardItem, coursesItem, calendarItem, messagesItem, gradebookItem, adminItem] = menuItems;
@@ -770,31 +770,31 @@ export function Sidebar({ width = DRAWER_WIDTH }: SidebarProps) {
         }}
       >
         {/* Dashboard */}
-        {renderMenuItem(dashboardItem!, 0)}
+        {renderMenuItem(dashboardItem, 0)}
 
         {/* My Courses */}
-        {renderMenuItem(coursesItem!, 0)}
+        {renderMenuItem(coursesItem, 0)}
 
         {/* Divider after primary navigation */}
         <Divider sx={{ marginY: 1 }} />
 
         {/* Calendar */}
-        {renderMenuItem(calendarItem!, 0)}
+        {renderMenuItem(calendarItem, 0)}
 
         {/* Messages */}
-        {renderMenuItem(messagesItem!, 0)}
+        {renderMenuItem(messagesItem, 0)}
 
         {/* Divider after communication tools */}
         <Divider sx={{ marginY: 1 }} />
 
         {/* Gradebook (teachers/admins only) */}
-        {renderMenuItem(gradebookItem!, 0)}
+        {renderMenuItem(gradebookItem, 0)}
 
         {/* Divider before admin section */}
         {user?.roles?.some((role) => role.shortname === 'admin') && <Divider sx={{ marginY: 1 }} />}
 
         {/* Administration (admins only) */}
-        {renderMenuItem(adminItem!, 0)}
+        {renderMenuItem(adminItem, 0)}
       </List>
     </>
   );

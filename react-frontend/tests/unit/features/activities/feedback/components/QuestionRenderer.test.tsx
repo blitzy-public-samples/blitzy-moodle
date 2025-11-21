@@ -474,6 +474,7 @@ describe('QuestionRenderer', () => {
     it('should display numeric value correctly', () => {
       render(<QuestionRenderer {...getBaseProps()} value={42} />);
       
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
       const input = screen.getByLabelText('Enter your score') as HTMLInputElement;
       expect(input.value).toBe('42');
     });
@@ -585,6 +586,7 @@ describe('QuestionRenderer', () => {
       const longText = 'This is a longer feedback text that spans multiple lines.';
       render(<QuestionRenderer {...getBaseProps()} value={longText} />);
       
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
       const textarea = screen.getByLabelText('Please provide your feedback') as HTMLTextAreaElement;
       expect(textarea.value).toBe(longText);
     });
@@ -689,6 +691,7 @@ describe('QuestionRenderer', () => {
     it('should display textfield value correctly', () => {
       render(<QuestionRenderer {...getBaseProps()} value="Jane Smith" />);
       
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
       const input = screen.getByLabelText('Enter your name') as HTMLInputElement;
       expect(input.value).toBe('Jane Smith');
     });
@@ -1356,6 +1359,7 @@ describe('QuestionRenderer', () => {
       
       render(<QuestionRenderer {...props} />);
       
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
       const input = screen.getByLabelText('Number') as HTMLInputElement;
       expect(input.value).toBe('0');
     });
@@ -1377,6 +1381,7 @@ describe('QuestionRenderer', () => {
       
       render(<QuestionRenderer {...props} />);
       
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
       const input = screen.getByLabelText('Optional') as HTMLInputElement;
       expect(input.value).toBe('');
     });

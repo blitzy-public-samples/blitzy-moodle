@@ -28,6 +28,10 @@ import type { FeedbackItemPresentation } from '@/features/activities/feedback/ty
 // Extend Vitest matchers with jest-axe
 expect.extend(toHaveNoViolations);
 
+/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
+// Type assertions are required when accessing specific HTMLElement properties (value, checked, etc.)
+// Testing Library returns generic HTMLElement, requiring explicit casting to specific element types
+
 describe('QuestionRenderer Component', () => {
   let mockOnChange: ReturnType<typeof vi.fn>;
 
@@ -93,12 +97,12 @@ describe('QuestionRenderer Component', () => {
     it('highlights selected value correctly', () => {
       const { rerender } = render(<QuestionRenderer {...getBaseProps()} value="1" />);
 
-      const option1Radio = screen.getByLabelText('Option 1') as HTMLInputElement;
-      expect(option1Radio.checked).toBe(true);
+      const option1Radio = screen.getByLabelText('Option 1');
+      expect((option1Radio as HTMLInputElement).checked).toBe(true);
 
       rerender(<QuestionRenderer {...getBaseProps()} value="2" />);
-      const option2Radio = screen.getByLabelText('Option 2') as HTMLInputElement;
-      expect(option2Radio.checked).toBe(true);
+      const option2Radio = screen.getByLabelText('Option 2');
+      expect((option2Radio as HTMLInputElement).checked).toBe(true);
     });
 
     it('triggers onChange callback when radio selected', async () => {
@@ -215,15 +219,15 @@ describe('QuestionRenderer Component', () => {
     it('reflects checked state from value prop', () => {
       render(<QuestionRenderer {...getBaseProps()} value={['1', '3']} />);
 
-      const choiceA = screen.getByLabelText('Choice A') as HTMLInputElement;
-      const choiceB = screen.getByLabelText('Choice B') as HTMLInputElement;
-      const choiceC = screen.getByLabelText('Choice C') as HTMLInputElement;
-      const choiceD = screen.getByLabelText('Choice D') as HTMLInputElement;
+      const choiceA = screen.getByLabelText('Choice A');
+      const choiceB = screen.getByLabelText('Choice B');
+      const choiceC = screen.getByLabelText('Choice C');
+      const choiceD = screen.getByLabelText('Choice D');
 
-      expect(choiceA.checked).toBe(true);
-      expect(choiceB.checked).toBe(false);
-      expect(choiceC.checked).toBe(true);
-      expect(choiceD.checked).toBe(false);
+      expect((choiceA as HTMLInputElement).checked).toBe(true);
+      expect((choiceB as HTMLInputElement).checked).toBe(false);
+      expect((choiceC as HTMLInputElement).checked).toBe(true);
+      expect((choiceD as HTMLInputElement).checked).toBe(false);
     });
 
     it('removes value from array when unchecked', async () => {
@@ -301,8 +305,8 @@ describe('QuestionRenderer Component', () => {
     it('sets initial rating from value prop', () => {
       render(<QuestionRenderer {...getBaseProps()} value="3" />);
 
-      const neutralOption = screen.getByLabelText(/Neutral - 3 points/) as HTMLInputElement;
-      expect(neutralOption.checked).toBe(true);
+      const neutralOption = screen.getByLabelText(/Neutral - 3 points/);
+      expect((neutralOption as HTMLInputElement).checked).toBe(true);
     });
 
     it('displays required indicator for required ratings', () => {
@@ -348,9 +352,9 @@ describe('QuestionRenderer Component', () => {
     it('renders number input when type is numeric', () => {
       render(<QuestionRenderer {...getBaseProps()} />);
 
-      const input = screen.getByLabelText('Enter your score') as HTMLInputElement;
+      const input = screen.getByLabelText('Enter your score');
       expect(input).toBeInTheDocument();
-      expect(input.type).toBe('number');
+      expect((input as HTMLInputElement).type).toBe('number');
     });
 
     it('renders MUI TextField with type="number"', () => {
@@ -402,15 +406,15 @@ describe('QuestionRenderer Component', () => {
     it('handles empty value correctly', () => {
       render(<QuestionRenderer {...getBaseProps()} value="" />);
 
-      const input = screen.getByLabelText('Enter your score') as HTMLInputElement;
-      expect(input.value).toBe('');
+      const input = screen.getByLabelText('Enter your score');
+      expect((input as HTMLInputElement).value).toBe('');
     });
 
     it('converts string value to number', () => {
       render(<QuestionRenderer {...getBaseProps()} value={42} />);
 
-      const input = screen.getByLabelText('Enter your score') as HTMLInputElement;
-      expect(input.value).toBe('42');
+      const input = screen.getByLabelText('Enter your score');
+      expect((input as HTMLInputElement).value).toBe('42');
     });
   });
 
@@ -455,11 +459,11 @@ describe('QuestionRenderer Component', () => {
     it('applies rows count from presentation', () => {
       render(<QuestionRenderer {...getBaseProps()} />);
 
-      const textarea = screen.getByLabelText('Enter your comments') as HTMLTextAreaElement;
+      const textarea = screen.getByLabelText('Enter your comments');
       // Check the rows attribute (always a string in HTML)
       expect(textarea).toHaveAttribute('rows', '5');
       // The .rows property should parse to 5
-      expect(Number(textarea.rows)).toBe(5);
+      expect(Number((textarea as HTMLTextAreaElement).rows)).toBe(5);
     });
 
     // eslint-disable-next-line @typescript-eslint/require-await
@@ -478,8 +482,8 @@ describe('QuestionRenderer Component', () => {
     it('applies maxlength attribute from presentation', () => {
       render(<QuestionRenderer {...getBaseProps()} />);
 
-      const textarea = screen.getByLabelText('Enter your comments') as HTMLTextAreaElement;
-      expect(textarea.maxLength).toBe(500);
+      const textarea = screen.getByLabelText('Enter your comments');
+      expect((textarea as HTMLTextAreaElement).maxLength).toBe(500);
     });
 
     it('displays character count when maxlength is set', () => {
@@ -530,9 +534,9 @@ describe('QuestionRenderer Component', () => {
     it('renders text input when type is textfield', () => {
       render(<QuestionRenderer {...getBaseProps()} />);
 
-      const input = screen.getByLabelText('Enter your name') as HTMLInputElement;
+      const input = screen.getByLabelText('Enter your name');
       expect(input).toBeInTheDocument();
-      expect(input.type).toBe('text');
+      expect((input as HTMLInputElement).type).toBe('text');
     });
 
     it('renders MUI TextField single-line', () => {
@@ -558,8 +562,8 @@ describe('QuestionRenderer Component', () => {
     it('applies maxlength validation', () => {
       render(<QuestionRenderer {...getBaseProps()} />);
 
-      const input = screen.getByLabelText('Enter your name') as HTMLInputElement;
-      expect(input.maxLength).toBe(100);
+      const input = screen.getByLabelText('Enter your name');
+      expect((input as HTMLInputElement).maxLength).toBe(100);
     });
 
     it('displays character count when maxlength is set', () => {
@@ -579,11 +583,11 @@ describe('QuestionRenderer Component', () => {
     it('controls input value via value prop', () => {
       const { rerender } = render(<QuestionRenderer {...getBaseProps()} value="Initial" />);
 
-      const input = screen.getByLabelText('Enter your name') as HTMLInputElement;
-      expect(input.value).toBe('Initial');
+      const input = screen.getByLabelText('Enter your name');
+      expect((input as HTMLInputElement).value).toBe('Initial');
 
       rerender(<QuestionRenderer {...getBaseProps()} value="Updated" />);
-      expect(input.value).toBe('Updated');
+      expect((input as HTMLInputElement).value).toBe('Updated');
     });
   });
 
@@ -958,11 +962,11 @@ describe('QuestionRenderer Component', () => {
 
       const { rerender } = render(<QuestionRenderer {...props} />);
 
-      const input = screen.getByLabelText('Controlled Input') as HTMLInputElement;
-      expect(input.value).toBe('Initial Value');
+      const input = screen.getByLabelText('Controlled Input');
+      expect((input as HTMLInputElement).value).toBe('Initial Value');
 
       rerender(<QuestionRenderer {...props} value="Updated Value" />);
-      expect(input.value).toBe('Updated Value');
+      expect((input as HTMLInputElement).value).toBe('Updated Value');
     });
 
     it('controls numeric input value via value prop', () => {
@@ -982,8 +986,8 @@ describe('QuestionRenderer Component', () => {
 
       render(<QuestionRenderer {...props} />);
 
-      const input = screen.getByLabelText('Score') as HTMLInputElement;
-      expect(input.value).toBe('50');
+      const input = screen.getByLabelText('Score');
+      expect((input as HTMLInputElement).value).toBe('50');
     });
 
     it('controls radio selection via value prop', () => {
@@ -1009,8 +1013,8 @@ describe('QuestionRenderer Component', () => {
 
       render(<QuestionRenderer {...props} />);
 
-      const optionB = screen.getByLabelText('B') as HTMLInputElement;
-      expect(optionB.checked).toBe(true);
+      const optionB = screen.getByLabelText('B');
+      expect((optionB as HTMLInputElement).checked).toBe(true);
     });
 
     it('controls checkbox selections via array value prop', () => {
