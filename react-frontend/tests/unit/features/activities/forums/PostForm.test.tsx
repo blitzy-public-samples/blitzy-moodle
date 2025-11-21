@@ -21,7 +21,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, within, fireEvent, act, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { PostForm, PostFormProps } from '@/features/activities/forums/components/PostForm';
+import type { PostFormProps } from '@/features/activities/forums/components/PostForm';
+import { PostForm } from '@/features/activities/forums/components/PostForm';
 
 // Mock dependencies
 vi.mock('@/features/activities/forums/hooks/useCreatePost', () => ({
@@ -68,6 +69,7 @@ import { useUpdatePost } from '@/features/activities/forums/hooks/useUpdatePost'
 import { useSaveDraft } from '@/features/activities/forums/hooks/useSaveDraft';
 import { useMultiFileUpload } from '@/hooks/useMultiFileUpload';
 import type { Post } from '@/features/activities/forums/types/forum.types';
+import type * as UseSaveDraftModule from '@/features/activities/forums/hooks/useSaveDraft';
 
 describe('PostForm Component', () => {
   let queryClient: QueryClient;
@@ -654,7 +656,7 @@ describe('PostForm Component', () => {
       vi.useRealTimers();
       
       // Import the actual hook implementation
-      const actualModule = await vi.importActual<typeof import('@/features/activities/forums/hooks/useSaveDraft')>(
+      const actualModule = await vi.importActual<typeof UseSaveDraftModule>(
         '@/features/activities/forums/hooks/useSaveDraft'
       );
       

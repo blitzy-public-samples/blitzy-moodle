@@ -22,7 +22,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { ForumPage } from './pages/ForumPage';
 import { loginAsStudent, loginAsTeacher, isAuthenticated, logout } from './utils/auth';
-import { testCourse4 } from './fixtures/courses';
+import { testCourse4 } from '../../src/mocks/fixtures/courses';
 import { generateTestFile } from './utils/file-helpers';
 import { waitForApiResponse } from './utils/wait-helpers';
 

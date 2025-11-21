@@ -96,14 +96,14 @@ interface ProcessedChapter {
  * />
  * ```
  */
-const ChapterList: React.FC<ChapterListProps> = ({
+function ChapterList({
   chapters,
   currentChapterId,
   book,
   onChapterClick,
   canViewHidden,
   isEditing: _isEditing = false,
-}) => {
+}: ChapterListProps) {
   /**
    * Process chapters to compute display numbers and visibility
    *
@@ -174,14 +174,12 @@ const ChapterList: React.FC<ChapterListProps> = ({
             const parentNumber = isParentHidden ? 'x' : chapterNumber;
             displayNumber = `${parentNumber}.${subchapterNumber}`;
           }
-        } else {
-          // Hidden subchapter
-          if (book.numbering === 1) {
-            if (isParentHidden) {
-              displayNumber = 'x.x';
-            } else {
-              displayNumber = `${chapterNumber}.x`;
-            }
+        } else if (book.numbering === 1) {
+          // Hidden subchapter with numbered display
+          if (isParentHidden) {
+            displayNumber = 'x.x';
+          } else {
+            displayNumber = `${chapterNumber}.x`;
           }
         }
       }
@@ -290,17 +288,18 @@ const ChapterList: React.FC<ChapterListProps> = ({
     const currentMainChapterItems: React.ReactNode[] = [];
     let subchapterElements: React.ReactNode[] = [];
     let inSubchapterGroup = false;
+    let currentParentChapterId: number | null = null;
 
     processedChapters.forEach((processedChapter, index) => {
-      const { level } = processedChapter;
+      const { level, chapter } = processedChapter;
 
       if (level === 0) {
         // Main chapter
 
         // If we were processing subchapters, close that group
-        if (inSubchapterGroup && subchapterElements.length > 0) {
+        if (inSubchapterGroup && subchapterElements.length > 0 && currentParentChapterId !== null) {
           currentMainChapterItems.push(
-            <List key={`sub-${index}`} disablePadding sx={{ pl: 2 }}>
+            <List key={`sub-${currentParentChapterId}`} disablePadding sx={{ pl: 2 }}>
               {subchapterElements}
             </List>
           );
@@ -311,8 +310,9 @@ const ChapterList: React.FC<ChapterListProps> = ({
         // Add the main chapter
         currentMainChapterItems.push(renderChapter(processedChapter, index));
 
-        // Start a new subchapter group
+        // Start a new subchapter group with this main chapter as parent
         inSubchapterGroup = true;
+        currentParentChapterId = chapter.id;
       } else {
         // Subchapter
         subchapterElements.push(renderChapter(processedChapter, index));
@@ -370,6 +370,6 @@ const ChapterList: React.FC<ChapterListProps> = ({
       </List>
     </Box>
   );
-};
+}
 
 export default ChapterList;

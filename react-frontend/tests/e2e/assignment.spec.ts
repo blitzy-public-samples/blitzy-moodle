@@ -10,13 +10,13 @@ import {
   waitForUploadComplete,
   cleanupTestFiles 
 } from './utils/file-helpers';
-import { testCourse4 } from './fixtures/courses';
+import { testCourse4 } from '../../src/mocks/fixtures/courses';
 import { 
   testAssignment1, 
   testAssignment2, 
   testAssignment3, 
   testAssignment4
-} from './fixtures/assignments';
+} from '../../src/mocks/fixtures/assignments';
 
 /**
  * E2E Test Suite: Assignment Submission Workflow

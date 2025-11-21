@@ -29,8 +29,8 @@ import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { SearchPage } from './pages/SearchPage';
 import { loginAsStudent } from './utils/auth';
-import { testCourse4 } from './fixtures/courses';
-import { testStudent } from './fixtures/users';
+import { testCourse4 } from '../../src/mocks/fixtures/courses';
+import { testStudent } from '../../src/mocks/fixtures/users';
 import { waitForCondition } from './utils/wait-helpers';
 import { captureOnFailure } from './utils/screenshot-helpers';
 
@@ -71,7 +71,7 @@ test.describe('Global Search Functionality', () => {
    * Automatically captures full page screenshot when test fails
    * to facilitate debugging of search UI and results display issues.
    */
-  test.afterEach(async (_context, testInfo) => {
+  test.afterEach(async ({}, testInfo) => {
     await captureOnFailure(page, testInfo);
     
     // Close page after test

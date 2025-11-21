@@ -8,7 +8,6 @@
  * @module features/dashboard/pages
  */
 
-import type React from 'react';
 import { Box, Grid, Typography, Paper } from '@mui/material';
 import { AppLayout } from '../../../components/layouts/AppLayout';
 
@@ -20,7 +19,7 @@ import { AppLayout } from '../../../components/layouts/AppLayout';
  *
  * @returns React component displaying the dashboard
  */
-export const DashboardPage: React.FC = () => {
+export function DashboardPage() {
   return (
     <AppLayout>
       <Box sx={{ py: 4 }} data-testid="dashboard-container">
@@ -122,6 +121,6 @@ export const DashboardPage: React.FC = () => {
       </Box>
     </AppLayout>
   );
-};
+}
 
 export default DashboardPage;

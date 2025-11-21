@@ -207,6 +207,21 @@ module.exports = {
       },
     },
     {
+      // Test infrastructure: mock handlers, fixtures, test utilities
+      files: ['tests/**/*.ts', 'tests/**/*.tsx', 'src/mocks/**/*.ts'],
+      env: {
+        jest: true,
+        node: true,
+      },
+      rules: {
+        '@typescript-eslint/no-explicit-any': 'off', // Allow 'any' in test infrastructure
+        '@typescript-eslint/no-non-null-assertion': 'off', // Allow ! in test infrastructure
+        'no-console': 'off', // Allow console in test infrastructure for debugging
+        '@typescript-eslint/prefer-nullish-coalescing': 'off', // Relax for test data
+        'prefer-destructuring': 'off', // Relax for test data construction
+      },
+    },
+    {
       // Storybook stories
       files: ['**/*.stories.tsx', '**/*.stories.ts'],
       rules: {

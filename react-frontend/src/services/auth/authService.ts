@@ -269,11 +269,6 @@ export function setTokens(accessToken: string, refreshToken: string): void {
   // Store tokens in localStorage (falls back to in-memory if unavailable)
   setItem(ACCESS_TOKEN_KEY, accessToken, 'local');
   setItem(REFRESH_TOKEN_KEY, refreshToken, 'local');
-
-  // In production, never log token values
-  if (import.meta.env.DEV) {
-    console.debug('[AuthService] Tokens stored successfully');
-  }
 }
 
 /**
@@ -304,10 +299,6 @@ export function setTokens(accessToken: string, refreshToken: string): void {
 export function clearTokens(): void {
   removeItem(ACCESS_TOKEN_KEY, 'local');
   removeItem(REFRESH_TOKEN_KEY, 'local');
-
-  if (import.meta.env.DEV) {
-    console.debug('[AuthService] Tokens cleared');
-  }
 }
 
 // ============================================================================
@@ -373,13 +364,6 @@ export function isTokenExpired(token: string): boolean {
     // Consider token expired if it will expire within the buffer time
     // This ensures we refresh tokens proactively before they actually expire
     const isExpired = decoded.exp <= currentTimeSeconds + EXPIRATION_BUFFER_SECONDS;
-
-    if (import.meta.env.DEV && isExpired) {
-      const timeUntilExpiration = decoded.exp - currentTimeSeconds;
-      console.debug(
-        `[AuthService] Token expired or expiring soon (${timeUntilExpiration}s remaining)`
-      );
-    }
 
     return isExpired;
   } catch (error) {
@@ -505,10 +489,6 @@ export async function refreshAccessToken(): Promise<string> {
         throw new Error('Refresh token expired - user must login again');
       }
 
-      if (import.meta.env.DEV) {
-        console.debug('[AuthService] Refreshing access token...');
-      }
-
       // Call the refresh endpoint
       // Note: Using axios directly instead of apiClient to avoid circular dependency
       // (apiClient interceptor depends on this authService)
@@ -537,10 +517,6 @@ export async function refreshAccessToken(): Promise<string> {
 
       // Store new tokens (token rotation)
       setTokens(accessToken, newRefreshToken);
-
-      if (import.meta.env.DEV) {
-        console.debug('[AuthService] Access token refreshed successfully');
-      }
 
       // Return new access token
       return accessToken;
@@ -714,10 +690,6 @@ export async function logout(): Promise<void> {
 
     // If we have a token, try to blacklist it on the server
     if (token) {
-      if (import.meta.env.DEV) {
-        console.debug('[AuthService] Calling logout API to blacklist token...');
-      }
-
       // Call the API to blacklist the token on the server
       // Note: Using axios directly instead of apiClient to avoid circular dependency
       await axios.post(
@@ -732,10 +704,6 @@ export async function logout(): Promise<void> {
           timeout: 5000,
         }
       );
-
-      if (import.meta.env.DEV) {
-        console.debug('[AuthService] Token blacklisted on server');
-      }
     }
   } catch (error) {
     // Log error but don't throw - we still want to clear local tokens
@@ -752,10 +720,6 @@ export async function logout(): Promise<void> {
     // ALWAYS clear tokens locally, regardless of API call success
     // This ensures user can logout even if backend is down
     clearTokens();
-
-    if (import.meta.env.DEV) {
-      console.debug('[AuthService] Logout complete - tokens cleared');
-    }
   }
 }
 
@@ -788,10 +752,6 @@ export async function logout(): Promise<void> {
  */
 export function __resetAuthState(): void {
   refreshPromise = null;
-  
-  if (import.meta.env.DEV) {
-    console.debug('[AuthService] Test utility: internal state reset');
-  }
 }
 
 // ============================================================================

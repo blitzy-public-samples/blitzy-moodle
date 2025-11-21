@@ -85,24 +85,18 @@ export function AuthInitializer({ children }: { children: ReactNode }): ReactNod
      * and hydrates the Redux store.
      */
     const initializeAuthState = (): void => {
-      console.log('[AuthInitializer] Starting authentication initialization...');
-
       // Step 1: Check for stored access token
       const accessToken = getAccessToken();
       const refreshToken = getRefreshToken();
 
       if (!accessToken || !refreshToken) {
-        console.log('[AuthInitializer] No stored tokens found. User is not authenticated.');
         return;
       }
-
-      console.log('[AuthInitializer] Found stored tokens. Validating...');
 
       // Step 2: Validate access token is not expired
       // Note: Even if expired, we proceed because the API interceptor will refresh it
       const isExpired = isTokenExpired(accessToken);
       if (isExpired) {
-        console.log('[AuthInitializer] Access token is expired. Will be refreshed on first API call.');
         // Continue anyway - the refresh token might still be valid
         // The API interceptor will handle refreshing the access token
       }
@@ -113,8 +107,6 @@ export function AuthInitializer({ children }: { children: ReactNode }): ReactNod
         console.warn('[AuthInitializer] Failed to extract user from token. Token may be invalid.');
         return;
       }
-
-      console.log(`[AuthInitializer] Extracted user from token: ID=${tokenUser.id}, username=${tokenUser.username}`);
 
       // Step 4: Construct auth state objects
       // Note: We create a minimal User object from token data.
@@ -137,11 +129,11 @@ export function AuthInitializer({ children }: { children: ReactNode }): ReactNod
 
       const user: User = {
         id: tokenUser.id,
-        username: tokenUser.username || '',
+        username: tokenUser.username ?? '',
         email: '', // Not in token payload
         firstname: '', // Not in token payload
         lastname: '', // Not in token payload
-        fullname: tokenUser.username || '', // Use username as fallback
+        fullname: tokenUser.username ?? '', // Use username as fallback
         auth: 'jwt',
         confirmed: true,
         suspended: false,
@@ -150,7 +142,7 @@ export function AuthInitializer({ children }: { children: ReactNode }): ReactNod
           name: roleName,
           shortname: roleName,
           archetype: mapToRoleArchetype(roleName),
-        })) || [],
+        })) ?? [],
         capabilities: [], // Not available from token
       };
 
@@ -162,11 +154,7 @@ export function AuthInitializer({ children }: { children: ReactNode }): ReactNod
       };
 
       // Step 5: Dispatch Redux action to hydrate store
-      console.log('[AuthInitializer] Dispatching initializeAuth action to Redux store...');
       dispatch(initializeAuth({ user, tokens }));
-
-      console.log('[AuthInitializer] Authentication state initialized successfully!');
-      console.log('[AuthInitializer] Redux store is now synchronized with localStorage.');
     };
 
     // Run initialization synchronously
@@ -182,5 +170,5 @@ export function AuthInitializer({ children }: { children: ReactNode }): ReactNod
     return null;
   }
 
-  return <>{children}</>;
+  return children;
 }

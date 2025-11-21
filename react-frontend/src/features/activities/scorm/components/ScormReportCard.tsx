@@ -326,9 +326,7 @@ export function ScormReportCard({
     });
 
     // Use report-level completionPercentage if available, otherwise calculate from SCO progress
-    const completionPercentage = report.completionPercentage !== undefined
-      ? report.completionPercentage
-      : totalScos > 0 ? Math.round((completedScos / totalScos) * 100) : 0;
+    const completionPercentage = report.completionPercentage ?? (totalScos > 0 ? Math.round((completedScos / totalScos) * 100) : 0);
 
     // Get current attempt data
     // Use attemptNumber prop if provided, otherwise fall back to report.currentAttempt
@@ -360,7 +358,7 @@ export function ScormReportCard({
           obj.status?.toLowerCase() === 'passed'
       ).length,
     };
-  }, [report]);
+  }, [report, attemptNumber]);
 
   // Loading state
   if (isLoading) {

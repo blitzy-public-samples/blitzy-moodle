@@ -218,8 +218,8 @@ describe('QuizNavigation Component', () => {
     it('should handle all questions flagged edge case', () => {
       const questions = createMockQuestions(10);
       questions.forEach((q, _index) => {
-        q!.flagged = true;
-        q!.isCurrentQuestion = false;
+        q.flagged = true;
+        q.isCurrentQuestion = false;
       });
 
       const props = createDefaultProps({ questions, currentQuestionIndex: 0 });
@@ -360,7 +360,7 @@ describe('QuizNavigation Component', () => {
 
     it('should show 0% progress when no questions answered', () => {
       const questions = createMockQuestions(10);
-      questions.forEach((q) => (q!.answered = false));
+      questions.forEach((q) => (q.answered = false));
 
       const props = createDefaultProps({ questions });
       const { container } = render(<QuizNavigation {...props} />);
@@ -372,7 +372,7 @@ describe('QuizNavigation Component', () => {
 
     it('should show 50% progress when half questions answered', () => {
       const questions = createMockQuestions(10);
-      questions.slice(0, 5).forEach((q) => (q!.answered = true));
+      questions.slice(0, 5).forEach((q) => (q.answered = true));
 
       const props = createDefaultProps({ questions });
       render(<QuizNavigation {...props} />);
@@ -383,7 +383,7 @@ describe('QuizNavigation Component', () => {
 
     it('should show 100% progress when all questions answered', () => {
       const questions = createMockQuestions(10);
-      questions.forEach((q) => (q!.answered = true));
+      questions.forEach((q) => (q.answered = true));
 
       const props = createDefaultProps({ questions });
       render(<QuizNavigation {...props} />);
@@ -409,7 +409,7 @@ describe('QuizNavigation Component', () => {
 
     it('should calculate progress percentage correctly', () => {
       const questions = createMockQuestions(15);
-      questions.slice(0, 10).forEach((q) => (q!.answered = true));
+      questions.slice(0, 10).forEach((q) => (q.answered = true));
 
       const props = createDefaultProps({ questions });
       render(<QuizNavigation {...props} />);
@@ -445,7 +445,7 @@ describe('QuizNavigation Component', () => {
 
     it('should not display flagged count when no questions flagged', () => {
       const questions = createMockQuestions(10);
-      questions.forEach((q) => (q!.flagged = false));
+      questions.forEach((q) => (q.flagged = false));
 
       const props = createDefaultProps({ questions });
       render(<QuizNavigation {...props} />);
@@ -465,7 +465,7 @@ describe('QuizNavigation Component', () => {
       // Update to have 5 answered and 2 flagged
       // Create new array to trigger useMemo re-evaluation
       const updatedQuestions = questions.map((q, idx) => ({
-        ...q!,
+        ...q,
         answered: idx < 5,
         flagged: idx === 6 || idx === 7,
       }));
@@ -601,7 +601,7 @@ describe('QuizNavigation Component', () => {
       // All buttons should be enabled
       props.questions.forEach((question) => {
         const button = screen.getByRole('button', {
-          name: new RegExp(`Navigate to question ${question!.number}\\b`, 'i'),
+          name: new RegExp(`Navigate to question ${question.number}\\b`, 'i'),
         });
         expect(button).not.toBeDisabled();
       });
@@ -944,7 +944,7 @@ describe('QuizNavigation Component', () => {
 
     it('should handle all questions answered', () => {
       const questions = createMockQuestions(10);
-      questions.forEach((q) => (q!.answered = true));
+      questions.forEach((q) => (q.answered = true));
 
       const props = createDefaultProps({ questions });
       render(<QuizNavigation {...props} />);
@@ -1001,7 +1001,7 @@ describe('QuizNavigation Component', () => {
       // Update some question states
       // Create new array to trigger useMemo re-evaluation
       const updatedQuestions = questions.map((q, idx) => ({
-        ...q!,
+        ...q,
         answered: idx === 0 || idx === 1,
         flagged: idx === 5,
       }));

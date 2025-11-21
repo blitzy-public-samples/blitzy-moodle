@@ -18,8 +18,8 @@ import { test, expect } from '@playwright/test';
 import { AdminRolePage } from './pages/AdminRolePage';
 import { CoursePage } from './pages/CoursePage';
 import { loginAsAdmin, loginAsStudent, logout, isAuthenticated } from './utils/auth';
-import { testStudent } from './fixtures/users';
-import { testCourse1 } from './fixtures/courses';
+import { testStudent } from '../../src/mocks/fixtures/users';
+import { testCourse1 } from '../../src/mocks/fixtures/courses';
 
 test.describe('Admin Role Assignment Workflow', () => {
   let adminPage: Page;

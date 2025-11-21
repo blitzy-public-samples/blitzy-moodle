@@ -19,7 +19,7 @@ import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { login, loginAsStudent, getAuthToken, logout, clearAuthenticationState, isAuthenticated } from './utils/auth';
 import { clearBrowserStorage } from './utils/browser-helpers';
-import { testStudent, TEST_PASSWORD } from './fixtures/users';
+import { testStudent, TEST_PASSWORD } from '../../src/mocks/fixtures/users';
 
 test.describe('Logout Workflow', () => {
   let page: Page;

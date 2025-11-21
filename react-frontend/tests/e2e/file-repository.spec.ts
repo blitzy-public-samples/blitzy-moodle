@@ -36,7 +36,7 @@ import {
 } from './utils/file-helpers';
 import { 
   MAX_FILE_SIZE 
-} from './fixtures/files';
+} from '../../src/mocks/fixtures/files';
 
 test.describe('File Repository E2E Tests', () => {
   const courseId = 5; // Test course ID

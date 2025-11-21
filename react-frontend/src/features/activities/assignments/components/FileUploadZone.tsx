@@ -129,14 +129,14 @@ export interface FileUploadZoneProps {
  * with drag-and-drop support, client-side validation, and progress tracking.
  * Integrates with Material-UI for consistent styling and accessibility.
  */
-const FileUploadZone: React.FC<FileUploadZoneProps> = ({
+function FileUploadZone({
   maxFileSize = 10485760, // 10MB default
   acceptedFileTypes,
   maxFiles,
   onFilesChange,
   disabled = false,
   existingFiles = [],
-}) => {
+}: FileUploadZoneProps) {
   const theme = useTheme();
 
   // ============================================================================
@@ -493,8 +493,8 @@ const FileUploadZone: React.FC<FileUploadZoneProps> = ({
           onClose={() => setErrors([])}
         >
           <Typography variant="body2" component="div">
-            {errors.map((error, index) => (
-              <Box key={index} sx={{ mb: index < errors.length - 1 ? 0.5 : 0 }}>
+            {errors.map((error) => (
+              <Box key={error} sx={{ mb: 0.5 }}>
                 {error}
               </Box>
             ))}
@@ -635,7 +635,7 @@ const FileUploadZone: React.FC<FileUploadZoneProps> = ({
         <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
           <Chip
             label={`Files: ${fileCountDisplay}`}
-            color={files.length >= (maxFiles || 0) ? 'warning' : 'default'}
+            color={files.length >= (maxFiles ?? 0) ? 'warning' : 'default'}
             size="small"
           />
         </Box>
@@ -646,7 +646,7 @@ const FileUploadZone: React.FC<FileUploadZoneProps> = ({
         <List sx={{ mt: 2 }}>
           {files.map((file, index) => (
             <ListItem
-              key={`${file.name}-${index}`}
+              key={file.id ?? `${file.name}-${file.size}-${index}`}
               sx={{
                 border: `1px solid ${theme.palette.divider}`,
                 borderRadius: theme.shape.borderRadius,
@@ -746,6 +746,6 @@ const FileUploadZone: React.FC<FileUploadZoneProps> = ({
       )}
     </Box>
   );
-};
+}
 
 export default FileUploadZone;

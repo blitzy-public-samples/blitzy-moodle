@@ -7,7 +7,6 @@
  * @module features/courses/components/CourseCard
  */
 
-import type React from 'react';
 import {
   Card,
   CardContent,
@@ -59,11 +58,11 @@ export interface CourseCardProps {
  * @param props - Component props
  * @returns Rendered course card
  */
-export const CourseCard: React.FC<CourseCardProps> = ({
+export function CourseCard({
   course,
   onClick,
   className,
-}) => {
+}: CourseCardProps) {
   /**
    * Handle card click
    */
@@ -91,7 +90,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
   };
 
   // Default placeholder image if none provided
-  const imageUrl = course.imageurl || 'https://via.placeholder.com/400x200?text=Course+Image';
+  const imageUrl = course.imageurl ?? 'https://via.placeholder.com/400x200?text=Course+Image';
   
   // Plain text summary
   const plainSummary = course.summary ? getPlainTextSummary(course.summary) : 'No description available';
@@ -301,6 +300,6 @@ export const CourseCard: React.FC<CourseCardProps> = ({
       </CardContent>
     </Card>
   );
-};
+}
 
 export default CourseCard;

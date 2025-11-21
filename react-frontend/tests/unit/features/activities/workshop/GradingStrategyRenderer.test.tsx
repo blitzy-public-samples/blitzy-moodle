@@ -260,12 +260,17 @@ const createMockNumErrorsDimensions = (): GradingDimension[] => {
 // ============================================================================
 
 /**
- * Wrapper component that provides React Hook Form context for testing
+ * Props for TestWrapper component
  */
-const TestWrapper: React.FC<{
+interface TestWrapperProps {
   children: React.ReactNode;
   defaultValues?: Partial<WorkshopAssessmentFormData>;
-}> = ({ children, defaultValues }) => {
+}
+
+/**
+ * Wrapper component that provides React Hook Form context for testing
+ */
+function TestWrapper({ children, defaultValues }: TestWrapperProps) {
   const methods = useForm<WorkshopAssessmentFormData>({
     defaultValues: defaultValues || {
       dimensions: [],
@@ -274,7 +279,7 @@ const TestWrapper: React.FC<{
   });
 
   return <FormProvider {...methods}>{children}</FormProvider>;
-};
+}
 
 /**
  * Helper function to render component with form context

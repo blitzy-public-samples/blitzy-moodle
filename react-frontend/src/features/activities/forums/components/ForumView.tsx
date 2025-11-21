@@ -341,7 +341,8 @@ export const ForumView: React.FC<ForumViewComponentProps> = ({ courseId, forumId
       discussionId = response.discussion.id;
     } else {
       // PostResponse: extends Post with discussionId property
-      discussionId = response.discussionId;
+      const { discussionId: extractedId } = response;
+      discussionId = extractedId;
     }
     
     // Navigate to the newly created discussion

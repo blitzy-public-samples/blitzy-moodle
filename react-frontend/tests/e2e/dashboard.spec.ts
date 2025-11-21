@@ -302,7 +302,7 @@ test.describe('Dashboard E2E Tests', () => {
 
       // Verify all items are assignments (using data from the interface)
       for (const item of filteredItems) {
-        expect(item.activityType!.toLowerCase()).toContain('assignment');
+        expect(item.activityType.toLowerCase()).toContain('assignment');
       }
 
       // Verify count changed (filtered)
@@ -323,7 +323,7 @@ test.describe('Dashboard E2E Tests', () => {
 
       // Verify all items are quizzes (using data from the interface)
       for (const item of filteredItems) {
-        expect(item.activityType!.toLowerCase()).toContain('quiz');
+        expect(item.activityType.toLowerCase()).toContain('quiz');
       }
 
       // Verify count changed (filtered)

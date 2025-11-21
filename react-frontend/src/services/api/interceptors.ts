@@ -212,12 +212,8 @@ function processQueue(error: Error | null, token: string | null = null): void {
 function onRequest(
   config: InternalAxiosRequestConfig
 ): InternalAxiosRequestConfig {
-  console.log('[Interceptor onRequest] ENTRY - config.url:', config.url);
-  console.log('[Interceptor onRequest] ENTRY - config.baseURL:', config.baseURL);
-  
   // Retrieve access token from secure storage
   const token = getAccessToken();
-  console.log('[Interceptor onRequest] token retrieved:', token);
 
   // Inject token into Authorization header if available
   if (token) {
@@ -234,8 +230,6 @@ function onRequest(
     config._requestStartTime = Date.now();
   }
 
-  console.log('[Interceptor onRequest] EXIT - config.url:', config.url);
-  console.log('[Interceptor onRequest] EXIT - config.headers.Authorization:', config.headers.Authorization);
   return config;
 }
 
@@ -286,12 +280,7 @@ function onRequestError(error: AxiosError): Promise<never> {
  * ```
  */
 function onResponse(response: AxiosResponse): AxiosResponse {
-  // Track response time in development
-  if (import.meta.env.DEV && response.config._requestStartTime) {
-    const duration = Date.now() - response.config._requestStartTime;
-    // eslint-disable-next-line no-console
-    console.debug(`[Interceptor] Request completed in ${duration}ms:`, response.config.url);
-  }
+  // Track response time in development (logging removed for production)
 
   // Check if response follows standard envelope format
   // Type guard to check if data is already in StandardApiResponse format
@@ -419,28 +408,8 @@ function createOnResponseError(axiosInstance: AxiosInstance) {
     isRefreshing = true;
 
     try {
-      if (import.meta.env.DEV) {
-        // eslint-disable-next-line no-console
-        console.debug('[Interceptor] Refreshing access token due to 401 error');
-      }
-
       // Attempt to refresh the access token
-      if (import.meta.env.DEV) {
-        // eslint-disable-next-line no-console
-        console.debug('[Interceptor] Calling refreshAccessToken()...');
-      }
-      
       const newAccessToken = await refreshAccessToken();
-      
-      if (import.meta.env.DEV) {
-        // eslint-disable-next-line no-console
-        console.debug('[Interceptor] refreshAccessToken() returned:', newAccessToken ? 'token received' : 'null/undefined');
-      }
-
-      if (import.meta.env.DEV) {
-        // eslint-disable-next-line no-console
-        console.debug('[Interceptor] Token refresh successful, retrying request');
-      }
 
       // Reset refresh flag
       isRefreshing = false;
@@ -451,22 +420,8 @@ function createOnResponseError(axiosInstance: AxiosInstance) {
       // Update original request with new token and retry
       originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
       
-      if (import.meta.env.DEV) {
-        // eslint-disable-next-line no-console
-        console.debug('[Interceptor] About to retry request. Details:', {
-          url: originalRequest.url,
-          baseURL: originalRequest.baseURL,
-          method: originalRequest.method,
-          fullConfig: JSON.stringify(originalRequest, null, 2),
-        });
-      }
-      
       try {
         const retryResponse = await axiosInstance.request(originalRequest);
-        if (import.meta.env.DEV) {
-          // eslint-disable-next-line no-console
-          console.debug('[Interceptor] Retry succeeded:', retryResponse.status);
-        }
         return retryResponse;
       } catch (retryError) {
         if (import.meta.env.DEV) {
@@ -646,11 +601,6 @@ export function setupInterceptors(axiosInstance: AxiosInstance): AxiosInstance {
 
   // Register response interceptors
   axiosInstance.interceptors.response.use(onResponse, onResponseError);
-
-  if (import.meta.env.DEV) {
-    // eslint-disable-next-line no-console
-    console.debug('[Interceptor] API interceptors configured successfully');
-  }
 
   return axiosInstance;
 }

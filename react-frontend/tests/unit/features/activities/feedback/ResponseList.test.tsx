@@ -138,6 +138,8 @@ vi.mock('@/components/feedback/Modal', () => ({
         <h2 id="modal-title">{title}</h2>
         <div>{children}</div>
         <div>
+          {/* Mock dialog actions use index as key - acceptable in test context */}
+          {/* eslint-disable react/no-array-index-key */}
           {actions?.map((action, index: number) => (
             <button
               key={index}
@@ -148,6 +150,7 @@ vi.mock('@/components/feedback/Modal', () => ({
               {action.label}
             </button>
           ))}
+          {/* eslint-enable react/no-array-index-key */}
         </div>
       </div>
     );

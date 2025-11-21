@@ -94,11 +94,7 @@ export async function login(params: LoginParams): Promise<LoginResponse> {
  * JWT token on the server.
  */
 export async function logout(): Promise<void> {
-  console.log('[AUTH API] logout() called');
-  console.log('[AUTH API] Logout endpoint:', AUTH_ENDPOINTS.LOGOUT);
-  console.log('[AUTH API] API client baseURL:', apiClient.defaults.baseURL);
-  const response = await apiClient.post(AUTH_ENDPOINTS.LOGOUT);
-  console.log('[AUTH API] Logout response:', response);
+  await apiClient.post(AUTH_ENDPOINTS.LOGOUT);
 }
 
 /**
@@ -173,31 +169,21 @@ export function useLoginMutation() {
   return useMutation({
     mutationFn: login,
     onSuccess: (data) => {
-      console.log('[useLoginMutation] onSuccess called with data:', {
-        hasUser: !!data.user,
-        hasTokens: !!data.tokens,
-        accessToken: data.tokens?.accessToken ? 'present' : 'missing',
-        refreshToken: data.tokens?.refreshToken ? 'present' : 'missing',
-      });
-      
       // Store access token in localStorage
       // This matches the key used by the API client interceptor
       if (data.tokens.accessToken) {
         localStorage.setItem('moodle_access_token', data.tokens.accessToken);
-        console.log('[useLoginMutation] Stored access token in localStorage');
       }
       
       // Optionally store refresh token for token refresh functionality
       if (data.tokens.refreshToken) {
         localStorage.setItem('moodle_refresh_token', data.tokens.refreshToken);
-        console.log('[useLoginMutation] Stored refresh token in localStorage');
       }
       
       // Set the current user data directly in the query cache
       // This ensures useAuth immediately sees the authenticated user
       // without waiting for a refetch, preventing race conditions
       queryClient.setQueryData(CURRENT_USER_QUERY_KEY, data.user);
-      console.log('[useLoginMutation] Set user data in query cache:', data.user.email);
     },
   });
 }
@@ -224,7 +210,6 @@ export function useLogout() {
     onSettled: () => {
       // Clear tokens from localStorage after the API call completes
       // This runs even if the component that initiated the mutation has unmounted
-      console.log('[useLogout] onSettled - clearing tokens from localStorage');
       localStorage.removeItem('moodle_access_token');
       localStorage.removeItem('moodle_refresh_token');
     },

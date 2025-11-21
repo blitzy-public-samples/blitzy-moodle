@@ -185,13 +185,13 @@ interface ChartConfig {
  * @param props - Component props
  * @returns Rendered feedback analysis interface
  */
-export const FeedbackAnalysis: React.FC<FeedbackAnalysisProps> = ({
+export function FeedbackAnalysis({
   feedbackId,
   canViewAnalysis,
   canViewResponses,
   groupId: initialGroupId,
   courseId: initialCourseId,
-}) => {
+}: FeedbackAnalysisProps) {
   // Toast notifications for user feedback
   const { success, error } = useToast();
 
@@ -328,8 +328,9 @@ export const FeedbackAnalysis: React.FC<FeedbackAnalysisProps> = ({
 
     // For numeric questions, use chartData if available
     if (item.type === 'numeric' && item.chartData) {
-      labels = item.chartData.labels;
-      values = item.chartData.values;
+      const { labels: chartLabels, values: chartValues } = item.chartData;
+      labels = chartLabels;
+      values = chartValues;
     } 
     // For choice-based questions, use distribution if available
     else if (item.distribution && item.distribution.length > 0) {
@@ -545,8 +546,8 @@ export const FeedbackAnalysis: React.FC<FeedbackAnalysisProps> = ({
             </TableRow>
           </TableHead>
           <TableBody>
-            {item.distribution.map((dist, idx) => (
-              <TableRow key={idx}>
+            {item.distribution.map((dist) => (
+              <TableRow key={dist.value}>
                 <TableCell>{dist.value}</TableCell>
                 <TableCell align="right">{dist.count}</TableCell>
                 <TableCell align="right">{dist.percentage.toFixed(1)}%</TableCell>
@@ -580,8 +581,8 @@ export const FeedbackAnalysis: React.FC<FeedbackAnalysisProps> = ({
           Sample Responses ({displayResponses.length} of {item.textResponses.length})
         </Typography>
         <Box component="ul" sx={{ pl: 2, m: 0 }}>
-          {displayResponses.map((response, idx) => (
-            <Box component="li" key={idx} sx={{ mb: 1 }}>
+          {displayResponses.map((response) => (
+            <Box component="li" key={`response-${response.substring(0, 50)}-${response.length}`} sx={{ mb: 1 }}>
               <Typography variant="body2">{response}</Typography>
             </Box>
           ))}
@@ -923,10 +924,8 @@ export const FeedbackAnalysis: React.FC<FeedbackAnalysisProps> = ({
           <ResponseList
             feedbackId={feedbackId}
             responses={[]}
-            // eslint-disable-next-line @typescript-eslint/require-await
-            onDelete={async (responseIds: number[]) => {
+            onDelete={async (_responseIds: number[]) => {
               // Handle delete - this would typically trigger a mutation and refetch
-              console.log('Delete responses:', responseIds);
             }}
             canDelete={false}
           />
@@ -934,6 +933,6 @@ export const FeedbackAnalysis: React.FC<FeedbackAnalysisProps> = ({
       )}
     </Box>
   );
-};
+}
 
 export default FeedbackAnalysis;

@@ -30,7 +30,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "build:e2e": "E2E_TEST=true VITE_E2E_TEST=true tsc && vite build",
+    "build:e2e": "tsc && vite build --mode e2e",
     "preview": "vite preview",
     "serve:e2e": "sirv dist --port 5173 --single --cors",
     "test": "vitest",

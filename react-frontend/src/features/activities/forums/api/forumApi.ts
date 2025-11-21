@@ -42,6 +42,7 @@ import type {
   DiscussionEnriched,
   Forum,
   Discussion,
+  DiscussionDetail,
   Post,
   CreateDiscussionData,
   CreatePostData,
@@ -119,8 +120,8 @@ export interface ReportResponse {
  * Response data for getting discussion with posts
  */
 export interface DiscussionWithPosts {
-  /** Discussion metadata */
-  discussion: Discussion;
+  /** Discussion metadata with enriched details */
+  discussion: DiscussionDetail;
   /** All posts in the discussion (flat array) */
   posts: Post[];
   /** Whether there are more posts to load */

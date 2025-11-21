@@ -795,7 +795,7 @@ describe('useProfile Hook', () => {
       );
 
       // Trigger background refetch
-      result.current.refetch();
+      void result.current.refetch();
 
       // Wait for isFetching to become true (async state update)
       await waitFor(() => {

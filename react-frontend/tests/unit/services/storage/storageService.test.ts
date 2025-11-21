@@ -16,6 +16,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { MockInstance } from 'vitest';
 
 // Import types for TypeScript
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 type StorageService = typeof import('@/services/storage/storageService');
 
 /**

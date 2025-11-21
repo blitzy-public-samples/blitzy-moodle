@@ -21,7 +21,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { MessagingPage } from './pages/MessagingPage';
 import { login, logout, isAuthenticated } from './utils/auth';
-import { testStudent, testStudent2, testStudent3, TEST_PASSWORD } from './fixtures/users';
+import { testStudent, testStudent2, testStudent3, TEST_PASSWORD } from '../../src/mocks/fixtures/users';
 
 test.describe('Private Messaging System E2E Tests', () => {
   let user1Page: Page;

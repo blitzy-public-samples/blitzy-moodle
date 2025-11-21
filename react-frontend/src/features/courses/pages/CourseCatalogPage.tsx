@@ -67,7 +67,7 @@ type SortOption = 'fullname' | 'shortname' | 'startdate' | 'enrolledusers';
  *
  * @returns Rendered course catalog page
  */
-export const CourseCatalogPage: React.FC = () => {
+export function CourseCatalogPage() {
   const navigate = useNavigate();
 
   // State management
@@ -156,10 +156,10 @@ export const CourseCatalogPage: React.FC = () => {
   );
 
   // Extract data from response
-  const courses = data?.data || [];
+  const courses = data?.data ?? [];
   const pagination = data?.meta?.pagination;
-  const totalPages = pagination?.totalPages || 1;
-  const totalCourses = pagination?.total || 0;
+  const totalPages = pagination?.totalPages ?? 1;
+  const totalCourses = pagination?.total ?? 0;
 
   // Determine grid columns based on view mode
   const gridColumns = viewMode === 'grid' ? { xs: 12, sm: 6, md: 4, lg: 3 } : { xs: 12 };
@@ -427,6 +427,6 @@ export const CourseCatalogPage: React.FC = () => {
       </Container>
     </Box>
   );
-};
+}
 
 export default CourseCatalogPage;

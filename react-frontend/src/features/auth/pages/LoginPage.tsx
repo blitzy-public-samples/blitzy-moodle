@@ -7,7 +7,6 @@
  * @module features/auth/pages/LoginPage
  */
 
-import type React from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import {
@@ -41,7 +40,7 @@ import type { LoginResponse } from '../api/authApi';
  * - /login?returnUrl=/courses/123
  * - /login?returnUrl=/admin
  */
-export const LoginPage: React.FC = () => {
+export function LoginPage() {
   // ============================================================================
   // Hooks
   // ============================================================================
@@ -51,7 +50,7 @@ export const LoginPage: React.FC = () => {
   const [searchParams] = useSearchParams();
 
   // Get return URL from query params (default to dashboard)
-  const returnUrl = searchParams.get('returnUrl') || '/dashboard';
+  const returnUrl = searchParams.get('returnUrl') ?? '/dashboard';
 
   // ============================================================================
   // Handlers
@@ -62,28 +61,18 @@ export const LoginPage: React.FC = () => {
    * Updates Redux auth state and navigates to the return URL.
    */
   const handleLoginSuccess = async (response: LoginResponse) => {
-    console.log('[LoginPage] handleLoginSuccess called with response:', response);
-    console.log('[LoginPage] Return URL:', returnUrl);
-    
     // Dispatch login success action to Redux store
     // This updates the isAuthenticated flag and makes the user menu visible
-    console.log('[LoginPage] Dispatching loginSuccess action to Redux...');
     dispatch(loginSuccess({ user: response.user, tokens: response.tokens }));
-    console.log('[LoginPage] Redux state updated');
     
     // Wait a brief moment to ensure state update has propagated to all components
     // This prevents a race condition where ProtectedRoute or Header checks authentication
     // before the Redux state has fully updated
-    console.log('[LoginPage] Waiting 100ms for state propagation...');
     await new Promise(resolve => setTimeout(resolve, 100));
-    
-    console.log('[LoginPage] Calling navigate...');
     
     // Navigate to the return URL
     // The token and user data are now in Redux state, localStorage, and React Query cache
     navigate(returnUrl, { replace: true });
-    
-    console.log('[LoginPage] navigate() called successfully');
   };
 
   /**
@@ -151,6 +140,6 @@ export const LoginPage: React.FC = () => {
       </Container>
     </Box>
   );
-};
+}
 
 export default LoginPage;

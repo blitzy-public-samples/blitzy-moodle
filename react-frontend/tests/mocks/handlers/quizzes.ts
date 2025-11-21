@@ -779,12 +779,9 @@ export const quizzesHandlers = [
     const questions = mockQuestions.get(quizId) ?? [];
     
     // Debug logging to verify questions are being returned
-    // eslint-disable-next-line no-console
     console.log(`[MSW] Creating quiz attempt for quiz ${quizId}`);
-    // eslint-disable-next-line no-console
     console.log(`[MSW] Found ${questions.length} questions for quiz ${quizId}`);
     if (questions.length > 0) {
-      // eslint-disable-next-line no-console
       console.log('[MSW] First question (before transform):', JSON.stringify(questions[0], null, 2));
     }
     
@@ -792,7 +789,6 @@ export const quizzesHandlers = [
     const transformedQuestions = questions.map(transformQuestionForFrontend);
     
     if (transformedQuestions.length > 0) {
-      // eslint-disable-next-line no-console
       console.log('[MSW] First question (after transform):', JSON.stringify(transformedQuestions[0], null, 2));
     }
     

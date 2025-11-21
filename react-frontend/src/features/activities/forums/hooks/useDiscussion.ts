@@ -26,7 +26,24 @@ import type {
   DiscussionDetail,
   Author,
 } from '../types/forum.types';
-import * as forumApi from '../api/forumApi';
+import {
+  getDiscussionPosts,
+  fetchMorePosts,
+  fetchPostReplies,
+  createPost,
+  updatePost,
+  deletePost,
+  subscribeDiscussion,
+  unsubscribeDiscussion,
+  markDiscussionRead,
+  pinDiscussion,
+  unpinDiscussion,
+  lockDiscussion,
+  unlockDiscussion,
+  moveDiscussion,
+  splitDiscussion,
+  reportPost,
+} from '../api/forumApi';
 import type {
   DiscussionWithPosts,
   SubscriptionResponse,
@@ -299,7 +316,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
   // Fetch discussion and posts
   const { data, isLoading, isSuccess, isError, error, refetch } = useQuery({
     queryKey: discussionKeys.detail(discussionId),
-    queryFn: () => forumApi.getDiscussionPosts(discussionId),
+    queryFn: () => getDiscussionPosts(discussionId),
     staleTime: 30000, // 30 seconds
     refetchOnWindowFocus: true,
     retry: options?.retryCount ?? 3, // Default to 3 retries, configurable via options
@@ -321,7 +338,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
       if (!nextCursor) {
         throw new Error('No more posts to load');
       }
-      return forumApi.fetchMorePosts(discussionId, nextCursor);
+      return fetchMorePosts(discussionId, nextCursor);
     },
     onSuccess: (newData) => {
       // Append new posts to existing data
@@ -348,7 +365,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
    */
   const loadRepliesMutation = useMutation({
     mutationFn: async (parentPostId: number) => {
-      return forumApi.fetchPostReplies(parentPostId);
+      return fetchPostReplies(parentPostId);
     },
     onSuccess: (newData, _parentPostId) => {
       // Append new replies to the flat posts array in the cache
@@ -375,7 +392,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
    */
   const createReplyMutation = useMutation({
     mutationFn: async ({ postData, parentId }: { postData: CreatePostData; parentId?: number }) => {
-      return forumApi.createPost({ ...postData, discussionId, parentPostId: parentId });
+      return createPost({ ...postData, discussionId, parentPostId: parentId });
     },
     onMutate: async ({ postData, parentId }) => {
       // Cancel outgoing refetches
@@ -455,7 +472,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
    */
   const editPostMutation = useMutation({
     mutationFn: async ({ postId, postData }: { postId: number; postData: UpdatePostData }) => {
-      return forumApi.updatePost({ ...postData, postId });
+      return updatePost({ ...postData, postId });
     },
     onMutate: async ({ postId, postData }) => {
       await queryClient.cancelQueries({ queryKey: discussionKeys.detail(discussionId) });
@@ -539,7 +556,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
    */
   const deletePostMutation = useMutation({
     mutationFn: async (postId: number) => {
-      return forumApi.deletePost(postId);
+      return deletePost(postId);
     },
     onMutate: async (postId) => {
       await queryClient.cancelQueries({ queryKey: discussionKeys.detail(discussionId) });
@@ -626,7 +643,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
    * Subscribe to discussion with optimistic update
    */
   const subscribeMutation = useMutation({
-    mutationFn: () => forumApi.subscribeDiscussion(discussionId),
+    mutationFn: () => subscribeDiscussion(discussionId),
     onMutate: async () => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: discussionKeys.detail(discussionId) });
@@ -664,7 +681,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
    * Unsubscribe from discussion with optimistic update
    */
   const unsubscribeMutation = useMutation({
-    mutationFn: () => forumApi.unsubscribeDiscussion(discussionId),
+    mutationFn: () => unsubscribeDiscussion(discussionId),
     onMutate: async () => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: discussionKeys.detail(discussionId) });
@@ -702,7 +719,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
    * Mark discussion as read
    */
   const markAsReadMutation = useMutation({
-    mutationFn: () => forumApi.markDiscussionRead(discussionId),
+    mutationFn: () => markDiscussionRead(discussionId),
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: discussionKeys.detail(discussionId) });
       const previousData = queryClient.getQueryData(discussionKeys.detail(discussionId));
@@ -717,7 +734,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
           discussion: {
             ...old.discussion,
             unreadCount: 0,
-          } as any, // Type assertion needed as Discussion base type doesn't have unreadCount, but DiscussionDetail does
+          },
         };
       });
 
@@ -738,7 +755,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
    * Pin discussion (moderator action)
    */
   const pinDiscussionMutation = useMutation({
-    mutationFn: () => forumApi.pinDiscussion(discussionId),
+    mutationFn: () => pinDiscussion(discussionId),
     onSuccess: (data) => {
       void queryClient.invalidateQueries({ queryKey: discussionKeys.detail(discussionId) });
       void queryClient.invalidateQueries({ queryKey: discussionKeys.lists() });
@@ -753,7 +770,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
    * Unpin discussion (moderator action)
    */
   const unpinDiscussionMutation = useMutation({
-    mutationFn: () => forumApi.unpinDiscussion(discussionId),
+    mutationFn: () => unpinDiscussion(discussionId),
     onSuccess: (data) => {
       void queryClient.invalidateQueries({ queryKey: discussionKeys.detail(discussionId) });
       void queryClient.invalidateQueries({ queryKey: discussionKeys.lists() });
@@ -768,7 +785,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
    * Lock discussion (moderator action)
    */
   const lockDiscussionMutation = useMutation({
-    mutationFn: () => forumApi.lockDiscussion(discussionId),
+    mutationFn: () => lockDiscussion(discussionId),
     onSuccess: (data) => {
       void queryClient.invalidateQueries({ queryKey: discussionKeys.detail(discussionId) });
       void queryClient.invalidateQueries({ queryKey: discussionKeys.lists() });
@@ -783,7 +800,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
    * Unlock discussion (moderator action)
    */
   const unlockDiscussionMutation = useMutation({
-    mutationFn: () => forumApi.unlockDiscussion(discussionId),
+    mutationFn: () => unlockDiscussion(discussionId),
     onSuccess: (data) => {
       void queryClient.invalidateQueries({ queryKey: discussionKeys.detail(discussionId) });
       void queryClient.invalidateQueries({ queryKey: discussionKeys.lists() });
@@ -798,7 +815,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
    * Move discussion to another forum (moderator action)
    */
   const moveDiscussionMutation = useMutation({
-    mutationFn: (targetForumId: number) => forumApi.moveDiscussion(discussionId, targetForumId),
+    mutationFn: (targetForumId: number) => moveDiscussion(discussionId, targetForumId),
     onSuccess: (data) => {
       void queryClient.invalidateQueries({ queryKey: discussionKeys.all });
       options?.onMoveSuccess?.(data);
@@ -812,7 +829,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
    * Split discussion into separate thread (moderator action)
    */
   const splitDiscussionMutation = useMutation({
-    mutationFn: (postId: number) => forumApi.splitDiscussion(discussionId, postId),
+    mutationFn: (postId: number) => splitDiscussion(discussionId, postId),
     onSuccess: (data) => {
       void queryClient.invalidateQueries({ queryKey: discussionKeys.all });
       options?.onSplitSuccess?.(data);
@@ -827,7 +844,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
    */
   const reportPostMutation = useMutation({
     mutationFn: ({ postId, reason }: { postId: number; reason: string }) =>
-      forumApi.reportPost(postId, reason),
+      reportPost(postId, reason),
     onSuccess: (data) => {
       options?.onReportSuccess?.(data);
     },

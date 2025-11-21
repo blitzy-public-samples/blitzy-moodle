@@ -500,6 +500,7 @@ describe('ProfileView Component', () => {
         error: null,
       }));
 
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       mockUseAuth.mockReturnValue({
         user: mockAuthCurrentUser,
         isAuthenticated: true,
@@ -522,6 +523,7 @@ describe('ProfileView Component', () => {
         error: null,
       }));
 
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       mockUseAuth.mockReturnValue({
         user: mockAuthCurrentUser,
         isAuthenticated: true,

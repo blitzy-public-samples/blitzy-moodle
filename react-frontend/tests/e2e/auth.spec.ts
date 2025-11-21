@@ -8,7 +8,7 @@ import {
   logout,
   waitForTokenRefresh
 } from './utils/auth';
-import { testStudent, testTeacher, testAdmin, TEST_PASSWORD } from './fixtures/users';
+import { testStudent, testTeacher, testAdmin, TEST_PASSWORD } from '../../src/mocks/fixtures/users';
 
 // API Response Types
 interface AuthMeSuccessResponse {

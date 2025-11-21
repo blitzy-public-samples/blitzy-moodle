@@ -7,7 +7,6 @@
  * @module features/activities/forums/pages/ForumPage
  */
 
-import type React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Box, Container, Alert, Button } from '@mui/material';
 import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
@@ -18,7 +17,7 @@ import { ForumView } from '../components/ForumView';
  *
  * Renders a complete forum activity page with navigation and error handling.
  */
-export const ForumPage: React.FC = () => {
+export function ForumPage() {
   const { courseId, forumId } = useParams<{ courseId: string; forumId: string }>();
   const navigate = useNavigate();
 
@@ -78,6 +77,6 @@ export const ForumPage: React.FC = () => {
       </Box>
     </Container>
   );
-};
+}
 
 export default ForumPage;

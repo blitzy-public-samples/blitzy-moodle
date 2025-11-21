@@ -18,9 +18,6 @@
  * @module e2e/utils/api-helpers
  */
 
-/* eslint-disable no-console */
-// Console logging is intentionally used in this E2E test utility file for test debugging and tracing
-
 import { retryOperation } from './wait-helpers';
 
 // ============================================================================

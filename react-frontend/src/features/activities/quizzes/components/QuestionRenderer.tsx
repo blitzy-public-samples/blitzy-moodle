@@ -85,7 +85,7 @@ export function QuestionRenderer({
     return (
       <FormControl component="fieldset" fullWidth disabled={disabled}>
         <RadioGroup
-          value={value || ''}
+          value={value ?? ''}
           onChange={handleSingleChoiceChange}
           data-testid="question-options"
         >
@@ -179,7 +179,7 @@ export function QuestionRenderer({
     return (
       <FormControl component="fieldset" fullWidth disabled={disabled}>
         <RadioGroup
-          value={value || ''}
+          value={value ?? ''}
           onChange={handleSingleChoiceChange}
           data-testid="question-options"
         >

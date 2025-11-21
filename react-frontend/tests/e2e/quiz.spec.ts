@@ -20,8 +20,8 @@
 import { test, expect, type Page } from '@playwright/test';
 import { QuizPage } from './pages/QuizPage';
 import { loginAsStudent } from './utils/auth';
-import { testCourse1 } from './fixtures/courses';
-import { testQuiz1, testQuiz2, testQuiz3 } from './fixtures/quizzes';
+import { testCourse1 } from '../../src/mocks/fixtures/courses';
+import { testQuiz1, testQuiz2, testQuiz3 } from '../../src/mocks/fixtures/quizzes';
 
 /**
  * Test suite for quiz attempt workflow with timer and question navigation
@@ -512,8 +512,8 @@ test.describe('Quiz Attempt E2E Tests', () => {
     const timeParts = summary.timeTaken.match(/(\d+)/g);
     if (timeParts && timeParts.length > 0) {
       const totalSeconds = timeParts.length > 1 
-        ? parseInt(timeParts[0]!) * 60 + parseInt(timeParts[1]!)
-        : parseInt(timeParts[0]!);
+        ? parseInt(timeParts[0]) * 60 + parseInt(timeParts[1]!)
+        : parseInt(timeParts[0]);
       expect(totalSeconds).toBeLessThan(120); // Less than 2 minutes
     }
     

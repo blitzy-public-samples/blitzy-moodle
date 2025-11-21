@@ -58,30 +58,7 @@ export default defineConfig(({ mode }) => {
     // Rollup-specific options
     rollupOptions: {
       output: {
-        // Manual chunk splitting for optimal caching
-        manualChunks: (id) => {
-          // Vendor chunk for node_modules dependencies
-          if (id.includes('node_modules')) {
-            // Split large libraries into separate chunks
-            if (id.includes('@mui/material') || id.includes('@mui/icons-material')) {
-              return 'vendor-mui';
-            }
-            if (id.includes('react') || id.includes('react-dom')) {
-              return 'vendor-react';
-            }
-            if (id.includes('@reduxjs/toolkit') || id.includes('react-redux')) {
-              return 'vendor-redux';
-            }
-            if (id.includes('@tanstack/react-query')) {
-              return 'vendor-react-query';
-            }
-            if (id.includes('react-router-dom')) {
-              return 'vendor-router';
-            }
-            // All other vendor dependencies
-            return 'vendor';
-          }
-        },
+        // Let Vite handle chunk splitting automatically to avoid circular dependencies
         // Asset file naming pattern
         assetFileNames: (assetInfo) => {
           const info = assetInfo.name.split('.');

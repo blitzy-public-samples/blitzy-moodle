@@ -62,8 +62,8 @@ export function QuizReviewPage(): React.ReactElement {
   const [expandedQuestion, setExpandedQuestion] = useState<number | false>(0);
 
   // Parse IDs
-  const qid = parseInt(quizId || '0', 10);
-  const aid = parseInt(attemptId || '0', 10);
+  const qid = parseInt(quizId ?? '0', 10);
+  const aid = parseInt(attemptId ?? '0', 10);
 
   // Fetch review data
   const { data, isLoading, error } = useQuizReview(aid, aid > 0);
@@ -110,8 +110,8 @@ export function QuizReviewPage(): React.ReactElement {
     if (Array.isArray(answer)) {
       return (
         <ul>
-          {answer.map((a, idx) => (
-            <li key={idx}>{a}</li>
+          {answer.map((a) => (
+            <li key={a}>{a}</li>
           ))}
         </ul>
       );
@@ -139,11 +139,11 @@ export function QuizReviewPage(): React.ReactElement {
   }
 
   // Render error state
-  if (error || !data) {
+  if (error != null || !data) {
     return (
       <Container maxWidth="lg" sx={{ mt: 4 }}>
         <Alert severity="error">
-          {error?.message || 'Failed to load quiz review. Please try again.'}
+          {error?.message ?? 'Failed to load quiz review. Please try again.'}
         </Alert>
         <Button startIcon={<BackIcon />} onClick={handleBack} sx={{ mt: 2 }}>
           Back to Quiz

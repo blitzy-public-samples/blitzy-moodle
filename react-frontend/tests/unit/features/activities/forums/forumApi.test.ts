@@ -671,7 +671,7 @@ const handlers = [
       success: true,
       data: {
         reportId: 5000,
-        message: `Post ${id} has been reported for: ${body.reason}`
+        message: `Post ${String(id)} has been reported for: ${body.reason}`
       }
     });
   })
@@ -1042,10 +1042,10 @@ describe('forumApi', () => {
             success: true,
             data: {
               id: 1000,
-              discussionid: Number(capturedFormData!.get('discussionId')), // Fixed: lowercase property
-              subject: String(capturedFormData!.get('subject') || ''),
-              message: String(capturedFormData!.get('message')),
-              parentid: Number(capturedFormData!.get('parentId') || 0), // Fixed: lowercase property
+              discussionid: Number(capturedFormData.get('discussionId')), // Fixed: lowercase property
+              subject: String(capturedFormData.get('subject') || ''),
+              message: String(capturedFormData.get('message')),
+              parentid: Number(capturedFormData.get('parentId') || 0), // Fixed: lowercase property
               userid: 1, // Fixed: lowercase property
               created: Math.floor(Date.now() / 1000),
               modified: Math.floor(Date.now() / 1000),

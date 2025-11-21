@@ -82,8 +82,8 @@ export function QuizPage(): React.ReactElement {
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
 
   // Parse IDs
-  const id = parseInt(quizId || '0', 10);
-  const cid = parseInt(courseId || '0', 10);
+  const id = parseInt(quizId ?? '0', 10);
+  const cid = parseInt(courseId ?? '0', 10);
 
   // Fetch quiz data
   const { data, isLoading, error } = useQuiz(id, id > 0);
@@ -166,11 +166,11 @@ export function QuizPage(): React.ReactElement {
   }
 
   // Render error state
-  if (error || !data) {
+  if (error != null || !data) {
     return (
       <Container maxWidth="lg" sx={{ mt: 4 }}>
         <Alert severity="error">
-          {error?.message || 'Failed to load quiz. Please try again.'}
+          {error?.message ?? 'Failed to load quiz. Please try again.'}
         </Alert>
       </Container>
     );
@@ -238,7 +238,7 @@ export function QuizPage(): React.ReactElement {
                       <ListItem>
                         <ListItemText
                           primary="Attempts remaining"
-                          secondary={attemptsRemaining === null ? 'Unlimited' : attemptsRemaining}
+                          secondary={attemptsRemaining ?? 'Unlimited'}
                           data-testid="quiz-attempts-remaining"
                         />
                       </ListItem>

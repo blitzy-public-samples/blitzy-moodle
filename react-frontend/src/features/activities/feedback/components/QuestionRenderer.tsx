@@ -480,7 +480,7 @@ export function QuestionRenderer({
    * Based on public/mod/feedback/item/info/lib.php
    */
   const renderInfo = () => {
-    const content = presentation.info?.content || label;
+    const content = presentation.info?.content ?? label;
     
     return (
       <Box

@@ -37,7 +37,7 @@ import {
   generateTestFile, 
   createImageFile 
 } from './utils/file-helpers';
-import { testStudent, testStudent2, TEST_PASSWORD } from './fixtures/users';
+import { testStudent, testStudent2, TEST_PASSWORD } from '../../src/mocks/fixtures/users';
 
 /**
  * Test suite configuration

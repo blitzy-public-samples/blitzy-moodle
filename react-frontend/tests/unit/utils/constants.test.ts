@@ -61,7 +61,7 @@ describe('constants', () => {
     it('should define API_BASE_URL as a string', () => {
       expect(API_BASE_URL).toBeDefined();
       expect(typeof API_BASE_URL).toBe('string');
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+       
       expect(API_BASE_URL.length).toBeGreaterThan(0);
     });
 

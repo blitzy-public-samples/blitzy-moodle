@@ -34,6 +34,7 @@ const mockUseLocation = vi.fn<[], Location>();
 const mockNavigate = vi.fn();
 
 vi.mock('react-router-dom', async () => {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-imports
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
   return {
     ...actual,
@@ -47,6 +48,7 @@ vi.mock('react-router-dom', async () => {
 const mockUseMediaQuery = vi.fn<[], boolean>();
 
 vi.mock('@mui/material', async () => {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-imports
   const actual = await vi.importActual<typeof import('@mui/material')>('@mui/material');
   return {
     ...actual,
@@ -61,6 +63,7 @@ const mockQueryClient = {
 };
 
 vi.mock('@tanstack/react-query', async () => {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-imports
   const actual = await vi.importActual<typeof import('@tanstack/react-query')>('@tanstack/react-query');
   return {
     ...actual,
@@ -71,9 +74,9 @@ vi.mock('@tanstack/react-query', async () => {
 /**
  * Test wrapper component that provides MemoryRouter context
  */
-const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+function TestWrapper({ children }: { children: React.ReactNode }) {
   return <MemoryRouter>{children}</MemoryRouter>;
-};
+}
 
 describe('Breadcrumbs', () => {
   beforeEach(() => {

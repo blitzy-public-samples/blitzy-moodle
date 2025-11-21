@@ -12,7 +12,7 @@
  */
 
 import type React from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   Box,
@@ -55,7 +55,7 @@ interface FileItem {
  * Main file repository interface for course file management.
  * Displays files, provides upload functionality, and handles file operations.
  */
-export const FileRepositoryPage: React.FC = () => {
+export function FileRepositoryPage() {
   const { id: courseId } = useParams<{ id: string }>();
   const [files, setFiles] = useState<FileItem[]>([]);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
@@ -66,7 +66,7 @@ export const FileRepositoryPage: React.FC = () => {
   /**
    * Fetch files from API on component mount
    */
-  const fetchFiles = async () => {
+  const fetchFiles = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await apiClient.get<{
@@ -112,14 +112,14 @@ export const FileRepositoryPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [courseId]);
 
   /**
    * Fetch files on component mount
    */
   useEffect(() => {
     void fetchFiles();
-  }, [courseId]);
+  }, [fetchFiles]);
 
   /**
    * Handle file upload via file picker
@@ -361,9 +361,11 @@ export const FileRepositoryPage: React.FC = () => {
 
       {/* Breadcrumb Navigation */}
       <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 2 }} data-testid="folder-navigation">
+        {/* Breadcrumb keys use index combined with path to ensure uniqueness across navigation levels */}
+        {/* eslint-disable react/no-array-index-key */}
         {currentPath.map((path, index) => (
           <Link
-            key={index}
+            key={`${path}-${index}`}
             color={index === currentPath.length - 1 ? 'text.primary' : 'inherit'}
             href="#"
             onClick={(e) => {
@@ -374,6 +376,7 @@ export const FileRepositoryPage: React.FC = () => {
             {path}
           </Link>
         ))}
+        {/* eslint-enable react/no-array-index-key */}
       </Breadcrumbs>
 
       {/* Upload Section */}
@@ -528,6 +531,6 @@ export const FileRepositoryPage: React.FC = () => {
       </Paper>
     </Box>
   );
-};
+}
 
 export default FileRepositoryPage;

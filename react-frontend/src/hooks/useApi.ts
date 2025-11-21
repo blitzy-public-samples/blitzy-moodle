@@ -190,7 +190,7 @@ function createMockErrorResponse(
     status: 0,
     statusText: 'Network Error',
     headers: {},
-    config: config,
+    config,
   };
 }
 
@@ -412,14 +412,15 @@ export function useApi(): AxiosInstance {
         // Add custom error properties for better debugging
         if (error.response) {
           // Server responded with error status
-          const {status} = error.response;
-          const errorData = error.response.data;
+          const { response } = error;
+          const {status} = response;
+          const errorData = response.data;
 
           // Enhance error with status-specific messages
           if (status === 403) {
             // Forbidden - permission denied
             if (!errorData?.error) {
-              (normalizedError.response!.data) = {
+              response.data = {
                 success: false,
                 error: {
                   code: 'PERMISSION_DENIED',
@@ -430,7 +431,7 @@ export function useApi(): AxiosInstance {
           } else if (status === 404) {
             // Not Found
             if (!errorData?.error) {
-              (normalizedError.response!.data) = {
+              response.data = {
                 success: false,
                 error: {
                   code: 'NOT_FOUND',
@@ -441,7 +442,7 @@ export function useApi(): AxiosInstance {
           } else if (status >= 500) {
             // Server Error
             if (!errorData?.error) {
-              (normalizedError.response!.data) = {
+              response.data = {
                 success: false,
                 error: {
                   code: 'SERVER_ERROR',
@@ -453,6 +454,7 @@ export function useApi(): AxiosInstance {
         } else if (error.request || error.message === 'Network Error') {
           // Request made but no response received (network error)
           // Note: axios-mock-adapter's networkError() sets message to 'Network Error'
+          const config = normalizedError.config ?? {} as InternalAxiosRequestConfig;
           const mockResponse = createMockErrorResponse(
             {
               success: false,
@@ -461,12 +463,13 @@ export function useApi(): AxiosInstance {
                 message: 'Network error. Please check your connection and try again.',
               },
             },
-            normalizedError.config!
+            config
           );
           // Type-safe assignment of mock response
           Object.assign(normalizedError, { response: mockResponse });
         } else if (error.code === 'ECONNABORTED') {
           // Request timeout
+          const config = normalizedError.config ?? {} as InternalAxiosRequestConfig;
           const mockResponse = createMockErrorResponse(
             {
               success: false,
@@ -475,12 +478,13 @@ export function useApi(): AxiosInstance {
                 message: 'Request timed out. Please try again.',
               },
             },
-            normalizedError.config!
+            config
           );
           // Type-safe assignment of mock response
           Object.assign(normalizedError, { response: mockResponse });
         } else {
           // Request setup error
+          const config = normalizedError.config ?? {} as InternalAxiosRequestConfig;
           const mockResponse = createMockErrorResponse(
             {
               success: false,
@@ -489,7 +493,7 @@ export function useApi(): AxiosInstance {
                 message: error.message || 'An error occurred while making the request.',
               },
             },
-            normalizedError.config!
+            config
           );
           // Type-safe assignment of mock response
           Object.assign(normalizedError, { response: mockResponse });

@@ -379,7 +379,7 @@ describe('scormApi', () => {
       const result = await fetchScormToc(1);
 
       expect(result.scoes[0]!.children).toHaveLength(1);
-      expect(result.scoes[0]!.children![0]!.parent).toBe('module1');
+      expect(result.scoes[0]!.children[0]!.parent).toBe('module1');
     });
   });
 

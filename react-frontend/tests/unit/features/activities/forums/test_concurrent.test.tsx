@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as forumApi from '../../../../../src/features/activities/forums/api/forumApi';
 import type { PostResponse } from '../../../../../src/features/activities/forums/api/forumApi';
 import { useDiscussion } from '../../../../../src/features/activities/forums/hooks/useDiscussion';
-import type { DiscussionPost } from '../../../../../src/features/activities/forums/types/forum.types';
+import type { DiscussionPost, DiscussionDetail, Author } from '../../../../../src/features/activities/forums/types/forum.types';
 
 // Mock the API
 vi.mock('../../../../../src/features/activities/forums/api/forumApi');
@@ -20,7 +20,18 @@ const countPostsInHierarchy = (posts: DiscussionPost[]): number => {
   return count;
 };
 
-const createMockDiscussion = (overrides = {}) => ({
+const createMockAuthor = (overrides: Partial<Author> = {}): Author => ({
+  id: 1,
+  pictureitemid: 0,
+  firstname: 'Test',
+  lastname: 'User',
+  fullname: 'Test User',
+  email: 'test@example.com',
+  deleted: false,
+  ...overrides,
+});
+
+const createMockDiscussion = (overrides: Partial<DiscussionDetail> = {}): DiscussionDetail => ({
   id: 1,
   courseid: 1,
   forumid: 1,
@@ -35,6 +46,12 @@ const createMockDiscussion = (overrides = {}) => ({
   timeend: 0,
   pinned: false,
   timelocked: 0,
+  author: createMockAuthor(),
+  created: Math.floor(Date.now() / 1000),
+  numViews: 0,
+  numParticipants: 1,
+  numReplies: 0,
+  subscribed: false,
   ...overrides,
 });
 

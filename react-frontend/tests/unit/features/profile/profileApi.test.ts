@@ -425,12 +425,12 @@ describe('profileApi', () => {
         expect.fail('Should have thrown validation error');
       } catch (error: unknown) {
         const axiosError = error as AxiosError<_ApiErrorResponse>;
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+         
         const errorData = axiosError.response!.data as unknown as _ApiErrorResponse;
         expect(axiosError.response!.status).toBe(422);
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+         
         expect(errorData.error.details).toBeDefined();
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+         
         expect(errorData.error.details!.email).toEqual(['Email address is already in use']);
       }
     });
@@ -613,10 +613,10 @@ describe('profileApi', () => {
         expect.fail('Should have thrown validation error');
       } catch (error: unknown) {
         const axiosError = error as AxiosError<_ApiErrorResponse>;
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+         
         const errorData = axiosError.response!.data as unknown as _ApiErrorResponse;
         expect(axiosError.response!.status).toBe(422);
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+         
         expect(errorData.error.details!.file).toBeDefined();
       }
     });
@@ -648,10 +648,10 @@ describe('profileApi', () => {
         expect.fail('Should have thrown validation error');
       } catch (error: unknown) {
         const axiosError = error as AxiosError<_ApiErrorResponse>;
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+         
         const errorData = axiosError.response!.data as unknown as _ApiErrorResponse;
         expect(axiosError.response!.status).toBe(422);
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+         
         expect(errorData.error.message).toBe('Invalid file type');
       }
     });

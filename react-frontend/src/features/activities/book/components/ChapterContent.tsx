@@ -15,7 +15,6 @@
  * @module features/activities/book/components
  */
 
-import type React from 'react';
 import { useMemo } from 'react';
 import { Box, Typography, Chip } from '@mui/material';
 import DOMPurify from 'dompurify';
@@ -84,12 +83,12 @@ interface ChapterContentProps {
  * @param props - Component properties
  * @returns Rendered chapter content with appropriate styling and structure
  */
-const ChapterContent: React.FC<ChapterContentProps> = ({
+function ChapterContent({
   chapter,
   customTitles,
   chapters,
   tags,
-}) => {
+}: ChapterContentProps) {
   // ==========================================================================
   // Title Generation Logic
   // ==========================================================================
@@ -105,7 +104,7 @@ const ChapterContent: React.FC<ChapterContentProps> = ({
 
     // Find parent chapter by ID
     const parentChapter = chapters.find((ch) => ch.id === chapter.parent);
-    return parentChapter?.title || null;
+    return parentChapter?.title ?? null;
   }, [chapter.subchapter, chapter.parent, chapters]);
 
   // ==========================================================================
@@ -391,6 +390,6 @@ const ChapterContent: React.FC<ChapterContentProps> = ({
       )}
     </Box>
   );
-};
+}
 
 export default ChapterContent;

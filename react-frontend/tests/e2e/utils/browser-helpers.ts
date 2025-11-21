@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 /**
  * Browser Context Management Utilities for Playwright E2E Tests
  * 

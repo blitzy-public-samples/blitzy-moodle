@@ -158,7 +158,7 @@ export interface AppProvidersProps {
  * @param props.children - Child components to wrap with providers
  * @returns React element with all providers wrapping children
  */
-export const AppProviders: React.FC<AppProvidersProps> = ({ children }): React.ReactElement => {
+export function AppProviders({ children }: AppProvidersProps): React.ReactElement {
   return (
     <Provider store={store}>
       <QueryClientProvider client={queryClient}>
@@ -172,7 +172,7 @@ export const AppProviders: React.FC<AppProvidersProps> = ({ children }): React.R
       </QueryClientProvider>
     </Provider>
   );
-};
+}
 
 // Default export for convenient importing
 export default AppProviders;

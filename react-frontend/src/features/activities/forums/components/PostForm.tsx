@@ -623,31 +623,28 @@ export function PostForm({
         attachments: files.map((f) => f.file),
       };
       updatePost(updateData);
-    } else {
-      // Create new post or discussion
-      if (isNewDiscussion) {
-        // Create new discussion
-        const discussionData = {
-          subject: data.subject!,
+    } else if (isNewDiscussion) {
+      // Create new discussion
+      const discussionData = {
+          subject: data.subject ?? '',
           message: data.message,
           subscribe: data.subscribe,
           attachments: files.map((f) => f.file),
           ...(canModerate && { pinned: data.pinned, locked: data.locked }),
         };
         createDiscussion(forumId, discussionData);
-      } else {
-        // Create reply post
-        const postData = {
-          forumId,
-          discussionId,
-          ...(parentPostId && { parentPostId }),
-          message: data.message,
-          subscribe: data.subscribe,
-          attachments: files.map((f) => f.file),
-          ...(supportsTags && { tags: data.tags }),
-        };
-        createPost(postData);
-      }
+    } else {
+      // Create reply post
+      const postData = {
+        forumId,
+        discussionId,
+        ...(parentPostId && { parentPostId }),
+        message: data.message,
+        subscribe: data.subscribe,
+        attachments: files.map((f) => f.file),
+        ...(supportsTags && { tags: data.tags }),
+      };
+      createPost(postData);
     }
   });
 

@@ -25,7 +25,7 @@ import { CourseCatalogPage } from './pages/CourseCatalogPage';
 import { loginAsStudent, isAuthenticated } from './utils/auth';
 import { 
   testCourse1
-} from './fixtures/courses';
+} from '../../src/mocks/fixtures/courses';
 import { setViewport, clearBrowserStorage, navigateToPage } from './utils/browser-helpers';
 
 // ============================================================================
@@ -103,7 +103,7 @@ test.describe('Course Catalog - Browsing and Search', () => {
   /**
    * After each test: Clean up and take screenshot on failure
    */
-  test.afterEach(async (_context, testInfo) => {
+  test.afterEach(async ({}, testInfo) => {
     // Take screenshot if test failed
     if (testInfo.status !== testInfo.expectedStatus) {
       const screenshotPath = `/tmp/blitzy/blitzy-moodle/blitzyd6458edab/blitzy/screenshots/course-catalog-failure-${testInfo.title.replace(/\s+/g, '-')}-${Date.now()}.png`;

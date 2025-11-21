@@ -300,16 +300,16 @@ export function DiscussionList({
         title: discussion.name,
         author: {
           id: discussion.userid,
-          name: discussion.userFullName || 'Unknown User',
-          avatarUrl: discussion.userPictureUrl || null,
+          name: discussion.userFullName ?? 'Unknown User',
+          avatarUrl: discussion.userPictureUrl ?? null,
         },
         createdAt: discussion.created 
           ? new Date(discussion.created * 1000).toISOString()
           : new Date().toISOString(),
-        replyCount: discussion.numReplies || 0,
-        unreadCount: discussion.numUnreadPosts || 0,
-        isPinned: discussion.pinned || false,
-        isLocked: discussion.locked || false,
+        replyCount: discussion.numReplies ?? 0,
+        unreadCount: discussion.numUnreadPosts ?? 0,
+        isPinned: discussion.pinned ?? false,
+        isLocked: discussion.locked ?? false,
         lastPost: null, // TODO: Add lastPost data when available from API
       }));
 

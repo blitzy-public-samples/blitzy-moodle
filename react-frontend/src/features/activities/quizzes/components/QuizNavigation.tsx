@@ -56,7 +56,7 @@ export interface QuizNavigationProps {
  * Displays a grid of question numbers with status indicators,
  * progress tracking, flag toggles, and enables navigation between questions
  */
-export const QuizNavigation: React.FC<QuizNavigationProps> = ({
+export function QuizNavigation({
   questions,
   currentQuestionIndex,
   onQuestionClick,
@@ -64,7 +64,7 @@ export const QuizNavigation: React.FC<QuizNavigationProps> = ({
   onFinishAttempt,
   navigationMode = 'free',
   isSequential = false,
-}) => {
+}: QuizNavigationProps) {
   // State for finish attempt confirmation modal
   const [showFinishModal, setShowFinishModal] = useState(false);
 
@@ -312,7 +312,7 @@ export const QuizNavigation: React.FC<QuizNavigationProps> = ({
           }
 
           return (
-            <Grid item xs={3} key={index}>
+            <Grid item xs={3} key={question.slot}>
               <Tooltip title={tooltipText} arrow>
                 <Box sx={{ position: 'relative' }}>
                   <Button
@@ -473,6 +473,6 @@ export const QuizNavigation: React.FC<QuizNavigationProps> = ({
       </Modal>
     </Box>
   );
-};
+}
 
 export default QuizNavigation;

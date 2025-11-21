@@ -58,13 +58,13 @@ const createWrapper = () => {
     },
   });
 
-  const TestWrapper = ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
+  function TestWrapper({ children }: { children: React.ReactNode }) {
+  return <QueryClientProvider client={queryClient}>
       <MemoryRouter>
         {children}
       </MemoryRouter>
     </QueryClientProvider>
-  );
+}
   TestWrapper.displayName = 'TestWrapper';
 
   return TestWrapper;

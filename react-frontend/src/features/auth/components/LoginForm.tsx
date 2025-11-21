@@ -75,12 +75,12 @@ export interface LoginFormProps {
  * - login-submit-button
  * - login-error-message
  */
-export const LoginForm: React.FC<LoginFormProps> = ({
+export function LoginForm({
   onSuccess,
   onError,
   showRememberMe = true,
   showForgotPassword = true,
-}) => {
+}: LoginFormProps) {
   // ============================================================================
   // State
   // ============================================================================
@@ -128,17 +128,11 @@ export const LoginForm: React.FC<LoginFormProps> = ({
     };
 
     // Submit login request
-    console.log('[LoginForm] Calling loginUser mutation with credentials:', { username: credentials.username });
     loginUser(credentials, {
       onSuccess: (response) => {
-        console.log('[LoginForm] Mutation onSuccess called with response:', response);
-        console.log('[LoginForm] Response has user:', !!response.user);
-        console.log('[LoginForm] Response has tokens:', !!response.tokens);
         // Only call onSuccess if user and tokens are present
         if (response.user && response.tokens) {
-          console.log('[LoginForm] Calling parent onSuccess callback...');
           onSuccess?.({ user: response.user, tokens: response.tokens });
-          console.log('[LoginForm] Parent onSuccess callback called');
         } else {
           console.error('[LoginForm] Response missing user or tokens, not calling parent onSuccess');
         }
@@ -148,7 +142,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({
         onError?.(error);
       },
     });
-    console.log('[LoginForm] loginUser mutation call completed (async)');
   };
 
   /**
@@ -179,7 +172,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   // ============================================================================
 
   // Display error (validation error takes priority over API error)
-  const displayError = validationError || (loginError ? loginError.message : null);
+  const displayError = validationError ?? (loginError ? loginError.message : null);
 
   // Disable form during submission
   const isFormDisabled = isPending;
@@ -220,7 +213,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({
         disabled={isFormDisabled}
         required
         autoComplete="username"
-        autoFocus
         fullWidth
         inputProps={{
           'data-testid': 'username-input',
@@ -309,6 +301,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({
       )}
     </Box>
   );
-};
+}
 
 export default LoginForm;

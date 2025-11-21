@@ -12,7 +12,7 @@
  */
 
 import { setupWorker } from 'msw/browser';
-import { handlers } from '../../tests/mocks/handlers';
+import { handlers } from './handlers';
 
 /**
  * MSW Browser Worker Instance

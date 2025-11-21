@@ -22,8 +22,8 @@ import { EnrollmentPage } from './pages/EnrollmentPage';
 import { CourseCatalogPage } from './pages/CourseCatalogPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { login, loginAsStudent, isAuthenticated, logout, clearAuthenticationState } from './utils/auth';
-import { testCourse1, testCourse2, testCourse3, testCourse4, createCourse, getCourseWithActivities } from './fixtures/courses';
-import { TEST_PASSWORD, testTeacher } from './fixtures/users';
+import { testCourse1, testCourse2, testCourse3, testCourse4, createCourse, getCourseWithActivities } from '../../src/mocks/fixtures/courses';
+import { TEST_PASSWORD, testTeacher } from '../../src/mocks/fixtures/users';
 
 test.describe('Course Enrollment Workflow', () => {
   let page: Page;

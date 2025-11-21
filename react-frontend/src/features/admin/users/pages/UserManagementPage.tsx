@@ -115,27 +115,20 @@ interface UserData {
  * ```
  */
 export function UserManagementPage() {
-  console.log('[UserManagementPage] Component rendering');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   // Fetch users from API using React Query
-  const { data: apiUsers, isLoading, error } = useQuery({
+  const { data: apiUsers, isLoading, error: _error } = useQuery({
     queryKey: ['admin', 'users'],
     queryFn: async () => {
-      console.log('[UserManagementPage] useQuery queryFn executing');
-      console.log('[UserManagementPage] API endpoint:', ADMIN_ENDPOINTS.USERS.LIST);
-      console.log('[UserManagementPage] apiClient baseURL:', apiClient.defaults.baseURL);
       const response = await apiClient.get<{ success: boolean; data: AdminUser[] }>(
         ADMIN_ENDPOINTS.USERS.LIST
       );
-      console.log('[UserManagementPage] API response:', response.data);
       return response.data.data;
     },
     staleTime: 30000, // Consider data fresh for 30 seconds
   });
-
-  console.log('[UserManagementPage] useQuery state:', { isLoading, hasData: !!apiUsers, error });
 
   // Mutation for creating a user
   const createUserMutation = useMutation({
@@ -227,7 +220,7 @@ export function UserManagementPage() {
       suspended: user.suspended ? 1 : 0,
       deleted: 0, // Not provided by API
       confirmed: 1, // Not provided by API
-      role: user.roles?.[0]?.shortname || 'student', // Extract shortname from first role with optional chaining
+      role: user.roles?.[0]?.shortname ?? 'student', // Extract shortname from first role with optional chaining
       roles: user.roles?.map(r => r.shortname) || [], // Transform roles to array of shortnames for filtering
     }));
   }, [apiUsers]);
@@ -660,10 +653,8 @@ export function UserManagementPage() {
   /**
    * Handle password reset
    */
-  // eslint-disable-next-line @typescript-eslint/require-await
-  const handlePasswordReset = async (userId: number) => {
+  const handlePasswordReset = async (_userId: number) => {
     // Mock implementation for E2E testing (in production, this would be an API call)
-    console.log('Password reset email would be sent for user:', userId);
     // In a real implementation, this would trigger an API call to send a password reset email
   };
 
@@ -846,7 +837,7 @@ export function UserManagementPage() {
                   <TableRow 
                     key={user.id} 
                     data-testid={`user-row-${user.id}`}
-                    data-user-roles={JSON.stringify(user.roles || [user.role])}
+                    data-user-roles={JSON.stringify(user.roles ?? [user.role])}
                     data-user-suspended={user.suspended}
                   >
                     <TableCell padding="checkbox">

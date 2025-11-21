@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 /**
  * Screenshot and Video Capture Utilities for Playwright E2E Tests
  * 

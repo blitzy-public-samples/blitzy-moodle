@@ -56,15 +56,11 @@ export const useAuth = (): UseAuthReturn => {
   };
 
   const logout = (): void => {
-    console.log('[useAuth] logout() called');
-    
     // CRITICAL: Clear the user query cache SYNCHRONOUSLY FIRST
     // This ensures isAuthenticated immediately becomes false
     // preventing race conditions in ProtectedRoute and other components
     queryClient.removeQueries({ queryKey: CURRENT_USER_QUERY_KEY });
     queryClient.setQueryData(CURRENT_USER_QUERY_KEY, null);
-    
-    console.log('[useAuth] Cache cleared, calling logout API (tokens still in localStorage for request)');
     
     // Call the logout API endpoint
     // Tokens are still in localStorage so the interceptor can add them to the request
@@ -81,15 +77,6 @@ export const useAuth = (): UseAuthReturn => {
   // 2. We have no error AND we have a token (covers loading and initial states)
   // If there's an API error (like 401), the token is invalid and we're not authenticated
   const isAuthenticated = !isError && (!!user || hasToken);
-
-  console.log('[useAuth] Current state:', {
-    hasUser: !!user,
-    hasToken,
-    isError,
-    isLoading,
-    isAuthenticated,
-    userEmail: user?.email,
-  });
 
   return {
     user: user ?? null,

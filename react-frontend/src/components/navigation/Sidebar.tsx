@@ -316,6 +316,9 @@ const menuItems: MenuItem[] = [
   },
 ];
 
+// Destructure menu items for type-safe access without non-null assertions
+const [dashboardItem, coursesItem, calendarItem, messagesItem, gradebookItem, adminItem] = menuItems;
+
 // ============================================================================
 // Main Component
 // ============================================================================
@@ -353,7 +356,7 @@ const menuItems: MenuItem[] = [
  * @param props - Component props (optional width)
  * @returns Rendered Sidebar component
  */
-export const Sidebar: React.FC<SidebarProps> = ({ width = DRAWER_WIDTH }) => {
+export function Sidebar({ width = DRAWER_WIDTH }: SidebarProps) {
   // ==========================================================================
   // Hooks
   // ==========================================================================
@@ -677,7 +680,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ width = DRAWER_WIDTH }) => {
         {hasChildren && (
           <Collapse in={isExpanded} timeout="auto" unmountOnExit>
             <List component="div" disablePadding>
-              {item.children!.map((child) =>
+              {item.children?.map((child) =>
                 renderMenuItem(child, depth + 1)
               )}
             </List>
@@ -767,31 +770,31 @@ export const Sidebar: React.FC<SidebarProps> = ({ width = DRAWER_WIDTH }) => {
         }}
       >
         {/* Dashboard */}
-        {renderMenuItem(menuItems[0]!, 0)}
+        {renderMenuItem(dashboardItem!, 0)}
 
         {/* My Courses */}
-        {renderMenuItem(menuItems[1]!, 0)}
+        {renderMenuItem(coursesItem!, 0)}
 
         {/* Divider after primary navigation */}
         <Divider sx={{ marginY: 1 }} />
 
         {/* Calendar */}
-        {renderMenuItem(menuItems[2]!, 0)}
+        {renderMenuItem(calendarItem!, 0)}
 
         {/* Messages */}
-        {renderMenuItem(menuItems[3]!, 0)}
+        {renderMenuItem(messagesItem!, 0)}
 
         {/* Divider after communication tools */}
         <Divider sx={{ marginY: 1 }} />
 
         {/* Gradebook (teachers/admins only) */}
-        {renderMenuItem(menuItems[4]!, 0)}
+        {renderMenuItem(gradebookItem!, 0)}
 
         {/* Divider before admin section */}
         {user?.roles?.some((role) => role.shortname === 'admin') && <Divider sx={{ marginY: 1 }} />}
 
         {/* Administration (admins only) */}
-        {renderMenuItem(menuItems[5]!, 0)}
+        {renderMenuItem(adminItem!, 0)}
       </List>
     </>
   );
@@ -845,7 +848,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ width = DRAWER_WIDTH }) => {
       {drawerContent}
     </Drawer>
   );
-};
+}
 
 /**
  * Default export

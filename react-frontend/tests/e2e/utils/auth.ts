@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 /**
  * Authentication Utilities for Playwright E2E Tests
  * 

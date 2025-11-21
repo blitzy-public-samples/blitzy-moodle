@@ -38,6 +38,7 @@ import {
 import { useQuiz, useQuizQuestions, useSubmitQuizAttempt } from '../api/quizApi';
 import { QuestionRenderer } from '../components/QuestionRenderer';
 import { QuizNavigation } from '../components/QuizNavigation';
+import type { QuestionNavigationState } from '../types/quiz.types';
 
 /**
  * QuizAttemptPage Component
@@ -57,9 +58,9 @@ export function QuizAttemptPage(): React.ReactElement {
   const navigate = useNavigate();
 
   // Parse IDs
-  const cid = parseInt(courseId || '0', 10);
-  const qid = parseInt(quizId || '0', 10);
-  const aid = parseInt(attemptId || '0', 10);
+  const cid = parseInt(courseId ?? '0', 10);
+  const qid = parseInt(quizId ?? '0', 10);
+  const aid = parseInt(attemptId ?? '0', 10);
 
   // Fetch quiz and questions
   const { data: quizData, isLoading: isLoadingQuiz } = useQuiz(qid, qid > 0);
@@ -273,14 +274,14 @@ export function QuizAttemptPage(): React.ReactElement {
   /**
    * Convert QuizQuestion[] to QuestionNavigationState[] for QuizNavigation
    */
-  const getNavigationStates = (): import('../types/quiz.types').QuestionNavigationState[] => {
+  const getNavigationStates = (): QuestionNavigationState[] => {
     if (!questions) {return [];}
     
     return questions.map((q, index) => ({
       slot: q.slot,
       number: String(index + 1),
       answered: answers[q.slot] !== undefined,
-      flagged: q.flagged || false,
+      flagged: q.flagged ?? false,
       page: 0, // Single page for now
       isCurrentQuestion: index === currentQuestionIndex,
     }));

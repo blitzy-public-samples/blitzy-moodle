@@ -62,12 +62,12 @@ export interface ProtectedRouteProps {
  * </ProtectedRoute>
  * ```
  */
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
+export function ProtectedRoute({
   children,
   requiredPermission,
   loadingComponent,
   redirectTo = '/login',
-}) => {
+}: ProtectedRouteProps) {
   // user will be needed for permission checking when implemented (see TODO below)
   const { user: _user, isLoading, isAuthenticated } = useAuth();
   const location = useLocation();
@@ -75,7 +75,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   // Show loading state while checking authentication
   if (isLoading) {
     if (loadingComponent) {
-      return <>{loadingComponent}</>;
+      return loadingComponent;
     }
 
     return (
@@ -123,8 +123,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // User is authenticated (and has required permission if specified)
-  return <>{children}</>;
-};
+  return children;
+}
 
 // Default export for convenient importing
 export default ProtectedRoute;

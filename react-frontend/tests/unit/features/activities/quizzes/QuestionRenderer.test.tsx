@@ -49,17 +49,28 @@ describe('QuestionRenderer Component', () => {
   };
 
   /**
-   * Controlled wrapper component for testing QuestionRenderer with proper state management.
-   * This component maintains internal state and properly updates the value prop,
-   * simulating how QuestionRenderer would be used in a real parent component.
+   * Props for ControlledQuestionRenderer test component
    */
-  const ControlledQuestionRenderer: React.FC<{
+  interface ControlledQuestionRendererProps {
     question: QuizQuestion;
     initialValue?: string | string[];
     onChange: (value: string | string[]) => void;
     onFlag?: (flagged: boolean) => void;
     disabled?: boolean;
-  }> = ({ question, initialValue = '', onChange, onFlag: _onFlag, disabled }) => {
+  }
+
+  /**
+   * Controlled wrapper component for testing QuestionRenderer with proper state management.
+   * This component maintains internal state and properly updates the value prop,
+   * simulating how QuestionRenderer would be used in a real parent component.
+   */
+  function ControlledQuestionRenderer({ 
+    question, 
+    initialValue = '', 
+    onChange, 
+    onFlag: _onFlag, 
+    disabled 
+  }: ControlledQuestionRendererProps) {
     const [value, setValue] = React.useState<string | string[]>(initialValue);
 
     const handleChange = (newValue: string | string[]) => {
@@ -75,7 +86,7 @@ describe('QuestionRenderer Component', () => {
         disabled={disabled}
       />
     );
-  };
+  }
 
   /**
    * Create multiple choice question options

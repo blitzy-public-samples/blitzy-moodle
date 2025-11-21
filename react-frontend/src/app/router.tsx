@@ -18,6 +18,7 @@ import { DiscussionPage } from '@/features/activities/forums/pages/DiscussionPag
 import { QuizPage } from '@/features/activities/quizzes/pages/QuizPage';
 import { QuizAttemptPage } from '@/features/activities/quizzes/pages/QuizAttemptPage';
 import { QuizReviewPage } from '@/features/activities/quizzes/pages/QuizReviewPage';
+import { StudentGradebookPage } from '@/features/gradebook/pages/StudentGradebookPage';
 import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
 import App from '@/App';
 
@@ -104,6 +105,14 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <QuizReviewPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/courses/:courseId/grades',
+    element: (
+      <ProtectedRoute>
+        <StudentGradebookPage />
       </ProtectedRoute>
     ),
   },
