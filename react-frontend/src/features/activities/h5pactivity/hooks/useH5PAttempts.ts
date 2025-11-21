@@ -36,10 +36,19 @@ interface ScoredAttempts {
 
 /**
  * User's complete attempts data including all attempts and scored information.
+ * Exported for test mocking and external usage.
  */
-interface UserAttempts {
+export interface UserAttempts {
   /** User ID */
   userid: number;
+  /** User's first name */
+  firstname: string;
+  /** User's last name */
+  lastname: string;
+  /** User's email address */
+  email: string;
+  /** User's profile picture URL (optional) */
+  profilepictureurl?: string;
   /** Array of all attempts made by the user */
   attempts: H5PAttempt[];
   /** Scored attempts information - optional, present when grading is configured */

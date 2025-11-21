@@ -76,6 +76,7 @@ const createMockSubmissions = (count: number, overrides: Partial<Submission>[] =
 const createMockAssignment = (overrides: Partial<Assignment> = {}): Assignment => {
   return {
     id: 1,
+    cmid: 1,
     course: 1,
     name: 'Test Assignment',
     intro: 'Test assignment description',
@@ -83,6 +84,7 @@ const createMockAssignment = (overrides: Partial<Assignment> = {}): Assignment =
     activity: 'assign',
     activityformat: 0,
     alwaysshowdescription: 1,
+    nosubmissions: 0,
     submissiondrafts: 1,
     sendnotifications: 1,
     sendlatenotifications: 1,
@@ -92,6 +94,7 @@ const createMockAssignment = (overrides: Partial<Assignment> = {}): Assignment =
     gradingduedate: 0,
     allowsubmissionsfromdate: Date.now() / 1000 - 86400, // Started 1 day ago
     grade: 100,
+    gradepenalty: 0,
     timemodified: Date.now() / 1000,
     completionsubmit: 0,
     requiresubmissionstatement: 0,
@@ -105,9 +108,9 @@ const createMockAssignment = (overrides: Partial<Assignment> = {}): Assignment =
     maxattempts: -1,
     markingworkflow: 0,
     markingallocation: 0,
-    sendstudentnotifications: 1,
+    markinganonymous: 0,
     preventsubmissionnotingroup: 0,
-    configs: {},
+    configs: [],
     ...overrides,
   };
 };
@@ -199,7 +202,7 @@ describe('SubmissionList Component', () => {
       );
 
       submissionsWithNames.forEach((sub) => {
-        expect(screen.getByText(sub.studentname)).toBeInTheDocument();
+        expect(screen.getByText(sub.studentname!)).toBeInTheDocument();
       });
 
       // Check for avatars using test ID (MUI Avatar with text content doesn't have role="img")
@@ -408,12 +411,14 @@ describe('SubmissionList Component', () => {
 
     it('displays grade and feedback preview if available', () => {
       const submissions = [
-        createMockSubmission({
-          id: 1,
-          grade: 90,
-          gradingstatus: 'graded',
-          feedbacktext: 'Great work!',
-        }) as any,
+        {
+          ...createMockSubmission({
+            id: 1,
+            grade: 90,
+            gradingstatus: 'graded',
+          }),
+          feedbacktext: 'Great work',
+        } as any,
       ];
 
       renderWithProviders(
@@ -460,7 +465,7 @@ describe('SubmissionList Component', () => {
       // First card should be highlighted (most recent)
       expect(cards[0]).toHaveAttribute('data-submission-id', '2');
       // Check for "Latest" chip to indicate highlighted status
-      const latestChip = within(cards[0]).getByText('Latest');
+      const latestChip = within(cards[0]!).getByText('Latest');
       expect(latestChip).toBeInTheDocument();
     });
   });
@@ -526,7 +531,6 @@ describe('SubmissionList Component', () => {
           status: 'submitted',
           grade: 95,
           gradingstatus: 'graded',
-          gradeDisplay: '95 / 100',
         }),
       ];
 
@@ -601,7 +605,7 @@ describe('SubmissionList Component', () => {
 
       // After sorting, Alice should be first
       const rows = screen.getAllByRole('row');
-      expect(within(rows[1]).getByText('Alice')).toBeInTheDocument();
+      expect(within(rows[1]!).getByText('Alice')).toBeInTheDocument();
       
       // Restore fake timers for other tests
       vi.useFakeTimers();
@@ -635,7 +639,7 @@ describe('SubmissionList Component', () => {
 
       // After descending sort, Charlie should be first
       const rows = screen.getAllByRole('row');
-      expect(within(rows[1]).getByText('Charlie')).toBeInTheDocument();
+      expect(within(rows[1]!).getByText('Charlie')).toBeInTheDocument();
       
       // Restore fake timers for other tests
       vi.useFakeTimers();
@@ -919,7 +923,7 @@ describe('SubmissionList Component', () => {
       );
 
       const viewButtons = screen.getAllByLabelText(/view submission/i);
-      await user.click(viewButtons[0]);
+      await user.click(viewButtons[0]!);
 
       // Give React time to process the click event
       await new Promise(resolve => setTimeout(resolve, 50));
@@ -1005,7 +1009,7 @@ describe('SubmissionList Component', () => {
         />
       );
 
-      const viewButton = screen.getAllByLabelText(/view submission/i)[0];
+      const viewButton = screen.getAllByLabelText(/view submission/i)[0]!;
       await user.hover(viewButton);
 
       await waitFor(() => {
@@ -1482,7 +1486,7 @@ describe('SubmissionList Component', () => {
         />
       );
 
-      const viewButton = screen.getAllByLabelText(/view submission/i)[0];
+      const viewButton = screen.getAllByLabelText(/view submission/i)[0]!;
       await user.hover(viewButton);
 
       await waitFor(() => {

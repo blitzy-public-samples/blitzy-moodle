@@ -47,7 +47,7 @@ const testTheme = createTheme({
     info: {
       main: '#2196f3',
       dark: '#1565c0',
-      lighter: '#e3f2fd',
+      light: '#e3f2fd',
     },
     action: {
       hover: 'rgba(0, 0, 0, 0.04)',

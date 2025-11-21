@@ -351,8 +351,8 @@ describe('useFileUpload', () => {
     let capturedProgressCallback: ((event: { loaded: number; total: number }) => void) | null = null;
 
     // Mock axios to capture progress callback
-    mockAxiosPost.mockImplementation((_url, _data, config: { onUploadProgress?: (event: { loaded: number; total: number }) => void }) => {
-      capturedProgressCallback = config.onUploadProgress ?? null;
+    mockAxiosPost.mockImplementation((_url, _data, config?: Record<string, unknown>) => {
+      capturedProgressCallback = (config?.onUploadProgress as ((event: { loaded: number; total: number }) => void)) ?? null;
       // Return a promise that never resolves (we'll manually trigger progress)
       return new Promise(() => {
         // Never resolves - we control progress manually
@@ -693,8 +693,8 @@ describe('useFileUpload', () => {
   it('should handle progress with zero total bytes', async () => {
     let capturedProgressCallback: ((event: { loaded: number; total?: number }) => void) | null = null;
 
-    mockAxiosPost.mockImplementation((_url, _data, config: { onUploadProgress?: (event: { loaded: number; total?: number }) => void }) => {
-      capturedProgressCallback = config.onUploadProgress ?? null;
+    mockAxiosPost.mockImplementation((_url, _data, config?: Record<string, unknown>) => {
+      capturedProgressCallback = (config?.onUploadProgress as ((event: { loaded: number; total?: number }) => void)) ?? null;
       return new Promise(() => {
         // Never resolves
       });

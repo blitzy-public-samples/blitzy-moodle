@@ -102,7 +102,7 @@ interface CustomMatchers<R = unknown> {
 }
 
 declare module 'vitest' {
-  interface Assertion<T = unknown> extends CustomMatchers<T> {}
+  interface Assertion<T> extends CustomMatchers<T> {}
   interface AsymmetricMatchersContaining extends CustomMatchers {}
 }
 
@@ -978,7 +978,9 @@ expect.extend({
    */
   async toBeAccessible(received: unknown) {
     try {
-      const results: AxeResults = await axeRun(received);
+      // Type guard to ensure received is a valid element or context
+      const element = received as Element | Document | undefined;
+      const results: AxeResults = await axeRun(element);
       const {violations} = results;
       const pass = violations.length === 0;
 

@@ -57,7 +57,6 @@ import type { ReactElement, ReactNode } from 'react';
 import { render } from '@testing-library/react';
 import type { RenderOptions } from '@testing-library/react';
 import { configureStore } from '@reduxjs/toolkit';
-import type { PreloadedState } from '@reduxjs/toolkit';
 import { Provider } from 'react-redux';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from '@mui/material/styles';
@@ -143,7 +142,7 @@ export type AppStore = ReturnType<typeof setupStore>;
  * expect(state.auth.user?.username).toBe('testuser');
  * ```
  */
-export function setupStore(preloadedState?: PreloadedState<RootState>) {
+export function setupStore(preloadedState?: Partial<RootState>) {
   // Create store without preloadedState if not provided
   if (preloadedState === undefined) {
     return configureStore({
@@ -247,26 +246,6 @@ export const testQueryClient = new QueryClient({
 });
 
 // ============================================================================
-// All Providers Wrapper Component
-// ============================================================================
-
-/**
- * Props for AllTheProviders wrapper component
- *
- * Configuration options for the test provider wrapper:
- * - children: React elements to render within providers
- * - preloadedState: Initial Redux state for the test
- * - initialRoutes: Initial route entries for React Router
- */
-interface AllTheProvidersProps {
-  children: ReactNode;
-  preloadedState?: PreloadedState<RootState>;
-  initialRoutes?: string[];
-}
-
-
-
-// ============================================================================
 // Custom Render Function
 // ============================================================================
 
@@ -302,7 +281,7 @@ export interface ExtendedRenderOptions extends Omit<RenderOptions, 'wrapper'> {
    * }
    * ```
    */
-  preloadedState?: PreloadedState<RootState>;
+  preloadedState?: Partial<RootState>;
 
   /**
    * Initial route entries for React Router

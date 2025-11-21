@@ -716,8 +716,8 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
           ...old,
           discussion: {
             ...old.discussion,
-            numUnread: 0,
-          },
+            unreadCount: 0,
+          } as any, // Type assertion needed as Discussion base type doesn't have unreadCount, but DiscussionDetail does
         };
       });
 

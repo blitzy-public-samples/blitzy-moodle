@@ -619,7 +619,8 @@ describe('FileUploadZone Component', () => {
       
       // Remove one file
       const deleteButtons = screen.getAllByLabelText(/remove/i);
-      await user.click(deleteButtons[0]);
+      expect(deleteButtons[0]).toBeDefined();
+      await user.click(deleteButtons[0]!);
       
       await waitFor(() => {
         expect(screen.getByText(/files: 1\/5/i)).toBeInTheDocument();

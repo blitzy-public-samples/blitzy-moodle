@@ -17,7 +17,7 @@ import { http, HttpResponse } from 'msw';
 import { server } from '../../../../mocks/server';
 import type { ReactNode } from 'react';
 import { useForum } from '@/features/activities/forums/hooks/useForum';
-import type { Discussion } from '@/features/activities/forums/types/forum.types';
+import type { DiscussionEnriched } from '@/features/activities/forums/types/forum.types';
 
 // Mock API base URL
 const API_BASE_URL = 'http://localhost:8000/api/v1';
@@ -69,7 +69,7 @@ const getMockForumData = () => ({
 
 // Mock discussions data
 const mockDiscussionsData: {
-  discussions: Discussion[];
+  discussions: DiscussionEnriched[];
   pagination: {
     page: number;
     perPage: number;
@@ -93,6 +93,9 @@ const mockDiscussionsData: {
       timeend: 0,
       pinned: true,
       timelocked: 0,  // 0 means not locked
+      created: 1705405800,
+      numReplies: 5,
+      numUnreadPosts: 0,
     },
     {
       id: 102,
@@ -109,6 +112,9 @@ const mockDiscussionsData: {
       timeend: 0,
       pinned: false,
       timelocked: 0,
+      created: 1705406400,
+      numReplies: 3,
+      numUnreadPosts: 2,
     },
   ],
   pagination: {
@@ -166,13 +172,13 @@ const handlers = [
     let discussions = [...mockDiscussionsData.discussions];
     
     if (filter === 'unread') {
-      discussions = discussions.filter(d => d.unread);
+      discussions = discussions.filter(d => (d.numUnreadPosts ?? 0) > 0);
     } else if (filter === 'pinned') {
       discussions = discussions.filter(d => d.pinned);
     }
     
     if (sortBy === 'replies') {
-      discussions.sort((a, b) => b.replies - a.replies);
+      discussions.sort((a, b) => (b.numReplies ?? 0) - (a.numReplies ?? 0));
     }
     
     // Return PaginatedResponse<Discussion> structure
@@ -497,7 +503,7 @@ describe('useForum', () => {
       });
 
       const discussions = result.current.discussions!;
-      expect(discussions.every(d => d.unread)).toBe(true);
+      expect(discussions.every(d => (d.numUnreadPosts ?? 0) > 0)).toBe(true);
     });
 
     it('should filter pinned discussions', async () => {
@@ -773,7 +779,7 @@ describe('useForum', () => {
       });
 
       const newDiscussion = {
-        name: 'New discussion',
+        subject: 'New discussion',
         message: 'Discussion content',
       };
 
@@ -890,8 +896,8 @@ describe('useForum', () => {
         expect(result.current.forum).toBeDefined();
       });
 
-      expect(result.current.forum!.displayName).toBe(
-        getMockForumData().name.toUpperCase()
+      expect(result.current.forum!.name).toBe(
+        getMockForumData().name
       );
     });
 
@@ -987,7 +993,7 @@ describe('useForum', () => {
       let errorThrown = false;
       try {
         await result.current.createDiscussion({
-          name: '',
+          subject: '',
           message: '',
         });
       } catch (error) {

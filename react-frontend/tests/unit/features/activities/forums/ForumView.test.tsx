@@ -83,7 +83,7 @@ const createMockForum = (overrides?: Partial<Forum>): Forum => ({
   completionreplies: 0,
   completionposts: 0,
   displaywordcount: false,
-  lockdiscussionsafter: 0,
+  lockdiscussionafter: 0,
   duedate: 0,
   cutoffdate: 0,
   subscribed: false,
@@ -204,7 +204,7 @@ describe('ForumView Component', () => {
         refetch: vi.fn(),
       } as any);
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       // Verify forum title
       expect(screen.getByRole('heading', { name: 'General Discussion Forum' })).toBeInTheDocument();
@@ -223,7 +223,7 @@ describe('ForumView Component', () => {
         })
       );
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       // Verify metadata display
       expect(screen.getByText(/Maximum attachment size/i)).toBeInTheDocument();
@@ -235,7 +235,7 @@ describe('ForumView Component', () => {
     it('should render discussion list integration', () => {
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue(createMockUseForumReturn());
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       // Verify DiscussionList is rendered
       expect(screen.getByTestId('discussion-list')).toBeInTheDocument();
@@ -251,7 +251,7 @@ describe('ForumView Component', () => {
         })
       );
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       expect(screen.getByText(/Single discussion/i)).toBeInTheDocument();
     });
@@ -259,7 +259,7 @@ describe('ForumView Component', () => {
     it('should display indicator for standard forum', () => {
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue(createMockUseForumReturn());
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       expect(screen.getByText(/Standard forum/i)).toBeInTheDocument();
     });
@@ -271,7 +271,7 @@ describe('ForumView Component', () => {
         })
       );
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       expect(screen.getByText(/Q&A forum/i)).toBeInTheDocument();
     });
@@ -283,7 +283,7 @@ describe('ForumView Component', () => {
         })
       );
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       expect(screen.getByText(/Blog-style/i)).toBeInTheDocument();
     });
@@ -293,7 +293,7 @@ describe('ForumView Component', () => {
     it('should display subscription button when not subscribed', () => {
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue(createMockUseForumReturn());
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       const subscribeButton = screen.getByRole('button', { name: /Subscribe/i });
       expect(subscribeButton).toBeInTheDocument();
@@ -307,7 +307,7 @@ describe('ForumView Component', () => {
         })
       );
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       const unsubscribeButton = screen.getByRole('button', { name: /Unsubscribe/i });
       expect(unsubscribeButton).toBeInTheDocument();
@@ -323,7 +323,7 @@ describe('ForumView Component', () => {
         toggleSubscription: mockToggleSubscription,
       });
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       const subscribeButton = screen.getByRole('button', { name: /Subscribe/i });
       await user.click(subscribeButton);
@@ -337,7 +337,7 @@ describe('ForumView Component', () => {
         isSubscribing: true,
       });
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       const subscribeButton = screen.getByRole('button', { name: /Subscribe/i });
       expect(subscribeButton).toBeDisabled();
@@ -350,7 +350,7 @@ describe('ForumView Component', () => {
         })
       );
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       expect(screen.getByText(/You are subscribed/i)).toBeInTheDocument();
     });
@@ -362,7 +362,7 @@ describe('ForumView Component', () => {
         ...createMockUseForumReturn(),
       });
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       expect(screen.getByRole('button', { name: /Add.*discussion/i })).toBeInTheDocument();
     });
@@ -375,7 +375,7 @@ describe('ForumView Component', () => {
         forum: mockForum,
       });
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       expect(screen.queryByRole('button', { name: /Add.*discussion/i })).not.toBeInTheDocument();
     });
@@ -388,7 +388,7 @@ describe('ForumView Component', () => {
         forum: mockForum,
       });
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       // Single discussion forums don't allow creating new discussions
       expect(screen.queryByRole('button', { name: /Add.*discussion/i })).not.toBeInTheDocument();
@@ -405,7 +405,7 @@ describe('ForumView Component', () => {
         forum: mockForum,
       });
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       // Text is split across elements: <strong>25</strong> Discussions
       // Find the number element and verify its parent contains the label
@@ -422,7 +422,7 @@ describe('ForumView Component', () => {
         forum: mockForum,
       });
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       // Text is split across elements: <strong>150</strong> Posts
       expect(screen.getByText('150')).toBeInTheDocument();
@@ -437,7 +437,7 @@ describe('ForumView Component', () => {
         forum: mockForum,
       });
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       // Text is split across elements: <strong>8</strong> Unread
       // Find the number element and verify its parent contains the label
@@ -454,7 +454,7 @@ describe('ForumView Component', () => {
         forum: mockForum,
       });
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       // Text is split across elements: <strong>4</strong> Unread
       // Find the number element and verify its parent contains the label
@@ -478,7 +478,7 @@ describe('ForumView Component', () => {
         isTogglingSubscription: false,
       } as any);
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       // Verify loading skeleton is displayed
       expect(screen.getByRole('status', { name: /loading/i })).toBeInTheDocument();
@@ -498,7 +498,7 @@ describe('ForumView Component', () => {
         isTogglingSubscription: false,
       } as any);
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       expect(screen.getByLabelText(/Loading forum/i)).toBeInTheDocument();
     });
@@ -518,7 +518,7 @@ describe('ForumView Component', () => {
         isTogglingSubscription: false,
       } as any);
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       expect(screen.getByRole('alert')).toBeInTheDocument();
       expect(screen.getByText(/Failed to load forum/i)).toBeInTheDocument();
@@ -539,7 +539,7 @@ describe('ForumView Component', () => {
         isTogglingSubscription: false,
       } as any);
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       const retryButton = screen.getByRole('button', { name: /retry/i });
       expect(retryButton).toBeInTheDocument();
@@ -561,7 +561,7 @@ describe('ForumView Component', () => {
         isTogglingSubscription: false,
       } as any);
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       const retryButton = screen.getByRole('button', { name: /retry/i });
       await user.click(retryButton);
@@ -583,7 +583,7 @@ describe('ForumView Component', () => {
         forum: mockForum,
       });
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       expect(screen.getByText(/No discussions yet/i)).toBeInTheDocument();
       expect(screen.getByText(/Be the first/i)).toBeInTheDocument();
@@ -601,7 +601,7 @@ describe('ForumView Component', () => {
         forum: mockForum,
       });
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       expect(screen.getByText(/No discussions yet/i)).toBeInTheDocument();
       expect(screen.queryByText(/Be the first/i)).not.toBeInTheDocument();
@@ -617,7 +617,7 @@ describe('ForumView Component', () => {
         forum: mockForum,
       });
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       expect(screen.getByRole('button', { name: /Moderate/i })).toBeInTheDocument();
     });
@@ -627,7 +627,7 @@ describe('ForumView Component', () => {
         ...createMockUseForumReturn(),
       });
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       expect(screen.queryByRole('button', { name: /Moderate/i })).not.toBeInTheDocument();
     });
@@ -641,7 +641,7 @@ describe('ForumView Component', () => {
         forum: mockForum,
       });
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       const moderateButton = screen.getByRole('button', { name: /Moderate/i });
       await user.click(moderateButton);
@@ -658,7 +658,7 @@ describe('ForumView Component', () => {
         forum: mockForum,
       });
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       const moderateButton = screen.getByRole('button', { name: /Moderate/i });
       await user.click(moderateButton);
@@ -677,7 +677,7 @@ describe('ForumView Component', () => {
         })
       );
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       expect(screen.getByText(/This forum is archived/i)).toBeInTheDocument();
     });
@@ -691,7 +691,7 @@ describe('ForumView Component', () => {
         })
       );
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       expect(screen.queryByRole('button', { name: /Add.*discussion/i })).not.toBeInTheDocument();
     });
@@ -706,7 +706,7 @@ describe('ForumView Component', () => {
         })
       );
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       expect(screen.getByText(/read-only/i)).toBeInTheDocument();
     });
@@ -722,7 +722,7 @@ describe('ForumView Component', () => {
         })
       );
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       expect(screen.getByText(/Due:/i)).toBeInTheDocument();
     });
@@ -732,7 +732,7 @@ describe('ForumView Component', () => {
     it('should have proper heading hierarchy', () => {
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue(createMockUseForumReturn());
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       const headings = screen.getAllByRole('heading');
       expect(headings.length).toBeGreaterThan(0);
@@ -743,7 +743,7 @@ describe('ForumView Component', () => {
     it('should have accessible subscription button labels', () => {
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue(createMockUseForumReturn());
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       const subscribeButton = screen.getByRole('button', { name: /Subscribe/i });
       expect(subscribeButton).toHaveAccessibleName();
@@ -759,7 +759,7 @@ describe('ForumView Component', () => {
         toggleSubscription: mockToggleSubscription,
       });
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       // Tab to the button
       await user.tab();
@@ -775,7 +775,7 @@ describe('ForumView Component', () => {
     it('should have proper ARIA landmarks', () => {
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue(createMockUseForumReturn());
 
-      const { container } = renderWithProviders(<ForumView forumId={1} />);
+      const { container } = renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       // Should have main landmark
       expect(container.querySelector('main') ?? container.querySelector('[role="main"]')).toBeInTheDocument();
@@ -794,7 +794,7 @@ describe('ForumView Component', () => {
         isTogglingSubscription: false,
       } as any);
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       const loadingElement = screen.getByRole('status');
       expect(loadingElement).toHaveAttribute('aria-live', 'polite');
@@ -813,7 +813,7 @@ describe('ForumView Component', () => {
         isTogglingSubscription: false,
       } as any);
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       const alertElement = screen.getByRole('alert');
       expect(alertElement).toHaveAttribute('aria-live', 'assertive');
@@ -831,7 +831,7 @@ describe('ForumView Component', () => {
         forum: mockForum,
       });
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       // Statistics should have accessible descriptions
       expect(screen.getByLabelText(/forum statistics/i)).toBeInTheDocument();
@@ -842,7 +842,7 @@ describe('ForumView Component', () => {
     it('should pass sorting controls to DiscussionList', () => {
       (forumHooks.useForum as ReturnType<typeof vi.fn>).mockReturnValue(createMockUseForumReturn());
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       const discussionList = screen.getByTestId('discussion-list');
       expect(discussionList).toBeInTheDocument();
@@ -869,7 +869,7 @@ describe('ForumView Component', () => {
         toggleSubscription: mockToggleSubscription,
       });
 
-      renderWithProviders(<ForumView forumId={1} />);
+      renderWithProviders(<ForumView courseId={101} forumId={1} />);
 
       const subscribeButton = screen.getByRole('button', { name: /Subscribe/i });
       await user.click(subscribeButton);

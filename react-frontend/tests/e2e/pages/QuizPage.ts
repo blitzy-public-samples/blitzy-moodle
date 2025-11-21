@@ -105,19 +105,16 @@ export class QuizPage {
     this.attemptButton = page.locator('[data-testid="start-attempt-button"], button:has-text("Attempt quiz"), button:has-text("Continue quiz"), button:has-text("Start attempt")').first();
     this.timer = page.locator('[data-testid="timer-display"]');
     this.questionText = page.locator('[data-testid="question-text"], .qtext, .question-text').first();
-    this._answerOptions = page.locator('[data-testid="question-options"] input[type="radio"], [data-testid="question-options"] input[type="checkbox"], [data-testid="essay-input"], [data-testid="short-answer-input"], [data-testid="numerical-input"]');
 
     // Initialize navigation locators
     this.nextButton = page.locator('[data-testid="next-button"]');
     this.previousButton = page.locator('[data-testid="prev-button"]');
-    this._questionSidebar = page.locator('[data-testid="question-sidebar"], .question-navigation, .qn-buttons, nav.quiz-nav').first();
 
     // Initialize submission locators
     this.submitAllButton = page.locator('[data-testid="submit-button"]');
     this.confirmSubmitButton = page.locator('[data-testid="confirm-submit-button"]');
 
     // Initialize results locators
-    this._reviewSection = page.locator('[data-testid="quiz-review"], .quiz-review, .review-container').first();
     this.resultsSection = page.locator('[data-testid="quiz-results"], .quiz-results, .results-summary').first();
     this.scoreSummary = page.locator('[data-testid="score-summary"], .grade-summary, .score-display').first();
     this.feedbackSection = page.locator('[data-testid="quiz-feedback"], .quiz-feedback, .feedback-section').first();

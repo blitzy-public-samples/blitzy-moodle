@@ -22,6 +22,7 @@ import type { ReactNode } from 'react';
 vi.mock('@/features/profile/api/profileApi', () => ({
   fetchUserProfile: vi.fn(),
   fetchCurrentUser: vi.fn(),
+  fetchCurrentUserProfile: vi.fn(),
   updateUserProfile: vi.fn(),
 }));
 

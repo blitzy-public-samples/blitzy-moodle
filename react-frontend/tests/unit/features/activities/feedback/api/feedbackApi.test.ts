@@ -30,7 +30,6 @@ import {
   saveProgress,
   type FeedbackSubmissionResult,
   type FeedbackStatus,
-  type FeedbackResponses,
   type AnalysisOptions,
 } from '@/features/activities/feedback/api/feedbackApi';
 import type { ApiResponse } from '@/types/api';
@@ -38,6 +37,7 @@ import type {
   Feedback,
   FeedbackItem,
   FeedbackAnalysis,
+  FeedbackCompleted,
 } from '@/features/activities/feedback/types/feedback.types';
 import { FeedbackQuestionType } from '@/features/activities/feedback/types/feedback.types';
 
@@ -176,22 +176,22 @@ const mockFeedbackStatus: FeedbackStatus = {
   timeClose: 0,
 };
 
-const mockFeedbackResponses: FeedbackUserResponses[] = [
+const mockFeedbackResponses: FeedbackCompleted[] = [
   {
-    completedId: 1,
+    id: 1,
+    feedback: 1,
+    userid: 1,
     timemodified: 1640000000,
+    random_response: 0,
+    anonymous_response: 0,
     courseid: 10,
-    values: {
-      1: '4',
-      2: 'Great content and well-structured',
-      3: 'Yes',
-    },
   },
 ];
 
 const mockSubmissionResult: FeedbackSubmissionResult = {
   success: true,
   completedId: 2,
+  timeModified: 1640000000,
   message: 'Feedback submitted successfully',
 };
 
@@ -661,7 +661,7 @@ describe('Feedback API Client', () => {
 
     it('should support filtering by group parameter', async () => {
       const options: AnalysisOptions = {
-        groupid: 5,
+        groupId: 5,
       };
 
       let requestUrl: string = '';
@@ -678,12 +678,12 @@ describe('Feedback API Client', () => {
 
       await getFeedbackAnalysis(feedbackId, options);
 
-      expect(requestUrl).toContain('groupid=5');
+      expect(requestUrl).toContain('groupId=5');
     });
 
     it('should support filtering by course parameter', async () => {
       const options: AnalysisOptions = {
-        courseid: 10,
+        courseId: 10,
       };
 
       let requestUrl: string = '';
@@ -700,7 +700,7 @@ describe('Feedback API Client', () => {
 
       await getFeedbackAnalysis(feedbackId, options);
 
-      expect(requestUrl).toContain('courseid=10');
+      expect(requestUrl).toContain('courseId=10');
     });
 
     it('should handle empty analysis (no responses yet)', async () => {
@@ -967,7 +967,11 @@ describe('Feedback API Client', () => {
         http.get(`*${API_BASE_URL}/feedback/${feedbackId}/responses`, () => {
           return HttpResponse.json({
             success: true,
-            data: mockFeedbackResponses,
+            data: {
+              responses: mockFeedbackResponses,
+              total: mockFeedbackResponses.length,
+              hasMore: false,
+            },
           });
         })
       );
@@ -975,8 +979,8 @@ describe('Feedback API Client', () => {
       const response = await getFeedbackResponses(feedbackId);
 
       expect(response.success).toBe(true);
-      expect(response.data).toHaveLength(1);
-      expect(response.data[0]).toEqual(mockFeedbackResponses[0]);
+      expect(response.data.responses).toHaveLength(1);
+      expect(response.data.responses[0]).toEqual(mockFeedbackResponses[0]);
     });
 
     it('should return responses for current user only', async () => {
@@ -984,7 +988,11 @@ describe('Feedback API Client', () => {
         http.get(`*${API_BASE_URL}/feedback/${feedbackId}/responses`, () => {
           return HttpResponse.json({
             success: true,
-            data: mockFeedbackResponses,
+            data: {
+              responses: mockFeedbackResponses,
+              total: mockFeedbackResponses.length,
+              hasMore: false,
+            },
           });
         })
       );
@@ -992,11 +1000,9 @@ describe('Feedback API Client', () => {
       const response = await getFeedbackResponses(feedbackId);
 
       // All responses should belong to current user (implicit from backend)
-      expect(response.data).toHaveLength(1);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      expect(response.data[0].completedId).toBe(1);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      expect(response.data[0].values).toHaveProperty('1');
+      expect(response.data.responses).toHaveLength(1);
+      expect(response.data.responses[0]!.id).toBe(1);
+      expect(response.data.responses[0]!.feedback).toBe(1);
     });
 
     it('should handle empty response history', async () => {
@@ -1004,7 +1010,11 @@ describe('Feedback API Client', () => {
         http.get(`*${API_BASE_URL}/feedback/${feedbackId}/responses`, () => {
           return HttpResponse.json({
             success: true,
-            data: [],
+            data: {
+              responses: [],
+              total: 0,
+              hasMore: false,
+            },
           });
         })
       );
@@ -1012,22 +1022,28 @@ describe('Feedback API Client', () => {
       const response = await getFeedbackResponses(feedbackId);
 
       expect(response.success).toBe(true);
-      expect(response.data).toHaveLength(0);
+      expect(response.data.responses).toHaveLength(0);
     });
 
     it('should include completed and in-progress submissions', async () => {
-      const mixedResponses: FeedbackUserResponses[] = [
+      const mixedResponses: FeedbackCompleted[] = [
         {
-          completedId: 1,
+          id: 1,
+          feedback: 1,
+          userid: 1,
           timemodified: 1640000000,
+          random_response: 0,
+          anonymous_response: 0,
           courseid: 10,
-          values: { 1: '4', 2: 'Good', 3: 'Yes' },
         },
         {
-          completedId: 0, // In-progress
+          id: 2,
+          feedback: 1,
+          userid: 1,
           timemodified: 1640010000,
+          random_response: 0,
+          anonymous_response: 0,
           courseid: 10,
-          values: { 1: '5' }, // Partially completed
         },
       ];
 
@@ -1035,18 +1051,20 @@ describe('Feedback API Client', () => {
         http.get(`*${API_BASE_URL}/feedback/${feedbackId}/responses`, () => {
           return HttpResponse.json({
             success: true,
-            data: mixedResponses,
+            data: {
+              responses: mixedResponses,
+              total: mixedResponses.length,
+              hasMore: false,
+            },
           });
         })
       );
 
       const response = await getFeedbackResponses(feedbackId);
 
-      expect(response.data).toHaveLength(2);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      expect(response.data[0].completedId).toBe(1);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      expect(response.data[1].completedId).toBe(0); // In-progress
+      expect(response.data.responses).toHaveLength(2);
+      expect(response.data.responses[0]!.id).toBe(1);
+      expect(response.data.responses[1]!.id).toBe(2);
     });
 
     it('should handle permission error for viewing reports capability', async () => {
@@ -1271,8 +1289,8 @@ describe('Feedback API Client', () => {
     it('should validate union types for different response states', async () => {
       // Test different status states
       const statuses: FeedbackStatus[] = [
-        { ...mockFeedbackStatus, isCompleted: false, attemptCount: 0 },
-        { ...mockFeedbackStatus, isCompleted: true, attemptCount: 1 },
+        { ...mockFeedbackStatus, isCompleted: false, attemptCount: 0, lastCompleted: undefined },
+        { ...mockFeedbackStatus, isCompleted: true, attemptCount: 1, lastCompleted: mockFeedbackResponses[0] },
       ];
 
       for (const status of statuses) {
@@ -1288,10 +1306,13 @@ describe('Feedback API Client', () => {
         const response = await getFeedbackStatus(1);
         
         // TypeScript should handle union type correctly
-        if (response.data.isSubmitted) {
-          expect(typeof response.data.completedId).toBe('number');
+        if (response.data.isCompleted) {
+          expect(response.data.lastCompleted).toBeDefined();
+          if (response.data.lastCompleted) {
+            expect(typeof response.data.lastCompleted.id).toBe('number');
+          }
         } else {
-          expect(response.data.completedId).toBeNull();
+          expect(response.data.lastCompleted).toBeUndefined();
         }
       }
     });
@@ -1302,7 +1323,7 @@ describe('Feedback API Client', () => {
       const items: FeedbackItem[] = mockFeedbackItems;
       const analysis: FeedbackAnalysis = mockFeedbackAnalysis;
       const status: FeedbackStatus = mockFeedbackStatus;
-      const responses: FeedbackUserResponses[] = mockFeedbackResponses;
+      const responses: FeedbackCompleted[] = mockFeedbackResponses;
 
       // All variables are explicitly typed
       expect(feedback).toBeDefined();

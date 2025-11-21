@@ -93,11 +93,11 @@ describe('QuestionRenderer Component', () => {
     it('highlights selected value correctly', () => {
       const { rerender } = render(<QuestionRenderer {...getBaseProps()} value="1" />);
 
-      const option1Radio = screen.getByLabelText('Option 1');
+      const option1Radio = screen.getByLabelText('Option 1') as HTMLInputElement;
       expect(option1Radio.checked).toBe(true);
 
       rerender(<QuestionRenderer {...getBaseProps()} value="2" />);
-      const option2Radio = screen.getByLabelText('Option 2');
+      const option2Radio = screen.getByLabelText('Option 2') as HTMLInputElement;
       expect(option2Radio.checked).toBe(true);
     });
 
@@ -215,10 +215,10 @@ describe('QuestionRenderer Component', () => {
     it('reflects checked state from value prop', () => {
       render(<QuestionRenderer {...getBaseProps()} value={['1', '3']} />);
 
-      const choiceA = screen.getByLabelText('Choice A');
-      const choiceB = screen.getByLabelText('Choice B');
-      const choiceC = screen.getByLabelText('Choice C');
-      const choiceD = screen.getByLabelText('Choice D');
+      const choiceA = screen.getByLabelText('Choice A') as HTMLInputElement;
+      const choiceB = screen.getByLabelText('Choice B') as HTMLInputElement;
+      const choiceC = screen.getByLabelText('Choice C') as HTMLInputElement;
+      const choiceD = screen.getByLabelText('Choice D') as HTMLInputElement;
 
       expect(choiceA.checked).toBe(true);
       expect(choiceB.checked).toBe(false);
@@ -301,7 +301,7 @@ describe('QuestionRenderer Component', () => {
     it('sets initial rating from value prop', () => {
       render(<QuestionRenderer {...getBaseProps()} value="3" />);
 
-      const neutralOption = screen.getByLabelText(/Neutral - 3 points/);
+      const neutralOption = screen.getByLabelText(/Neutral - 3 points/) as HTMLInputElement;
       expect(neutralOption.checked).toBe(true);
     });
 
@@ -348,7 +348,7 @@ describe('QuestionRenderer Component', () => {
     it('renders number input when type is numeric', () => {
       render(<QuestionRenderer {...getBaseProps()} />);
 
-      const input = screen.getByLabelText('Enter your score');
+      const input = screen.getByLabelText('Enter your score') as HTMLInputElement;
       expect(input).toBeInTheDocument();
       expect(input.type).toBe('number');
     });
@@ -402,14 +402,14 @@ describe('QuestionRenderer Component', () => {
     it('handles empty value correctly', () => {
       render(<QuestionRenderer {...getBaseProps()} value="" />);
 
-      const input = screen.getByLabelText('Enter your score');
+      const input = screen.getByLabelText('Enter your score') as HTMLInputElement;
       expect(input.value).toBe('');
     });
 
     it('converts string value to number', () => {
       render(<QuestionRenderer {...getBaseProps()} value={42} />);
 
-      const input = screen.getByLabelText('Enter your score');
+      const input = screen.getByLabelText('Enter your score') as HTMLInputElement;
       expect(input.value).toBe('42');
     });
   });
@@ -455,7 +455,7 @@ describe('QuestionRenderer Component', () => {
     it('applies rows count from presentation', () => {
       render(<QuestionRenderer {...getBaseProps()} />);
 
-      const textarea = screen.getByLabelText('Enter your comments');
+      const textarea = screen.getByLabelText('Enter your comments') as HTMLTextAreaElement;
       // Check the rows attribute (always a string in HTML)
       expect(textarea).toHaveAttribute('rows', '5');
       // The .rows property should parse to 5
@@ -478,7 +478,7 @@ describe('QuestionRenderer Component', () => {
     it('applies maxlength attribute from presentation', () => {
       render(<QuestionRenderer {...getBaseProps()} />);
 
-      const textarea = screen.getByLabelText('Enter your comments');
+      const textarea = screen.getByLabelText('Enter your comments') as HTMLTextAreaElement;
       expect(textarea.maxLength).toBe(500);
     });
 
@@ -530,7 +530,7 @@ describe('QuestionRenderer Component', () => {
     it('renders text input when type is textfield', () => {
       render(<QuestionRenderer {...getBaseProps()} />);
 
-      const input = screen.getByLabelText('Enter your name');
+      const input = screen.getByLabelText('Enter your name') as HTMLInputElement;
       expect(input).toBeInTheDocument();
       expect(input.type).toBe('text');
     });
@@ -558,7 +558,7 @@ describe('QuestionRenderer Component', () => {
     it('applies maxlength validation', () => {
       render(<QuestionRenderer {...getBaseProps()} />);
 
-      const input = screen.getByLabelText('Enter your name');
+      const input = screen.getByLabelText('Enter your name') as HTMLInputElement;
       expect(input.maxLength).toBe(100);
     });
 
@@ -579,7 +579,7 @@ describe('QuestionRenderer Component', () => {
     it('controls input value via value prop', () => {
       const { rerender } = render(<QuestionRenderer {...getBaseProps()} value="Initial" />);
 
-      const input = screen.getByLabelText('Enter your name');
+      const input = screen.getByLabelText('Enter your name') as HTMLInputElement;
       expect(input.value).toBe('Initial');
 
       rerender(<QuestionRenderer {...getBaseProps()} value="Updated" />);
@@ -958,7 +958,7 @@ describe('QuestionRenderer Component', () => {
 
       const { rerender } = render(<QuestionRenderer {...props} />);
 
-      const input = screen.getByLabelText('Controlled Input');
+      const input = screen.getByLabelText('Controlled Input') as HTMLInputElement;
       expect(input.value).toBe('Initial Value');
 
       rerender(<QuestionRenderer {...props} value="Updated Value" />);
@@ -982,7 +982,7 @@ describe('QuestionRenderer Component', () => {
 
       render(<QuestionRenderer {...props} />);
 
-      const input = screen.getByLabelText('Score');
+      const input = screen.getByLabelText('Score') as HTMLInputElement;
       expect(input.value).toBe('50');
     });
 
@@ -1009,7 +1009,7 @@ describe('QuestionRenderer Component', () => {
 
       render(<QuestionRenderer {...props} />);
 
-      const optionB = screen.getByLabelText('B');
+      const optionB = screen.getByLabelText('B') as HTMLInputElement;
       expect(optionB.checked).toBe(true);
     });
 
@@ -1036,9 +1036,9 @@ describe('QuestionRenderer Component', () => {
 
       render(<QuestionRenderer {...props} />);
 
-      const optionX = screen.getByLabelText('X');
-      const optionY = screen.getByLabelText('Y');
-      const optionZ = screen.getByLabelText('Z');
+      const optionX = screen.getByLabelText('X') as HTMLInputElement;
+      const optionY = screen.getByLabelText('Y') as HTMLInputElement;
+      const optionZ = screen.getByLabelText('Z') as HTMLInputElement;
 
       expect(optionX.checked).toBe(true);
       expect(optionY.checked).toBe(false);
@@ -1530,7 +1530,7 @@ describe('QuestionRenderer Component', () => {
 
       render(<QuestionRenderer {...props} />);
 
-      const input = screen.getByLabelText('Long Text');
+      const input = screen.getByLabelText('Long Text') as HTMLInputElement;
       // MUI TextField with maxLength will prevent typing beyond limit
       expect(input.maxLength).toBe(100);
     });
@@ -1594,7 +1594,7 @@ describe('QuestionRenderer Component', () => {
 
       render(<QuestionRenderer {...props} />);
 
-      const textarea = screen.getByLabelText('Default Textarea');
+      const textarea = screen.getByLabelText('Default Textarea') as HTMLTextAreaElement;
       expect(textarea).toBeInTheDocument();
       // MUI TextField may render rows as a string attribute
       expect(Number(textarea.rows)).toBe(4); // Default value
@@ -1678,7 +1678,7 @@ describe('QuestionRenderer Component', () => {
 
       render(<QuestionRenderer {...props} />);
 
-      const textarea = screen.getByLabelText('Rows Test');
+      const textarea = screen.getByLabelText('Rows Test') as HTMLTextAreaElement;
       // MUI TextField may render rows as a string attribute
       expect(Number(textarea.rows)).toBe(8);
     });

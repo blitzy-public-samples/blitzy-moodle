@@ -31,6 +31,7 @@ import { apiClient } from '@/services/api/client';
 import useH5PAttempts, {
   useInvalidateH5PAttempts,
   usePrefetchH5PAttempts,
+  type UserAttempts,
 } from '@/features/activities/h5pactivity/hooks/useH5PAttempts';
 
 /* eslint-disable @typescript-eslint/unbound-method */
@@ -83,7 +84,7 @@ function createWrapper(queryClient: QueryClient) {
 // Mock Data
 // ============================================================================
 
-const mockUserAttempt = {
+const mockUserAttempt: UserAttempts = {
   userid: 101,
   firstname: 'John',
   lastname: 'Doe',
@@ -120,7 +121,7 @@ const mockUserAttempt = {
   ],
 };
 
-const mockUserAttempt2 = {
+const mockUserAttempt2: UserAttempts = {
   userid: 102,
   firstname: 'Jane',
   lastname: 'Johnson',
@@ -978,6 +979,9 @@ describe('useH5PAttempts - Combined Scenarios', () => {
     // Create a different user attempt for activity 2
     const mockUserAttemptActivity2: UserAttempts = {
       userid: 201,
+      firstname: 'Bob',
+      lastname: 'Smith',
+      email: 'bob.smith@example.com',
       attempts: [
         {
           id: 5,
@@ -989,7 +993,9 @@ describe('useH5PAttempts - Combined Scenarios', () => {
           rawscore: 85,
           maxscore: 100,
           duration: 450,
-          scaled: 0.85
+          scaled: 0.85,
+          completion: 1,
+          success: 1
         }
       ]
     };

@@ -32,7 +32,6 @@ import { render, screen, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ScormReportCard } from '@/features/activities/scorm/components/ScormReportCard';
 import type {
-  ScormAttempt,
   ScormReport,
   ScormAttemptSummary,
   ScormScoProgress,
@@ -85,7 +84,7 @@ const createMockReport = (overrides: Partial<ScormReport> = {}): ScormReport => 
   for (let i = 1; i <= currentAttempt; i++) {
     defaultAttempts.push({
       attemptNumber: i,
-      status: i === currentAttempt ? 'completed' : 'completed',
+      status: i === currentAttempt ? ScormStatus.COMPLETED : ScormStatus.COMPLETED,
       score: 85,
       timeSpent: '00:15:30',
       timeStarted: 1704067200 + (i - 1) * 1000,
@@ -105,7 +104,7 @@ const createMockReport = (overrides: Partial<ScormReport> = {}): ScormReport => 
     completionPercentage: 100,
     totalTimeSpent: '00:15:30',
     gradingMethod: ScormGradeMethod.HIGHEST,
-    status: 'completed',
+    status: ScormStatus.COMPLETED,
     scoProgress: [],
     interactions: [],
     objectives: [],
@@ -118,7 +117,7 @@ const createMockReport = (overrides: Partial<ScormReport> = {}): ScormReport => 
  */
 const createMockAttemptSummary = (overrides: Partial<ScormAttemptSummary> = {}): ScormAttemptSummary => ({
   attemptNumber: 1,
-  status: 'completed',
+  status: ScormStatus.COMPLETED,
   score: 85,
   timeSpent: '00:15:30',
   timeStarted: 1704067200,
@@ -134,7 +133,7 @@ const createMockAttemptSummary = (overrides: Partial<ScormAttemptSummary> = {}):
 const createMockScoProgress = (overrides: Partial<ScormScoProgress> = {}): ScormScoProgress => ({
   scoid: 1,
   title: 'Introduction Module',
-  status: 'completed',
+  status: ScormStatus.COMPLETED,
   score: {
     raw: 90,
     min: 0,
@@ -166,7 +165,7 @@ const createMockInteraction = (overrides: Partial<ScormCMIInteraction> = {}): Sc
 const createMockObjective = (overrides: Partial<ScormCMIObjective> = {}): ScormCMIObjective => ({
   id: 'obj1',
   description: 'Understand basic concepts',
-  status: 'completed',
+  status: ScormStatus.COMPLETED,
   score: {
     raw: 85,
     min: 0,
@@ -295,7 +294,7 @@ describe('ScormReportCard - Basic Report View', () => {
   it('should display current attempt number and status', async () => {
     const mockReport = createMockReport({
       currentAttempt: 2,
-      status: 'completed',
+      status: ScormStatus.COMPLETED,
     });
 
     vi.mocked(fetchAttemptReport).mockResolvedValue(mockReport);
@@ -316,7 +315,7 @@ describe('ScormReportCard - Basic Report View', () => {
 
   it('should display completed status with success color', async () => {
     const mockReport = createMockReport({
-      status: 'completed',
+      status: ScormStatus.COMPLETED,
     });
 
     vi.mocked(fetchAttemptReport).mockResolvedValue(mockReport);
@@ -381,10 +380,10 @@ describe('ScormReportCard - Basic Report View', () => {
 
   it('should display incomplete status with warning indication', async () => {
     const mockReport = createMockReport({
-      status: 'incomplete',
+      status: ScormStatus.INCOMPLETE,
       attempts: [
         createMockAttemptSummary({
-          status: 'incomplete',
+          status: ScormStatus.INCOMPLETE,
         }),
       ],
     });
@@ -583,7 +582,7 @@ describe('ScormReportCard - Completion and Time Tracking', () => {
   it('should display 100% completion for completed attempts', async () => {
     const mockReport = createMockReport({
       completionPercentage: 100,
-      status: 'completed',
+      status: ScormStatus.COMPLETED,
     });
 
     vi.mocked(fetchAttemptReport).mockResolvedValue(mockReport);
@@ -710,7 +709,7 @@ describe('ScormReportCard - Attempt History Table', () => {
         createMockAttemptSummary({
           attemptNumber: 1,
           score: 80,
-          status: 'completed',
+          status: ScormStatus.COMPLETED,
           timeCompleted: 1704067200,
         }),
       ],
@@ -828,10 +827,10 @@ describe('ScormReportCard - Warning and Error Alerts', () => {
 
   it('should display warning alert for incomplete attempts', async () => {
     const mockReport = createMockReport({
-      status: 'incomplete',
+      status: ScormStatus.INCOMPLETE,
       attempts: [
         createMockAttemptSummary({
-          status: 'incomplete',
+          status: ScormStatus.INCOMPLETE,
         }),
       ],
     });
@@ -930,10 +929,10 @@ describe('ScormReportCard - Warning and Error Alerts', () => {
 
   it('should display appropriate feedback message for learner to complete requirements', async () => {
     const mockReport = createMockReport({
-      status: 'incomplete',
+      status: ScormStatus.INCOMPLETE,
       attempts: [
         createMockAttemptSummary({
-          status: 'incomplete',
+          status: ScormStatus.INCOMPLETE,
         }),
       ],
     });
@@ -969,13 +968,13 @@ describe('ScormReportCard - SCO Progress Details', () => {
         createMockScoProgress({
           scoid: 1,
           title: 'Introduction',
-          status: 'completed',
+          status: ScormStatus.COMPLETED,
           score: { raw: 90, min: 0, max: 100 },
         }),
         createMockScoProgress({
           scoid: 2,
           title: 'Advanced Topics',
-          status: 'incomplete',
+          status: ScormStatus.INCOMPLETE,
           score: { raw: 60, min: 0, max: 100 },
         }),
       ],
@@ -1001,7 +1000,7 @@ describe('ScormReportCard - SCO Progress Details', () => {
         createMockScoProgress({
           scoid: 1,
           title: 'Module 1',
-          status: 'completed',
+          status: ScormStatus.COMPLETED,
           score: { raw: 85, min: 0, max: 100 },
           timeSpent: '00:10:00',
         }),
@@ -1212,7 +1211,7 @@ describe('ScormReportCard - Objectives Completion Status', () => {
         createMockObjective({
           id: 'obj1',
           description: 'Learn basics',
-          status: 'completed',
+          status: ScormStatus.COMPLETED,
         }),
       ],
     });
@@ -1233,13 +1232,13 @@ describe('ScormReportCard - Objectives Completion Status', () => {
         createMockObjective({
           id: 'obj1',
           description: 'Master the fundamentals',
-          status: 'completed',
+          status: ScormStatus.COMPLETED,
           score: { raw: 90, min: 0, max: 100 },
         }),
         createMockObjective({
           id: 'obj2',
           description: 'Apply advanced concepts',
-          status: 'incomplete',
+          status: ScormStatus.INCOMPLETE,
           score: { raw: 50, min: 0, max: 100 },
         }),
       ],
@@ -1281,9 +1280,9 @@ describe('ScormReportCard - Objectives Completion Status', () => {
   it('should display count of completed objectives vs total objectives', async () => {
     const mockReport = createMockReport({
       objectives: [
-        createMockObjective({ status: 'completed' }),
-        createMockObjective({ status: 'completed' }),
-        createMockObjective({ status: 'incomplete' }),
+        createMockObjective({ status: ScormStatus.COMPLETED }),
+        createMockObjective({ status: ScormStatus.COMPLETED }),
+        createMockObjective({ status: ScormStatus.INCOMPLETE }),
       ],
     });
 
@@ -1327,7 +1326,6 @@ describe('ScormReportCard - SCORM Format Support', () => {
 
   it('should display SCORM 1.2 report format with cmi.core.* elements', async () => {
     const mockReport = createMockReport({
-      version: 'SCORM_1_2',
       interactions: [
         createMockInteraction({
           id: 'cmi.interactions.0',
@@ -1348,7 +1346,6 @@ describe('ScormReportCard - SCORM Format Support', () => {
 
   it('should display SCORM 2004 report format with cmi.* elements and more detail', async () => {
     const mockReport = createMockReport({
-      version: 'SCORM_2004',
       interactions: [
         createMockInteraction({
           id: 'cmi.interactions.0',
@@ -1583,7 +1580,7 @@ describe('ScormReportCard - Edge Cases and Data Validation', () => {
   it('should display zero completion percentage for not-started attempts', async () => {
     const mockReport = createMockReport({
       completionPercentage: 0,
-      status: 'not_attempted',
+      status: ScormStatus.NOT_ATTEMPTED,
     });
 
     vi.mocked(fetchAttemptReport).mockResolvedValue(mockReport);

@@ -474,7 +474,7 @@ describe('QuestionRenderer', () => {
     it('should display numeric value correctly', () => {
       render(<QuestionRenderer {...getBaseProps()} value={42} />);
       
-      const input = screen.getByLabelText('Enter your score');
+      const input = screen.getByLabelText('Enter your score') as HTMLInputElement;
       expect(input.value).toBe('42');
     });
 
@@ -585,7 +585,7 @@ describe('QuestionRenderer', () => {
       const longText = 'This is a longer feedback text that spans multiple lines.';
       render(<QuestionRenderer {...getBaseProps()} value={longText} />);
       
-      const textarea = screen.getByLabelText('Please provide your feedback');
+      const textarea = screen.getByLabelText('Please provide your feedback') as HTMLTextAreaElement;
       expect(textarea.value).toBe(longText);
     });
 
@@ -689,7 +689,7 @@ describe('QuestionRenderer', () => {
     it('should display textfield value correctly', () => {
       render(<QuestionRenderer {...getBaseProps()} value="Jane Smith" />);
       
-      const input = screen.getByLabelText('Enter your name');
+      const input = screen.getByLabelText('Enter your name') as HTMLInputElement;
       expect(input.value).toBe('Jane Smith');
     });
 
@@ -1272,7 +1272,6 @@ describe('QuestionRenderer', () => {
         required: 0,
         position: 1,
         label: 'Select',
-        // @ts-expect-error Testing edge case with non-string value
         value: 123, // Non-string value
         onChange: mockOnChange,
       };
@@ -1301,7 +1300,6 @@ describe('QuestionRenderer', () => {
         required: 0,
         position: 1,
         label: 'Select',
-        // @ts-expect-error Testing edge case with non-array value
         value: 'not-an-array', // Non-array value
         onChange: mockOnChange,
       };
@@ -1358,7 +1356,7 @@ describe('QuestionRenderer', () => {
       
       render(<QuestionRenderer {...props} />);
       
-      const input = screen.getByLabelText('Number');
+      const input = screen.getByLabelText('Number') as HTMLInputElement;
       expect(input.value).toBe('0');
     });
 
@@ -1379,7 +1377,7 @@ describe('QuestionRenderer', () => {
       
       render(<QuestionRenderer {...props} />);
       
-      const input = screen.getByLabelText('Optional');
+      const input = screen.getByLabelText('Optional') as HTMLInputElement;
       expect(input.value).toBe('');
     });
   });

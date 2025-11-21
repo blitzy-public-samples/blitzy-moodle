@@ -506,7 +506,8 @@ describe('ProfileView Component', () => {
         login: vi.fn(),
         logout: vi.fn(),
         isLoading: false,
-      });
+        hasCapability: vi.fn().mockReturnValue(true), // Grant edit permission
+      } as any);
 
       render(<ProfileView userId={mockOtherUser.id} />);
 
@@ -527,7 +528,8 @@ describe('ProfileView Component', () => {
         login: vi.fn(),
         logout: vi.fn(),
         isLoading: false,
-      });
+        hasCapability: vi.fn().mockReturnValue(false), // Deny edit permission
+      } as any);
 
       render(<ProfileView userId={mockOtherUser.id} />);
 
@@ -671,10 +673,13 @@ describe('ProfileView Component', () => {
     });
 
     it('should display error message for permission denied', () => {
+      const permissionError = new Error('Permission denied') as Error & { code?: string };
+      permissionError.code = 'PERMISSION_DENIED';
+      
       mockUseProfile.mockReturnValue(createMockUseProfileResult({
         profile: undefined,
         isLoading: false,
-        error: new Error('Permission denied'),
+        error: permissionError,
       }));
 
       render(<ProfileView userId={456} />);

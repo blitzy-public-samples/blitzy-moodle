@@ -36,6 +36,7 @@ import type {
   GradingStrategy,
 } from '@/features/activities/workshop/types/workshop.types';
 import type { AuthState } from '@/features/auth/store/authSlice';
+import { AuthStatus } from '@/features/auth/types/auth.types';
 
 /**
  * Workshop phase constants matching Moodle's workshop module
@@ -451,7 +452,6 @@ function createTestStore() {
     user: { 
       id: 100, 
       username: 'testuser',
-      name: 'Test User', 
       email: 'test@example.com', 
       firstname: 'Test',
       lastname: 'User',
@@ -462,11 +462,16 @@ function createTestStore() {
       roles: [{ id: 5, shortname: 'student', name: 'Student' }],
       capabilities: []
     },
-    tokens: { accessToken: 'test-access-token', refreshToken: 'test-refresh-token' },
+    tokens: { 
+      accessToken: 'test-access-token', 
+      refreshToken: 'test-refresh-token',
+      expiresIn: 3600,
+      tokenType: 'Bearer'
+    },
     isAuthenticated: true,
     isLoading: false,
     error: null,
-    status: 'authenticated',
+    status: AuthStatus.AUTHENTICATED,
   };
 
   return configureStore({

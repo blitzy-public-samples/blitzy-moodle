@@ -24,7 +24,6 @@ import { ForumPage } from './pages/ForumPage';
 import { loginAsStudent, loginAsTeacher, isAuthenticated, logout } from './utils/auth';
 import { testCourse4 } from './fixtures/courses';
 import { generateTestFile } from './utils/file-helpers';
-import { testStudent, testTeacher, testEditingTeacher, TEST_PASSWORD } from './fixtures/users';
 import { waitForApiResponse } from './utils/wait-helpers';
 
 test.describe('Forum Discussion and Moderation', () => {

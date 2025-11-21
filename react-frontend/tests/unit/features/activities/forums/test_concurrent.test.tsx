@@ -38,9 +38,10 @@ const createMockDiscussion = (overrides = {}) => ({
   ...overrides,
 });
 
-const createMockApiPost = (overrides = {}) => ({
+const createMockApiPost = (overrides = {}): PostResponse => ({
   id: 1,
   discussionid: 1,
+  discussionId: 1, // PostResponse requires both discussionid and discussionId
   parentid: 0,
   authorid: 1,
   timecreated: Math.floor(Date.now() / 1000),
@@ -151,7 +152,7 @@ describe('Concurrent Reply Test', () => {
     // Resolve the API call
     const reply1 = createMockApiPost({ id: 2, discussionid: discussionId, subject: 'Reply 1', parentid: 1, message: 'Message 1' });
     act(() => {
-      resolveCreate!({ post: reply1, message: 'Post created successfully' });
+      resolveCreate!(reply1);
     });
     
     // Wait for the API call to complete

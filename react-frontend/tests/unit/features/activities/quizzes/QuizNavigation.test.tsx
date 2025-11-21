@@ -493,7 +493,7 @@ describe('QuizNavigation Component', () => {
 
       render(<QuizNavigation {...props} />);
 
-      const flagButton = screen.getAllByLabelText(/flag for review/i)[2];
+      const flagButton = screen.getAllByLabelText(/flag for review/i)[2]!;
       await user.click(flagButton);
 
       expect(mockOnFlagToggle).toHaveBeenCalledWith(2);
@@ -512,7 +512,7 @@ describe('QuizNavigation Component', () => {
 
       render(<QuizNavigation {...props} />);
 
-      const flagButton = screen.getAllByLabelText(/flag for review/i)[4];
+      const flagButton = screen.getAllByLabelText(/flag for review/i)[4]!;
       await user.click(flagButton);
 
       expect(mockOnFlagToggle).toHaveBeenCalledWith(4);
@@ -980,9 +980,9 @@ describe('QuizNavigation Component', () => {
       const flagButtons = screen.getAllByLabelText(/flag for review/i);
 
       // Toggle flags rapidly
-      await user.click(flagButtons[0]);
-      await user.click(flagButtons[2]);
-      await user.click(flagButtons[4]);
+      await user.click(flagButtons[0]!);
+      await user.click(flagButtons[2]!);
+      await user.click(flagButtons[4]!);
 
       expect(mockOnFlagToggle).toHaveBeenCalledTimes(3);
       expect(mockOnFlagToggle).toHaveBeenNthCalledWith(1, 0);

@@ -114,11 +114,8 @@ export class AdminUserPage {
     this.searchInput = page.locator('[data-testid="search-input"]');
 
     // User row action locators (scoped per row in methods)
-    this.userRow = page.locator('table tbody tr');
 
     // Bulk action locators
-    this.bulkActionSelect = page.locator('[data-testid="bulk-actions-menu"]');
-    this.bulkActionButton = page.locator('[data-testid="bulk-actions-button"]');
     this.bulkSuspendButton = page.locator('[data-testid="bulk-suspend-button"]');
     this.bulkDeleteButton = page.locator('[data-testid="bulk-delete-button"]');
 
@@ -132,22 +129,18 @@ export class AdminUserPage {
     // MUI Select - data-testid is now on the clickable element via SelectDisplayProps
     this.authMethodSelect = page.locator('[data-testid="auth-method-select"]');
     this.saveButton = page.locator('[data-testid="create-user-submit"]');
-    this.cancelButton = page.locator('[data-testid="cancel-button"]');
 
     // Edit form locators
-    this.editDialog = page.locator('[data-testid="edit-user-dialog"]');
     this.editUsernameInput = page.locator('[data-testid="edit-username-input"]');
     this.editFirstnameInput = page.locator('[data-testid="edit-firstname-input"]');
     this.editLastnameInput = page.locator('[data-testid="edit-lastname-input"]');
     this.editEmailInput = page.locator('[data-testid="edit-email-input"]');
-    this.editSaveButton = page.locator('[data-testid="edit-user-submit"]');
 
     // Confirmation dialog
     this.confirmationDialog = page.locator('[data-testid="delete-user-dialog"]');
     this.confirmDeleteButton = page.locator('[data-testid="delete-user-confirm"]');
     
     // Additional UI elements
-    this.tablePagination = page.locator('[data-testid="table-pagination"]');
     this.selectAllCheckbox = page.locator('[data-testid="select-all-checkbox"]');
     
     // Filter locators (MUI Select components - data-testid now on clickable element via SelectDisplayProps)

@@ -4,7 +4,8 @@ import { QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-
 import type React from 'react';
 import { useDiscussion } from '@/features/activities/forums/hooks/useDiscussion';
 import * as forumApi from '@/features/activities/forums/api/forumApi';
-import type { Discussion, Post, DiscussionPost, DiscussionEnriched, DiscussionDetail } from '@/features/activities/forums/types/forum.types';
+import type { SubscriptionResponse, DiscussionWithPosts } from '@/features/activities/forums/api/forumApi';
+import type { Discussion, Post, DiscussionPost, PostResponse, CreatePostData, UpdatePostData } from '@/features/activities/forums/types/forum.types';
 
 /**
  * Comprehensive unit tests for useDiscussion custom hook
@@ -418,7 +419,8 @@ describe('useDiscussion Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      const replyData = {
+      const replyData: CreatePostData = {
+        forumId: mockDiscussion.forumid,
         message: 'This is a new reply',
       };
 
@@ -430,6 +432,7 @@ describe('useDiscussion Hook', () => {
       await waitFor(() => {
         expect(forumApi.createPost).toHaveBeenCalledWith({ 
           discussionId, 
+          forumId: mockDiscussion.forumid,
           message: 'This is a new reply', 
           parentPostId 
         });
@@ -465,7 +468,8 @@ describe('useDiscussion Hook', () => {
         expect(result.current.posts).toHaveLength(1);
       });
 
-      const replyData = {
+      const replyData: CreatePostData = {
+        forumId: mockDiscussion.forumid,
         message: 'This appears immediately',
       };
 
@@ -481,8 +485,8 @@ describe('useDiscussion Hook', () => {
       // Confirm API call completes
       act(() => {
         resolveCreate!({ 
-          post: createMockApiPost({ id: 2, subject: 'Optimistic Reply' }), 
-          message: 'Post created successfully' 
+          ...createMockApiPost({ id: 2, subject: 'Optimistic Reply' }), 
+          discussionId: discussionId 
         });
       });
 
@@ -517,7 +521,8 @@ describe('useDiscussion Hook', () => {
 
       const initialPostCount = result.current.posts?.length || 0;
 
-      const replyData = {
+      const replyData: CreatePostData = {
+        forumId: mockDiscussion.forumid,
         message: 'This should rollback',
       };
 
@@ -574,7 +579,8 @@ describe('useDiscussion Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      const postData = {
+      const postData: UpdatePostData = {
+        postId,
         message: 'Updated message',
         version: 1,
       };
@@ -585,10 +591,7 @@ describe('useDiscussion Hook', () => {
       });
 
       await waitFor(() => {
-        expect(forumApi.updatePost).toHaveBeenCalledWith({
-          postId,
-          ...postData
-        });
+        expect(forumApi.updatePost).toHaveBeenCalledWith(postData);
         expect(onEditSuccess).toHaveBeenCalled();
       });
     });
@@ -630,9 +633,9 @@ describe('useDiscussion Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      const postData = {
+      const postData: UpdatePostData = {
+        postId,
         message: 'This will conflict',
-        version: 1, // Stale version
       };
 
       // eslint-disable-next-line @typescript-eslint/require-await
@@ -647,7 +650,7 @@ describe('useDiscussion Hook', () => {
       await waitFor(() => {
         expect(onEditConflict).toHaveBeenCalledWith(
           expect.objectContaining({
-            post: expect.objectContaining({ id: postId, version: 2 }) as Post,
+            post: expect.objectContaining({ id: postId, timemodified: expect.any(Number) }) as Post,
             conflictData: expect.objectContaining({
               error: 'EDIT_CONFLICT',
               currentVersion: 2,
@@ -696,6 +699,7 @@ describe('useDiscussion Hook', () => {
           result.current.editPost({
             postId,
             postData: {
+              postId,
               message: 'My message',
             }
           });
@@ -1001,11 +1005,11 @@ describe('useDiscussion Hook', () => {
       });
 
       act(() => {
-        resolveSubscribe!({ subscribed: true });
+        resolveSubscribe!({ subscribed: true, message: 'Subscribed successfully' });
       });
 
       await waitFor(() => {
-        expect(onSubscribeSuccess).toHaveBeenCalledWith({ subscribed: true });
+        expect(onSubscribeSuccess).toHaveBeenCalledWith({ subscribed: true, message: 'Subscribed successfully' });
       });
     });
   });
@@ -1408,7 +1412,7 @@ describe('useDiscussion Hook', () => {
         posts: mockPosts,
       });
 
-      vi.mocked(forumApi.reportPost).mockResolvedValue({ reported: true });
+      vi.mocked(forumApi.reportPost).mockResolvedValue({ reportId: 1, message: 'Post reported successfully' });
 
       const onReportSuccess = vi.fn();
 
@@ -1433,7 +1437,7 @@ describe('useDiscussion Hook', () => {
 
       await waitFor(() => {
         expect(forumApi.reportPost).toHaveBeenCalledWith(postId, 'Spam content');
-        expect(onReportSuccess).toHaveBeenCalledWith({ reported: true });
+        expect(onReportSuccess).toHaveBeenCalledWith({ reportId: 1, message: 'Post reported successfully' });
       });
     });
   });
@@ -1561,7 +1565,7 @@ describe('useDiscussion Hook', () => {
       // eslint-disable-next-line @typescript-eslint/require-await
       await act(async () => {
         result.current.createReply({
-          postData: { message: 'Test message' },
+          postData: { forumId: mockDiscussion.forumid, message: 'Test message' },
           parentId: undefined,
         });
       });
@@ -1579,7 +1583,7 @@ describe('useDiscussion Hook', () => {
     it('should invalidate forum discussion list cache after mutations', async () => {
       const discussionId = 100;
       const forumId = 50;
-      const mockDiscussion = createMockDiscussion({ id: discussionId, forumId });
+      const mockDiscussion = createMockDiscussion({ id: discussionId, forumid: forumId });
       const mockPosts = [createMockApiPost({ discussionid: discussionId, parentid: 0 })];
 
       vi.mocked(forumApi.getDiscussionPosts).mockResolvedValue({
@@ -1720,11 +1724,11 @@ describe('useDiscussion Hook', () => {
         // Create two replies simultaneously
         await Promise.all([
           result.current.createReply({
-            postData: { message: 'Message 1' },
+            postData: { forumId: mockDiscussion.forumid, message: 'Message 1' },
             parentId: 1,
           }),
           result.current.createReply({
-            postData: { message: 'Message 2' },
+            postData: { forumId: mockDiscussion.forumid, message: 'Message 2' },
             parentId: 1,
           }),
         ]);
@@ -1751,9 +1755,6 @@ describe('useDiscussion Hook', () => {
         discussionid: discussionId,
         parentid: 0,
         hasattachments: true,
-        attachments: [
-          { id: 1, filename: 'document.pdf', filesize: 1024000 },
-        ],
       });
       vi.mocked(forumApi.createPost).mockResolvedValue({ ...newPost, discussionId: discussionId });
 
@@ -1774,6 +1775,7 @@ describe('useDiscussion Hook', () => {
       await act(async () => {
         result.current.createReply({
           postData: {
+            forumId: mockDiscussion.forumid,
             message: 'See attached file',
             attachments: [file],
           },
@@ -1843,7 +1845,7 @@ describe('useDiscussion Hook', () => {
       await act(async () => {
         try {
           result.current.createReply({
-            postData: { message: 'This should queue' },
+            postData: { forumId: mockDiscussion.forumid, message: 'This should queue' },
             parentId: undefined,
           });
         } catch (err) {
@@ -1915,7 +1917,7 @@ describe('useDiscussion Hook', () => {
       // eslint-disable-next-line @typescript-eslint/require-await
       await act(async () => {
         result.current.createReply({
-          postData: { message: 'Test' },
+          postData: { forumId: mockDiscussion.forumid, message: 'Test' },
           parentId: undefined,
         });
       });
@@ -1952,7 +1954,7 @@ describe('useDiscussion Hook', () => {
       await act(async () => {
         try {
           result.current.createReply({
-            postData: { message: 'Test' },
+            postData: { forumId: mockDiscussion.forumid, message: 'Test' },
             parentId: undefined,
           });
         } catch (err) {
@@ -1991,7 +1993,7 @@ describe('useDiscussion Hook', () => {
       // eslint-disable-next-line @typescript-eslint/require-await
       await act(async () => {
         result.current.createReply({
-          postData: { message: 'Test' },
+          postData: { forumId: mockDiscussion.forumid, message: 'Test' },
           parentId: undefined,
         });
       });

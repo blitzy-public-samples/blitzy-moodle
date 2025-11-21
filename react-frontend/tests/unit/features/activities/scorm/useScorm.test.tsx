@@ -19,7 +19,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useScorm } from '@/features/activities/scorm/hooks/useScorm';
-import type { Scorm, ScormSco, ScormAttempt, ScormUserData } from '@/features/activities/scorm/types/scorm.types';
+import type { Scorm, ScormSco, ScormAttempt, ScormTrackingData } from '@/features/activities/scorm/types/scorm.types';
 import { ScormType, ScoType, ScormForceAttempt, ScormUpdateFrequency } from '@/features/activities/scorm/types/scorm.types';
 import * as scormApi from '@/features/activities/scorm/api/scormApi';
 
@@ -521,6 +521,7 @@ describe('useScorm Hook', () => {
         forcecompleted: false,
         forcenewattempt: ScormForceAttempt.NO,
         lastattemptlock: false,
+        masteryoverride: false,
         displayattemptstatus: 1,
         displaycoursestructure: true,
         updatefreq: ScormUpdateFrequency.NEVER,
@@ -541,6 +542,11 @@ describe('useScorm Hook', () => {
         height: 600,
         timeopen: 0,
         timeclose: 0,
+        timemodified: 1705405800,
+        completionstatusrequired: null,
+        completionscorerequired: null,
+        completionstatusallscos: null,
+        autocommit: false,
         scormtype: ScormType.LOCAL,
         reference: 'manifest.xml',
       };
@@ -1037,7 +1043,7 @@ describe('useScorm Hook', () => {
         reference: 'http://example.com/scorm/manifest.xml',
         masteryoverride: true,
         timemodified: 1609459200,
-        completionstatusrequired: 'completed',
+        completionstatusrequired: 4,  // Bitmask value for completed status
         completionscorerequired: 80,
         completionstatusallscos: true,
         autocommit: true,

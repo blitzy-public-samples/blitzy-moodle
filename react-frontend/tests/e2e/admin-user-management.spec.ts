@@ -22,7 +22,6 @@
 import { test, expect } from '@playwright/test';
 import { AdminUserPage } from './pages/AdminUserPage';
 import { loginAsAdmin, logout, isAuthenticated } from './utils/auth';
-import { testAdmin, testStudent, testTeacher, testStudent2, TEST_PASSWORD } from './fixtures/users';
 import type { UserData } from './pages/AdminUserPage';
 
 /**

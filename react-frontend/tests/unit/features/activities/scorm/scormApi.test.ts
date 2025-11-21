@@ -23,13 +23,14 @@ import type {
   ScormTOCNode,
   ScormPlayerConfig,
   ScormReport,
-  ScormVersion,
 } from '@/features/activities/scorm/types/scorm.types';
 import {
   ScormGradeMethod,
   ScormStatus,
   ScormType,
   ScoType,
+  ScormNavDisplay,
+  ScormTocDisplay,
 } from '@/features/activities/scorm/types/scorm.types';
 
 /* eslint-disable @typescript-eslint/unbound-method */
@@ -256,11 +257,13 @@ describe('scormApi', () => {
           id: 1,
           identifier: 'item_1',
           title: 'Introduction',
-          isVisible: true,
-          isLaunchable: true,
-          prerequisiteMet: true,
-          completionStatus: 'completed',
-          successStatus: 'passed',
+          organization: 'default',
+          scormtype: ScoType.SCO,
+          isvisible: true,
+          launch: 'intro.html',
+          isEnabled: true,
+          prerequisite: '',
+          status: ScormStatus.PASSED,
           score: { raw: 95 },
           children: [],
           parent: '',
@@ -269,11 +272,13 @@ describe('scormApi', () => {
           id: 2,
           identifier: 'item_2',
           title: 'Chapter 1',
-          isVisible: true,
-          isLaunchable: true,
-          prerequisiteMet: true,
-          completionStatus: 'incomplete',
-          successStatus: 'unknown',
+          organization: 'default',
+          scormtype: ScoType.SCO,
+          isvisible: true,
+          launch: 'chapter1.html',
+          isEnabled: true,
+          prerequisite: '',
+          status: ScormStatus.INCOMPLETE,
           score: undefined,
           children: [],
           parent: '',
@@ -282,20 +287,28 @@ describe('scormApi', () => {
           id: 3,
           identifier: 'item_3',
           title: 'Chapter 2',
-          isVisible: true,
-          isLaunchable: false,
-          prerequisiteMet: false,
-          completionStatus: 'not attempted',
-          successStatus: 'unknown',
+          organization: 'default',
+          scormtype: ScoType.SCO,
+          isvisible: true,
+          launch: 'chapter2.html',
+          isEnabled: false,
+          prerequisite: 'item_2',
+          status: ScormStatus.NOT_ATTEMPTED,
           score: undefined,
           children: [],
           parent: '',
         },
       ];
 
+      const mockTocData = {
+        scoes: mockToc,
+        usertracks: {},
+        scoid: 2,
+      };
+
       const mockResponse = {
         success: true,
-        data: mockToc,
+        data: mockTocData,
         meta: {
           currentScoId: 2,
           attemptId: 5,
@@ -304,16 +317,14 @@ describe('scormApi', () => {
 
       vi.mocked(apiClient.get).mockResolvedValue({ data: mockResponse });
 
-      const result = await fetchScormToc(1, { scormId: 1, attempt: 5 });
+      const result = await fetchScormToc(1, { attempt: 5 });
 
       expect(apiClient.get).toHaveBeenCalledWith('/scorm/1/toc', {
-        params: { scormId: 1, attempt: 5 },
+        params: { attempt: 5 },
       });
-      expect(result).toEqual(mockToc);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      expect(result[2].prerequisiteMet).toBe(false);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      expect(result[2].isLaunchable).toBe(false);
+      expect(result).toEqual(mockTocData);
+      expect(result.scoes[2]!.prerequisite).toBe('item_2');
+      expect(result.scoes[2]!.isEnabled).toBe(false);
     });
 
     it('should handle nested TOC structure', async () => {
@@ -322,11 +333,13 @@ describe('scormApi', () => {
           id: 1,
           identifier: 'module1',
           title: 'Module 1',
-          isVisible: true,
-          isLaunchable: false,
-          prerequisiteMet: true,
-          completionStatus: 'incomplete',
-          successStatus: 'unknown',
+          organization: 'default',
+          scormtype: ScoType.ASSET,
+          isvisible: true,
+          launch: '',
+          isEnabled: true,
+          prerequisite: '',
+          status: ScormStatus.INCOMPLETE,
           score: undefined,
           parent: '',
           children: [
@@ -334,12 +347,14 @@ describe('scormApi', () => {
               id: 2,
               identifier: 'module1_lesson1',
               title: 'Lesson 1.1',
-              isVisible: true,
-              isLaunchable: true,
-              prerequisiteMet: true,
-              completionStatus: 'completed',
-              successStatus: 'passed',
-              score: 90,
+              organization: 'default',
+              scormtype: ScoType.SCO,
+              isvisible: true,
+              launch: 'lesson1.html',
+              isEnabled: true,
+              prerequisite: '',
+              status: ScormStatus.PASSED,
+              score: { raw: 90 },
               children: [],
               parent: 'module1',
             },
@@ -347,9 +362,15 @@ describe('scormApi', () => {
         },
       ];
 
+      const mockTocData = {
+        scoes: mockToc,
+        usertracks: {},
+        scoid: 1,
+      };
+
       const mockResponse = {
         success: true,
-        data: mockToc,
+        data: mockTocData,
         meta: {},
       };
 
@@ -357,10 +378,8 @@ describe('scormApi', () => {
 
       const result = await fetchScormToc(1);
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      expect(result[0].children).toHaveLength(1);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      expect(result[0].children![0].parent).toBe('module1');
+      expect(result.scoes[0]!.children).toHaveLength(1);
+      expect(result.scoes[0]!.children![0]!.parent).toBe('module1');
     });
   });
 
@@ -368,22 +387,16 @@ describe('scormApi', () => {
     it('should fetch player configuration with popup dimensions', async () => {
       const mockConfig: ScormPlayerConfig = {
         scormId: 1,
+        scoId: 1,
+        attempt: 1,
+        mode: 'normal',
+        navigation: ScormNavDisplay.UNDER_CONTENT,
+        tocDisplay: ScormTocDisplay.SIDE,
         popup: true,
         width: 1024,
         height: 768,
-        skipView: false,
-        hideBrowse: false,
-        hidetoc: 0,
-        nav: 1,
-        navPositionLeft: 150,
-        navPositionTop: 50,
-        auto: true,
-        displayCourseStructure: true,
-        displayActivityName: true,
-        updateFreq: 30,
         autoCommit: true,
-        masteryOverride: false,
-        maxAttempt: 0,
+        autoProgress: true,
       };
 
       const mockResponse = {
@@ -406,22 +419,16 @@ describe('scormApi', () => {
     it('should handle inline player configuration', async () => {
       const mockConfig: ScormPlayerConfig = {
         scormId: 2,
+        scoId: 1,
+        attempt: 1,
+        mode: 'normal',
+        navigation: ScormNavDisplay.DISABLED,
+        tocDisplay: ScormTocDisplay.HIDDEN,
         popup: false,
         width: 0,
         height: 0,
-        skipView: false,
-        hideBrowse: false,
-        hidetoc: 1,
-        nav: 0,
-        navPositionLeft: 0,
-        navPositionTop: 0,
-        auto: false,
-        displayCourseStructure: false,
-        displayActivityName: true,
-        updateFreq: 0,
         autoCommit: false,
-        masteryOverride: true,
-        maxAttempt: 5,
+        autoProgress: false,
       };
 
       const mockResponse = {
@@ -435,7 +442,7 @@ describe('scormApi', () => {
       const result = await fetchPlayerConfig(2);
 
       expect(result.popup).toBe(false);
-      expect(result.hidetoc).toBe(1);
+      expect(result.tocDisplay).toBe(ScormTocDisplay.HIDDEN);
     });
   });
 
@@ -844,23 +851,15 @@ describe('scormApi', () => {
       expect(result).toHaveLength(0);
     });
 
-    it('should include timing information for all attempts', async () => {
+    it('should fetch all attempts for a user', async () => {
       const mockAttempts: ScormAttempt[] = [
         {
           id: 10,
-          scormId: 1,
-          userId: 100,
+          scormid: 1,
+          userid: 100,
           attempt: 1,
-          startTime: 1640000000,
-          finishTime: 1640003600,
           status: 'completed' as ScormStatus,
-          scoreRaw: 85,
-          scoreMin: 0,
-          scoreMax: 100,
-          totalTime: '01:00:00',
-          sessionTime: '01:00:00',
-          suspendData: null,
-          timeModified: 1640003600,
+          timemodified: 1640003600,
         },
       ];
 
@@ -874,9 +873,12 @@ describe('scormApi', () => {
 
       const result = await fetchAttempts(1, 100);
 
-      expect(result[0]!.startTime).toBeDefined();
-      expect(result[0]!.finishTime).toBeDefined();
-      expect(result[0]!.totalTime).toBe('01:00:00');
+      expect(result[0]!.id).toBe(10);
+      expect(result[0]!.scormid).toBe(1);
+      expect(result[0]!.userid).toBe(100);
+      expect(result[0]!.attempt).toBe(1);
+      expect(result[0]!.status).toBe('completed');
+      expect(result[0]!.timemodified).toBe(1640003600);
     });
   });
 
@@ -1058,7 +1060,7 @@ describe('scormApi', () => {
             attempts: 1,
           },
         ],
-        gradingMethod: 'highest' as ScormGradeMethod,
+        gradingMethod: ScormGradeMethod.HIGHEST,
         status: 'completed' as ScormStatus,
       };
 
@@ -1070,13 +1072,13 @@ describe('scormApi', () => {
 
       vi.mocked(apiClient.get).mockResolvedValue({ data: mockResponse });
 
-      const result = await fetchAttemptReport(1, { userId: 100 });
+      const result = await fetchAttemptReport(1, { scormId: 1, userId: 100 });
 
       expect(apiClient.get).toHaveBeenCalledWith('/scorm/1/report', {
-        params: { userId: 100 },
+        params: { scormId: 1, userId: 100 },
       });
       expect(result).toEqual(mockReport);
-      expect(result.gradingMethod).toBe('highest');
+      expect(result.gradingMethod).toBe(ScormGradeMethod.HIGHEST);
       expect(result.overallScore).toBe(95);
       expect(result.grade).toBe(95);
     });
@@ -1115,7 +1117,7 @@ describe('scormApi', () => {
         interactions: [],
         objectives: [],
         scoProgress: [],
-        gradingMethod: 'average' as ScormGradeMethod,
+        gradingMethod: ScormGradeMethod.AVERAGE,
         status: 'completed' as ScormStatus,
       };
 
@@ -1127,13 +1129,13 @@ describe('scormApi', () => {
 
       vi.mocked(apiClient.get).mockResolvedValue({ data: mockResponse });
 
-      const result = await fetchAttemptReport({ scormId: 1, userId: 100 });
+      const result = await fetchAttemptReport(1, { scormId: 1, userId: 100 });
 
-      expect(result.gradingMethod).toBe('average');
+      expect(result.gradingMethod).toBe(ScormGradeMethod.AVERAGE);
       expect(result.overallScore).toBe(80);
     });
 
-    it('should calculate grade using first attempt method', async () => {
+    it('should return grade report with HIGHEST grading method', async () => {
       const mockReport: ScormReport = {
         scormId: 1,
         userId: 100,
@@ -1157,7 +1159,7 @@ describe('scormApi', () => {
         interactions: [],
         objectives: [],
         scoProgress: [],
-        gradingMethod: 'first' as ScormGradeMethod,
+        gradingMethod: ScormGradeMethod.HIGHEST,
         status: 'completed' as ScormStatus,
       };
 
@@ -1169,13 +1171,13 @@ describe('scormApi', () => {
 
       vi.mocked(apiClient.get).mockResolvedValue({ data: mockResponse });
 
-      const result = await fetchAttemptReport({ scormId: 1, userId: 100 });
+      const result = await fetchAttemptReport(1, { scormId: 1, userId: 100 });
 
-      expect(result.gradingMethod).toBe('first');
+      expect(result.gradingMethod).toBe(ScormGradeMethod.HIGHEST);
       expect(result.grade).toBe(85);
     });
 
-    it('should calculate grade using last attempt method', async () => {
+    it('should return grade report with AVERAGE grading method', async () => {
       const mockReport: ScormReport = {
         scormId: 1,
         userId: 100,
@@ -1209,7 +1211,7 @@ describe('scormApi', () => {
         interactions: [],
         objectives: [],
         scoProgress: [],
-        gradingMethod: 'last' as ScormGradeMethod,
+        gradingMethod: ScormGradeMethod.AVERAGE,
         status: 'completed' as ScormStatus,
       };
 
@@ -1221,9 +1223,9 @@ describe('scormApi', () => {
 
       vi.mocked(apiClient.get).mockResolvedValue({ data: mockResponse });
 
-      const result = await fetchAttemptReport({ scormId: 1, userId: 100 });
+      const result = await fetchAttemptReport(1, { scormId: 1, userId: 100 });
 
-      expect(result.gradingMethod).toBe('last');
+      expect(result.gradingMethod).toBe(ScormGradeMethod.AVERAGE);
       expect(result.overallScore).toBe(75);
     });
 
@@ -1241,7 +1243,7 @@ describe('scormApi', () => {
           {
             id: 'interaction_1',
             type: 'choice',
-            learnerResponse: 'a',
+            learner_response: 'a',
             result: 'correct',
             latency: 'PT5S',
             timestamp: '2021-12-20T10:30:00Z',
@@ -1256,7 +1258,7 @@ describe('scormApi', () => {
           },
         ],
         scoProgress: [],
-        gradingMethod: 'highest' as ScormGradeMethod,
+        gradingMethod: ScormGradeMethod.HIGHEST,
         status: 'completed' as ScormStatus,
       };
 
@@ -1268,7 +1270,7 @@ describe('scormApi', () => {
 
       vi.mocked(apiClient.get).mockResolvedValue({ data: mockResponse });
 
-      const result = await fetchAttemptReport({ scormId: 1, userId: 100 });
+      const result = await fetchAttemptReport(1, { scormId: 1, userId: 100 });
 
       expect(result.interactions).toHaveLength(1);
       expect(result.objectives).toHaveLength(1);
@@ -1344,11 +1346,7 @@ describe('scormApi', () => {
       const mockResponse = {
         success: true,
         data: {
-          scoId: 3,
-          prerequisitesMet: true,
-          requiredScos: ['item_1', 'item_2'],
-          completedScos: ['item_1', 'item_2'],
-          isAccessible: true,
+          canAccess: true,
         },
         meta: {},
       };
@@ -1367,20 +1365,15 @@ describe('scormApi', () => {
         attempt: 5,
       });
       expect(result).toEqual(mockResponse.data);
-      expect(result.prerequisitesMet).toBe(true);
-      expect(result.isAccessible).toBe(true);
+      expect(result.canAccess).toBe(true);
     });
 
     it('should handle prerequisites not met', async () => {
       const mockResponse = {
         success: true,
         data: {
-          scoId: 5,
-          prerequisitesMet: false,
-          requiredScos: ['item_3', 'item_4'],
-          completedScos: ['item_3'],
-          isAccessible: false,
-          missingPrerequisites: ['item_4'],
+          canAccess: false,
+          reason: 'Prerequisites not met: item_4 must be completed',
         },
         meta: {},
       };
@@ -1393,9 +1386,9 @@ describe('scormApi', () => {
         attempt: 5,
       });
 
-      expect(result.prerequisitesMet).toBe(false);
-      expect(result.isAccessible).toBe(false);
-      expect(result.missingPrerequisites).toContain('item_4');
+      expect(result.canAccess).toBe(false);
+      expect(result.reason).toBeDefined();
+      expect(result.reason).toContain('item_4');
     });
 
     it('should handle circular prerequisite dependencies', async () => {
@@ -1460,25 +1453,20 @@ describe('scormApi', () => {
       const mockResponse = {
         success: true,
         data: {
-          scoId: 1,
-          prerequisitesMet: true,
-          requiredScos: [],
-          completedScos: [],
-          isAccessible: true,
+          canAccess: true,
         },
         meta: {},
       };
 
       vi.mocked(apiClient.post).mockResolvedValue({ data: mockResponse });
 
-      const result = await evaluatePrerequisites({
+      const result = await evaluatePrerequisites(1, {
         scormId: 1,
         scoId: 1,
-        attemptId: 5,
+        attempt: 5,
       });
 
-      expect(result.prerequisitesMet).toBe(true);
-      expect(result.requiredScos).toHaveLength(0);
+      expect(result.canAccess).toBe(true);
     });
   });
 
@@ -1596,28 +1584,30 @@ describe('scormApi', () => {
         .mockResolvedValueOnce({
           data: {
             success: true,
-            data: { saved: true, attemptId: 5 },
+            data: { success: true, message: 'Tracking data saved successfully' },
             meta: {},
           },
         });
 
       // First attempt fails
       await expect(
-        submitTracking({
-          attemptId: 5,
+        submitTracking(1, {
+          scormId: 1,
           scoId: 2,
-          tracks: [{ element: 'cmi.core.lesson_status', value: 'incomplete' }],
+          attempt: 5,
+          tracks: { 'cmi.core.lesson_status': 'incomplete' },
         })
       ).rejects.toThrow();
 
       // Retry succeeds
-      const result = await submitTracking({
-        attemptId: 5,
+      const result = await submitTracking(1, {
+        scormId: 1,
         scoId: 2,
-        tracks: [{ element: 'cmi.core.lesson_status', value: 'incomplete' }],
+        attempt: 5,
+        tracks: { 'cmi.core.lesson_status': 'incomplete' },
       });
 
-      expect(result.saved).toBe(true);
+      expect(result.success).toBe(true);
     });
   });
 
@@ -1676,24 +1666,19 @@ describe('scormApi', () => {
     it('should validate ScormAttempt interface structure', () => {
       const mockAttempt: ScormAttempt = {
         id: 1,
-        scormId: 1,
-        userId: 100,
+        scormid: 1,
+        userid: 100,
         attempt: 1,
-        startTime: 1640000000,
-        finishTime: null,
         status: 'incomplete' as ScormStatus,
-        scoreRaw: null,
-        scoreMin: null,
-        scoreMax: null,
-        totalTime: '00:00:00',
-        sessionTime: null,
-        suspendData: null,
-        timeModified: 1640000000,
+        timemodified: 1640000000,
       };
 
       expect(mockAttempt).toHaveProperty('id');
+      expect(mockAttempt).toHaveProperty('scormid');
+      expect(mockAttempt).toHaveProperty('userid');
       expect(mockAttempt).toHaveProperty('attempt');
       expect(mockAttempt).toHaveProperty('status');
+      expect(mockAttempt).toHaveProperty('timemodified');
     });
   });
 });

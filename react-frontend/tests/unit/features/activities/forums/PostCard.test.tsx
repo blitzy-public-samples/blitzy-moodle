@@ -1240,14 +1240,14 @@ describe('PostCard Component', () => {
   describe('Error Handling', () => {
     it('should handle missing author gracefully', () => {
       // Intentionally create invalid post for error handling test
-      const post = { ...createMockPost(), author: null } as ForumPost;
+      const post = { ...createMockPost(), author: null } as unknown as ForumPost;
       
       expect(() => render(<PostCard post={post} {...mockHandlers} />)).not.toThrow();
     });
 
     it('should handle invalid date values', () => {
       // Intentionally create invalid post for error handling test
-      const post = { ...createMockPost(), created: null } as ForumPost;
+      const post = { ...createMockPost(), created: null } as unknown as ForumPost;
       
       expect(() => render(<PostCard post={post} {...mockHandlers} />)).not.toThrow();
     });

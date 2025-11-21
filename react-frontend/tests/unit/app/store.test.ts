@@ -25,7 +25,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import type { PayloadAction } from '@reduxjs/toolkit';
+import type { PayloadAction, MiddlewareAPI } from '@reduxjs/toolkit';
 import {
   store,
   useAppDispatch,
@@ -286,7 +286,7 @@ describe('Redux Store Configuration', () => {
           asyncTest: asyncSlice.reducer,
         },
         middleware: (getDefaultMiddleware) =>
-          getDefaultMiddleware().concat((_storeAPI) => (next: (action: unknown) => unknown) => (action: unknown) => {
+          getDefaultMiddleware().concat((_storeAPI: MiddlewareAPI) => (next: (action: unknown) => unknown) => (action: unknown) => {
             if (typeof action === 'object' && action !== null && 'type' in action) {
               dispatchedActions.push((action as { type: string }).type);
             }
@@ -442,12 +442,6 @@ describe('Redux Store Configuration', () => {
     it('should have useAppSelector with RootState typing', () => {
       // Note: useAppSelector must be called within React component context
       // This test verifies the hook is properly typed (compilation check)
-
-      // Type assertion - if this compiles, typing is correct
-      type _SelectorHook = <Selected>(
-        selector: (state: RootState) => Selected,
-        equalityFn?: (left: Selected, right: Selected) => boolean
-      ) => Selected;
 
       // Verify useAppSelector matches expected signature
       expect(typeof useAppSelector).toBe('function');

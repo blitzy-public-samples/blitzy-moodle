@@ -510,10 +510,10 @@ test.describe('Quiz Attempt E2E Tests', () => {
     
     // Verify time taken is reasonable (should be less than 2 minutes for this quick test)
     const timeParts = summary.timeTaken.match(/(\d+)/g);
-    if (timeParts) {
+    if (timeParts && timeParts.length > 0) {
       const totalSeconds = timeParts.length > 1 
-        ? parseInt(timeParts[0]) * 60 + parseInt(timeParts[1])
-        : parseInt(timeParts[0]);
+        ? parseInt(timeParts[0]!) * 60 + parseInt(timeParts[1]!)
+        : parseInt(timeParts[0]!);
       expect(totalSeconds).toBeLessThan(120); // Less than 2 minutes
     }
     

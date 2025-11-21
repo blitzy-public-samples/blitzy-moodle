@@ -21,7 +21,19 @@ import {
   updateUserProfile, 
   uploadAvatar
 } from '@/features/profile/api/profileApi';
-import type { User, UpdateProfilePayload, UpdateProfileData } from '@/features/profile/types/profile.types';
+import type { User, UpdateProfileData } from '@/features/profile/types/profile.types';
+
+// Error response interface for validation errors
+interface _ApiErrorResponse {
+  success: false;
+  error: {
+    code: string;
+    message: string;
+    details?: {
+      [field: string]: string[];
+    };
+  };
+}
 
 // Mock authentication service
 vi.mock('@/services/auth/authService', () => ({
@@ -38,8 +50,10 @@ const mockProfile: User = {
   id: 123,
   firstname: 'John',
   lastname: 'Doe',
+  fullname: 'John Doe',
   email: 'john.doe@example.com',
   profileimageurl: 'https://example.com/avatar/123.jpg',
+  profileimageurlsmall: 'https://example.com/avatar/123_small.jpg',
   description: 'Test user profile description',
   city: 'Sydney',
   country: 'AU',
@@ -53,14 +67,13 @@ const mockProfile: User = {
   lang: 'en',
 };
 
-const mockProfileUpdateData: UpdateProfilePayload = {
+const mockProfileUpdateData: UpdateProfileData = {
   firstname: 'Jane',
   lastname: 'Smith',
   email: 'jane.smith@example.com',
   description: 'Updated profile description',
   city: 'Melbourne',
   country: 'AU',
-  interests: ['react', 'typescript', 'testing'],
 };
 
 describe('profileApi', () => {
@@ -302,13 +315,13 @@ describe('profileApi', () => {
   describe('updateProfile', () => {
     it('should send PUT request to /api/v1/users/{userId}', async () => {
       const userId = 123;
-      let capturedBody: UpdateProfilePayload | null = null;
+      let capturedBody: UpdateProfileData | null = null;
       let capturedMethod: string | null = null;
       
       server.use(
         http.put(`${API_BASE_URL}/api/v1/users/${userId}`, async ({ request }) => {
           capturedMethod = request.method;
-          capturedBody = await request.json() as UpdateProfilePayload;
+          capturedBody = await request.json() as UpdateProfileData;
           return HttpResponse.json({
             success: true,
             data: { ...mockProfile, ...mockProfileUpdateData },
@@ -324,11 +337,11 @@ describe('profileApi', () => {
 
     it('should include all updated fields in request payload', async () => {
       const userId = 123;
-      let capturedBody: UpdateProfilePayload | null = null;
+      let capturedBody: UpdateProfileData | null = null;
       
       server.use(
         http.put(`${API_BASE_URL}/api/v1/users/${userId}`, async ({ request }) => {
-          capturedBody = await request.json() as UpdateProfilePayload;
+          capturedBody = await request.json() as UpdateProfileData;
           return HttpResponse.json({
             success: true,
             data: { ...mockProfile, ...mockProfileUpdateData },
@@ -338,13 +351,12 @@ describe('profileApi', () => {
 
       await updateUserProfile(userId, mockProfileUpdateData);
 
-      expect(capturedBody.firstname).toBe('Jane');
-      expect(capturedBody.lastname).toBe('Smith');
-      expect(capturedBody.email).toBe('jane.smith@example.com');
-      expect(capturedBody.description).toBe('Updated profile description');
-      expect(capturedBody.city).toBe('Melbourne');
-      expect(capturedBody.country).toBe('AU');
-      expect(capturedBody.interests).toEqual(['react', 'typescript', 'testing']);
+      expect(capturedBody!.firstname).toBe('Jane');
+      expect(capturedBody!.lastname).toBe('Smith');
+      expect(capturedBody!.email).toBe('jane.smith@example.com');
+      expect(capturedBody!.description).toBe('Updated profile description');
+      expect(capturedBody!.city).toBe('Melbourne');
+      expect(capturedBody!.country).toBe('AU');
     });
 
     it('should include JWT token in Authorization header', async () => {
@@ -419,7 +431,7 @@ describe('profileApi', () => {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         expect(errorData.error.details).toBeDefined();
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        expect(errorData.error.details.email).toEqual(['Email address is already in use']);
+        expect(errorData.error.details!.email).toEqual(['Email address is already in use']);
       }
     });
 
@@ -605,7 +617,7 @@ describe('profileApi', () => {
         const errorData = axiosError.response!.data as unknown as _ApiErrorResponse;
         expect(axiosError.response!.status).toBe(422);
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        expect(errorData.error.details.file).toBeDefined();
+        expect(errorData.error.details!.file).toBeDefined();
       }
     });
 
@@ -663,19 +675,6 @@ describe('profileApi', () => {
           );
         })
       );
-
-// Error response interface for validation errors
-interface _ApiErrorResponse {
-  success: false;
-  error: {
-    code: string;
-    message: string;
-    details?: {
-      [field: string]: string[];
-    };
-  };
-}
-
 
       await expect(uploadAvatar(userId, mockFile)).rejects.toThrow();
       expect(authService.refreshAccessToken).toHaveBeenCalled();
@@ -856,11 +855,11 @@ interface _ApiErrorResponse {
         lastname: 'O\'Brien',
         description: 'Test & <special> "characters"',
       };
-      let capturedBody: UpdateProfilePayload | null = null;
+      let capturedBody: UpdateProfileData | null = null;
       
       server.use(
         http.put(`${API_BASE_URL}/api/v1/users/${userId}`, async ({ request }) => {
-          capturedBody = await request.json() as UpdateProfilePayload;
+          capturedBody = await request.json() as UpdateProfileData;
           return HttpResponse.json({
             success: true,
             data: { ...mockProfile, ...specialCharsData },
@@ -870,9 +869,9 @@ interface _ApiErrorResponse {
 
       await updateUserProfile(userId, specialCharsData);
 
-      expect(capturedBody.firstname).toBe('Jean-François');
-      expect(capturedBody.lastname).toBe('O\'Brien');
-      expect(capturedBody.description).toBe('Test & <special> "characters"');
+      expect(capturedBody!.firstname).toBe('Jean-François');
+      expect(capturedBody!.lastname).toBe('O\'Brien');
+      expect(capturedBody!.description).toBe('Test & <special> "characters"');
     });
   });
 

@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import DiscussionThread from '@/features/activities/forums/components/DiscussionThread';
 import type { Discussion, DiscussionPost, Author, ForumPost } from '@/features/activities/forums/types/forum.types';
 import type { UseAuthReturn } from '@/features/auth/hooks/useAuth';
+import type { User } from '@/features/auth/types/auth.types';
 
 // Define return type for useDiscussion mock
 interface UseDiscussionReturn {
@@ -107,6 +108,22 @@ const createMockAuthor = (overrides?: Partial<Author>): Author => ({
   ...overrides,
 });
 
+// Helper function to create mock User (for auth)
+const createMockUser = (overrides?: Partial<User>): User => ({
+  id: 1,
+  username: 'testuser',
+  email: 'test@example.com',
+  firstname: 'Test',
+  lastname: 'User',
+  fullname: 'Test User',
+  auth: 'manual',
+  confirmed: true,
+  suspended: false,
+  roles: [],
+  capabilities: [],
+  ...overrides,
+});
+
 // Helper function to create mock post (DiscussionPost)
 const createMockPost = (overrides?: Partial<DiscussionPost>): DiscussionPost => ({
   id: 1,
@@ -132,7 +149,7 @@ const createMockPost = (overrides?: Partial<DiscussionPost>): DiscussionPost => 
 });
 
 // Helper function to create mock DiscussionDetail (extended Discussion)
-const createMockDiscussion = (overrides?: Partial<Discussion & { author?: Author; created?: number; numViews?: number; numParticipants?: number; numReplies?: number; numUnreadPosts?: number; subscribed?: boolean; locked?: boolean }>): Discussion & { author: Author; created: number; numViews: number; numParticipants: number; numReplies: number; numUnreadPosts: number; subscribed: boolean } => {
+const createMockDiscussion = (overrides?: Partial<Discussion & { author?: Author; created?: number; numViews?: number; numParticipants?: number; numReplies?: number; unreadCount?: number; subscribed?: boolean; locked?: boolean }>): Discussion & { author: Author; created: number; numViews: number; numParticipants: number; numReplies: number; unreadCount: number; subscribed: boolean } => {
   // Extract locked boolean if provided and remove it from overrides
   const { locked, ...rest } = overrides || {};
   
@@ -157,7 +174,7 @@ const createMockDiscussion = (overrides?: Partial<Discussion & { author?: Author
     numViews: 42,
     numParticipants: 3,
     numReplies: 5,
-    numUnreadPosts: 0,
+    unreadCount: 0,
     subscribed: false,
     ...rest,
   };
@@ -249,8 +266,11 @@ describe('DiscussionThread', () => {
 
     // Default mock auth
     mockUseAuth.mockReturnValue({
-      user: createMockAuthor(),
+      user: createMockUser(),
       isAuthenticated: true,
+      login: vi.fn(),
+      logout: vi.fn(),
+      isLoading: false,
     });
   });
 
@@ -737,7 +757,7 @@ describe('DiscussionThread', () => {
       const recentPost = createMockPost({
         id: 2,
         parentId: 1,
-        createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
+        created: Math.floor((Date.now() - 2 * 60 * 60 * 1000) / 1000), // 2 hours ago
       });
 
       const discussion = createMockDiscussion();
@@ -884,7 +904,7 @@ describe('DiscussionThread', () => {
       });
 
       const discussion = createMockDiscussion({
-        numUnreadPosts: 1,
+        unreadCount: 1,
       });
       const flatPosts = [createMockPost({ id: 1 }), unreadPost];
       const posts = buildPostTree(flatPosts);
@@ -910,7 +930,7 @@ describe('DiscussionThread', () => {
       });
 
       const discussion = createMockDiscussion({
-        numUnreadPosts: 0,
+        unreadCount: 0,
       });
       const flatPosts = [createMockPost({ id: 1 }), readPost];
       const posts = buildPostTree(flatPosts);
@@ -931,8 +951,11 @@ describe('DiscussionThread', () => {
   describe('Moderator Actions', () => {
     beforeEach(() => {
       mockUseAuth.mockReturnValue({
-        user: createMockAuthor({ id: 100, fullname: 'Moderator User' }),
+        user: createMockUser({ id: 100, fullname: 'Moderator User' }),
         isAuthenticated: true,
+        login: vi.fn(),
+        logout: vi.fn(),
+        isLoading: false,
       });
     });
 
@@ -994,7 +1017,7 @@ describe('DiscussionThread', () => {
 
   describe('Owner Actions', () => {
     it('should show edit button for post owner', () => {
-      const currentUser = createMockAuthor({ id: 5, fullname: 'Current User' });
+      const currentUser = createMockUser({ id: 5, fullname: 'Current User' });
       const ownPost = createMockPost({
         id: 2,
         parentId: 1,
@@ -1005,6 +1028,9 @@ describe('DiscussionThread', () => {
       mockUseAuth.mockReturnValue({
         user: currentUser,
         isAuthenticated: true,
+        login: vi.fn(),
+        logout: vi.fn(),
+        isLoading: false,
       });
 
       const discussion = createMockDiscussion();
@@ -1025,7 +1051,7 @@ describe('DiscussionThread', () => {
     });
 
     it('should show delete button for post owner', () => {
-      const currentUser = createMockAuthor({ id: 5, fullname: 'Current User' });
+      const currentUser = createMockUser({ id: 5, fullname: 'Current User' });
       const ownPost = createMockPost({
         id: 2,
         parentId: 1,
@@ -1036,6 +1062,9 @@ describe('DiscussionThread', () => {
       mockUseAuth.mockReturnValue({
         user: currentUser,
         isAuthenticated: true,
+        login: vi.fn(),
+        logout: vi.fn(),
+        isLoading: false,
       });
 
       const discussion = createMockDiscussion();
@@ -1066,8 +1095,11 @@ describe('DiscussionThread', () => {
       });
 
       mockUseAuth.mockReturnValue({
-        user: createMockAuthor({ id: 5, fullname: 'Student User' }),
+        user: createMockUser({ id: 5, fullname: 'Student User' }),
         isAuthenticated: true,
+        login: vi.fn(),
+        logout: vi.fn(),
+        isLoading: false,
       });
 
       const discussion = createMockDiscussion();
@@ -1318,7 +1350,7 @@ describe('DiscussionThread', () => {
         discussion: null,
         posts: [],
         isLoading: false,
-        error: new Error('Permission denied'),
+        error: { message: 'Permission denied', status: 403 } as unknown as Error,
       }));
 
       renderComponent(1);
@@ -1431,14 +1463,14 @@ describe('DiscussionThread', () => {
         id: 2,
         parentId: 1,
         message: 'Old post',
-        createdAt: '2024-01-15T10:00:00Z',
+        created: Math.floor(Date.parse('2024-01-15T10:00:00Z') / 1000),
       });
 
       const newPost = createMockPost({
         id: 3,
         parentId: 1,
         message: 'New post',
-        createdAt: '2024-01-15T14:00:00Z',
+        created: Math.floor(Date.parse('2024-01-15T14:00:00Z') / 1000),
       });
 
       const discussion = createMockDiscussion();
@@ -1467,10 +1499,10 @@ describe('DiscussionThread', () => {
     it('should maintain nested order within branches', () => {
       const discussion = createMockDiscussion();
       const flatPosts = [
-        createMockPost({ id: 1, createdAt: '2024-01-15T10:00:00Z' }),
-        createMockPost({ id: 2, parentId: 1, createdAt: '2024-01-15T11:00:00Z' }),
-        createMockPost({ id: 3, parentId: 2, createdAt: '2024-01-15T12:00:00Z' }),
-        createMockPost({ id: 4, parentId: 1, createdAt: '2024-01-15T13:00:00Z' }),
+        createMockPost({ id: 1, created: Math.floor(Date.parse('2024-01-15T10:00:00Z') / 1000) }),
+        createMockPost({ id: 2, parentId: 1, created: Math.floor(Date.parse('2024-01-15T11:00:00Z') / 1000) }),
+        createMockPost({ id: 3, parentId: 2, created: Math.floor(Date.parse('2024-01-15T12:00:00Z') / 1000) }),
+        createMockPost({ id: 4, parentId: 1, created: Math.floor(Date.parse('2024-01-15T13:00:00Z') / 1000) }),
       ];
       const posts = buildPostTree(flatPosts);
 
@@ -1596,7 +1628,7 @@ describe('DiscussionThread', () => {
 
     it('should announce new replies to screen readers', () => {
       const discussion = createMockDiscussion({
-        numUnreadPosts: 3,
+        unreadCount: 3,
       });
       const flatPosts = [createMockPost({ id: 1 })];
       const posts = buildPostTree(flatPosts);

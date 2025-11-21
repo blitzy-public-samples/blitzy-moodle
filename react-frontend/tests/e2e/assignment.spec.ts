@@ -11,14 +11,12 @@ import {
   cleanupTestFiles 
 } from './utils/file-helpers';
 import { testCourse4 } from './fixtures/courses';
-import { samplePDFFile, sampleImageFile, sampleDocumentFile, createTestFile, MAX_FILE_SIZE, MIME_TYPES } from './fixtures/files';
 import { 
   testAssignment1, 
   testAssignment2, 
   testAssignment3, 
   testAssignment4
 } from './fixtures/assignments';
-import { testStudent, testTeacher, TEST_PASSWORD } from './fixtures/users';
 
 /**
  * E2E Test Suite: Assignment Submission Workflow

@@ -41,22 +41,26 @@ import {
 // TypeScript Type Definitions
 // ============================================================================
 
+/**
+ * Discussion interface for mock data
+ * Uses lowercase properties to match Moodle's backend conventions and application types
+ */
 interface Discussion {
   id: number;
-  forumId: number;
+  forumid: number;
   name: string;
   message: string;
-  messageFormat: number;
-  userId: number;
+  messageformat: number;
+  userid: number;
   userFullName: string;
   userPictureUrl: string;
   created: number;
   modified: number;
-  timeStart: number;
-  timeEnd: number;
+  timestart: number;
+  timeend: number;
   pinned: boolean;
   locked: boolean;
-  groupId: number;
+  groupid: number;
   numReplies: number;
   numUnreadPosts: number;
   canReply: boolean;
@@ -66,19 +70,23 @@ interface Discussion {
   canLock: boolean;
 }
 
+/**
+ * Post interface for mock data
+ * Uses lowercase properties to match Moodle's backend conventions and application types
+ */
 interface Post {
   id: number;
-  discussionId: number;
-  parentId: number;
-  userId: number;
+  discussionid: number;
+  parentid: number;
+  authorid: number;
   userFullName: string;
   userPictureUrl: string;
-  created: number;
-  modified: number;
+  timecreated: number;
+  timemodified: number;
   subject: string;
   message: string;
-  messageFormat: number;
-  attachment: boolean;
+  messageformat: number;
+  hasattachments: boolean;
   attachments: PostAttachment[];
   canEdit: boolean;
   canDelete: boolean;
@@ -135,20 +143,20 @@ const MOCK_FORUMS: Record<number, Forum> = {
 const INITIAL_MOCK_DISCUSSIONS: Record<number, Discussion> = {
   1: {
     id: 1,
-    forumId: 1,
+    forumid: 1,
     name: 'First Discussion',
     message: 'This is the first discussion post',
-    messageFormat: 1,
-    userId: 5,
+    messageformat: 1,
+    userid: 5,
     userFullName: 'John Doe',
     userPictureUrl: '/user/pic.jpg',
     created: 1640000000,
     modified: 1640000000,
-    timeStart: 0,
-    timeEnd: 0,
+    timestart: 0,
+    timeend: 0,
     pinned: true,
     locked: false,
-    groupId: -1,
+    groupid: -1,
     numReplies: 10,
     numUnreadPosts: 2,
     canReply: true,
@@ -159,20 +167,20 @@ const INITIAL_MOCK_DISCUSSIONS: Record<number, Discussion> = {
   },
   2: {
     id: 2,
-    forumId: 1,
+    forumid: 1,
     name: 'Second Discussion',
     message: 'This is the second discussion post',
-    messageFormat: 1,
-    userId: 6,
+    messageformat: 1,
+    userid: 6,
     userFullName: 'Jane Smith',
     userPictureUrl: '/user/pic2.jpg',
     created: 1640100000,
     modified: 1640100000,
-    timeStart: 0,
-    timeEnd: 0,
+    timestart: 0,
+    timeend: 0,
     pinned: false,
     locked: false,
-    groupId: -1,
+    groupid: -1,
     numReplies: 5,
     numUnreadPosts: 0,
     canReply: true,
@@ -183,20 +191,20 @@ const INITIAL_MOCK_DISCUSSIONS: Record<number, Discussion> = {
   },
   101: {
     id: 101,
-    forumId: 1,
+    forumid: 1,
     name: 'Test Discussion 101',
     message: 'This is test discussion 101 for unit tests',
-    messageFormat: 1,
-    userId: 5,
+    messageformat: 1,
+    userid: 5,
     userFullName: 'Test User',
     userPictureUrl: '/user/pic.jpg',
     created: 1640200000,
     modified: 1640200000,
-    timeStart: 0,
-    timeEnd: 0,
+    timestart: 0,
+    timeend: 0,
     pinned: false,
     locked: false,
-    groupId: -1,
+    groupid: -1,
     numReplies: 3,
     numUnreadPosts: 0,
     canReply: true,
@@ -207,20 +215,20 @@ const INITIAL_MOCK_DISCUSSIONS: Record<number, Discussion> = {
   },
   102: {
     id: 102,
-    forumId: 1,
+    forumid: 1,
     name: 'Test Discussion 102',
     message: 'This is test discussion 102 for unit tests',
-    messageFormat: 1,
-    userId: 6,
+    messageformat: 1,
+    userid: 6,
     userFullName: 'Test User 2',
     userPictureUrl: '/user/pic2.jpg',
     created: 1640300000,
     modified: 1640300000,
-    timeStart: 0,
-    timeEnd: 0,
+    timestart: 0,
+    timeend: 0,
     pinned: true,
     locked: false,
-    groupId: -1,
+    groupid: -1,
     numReplies: 0,
     numUnreadPosts: 0,
     canReply: true,
@@ -231,20 +239,20 @@ const INITIAL_MOCK_DISCUSSIONS: Record<number, Discussion> = {
   },
   103: {
     id: 103,
-    forumId: 1,
+    forumid: 1,
     name: 'Test Discussion 103',
     message: 'This is test discussion 103 for unit tests',
-    messageFormat: 1,
-    userId: 5,
+    messageformat: 1,
+    userid: 5,
     userFullName: 'Test User',
     userPictureUrl: '/user/pic.jpg',
     created: 1640400000,
     modified: 1640400000,
-    timeStart: 0,
-    timeEnd: 0,
+    timestart: 0,
+    timeend: 0,
     pinned: false,
     locked: true,
-    groupId: -1,
+    groupid: -1,
     numReplies: 1,
     numUnreadPosts: 0,
     canReply: false,
@@ -255,20 +263,20 @@ const INITIAL_MOCK_DISCUSSIONS: Record<number, Discussion> = {
   },
   100: {
     id: 100,
-    forumId: 1,
+    forumid: 1,
     name: 'Test Discussion 100',
     message: 'This is test discussion 100 for forumApi unit tests',
-    messageFormat: 1,
-    userId: 5,
+    messageformat: 1,
+    userid: 5,
     userFullName: 'Test User',
     userPictureUrl: '/user/pic.jpg',
     created: 1640200000,
     modified: 1640200000,
-    timeStart: 0,
-    timeEnd: 0,
+    timestart: 0,
+    timeend: 0,
     pinned: false,
     locked: false,
-    groupId: -1,
+    groupid: -1,
     numReplies: 0,
     numUnreadPosts: 0,
     canReply: true,
@@ -386,17 +394,17 @@ let MOCK_DISCUSSIONS = loadDiscussions();
 const INITIAL_MOCK_POSTS: Record<number, Post> = {
   1: {
     id: 1,
-    discussionId: 1,
-    parentId: 0,
-    userId: 5,
+    discussionid: 1,
+    parentid: 0,
+    authorid: 5,
     userFullName: 'John Doe',
     userPictureUrl: '/user/pic.jpg',
-    created: 1640000000,
-    modified: 1640000000,
+    timecreated: 1640000000,
+    timemodified: 1640000000,
     subject: 'First Discussion',
     message: 'This is the first discussion post',
-    messageFormat: 1,
-    attachment: false,
+    messageformat: 1,
+    hasattachments: false,
     attachments: [],
     canEdit: false,
     canDelete: false,
@@ -405,17 +413,17 @@ const INITIAL_MOCK_POSTS: Record<number, Post> = {
   },
   2: {
     id: 2,
-    discussionId: 1,
-    parentId: 1,
-    userId: 6,
+    discussionid: 1,
+    parentid: 1,
+    authorid: 6,
     userFullName: 'Jane Smith',
     userPictureUrl: '/user/pic2.jpg',
-    created: 1640010000,
-    modified: 1640010000,
+    timecreated: 1640010000,
+    timemodified: 1640010000,
     subject: 'Re: First Discussion',
     message: 'This is a reply to the first discussion',
-    messageFormat: 1,
-    attachment: false,
+    messageformat: 1,
+    hasattachments: false,
     attachments: [],
     canEdit: false,
     canDelete: false,
@@ -524,7 +532,7 @@ const getDiscussionsHandler = http.get('*/api/v1/forums/:id/discussions', async 
   // const sortBy = url.searchParams.get('sortBy') || 'modified';
   // const sortOrder = url.searchParams.get('sortOrder') || 'desc';
   
-  const discussions = Object.values(MOCK_DISCUSSIONS).filter(d => d.forumId === id);
+  const discussions = Object.values(MOCK_DISCUSSIONS).filter(d => d.forumid === id);
   
   return HttpResponse.json({
     success: true,
@@ -555,7 +563,7 @@ const getPostsHandler = http.get('*/api/v1/forums/discussions/:id/posts', async 
   console.log('[MSW Forums] Getting posts for discussion:', id);
   console.log('[MSW Forums] Current discussions:', Object.keys(MOCK_DISCUSSIONS));
   console.log('[MSW Forums] Current posts:', Object.keys(MOCK_POSTS));
-  console.log('[MSW Forums] All post values:', Object.values(MOCK_POSTS).map(p => ({ id: p.id, discussionId: p.discussionId })));
+  console.log('[MSW Forums] All post values:', Object.values(MOCK_POSTS).map(p => ({ id: p.id, discussionid: p.discussionid })));
   
   const discussion = MOCK_DISCUSSIONS[id];
   
@@ -574,7 +582,7 @@ const getPostsHandler = http.get('*/api/v1/forums/discussions/:id/posts', async 
     );
   }
   
-  const posts = Object.values(MOCK_POSTS).filter(p => p.discussionId === id);
+  const posts = Object.values(MOCK_POSTS).filter(p => p.discussionid === id);
   console.log('[MSW Forums] Found', posts.length, 'posts for discussion', id);
   
   return HttpResponse.json({
@@ -679,20 +687,20 @@ const createDiscussionHandler = http.post('*/api/v1/forums/:id/discussions', asy
   
   const newDiscussion: Discussion = {
     id: Object.keys(MOCK_DISCUSSIONS).length + 1,
-    forumId: id,
+    forumid: id,
     name: bodyData.name as string,
     message: bodyData.message as string,
-    messageFormat: (bodyData.messageFormat as number) || 1,
-    userId: 5,
+    messageformat: (bodyData.messageFormat as number) || 1,
+    userid: 5,
     userFullName: 'Test User',
     userPictureUrl: '/user/pic.jpg',
     created: Date.now() / 1000,
     modified: Date.now() / 1000,
-    timeStart: (bodyData.timeStart as number) || 0,
-    timeEnd: (bodyData.timeEnd as number) || 0,
+    timestart: (bodyData.timeStart as number) || 0,
+    timeend: (bodyData.timeEnd as number) || 0,
     pinned: (bodyData.pinned as boolean) || false,
     locked: false,
-    groupId: (bodyData.groupId as number) || 0,
+    groupid: (bodyData.groupId as number) || 0,
     numReplies: 0,
     numUnreadPosts: 0,
     canReply: true,
@@ -710,17 +718,17 @@ const createDiscussionHandler = http.post('*/api/v1/forums/:id/discussions', asy
   // Create the first post (the discussion content itself)
   const firstPost: Post = {
     id: firstPostId,
-    discussionId: newDiscussion.id,
-    parentId: 0,
-    userId: newDiscussion.userId,
+    discussionid: newDiscussion.id,
+    parentid: 0,
+    authorid: newDiscussion.userid,
     userFullName: newDiscussion.userFullName,
     userPictureUrl: newDiscussion.userPictureUrl,
-    created: newDiscussion.created,
-    modified: newDiscussion.modified,
+    timecreated: newDiscussion.created,
+    timemodified: newDiscussion.modified,
     subject: newDiscussion.name,
     message: bodyData.message as string,
-    messageFormat: (bodyData.messageFormat as number) || 1,
-    attachment: false,
+    messageformat: (bodyData.messageFormat as number) || 1,
+    hasattachments: false,
     attachments: [],
     canEdit: true,
     canDelete: true,
@@ -817,17 +825,17 @@ const createPostHandler = http.post('*/api/v1/forums/discussions/:id/posts', asy
   
   const newPost: Post = {
     id: Object.keys(MOCK_POSTS).length + 1,
-    discussionId: id,
-    parentId: (bodyData.parentId as number) || 0,
-    userId: 5,
+    discussionid: id,
+    parentid: (bodyData.parentId as number) || 0,
+    authorid: 5,
     userFullName: 'Test User',
     userPictureUrl: '/user/pic.jpg',
-    created: Date.now() / 1000,
-    modified: Date.now() / 1000,
+    timecreated: Date.now() / 1000,
+    timemodified: Date.now() / 1000,
     subject: (bodyData.subject as string) || `Re: ${discussion.name}`,
     message: bodyData.message as string,
-    messageFormat: (bodyData.messageFormat as number) || 1,
-    attachment: false,
+    messageformat: (bodyData.messageFormat as number) || 1,
+    hasattachments: false,
     attachments: (bodyData.attachments as PostAttachment[]) || [],
     canEdit: true,
     canDelete: true,
@@ -912,7 +920,7 @@ const updatePostHandler = http.put('*/api/v1/forums/posts/:id', async ({ params,
     subject: bodyData.subject || post.subject,
      
     message: bodyData.message || post.message,
-    modified: Date.now() / 1000
+    timemodified: Date.now() / 1000
   };
   
   return HttpResponse.json({
@@ -1115,11 +1123,14 @@ const markReadHandler = http.post('*/api/v1/forums/discussions/:id/read', async 
     );
   }
   
+  // Count posts in this discussion for postsRead
+  const postsInDiscussion = Object.values(MOCK_POSTS).filter(p => p.discussionid === id);
+  
   return HttpResponse.json({
     success: true,
     data: {
-      discussionId: id,
-      message: 'Discussion marked as read'
+      postsRead: postsInDiscussion.length,
+      unreadCount: 0
     }
   });
 });
