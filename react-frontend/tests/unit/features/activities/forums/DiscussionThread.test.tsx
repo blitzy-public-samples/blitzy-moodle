@@ -132,7 +132,7 @@ const createMockPost = (overrides?: Partial<DiscussionPost>): DiscussionPost => 
 });
 
 // Helper function to create mock DiscussionDetail (extended Discussion)
-const createMockDiscussion = (overrides?: Partial<Discussion & { author?: Author; created?: number; numViews?: number; numParticipants?: number; numReplies?: number; subscribed?: boolean; locked?: boolean }>): Discussion & { author: Author; created: number; numViews: number; numParticipants: number; numReplies: number; subscribed: boolean } => {
+const createMockDiscussion = (overrides?: Partial<Discussion & { author?: Author; created?: number; numViews?: number; numParticipants?: number; numReplies?: number; numUnreadPosts?: number; subscribed?: boolean; locked?: boolean }>): Discussion & { author: Author; created: number; numViews: number; numParticipants: number; numReplies: number; numUnreadPosts: number; subscribed: boolean } => {
   // Extract locked boolean if provided and remove it from overrides
   const { locked, ...rest } = overrides || {};
   
@@ -157,6 +157,7 @@ const createMockDiscussion = (overrides?: Partial<Discussion & { author?: Author
     numViews: 42,
     numParticipants: 3,
     numReplies: 5,
+    numUnreadPosts: 0,
     subscribed: false,
     ...rest,
   };
@@ -883,7 +884,7 @@ describe('DiscussionThread', () => {
       });
 
       const discussion = createMockDiscussion({
-        unreadCount: 1,
+        numUnreadPosts: 1,
       });
       const flatPosts = [createMockPost({ id: 1 }), unreadPost];
       const posts = buildPostTree(flatPosts);
@@ -909,7 +910,7 @@ describe('DiscussionThread', () => {
       });
 
       const discussion = createMockDiscussion({
-        unreadCount: 0,
+        numUnreadPosts: 0,
       });
       const flatPosts = [createMockPost({ id: 1 }), readPost];
       const posts = buildPostTree(flatPosts);
@@ -1148,7 +1149,7 @@ describe('DiscussionThread', () => {
       );
 
       const discussion = createMockDiscussion({
-        replyCount: 25,
+        numReplies: 25,
       });
 
       const flatPosts = allFlatPosts.slice(0, 20); // Initial 20 posts
@@ -1170,7 +1171,7 @@ describe('DiscussionThread', () => {
     it('should load more replies when button is clicked', async () => {
       const loadMore = vi.fn();
       const discussion = createMockDiscussion({
-        replyCount: 50,
+        numReplies: 50,
       });
 
       const posts = buildPostTree([createMockPost({ id: 1 })]);
@@ -1194,7 +1195,7 @@ describe('DiscussionThread', () => {
 
     it('should not show "Load more" button when all replies are loaded', () => {
       const discussion = createMockDiscussion({
-        replyCount: 2,
+        numReplies: 2,
       });
 
       const flatPosts = [createMockPost({ id: 1 }), createMockPost({ id: 2, parentId: 1 })];
@@ -1304,7 +1305,7 @@ describe('DiscussionThread', () => {
         discussion: null,
         posts: [],
         isLoading: false,
-        error: { status: 404, message: 'Discussion not found' },
+        error: new Error('Discussion not found'),
       }));
 
       renderComponent(1);
@@ -1317,7 +1318,7 @@ describe('DiscussionThread', () => {
         discussion: null,
         posts: [],
         isLoading: false,
-        error: { status: 403, message: 'Permission denied' },
+        error: new Error('Permission denied'),
       }));
 
       renderComponent(1);
@@ -1381,7 +1382,6 @@ describe('DiscussionThread', () => {
         id: 2,
         parentId: 1,
         message: 'Pending approval',
-        status: 'pending',
       });
 
       const discussion = createMockDiscussion();
@@ -1596,7 +1596,7 @@ describe('DiscussionThread', () => {
 
     it('should announce new replies to screen readers', () => {
       const discussion = createMockDiscussion({
-        unreadCount: 3,
+        numUnreadPosts: 3,
       });
       const flatPosts = [createMockPost({ id: 1 })];
       const posts = buildPostTree(flatPosts);
