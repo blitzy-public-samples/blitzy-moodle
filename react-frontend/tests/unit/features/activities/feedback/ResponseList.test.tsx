@@ -78,11 +78,6 @@ const createTestQueryClient = () =>
         retry: false,
       },
     },
-    logger: {
-      log: () => {},
-      warn: () => {},
-      error: () => {},
-    },
   });
 
 /**

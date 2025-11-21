@@ -244,12 +244,6 @@ export const testQueryClient = new QueryClient({
       retry: false,
     },
   },
-  // Suppress error logging in tests
-  logger: {
-    log: () => {},
-    warn: () => {},
-    error: () => {},
-  },
 });
 
 // ============================================================================
