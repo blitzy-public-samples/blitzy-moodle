@@ -19,7 +19,7 @@
 
 import { test, expect, type Page } from '@playwright/test';
 import { QuizPage } from './pages/QuizPage';
-import { loginAsStudent, _logout, _clearAuthenticationState } from './utils/auth';
+import { loginAsStudent } from './utils/auth';
 import { testCourse1 } from './fixtures/courses';
 import { testQuiz1, testQuiz2, testQuiz3 } from './fixtures/quizzes';
 
@@ -128,7 +128,7 @@ test.describe('Quiz Attempt E2E Tests', () => {
     // Parse times and verify countdown
     const parseTime = (timeStr: string) => {
       const [mins, secs] = timeStr.split(':').map(Number);
-      return mins * 60 + secs;
+      return mins! * 60 + secs!;
     };
     
     const initialSeconds = parseTime(initialTime);
@@ -743,7 +743,7 @@ test.describe('Quiz Attempt E2E Tests', () => {
     const initialTime = await quizPage.getRemainingTime();
     const parseTime = (timeStr: string) => {
       const [mins, secs] = timeStr.split(':').map(Number);
-      return mins * 60 + secs;
+      return mins! * 60 + secs!;
     };
     
     const initialSeconds = parseTime(initialTime);

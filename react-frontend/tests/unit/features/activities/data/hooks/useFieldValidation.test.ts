@@ -25,9 +25,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, _waitFor, act, cleanup } from '@testing-library/react';
+import { renderHook, act, cleanup } from '@testing-library/react';
 import useFieldValidation from '@/features/activities/data/hooks/useFieldValidation';
-import type { _FieldValidationError } from '@/features/activities/data/hooks/useFieldValidation';
 import type { 
   TextField,
   TextAreaField,
@@ -259,7 +258,7 @@ describe('useFieldValidation - Text Field Validation', () => {
     const field = createTextField({ param1: '10' });
 
     act(() => {
-      const _isValid = result.current.validate(field, 'short');
+      result.current.validate(field, 'short');
     });
 
     expect(result.current.isValid).toBe(true);
@@ -276,8 +275,8 @@ describe('useFieldValidation - Text Field Validation', () => {
 
     expect(result.current.isValid).toBe(false);
     expect(result.current.errors).toHaveLength(1);
-    expect(result.current.errors[0].field).toBe('testfield');
-    expect(result.current.errors[0].message).toContain('5 characters');
+    expect(result.current.errors[0]!.field).toBe('testfield');
+    expect(result.current.errors[0]!.message).toContain('5 characters');
   });
 
   it('should fail validation when required text field is empty', () => {
@@ -290,7 +289,7 @@ describe('useFieldValidation - Text Field Validation', () => {
 
     expect(result.current.isValid).toBe(false);
     expect(result.current.errors).toHaveLength(1);
-    expect(result.current.errors[0].message).toContain('required');
+    expect(result.current.errors[0]!.message).toContain('required');
   });
 
   it('should pass validation when optional text field is empty', () => {
@@ -315,7 +314,7 @@ describe('useFieldValidation - Text Field Validation', () => {
     });
 
     expect(result.current.isValid).toBe(false);
-    expect(result.current.errors[0].message).toContain('60 characters');
+    expect(result.current.errors[0]!.message).toContain('60 characters');
   });
 });
 
@@ -346,7 +345,7 @@ describe('useFieldValidation - Textarea Field Validation', () => {
 
     expect(result.current.isValid).toBe(false);
     expect(result.current.errors).toHaveLength(1);
-    expect(result.current.errors[0].message).toContain('required');
+    expect(result.current.errors[0]!.message).toContain('required');
   });
 
   it('should pass validation when optional textarea is empty', () => {
@@ -401,7 +400,7 @@ describe('useFieldValidation - Number Field Validation', () => {
 
     expect(result.current.isValid).toBe(false);
     expect(result.current.errors).toHaveLength(1);
-    expect(result.current.errors[0].message).toContain('2 decimal places');
+    expect(result.current.errors[0]!.message).toContain('2 decimal places');
   });
 
   it('should fail validation for non-numeric value', () => {
@@ -414,7 +413,7 @@ describe('useFieldValidation - Number Field Validation', () => {
 
     expect(result.current.isValid).toBe(false);
     expect(result.current.errors).toHaveLength(1);
-    expect(result.current.errors[0].message).toContain('valid number');
+    expect(result.current.errors[0]!.message).toContain('valid number');
   });
 
   it('should coerce string numbers to numeric values', () => {
@@ -493,7 +492,7 @@ describe('useFieldValidation - Date Field Validation', () => {
 
     expect(result.current.isValid).toBe(false);
     expect(result.current.errors).toHaveLength(1);
-    expect(result.current.errors[0].message).toContain('valid date');
+    expect(result.current.errors[0]!.message).toContain('valid date');
   });
 
   it('should pass validation for optional empty date field', () => {
@@ -548,7 +547,7 @@ describe('useFieldValidation - Checkbox Field Validation', () => {
 
     expect(result.current.isValid).toBe(false);
     expect(result.current.errors).toHaveLength(1);
-    expect(result.current.errors[0].message).toContain('must be checked');
+    expect(result.current.errors[0]!.message).toContain('must be checked');
   });
 
   it('should fail validation for non-boolean value', () => {
@@ -561,7 +560,7 @@ describe('useFieldValidation - Checkbox Field Validation', () => {
 
     expect(result.current.isValid).toBe(false);
     expect(result.current.errors).toHaveLength(1);
-    expect(result.current.errors[0].message).toContain('boolean');
+    expect(result.current.errors[0]!.message).toContain('boolean');
   });
 });
 
@@ -592,7 +591,7 @@ describe('useFieldValidation - Menu Field Validation', () => {
 
     expect(result.current.isValid).toBe(false);
     expect(result.current.errors).toHaveLength(1);
-    expect(result.current.errors[0].message).toContain('valid option');
+    expect(result.current.errors[0]!.message).toContain('valid option');
   });
 
   it('should fail validation when required menu has no selection', () => {
@@ -671,7 +670,7 @@ describe('useFieldValidation - MultiMenu Field Validation', () => {
 
     expect(result.current.isValid).toBe(false);
     expect(result.current.errors).toHaveLength(1);
-    expect(result.current.errors[0].message).toContain('valid options');
+    expect(result.current.errors[0]!.message).toContain('valid options');
   });
 
   it('should fail validation when required multimenu has no selections', () => {
@@ -684,7 +683,7 @@ describe('useFieldValidation - MultiMenu Field Validation', () => {
 
     expect(result.current.isValid).toBe(false);
     expect(result.current.errors).toHaveLength(1);
-    expect(result.current.errors[0].message).toContain('At least one option must be selected');
+    expect(result.current.errors[0]!.message).toContain('At least one option must be selected');
   });
 
   it('should pass validation when optional multimenu has no selections', () => {
@@ -739,7 +738,7 @@ describe('useFieldValidation - RadioButton Field Validation', () => {
 
     expect(result.current.isValid).toBe(false);
     expect(result.current.errors).toHaveLength(1);
-    expect(result.current.errors[0].message).toContain('valid option');
+    expect(result.current.errors[0]!.message).toContain('valid option');
   });
 
   it('should fail validation when required radio has no selection', () => {
@@ -804,7 +803,7 @@ describe('useFieldValidation - File Field Validation', () => {
 
     expect(result.current.isValid).toBe(false);
     expect(result.current.errors).toHaveLength(1);
-    expect(result.current.errors[0].message).toContain('10MB');
+    expect(result.current.errors[0]!.message).toContain('10MB');
   });
 
   it('should pass validation for optional file field with no file', () => {
@@ -908,7 +907,7 @@ describe('useFieldValidation - Picture Field Validation', () => {
 
     expect(result.current.isValid).toBe(false);
     expect(result.current.errors).toHaveLength(1);
-    expect(result.current.errors[0].message).toContain('valid image');
+    expect(result.current.errors[0]!.message).toContain('valid image');
   });
 
   it('should fail validation when image exceeds size limit', () => {
@@ -926,7 +925,7 @@ describe('useFieldValidation - Picture Field Validation', () => {
 
     expect(result.current.isValid).toBe(false);
     expect(result.current.errors).toHaveLength(1);
-    expect(result.current.errors[0].message).toContain('10MB');
+    expect(result.current.errors[0]!.message).toContain('10MB');
   });
 
   it('should pass validation for GIF image', () => {
@@ -986,7 +985,7 @@ describe('useFieldValidation - URL Field Validation', () => {
 
     expect(result.current.isValid).toBe(false);
     expect(result.current.errors).toHaveLength(1);
-    expect(result.current.errors[0].message).toContain('valid URL');
+    expect(result.current.errors[0]!.message).toContain('valid URL');
   });
 
   it('should fail validation for URL without protocol', () => {
@@ -999,7 +998,7 @@ describe('useFieldValidation - URL Field Validation', () => {
 
     expect(result.current.isValid).toBe(false);
     expect(result.current.errors).toHaveLength(1);
-    expect(result.current.errors[0].message).toContain('valid URL');
+    expect(result.current.errors[0]!.message).toContain('valid URL');
   });
 
   it('should fail validation when required URL field is empty', () => {
@@ -1012,7 +1011,7 @@ describe('useFieldValidation - URL Field Validation', () => {
 
     expect(result.current.isValid).toBe(false);
     expect(result.current.errors).toHaveLength(1);
-    expect(result.current.errors[0].message).toContain('required');
+    expect(result.current.errors[0]!.message).toContain('required');
   });
 
   it('should pass validation when optional URL field is empty', () => {
@@ -1091,7 +1090,7 @@ describe('useFieldValidation - LatLong Field Validation', () => {
 
     expect(result.current.isValid).toBe(false);
     expect(result.current.errors).toHaveLength(1);
-    expect(result.current.errors[0].message).toContain('between -90 and 90');
+    expect(result.current.errors[0]!.message).toContain('between -90 and 90');
   });
 
   it('should fail validation when latitude is below minimum (-90)', () => {
@@ -1104,7 +1103,7 @@ describe('useFieldValidation - LatLong Field Validation', () => {
 
     expect(result.current.isValid).toBe(false);
     expect(result.current.errors).toHaveLength(1);
-    expect(result.current.errors[0].message).toContain('between -90 and 90');
+    expect(result.current.errors[0]!.message).toContain('between -90 and 90');
   });
 
   it('should fail validation when longitude exceeds maximum (180)', () => {
@@ -1117,7 +1116,7 @@ describe('useFieldValidation - LatLong Field Validation', () => {
 
     expect(result.current.isValid).toBe(false);
     expect(result.current.errors).toHaveLength(1);
-    expect(result.current.errors[0].message).toContain('between -180 and 180');
+    expect(result.current.errors[0]!.message).toContain('between -180 and 180');
   });
 
   it('should fail validation when longitude is below minimum (-180)', () => {
@@ -1130,7 +1129,7 @@ describe('useFieldValidation - LatLong Field Validation', () => {
 
     expect(result.current.isValid).toBe(false);
     expect(result.current.errors).toHaveLength(1);
-    expect(result.current.errors[0].message).toContain('between -180 and 180');
+    expect(result.current.errors[0]!.message).toContain('between -180 and 180');
   });
 
   it('should pass validation for boundary latitude values', () => {
@@ -1189,7 +1188,7 @@ describe('useFieldValidation - LatLong Field Validation', () => {
 
     expect(result.current.isValid).toBe(false);
     expect(result.current.errors).toHaveLength(1);
-    expect(result.current.errors[0].message).toContain('valid numbers');
+    expect(result.current.errors[0]!.message).toContain('valid numbers');
   });
 
   it('should pass validation for optional latlong field with no value', () => {
@@ -1252,7 +1251,7 @@ describe('useFieldValidation - State Management', () => {
 
     // Should only have error for field2
     expect(result.current.errors).toHaveLength(1);
-    expect(result.current.errors[0].field).toBe('field2');
+    expect(result.current.errors[0]!.field).toBe('field2');
   });
 
   it('should accumulate errors for multiple fields', () => {
@@ -1268,9 +1267,9 @@ describe('useFieldValidation - State Management', () => {
     });
 
     expect(result.current.errors).toHaveLength(3);
-    expect(result.current.errors[0].field).toBe('field1');
-    expect(result.current.errors[1].field).toBe('field2');
-    expect(result.current.errors[2].field).toBe('field3');
+    expect(result.current.errors[0]!.field).toBe('field1');
+    expect(result.current.errors[1]!.field).toBe('field2');
+    expect(result.current.errors[2]!.field).toBe('field3');
   });
 
   it('should update errors when validating the same field multiple times', () => {
@@ -1283,7 +1282,6 @@ describe('useFieldValidation - State Management', () => {
     });
 
     expect(result.current.errors).toHaveLength(1);
-    const _firstError = result.current.errors[0].message;
 
     // Second validation failure with different error
     act(() => {
@@ -1342,8 +1340,8 @@ describe('useFieldValidation - Error Messages', () => {
       result.current.validate(field, 'not a number');
     });
 
-    expect(result.current.errors[0].code).toBeDefined();
-    expect(typeof result.current.errors[0].code).toBe('string');
+    expect(result.current.errors[0]!.code).toBeDefined();
+    expect(typeof result.current.errors[0]!.code).toBe('string');
   });
 
   it('should provide specific error messages for different validation failures', () => {
@@ -1354,7 +1352,7 @@ describe('useFieldValidation - Error Messages', () => {
     act(() => {
       result.current.validate(textField, 'too long');
     });
-    expect(result.current.errors[0].message).toContain('5 characters');
+    expect(result.current.errors[0]!.message).toContain('5 characters');
 
     // Test number field error
     result.current.reset();
@@ -1362,7 +1360,7 @@ describe('useFieldValidation - Error Messages', () => {
     act(() => {
       result.current.validate(numberField, 3.14159);
     });
-    expect(result.current.errors[0].message).toContain('2 decimal places');
+    expect(result.current.errors[0]!.message).toContain('2 decimal places');
 
     // Test required field error
     result.current.reset();
@@ -1370,7 +1368,7 @@ describe('useFieldValidation - Error Messages', () => {
     act(() => {
       result.current.validate(requiredField, '');
     });
-    expect(result.current.errors[0].message).toContain('required');
+    expect(result.current.errors[0]!.message).toContain('required');
   });
 });
 
@@ -1418,7 +1416,7 @@ describe('useFieldValidation - Edge Cases', () => {
     });
 
     expect(result.current.isValid).toBe(false);
-    expect(result.current.errors[0].message).toContain('0 decimal places');
+    expect(result.current.errors[0]!.message).toContain('0 decimal places');
   });
 
   it('should handle exactly at size limit for files', () => {

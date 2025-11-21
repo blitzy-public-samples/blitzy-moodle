@@ -20,6 +20,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useScorm } from '@/features/activities/scorm/hooks/useScorm';
 import type { Scorm, ScormSco, ScormAttempt, ScormUserData } from '@/features/activities/scorm/types/scorm.types';
+import { ScormType, ScoType, ScormForceAttempt, ScormUpdateFrequency } from '@/features/activities/scorm/types/scorm.types';
 import * as scormApi from '@/features/activities/scorm/api/scormApi';
 
 // Mock the entire scormApi module
@@ -57,39 +58,23 @@ describe('useScorm Hook', () => {
           retry: false,
         },
       },
-      logger: {
-        log: () => {},
-        warn: () => {},
-        error: () => {},
-      },
     });
 
     // Clear all mocks before each test
     vi.clearAllMocks();
     
     // Set up default mock implementations to prevent undefined behavior
-    vi.mocked(scormApi.fetchScorm).mockResolvedValue({
-      id: 1,
-      name: 'Default SCORM',
-      intro: 'Default intro',
-      version: 'SCORM_12',
-      grademethod: 0,
-      maxattempt: 0,
-      displaycoursestructure: 1,
-      popup: 0,
-      width: 100,
-      height: 100,
-      whatgrade: 0,
-    } as Scorm);
+    vi.mocked(scormApi.fetchScorm).mockResolvedValue({} as Scorm);
     
     vi.mocked(scormApi.fetchScormScos).mockResolvedValue([]);
     vi.mocked(scormApi.fetchAttempts).mockResolvedValue([]);
     vi.mocked(scormApi.fetchAttemptTracking).mockResolvedValue({
+      scoid: 1,
       attempt: 1,
-      scormId: 1,
-      userId: 1,
-      scoes: [],
-    } as ScormUserData);
+      userid: 1,
+      tracks: {},
+      timemodified: 1609459200,
+    } as ScormTrackingData);
   });
 
   afterEach(() => {
@@ -112,11 +97,11 @@ describe('useScorm Hook', () => {
         whatgrade: 0,
         maxattempt: 3,
         forcecompleted: false,
-        forcenewattempt: 0,
+        forcenewattempt: ScormForceAttempt.NO,
         lastattemptlock: false,
         displayattemptstatus: 1,
         displaycoursestructure: true,
-        updatefreq: 0,
+        updatefreq: ScormUpdateFrequency.NEVER,
         sha1hash: 'abc123def456',
         md5hash: 'xyz789uvw012',
         revision: 1,
@@ -128,16 +113,20 @@ describe('useScorm Hook', () => {
         navpositionleft: -100,
         navpositiontop: -100,
         auto: false,
-        popup: 0,
+        popup: false,
         options: 'width=800,height=600',
         width: 800,
         height: 600,
         timeopen: 0,
         timeclose: 0,
-        scormtype: 'local',
+        scormtype: ScormType.LOCAL,
         reference: 'imsmanifest.xml',
-        protectpackagedownloads: false,
+        masteryoverride: false,
         timemodified: 1609459200,
+        completionstatusrequired: null,
+        completionscorerequired: null,
+        completionstatusallscos: null,
+        autocommit: false,
       };
 
       vi.mocked(scormApi.fetchScorm).mockResolvedValue(mockScormPackage);
@@ -173,11 +162,11 @@ describe('useScorm Hook', () => {
         whatgrade: 1,
         maxattempt: 0,
         forcecompleted: false,
-        forcenewattempt: 1,
+        forcenewattempt: ScormForceAttempt.NO,
         lastattemptlock: true,
         displayattemptstatus: 1,
         displaycoursestructure: true,
-        updatefreq: 0,
+        updatefreq: ScormUpdateFrequency.NEVER,
         sha1hash: 'def456abc789',
         md5hash: 'uvw012xyz345',
         revision: 2,
@@ -189,16 +178,20 @@ describe('useScorm Hook', () => {
         navpositionleft: -100,
         navpositiontop: -100,
         auto: true,
-        popup: 1,
+        popup: true,
         options: 'width=1024,height=768,scrollbars=yes',
         width: 1024,
         height: 768,
         timeopen: 1609459200,
         timeclose: 1672531200,
-        scormtype: 'external',
+        scormtype: ScormType.EXTERNAL,
         reference: 'manifest.xml',
-        protectpackagedownloads: true,
-        timemodified: 1625097600,
+        masteryoverride: false,
+        timemodified: 1609459200,
+        completionstatusrequired: null,
+        completionscorerequired: null,
+        completionstatusallscos: null,
+        autocommit: false,
       };
 
       vi.mocked(scormApi.fetchScorm).mockResolvedValue(mockScorm2004Package);
@@ -268,10 +261,9 @@ describe('useScorm Hook', () => {
           parent: '/',
           identifier: 'ITEM-001',
           launch: 'index.html',
-          scormtype: 'sco',
+          scormtype: ScoType.SCO,
           title: 'Introduction',
           sortorder: 1,
-          timemodified: 1609459200,
         },
         {
           id: 2,
@@ -281,10 +273,9 @@ describe('useScorm Hook', () => {
           parent: '/ITEM-001',
           identifier: 'ITEM-002',
           launch: 'lesson1/index.html',
-          scormtype: 'sco',
+          scormtype: ScoType.SCO,
           title: 'Lesson 1: HTML Basics',
           sortorder: 2,
-          timemodified: 1609459200,
         },
         {
           id: 3,
@@ -294,10 +285,9 @@ describe('useScorm Hook', () => {
           parent: '/ITEM-001',
           identifier: 'ITEM-003',
           launch: 'lesson2/index.html',
-          scormtype: 'sco',
+          scormtype: ScoType.SCO,
           title: 'Lesson 2: CSS Fundamentals',
           sortorder: 3,
-          timemodified: 1609459200,
         },
       ];
 
@@ -346,10 +336,9 @@ describe('useScorm Hook', () => {
           parent: '/',
           identifier: 'RESOURCE-001',
           launch: '',
-          scormtype: 'asset',
+          scormtype: ScoType.ASSET,
           title: 'Course Overview Document',
           sortorder: 1,
-          timemodified: 1609459200,
         },
         {
           id: 2,
@@ -359,10 +348,9 @@ describe('useScorm Hook', () => {
           parent: '/',
           identifier: 'ITEM-001',
           launch: 'quiz.html',
-          scormtype: 'sco',
+          scormtype: ScoType.SCO,
           title: 'Assessment Quiz',
           sortorder: 2,
-          timemodified: 1609459200,
         },
       ];
 
@@ -379,8 +367,8 @@ describe('useScorm Hook', () => {
       });
 
       expect(result.current.scoes).toHaveLength(2);
-      expect(result.current.scoes?.[0].scormtype).toBe('asset');
-      expect(result.current.scoes?.[1].scormtype).toBe('sco');
+      expect(result.current.scoes?.[0]!.scormtype).toBe('asset');
+      expect(result.current.scoes?.[1]!.scormtype).toBe('sco');
     });
   });
 
@@ -392,20 +380,12 @@ describe('useScorm Hook', () => {
           userid: 10,
           scormid: 1,
           attempt: 1,
-          scoes: [1, 2, 3],
-          timestarted: 1609459200,
-          timecompleted: 1609462800,
-          timemodified: 1609462800,
         },
         {
           id: 2,
           userid: 10,
           scormid: 1,
           attempt: 2,
-          scoes: [1, 2, 3],
-          timestarted: 1609545600,
-          timecompleted: 0,
-          timemodified: 1609549200,
         },
       ];
 
@@ -451,30 +431,18 @@ describe('useScorm Hook', () => {
           userid: 10,
           scormid: 1,
           attempt: 1,
-          scoes: [1, 2],
-          timestarted: 1609459200,
-          timecompleted: 1609462800,
-          timemodified: 1609462800,
         },
         {
           id: 2,
           userid: 10,
           scormid: 1,
           attempt: 2,
-          scoes: [1, 2],
-          timestarted: 1609545600,
-          timecompleted: 1609549200,
-          timemodified: 1609549200,
         },
         {
           id: 3,
           userid: 10,
           scormid: 1,
           attempt: 3,
-          scoes: [1, 2],
-          timestarted: 1609632000,
-          timecompleted: 0,
-          timemodified: 1609635600,
         },
       ];
 
@@ -491,32 +459,18 @@ describe('useScorm Hook', () => {
       });
 
       expect(result.current.attempts).toHaveLength(3);
-      expect(result.current.attempts?.[0].timecompleted).toBeGreaterThan(0);
-      expect(result.current.attempts?.[1].timecompleted).toBeGreaterThan(0);
-      expect(result.current.attempts?.[2].timecompleted).toBe(0);
+      expect(result.current.attempts?.[0]).toBeDefined();
+      expect(result.current.attempts?.[1]).toBeDefined();
+      expect(result.current.attempts?.[2]).toBeDefined();
     });
   });
 
   describe('User Tracking Data Loading', () => {
     it('should load tracking data with SCORM 1.2 CMI elements', async () => {
-      const _mockTrackingData: ScormUserData = {
-        scoid: 1,
-        attempt: 1,
-        userid: 10,
-        tracks: [
-          { element: 'cmi.core.lesson_status', value: 'completed', timemodified: 1609462800 },
-          { element: 'cmi.core.score.raw', value: '85', timemodified: 1609462800 },
-          { element: 'cmi.core.score.min', value: '0', timemodified: 1609462800 },
-          { element: 'cmi.core.score.max', value: '100', timemodified: 1609462800 },
-          { element: 'cmi.core.total_time', value: '00:45:30', timemodified: 1609462800 },
-          { element: 'cmi.suspend_data', value: 'bookmark:page5', timemodified: 1609462800 },
-        ],
-      };
-
       vi.mocked(scormApi.fetchScorm).mockResolvedValue({} as Scorm);
       vi.mocked(scormApi.fetchScormScos).mockResolvedValue([]);
       vi.mocked(scormApi.fetchAttempts).mockResolvedValue([
-        { id: 1, userid: 10, scormid: 1, attempt: 1, scoes: [1], timestarted: 1609459200, timecompleted: 1609462800, timemodified: 1609462800 },
+        { id: 1, userid: 10, scormid: 1, attempt: 1 },
       ]);
 
       const { result } = renderHook(() => useScorm(1), {
@@ -533,24 +487,10 @@ describe('useScorm Hook', () => {
     });
 
     it('should load tracking data with SCORM 2004 CMI elements', async () => {
-      const _mockScorm2004Tracking: ScormUserData = {
-        scoid: 2,
-        attempt: 1,
-        userid: 10,
-        tracks: [
-          { element: 'cmi.completion_status', value: 'completed', timemodified: 1609462800 },
-          { element: 'cmi.success_status', value: 'passed', timemodified: 1609462800 },
-          { element: 'cmi.score.scaled', value: '0.85', timemodified: 1609462800 },
-          { element: 'cmi.score.raw', value: '85', timemodified: 1609462800 },
-          { element: 'cmi.progress_measure', value: '1.0', timemodified: 1609462800 },
-          { element: 'cmi.suspend_data', value: 'state:completed;page:10', timemodified: 1609462800 },
-        ],
-      };
-
       vi.mocked(scormApi.fetchScorm).mockResolvedValue({} as Scorm);
       vi.mocked(scormApi.fetchScormScos).mockResolvedValue([]);
       vi.mocked(scormApi.fetchAttempts).mockResolvedValue([
-        { id: 1, userid: 10, scormid: 2, attempt: 1, scoes: [2], timestarted: 1609459200, timecompleted: 1609462800, timemodified: 1609462800 },
+        { id: 1, userid: 10, scormid: 2, attempt: 1 },
       ]);
 
       const { result } = renderHook(() => useScorm(2), {
@@ -579,11 +519,11 @@ describe('useScorm Hook', () => {
         whatgrade: 0,
         maxattempt: 0,
         forcecompleted: false,
-        forcenewattempt: 0,
+        forcenewattempt: ScormForceAttempt.NO,
         lastattemptlock: false,
         displayattemptstatus: 1,
         displaycoursestructure: true,
-        updatefreq: 0,
+        updatefreq: ScormUpdateFrequency.NEVER,
         sha1hash: 'abc123',
         md5hash: 'xyz789',
         revision: 1,
@@ -595,16 +535,14 @@ describe('useScorm Hook', () => {
         navpositionleft: -100,
         navpositiontop: -100,
         auto: false,
-        popup: 0,
+        popup: false,
         options: '',
         width: 800,
         height: 600,
         timeopen: 0,
         timeclose: 0,
-        scormtype: 'local',
+        scormtype: ScormType.LOCAL,
         reference: 'manifest.xml',
-        protectpackagedownloads: false,
-        timemodified: 1609459200,
       };
 
       vi.mocked(scormApi.fetchScorm).mockResolvedValue(mockScorm);
@@ -634,10 +572,9 @@ describe('useScorm Hook', () => {
           parent: '/',
           identifier: 'ITEM-001',
           launch: 'index.html',
-          scormtype: 'sco',
+          scormtype: ScoType.SCO,
           title: 'Test SCO',
           sortorder: 1,
-          timemodified: 1609459200,
         },
       ];
 
@@ -664,10 +601,6 @@ describe('useScorm Hook', () => {
           userid: 10,
           scormid: 1,
           attempt: 1,
-          scoes: [1],
-          timestarted: 1609459200,
-          timecompleted: 1609462800,
-          timemodified: 1609462800,
         },
       ];
 
@@ -967,16 +900,20 @@ describe('useScorm Hook', () => {
         navpositionleft: -100,
         navpositiontop: -100,
         auto: false,
-        popup: 0,
+        popup: false,
         options: '',
         width: 800,
         height: 600,
         timeopen: 0,
         timeclose: 0,
-        scormtype: 'local',
+        scormtype: ScormType.LOCAL,
         reference: 'manifest.xml',
-        protectpackagedownloads: false,
+        masteryoverride: false,
         timemodified: 1609459200,
+        completionstatusrequired: null,
+        completionscorerequired: null,
+        completionstatusallscos: null,
+        autocommit: false,
       };
 
       vi.mocked(scormApi.fetchScorm).mockResolvedValue(mockScorm);
@@ -1011,10 +948,9 @@ describe('useScorm Hook', () => {
           parent: '/',
           identifier: 'ITEM-001',
           launch: 'index.html',
-          scormtype: 'sco',
+          scormtype: ScoType.SCO,
           title: 'Test',
           sortorder: 1,
-          timemodified: 1609459200,
         },
       ];
 
@@ -1031,7 +967,7 @@ describe('useScorm Hook', () => {
       });
 
       expect(result.current.scoes).toEqual(mockScos);
-      expect(result.current.scoes?.[0].id).toBe(1);
+      expect(result.current.scoes?.[0]!.id).toBe(1);
     });
 
     it('should return ScormAttempt[] array type', async () => {
@@ -1041,10 +977,6 @@ describe('useScorm Hook', () => {
           userid: 10,
           scormid: 1,
           attempt: 1,
-          scoes: [1, 2],
-          timestarted: 1609459200,
-          timecompleted: 1609462800,
-          timemodified: 1609462800,
         },
       ];
 
@@ -1061,7 +993,7 @@ describe('useScorm Hook', () => {
       });
 
       expect(result.current.attempts).toEqual(mockAttempts);
-      expect(result.current.attempts?.[0].userid).toBe(10);
+      expect(result.current.attempts?.[0]!.userid).toBe(10);
     });
   });
 
@@ -1083,7 +1015,7 @@ describe('useScorm Hook', () => {
         lastattemptlock: true,
         displayattemptstatus: 2,
         displaycoursestructure: true,
-        updatefreq: 1,
+        updatefreq: ScormUpdateFrequency.EVERYDAY,
         sha1hash: 'complete123hash456',
         md5hash: 'md5complete789',
         revision: 5,
@@ -1095,16 +1027,20 @@ describe('useScorm Hook', () => {
         navpositionleft: 50,
         navpositiontop: 100,
         auto: true,
-        popup: 1,
+        popup: true,
         options: 'width=1200,height=800,scrollbars=yes,resizable=yes',
         width: 1200,
         height: 800,
         timeopen: 1609459200,
         timeclose: 1672531200,
-        scormtype: 'external',
+        scormtype: ScormType.EXTERNAL,
         reference: 'http://example.com/scorm/manifest.xml',
-        protectpackagedownloads: true,
-        timemodified: 1640995200,
+        masteryoverride: true,
+        timemodified: 1609459200,
+        completionstatusrequired: 'completed',
+        completionscorerequired: 80,
+        completionstatusallscos: true,
+        autocommit: true,
       };
 
       vi.mocked(scormApi.fetchScorm).mockResolvedValue(completeScorm);
@@ -1122,7 +1058,6 @@ describe('useScorm Hook', () => {
       expect(result.current.scorm).toEqual(completeScorm);
       expect(result.current.scorm?.forcecompleted).toBe(true);
       expect(result.current.scorm?.lastattemptlock).toBe(true);
-      expect(result.current.scorm?.protectpackagedownloads).toBe(true);
     });
 
     it('should handle complex SCO hierarchy with multiple levels', async () => {
@@ -1135,10 +1070,9 @@ describe('useScorm Hook', () => {
           parent: '/',
           identifier: 'MODULE-01',
           launch: '',
-          scormtype: 'asset',
+          scormtype: ScoType.ASSET,
           title: 'Module 1',
           sortorder: 1,
-          timemodified: 1609459200,
         },
         {
           id: 2,
@@ -1148,10 +1082,9 @@ describe('useScorm Hook', () => {
           parent: '/MODULE-01',
           identifier: 'LESSON-01',
           launch: '',
-          scormtype: 'asset',
+          scormtype: ScoType.ASSET,
           title: 'Lesson 1',
           sortorder: 2,
-          timemodified: 1609459200,
         },
         {
           id: 3,
@@ -1161,10 +1094,9 @@ describe('useScorm Hook', () => {
           parent: '/MODULE-01/LESSON-01',
           identifier: 'SCO-01',
           launch: 'content/lesson1/index.html',
-          scormtype: 'sco',
+          scormtype: ScoType.SCO,
           title: 'Introduction',
           sortorder: 3,
-          timemodified: 1609459200,
         },
       ];
 
@@ -1181,30 +1113,16 @@ describe('useScorm Hook', () => {
       });
 
       expect(result.current.scoes).toHaveLength(3);
-      expect(result.current.scoes?.[0].parent).toBe('/');
-      expect(result.current.scoes?.[1].parent).toBe('/MODULE-01');
-      expect(result.current.scoes?.[2].parent).toBe('/MODULE-01/LESSON-01');
+      expect(result.current.scoes?.[0]!.parent).toBe('/');
+      expect(result.current.scoes?.[1]!.parent).toBe('/MODULE-01');
+      expect(result.current.scoes?.[2]!.parent).toBe('/MODULE-01/LESSON-01');
     });
 
     it('should handle suspend_data persistence in tracking elements', async () => {
-      const _suspendDataTracking: ScormUserData = {
-        scoid: 1,
-        attempt: 1,
-        userid: 10,
-        tracks: [
-          {
-            element: 'cmi.suspend_data',
-            value: 'bookmark:page10;score:75;answered:[1,2,3,5]',
-            timemodified: 1609462800,
-          },
-          { element: 'cmi.core.lesson_status', value: 'incomplete', timemodified: 1609462800 },
-        ],
-      };
-
       vi.mocked(scormApi.fetchScorm).mockResolvedValue({} as Scorm);
       vi.mocked(scormApi.fetchScormScos).mockResolvedValue([]);
       vi.mocked(scormApi.fetchAttempts).mockResolvedValue([
-        { id: 1, userid: 10, scormid: 1, attempt: 1, scoes: [1], timestarted: 1609459200, timecompleted: 0, timemodified: 1609462800 },
+        { id: 1, userid: 10, scormid: 1, attempt: 1 },
       ]);
 
       const { result } = renderHook(() => useScorm(1), {

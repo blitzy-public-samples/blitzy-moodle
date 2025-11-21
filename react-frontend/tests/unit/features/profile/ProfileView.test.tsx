@@ -3,9 +3,10 @@ import { render, screen, cleanup } from '@testing-library/react';
 import { axe, toHaveNoViolations } from 'jest-axe';
 import '@testing-library/jest-dom';
 import ProfileView from '@/features/profile/components/ProfileView';
-import type { User } from '@/types/entities';
+import type { User } from '@/features/profile/types/profile.types';
 import type { UseProfileResult } from '@/features/profile/hooks/useProfile';
 import type { UseAuthReturn } from '@/features/auth/hooks/useAuth';
+import type { User as AuthUser, Role, Permission } from '@/features/auth/types/auth.types';
 
 // Extend expect matchers
 expect.extend(toHaveNoViolations);
@@ -30,7 +31,6 @@ const mockValidUser: User = {
   lastname: 'Doe',
   fullname: 'John Doe',
   email: 'john.doe@example.com',
-  emailstop: false,
   department: 'Engineering',
   institution: 'University of Example',
   city: 'San Francisco',
@@ -41,16 +41,14 @@ const mockValidUser: User = {
   profileimageurl: 'https://example.com/avatar/johndoe.jpg',
   profileimageurlsmall: 'https://example.com/avatar/johndoe_small.jpg',
   customfields: [
-    { name: 'Phone', value: '+1 555-0123' },
-    { name: 'LinkedIn', value: 'linkedin.com/in/johndoe' },
+    { type: 'text', name: 'Phone', shortname: 'phone', value: '+1 555-0123' },
+    { type: 'text', name: 'LinkedIn', shortname: 'linkedin', value: 'linkedin.com/in/johndoe' },
   ],
   lang: 'en',
   theme: 'boost',
   calendartype: 'gregorian',
   firstaccess: 1609459200,
   lastaccess: 1704067200,
-  lastlogin: 1704060000,
-  currentlogin: 1704067200,
   auth: 'manual',
   suspended: false,
   confirmed: true,
@@ -63,7 +61,6 @@ const mockCurrentUser: User = {
   lastname: 'Doe',
   fullname: 'John Doe',
   email: 'john.doe@example.com',
-  emailstop: false,
   department: 'Engineering',
   institution: 'University of Example',
   city: 'San Francisco',
@@ -79,8 +76,6 @@ const mockCurrentUser: User = {
   calendartype: 'gregorian',
   firstaccess: 1609459200,
   lastaccess: 1704067200,
-  lastlogin: 1704060000,
-  currentlogin: 1704067200,
   auth: 'manual',
   suspended: false,
   confirmed: true,
@@ -93,7 +88,6 @@ const mockOtherUser: User = {
   lastname: 'Doe',
   fullname: 'Jane Doe',
   email: 'jane.doe@example.com',
-  emailstop: false,
   department: 'Marketing',
   institution: 'University of Example',
   city: 'New York',
@@ -109,8 +103,6 @@ const mockOtherUser: User = {
   calendartype: 'gregorian',
   firstaccess: 1609459200,
   lastaccess: 1704067200,
-  lastlogin: 1704060000,
-  currentlogin: 1704067200,
   auth: 'manual',
   suspended: false,
   confirmed: true,
@@ -121,6 +113,48 @@ const mockUserWithoutAvatar: User = {
   profileimageurl: '',
   profileimageurlsmall: '',
 };
+
+// Mock auth-specific data
+const mockRoles: Role[] = [
+  {
+    id: 5,
+    shortname: 'student',
+    name: 'Student',
+    description: 'Students generally have fewer privileges within a course.',
+  },
+];
+
+const mockCapabilities: Permission[] = [
+  {
+    capability: 'moodle/user:viewdetails',
+    contextId: 1,
+    granted: true,
+  },
+  {
+    capability: 'moodle/user:editownprofile',
+    contextId: 1,
+    granted: true,
+  },
+];
+
+// Helper to convert profile User to AuthUser
+const createAuthUser = (user: User): AuthUser => ({
+  id: user.id,
+  username: user.username || '',
+  email: user.email || '',
+  firstname: user.firstname || '',
+  lastname: user.lastname || '',
+  fullname: user.fullname,
+  profileimageurl: user.profileimageurl,
+  auth: 'manual',
+  confirmed: true,
+  suspended: false,
+  roles: mockRoles,
+  capabilities: mockCapabilities,
+});
+
+// Auth user mocks
+const mockAuthCurrentUser: AuthUser = createAuthUser(mockCurrentUser);
 
 // Mock window.matchMedia for responsive testing
 const createMatchMedia = (width: number) => {
@@ -162,6 +196,27 @@ const createMatchMedia = (width: number) => {
   };
 };
 
+/**
+ * Helper function to create a complete UseProfileResult mock object
+ * This ensures all required properties are present to satisfy TypeScript
+ */
+const createMockUseProfileResult = (
+  overrides?: Partial<UseProfileResult>
+): UseProfileResult => ({
+  profile: undefined,
+  isLoading: false,
+  error: null,
+  isFetching: false,
+  isIdle: false,
+  isSuccess: false,
+  isError: false,
+  refetch: vi.fn().mockResolvedValue({} as any),
+  updateProfile: vi.fn(),
+  isUpdating: false,
+  updateError: null,
+  ...overrides,
+});
+
 describe('ProfileView Component', () => {
   beforeEach(() => {
     // Reset mocks before each test
@@ -169,9 +224,11 @@ describe('ProfileView Component', () => {
     
     // Default auth state - viewing own profile
     mockUseAuth.mockReturnValue({
-      user: mockCurrentUser,
+      user: mockAuthCurrentUser,
       isAuthenticated: true,
-      hasCapability: vi.fn().mockReturnValue(true),
+      login: vi.fn(),
+      logout: vi.fn(),
+      isLoading: false,
     });
   });
 
@@ -181,12 +238,11 @@ describe('ProfileView Component', () => {
 
   describe('Rendering with valid user data', () => {
     it('should render the ProfileView component with valid user data', () => {
-      mockUseProfile.mockReturnValue({
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
         profile: mockValidUser,
         isLoading: false,
-        isError: false,
         error: null,
-      });
+      }));
 
       render(<ProfileView userId={mockValidUser.id} />);
 
@@ -195,12 +251,11 @@ describe('ProfileView Component', () => {
     });
 
     it('should display the user fullname as the main heading', () => {
-      mockUseProfile.mockReturnValue({
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
         profile: mockValidUser,
         isLoading: false,
-        isError: false,
         error: null,
-      });
+      }));
 
       render(<ProfileView userId={mockValidUser.id} />);
 
@@ -216,7 +271,6 @@ describe('ProfileView Component', () => {
         lastname: 'User',
         fullname: 'Min User',
         email: 'min@example.com',
-        emailstop: false,
         department: '',
         institution: '',
         city: '',
@@ -232,19 +286,16 @@ describe('ProfileView Component', () => {
         calendartype: 'gregorian',
         firstaccess: 0,
         lastaccess: 0,
-        lastlogin: 0,
-        currentlogin: 0,
         auth: 'manual',
         suspended: false,
         confirmed: true,
       };
 
-      mockUseProfile.mockReturnValue({
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
         profile: minimalUser,
         isLoading: false,
-        isError: false,
         error: null,
-      });
+      }));
 
       render(<ProfileView userId={minimalUser.id} />);
 
@@ -255,12 +306,11 @@ describe('ProfileView Component', () => {
 
   describe('User profile fields display', () => {
     beforeEach(() => {
-      mockUseProfile.mockReturnValue({
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
         profile: mockValidUser,
         isLoading: false,
-        isError: false,
         error: null,
-      });
+      }));
     });
 
     it('should display the user email address', () => {
@@ -324,12 +374,11 @@ describe('ProfileView Component', () => {
         customfields: [],
       };
 
-      mockUseProfile.mockReturnValue({
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
         profile: userWithEmptyFields,
         isLoading: false,
-        isError: false,
         error: null,
-      });
+      }));
 
       render(<ProfileView userId={userWithEmptyFields.id} />);
 
@@ -344,12 +393,11 @@ describe('ProfileView Component', () => {
 
   describe('Avatar/Profile picture display', () => {
     it('should display user avatar when profileimageurl is provided', () => {
-      mockUseProfile.mockReturnValue({
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
         profile: mockValidUser,
         isLoading: false,
-        isError: false,
         error: null,
-      });
+      }));
 
       render(<ProfileView userId={mockValidUser.id} />);
 
@@ -367,12 +415,11 @@ describe('ProfileView Component', () => {
     });
 
     it('should display default avatar when profileimageurl is empty', () => {
-      mockUseProfile.mockReturnValue({
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
         profile: mockUserWithoutAvatar,
         isLoading: false,
-        isError: false,
         error: null,
-      });
+      }));
 
       render(<ProfileView userId={mockUserWithoutAvatar.id} />);
 
@@ -391,12 +438,11 @@ describe('ProfileView Component', () => {
     });
 
     it('should use alt text with user fullname for avatar', () => {
-      mockUseProfile.mockReturnValue({
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
         profile: mockValidUser,
         isLoading: false,
-        isError: false,
         error: null,
-      });
+      }));
 
       render(<ProfileView userId={mockValidUser.id} />);
 
@@ -405,12 +451,11 @@ describe('ProfileView Component', () => {
     });
 
     it('should handle avatar load errors gracefully', () => {
-      mockUseProfile.mockReturnValue({
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
         profile: mockValidUser,
         isLoading: false,
-        isError: false,
         error: null,
-      });
+      }));
 
       render(<ProfileView userId={mockValidUser.id} />);
 
@@ -427,17 +472,18 @@ describe('ProfileView Component', () => {
 
   describe('Edit button visibility based on permissions', () => {
     it('should display edit button when viewing own profile', () => {
-      mockUseProfile.mockReturnValue({
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
         profile: mockCurrentUser,
         isLoading: false,
-        isError: false,
         error: null,
-      });
+      }));
 
       mockUseAuth.mockReturnValue({
-        user: mockCurrentUser,
+        user: mockAuthCurrentUser,
         isAuthenticated: true,
-        hasCapability: vi.fn().mockReturnValue(true),
+        login: vi.fn(),
+        logout: vi.fn(),
+        isLoading: false,
       });
 
       render(<ProfileView userId={mockCurrentUser.id} />);
@@ -448,19 +494,18 @@ describe('ProfileView Component', () => {
     });
 
     it('should display edit button when user has edit permission for other user', () => {
-      mockUseProfile.mockReturnValue({
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
         profile: mockOtherUser,
         isLoading: false,
-        isError: false,
         error: null,
-      });
+      }));
 
       mockUseAuth.mockReturnValue({
-        user: mockCurrentUser,
+        user: mockAuthCurrentUser,
         isAuthenticated: true,
-        hasCapability: vi.fn((capability: string) => {
-          return capability === 'moodle/user:update';
-        }),
+        login: vi.fn(),
+        logout: vi.fn(),
+        isLoading: false,
       });
 
       render(<ProfileView userId={mockOtherUser.id} />);
@@ -470,17 +515,18 @@ describe('ProfileView Component', () => {
     });
 
     it('should NOT display edit button when viewing other user without edit permission', () => {
-      mockUseProfile.mockReturnValue({
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
         profile: mockOtherUser,
         isLoading: false,
-        isError: false,
         error: null,
-      });
+      }));
 
       mockUseAuth.mockReturnValue({
-        user: mockCurrentUser,
+        user: mockAuthCurrentUser,
         isAuthenticated: true,
-        hasCapability: vi.fn().mockReturnValue(false),
+        login: vi.fn(),
+        logout: vi.fn(),
+        isLoading: false,
       });
 
       render(<ProfileView userId={mockOtherUser.id} />);
@@ -490,17 +536,18 @@ describe('ProfileView Component', () => {
     });
 
     it('should NOT display edit button when user is not authenticated', () => {
-      mockUseProfile.mockReturnValue({
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
         profile: mockValidUser,
         isLoading: false,
-        isError: false,
         error: null,
-      });
+      }));
 
       mockUseAuth.mockReturnValue({
         user: null,
         isAuthenticated: false,
-        hasCapability: vi.fn().mockReturnValue(false),
+        login: vi.fn(),
+        logout: vi.fn(),
+        isLoading: false,
       });
 
       render(<ProfileView userId={mockValidUser.id} />);
@@ -512,12 +559,11 @@ describe('ProfileView Component', () => {
 
   describe('Loading states during data fetch', () => {
     it('should display loading skeleton when isLoading is true', () => {
-      mockUseProfile.mockReturnValue({
-        profile: null,
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
+        profile: undefined,
         isLoading: true,
-        isError: false,
         error: null,
-      });
+      }));
 
       render(<ProfileView userId={123} />);
 
@@ -527,12 +573,11 @@ describe('ProfileView Component', () => {
     });
 
     it('should display multiple skeleton elements for different profile sections', () => {
-      mockUseProfile.mockReturnValue({
-        profile: null,
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
+        profile: undefined,
         isLoading: true,
-        isError: false,
         error: null,
-      });
+      }));
 
       render(<ProfileView userId={123} />);
 
@@ -550,12 +595,11 @@ describe('ProfileView Component', () => {
     });
 
     it('should not display user data when loading', () => {
-      mockUseProfile.mockReturnValue({
-        profile: null,
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
+        profile: undefined,
         isLoading: true,
-        isError: false,
         error: null,
-      });
+      }));
 
       render(<ProfileView userId={123} />);
 
@@ -565,23 +609,21 @@ describe('ProfileView Component', () => {
 
     it('should transition from loading to loaded state correctly', () => {
       // Initially loading - set up mock BEFORE render
-      mockUseProfile.mockReturnValue({
-        profile: null,
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
+        profile: undefined,
         isLoading: true,
-        isError: false,
         error: null,
-      });
+      }));
 
       const { rerender } = render(<ProfileView userId={123} />);
       expect(screen.getByTestId('skeleton-avatar')).toBeInTheDocument();
 
       // Then loaded
-      mockUseProfile.mockReturnValue({
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
         profile: mockValidUser,
         isLoading: false,
-        isError: false,
         error: null,
-      });
+      }));
 
       rerender(<ProfileView userId={123} />);
       
@@ -592,12 +634,11 @@ describe('ProfileView Component', () => {
 
   describe('Error handling for missing/unavailable user data', () => {
     it('should display error message when user data fetch fails', () => {
-      mockUseProfile.mockReturnValue({
-        profile: null,
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
+        profile: undefined,
         isLoading: false,
-        isError: true,
         error: new Error('Failed to fetch user data'),
-      });
+      }));
 
       render(<ProfileView userId={123} />);
 
@@ -606,12 +647,11 @@ describe('ProfileView Component', () => {
     });
 
     it('should display specific error message for deleted user', () => {
-      mockUseProfile.mockReturnValue({
-        profile: null,
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
+        profile: undefined,
         isLoading: false,
-        isError: true,
-        error: { message: 'User has been deleted', code: 'USER_DELETED' },
-      });
+        error: new Error('User has been deleted'),
+      }));
 
       render(<ProfileView userId={123} />);
 
@@ -619,12 +659,11 @@ describe('ProfileView Component', () => {
     });
 
     it('should display specific error message for invalid user', () => {
-      mockUseProfile.mockReturnValue({
-        profile: null,
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
+        profile: undefined,
         isLoading: false,
-        isError: true,
-        error: { message: 'Invalid user ID', code: 'INVALID_USER' },
-      });
+        error: new Error('Invalid user ID'),
+      }));
 
       render(<ProfileView userId={999999} />);
 
@@ -632,12 +671,11 @@ describe('ProfileView Component', () => {
     });
 
     it('should display error message for permission denied', () => {
-      mockUseProfile.mockReturnValue({
-        profile: null,
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
+        profile: undefined,
         isLoading: false,
-        isError: true,
-        error: { message: 'Permission denied', code: 'PERMISSION_DENIED' },
-      });
+        error: new Error('Permission denied'),
+      }));
 
       render(<ProfileView userId={456} />);
 
@@ -648,13 +686,12 @@ describe('ProfileView Component', () => {
     it('should provide retry button on error', () => {
       const mockRefetch = vi.fn();
       
-      mockUseProfile.mockReturnValue({
-        profile: null,
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
+        profile: undefined,
         isLoading: false,
-        isError: true,
         error: new Error('Network error'),
         refetch: mockRefetch,
-      });
+      }));
 
       render(<ProfileView userId={123} />);
 
@@ -668,12 +705,11 @@ describe('ProfileView Component', () => {
 
   describe('Accessibility compliance (WCAG 2.1 AA)', () => {
     it('should have no accessibility violations with valid profile data', async () => {
-      mockUseProfile.mockReturnValue({
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
         profile: mockValidUser,
         isLoading: false,
-        isError: false,
         error: null,
-      });
+      }));
 
       const { container } = render(<ProfileView userId={mockValidUser.id} />);
       const results = await axe(container);
@@ -688,12 +724,11 @@ describe('ProfileView Component', () => {
         interests: ['Web Development', 'Machine Learning', 'Open Source'],
       };
 
-      mockUseProfile.mockReturnValue({
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
         profile: userWithInterests,
         isLoading: false,
-        isError: false,
         error: null,
-      });
+      }));
 
       render(<ProfileView userId={mockValidUser.id} />);
 
@@ -710,17 +745,18 @@ describe('ProfileView Component', () => {
     });
 
     it('should have proper ARIA labels for interactive elements', () => {
-      mockUseProfile.mockReturnValue({
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
         profile: mockCurrentUser,
         isLoading: false,
-        isError: false,
         error: null,
-      });
+      }));
 
       mockUseAuth.mockReturnValue({
-        user: mockCurrentUser,
+        user: mockAuthCurrentUser,
         isAuthenticated: true,
-        hasCapability: vi.fn().mockReturnValue(true),
+        login: vi.fn(),
+        logout: vi.fn(),
+        isLoading: false,
       });
 
       render(<ProfileView userId={mockCurrentUser.id} />);
@@ -730,17 +766,18 @@ describe('ProfileView Component', () => {
     });
 
     it('should support keyboard navigation', () => {
-      mockUseProfile.mockReturnValue({
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
         profile: mockCurrentUser,
         isLoading: false,
-        isError: false,
         error: null,
-      });
+      }));
 
       mockUseAuth.mockReturnValue({
-        user: mockCurrentUser,
+        user: mockAuthCurrentUser,
         isAuthenticated: true,
-        hasCapability: vi.fn().mockReturnValue(true),
+        login: vi.fn(),
+        logout: vi.fn(),
+        isLoading: false,
       });
 
       render(<ProfileView userId={mockCurrentUser.id} />);
@@ -753,12 +790,11 @@ describe('ProfileView Component', () => {
     });
 
     it('should have sufficient color contrast for text elements', async () => {
-      mockUseProfile.mockReturnValue({
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
         profile: mockValidUser,
         isLoading: false,
-        isError: false,
         error: null,
-      });
+      }));
 
       const { container } = render(<ProfileView userId={mockValidUser.id} />);
       
@@ -773,12 +809,11 @@ describe('ProfileView Component', () => {
     });
 
     it('should have alt text for all images', () => {
-      mockUseProfile.mockReturnValue({
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
         profile: mockValidUser,
         isLoading: false,
-        isError: false,
         error: null,
-      });
+      }));
 
       render(<ProfileView userId={mockValidUser.id} />);
 
@@ -789,12 +824,11 @@ describe('ProfileView Component', () => {
     });
 
     it('should have proper heading hierarchy', () => {
-      mockUseProfile.mockReturnValue({
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
         profile: mockValidUser,
         isLoading: false,
-        isError: false,
         error: null,
-      });
+      }));
 
       render(<ProfileView userId={mockValidUser.id} />);
 
@@ -815,12 +849,11 @@ describe('ProfileView Component', () => {
         value: createMatchMedia(400),
       });
 
-      mockUseProfile.mockReturnValue({
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
         profile: mockValidUser,
         isLoading: false,
-        isError: false,
         error: null,
-      });
+      }));
 
       const { container } = render(<ProfileView userId={mockValidUser.id} />);
 
@@ -835,12 +868,11 @@ describe('ProfileView Component', () => {
         value: createMatchMedia(768),
       });
 
-      mockUseProfile.mockReturnValue({
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
         profile: mockValidUser,
         isLoading: false,
-        isError: false,
         error: null,
-      });
+      }));
 
       const { container } = render(<ProfileView userId={mockValidUser.id} />);
 
@@ -855,12 +887,11 @@ describe('ProfileView Component', () => {
         value: createMatchMedia(1200),
       });
 
-      mockUseProfile.mockReturnValue({
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
         profile: mockValidUser,
         isLoading: false,
-        isError: false,
         error: null,
-      });
+      }));
 
       const { container } = render(<ProfileView userId={mockValidUser.id} />);
 
@@ -876,12 +907,11 @@ describe('ProfileView Component', () => {
         value: createMatchMedia(400),
       });
 
-      mockUseProfile.mockReturnValue({
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
         profile: mockValidUser,
         isLoading: false,
-        isError: false,
         error: null,
-      });
+      }));
 
       const { container: mobileContainer } = render(
         <ProfileView userId={mockValidUser.id} />
@@ -921,12 +951,11 @@ describe('ProfileView Component', () => {
           value: createMatchMedia(width),
         });
 
-        mockUseProfile.mockReturnValue({
+        mockUseProfile.mockReturnValue(createMockUseProfileResult({
           profile: mockValidUser,
           isLoading: false,
-          isError: false,
           error: null,
-        });
+        }));
 
         render(<ProfileView userId={mockValidUser.id} />);
 
@@ -942,12 +971,11 @@ describe('ProfileView Component', () => {
 
   describe('Integration with useProfile hook and React Query cache', () => {
     it('should call useProfile hook with correct userId', () => {
-      mockUseProfile.mockReturnValue({
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
         profile: mockValidUser,
         isLoading: false,
-        isError: false,
         error: null,
-      });
+      }));
 
       render(<ProfileView userId={123} />);
 
@@ -956,12 +984,11 @@ describe('ProfileView Component', () => {
 
     it('should handle cache updates when profile data changes', () => {
       // Initial data - set up mock BEFORE render
-      mockUseProfile.mockReturnValue({
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
         profile: mockValidUser,
         isLoading: false,
-        isError: false,
         error: null,
-      });
+      }));
 
       const { rerender } = render(<ProfileView userId={123} />);
       expect(screen.getByText('John Doe')).toBeInTheDocument();
@@ -973,12 +1000,11 @@ describe('ProfileView Component', () => {
         fullname: 'Jonathan Doe',
       };
 
-      mockUseProfile.mockReturnValue({
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
         profile: updatedUser,
         isLoading: false,
-        isError: false,
         error: null,
-      });
+      }));
 
       rerender(<ProfileView userId={123} />);
       expect(screen.getByText('Jonathan Doe')).toBeInTheDocument();
@@ -987,23 +1013,21 @@ describe('ProfileView Component', () => {
 
     it('should refetch data when userId prop changes', () => {
       // Set up mock BEFORE initial render
-      mockUseProfile.mockReturnValue({
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
         profile: mockValidUser,
         isLoading: false,
-        isError: false,
         error: null,
-      });
+      }));
 
       const { rerender } = render(<ProfileView userId={123} />);
       expect(screen.getByText('John Doe')).toBeInTheDocument();
 
       // Change userId
-      mockUseProfile.mockReturnValue({
+      mockUseProfile.mockReturnValue(createMockUseProfileResult({
         profile: mockOtherUser,
         isLoading: false,
-        isError: false,
         error: null,
-      });
+      }));
 
       rerender(<ProfileView userId={456} />);
       expect(screen.getByText('Jane Doe')).toBeInTheDocument();

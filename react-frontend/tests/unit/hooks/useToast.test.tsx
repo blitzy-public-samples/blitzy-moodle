@@ -66,8 +66,8 @@ describe('useToast', () => {
       type: 'info',
       duration: 5000,
     });
-    expect(result.current.toasts[0].id).toBeTruthy();
-    expect(typeof result.current.toasts[0].id).toBe('string');
+    expect(result.current.toasts[0]!.id).toBeTruthy();
+    expect(typeof result.current.toasts[0]!.id).toBe('string');
   });
 
   /**
@@ -106,8 +106,8 @@ describe('useToast', () => {
     });
 
     expect(result.current.toasts).toHaveLength(1);
-    expect(result.current.toasts[0].type).toBe('success');
-    expect(result.current.toasts[0].message).toBe('Success!');
+    expect(result.current.toasts[0]!.type).toBe('success');
+    expect(result.current.toasts[0]!.message).toBe('Success!');
   });
 
   /**
@@ -122,8 +122,8 @@ describe('useToast', () => {
     });
 
     expect(result.current.toasts).toHaveLength(1);
-    expect(result.current.toasts[0].type).toBe('error');
-    expect(result.current.toasts[0].message).toBe('Error!');
+    expect(result.current.toasts[0]!.type).toBe('error');
+    expect(result.current.toasts[0]!.message).toBe('Error!');
   });
 
   /**
@@ -138,8 +138,8 @@ describe('useToast', () => {
     });
 
     expect(result.current.toasts).toHaveLength(1);
-    expect(result.current.toasts[0].type).toBe('warning');
-    expect(result.current.toasts[0].message).toBe('Warning!');
+    expect(result.current.toasts[0]!.type).toBe('warning');
+    expect(result.current.toasts[0]!.message).toBe('Warning!');
   });
 
   /**
@@ -154,8 +154,8 @@ describe('useToast', () => {
     });
 
     expect(result.current.toasts).toHaveLength(1);
-    expect(result.current.toasts[0].type).toBe('info');
-    expect(result.current.toasts[0].message).toBe('Info!');
+    expect(result.current.toasts[0]!.type).toBe('info');
+    expect(result.current.toasts[0]!.message).toBe('Info!');
   });
 
   /**
@@ -214,9 +214,9 @@ describe('useToast', () => {
   it('should dismiss specific toast by ID', () => {
     const { result } = renderHook(() => useToast());
 
-    let toast1Id: string;
-    let toast2Id: string;
-    let toast3Id: string;
+    let toast1Id!: string;
+    let toast2Id!: string;
+    let toast3Id!: string;
 
     act(() => {
       toast1Id = result.current.showToast('First toast', 'info');
@@ -240,8 +240,8 @@ describe('useToast', () => {
     expect(remainingIds).toContain(toast3Id);
     
     // Verify the correct toasts remain
-    expect(result.current.toasts[0].message).toBe('First toast');
-    expect(result.current.toasts[1].message).toBe('Third toast');
+    expect(result.current.toasts[0]!.message).toBe('First toast');
+    expect(result.current.toasts[1]!.message).toBe('Third toast');
   });
 
   /**
@@ -289,7 +289,7 @@ describe('useToast', () => {
     });
     
     expect(result.current.toasts).toHaveLength(1);
-    expect(result.current.toasts[0].message).toBe('Long duration');
+    expect(result.current.toasts[0]!.message).toBe('Long duration');
 
     // Advance time by 2000ms more (total 3000ms) - second toast should dismiss
     act(() => {
@@ -317,10 +317,10 @@ describe('useToast', () => {
     });
 
     expect(result.current.toasts).toHaveLength(1);
-    expect(result.current.toasts[0].action).toBeDefined();
-    expect(result.current.toasts[0].action?.label).toBe('Undo');
-    expect(result.current.toasts[0].action?.onClick).toBe(mockAction);
-    expect(typeof result.current.toasts[0].action?.onClick).toBe('function');
+    expect(result.current.toasts[0]!.action).toBeDefined();
+    expect(result.current.toasts[0]!.action?.label).toBe('Undo');
+    expect(result.current.toasts[0]!.action?.onClick).toBe(mockAction);
+    expect(typeof result.current.toasts[0]!.action?.onClick).toBe('function');
   });
 
   /**
@@ -337,9 +337,9 @@ describe('useToast', () => {
     });
 
     expect(result.current.toasts).toHaveLength(3);
-    expect(result.current.toasts[0].message).toBe('First');
-    expect(result.current.toasts[1].message).toBe('Second');
-    expect(result.current.toasts[2].message).toBe('Third');
+    expect(result.current.toasts[0]!.message).toBe('First');
+    expect(result.current.toasts[1]!.message).toBe('Second');
+    expect(result.current.toasts[2]!.message).toBe('Third');
   });
 
   /**
@@ -354,7 +354,7 @@ describe('useToast', () => {
     });
 
     expect(result.current.toasts).toHaveLength(1);
-    const originalToast = result.current.toasts[0];
+    const originalToast = result.current.toasts[0]!;
 
     // Attempt to dismiss non-existent toast - should not throw error
     expect(() => {
@@ -365,8 +365,8 @@ describe('useToast', () => {
 
     // Original toast should still be present
     expect(result.current.toasts).toHaveLength(1);
-    expect(result.current.toasts[0].id).toBe(originalToast.id);
-    expect(result.current.toasts[0].message).toBe('Test toast');
+    expect(result.current.toasts[0]!.id).toBe(originalToast.id);
+    expect(result.current.toasts[0]!.message).toBe('Test toast');
   });
 
   /**
@@ -390,7 +390,7 @@ describe('useToast', () => {
     });
 
     expect(result.current.toasts).toHaveLength(1);
-    expect(result.current.toasts[0].message).toBe('Manual dismiss only');
+    expect(result.current.toasts[0]!.message).toBe('Manual dismiss only');
   });
 
   /**
@@ -400,10 +400,10 @@ describe('useToast', () => {
   it('should return toast ID from convenience methods', () => {
     const { result } = renderHook(() => useToast());
 
-    let successId: string;
-    let errorId: string;
-    let warningId: string;
-    let infoId: string;
+    let successId!: string;
+    let errorId!: string;
+    let warningId!: string;
+    let infoId!: string;
 
     act(() => {
       successId = result.current.success('Success message');
@@ -442,7 +442,7 @@ describe('useToast', () => {
     });
 
     expect(result.current.toasts).toHaveLength(1);
-    expect(result.current.toasts[0].duration).toBe(3000);
+    expect(result.current.toasts[0]!.duration).toBe(3000);
 
     // Advance time by 2999ms - toast should still be present
     act(() => {
@@ -464,7 +464,7 @@ describe('useToast', () => {
   it('should handle complex add and dismiss scenarios', () => {
     const { result } = renderHook(() => useToast());
 
-    let id1: string, id2: string, id3: string, id4: string;
+    let id1!: string, id2!: string, id3!: string, id4!: string;
 
     act(() => {
       id1 = result.current.showToast('Toast 1', 'info');
@@ -481,7 +481,7 @@ describe('useToast', () => {
     });
 
     expect(result.current.toasts).toHaveLength(1);
-    expect(result.current.toasts[0].id).toBe(id2);
+    expect(result.current.toasts[0]!.id).toBe(id2);
 
     // Add new toast
     act(() => {
@@ -489,8 +489,8 @@ describe('useToast', () => {
     });
 
     expect(result.current.toasts).toHaveLength(2);
-    expect(result.current.toasts[0].id).toBe(id2);
-    expect(result.current.toasts[1].id).toBe(id4);
+    expect(result.current.toasts[0]!.id).toBe(id2);
+    expect(result.current.toasts[1]!.id).toBe(id4);
   });
 
   /**
@@ -512,13 +512,13 @@ describe('useToast', () => {
     });
 
     expect(result.current.toasts).toHaveLength(1);
-    expect(result.current.toasts[0]).toMatchObject({
+    expect(result.current.toasts[0]!).toMatchObject({
       message: 'Full options toast',
       type: 'warning',
       duration: 7000,
     });
-    expect(result.current.toasts[0].action).toBeDefined();
-    expect(result.current.toasts[0].action?.label).toBe('Retry');
-    expect(result.current.toasts[0].action?.onClick).toBe(mockAction);
+    expect(result.current.toasts[0]!.action).toBeDefined();
+    expect(result.current.toasts[0]!.action?.label).toBe('Retry');
+    expect(result.current.toasts[0]!.action?.onClick).toBe(mockAction);
   });
 });

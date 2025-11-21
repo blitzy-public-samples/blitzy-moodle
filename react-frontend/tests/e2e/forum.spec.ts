@@ -21,10 +21,10 @@
 
 import { test, expect, type Page } from '@playwright/test';
 import { ForumPage } from './pages/ForumPage';
-import { _login, loginAsStudent, loginAsTeacher, isAuthenticated, logout, _getAuthToken, _clearAuthenticationState } from './utils/auth';
-import { _testCourse1, _testCourse2, testCourse4, _createCourse, _getCourseWithActivities } from './fixtures/courses';
-import { _uploadFile, _verifyFileUploaded, generateTestFile, _cleanupTestFiles } from './utils/file-helpers';
-import { _testStudent, _testTeacher, _testEditingTeacher, _TEST_PASSWORD } from './fixtures/users';
+import { loginAsStudent, loginAsTeacher, isAuthenticated, logout } from './utils/auth';
+import { testCourse4 } from './fixtures/courses';
+import { generateTestFile } from './utils/file-helpers';
+import { testStudent, testTeacher, testEditingTeacher, TEST_PASSWORD } from './fixtures/users';
 import { waitForApiResponse } from './utils/wait-helpers';
 
 test.describe('Forum Discussion and Moderation', () => {
@@ -50,26 +50,7 @@ test.describe('Forum Discussion and Moderation', () => {
     
     return forumPage;
   }
-  
-  // Helper to setup teacher access for moderation tests
-  async function _setupForumPageAsTeacher(page: Page): Promise<ForumPage> {
-    // Login as teacher user
-    await loginAsTeacher(page);
-    
-    // Verify authentication successful
-    const authenticated = await isAuthenticated(page);
-    expect(authenticated).toBe(true);
-    
-    // Navigate directly to forum page using React route
-    await page.goto(`/courses/${testCourseId}/forums/${testForumId}`);
-    await page.waitForLoadState('networkidle');
-    
-    // Initialize and return forum page object
-    const forumPage = new ForumPage(page);
-    await forumPage.waitForForum();
-    
-    return forumPage;
-  }
+
 
   test.describe('Forum View and Navigation', () => {
     test('should display forum with title, description, and discussion list', async ({ page }) => {
@@ -177,8 +158,8 @@ test.describe('Forum Discussion and Moderation', () => {
       expect(threadingCorrect).toBe(true);
       
       // Verify reply is indented (appears as child post)
-      const replyPost = posts[1];
-      expect(replyPost.level).toBeGreaterThan(posts[0].level);
+      const replyPost = posts[1]!;
+      expect(replyPost.level).toBeGreaterThan(posts[0]!.level);
     });
 
     test('should display posts in correct thread format with timestamps', async ({ page }) => {
@@ -204,7 +185,7 @@ test.describe('Forum Discussion and Moderation', () => {
       expect(threadingCorrect).toBe(true);
       
       // Verify timestamps are accurate (within last hour)
-      const firstPost = posts[0];
+      const firstPost = posts[0]!;
       const timestamp = await forumPage.getPostTimestamp(firstPost.id);
       const now = Date.now();
       const postTime = new Date(timestamp).getTime();
@@ -229,7 +210,7 @@ test.describe('Forum Discussion and Moderation', () => {
       // Get post ID
       await forumPage.clickDiscussion(discussionId);
       const posts = await forumPage.getPosts();
-      const postId = posts[0].id;
+      const postId = posts[0]!.id;
       
       // Test post editing: Edit own post, modify content, save, verify changes saved
       const updatedMessage = '<p>This post content has been <em>updated</em> and <strong>modified</strong>.</p>';
@@ -260,7 +241,7 @@ test.describe('Forum Discussion and Moderation', () => {
       // Get post ID
       await forumPage.clickDiscussion(discussionId);
       const initialPosts = await forumPage.getPosts();
-      const postId = initialPosts[0].id;
+      const postId = initialPosts[0]!.id;
       
       // Test post deletion: Delete own post, verify removed from thread
       // Create a reply to delete (don't delete original post as it will delete entire discussion)
@@ -268,7 +249,7 @@ test.describe('Forum Discussion and Moderation', () => {
       await forumPage.replyToPost(postId, replyMessage);
       
       const postsBeforeDelete = await forumPage.getPosts();
-      const replyToDelete = postsBeforeDelete[postsBeforeDelete.length - 1];
+      const replyToDelete = postsBeforeDelete[postsBeforeDelete.length - 1]!;
       
       // Delete the reply
       await forumPage.deletePost(replyToDelete.id);
@@ -314,7 +295,7 @@ test.describe('Forum Discussion and Moderation', () => {
       
       await forumPage.clickDiscussion(discussionId);
       const posts = await forumPage.getPosts();
-      const postToRate = posts[0];
+      const postToRate = posts[0]!;
       
       // Rate the post
       await forumPage.ratePost(postToRate.id, 5);
@@ -351,7 +332,7 @@ test.describe('Forum Discussion and Moderation', () => {
       expect(searchResults.length).toBeGreaterThan(0);
       
       // Verify search results contain the keyword
-      const firstResult = searchResults[0];
+      const firstResult = searchResults[0]!;
       const contentLower = firstResult.subject.toLowerCase();
       expect(contentLower).toContain(uniqueKeyword.toLowerCase());
     });
@@ -376,7 +357,7 @@ test.describe('Forum Discussion and Moderation', () => {
       // Get post ID
       await studentForumPage.clickDiscussion(studentDiscussionId);
       const posts = await studentForumPage.getPosts();
-      const studentPostId = posts[0].id;
+      const studentPostId = posts[0]!.id;
       
       // Logout student
       await logout(page);
@@ -460,7 +441,7 @@ test.describe('Forum Discussion and Moderation', () => {
       // Navigate to the discussion we just created
       await forumPage.clickDiscussion(discussionId);
       const posts = await forumPage.getPosts();
-      const ownPost = posts[0];
+      const ownPost = posts[0]!;
       
       // Should be able to edit own post
       const canEdit = await page.locator(`[data-testid="edit-post-${ownPost.id}"]`).isVisible();
@@ -506,7 +487,7 @@ test.describe('Forum Discussion and Moderation', () => {
       
       // 5. Add reply
       const replyMessage = '<p>Reply to complete workflow test.</p>';
-      await forumPage.replyToPost(posts[0].id, replyMessage);
+      await forumPage.replyToPost(posts[0]!.id, replyMessage);
       
       // 6. Verify reply appears with threading
       const updatedPosts = await forumPage.getPosts();
@@ -515,7 +496,7 @@ test.describe('Forum Discussion and Moderation', () => {
       expect(threadingCorrect).toBe(true);
       
       // 7. Edit reply
-      const replyPost = updatedPosts[updatedPosts.length - 1];
+      const replyPost = updatedPosts[updatedPosts.length - 1]!;
       const editedMessage = '<p>Edited reply message.</p>';
       await forumPage.editPost(replyPost.id, editedMessage);
       

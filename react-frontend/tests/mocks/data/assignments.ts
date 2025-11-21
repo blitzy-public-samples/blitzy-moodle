@@ -103,7 +103,7 @@ export function generateTimestamp(daysFromNow: number = 0): Timestamp {
 export function getRandomStatus(): 'draft' | 'submitted' | 'reopened' {
   const statuses: Array<'draft' | 'submitted' | 'reopened'> = ['draft', 'submitted', 'reopened'];
   const index = Math.floor(Math.random() * statuses.length);
-  return statuses[index];
+  return statuses[index]!;
 }
 
 // ============================================================================

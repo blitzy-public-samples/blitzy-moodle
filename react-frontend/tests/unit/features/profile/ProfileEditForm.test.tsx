@@ -3,8 +3,7 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { UseMutationResult } from '@tanstack/react-query';
 import { ProfileEditForm } from '@/features/profile/components/ProfileEditForm';
-import type { User } from '@/features/profile/types/profile.types';
-import type { UpdateProfilePayload } from '@/features/profile/api/profileApi';
+import type { User, UpdateProfilePayload } from '@/features/profile/types/profile.types';
 
 // Mock the useUpdateProfile hook
 const mockUpdateProfile = vi.fn();
@@ -14,7 +13,7 @@ vi.mock('@/features/profile/hooks/useUpdateProfile', () => ({
   useUpdateProfile: (options?: { onSuccess?: () => void; onError?: (error: any) => void }) => {
     const result = mockUseUpdateProfile();
     // Store the callbacks to trigger them when mutate is called
-    const originalMutate = result.mutate;
+    const originalMutate = result.mutate as (...args: any[]) => void;
     result.mutate = (...args: any[]) => {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       originalMutate(...args);
@@ -69,7 +68,7 @@ describe('ProfileEditForm', () => {
       isError: false,
       error: null,
       isSuccess: false,
-    });
+    } as unknown as UseMutationResult<User, Error, UpdateProfilePayload, unknown>);
   });
 
   afterEach(() => {
@@ -357,6 +356,7 @@ describe('ProfileEditForm', () => {
   describe('Error Handling', () => {
     it('displays server-side validation errors', async () => {
       const serverError = {
+        name: 'ValidationError',
         message: 'Validation failed',
         errors: {
           email: 'email already in use',
@@ -370,7 +370,7 @@ describe('ProfileEditForm', () => {
         isError: true,
         isSuccess: false,
         error: serverError,
-      });
+      } as unknown as UseMutationResult<User, Error, UpdateProfilePayload, unknown>);
 
       render(<ProfileEditForm {...defaultProps} />);
 
@@ -388,7 +388,7 @@ describe('ProfileEditForm', () => {
         isError: true,
         isSuccess: false,
         error: null,
-      });
+      } as unknown as UseMutationResult<User, Error, UpdateProfilePayload, unknown>);
 
       render(<ProfileEditForm {...defaultProps} />);
 
@@ -407,8 +407,8 @@ describe('ProfileEditForm', () => {
         isPending: false,
         isError: true,
         isSuccess: false,
-        error: { message: 'Update failed' },
-      });
+        error: { name: 'Error', message: 'Update failed' },
+      } as unknown as UseMutationResult<User, Error, UpdateProfilePayload, unknown>);
 
       const { rerender } = render(<ProfileEditForm {...defaultProps} />);
 
@@ -422,7 +422,7 @@ describe('ProfileEditForm', () => {
         isError: false,
         isSuccess: false,
         error: null,
-      });
+      } as unknown as UseMutationResult<User, Error, UpdateProfilePayload, unknown>);
 
       rerender(<ProfileEditForm {...defaultProps} />);
 
@@ -443,7 +443,7 @@ describe('ProfileEditForm', () => {
         isError: false,
         isSuccess: false,
         error: null,
-      });
+      } as unknown as UseMutationResult<User, Error, UpdateProfilePayload, unknown>);
 
       render(<ProfileEditForm {...defaultProps} />);
 
@@ -466,7 +466,7 @@ describe('ProfileEditForm', () => {
         isError: false,
         isSuccess: false,
         error: null,
-      });
+      } as unknown as UseMutationResult<User, Error, UpdateProfilePayload, unknown>);
 
       render(<ProfileEditForm {...defaultProps} />);
 
@@ -485,7 +485,7 @@ describe('ProfileEditForm', () => {
         isError: false,
         isSuccess: false,
         error: null,
-      });
+      } as unknown as UseMutationResult<User, Error, UpdateProfilePayload, unknown>);
 
       const { rerender } = render(<ProfileEditForm {...defaultProps} />);
 
@@ -499,7 +499,7 @@ describe('ProfileEditForm', () => {
         isError: false,
         isSuccess: true,
         error: null,
-      });
+      } as unknown as UseMutationResult<User, Error, UpdateProfilePayload, unknown>);
       rerender(<ProfileEditForm {...defaultProps} />);
 
       await waitFor(() => {
@@ -528,7 +528,7 @@ describe('ProfileEditForm', () => {
         isError: false,
         isSuccess: false,
         error: null,
-      });
+      } as unknown as UseMutationResult<User, Error, UpdateProfilePayload, unknown>);
 
       render(<ProfileEditForm {...defaultProps} />);
 
@@ -653,7 +653,7 @@ describe('ProfileEditForm', () => {
         isError: false,
         isSuccess: false,
         error: null,
-      });
+      } as unknown as UseMutationResult<User, Error, UpdateProfilePayload, unknown>);
 
       render(<ProfileEditForm {...defaultProps} />);
 

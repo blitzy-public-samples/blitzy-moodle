@@ -270,7 +270,7 @@ describe('FileUploadZone Component', () => {
       // Assert callback was called with the dropped file
       const callArgs = (onFilesChange.mock.calls[0] as unknown as [File[]])[0];
       expect(callArgs).toHaveLength(1);
-      expect(callArgs[0].name).toBe('document.pdf');
+      expect(callArgs[0]!.name).toBe('document.pdf');
     });
 
     it('validates files on drop', async () => {
@@ -705,7 +705,7 @@ describe('FileUploadZone Component', () => {
         expect(onFilesChange).toHaveBeenCalled();
         const callArgs = (onFilesChange.mock.calls[0] as unknown as [File[]])[0];
         expect(callArgs).toHaveLength(1);
-        expect(callArgs[0].name).toBe('file2.pdf');
+        expect(callArgs[0]!.name).toBe('file2.pdf');
       });
     });
 

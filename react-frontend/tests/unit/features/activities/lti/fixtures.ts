@@ -216,9 +216,9 @@ export const mockStudent: User = {
   lastname: 'Student',
   email: 'john.student@example.com',
   auth: 'manual',
-  confirmed: true,
-  suspended: false,
-  deleted: false,
+  confirmed: 1,
+  suspended: 0,
+  deleted: 0,
   firstaccess: Math.floor(Date.now() / 1000) - 86400 * 30, // 30 days ago
   lastaccess: Math.floor(Date.now() / 1000) - 3600, // 1 hour ago
   lastlogin: Math.floor(Date.now() / 1000) - 3600, // 1 hour ago
@@ -240,9 +240,9 @@ export const mockTeacher: User = {
   lastname: 'Smith',
   email: 'jane.smith@example.com',
   auth: 'manual',
-  confirmed: true,
-  suspended: false,
-  deleted: false,
+  confirmed: 1,
+  suspended: 0,
+  deleted: 0,
   firstaccess: Math.floor(Date.now() / 1000) - 86400 * 90, // 90 days ago
   lastaccess: Math.floor(Date.now() / 1000) - 1800, // 30 minutes ago
   lastlogin: Math.floor(Date.now() / 1000) - 1800, // 30 minutes ago
@@ -264,9 +264,9 @@ export const mockAdmin: User = {
   lastname: 'User',
   email: 'admin@moodle.example.com',
   auth: 'manual',
-  confirmed: true,
-  suspended: false,
-  deleted: false,
+  confirmed: 1,
+  suspended: 0,
+  deleted: 0,
   firstaccess: Math.floor(Date.now() / 1000) - 86400 * 365, // 1 year ago
   lastaccess: Math.floor(Date.now() / 1000) - 300, // 5 minutes ago
   lastlogin: Math.floor(Date.now() / 1000) - 300, // 5 minutes ago
@@ -302,13 +302,10 @@ export const mockCourse: Course = {
 export const mockCourseModule: CourseModule = {
   id: 501,
   course: 101,
-  module: 20, // LTI module type ID
+  module: 'lti', // Module type name
   instance: 1, // LTI instance ID
   section: 1,
-  visible: 1,
-  visibleoncoursepage: 1,
-  groupmode: 0,
-  completion: 0,
+  visible: true,
   name: 'Sample LTI 1.1 Tool',
 };
 

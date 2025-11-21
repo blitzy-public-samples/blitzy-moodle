@@ -21,7 +21,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, within, fireEvent, act, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { PostForm } from '@/features/activities/forums/components/PostForm';
+import { PostForm, PostFormProps } from '@/features/activities/forums/components/PostForm';
 
 // Mock dependencies
 vi.mock('@/features/activities/forums/hooks/useCreatePost', () => ({
@@ -67,6 +67,7 @@ import { useCreateDiscussion } from '@/features/activities/forums/hooks/useCreat
 import { useUpdatePost } from '@/features/activities/forums/hooks/useUpdatePost';
 import { useSaveDraft } from '@/features/activities/forums/hooks/useSaveDraft';
 import { useMultiFileUpload } from '@/hooks/useMultiFileUpload';
+import type { Post } from '@/features/activities/forums/types/forum.types';
 
 describe('PostForm Component', () => {
   let queryClient: QueryClient;
@@ -82,6 +83,8 @@ describe('PostForm Component', () => {
   const mockAddFiles = vi.fn<[File[]], void>();
   const mockRemoveFile = vi.fn();
   const mockClearFiles = vi.fn();
+  const mockUpdateProgress = vi.fn();
+  const mockSetFileError = vi.fn();
 
   beforeEach(() => {
     queryClient = new QueryClient({
@@ -127,6 +130,8 @@ describe('PostForm Component', () => {
       addFiles: mockAddFiles,
       removeFile: mockRemoveFile,
       clearFiles: mockClearFiles,
+      updateProgress: mockUpdateProgress,
+      setFileError: mockSetFileError,
       isMaxFilesReached: false,
       totalSize: 0,
     });
@@ -137,8 +142,8 @@ describe('PostForm Component', () => {
     cleanup(); // Ensure all components are unmounted and DOM is cleaned up
   });
 
-  const renderComponent = (props = {}) => {
-    const defaultProps = {
+  const renderComponent = (props: Partial<PostFormProps> = {}) => {
+    const defaultProps: PostFormProps = {
       forumId: 1,
       discussionId: null,
       parentPostId: null,
@@ -157,6 +162,28 @@ describe('PostForm Component', () => {
         <PostForm {...defaultProps} />
       </QueryClientProvider>
     );
+  };
+
+  // Helper to create complete Post objects for tests
+  const createMockPost = (overrides: Partial<Post> = {}): Post => {
+    return {
+      id: 10,
+      discussionid: 1,
+      parentid: 0,
+      authorid: 1,
+      timecreated: Date.now(),
+      timemodified: Date.now(),
+      mailed: false,
+      subject: 'Test Subject',
+      message: 'Test message content',
+      messageformat: 1,
+      messagetrust: false,
+      hasattachments: false,
+      totalscore: 0,
+      mailnow: false,
+      deleted: false,
+      ...overrides,
+    } as Post;
   };
 
   describe('Form Rendering', () => {
@@ -178,12 +205,11 @@ describe('PostForm Component', () => {
     });
 
     it('renders form for editing existing post with pre-populated fields', () => {
-      const existingPost = {
+      const existingPost = createMockPost({
         id: 10,
         subject: 'Test Subject',
         message: 'Test message content',
-        attachments: [],
-      };
+      });
 
       renderComponent({ post: existingPost });
 
@@ -359,12 +385,11 @@ describe('PostForm Component', () => {
 
     // eslint-disable-next-line @typescript-eslint/require-await
     it('preserves HTML formatting in message', async () => {
-      const existingPost = {
+      const existingPost = createMockPost({
         id: 10,
         subject: 'Test',
         message: '<p><strong>Bold text</strong></p>',
-        attachments: [],
-      };
+      });
 
       renderComponent({ post: existingPost });
 
@@ -427,6 +452,8 @@ describe('PostForm Component', () => {
         addFiles: mockAddFiles,
         removeFile: mockRemoveFile,
         clearFiles: mockClearFiles,
+        updateProgress: mockUpdateProgress,
+        setFileError: mockSetFileError,
         isMaxFilesReached: false,
         totalSize: 1024,
       });
@@ -445,6 +472,8 @@ describe('PostForm Component', () => {
         addFiles: mockAddFiles,
         removeFile: mockRemoveFile,
         clearFiles: mockClearFiles,
+        updateProgress: mockUpdateProgress,
+        setFileError: mockSetFileError,
         isMaxFilesReached: false,
         totalSize: 1024,
       });
@@ -469,6 +498,8 @@ describe('PostForm Component', () => {
         addFiles: mockAddFiles,
         removeFile: mockRemoveFile,
         clearFiles: mockClearFiles,
+        updateProgress: mockUpdateProgress,
+        setFileError: mockSetFileError,
         isMaxFilesReached: false,
         totalSize: 1024,
       });
@@ -492,6 +523,8 @@ describe('PostForm Component', () => {
         addFiles: mockAddFiles,
         removeFile: mockRemoveFile,
         clearFiles: mockClearFiles,
+        updateProgress: mockUpdateProgress,
+        setFileError: mockSetFileError,
         isMaxFilesReached: false,
         totalSize: 11 * 1024 * 1024,
       });
@@ -510,6 +543,8 @@ describe('PostForm Component', () => {
         addFiles: mockAddFiles,
         removeFile: mockRemoveFile,
         clearFiles: mockClearFiles,
+        updateProgress: mockUpdateProgress,
+        setFileError: mockSetFileError,
         isMaxFilesReached: false,
         totalSize: 2048,
       });
@@ -722,12 +757,11 @@ describe('PostForm Component', () => {
     });
 
     it('submits edited post with updates', async () => {
-      const existingPost = {
+      const existingPost = createMockPost({
         id: 10,
         subject: 'Original Subject',
         message: 'Original message',
-        attachments: [],
-      };
+      });
 
       const onSubmitSuccess = vi.fn();
       
@@ -794,7 +828,22 @@ describe('PostForm Component', () => {
 
     it('calls onSubmitSuccess after successful submission', async () => {
       const onSubmitSuccess = vi.fn();
-      const createdPost = { id: 20, subject: 'New Post' };
+      const createdPost = {
+        discussion: {
+          id: 20,
+          courseid: 1,
+          forumid: 1,
+          name: 'New Post',
+          firstpostid: 100,
+          userid: 1,
+          timemodified: Date.now(),
+          timestart: 0,
+          timeend: 0,
+          pinned: false,
+          timelocked: 0,
+        },
+        message: 'Discussion created successfully',
+      };
 
       // Mock useCreateDiscussion to capture onSuccess callback and invoke it
       vi.mocked(useCreateDiscussion).mockImplementation((options) => {
@@ -831,7 +880,22 @@ describe('PostForm Component', () => {
     });
 
     it('resets form after successful submission', async () => {
-      const createdPost = { id: 20, subject: 'New Post' };
+      const createdPost = {
+        discussion: {
+          id: 20,
+          courseid: 1,
+          forumid: 1,
+          name: 'New Post',
+          firstpostid: 100,
+          userid: 1,
+          timemodified: Date.now(),
+          timestart: 0,
+          timeend: 0,
+          pinned: false,
+          timelocked: 0,
+        },
+        message: 'Discussion created successfully',
+      };
 
       // Mock useCreateDiscussion to capture onSuccess callback and invoke it
       vi.mocked(useCreateDiscussion).mockImplementation((options) => {
@@ -949,13 +1013,11 @@ describe('PostForm Component', () => {
 
     // eslint-disable-next-line @typescript-eslint/require-await
     it('handles concurrent edit detection', async () => {
-      const existingPost = {
+      const existingPost = createMockPost({
         id: 10,
         subject: 'Original Subject',
         message: 'Original message',
-        attachments: [],
-        version: 1,
-      };
+      });
 
       const conflictError = {
         message: 'Post has been modified by another user',
@@ -1466,6 +1528,8 @@ describe('PostForm Component', () => {
         addFiles: mockAddFiles,
         removeFile: mockRemoveFile,
         clearFiles: mockClearFiles,
+        updateProgress: mockUpdateProgress,
+        setFileError: mockSetFileError,
         isMaxFilesReached: false,
         totalSize: 0,
       });

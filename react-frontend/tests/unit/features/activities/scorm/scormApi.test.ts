@@ -23,11 +23,12 @@ import type {
   ScormTOCNode,
   ScormPlayerConfig,
   ScormReport,
-  _ScormVersion,
+  ScormVersion,
 } from '@/features/activities/scorm/types/scorm.types';
 import {
   ScormGradeMethod,
   ScormStatus,
+  ScormType,
   ScoType,
 } from '@/features/activities/scorm/types/scorm.types';
 
@@ -79,7 +80,7 @@ describe('scormApi', () => {
         navpositiontop: 100,
         auto: false,
         updatefreq: 0,
-        scormtype: 'local',
+        scormtype: ScormType.LOCAL,
         reference: 'scorm_package.zip',
         sha1hash: 'abc123def456',
         md5hash: '',
@@ -186,7 +187,7 @@ describe('scormApi', () => {
       expect(apiClient.get).toHaveBeenCalledWith('/scorm/1/scos');
       expect(result).toEqual(mockScos);
       expect(result).toHaveLength(2);
-      expect(result[0].sortorder).toBeLessThan(result[1].sortorder);
+      expect(result[0]!.sortorder).toBeLessThan(result[1]!.sortorder);
     });
 
     it('should fetch SCORM 2004 SCO structure with organization hierarchy', async () => {
@@ -230,7 +231,7 @@ describe('scormApi', () => {
       const result = await fetchScormScos(2);
 
       expect(result).toHaveLength(2);
-      expect(result[1].parent).toContain('item_root');
+      expect(result[1]!.parent).toContain('item_root');
     });
 
     it('should handle empty SCO list', async () => {
@@ -260,9 +261,9 @@ describe('scormApi', () => {
           prerequisiteMet: true,
           completionStatus: 'completed',
           successStatus: 'passed',
-          score: 95,
+          score: { raw: 95 },
           children: [],
-          parent: null,
+          parent: '',
         },
         {
           id: 2,
@@ -273,9 +274,9 @@ describe('scormApi', () => {
           prerequisiteMet: true,
           completionStatus: 'incomplete',
           successStatus: 'unknown',
-          score: null,
+          score: undefined,
           children: [],
-          parent: null,
+          parent: '',
         },
         {
           id: 3,
@@ -286,9 +287,9 @@ describe('scormApi', () => {
           prerequisiteMet: false,
           completionStatus: 'not attempted',
           successStatus: 'unknown',
-          score: null,
+          score: undefined,
           children: [],
-          parent: null,
+          parent: '',
         },
       ];
 
@@ -326,8 +327,8 @@ describe('scormApi', () => {
           prerequisiteMet: true,
           completionStatus: 'incomplete',
           successStatus: 'unknown',
-          score: null,
-          parent: null,
+          score: undefined,
+          parent: '',
           children: [
             {
               id: 2,
@@ -530,14 +531,6 @@ describe('scormApi', () => {
 
   describe('submitTracking', () => {
     it('should submit SCORM 1.2 tracking data with cmi.core elements', async () => {
-      const _trackingData = {
-        attemptId: 5,
-        scoId: 2,
-        element: 'cmi.core.lesson_status',
-        value: 'completed',
-        timeStamp: Date.now(),
-      };
-
       const cmiElements: Record<string, string | number> = {
         'cmi.core.lesson_status': 'completed',
         'cmi.core.score.raw': '85',
@@ -828,8 +821,8 @@ describe('scormApi', () => {
       });
       expect(result).toEqual(mockAttempts);
       expect(result).toHaveLength(3);
-      expect(result[0].status).toBe('completed');
-      expect(result[2].status).toBe('incomplete');
+      expect(result[0]!.status).toBe('completed');
+      expect(result[2]!.status).toBe('incomplete');
     });
 
     it('should handle user with no attempts', async () => {
@@ -881,9 +874,9 @@ describe('scormApi', () => {
 
       const result = await fetchAttempts(1, 100);
 
-      expect(result[0].startTime).toBeDefined();
-      expect(result[0].finishTime).toBeDefined();
-      expect(result[0].totalTime).toBe('01:00:00');
+      expect(result[0]!.startTime).toBeDefined();
+      expect(result[0]!.finishTime).toBeDefined();
+      expect(result[0]!.totalTime).toBe('01:00:00');
     });
   });
 
@@ -1251,14 +1244,14 @@ describe('scormApi', () => {
             learnerResponse: 'a',
             result: 'correct',
             latency: 'PT5S',
-            timestamp: 1640001000,
+            timestamp: '2021-12-20T10:30:00Z',
           },
         ],
         objectives: [
           {
             id: 'objective_1',
-            score: 90,
-            status: 'passed',
+            score: { raw: 90 },
+            status: ScormStatus.PASSED,
             description: 'Complete introduction',
           },
         ],
@@ -1279,7 +1272,7 @@ describe('scormApi', () => {
 
       expect(result.interactions).toHaveLength(1);
       expect(result.objectives).toHaveLength(1);
-      expect(result.objectives[0].status).toBe('passed');
+      expect(result.objectives[0]!.status).toBe('passed');
     });
   });
 
@@ -1514,7 +1507,7 @@ describe('scormApi', () => {
         navpositiontop: 0,
         auto: false,
         updatefreq: 0,
-        scormtype: 'local',
+        scormtype: ScormType.LOCAL,
         reference: '',
         sha1hash: '',
         md5hash: '',
@@ -1654,7 +1647,7 @@ describe('scormApi', () => {
         navpositiontop: 0,
         auto: false,
         updatefreq: 0,
-        scormtype: 'local',
+        scormtype: ScormType.LOCAL,
         reference: '',
         sha1hash: '',
         md5hash: '',

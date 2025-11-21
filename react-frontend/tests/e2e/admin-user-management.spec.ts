@@ -19,10 +19,10 @@
  * @see public/admin/user/user_bulk.php for bulk operations backend
  */
 
-import { test, expect, type _Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import { AdminUserPage } from './pages/AdminUserPage';
 import { loginAsAdmin, logout, isAuthenticated } from './utils/auth';
-import { _testAdmin, _testStudent, _testTeacher, _testStudent2, _TEST_PASSWORD } from './fixtures/users';
+import { testAdmin, testStudent, testTeacher, testStudent2, TEST_PASSWORD } from './fixtures/users';
 import type { UserData } from './pages/AdminUserPage';
 
 /**
@@ -317,7 +317,7 @@ test.describe('Admin User Management', () => {
       
       // Verify user appears in list with correct data
       expect(users.length).toBe(1);
-      const createdUser = users[0];
+      const createdUser = users[0]!;
       expect(createdUser.username).toBe(newUser.username);
       expect(createdUser.email).toBe(newUser.email);
       expect(createdUser.firstname).toBe(newUser.firstname);
@@ -490,7 +490,7 @@ test.describe('Admin User Management', () => {
       await adminPage.searchUsers(testUser.username);
       const users = await adminPage.getUsers();
       expect(users.length).toBe(1);
-      const userId = users[0].id!;
+      const userId = users[0]!.id!;
       createdUserIds.push(userId);
       
       // Edit the user
@@ -510,8 +510,8 @@ test.describe('Admin User Management', () => {
       await adminPage.searchUsers(testUser.username);
       const updatedUsers = await adminPage.getUsers();
       expect(updatedUsers.length).toBe(1);
-      expect(updatedUsers[0].firstname).toBe('Updated');
-      expect(updatedUsers[0].lastname).toBe('Name');
+      expect(updatedUsers[0]!.firstname).toBe('Updated');
+      expect(updatedUsers[0]!.lastname).toBe('Name');
       
       // Capture screenshot
       await page.screenshot({ 
@@ -543,7 +543,7 @@ test.describe('Admin User Management', () => {
       // Get user ID
       await adminPage.searchUsers(testUser.username);
       let users = await adminPage.getUsers();
-      const userId = users[0].id!;
+      const userId = users[0]!.id!;
       createdUserIds.push(userId);
       
       // Edit user
@@ -561,7 +561,7 @@ test.describe('Admin User Management', () => {
       // Verify changes persisted
       await adminPage.searchUsers(testUser.username);
       users = await adminPage.getUsers();
-      expect(users[0].firstname).toBe('Changed');
+      expect(users[0]!.firstname).toBe('Changed');
     });
   });
 
@@ -779,7 +779,7 @@ test.describe('Admin User Management', () => {
       // Get user ID
       await adminPage.searchUsers(testUser.username);
       const users = await adminPage.getUsers();
-      const userId = users[0].id!;
+      const userId = users[0]!.id!;
       createdUserIds.push(userId);
       
       // Trigger password reset
@@ -827,11 +827,11 @@ test.describe('Admin User Management', () => {
       // Get user ID
       await adminPage.searchUsers(testUser.username);
       let users = await adminPage.getUsers();
-      const userId = users[0].id!;
+      const userId = users[0]!.id!;
       createdUserIds.push(userId);
       
       // Verify user is initially active
-      expect(users[0].suspended).toBe(false);
+      expect(users[0]!.suspended).toBe(false);
       
       // Suspend user
       await adminPage.suspendUser(userId);
@@ -843,7 +843,7 @@ test.describe('Admin User Management', () => {
       users = await adminPage.getUsers();
       
       expect(users.length).toBe(1);
-      expect(users[0].suspended).toBe(true);
+      expect(users[0]!.suspended).toBe(true);
       
       // Capture screenshot
       await page.screenshot({ 
@@ -875,7 +875,7 @@ test.describe('Admin User Management', () => {
       // Get user ID and suspend
       await adminPage.searchUsers(testUser.username);
       const users = await adminPage.getUsers();
-      const userId = users[0].id!;
+      const userId = users[0]!.id!;
       createdUserIds.push(userId);
       
       await adminPage.suspendUser(userId);
@@ -939,7 +939,7 @@ test.describe('Admin User Management', () => {
       // Get user ID
       await adminPage.searchUsers(testUser.username);
       const users = await adminPage.getUsers();
-      const userId = users[0].id!;
+      const userId = users[0]!.id!;
       
       // Delete user
       await adminPage.deleteUser(userId);
@@ -989,7 +989,7 @@ test.describe('Admin User Management', () => {
       // Get user ID
       await adminPage.searchUsers(testUser.username);
       const users = await adminPage.getUsers();
-      const userId = users[0].id!;
+      const userId = users[0]!.id!;
       
       // Delete user
       await adminPage.deleteUser(userId);
@@ -1088,7 +1088,7 @@ test.describe('Admin User Management', () => {
       // Get user ID
       await adminPage.searchUsers(testUser.username);
       const users = await adminPage.getUsers();
-      const userId = users[0].id!;
+      const userId = users[0]!.id!;
       createdUserIds.push(userId);
       
       // Attempt multiple edits in quick succession
@@ -1106,7 +1106,7 @@ test.describe('Admin User Management', () => {
       // Verify final state is correct
       await adminPage.searchUsers(testUser.username);
       const finalUsers = await adminPage.getUsers();
-      expect(finalUsers[0].firstname).toBe('Update2');
+      expect(finalUsers[0]!.firstname).toBe('Update2');
     });
 
     test('should validate email format in bulk operations', async ({ page }) => {
@@ -1133,7 +1133,7 @@ test.describe('Admin User Management', () => {
       // Get user and attempt edit with invalid email
       await adminPage.searchUsers(testUser.username);
       const users = await adminPage.getUsers();
-      const userId = users[0].id!;
+      const userId = users[0]!.id!;
       createdUserIds.push(userId);
       
       await adminPage.clickEditUser(userId);
@@ -1177,7 +1177,7 @@ test.describe('Admin User Management', () => {
         
         // Users on second page should be different from first page
         expect(secondPageUsers.length).toBeGreaterThan(0);
-        expect(secondPageUsers[0].id).not.toBe(firstPageUsers[0].id);
+        expect(secondPageUsers[0]!.id).not.toBe(firstPageUsers[0]!.id);
       }
     });
   });
@@ -1188,9 +1188,6 @@ test.describe('Admin User Management', () => {
    */
   test.describe('Accessibility', () => {
     test('should support keyboard navigation', async ({ page }) => {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      const _adminPage = (page as any)._adminPage as AdminUserPage;
-      
       // Navigate with Tab key
       await page.keyboard.press('Tab');
       
@@ -1200,9 +1197,6 @@ test.describe('Admin User Management', () => {
     });
 
     test('should have proper ARIA labels', async ({ page }) => {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      const _adminPage = (page as any)._adminPage as AdminUserPage;
-      
       // Check for ARIA labels on key elements
       const searchInput = page.locator('input[type="search"], input[placeholder*="search" i]').first();
       const ariaLabel = await searchInput.getAttribute('aria-label').catch(() => null);

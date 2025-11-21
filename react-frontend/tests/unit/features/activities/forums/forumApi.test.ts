@@ -23,7 +23,7 @@ import * as forumApi from '@/features/activities/forums/api/forumApi';
 import type { 
   Forum, 
   Discussion, 
-  Post, 
+  DiscussionPost, 
   DiscussionListOptions,
   CreateDiscussionData,
   CreatePostData,
@@ -31,6 +31,7 @@ import type {
   SubscriptionPreferences,
   DiscussionEnriched
 } from '@/features/activities/forums/types/forum.types';
+import { ForumType } from '@/features/activities/forums/types/forum.types';
 import type { PaginatedResponse } from '@/types/api';
 
 /* eslint-disable @typescript-eslint/unbound-method */
@@ -48,7 +49,7 @@ const mockForum: Forum = {
   name: 'General Discussion Forum',
   intro: 'Welcome to the general discussion forum',
   introformat: 1,
-  type: 'general',
+  type: ForumType.GENERAL,
   assessed: 0,
   assesstimestart: 0,
   assesstimefinish: 0,
@@ -85,69 +86,62 @@ const mockForum: Forum = {
 const mockDiscussions: DiscussionEnriched[] = [
   {
     id: 1,
-    forumId: 1,
+    forumid: 1,
+    courseid: 10,
+    firstpostid: 1,
     name: 'First Discussion',
-    message: 'This is the first discussion post',
-    messageFormat: 1,
-    userId: 5,
+    userid: 5,
     userFullName: 'John Doe',
     userPictureUrl: '/user/pic.jpg',
     created: 1640000000,
-    modified: 1640000000,
-    timeStart: 0,
-    timeEnd: 0,
+    timemodified: 1640000000,
+    timestart: 0,
+    timeend: 0,
     pinned: true,
     locked: false,
-    groupId: -1,
+    timelocked: 0,
+    groupid: -1,
     numReplies: 10,
-    numUnreadPosts: 2,
-    canReply: true,
-    canEdit: false,
-    canDelete: false,
-    canPin: false,
-    canLock: false
+    numUnreadPosts: 2
   },
   {
     id: 2,
-    forumId: 1,
+    forumid: 1,
+    courseid: 10,
+    firstpostid: 2,
     name: 'Second Discussion',
-    message: 'This is the second discussion post',
-    messageFormat: 1,
-    userId: 6,
+    userid: 6,
     userFullName: 'Jane Smith',
     userPictureUrl: '/user/pic2.jpg',
     created: 1640001000,
-    modified: 1640001000,
-    timeStart: 0,
-    timeEnd: 0,
+    timemodified: 1640001000,
+    timestart: 0,
+    timeend: 0,
     pinned: false,
     locked: false,
-    groupId: -1,
+    timelocked: 0,
+    groupid: -1,
     numReplies: 5,
-    numUnreadPosts: 0,
-    canReply: true,
-    canEdit: false,
-    canDelete: false,
-    canPin: false,
-    canLock: false
+    numUnreadPosts: 0
   }
 ];
 
-const mockPost: Post = {
+const mockPost: DiscussionPost = {
   id: 1,
   discussionId: 1,
-  parentId: 0,
+  parentId: null,
   userId: 5,
-  userFullName: 'John Doe',
+  userName: 'John Doe',
   userPictureUrl: '/user/pic.jpg',
   subject: 'First Discussion',
   message: 'This is the first discussion post',
-  messageFormat: 1,
   created: 1640000000,
   modified: 1640000000,
+  version: 1,
+  deleted: false,
   hasAttachments: false,
   attachments: [],
-  isUnread: false,
+  unread: false,
   canEdit: true,
   canDelete: true,
   canReply: true,
@@ -163,16 +157,17 @@ const mockDiscussionWithPosts = {
       discussionId: 1,
       parentId: 1,
       userId: 6,
-      userFullName: 'Jane Smith',
+      userName: 'Jane Smith',
       userPictureUrl: '/user/pic2.jpg',
       subject: 'Re: First Discussion',
       message: 'This is a reply to the first post',
-      messageFormat: 1,
       created: 1640001000,
       modified: 1640001000,
+      version: 1,
+      deleted: false,
       hasAttachments: false,
       attachments: [],
-      isUnread: true,
+      unread: true,
       canEdit: false,
       canDelete: false,
       canReply: true,
@@ -182,16 +177,17 @@ const mockDiscussionWithPosts = {
           discussionId: 1,
           parentId: 2,
           userId: 5,
-          userFullName: 'John Doe',
+          userName: 'John Doe',
           userPictureUrl: '/user/pic.jpg',
           subject: 'Re: Re: First Discussion',
           message: 'This is a nested reply',
-          messageFormat: 1,
           created: 1640002000,
           modified: 1640002000,
+          version: 1,
+          deleted: false,
           hasAttachments: false,
           attachments: [],
-          isUnread: false,
+          unread: false,
           canEdit: true,
           canDelete: true,
           canReply: true,
@@ -235,8 +231,7 @@ const handlers = [
   }),
 
   // GET discussions list
-  http.get(`*${API_BASE_URL}/forums/:id/discussions`, ({ params, request }) => {
-    const { _id } = params;
+  http.get(`*${API_BASE_URL}/forums/:id/discussions`, ({ request }) => {
     const url = new URL(request.url);
     const page = parseInt(url.searchParams.get('page') ?? '1');
     const perPage = parseInt(url.searchParams.get('perPage') ?? '20');
@@ -320,7 +315,6 @@ const handlers = [
     // Extract fields from FormData
     const subject = formData.get('subject') as string;
     const message = formData.get('message') as string;
-    const _subscribe = formData.get('subscribe') === 'true';
     const pinned = formData.get('pinned') === 'true';
     
     // Validation errors
@@ -388,21 +382,22 @@ const handlers = [
     const parentIdStr = formData.get('parentId') as string | null;
     const parentId = parentIdStr ? parseInt(parentIdStr) : 0;
     
-    const newPost: Post = {
+    const newPost: DiscussionPost = {
       id: 1000,
       discussionId: parseInt(id as string),
-      parentId,
+      parentId: parentId || null,
       userId: 5,
-      userFullName: 'John Doe',
+      userName: 'John Doe',
       userPictureUrl: '/user/pic.jpg',
       subject: 'Re: Discussion',
       message,
-      messageFormat: 1,
       created: Date.now() / 1000,
       modified: Date.now() / 1000,
+      version: 1,
+      deleted: false,
       hasAttachments: false,
       attachments: [],
-      isUnread: false,
+      unread: false,
       canEdit: true,
       canDelete: true,
       canReply: true,
@@ -442,7 +437,7 @@ const handlers = [
     const removeAttachments = removeAttachmentsStr ? JSON.parse(removeAttachmentsStr) as number[] : [];
     
     // Simulate attachment removal
-    type PostWithAttachments = Post & { attachments?: Array<{ id: number; filename: string; filesize: number; mimetype: string; url: string }> };
+    type PostWithAttachments = DiscussionPost & { attachments?: Array<{ id: number; filename: string; filesize: number; mimetype: string; url: string }> };
     const mockPostWithAttachments = mockPost as PostWithAttachments;
     const attachments = removeAttachments.length > 0 
       ? mockPostWithAttachments.attachments?.filter(att => !removeAttachments.includes(att.id))
@@ -482,15 +477,12 @@ const handlers = [
   }),
 
   // POST subscribe to forum
-  http.post(`*${API_BASE_URL}/forums/:id/subscribe`, async ({ params, request }) => {
-    const { _id } = params;
-    
+  http.post(`*${API_BASE_URL}/forums/:id/subscribe`, async ({ request }) => {
     // Handle optional preferences in body
-    let _preferences: Record<string, unknown> = {};
     try {
       const body = await request.text();
       if (body) {
-        _preferences = JSON.parse(body) as Record<string, unknown>;
+        JSON.parse(body) as Record<string, unknown>;
       }
     } catch (e) {
       // Empty body or invalid JSON - use default empty object
@@ -506,9 +498,7 @@ const handlers = [
   }),
 
   // POST unsubscribe from forum
-  http.post(`*${API_BASE_URL}/forums/:id/unsubscribe`, ({ params }) => {
-    const { _id } = params;
-    
+  http.post(`*${API_BASE_URL}/forums/:id/unsubscribe`, () => {
     return HttpResponse.json({
       success: true,
       data: {
@@ -519,9 +509,7 @@ const handlers = [
   }),
 
   // POST subscribe to discussion
-  http.post(`*${API_BASE_URL}/forums/discussions/:id/subscribe`, ({ params }) => {
-    const { _id } = params;
-    
+  http.post(`*${API_BASE_URL}/forums/discussions/:id/subscribe`, () => {
     return HttpResponse.json({
       success: true,
       data: {
@@ -532,9 +520,7 @@ const handlers = [
   }),
 
   // POST unsubscribe from discussion
-  http.post(`*${API_BASE_URL}/forums/discussions/:id/unsubscribe`, ({ params }) => {
-    const { _id } = params;
-    
+  http.post(`*${API_BASE_URL}/forums/discussions/:id/unsubscribe`, () => {
     return HttpResponse.json({
       success: true,
       data: {
@@ -714,7 +700,7 @@ describe('forumApi', () => {
       const result: PaginatedResponse<DiscussionEnriched> = await forumApi.getDiscussions(1);
       
       expect(result.data.items).toHaveLength(2);
-      expect(result.data.items[0].name).toBe('First Discussion');
+      expect(result.data.items[0]!.name).toBe('First Discussion');
       expect(result.meta.pagination.page).toBe(1);
       expect(result.meta.pagination.perPage).toBe(20);
     });
@@ -752,8 +738,8 @@ describe('forumApi', () => {
       
       // Verify sorted by replies (descending)
       if (result.data.items.length > 1) {
-        const firstReplies = result.data.items[0].numReplies ?? 0;
-        const secondReplies = result.data.items[1].numReplies ?? 0;
+        const firstReplies = result.data.items[0]!.numReplies ?? 0;
+        const secondReplies = result.data.items[1]!.numReplies ?? 0;
         expect(firstReplies).toBeGreaterThanOrEqual(secondReplies);
       }
     });
@@ -852,14 +838,14 @@ describe('forumApi', () => {
       
       // Verify nested structure
       expect(result.posts[0]).toHaveProperty('replies');
-      expect(Array.isArray(result.posts[0].replies)).toBe(true);
+      expect(Array.isArray(result.posts[0]!.replies)).toBe(true);
     });
 
     it('should handle discussion with no replies', async () => {
       const result = await forumApi.getDiscussionPosts(999);
       
       expect(result.posts).toHaveLength(1);
-      expect(result.posts[0].replies).toHaveLength(0);
+      expect(result.posts[0]!.replies).toHaveLength(0);
     });
 
     it('should handle discussion with deeply nested replies', async () => {
@@ -1499,8 +1485,8 @@ describe('forumApi', () => {
     it('should enforce Discussion type for getDiscussions response', async () => {
       const result = await forumApi.getDiscussions(1);
       
-      // TypeScript should enforce array of Discussion
-      const discussions: Discussion[] = result.data.items;
+      // TypeScript should enforce array of DiscussionEnriched
+      const discussions: DiscussionEnriched[] = result.data.items;
       expect(Array.isArray(discussions)).toBe(true);
     });
 
@@ -1514,8 +1500,8 @@ describe('forumApi', () => {
       
       const result = await forumApi.createPost(data);
       
-      // TypeScript should enforce Post type
-      const post: Post = result;
+      // TypeScript should enforce DiscussionPost type
+      const post: DiscussionPost = result;
       expect(post.id).toBeDefined();
       expect(post.message).toBeDefined();
     });
@@ -1524,8 +1510,6 @@ describe('forumApi', () => {
   describe('File Upload', () => {
     it('should track file upload progress', async () => {
       // Mock progress tracking
-      const _progressCallback = vi.fn();
-      
       const data: CreateDiscussionData = {
         subject: 'With Files',
         message: 'Message with attachments',

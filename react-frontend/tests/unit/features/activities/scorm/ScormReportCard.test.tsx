@@ -27,7 +27,7 @@
  * @module tests/unit/features/activities/scorm/ScormReportCard.test
  */
 
-import { describe, it, expect, vi, _beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ScormReportCard } from '@/features/activities/scorm/components/ScormReportCard';
@@ -39,6 +39,7 @@ import type {
   ScormCMIInteraction,
   ScormCMIObjective,
 } from '@/features/activities/scorm/types/scorm.types';
+import { ScormGradeMethod, ScormStatus } from '@/features/activities/scorm/types/scorm.types';
 
 // ============================================================================
 // MOCKS
@@ -103,7 +104,7 @@ const createMockReport = (overrides: Partial<ScormReport> = {}): ScormReport => 
     grade: 85,
     completionPercentage: 100,
     totalTimeSpent: '00:15:30',
-    gradingMethod: 'highest',
+    gradingMethod: ScormGradeMethod.HIGHEST,
     status: 'completed',
     scoProgress: [],
     interactions: [],
@@ -111,19 +112,6 @@ const createMockReport = (overrides: Partial<ScormReport> = {}): ScormReport => 
     ...overrides,
   };
 };
-
-/**
- * Creates mock attempt data
- */
-const _createMockAttempt = (overrides = {}): ScormAttempt => ({
-  attemptNumber: 1,
-  userid: 100,
-  scormid: 1,
-  status: 'completed',
-  score: 85,
-  timemodified: 1704068130,
-  ...overrides,
-});
 
 /**
  * Creates mock attempt summary data
@@ -199,7 +187,7 @@ const createTestQueryClient = () =>
     defaultOptions: {
       queries: {
         retry: false,
-        cacheTime: 0,
+        gcTime: 0, // React Query v5: renamed from cacheTime
       },
     },
   });
@@ -346,10 +334,10 @@ describe('ScormReportCard - Basic Report View', () => {
 
   it('should display passed status correctly', async () => {
     const mockReport = createMockReport({
-      status: 'passed',
+      status: ScormStatus.PASSED,
       attempts: [
         createMockAttemptSummary({
-          status: 'passed',
+          status: ScormStatus.PASSED,
         }),
       ],
     });
@@ -369,10 +357,10 @@ describe('ScormReportCard - Basic Report View', () => {
 
   it('should display failed status with error color', async () => {
     const mockReport = createMockReport({
-      status: 'failed',
+      status: ScormStatus.FAILED,
       attempts: [
         createMockAttemptSummary({
-          status: 'failed',
+          status: ScormStatus.FAILED,
           score: 45,
         }),
       ],
@@ -426,12 +414,7 @@ describe('ScormReportCard - Score and Grade Display', () => {
 
   it('should display overall score with raw, min, max, and scaled values formatted correctly', async () => {
     const mockReport = createMockReport({
-      overallScore: {
-        raw: 85,
-        min: 0,
-        max: 100,
-        scaled: 0.85,
-      },
+      overallScore: 85,
     });
 
     vi.mocked(fetchAttemptReport).mockResolvedValue(mockReport);
@@ -449,14 +432,9 @@ describe('ScormReportCard - Score and Grade Display', () => {
 
   it('should display grade based on highest attempt score grading method', async () => {
     const mockReport = createMockReport({
-      gradingMethod: 'highest',
+      gradingMethod: ScormGradeMethod.HIGHEST,
       grade: 95,
-      overallScore: {
-        raw: 95,
-        min: 0,
-        max: 100,
-        scaled: 0.95,
-      },
+      overallScore: 95,
       attempts: [
         createMockAttemptSummary({ attemptNumber: 1, score: 80 }),
         createMockAttemptSummary({ attemptNumber: 2, score: 95 }),
@@ -479,7 +457,7 @@ describe('ScormReportCard - Score and Grade Display', () => {
 
   it('should display grade based on average attempt score grading method', async () => {
     const mockReport = createMockReport({
-      gradingMethod: 'average',
+      gradingMethod: ScormGradeMethod.AVERAGE,
       grade: 85,
       attempts: [
         createMockAttemptSummary({ attemptNumber: 1, score: 80 }),
@@ -503,7 +481,7 @@ describe('ScormReportCard - Score and Grade Display', () => {
 
   it('should display grade based on first attempt grading method', async () => {
     const mockReport = createMockReport({
-      gradingMethod: 'first',
+      gradingMethod: ScormGradeMethod.HIGHEST,
       grade: 75,
       attempts: [
         createMockAttemptSummary({ attemptNumber: 1, score: 75 }),
@@ -526,7 +504,7 @@ describe('ScormReportCard - Score and Grade Display', () => {
 
   it('should display grade based on last attempt grading method', async () => {
     const mockReport = createMockReport({
-      gradingMethod: 'last',
+      gradingMethod: ScormGradeMethod.AVERAGE,
       grade: 88,
       attempts: [
         createMockAttemptSummary({ attemptNumber: 1, score: 70 }),
@@ -623,7 +601,7 @@ describe('ScormReportCard - Completion and Time Tracking', () => {
 
   it('should display total time spent formatted as hours:minutes:seconds', async () => {
     const mockReport = createMockReport({
-      totalTimeSpent: 3665, // 1 hour, 1 minute, 5 seconds
+      totalTimeSpent: '01:01:05', // 1 hour, 1 minute, 5 seconds
     });
 
     vi.mocked(fetchAttemptReport).mockResolvedValue(mockReport);
@@ -641,7 +619,7 @@ describe('ScormReportCard - Completion and Time Tracking', () => {
 
   it('should display time spent in minutes and seconds for short durations', async () => {
     const mockReport = createMockReport({
-      totalTimeSpent: 125, // 2 minutes, 5 seconds
+      totalTimeSpent: '00:02:05', // 2 minutes, 5 seconds
     });
 
     vi.mocked(fetchAttemptReport).mockResolvedValue(mockReport);
@@ -659,7 +637,7 @@ describe('ScormReportCard - Completion and Time Tracking', () => {
 
   it('should handle zero time spent gracefully', async () => {
     const mockReport = createMockReport({
-      totalTimeSpent: 0,
+      totalTimeSpent: '00:00:00',
     });
 
     vi.mocked(fetchAttemptReport).mockResolvedValue(mockReport);
@@ -686,9 +664,9 @@ describe('ScormReportCard - Attempt History Table', () => {
     const mockReport = createMockReport({
       currentAttempt: 1,
       attempts: [
-        createMockAttemptSummary({ attemptNumber: 1, score: 75, status: 'completed' }),
-        createMockAttemptSummary({ attemptNumber: 2, score: 85, status: 'completed' }),
-        createMockAttemptSummary({ attemptNumber: 3, score: 90, status: 'passed' }),
+        createMockAttemptSummary({ attemptNumber: 1, score: 75, status: ScormStatus.COMPLETED }),
+        createMockAttemptSummary({ attemptNumber: 2, score: 85, status: ScormStatus.COMPLETED }),
+        createMockAttemptSummary({ attemptNumber: 3, score: 90, status: ScormStatus.PASSED }),
       ],
     });
 
@@ -875,10 +853,10 @@ describe('ScormReportCard - Warning and Error Alerts', () => {
 
   it('should display warning alert with appropriate message for failed attempts', async () => {
     const mockReport = createMockReport({
-      status: 'failed',
+      status: ScormStatus.FAILED,
       attempts: [
         createMockAttemptSummary({
-          status: 'failed',
+          status: ScormStatus.FAILED,
           score: 40,
         }),
       ],
@@ -901,10 +879,10 @@ describe('ScormReportCard - Warning and Error Alerts', () => {
 
   it('should not display warning alert for completed attempts', async () => {
     const mockReport = createMockReport({
-      status: 'completed',
+      status: ScormStatus.COMPLETED,
       attempts: [
         createMockAttemptSummary({
-          status: 'completed',
+          status: ScormStatus.COMPLETED,
         }),
       ],
     });
@@ -926,10 +904,10 @@ describe('ScormReportCard - Warning and Error Alerts', () => {
 
   it('should not display warning alert for passed attempts', async () => {
     const mockReport = createMockReport({
-      status: 'passed',
+      status: ScormStatus.PASSED,
       attempts: [
         createMockAttemptSummary({
-          status: 'passed',
+          status: ScormStatus.PASSED,
           score: 95,
         }),
       ],
@@ -1547,7 +1525,7 @@ describe('ScormReportCard - Edge Cases and Data Validation', () => {
         createMockAttemptSummary({ score: 80 }),
         createMockAttemptSummary({ score: 90 }),
       ],
-      gradingMethod: 'average',
+      gradingMethod: ScormGradeMethod.AVERAGE,
     });
 
     vi.mocked(fetchAttemptReport).mockResolvedValue(mockReport);
@@ -1564,7 +1542,7 @@ describe('ScormReportCard - Edge Cases and Data Validation', () => {
 
   it('should handle very long time durations correctly', async () => {
     const mockReport = createMockReport({
-      totalTimeSpent: 36000, // 10 hours
+      totalTimeSpent: '10:00:00', // 10 hours
     });
 
     vi.mocked(fetchAttemptReport).mockResolvedValue(mockReport);

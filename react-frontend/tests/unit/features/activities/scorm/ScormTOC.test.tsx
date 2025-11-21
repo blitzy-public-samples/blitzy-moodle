@@ -27,7 +27,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, _fireEvent, _within, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -984,8 +984,6 @@ describe('ScormTOC Component', () => {
     it('should expand and collapse sections on click', async () => {
       const nestedToc = createNestedTocStructure();
       setupSuccessfulTocMock(nestedToc);
-
-      const _user = userEvent.setup();
 
       renderWithProviders(<ScormTOC scormId={1} />);
 

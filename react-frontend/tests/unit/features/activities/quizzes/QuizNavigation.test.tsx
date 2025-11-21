@@ -133,16 +133,16 @@ describe('QuizNavigation Component', () => {
 
     it('should apply success color to answered questions', () => {
       const questions = createMockQuestions(10);
-      questions[0].answered = true;
-      questions[0].isCurrentQuestion = false;
-      questions[3].answered = true;
-      questions[3].isCurrentQuestion = false;
+      questions[0]!.answered = true;
+      questions[0]!.isCurrentQuestion = false;
+      questions[3]!.answered = true;
+      questions[3]!.isCurrentQuestion = false;
 
       const props = createDefaultProps({ questions, currentQuestionIndex: 1 });
       const { container } = render(<QuizNavigation {...props} />);
 
-      const answeredButton1 = container.querySelector('[data-question-index="0"]');
-      const answeredButton2 = container.querySelector('[data-question-index="3"]');
+      const answeredButton1 = container.querySelector('[data-question-index="0"]')!;
+      const answeredButton2 = container.querySelector('[data-question-index="3"]')!;
 
       expect(answeredButton1).toHaveClass('MuiButton-outlinedSuccess');
       expect(answeredButton2).toHaveClass('MuiButton-outlinedSuccess');
@@ -150,25 +150,25 @@ describe('QuizNavigation Component', () => {
 
     it('should apply warning color to flagged questions', () => {
       const questions = createMockQuestions(10);
-      questions[2].flagged = true;
-      questions[2].isCurrentQuestion = false;
+      questions[2]!.flagged = true;
+      questions[2]!.isCurrentQuestion = false;
 
       const props = createDefaultProps({ questions, currentQuestionIndex: 0 });
       const { container } = render(<QuizNavigation {...props} />);
 
-      const flaggedButton = container.querySelector('[data-question-index="2"]');
+      const flaggedButton = container.querySelector('[data-question-index="2"]')!;
       expect(flaggedButton).toHaveClass('MuiButton-outlinedWarning');
     });
 
     it('should prioritize current question color over answered color', () => {
       const questions = createMockQuestions(10);
-      questions[2].answered = true;
-      questions[2].isCurrentQuestion = false;
+      questions[2]!.answered = true;
+      questions[2]!.isCurrentQuestion = false;
 
       const props = createDefaultProps({ questions, currentQuestionIndex: 2 });
       const { container } = render(<QuizNavigation {...props} />);
 
-      const currentButton = container.querySelector('[data-question-index="2"]');
+      const currentButton = container.querySelector('[data-question-index="2"]')!;
       // Current question should be blue (primary), not green (success)
       expect(currentButton).toHaveClass('MuiButton-containedPrimary');
       expect(currentButton).not.toHaveClass('MuiButton-success');
@@ -176,50 +176,50 @@ describe('QuizNavigation Component', () => {
 
     it('should prioritize answered color over flagged color', () => {
       const questions = createMockQuestions(10);
-      questions[3].answered = true;
-      questions[3].flagged = true;
-      questions[3].isCurrentQuestion = false;
+      questions[3]!.answered = true;
+      questions[3]!.flagged = true;
+      questions[3]!.isCurrentQuestion = false;
 
       const props = createDefaultProps({ questions, currentQuestionIndex: 0 });
       const { container } = render(<QuizNavigation {...props} />);
 
-      const button = container.querySelector('[data-question-index="3"]');
+      const button = container.querySelector('[data-question-index="3"]')!;
       // Answered takes priority over flagged
       expect(button).toHaveClass('MuiButton-outlinedSuccess');
     });
 
     it('should apply default color to unanswered, unflagged questions', () => {
       const questions = createMockQuestions(10);
-      questions[5].answered = false;
-      questions[5].flagged = false;
-      questions[5].isCurrentQuestion = false;
+      questions[5]!.answered = false;
+      questions[5]!.flagged = false;
+      questions[5]!.isCurrentQuestion = false;
 
       const props = createDefaultProps({ questions, currentQuestionIndex: 0 });
       const { container } = render(<QuizNavigation {...props} />);
 
-      const button = container.querySelector('[data-question-index="5"]');
+      const button = container.querySelector('[data-question-index="5"]')!;
       expect(button).toHaveClass('MuiButton-outlined');
       expect(button).toHaveClass('MuiButton-colorInherit');
     });
 
     it('should display check icon on answered questions', () => {
       const questions = createMockQuestions(10);
-      questions[4].answered = true;
+      questions[4]!.answered = true;
 
       const props = createDefaultProps({ questions });
       const { container } = render(<QuizNavigation {...props} />);
 
       // Check for CheckCircleIcon within the button
-      const button = container.querySelector('[data-question-index="4"]');
-      const checkIcon = button?.querySelector('.MuiSvgIcon-root');
+      const button = container.querySelector('[data-question-index="4"]')!;
+      const checkIcon = button.querySelector('.MuiSvgIcon-root');
       expect(checkIcon).toBeInTheDocument();
     });
 
     it('should handle all questions flagged edge case', () => {
       const questions = createMockQuestions(10);
       questions.forEach((q, _index) => {
-        q.flagged = true;
-        q.isCurrentQuestion = false;
+        q!.flagged = true;
+        q!.isCurrentQuestion = false;
       });
 
       const props = createDefaultProps({ questions, currentQuestionIndex: 0 });
@@ -227,7 +227,7 @@ describe('QuizNavigation Component', () => {
 
       // Current question should still be primary colored
       const { container } = render(<QuizNavigation {...props} />);
-      const currentButton = container.querySelector('[data-question-index="0"]');
+      const currentButton = container.querySelector('[data-question-index="0"]')!;
       expect(currentButton).toHaveClass('MuiButton-containedPrimary');
     });
   });
@@ -272,12 +272,12 @@ describe('QuizNavigation Component', () => {
     it('should not call onQuestionClick for disabled buttons', async () => {
       const mockOnQuestionClick = vi.fn();
       const questions = createMockQuestions(10);
-      questions[7].canNavigate = false;
+      questions[7]!.canNavigate = false;
 
       const props = createDefaultProps({
         questions,
         onQuestionClick: mockOnQuestionClick,
-        navigationMode: 'seq',
+        navigationMode: 'sequential',
         isSequential: true,
       });
 
@@ -297,7 +297,7 @@ describe('QuizNavigation Component', () => {
       const props = createDefaultProps({ currentQuestionIndex: 3 });
       const { container } = render(<QuizNavigation {...props} />);
 
-      const currentButton = container.querySelector('[data-question-index="3"]');
+      const currentButton = container.querySelector('[data-question-index="3"]')!;
       expect(currentButton).toHaveClass('MuiButton-contained');
     });
 
@@ -305,7 +305,7 @@ describe('QuizNavigation Component', () => {
       const props = createDefaultProps({ currentQuestionIndex: 3 });
       const { container } = render(<QuizNavigation {...props} />);
 
-      const nonCurrentButton = container.querySelector('[data-question-index="5"]');
+      const nonCurrentButton = container.querySelector('[data-question-index="5"]')!;
       expect(nonCurrentButton).toHaveClass('MuiButton-outlined');
       expect(nonCurrentButton).not.toHaveClass('MuiButton-contained');
     });
@@ -314,14 +314,14 @@ describe('QuizNavigation Component', () => {
       const props = createDefaultProps({ currentQuestionIndex: 2 });
       const { container, rerender } = render(<QuizNavigation {...props} />);
 
-      const currentButton = container.querySelector('[data-question-index="2"]');
+      const currentButton = container.querySelector('[data-question-index="2"]')!;
       expect(currentButton).toHaveClass('MuiButton-contained');
 
       // Change current question
       rerender(<QuizNavigation {...props} currentQuestionIndex={5} />);
 
-      const newCurrentButton = container.querySelector('[data-question-index="5"]');
-      const previousButton = container.querySelector('[data-question-index="2"]');
+      const newCurrentButton = container.querySelector('[data-question-index="5"]')!;
+      const previousButton = container.querySelector('[data-question-index="2"]')!;
 
       expect(newCurrentButton).toHaveClass('MuiButton-contained');
       expect(previousButton).toHaveClass('MuiButton-outlined');
@@ -332,7 +332,6 @@ describe('QuizNavigation Component', () => {
       const { container } = render(<QuizNavigation {...props} />);
 
       const currentButton = container.querySelector('[data-question-index="4"]') as HTMLElement;
-      const _styles = window.getComputedStyle(currentButton);
 
       // Font weight should be 600 for current question
       expect(currentButton).toHaveStyle({ fontWeight: 600 });
@@ -342,10 +341,10 @@ describe('QuizNavigation Component', () => {
       const props = createDefaultProps({ currentQuestionIndex: 6 });
       const { container } = render(<QuizNavigation {...props} />);
 
-      const currentButton = container.querySelector('[data-question-index="6"]');
+      const currentButton = container.querySelector('[data-question-index="6"]')!;
       expect(currentButton).toHaveAttribute('aria-current', 'true');
 
-      const otherButton = container.querySelector('[data-question-index="3"]');
+      const otherButton = container.querySelector('[data-question-index="3"]')!;
       expect(otherButton).not.toHaveAttribute('aria-current');
     });
   });
@@ -355,13 +354,13 @@ describe('QuizNavigation Component', () => {
       const props = createDefaultProps();
       const { container } = render(<QuizNavigation {...props} />);
 
-      const progressBar = container.querySelector('.MuiLinearProgress-root');
+      const progressBar = container.querySelector('.MuiLinearProgress-root')!;
       expect(progressBar).toBeInTheDocument();
     });
 
     it('should show 0% progress when no questions answered', () => {
       const questions = createMockQuestions(10);
-      questions.forEach((q) => (q.answered = false));
+      questions.forEach((q) => (q!.answered = false));
 
       const props = createDefaultProps({ questions });
       const { container } = render(<QuizNavigation {...props} />);
@@ -373,7 +372,7 @@ describe('QuizNavigation Component', () => {
 
     it('should show 50% progress when half questions answered', () => {
       const questions = createMockQuestions(10);
-      questions.slice(0, 5).forEach((q) => (q.answered = true));
+      questions.slice(0, 5).forEach((q) => (q!.answered = true));
 
       const props = createDefaultProps({ questions });
       render(<QuizNavigation {...props} />);
@@ -384,7 +383,7 @@ describe('QuizNavigation Component', () => {
 
     it('should show 100% progress when all questions answered', () => {
       const questions = createMockQuestions(10);
-      questions.forEach((q) => (q.answered = true));
+      questions.forEach((q) => (q!.answered = true));
 
       const props = createDefaultProps({ questions });
       render(<QuizNavigation {...props} />);
@@ -410,7 +409,7 @@ describe('QuizNavigation Component', () => {
 
     it('should calculate progress percentage correctly', () => {
       const questions = createMockQuestions(15);
-      questions.slice(0, 10).forEach((q) => (q.answered = true));
+      questions.slice(0, 10).forEach((q) => (q!.answered = true));
 
       const props = createDefaultProps({ questions });
       render(<QuizNavigation {...props} />);
@@ -423,9 +422,9 @@ describe('QuizNavigation Component', () => {
   describe('Summary Statistics', () => {
     it('should display correct answered count', () => {
       const questions = createMockQuestions(10);
-      questions[0].answered = true;
-      questions[1].answered = true;
-      questions[2].answered = true;
+      questions[0]!.answered = true;
+      questions[1]!.answered = true;
+      questions[2]!.answered = true;
 
       const props = createDefaultProps({ questions });
       render(<QuizNavigation {...props} />);
@@ -435,8 +434,8 @@ describe('QuizNavigation Component', () => {
 
     it('should display flagged count when questions are flagged', () => {
       const questions = createMockQuestions(10);
-      questions[3].flagged = true;
-      questions[5].flagged = true;
+      questions[3]!.flagged = true;
+      questions[5]!.flagged = true;
 
       const props = createDefaultProps({ questions });
       render(<QuizNavigation {...props} />);
@@ -446,7 +445,7 @@ describe('QuizNavigation Component', () => {
 
     it('should not display flagged count when no questions flagged', () => {
       const questions = createMockQuestions(10);
-      questions.forEach((q) => (q.flagged = false));
+      questions.forEach((q) => (q!.flagged = false));
 
       const props = createDefaultProps({ questions });
       render(<QuizNavigation {...props} />);
@@ -466,7 +465,7 @@ describe('QuizNavigation Component', () => {
       // Update to have 5 answered and 2 flagged
       // Create new array to trigger useMemo re-evaluation
       const updatedQuestions = questions.map((q, idx) => ({
-        ...q,
+        ...q!,
         answered: idx < 5,
         flagged: idx === 6 || idx === 7,
       }));
@@ -522,7 +521,7 @@ describe('QuizNavigation Component', () => {
 
     it('should show filled flag icon when question is flagged', () => {
       const questions = createMockQuestions(10);
-      questions[3].flagged = true;
+      questions[3]!.flagged = true;
 
       const props = createDefaultProps({ questions });
       render(<QuizNavigation {...props} />);
@@ -533,7 +532,7 @@ describe('QuizNavigation Component', () => {
 
     it('should show outlined flag icon when question is not flagged', () => {
       const questions = createMockQuestions(10);
-      questions[3].flagged = false;
+      questions[3]!.flagged = false;
 
       const props = createDefaultProps({ questions });
       render(<QuizNavigation {...props} />);
@@ -546,15 +545,15 @@ describe('QuizNavigation Component', () => {
   describe('Sequential Navigation Mode', () => {
     it('should allow navigation only to accessible questions in sequential mode', () => {
       const questions = createMockQuestions(10);
-      questions[0].canNavigate = true;
-      questions[1].canNavigate = true;
-      questions[2].canNavigate = true;
-      questions[3].canNavigate = false;
-      questions[4].canNavigate = false;
+      questions[0]!.canNavigate = true;
+      questions[1]!.canNavigate = true;
+      questions[2]!.canNavigate = true;
+      questions[3]!.canNavigate = false;
+      questions[4]!.canNavigate = false;
 
       const props = createDefaultProps({
         questions,
-        navigationMode: 'seq',
+        navigationMode: 'sequential',
         isSequential: true,
       });
 
@@ -569,7 +568,7 @@ describe('QuizNavigation Component', () => {
 
     it('should display sequential navigation info message', () => {
       const props = createDefaultProps({
-        navigationMode: 'seq',
+        navigationMode: 'sequential',
         isSequential: true,
       });
 
@@ -602,7 +601,7 @@ describe('QuizNavigation Component', () => {
       // All buttons should be enabled
       props.questions.forEach((question) => {
         const button = screen.getByRole('button', {
-          name: new RegExp(`Navigate to question ${question.number}\\b`, 'i'),
+          name: new RegExp(`Navigate to question ${question!.number}\\b`, 'i'),
         });
         expect(button).not.toBeDisabled();
       });
@@ -733,7 +732,7 @@ describe('QuizNavigation Component', () => {
     it('should display tooltip on hover with question status', async () => {
       const user = userEvent.setup();
       const questions = createMockQuestions(10);
-      questions[2].answered = true;
+      questions[2]!.answered = true;
 
       const props = createDefaultProps({ questions });
       render(<QuizNavigation {...props} />);
@@ -750,7 +749,7 @@ describe('QuizNavigation Component', () => {
     it('should show "Not answered" status in tooltip for unanswered questions', async () => {
       const user = userEvent.setup();
       const questions = createMockQuestions(10);
-      questions[4].answered = false;
+      questions[4]!.answered = false;
 
       const props = createDefaultProps({ questions });
       render(<QuizNavigation {...props} />);
@@ -767,7 +766,7 @@ describe('QuizNavigation Component', () => {
     it('should show "Flagged for review" status in tooltip for flagged questions', async () => {
       const user = userEvent.setup();
       const questions = createMockQuestions(10);
-      questions[6].flagged = true;
+      questions[6]!.flagged = true;
 
       const props = createDefaultProps({ questions });
       render(<QuizNavigation {...props} />);
@@ -807,9 +806,9 @@ describe('QuizNavigation Component', () => {
     it('should display current progress in confirmation modal', async () => {
       const user = userEvent.setup();
       const questions = createMockQuestions(10);
-      questions[0].answered = true;
-      questions[1].answered = true;
-      questions[2].answered = true;
+      questions[0]!.answered = true;
+      questions[1]!.answered = true;
+      questions[2]!.answered = true;
 
       const props = createDefaultProps({ questions });
       render(<QuizNavigation {...props} />);
@@ -825,7 +824,7 @@ describe('QuizNavigation Component', () => {
     it('should show warning when not all questions answered', async () => {
       const user = userEvent.setup();
       const questions = createMockQuestions(10);
-      questions[0].answered = true;
+      questions[0]!.answered = true;
 
       const props = createDefaultProps({ questions });
       render(<QuizNavigation {...props} />);
@@ -885,9 +884,9 @@ describe('QuizNavigation Component', () => {
     it('should display flagged count in confirmation modal', async () => {
       const user = userEvent.setup();
       const questions = createMockQuestions(10);
-      questions[2].flagged = true;
-      questions[5].flagged = true;
-      questions[7].flagged = true;
+      questions[2]!.flagged = true;
+      questions[5]!.flagged = true;
+      questions[7]!.flagged = true;
 
       const props = createDefaultProps({ questions });
       render(<QuizNavigation {...props} />);
@@ -906,7 +905,7 @@ describe('QuizNavigation Component', () => {
       const props = createDefaultProps();
       const { container } = render(<QuizNavigation {...props} />);
 
-      const navContainer = container.querySelector('[class*="MuiBox"]');
+      const navContainer = container.querySelector('[class*="MuiBox"]')!;
       expect(navContainer).toHaveStyle({ position: 'sticky' });
     });
 
@@ -914,7 +913,7 @@ describe('QuizNavigation Component', () => {
       const props = createDefaultProps();
       const { container } = render(<QuizNavigation {...props} />);
 
-      const navContainer = container.querySelector('[class*="MuiBox"]');
+      const navContainer = container.querySelector('[class*="MuiBox"]')!;
       expect(navContainer).toHaveStyle({ padding: '16px' });
     });
   });
@@ -923,7 +922,7 @@ describe('QuizNavigation Component', () => {
     it('should render color legend', () => {
       const props = createDefaultProps();
       // Add a flagged question so the "Flagged for review" legend item displays
-      props.questions[0].flagged = true;
+      props.questions[0]!.flagged = true;
       render(<QuizNavigation {...props} />);
 
       expect(screen.getByText(/legend:/i)).toBeInTheDocument();
@@ -945,7 +944,7 @@ describe('QuizNavigation Component', () => {
 
     it('should handle all questions answered', () => {
       const questions = createMockQuestions(10);
-      questions.forEach((q) => (q.answered = true));
+      questions.forEach((q) => (q!.answered = true));
 
       const props = createDefaultProps({ questions });
       render(<QuizNavigation {...props} />);
@@ -1002,7 +1001,7 @@ describe('QuizNavigation Component', () => {
       // Update some question states
       // Create new array to trigger useMemo re-evaluation
       const updatedQuestions = questions.map((q, idx) => ({
-        ...q,
+        ...q!,
         answered: idx === 0 || idx === 1,
         flagged: idx === 5,
       }));
@@ -1017,8 +1016,8 @@ describe('QuizNavigation Component', () => {
   describe('Accessibility', () => {
     it('should have proper ARIA labels on question buttons', () => {
       const questions = createMockQuestions(5);
-      questions[1].answered = true;
-      questions[2].flagged = true;
+      questions[1]!.answered = true;
+      questions[2]!.flagged = true;
 
       const props = createDefaultProps({ questions });
       render(<QuizNavigation {...props} />);
@@ -1030,7 +1029,7 @@ describe('QuizNavigation Component', () => {
 
     it('should have proper ARIA labels on flag buttons', () => {
       const questions = createMockQuestions(5);
-      questions[1].flagged = true;
+      questions[1]!.flagged = true;
 
       const props = createDefaultProps({ questions });
       render(<QuizNavigation {...props} />);

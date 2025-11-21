@@ -543,7 +543,6 @@ describe('Redux Store Configuration', () => {
     it('should maintain state immutability with Immer', () => {
       // Get initial state reference
       const stateBefore = store.getState();
-      const _authBefore = stateBefore.auth;
       const sidebarBefore = stateBefore.sidebar;
 
       // Dispatch action that modifies state

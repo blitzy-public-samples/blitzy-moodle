@@ -25,17 +25,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function _hasProperty<K extends string>(
-  obj: unknown,
-  key: K
-): obj is Record<K, unknown> {
-  return isRecord(obj) && key in obj;
-}
-
-function _isArrayOf<T>(value: unknown, itemGuard: (item: unknown) => item is T): value is T[] {
-  return Array.isArray(value) && value.every(itemGuard);
-}
-
 /**
  * Helper function to create consistent matcher messages
  */
@@ -677,10 +666,10 @@ expect.extend({
    * expect(submission).toHaveFeedback();
    */
   toHaveFeedback(received: unknown) {
-    const hasFeedback = isRecord(received) && (
+    const hasFeedback: boolean = isRecord(received) && (
       ('feedback' in received && typeof received.feedback === 'string' && received.feedback.length > 0) ||
-      ('feedbackcomment' in received && received.feedbackcomment) ||
-      ('teachercomment' in received && received.teachercomment)
+      ('feedbackcomment' in received && typeof received.feedbackcomment === 'string' && received.feedbackcomment.length > 0) ||
+      ('teachercomment' in received && typeof received.teachercomment === 'string' && received.teachercomment.length > 0)
     );
 
     return {

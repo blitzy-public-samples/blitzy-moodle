@@ -67,11 +67,8 @@ export class AdminUserPage {
   private readonly searchInput: Locator;
 
   // User row actions (scoped per row in methods)
-  private readonly userRow: Locator;
 
   // Bulk action controls
-  private readonly bulkActionSelect: Locator;
-  private readonly bulkActionButton: Locator;
 
   // User form locators
   private readonly userForm: Locator;
@@ -82,22 +79,18 @@ export class AdminUserPage {
   private readonly lastnameInput: Locator;
   private readonly authMethodSelect: Locator;
   private readonly saveButton: Locator;
-  private readonly cancelButton: Locator;
 
   // Edit form locators
-  private readonly editDialog: Locator;
   private readonly editUsernameInput: Locator;
   private readonly editFirstnameInput: Locator;
   private readonly editLastnameInput: Locator;
   private readonly editEmailInput: Locator;
-  private readonly editSaveButton: Locator;
 
   // Confirmation dialog
   private readonly confirmationDialog: Locator;
   private readonly confirmDeleteButton: Locator;
   
   // Additional UI elements
-  private readonly tablePagination: Locator;
   private readonly selectAllCheckbox: Locator;
   private readonly bulkSuspendButton: Locator;
   private readonly bulkDeleteButton: Locator;
@@ -241,21 +234,13 @@ export class AdminUserPage {
       const cells = await row.locator('td').all();
       
       // Use innerText instead of textContent for better text extraction
-      const username = cells.length > 1 ? (await cells[1].innerText()).trim() : '';
-      const fullname = cells.length > 2 ? (await cells[2].innerText()).trim() : '';
-      const email = cells.length > 3 ? (await cells[3].innerText()).trim() : '';
-      const auth = cells.length > 4 ? (await cells[4].innerText()).trim() : '';
+      const username = cells.length > 1 ? (await cells[1]!.innerText()).trim() : '';
+      const fullname = cells.length > 2 ? (await cells[2]!.innerText()).trim() : '';
+      const email = cells.length > 3 ? (await cells[3]!.innerText()).trim() : '';
+      const auth = cells.length > 4 ? (await cells[4]!.innerText()).trim() : '';
       
       // Extract status from the Chip in the Status cell (column 5)
       // The Chip contains text like "Active", "Suspended", or "Deleted"
-      let _statusText = '';
-      if (cells.length > 5) {
-        const statusCell = cells[5];
-        const chipLocator = statusCell.locator('.MuiChip-label');
-        if (await chipLocator.count() > 0) {
-          _statusText = (await chipLocator.innerText()).trim();
-        }
-      }
       
       // Parse fullname into firstname and lastname
       const nameParts = fullname.split(' ').filter(part => part.length > 0);

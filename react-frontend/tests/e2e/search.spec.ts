@@ -261,7 +261,7 @@ test.describe('Global Search Functionality', () => {
     expect(courseResults.length).toBeGreaterThan(0);
     
     // Click first course result
-    await searchPage.clickResult(courseResults[0].id);
+    await searchPage.clickResult(courseResults[0]!.id);
     
     // Verify navigation to course page
     await page.waitForLoadState('networkidle');
@@ -297,7 +297,7 @@ test.describe('Global Search Functionality', () => {
     expect(suggestions.length).toBeGreaterThan(0);
     
     // Verify suggestions contain matching text
-    const firstSuggestion = suggestions[0];
+    const firstSuggestion = suggestions[0]!;
     expect(firstSuggestion.text.toLowerCase()).toContain(partialQuery.toLowerCase());
     
     // Select a suggestion

@@ -106,7 +106,7 @@ describe('AvatarUpload Component', () => {
         if (this.onload) {
           this.onload({ target: { result: 'data:image/jpeg;base64,fakebase64' } });
         }
-      }),
+      }) as ReturnType<typeof vi.fn>,
       result: 'data:image/jpeg;base64,fakebase64',
       onload: null,
       onerror: null,

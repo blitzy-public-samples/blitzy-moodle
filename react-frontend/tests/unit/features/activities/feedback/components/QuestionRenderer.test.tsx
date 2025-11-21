@@ -23,7 +23,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, _within } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { axe, toHaveNoViolations } from 'jest-axe';
@@ -32,7 +32,6 @@ import _React from 'react';
 import { QuestionRenderer } from '@/features/activities/feedback/components/QuestionRenderer';
 import type { QuestionRendererProps } from '@/features/activities/feedback/components/QuestionRenderer';
 import { FeedbackQuestionType } from '@/features/activities/feedback/types';
-import type { _FeedbackItemPresentation } from '@/features/activities/feedback/types';
 
 // Extend Vitest matchers with jest-axe
 expect.extend(toHaveNoViolations);

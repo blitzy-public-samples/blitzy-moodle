@@ -72,7 +72,7 @@ const createTestQueryClient = () =>
     defaultOptions: {
       queries: {
         retry: false,
-        cacheTime: 0,
+        gcTime: 0, // React Query v5: renamed from cacheTime
       },
       mutations: {
         retry: false,
@@ -131,12 +131,11 @@ vi.mock('@/components/feedback/Alert', () => ({
  * Mock Modal component
  */
 vi.mock('@/components/feedback/Modal', () => ({
-  Modal: ({ open, title, children, actions, _onClose }: { 
+  Modal: ({ open, title, children, actions }: { 
     open: boolean; 
     title: string; 
     children: React.ReactNode; 
-    actions?: Array<{ onClick: () => void; disabled?: boolean; color?: string; label: string }>; 
-    _onClose: () => void 
+    actions?: Array<{ onClick: () => void; disabled?: boolean; color?: string; label: string }>
   }) => {
     if (!open) {return null;}
     return (
@@ -601,7 +600,7 @@ describe('ResponseList Component', () => {
       );
 
       const viewButtons = screen.getAllByLabelText(/view details for response/i);
-      await user.click(viewButtons[0]);
+      await user.click(viewButtons[0]!);
 
       expect(mockOnViewDetails).toHaveBeenCalledWith(1);
     });
@@ -734,7 +733,7 @@ describe('ResponseList Component', () => {
       );
 
       const checkboxes = screen.getAllByRole('checkbox');
-      const firstRowCheckbox = checkboxes[1]; // Skip header checkbox
+      const firstRowCheckbox = checkboxes[1]!; // Skip header checkbox
 
       await user.click(firstRowCheckbox);
 
@@ -757,7 +756,7 @@ describe('ResponseList Component', () => {
       );
 
       const checkboxes = screen.getAllByRole('checkbox');
-      const headerCheckbox = checkboxes[0];
+      const headerCheckbox = checkboxes[0]!;
 
       await user.click(headerCheckbox);
 
@@ -784,10 +783,10 @@ describe('ResponseList Component', () => {
       expect(checkboxes.length).toBeGreaterThan(0);
       
       // Select first data row checkbox (index 1, after header checkbox at index 0)
-      await user.click(checkboxes[1]);
+      await user.click(checkboxes[1]!);
       
       // Select second data row checkbox (index 2)
-      await user.click(checkboxes[2]);
+      await user.click(checkboxes[2]!);
 
       // Wait for selected count to update
       // Note: There may be multiple elements showing the count (custom UI + MUI DataGrid's built-in)
@@ -816,7 +815,7 @@ describe('ResponseList Component', () => {
       );
 
       const deleteButtons = screen.getAllByLabelText(/delete response/i);
-      await user.click(deleteButtons[0]);
+      await user.click(deleteButtons[0]!);
 
       await waitFor(() => {
         expect(screen.getByRole('dialog')).toBeInTheDocument();
@@ -837,7 +836,7 @@ describe('ResponseList Component', () => {
       );
 
       const deleteButtons = screen.getAllByLabelText(/delete response/i);
-      await user.click(deleteButtons[0]);
+      await user.click(deleteButtons[0]!);
 
       await waitFor(() => {
         expect(screen.getByText(/are you sure you want to delete/i)).toBeInTheDocument();
@@ -858,7 +857,7 @@ describe('ResponseList Component', () => {
       );
 
       const deleteButtons = screen.getAllByLabelText(/delete response/i);
-      await user.click(deleteButtons[0]);
+      await user.click(deleteButtons[0]!);
 
       await waitFor(() => {
         const dialog = screen.getByRole('dialog');
@@ -880,7 +879,7 @@ describe('ResponseList Component', () => {
       );
 
       const deleteButtons = screen.getAllByLabelText(/delete response/i);
-      await user.click(deleteButtons[0]);
+      await user.click(deleteButtons[0]!);
 
       await waitFor(() => {
         expect(screen.getByRole('dialog')).toBeInTheDocument();
@@ -909,7 +908,7 @@ describe('ResponseList Component', () => {
       );
 
       const deleteButtons = screen.getAllByLabelText(/delete response/i);
-      await user.click(deleteButtons[0]);
+      await user.click(deleteButtons[0]!);
 
       await waitFor(() => {
         expect(screen.getByRole('dialog')).toBeInTheDocument();
@@ -942,7 +941,7 @@ describe('ResponseList Component', () => {
       );
 
       const checkboxes = screen.getAllByRole('checkbox');
-      await user.click(checkboxes[1]);
+      await user.click(checkboxes[1]!);
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /delete selected/i })).toBeInTheDocument();
@@ -976,9 +975,9 @@ describe('ResponseList Component', () => {
 
       // Select multiple rows
       const checkboxes = screen.getAllByRole('checkbox');
-      await user.click(checkboxes[1]);
-      await user.click(checkboxes[2]);
-      await user.click(checkboxes[3]);
+      await user.click(checkboxes[1]!);
+      await user.click(checkboxes[2]!);
+      await user.click(checkboxes[3]!);
 
       const bulkDeleteButton = screen.getByRole('button', { name: /delete selected/i });
       await user.click(bulkDeleteButton);
@@ -1001,8 +1000,8 @@ describe('ResponseList Component', () => {
       );
 
       const checkboxes = screen.getAllByRole('checkbox');
-      await user.click(checkboxes[1]);
-      await user.click(checkboxes[2]);
+      await user.click(checkboxes[1]!);
+      await user.click(checkboxes[2]!);
 
       const bulkDeleteButton = screen.getByRole('button', { name: /delete selected/i });
       await user.click(bulkDeleteButton);
@@ -1032,8 +1031,8 @@ describe('ResponseList Component', () => {
       );
 
       const checkboxes = screen.getAllByRole('checkbox');
-      await user.click(checkboxes[1]);
-      await user.click(checkboxes[2]);
+      await user.click(checkboxes[1]!);
+      await user.click(checkboxes[2]!);
 
       const bulkDeleteButton = screen.getByRole('button', { name: /delete selected/i });
       await user.click(bulkDeleteButton);
@@ -1348,7 +1347,7 @@ describe('ResponseList Component', () => {
       );
 
       const deleteButtons = screen.getAllByLabelText(/delete response/i);
-      await user.click(deleteButtons[0]);
+      await user.click(deleteButtons[0]!);
 
       await waitFor(() => {
         const dialog = screen.getByRole('dialog');
@@ -1410,7 +1409,7 @@ describe('ResponseList Component', () => {
 
       // Select first row
       const checkboxes = screen.getAllByRole('checkbox');
-      await user.click(checkboxes[1]);
+      await user.click(checkboxes[1]!);
 
       // Ensure selection is applied before navigating
       await waitFor(() => {
@@ -1453,8 +1452,8 @@ describe('ResponseList Component', () => {
 
       // Select rows
       const checkboxes = screen.getAllByRole('checkbox');
-      await user.click(checkboxes[1]);
-      await user.click(checkboxes[2]);
+      await user.click(checkboxes[1]!);
+      await user.click(checkboxes[2]!);
 
       // Bulk delete
       const bulkDeleteButton = screen.getByRole('button', { name: /delete selected/i });

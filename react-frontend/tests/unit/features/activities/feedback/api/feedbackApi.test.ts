@@ -16,7 +16,7 @@
  * - public/mod/feedback/lib.php: Core feedback functions
  */
 
-import { describe, it, expect, _beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../../../../mocks/server';
 import {
@@ -30,7 +30,6 @@ import {
   saveProgress,
   type FeedbackSubmissionResult,
   type FeedbackStatus,
-  type FeedbackUserResponses,
   type FeedbackResponses,
   type AnalysisOptions,
 } from '@/features/activities/feedback/api/feedbackApi';
@@ -40,6 +39,7 @@ import type {
   FeedbackItem,
   FeedbackAnalysis,
 } from '@/features/activities/feedback/types/feedback.types';
+import { FeedbackQuestionType } from '@/features/activities/feedback/types/feedback.types';
 
 // Mock API base URL
 const API_BASE_URL = '/api/v1';
@@ -73,7 +73,7 @@ const mockFeedbackItems: FeedbackItem[] = [
     name: 'question1',
     label: 'How would you rate this course?',
     presentation: '1|2|3|4|5',
-    typ: 'multichoice',
+    typ: FeedbackQuestionType.MULTICHOICE,
     hasvalue: 1,
     position: 1,
     required: 1,
@@ -88,7 +88,7 @@ const mockFeedbackItems: FeedbackItem[] = [
     name: 'question2',
     label: 'What did you like most about the course?',
     presentation: '',
-    typ: 'textarea',
+    typ: FeedbackQuestionType.TEXTAREA,
     hasvalue: 1,
     position: 2,
     required: 0,
@@ -103,7 +103,7 @@ const mockFeedbackItems: FeedbackItem[] = [
     name: 'question3',
     label: 'Would you recommend this course?',
     presentation: 'Yes####No',
-    typ: 'multichoice',
+    typ: FeedbackQuestionType.MULTICHOICE,
     hasvalue: 1,
     position: 3,
     required: 1,
@@ -121,7 +121,7 @@ const mockFeedbackAnalysis: FeedbackAnalysis = {
     {
       itemId: 1,
       name: 'How would you rate this course?',
-      type: 'multichoice',
+      type: FeedbackQuestionType.MULTICHOICE,
       position: 1,
       hasValue: true,
       responseCount: 45,
@@ -144,7 +144,7 @@ const mockFeedbackAnalysis: FeedbackAnalysis = {
     {
       itemId: 3,
       name: 'Would you recommend this course?',
-      type: 'multichoice',
+      type: FeedbackQuestionType.MULTICHOICE,
       position: 3,
       hasValue: true,
       responseCount: 45,
@@ -363,17 +363,17 @@ describe('Feedback API Client', () => {
       const items = response.data;
 
       // Verify multichoice question
-      expect(items[0].typ).toBe('multichoice');
-      expect(items[0].required).toBe(1);
-      expect(items[0].presentation).toBe('1|2|3|4|5');
+      expect(items[0]!.typ).toBe('multichoice');
+      expect(items[0]!.required).toBe(1);
+      expect(items[0]!.presentation).toBe('1|2|3|4|5');
 
       // Verify textarea question
-      expect(items[1].typ).toBe('textarea');
-      expect(items[1].required).toBe(0);
+      expect(items[1]!.typ).toBe('textarea');
+      expect(items[1]!.required).toBe(0);
 
       // Verify another multichoice
-      expect(items[2].typ).toBe('multichoice');
-      expect(items[2].presentation).toBe('Yes####No');
+      expect(items[2]!.typ).toBe('multichoice');
+      expect(items[2]!.presentation).toBe('Yes####No');
     });
 
     it('should handle empty feedback (no questions)', async () => {
@@ -630,14 +630,14 @@ describe('Feedback API Client', () => {
       expect(analysis.items[0]).toHaveProperty('name');
       expect(analysis.items[0]).toHaveProperty('distribution');
       expect(analysis.items[0]).toHaveProperty('statistics');
-      expect(analysis.items[0].statistics).toHaveProperty('mean');
-      expect(analysis.items[0].statistics).toHaveProperty('mode');
+      expect(analysis.items[0]!.statistics).toHaveProperty('mean');
+      expect(analysis.items[0]!.statistics).toHaveProperty('mode');
 
       // Verify response distribution
-      expect(analysis.items[0].distribution).toHaveLength(5);
-      expect(analysis.items[0].distribution?.[0]).toHaveProperty('value');
-      expect(analysis.items[0].distribution?.[0]).toHaveProperty('count');
-      expect(analysis.items[0].distribution?.[0]).toHaveProperty('percentage');
+      expect(analysis.items[0]!.distribution).toHaveLength(5);
+      expect(analysis.items[0]!.distribution?.[0]).toHaveProperty('value');
+      expect(analysis.items[0]!.distribution?.[0]).toHaveProperty('count');
+      expect(analysis.items[0]!.distribution?.[0]).toHaveProperty('percentage');
     });
 
     it('should validate permission for analysis viewing (teachers/admins only)', async () => {
@@ -761,7 +761,7 @@ describe('Feedback API Client', () => {
       expect(Array.isArray(analysis.items)).toBe(true);
       
       if (analysis.items.length > 0) {
-        const item = analysis.items[0];
+        const item = analysis.items[0]!;
         expect(typeof item.itemId).toBe('number');
         expect(typeof item.name).toBe('string');
         expect(typeof item.type).toBe('string');
@@ -1342,15 +1342,16 @@ describe('Feedback API Client', () => {
     });
 
     // eslint-disable-next-line @typescript-eslint/require-await
-    it('should support staleTime and cacheTime configurations', async () => {
+    it('should support staleTime and gcTime configurations', async () => {
       // These configurations would be in React Query hooks
+      // React Query v5: renamed cacheTime to gcTime
       const cacheConfig = {
         staleTime: 5 * 60 * 1000, // 5 minutes
-        cacheTime: 10 * 60 * 1000, // 10 minutes
+        gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
       };
 
       expect(cacheConfig.staleTime).toBe(300000);
-      expect(cacheConfig.cacheTime).toBe(600000);
+      expect(cacheConfig.gcTime).toBe(600000);
     });
 
     it('should support mutation success callbacks', async () => {

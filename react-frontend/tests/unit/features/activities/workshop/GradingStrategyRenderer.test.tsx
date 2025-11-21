@@ -19,7 +19,7 @@
 
 import type React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, _within, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useForm, FormProvider } from 'react-hook-form';
 import GradingStrategyRenderer, {
@@ -457,7 +457,7 @@ describe('GradingStrategyRenderer', () => {
       renderWithForm({ workshop, dimensions });
 
       const gradeInputs = screen.getAllByRole('spinbutton', { name: /grade/i });
-      const firstGradeInput = gradeInputs[0];
+      const firstGradeInput = gradeInputs[0]!; // Non-null assertion: test ensures element exists
 
       // Enter valid grade
       await user.clear(firstGradeInput);
@@ -475,7 +475,7 @@ describe('GradingStrategyRenderer', () => {
       renderWithForm({ workshop, dimensions });
 
       const gradeInputs = screen.getAllByRole('spinbutton', { name: /grade/i });
-      const firstGradeInput = gradeInputs[0];
+      const firstGradeInput = gradeInputs[0]!; // Non-null assertion: test ensures element exists
 
       // Enter invalid grade exceeding max (30)
       await user.clear(firstGradeInput);
@@ -496,7 +496,7 @@ describe('GradingStrategyRenderer', () => {
       renderWithForm({ workshop, dimensions });
 
       const gradeInputs = screen.getAllByRole('spinbutton', { name: /grade/i });
-      const firstGradeInput = gradeInputs[0];
+      const firstGradeInput = gradeInputs[0]!; // Non-null assertion: test ensures element exists
 
       // Enter negative grade
       await user.clear(firstGradeInput);
@@ -516,7 +516,7 @@ describe('GradingStrategyRenderer', () => {
       renderWithForm({ workshop, dimensions });
 
       const commentFields = screen.getAllByRole('textbox', { name: /comment/i });
-      const firstCommentField = commentFields[0];
+      const firstCommentField = commentFields[0]!; // Non-null assertion: test ensures element exists
 
       await user.type(firstCommentField, 'Excellent content quality with good research.');
 
@@ -574,7 +574,7 @@ describe('GradingStrategyRenderer', () => {
       const selectElements = screen.getAllByRole('combobox', { name: /select level/i });
       
       // Click first selector to open menu
-      await user.click(selectElements[0]);
+      await user.click(selectElements[0]!); // Non-null assertion: test ensures element exists
 
       await waitFor(() => {
         // Verify levels are displayed with correct structure
@@ -594,7 +594,7 @@ describe('GradingStrategyRenderer', () => {
       const selectElements = screen.getAllByRole('combobox', { name: /select level/i });
       
       // Click to open menu
-      await user.click(selectElements[0]);
+      await user.click(selectElements[0]!); // Non-null assertion: test ensures element exists
 
       await waitFor(() => {
         const goodOption = screen.getByText('7.00 points');
@@ -607,7 +607,7 @@ describe('GradingStrategyRenderer', () => {
 
       await waitFor(() => {
         // Selector should now show the selected value
-        expect(selectElements[0]).toHaveTextContent('7.00 points');
+        expect(selectElements[0]!).toHaveTextContent('7.00 points'); // Non-null assertion: test ensures element exists
       });
     });
 
@@ -619,7 +619,7 @@ describe('GradingStrategyRenderer', () => {
 
       const selectElements = screen.getAllByRole('combobox', { name: /select level/i });
       
-      await user.click(selectElements[0]);
+      await user.click(selectElements[0]!); // Non-null assertion: test ensures element exists
 
       await waitFor(() => {
         const options = screen.getAllByRole('option');
@@ -627,10 +627,10 @@ describe('GradingStrategyRenderer', () => {
         const levelOptions = options.filter(opt => !opt.textContent?.includes('Select a performance level'));
         
         // Should be sorted: 10, 7, 4, 0
-        expect(levelOptions[0]).toHaveTextContent('10.00 points');
-        expect(levelOptions[1]).toHaveTextContent('7.00 points');
-        expect(levelOptions[2]).toHaveTextContent('4.00 points');
-        expect(levelOptions[3]).toHaveTextContent('0.00 points');
+        expect(levelOptions[0]!).toHaveTextContent('10.00 points'); // Non-null assertion: test ensures element exists
+        expect(levelOptions[1]!).toHaveTextContent('7.00 points'); // Non-null assertion: test ensures element exists
+        expect(levelOptions[2]!).toHaveTextContent('4.00 points'); // Non-null assertion: test ensures element exists
+        expect(levelOptions[3]!).toHaveTextContent('0.00 points'); // Non-null assertion: test ensures element exists
       });
     });
 
@@ -643,11 +643,11 @@ describe('GradingStrategyRenderer', () => {
       const commentFields = screen.getAllByRole('textbox', { name: /comment/i });
       
       // Try to interact with form without selecting level
-      await user.type(commentFields[0], 'test');
-      await user.clear(commentFields[0]);
+      await user.type(commentFields[0]!, 'test'); // Non-null assertion: test ensures element exists
+      await user.clear(commentFields[0]!); // Non-null assertion: test ensures element exists
       
       const selectElements = screen.getAllByRole('combobox', { name: /select level/i });
-      await user.click(selectElements[0]);
+      await user.click(selectElements[0]!); // Non-null assertion: test ensures element exists
       
       // Close dropdown without selecting
       await user.keyboard('{Escape}');
@@ -757,7 +757,7 @@ describe('GradingStrategyRenderer', () => {
       const feedbackFields = screen.getAllByRole('textbox', { name: /feedback/i });
       
       // Focus and blur without entering text
-      await user.click(feedbackFields[0]);
+      await user.click(feedbackFields[0]!);
       await user.click(document.body);
 
       await waitFor(() => {
@@ -774,7 +774,7 @@ describe('GradingStrategyRenderer', () => {
       const feedbackFields = screen.getAllByRole('textbox', { name: /feedback/i });
       
       // Enter very short comment (less than 10 characters)
-      await user.type(feedbackFields[0], 'Good');
+      await user.type(feedbackFields[0]!, 'Good');
       await user.click(document.body);
 
       await waitFor(() => {
@@ -793,7 +793,7 @@ describe('GradingStrategyRenderer', () => {
       const feedbackFields = screen.getAllByRole('textbox', { name: /feedback/i });
       const detailedComment = 'The submission demonstrates excellent understanding of the topic with well-structured arguments.';
       
-      await user.type(feedbackFields[0], detailedComment);
+      await user.type(feedbackFields[0]!, detailedComment);
 
       await waitFor(() => {
         expect(feedbackFields[0]).toHaveValue(detailedComment);
@@ -875,7 +875,7 @@ describe('GradingStrategyRenderer', () => {
       const radioButtons = screen.getAllByRole('radio');
       
       // Select "No" for first assertion (error not present)
-      const firstNoRadio = radioButtons[0]; // First "No" radio button
+      const firstNoRadio = radioButtons[0]!; // First "No" radio button
       await user.click(firstNoRadio);
 
       await waitFor(() => {
@@ -892,7 +892,7 @@ describe('GradingStrategyRenderer', () => {
       const radioButtons = screen.getAllByRole('radio');
       
       // Select "Yes" for first assertion (error present)
-      const firstYesRadio = radioButtons[1]; // First "Yes" radio button
+      const firstYesRadio = radioButtons[1]!; // First "Yes" radio button
       await user.click(firstYesRadio);
 
       await waitFor(() => {
@@ -940,7 +940,7 @@ describe('GradingStrategyRenderer', () => {
       const commentFields = screen.getAllByRole('textbox', { name: /comment/i });
       const explanation = 'The formatting is mostly correct but margins need adjustment.';
       
-      await user.type(commentFields[0], explanation);
+      await user.type(commentFields[0]!, explanation);
 
       await waitFor(() => {
         expect(commentFields[0]).toHaveValue(explanation);
@@ -955,8 +955,8 @@ describe('GradingStrategyRenderer', () => {
 
       // Try to interact with comment without making radio selection
       const commentFields = screen.getAllByRole('textbox', { name: /comment/i });
-      await user.type(commentFields[0], 'test');
-      await user.clear(commentFields[0]);
+      await user.type(commentFields[0]!, 'test');
+      await user.clear(commentFields[0]!);
       await user.click(document.body);
 
       // Validation may appear when form is submitted or on blur
@@ -1053,7 +1053,7 @@ describe('GradingStrategyRenderer', () => {
       expect(gradeInputs[0]).toHaveValue(null);
 
       // Update value
-      await user.type(gradeInputs[0], '28');
+      await user.type(gradeInputs[0]!, '28');
 
       await waitFor(() => {
         expect(gradeInputs[0]).toHaveValue(28);
@@ -1138,7 +1138,7 @@ describe('GradingStrategyRenderer', () => {
       expect(screen.getByText(/Maximum grade: 30\.00000 points$/)).toBeInTheDocument();
       
       const gradeInputs = screen.getAllByRole('spinbutton', { name: /grade/i });
-      const stepValue = gradeInputs[0].getAttribute('step');
+      const stepValue = gradeInputs[0]!.getAttribute('step');
       // Due to floating-point precision, check if the value is very close to 0.00001
       const stepNumber = stepValue ? parseFloat(stepValue) : 0;
       expect(stepNumber).toBeCloseTo(0.00001, 5);
@@ -1261,8 +1261,8 @@ describe('GradingStrategyRenderer', () => {
       const gradeInputs = screen.getAllByRole('spinbutton', { name: /grade/i });
       
       // Trigger validation error
-      await user.clear(gradeInputs[0]);
-      await user.type(gradeInputs[0], '35');
+      await user.clear(gradeInputs[0]!);
+      await user.type(gradeInputs[0]!, '35');
       await user.click(document.body);
 
       await waitFor(() => {
@@ -1326,7 +1326,7 @@ describe('GradingStrategyRenderer', () => {
       renderWithForm({ workshop, dimensions }, defaultValues);
 
       const gradeInputs = screen.getAllByRole('spinbutton', { name: /grade/i });
-      await user.type(gradeInputs[0], '25');
+      await user.type(gradeInputs[0]!, '25');
 
       await waitFor(() => {
         expect(gradeInputs[0]).toHaveValue(25);

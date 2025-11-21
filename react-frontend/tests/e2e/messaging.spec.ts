@@ -20,9 +20,8 @@
 
 import { test, expect, type Page } from '@playwright/test';
 import { MessagingPage } from './pages/MessagingPage';
-import { login, logout, isAuthenticated, _getAuthToken, _clearAuthenticationState } from './utils/auth';
+import { login, logout, isAuthenticated } from './utils/auth';
 import { testStudent, testStudent2, testStudent3, TEST_PASSWORD } from './fixtures/users';
-import { _handleNewTab, _switchToTab, _clearBrowserStorage } from './utils/browser-helpers';
 
 test.describe('Private Messaging System E2E Tests', () => {
   let user1Page: Page;
@@ -69,7 +68,7 @@ test.describe('Private Messaging System E2E Tests', () => {
     await user1MessagingPage.waitForMessaging();
   });
 
-  test.afterEach(async ({ _page }, testInfo) => {
+  test.afterEach(async ({}, testInfo) => {
     // Capture screenshot on failure
     if (testInfo.status !== testInfo.expectedStatus) {
       const screenshot = await user1Page.screenshot();
@@ -276,8 +275,8 @@ test.describe('Private Messaging System E2E Tests', () => {
       
       // Verify messages are in chronological order (oldest first)
       for (let i = 1; i < messages.length; i++) {
-        const prevTimestamp = new Date(messages[i - 1].timestamp).getTime();
-        const currTimestamp = new Date(messages[i].timestamp).getTime();
+        const prevTimestamp = new Date(messages[i - 1]!.timestamp).getTime();
+        const currTimestamp = new Date(messages[i]!.timestamp).getTime();
         expect(currTimestamp).toBeGreaterThanOrEqual(prevTimestamp);
       }
     });
@@ -337,7 +336,7 @@ test.describe('Private Messaging System E2E Tests', () => {
       expect(updatedMessages.length).toBe(initialCount + 1);
       
       // Verify the last message is the reply
-      const lastMessage = updatedMessages[updatedMessages.length - 1];
+      const lastMessage = updatedMessages[updatedMessages.length - 1]!;
       expect(lastMessage.content).toBe(replyContent);
       expect(lastMessage.senderId).toBe(testStudent2.id.toString());
     });
@@ -480,8 +479,8 @@ test.describe('Private Messaging System E2E Tests', () => {
       
       // Verify conversations are sorted by timestamp (most recent first)
       for (let i = 1; i < conversations.length; i++) {
-        const prevTimestamp = new Date(conversations[i - 1].lastMessageTime).getTime();
-        const currTimestamp = new Date(conversations[i].lastMessageTime).getTime();
+        const prevTimestamp = new Date(conversations[i - 1]!.lastMessageTime).getTime();
+        const currTimestamp = new Date(conversations[i]!.lastMessageTime).getTime();
         expect(prevTimestamp).toBeGreaterThanOrEqual(currTimestamp);
       }
     });
@@ -542,7 +541,7 @@ test.describe('Private Messaging System E2E Tests', () => {
         // Get messages and mark the first one as read
         const messages = await user2MessagingPage.getMessages();
         if (messages.length > 0) {
-          await user2MessagingPage.markAsRead(messages[0].id);
+          await user2MessagingPage.markAsRead(messages[0]!.id);
         }
         
         // Wait for mark as read to process
@@ -636,7 +635,7 @@ test.describe('Private Messaging System E2E Tests', () => {
         
         // Verify message content is the same
         messagesBeforeRefresh.forEach((msgBefore, index) => {
-          const msgAfter = messagesAfterRefresh[index];
+          const msgAfter = messagesAfterRefresh[index]!;
           expect(msgAfter.content).toBe(msgBefore.content);
           expect(msgAfter.senderId).toBe(msgBefore.senderId);
         });
@@ -755,7 +754,7 @@ test.describe('Private Messaging System E2E Tests', () => {
       await user1Page.goto('/messaging');
       await user1MessagingPage.waitForMessaging();
       
-      const _conversationsBeforeSend = await user1MessagingPage.getConversations();
+      await user1MessagingPage.getConversations();
       
       // Send a message
       await user1MessagingPage.composeMessage();

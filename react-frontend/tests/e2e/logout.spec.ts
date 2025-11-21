@@ -18,7 +18,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { login, loginAsStudent, getAuthToken, logout, clearAuthenticationState, isAuthenticated } from './utils/auth';
-import { clearBrowserStorage, _createIsolatedContext, _handleNewTab, _closeTab } from './utils/browser-helpers';
+import { clearBrowserStorage } from './utils/browser-helpers';
 import { testStudent, TEST_PASSWORD } from './fixtures/users';
 
 test.describe('Logout Workflow', () => {
@@ -27,7 +27,7 @@ test.describe('Logout Workflow', () => {
   let dashboardPage: DashboardPage;
   let authToken: string | null;
 
-  test.beforeEach(async ({ page: testPage, _context }) => {
+  test.beforeEach(async ({ page: testPage }) => {
     page = testPage;
     loginPage = new LoginPage(page);
     dashboardPage = new DashboardPage(page);
@@ -427,9 +427,7 @@ test.describe('Logout Workflow', () => {
     ).first();
     
     // Set up dialog handler to capture warning
-    const _dialogAppeared = false;
     page.on('dialog', async dialog => {
-      dialogAppeared = true;
       expect(dialog.type()).toBe('confirm');
       expect(dialog.message()).toMatch(/unsaved changes|lose changes|discard changes/i);
       await dialog.dismiss(); // Cancel logout
@@ -464,7 +462,7 @@ test.describe('Logout Workflow', () => {
 
   test('should verify complete session cleanup and no cached sensitive data', async () => {
     // Store sensitive data references before logout
-    const _userDataBefore = await page.evaluate(() => {
+    await page.evaluate(() => {
       return {
         localStorage: { ...localStorage },
         sessionStorage: { ...sessionStorage }

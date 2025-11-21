@@ -508,7 +508,7 @@ export function mockCourseGradebook(
   
   for (let i = 0; i < itemCount; i++) {
     const typeIndex = i % itemTypes.length;
-    const typeConfig = itemTypes[typeIndex];
+    const typeConfig = itemTypes[typeIndex]!;
     
     const item = mockGradeItem({
       id: generateGradeItemId(),

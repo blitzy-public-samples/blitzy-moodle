@@ -138,6 +138,7 @@ const createMockDiscussion = (overrides?: Partial<Discussion & { author?: Author
   
   return {
     id: 1,
+    courseid: 1,
     forumid: 1,
     name: 'Test Discussion',
     firstpostid: 1,

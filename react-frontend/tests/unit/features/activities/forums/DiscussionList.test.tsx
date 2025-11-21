@@ -333,7 +333,7 @@ describe('DiscussionList Component', () => {
       
       // First items should be pinned
       pinnedDiscussions.forEach((_, index) => {
-        expect(within(discussionItems[index]).getByText(/pinned/i)).toBeInTheDocument();
+        expect(within(discussionItems[index]!).getByText(/pinned/i)).toBeInTheDocument();
       });
     });
 
@@ -483,7 +483,7 @@ describe('DiscussionList Component', () => {
       // Verify sorting is applied - newest discussions should appear first
       // mockDiscussions is already sorted newest first by default
       const discussionItems = screen.getAllByRole('listitem');
-      const firstTitle = within(discussionItems[0]).getByText(mockDiscussions[2].title);
+      const firstTitle = within(discussionItems[0]!).getByText(mockDiscussions[2]!.title);
       expect(firstTitle).toBeInTheDocument();
     });
 
@@ -497,7 +497,7 @@ describe('DiscussionList Component', () => {
       // Verify oldest discussion appears first after sorting
       await waitFor(() => {
         const discussionItems = screen.getAllByRole('listitem');
-        const firstTitle = within(discussionItems[0]).getByText(mockDiscussions[0].title);
+        const firstTitle = within(discussionItems[0]!).getByText(mockDiscussions[0]!.title);
         expect(firstTitle).toBeInTheDocument();
       });
     });
@@ -516,7 +516,7 @@ describe('DiscussionList Component', () => {
         const mostRepliesDiscussion = mockDiscussions.reduce((max, d) => 
           d.replyCount > max.replyCount ? d : max
         );
-        const firstTitle = within(discussionItems[0]).getByText(mostRepliesDiscussion.title);
+        const firstTitle = within(discussionItems[0]!).getByText(mostRepliesDiscussion.title);
         expect(firstTitle).toBeInTheDocument();
       });
     });
@@ -1020,7 +1020,7 @@ describe('DiscussionList Component', () => {
         />
       );
 
-      const discussion = mockDiscussions[0];
+      const discussion = mockDiscussions[0]!;
       const discussionElement = screen.getByText(discussion.title).closest('li');
       
       expect(within(discussionElement!).getByLabelText(/delete discussion/i)).toBeInTheDocument();
@@ -1139,7 +1139,7 @@ describe('DiscussionList Component', () => {
       renderWithProviders(<DiscussionList {...defaultProps} />);
 
       // With default "newest" sort, discussion 3 (Jan 17) appears first among pinned discussions
-      const firstDiscussion = mockDiscussions[2]; // Discussion 3 is at index 2
+      const firstDiscussion = mockDiscussions[2]!; // Discussion 3 is at index 2
       const discussionLink = screen.getByText(firstDiscussion.title);
       
       await user.click(discussionLink);
@@ -1153,8 +1153,8 @@ describe('DiscussionList Component', () => {
     it('should navigate to author profile when author name clicked', async () => {
       renderWithProviders(<DiscussionList {...defaultProps} />);
 
-      const discussion = mockDiscussions[0];
-      const authorLink = screen.getAllByText(discussion.author.name)[0];
+      const discussion = mockDiscussions[0]!;
+      const authorLink = screen.getAllByText(discussion.author.name)[0]!;
       
       await user.click(authorLink);
 
@@ -1166,7 +1166,7 @@ describe('DiscussionList Component', () => {
     it('should open discussion in same window on normal click', async () => {
       renderWithProviders(<DiscussionList {...defaultProps} />);
 
-      const discussion = mockDiscussions[0];
+      const discussion = mockDiscussions[0]!;
       const discussionLink = screen.getByText(discussion.title);
       
       await user.click(discussionLink);
@@ -1366,7 +1366,7 @@ describe('DiscussionList Component', () => {
       // Component should render on mobile - responsive layout is handled by CSS
       const listContainer = screen.getByRole('list');
       expect(listContainer).toBeInTheDocument();
-      expect(mockDiscussions[0].title).toBeTruthy();
+      expect(mockDiscussions[0]!.title).toBeTruthy();
     });
 
     it('should render in desktop layout on large screens', () => {
@@ -1379,7 +1379,7 @@ describe('DiscussionList Component', () => {
       // Component should render on desktop - responsive layout is handled by CSS
       const listContainer = screen.getByRole('list');
       expect(listContainer).toBeInTheDocument();
-      expect(mockDiscussions[0].title).toBeTruthy();
+      expect(mockDiscussions[0]!.title).toBeTruthy();
     });
 
     it('should hide author avatar on mobile', () => {
@@ -1466,21 +1466,21 @@ describe('DiscussionList Component', () => {
       const listItems = screen.getAllByRole('listitem');
       
       // Find all buttons within the first list item
-      const buttonsInFirstItem = within(listItems[0]).queryAllByRole('button');
+      const buttonsInFirstItem = within(listItems[0]!).queryAllByRole('button');
       
       // The ListItemButton is the one that contains the full discussion title text
       // (the action buttons like pin/lock/delete only have icon aria-labels)
       const firstButton = buttonsInFirstItem.find(btn => {
         const text = btn.textContent ?? '';
         // ListItemButton contains the title and author info
-        return text.includes(mockDiscussions[0].title) && text.includes(mockDiscussions[0].author.name);
+        return text.includes(mockDiscussions[0]!.title) && text.includes(mockDiscussions[0]!.author.name);
       });
 
       // If still not found, just get the first button (fallback)
       const discussionButton = firstButton ?? buttonsInFirstItem[0];
 
       // Focus on first discussion button
-      discussionButton.focus();
+      discussionButton!.focus();
       expect(discussionButton).toHaveFocus();
 
       // Press Tab to move to next focusable element
@@ -1499,10 +1499,10 @@ describe('DiscussionList Component', () => {
       
       // With default "newest" sort, pinned discussions appear first, sorted by date
       // Discussion 3 (Jan 17) is newer than Discussion 1 (Jan 15), so it appears first
-      const expectedDiscussion = mockDiscussions[2]; // Discussion 3 is at index 2
+      const expectedDiscussion = mockDiscussions[2]!; // Discussion 3 is at index 2
       
       // Find all buttons within the first list item
-      const buttonsInFirstItem = within(listItems[0]).queryAllByRole('button');
+      const buttonsInFirstItem = within(listItems[0]!).queryAllByRole('button');
       
       // The ListItemButton is the one that contains the full discussion title text
       // (the action buttons like pin/lock/delete only have icon aria-labels)
@@ -1516,7 +1516,7 @@ describe('DiscussionList Component', () => {
       const discussionButton = firstButton ?? buttonsInFirstItem[0];
 
       // Focus and press Enter on the button
-      discussionButton.focus();
+      discussionButton!.focus();
       await user.keyboard('{Enter}');
 
       // The URL format is /courses/{courseId}/forums/{forumId}/discussions/{discussionId}
@@ -1590,7 +1590,7 @@ describe('DiscussionList Component', () => {
       });
       
       // The component renders normally after the event
-      expect(screen.getByText(mockDiscussions[0].title)).toBeInTheDocument();
+      expect(screen.getByText(mockDiscussions[0]!.title)).toBeInTheDocument();
     });
   });
 

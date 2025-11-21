@@ -590,7 +590,7 @@ export class ForumPage {
     // Extract discussionId from the current URL
     const currentUrl = this.page.url();
     const discussionMatch = currentUrl.match(/\/discussions\/(\d+)/);
-    const discussionId = discussionMatch ? discussionMatch[1] : '';
+    const discussionId = discussionMatch ? discussionMatch[1]! : '';
     
     // Extract courseId and forumId from the current URL and navigate back to forum list
     const urlMatch = currentUrl.match(/\/courses\/(\d+)\/forums\/(\d+)/);

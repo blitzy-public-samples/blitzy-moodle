@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-
 import type React from 'react';
 import { useDiscussion } from '@/features/activities/forums/hooks/useDiscussion';
 import * as forumApi from '@/features/activities/forums/api/forumApi';
-import type { Discussion, Post, DiscussionPost } from '@/features/activities/forums/types/forum.types';
+import type { Discussion, Post, DiscussionPost, DiscussionEnriched, DiscussionDetail } from '@/features/activities/forums/types/forum.types';
 
 /**
  * Comprehensive unit tests for useDiscussion custom hook
@@ -69,29 +69,6 @@ const createMockApiPost = (overrides: Partial<Post> = {}): Post => ({
   privatereplyto: 0,
   wordcount: 10,
   charcount: 30,
-  ...overrides,
-});
-
-// Helper to create DiscussionPost for assertions (after transformation)
-const _createMockPost = (overrides: Partial<DiscussionPost> = {}): DiscussionPost => ({
-  id: 1,
-  discussionId: 100,
-  parentId: null,
-  subject: 'Test Post',
-  message: 'This is a test post message',
-  userId: 10,
-  userName: 'Test User',
-  userPictureUrl: '',
-  created: Date.now() - 3600000,
-  modified: Date.now() - 3600000,
-  version: 1,
-  deleted: false,
-  hasAttachments: false,
-  attachments: [],
-  canEdit: false,
-  canDelete: false,
-  canReply: true,
-  replies: [],
   ...overrides,
 });
 
@@ -200,10 +177,10 @@ describe('useDiscussion Hook', () => {
       // posts array contains only root posts (parentid === 0)
       expect(result.current.posts).toHaveLength(1);
       // Verify the root post has 2 replies
-      expect(result.current.posts[0].replies).toHaveLength(2);
-      expect(result.current.posts[0].id).toBe(1);
-      expect(result.current.posts[0].replies[0].id).toBe(2);
-      expect(result.current.posts[0].replies[1].id).toBe(3);
+      expect(result.current.posts![0]!.replies).toHaveLength(2);
+      expect(result.current.posts![0]!.id).toBe(1);
+      expect(result.current.posts![0]!.replies![0]!.id).toBe(2);
+      expect(result.current.posts![0]!.replies![1]!.id).toBe(3);
     });
 
     it('should reconstruct nested post hierarchy from flat API response', async () => {
@@ -240,11 +217,11 @@ describe('useDiscussion Hook', () => {
       
       const firstReply = rootPost?.replies?.find(r => r.id === 2);
       expect(firstReply?.replies).toHaveLength(1);
-      expect(firstReply?.replies?.[0].id).toBe(4);
+      expect(firstReply?.replies?.[0]!.id).toBe(4);
       
       const nestedReply = firstReply?.replies?.[0];
       expect(nestedReply?.replies).toHaveLength(1);
-      expect(nestedReply?.replies?.[0].id).toBe(5);
+      expect(nestedReply?.replies?.[0]!.id).toBe(5);
     });
 
     it('should handle loading state during initial fetch', async () => {
@@ -366,7 +343,7 @@ describe('useDiscussion Hook', () => {
     it('should support background refresh for active discussions', async () => {
       const discussionId = 100;
       const initialData = {
-        discussion: createMockDiscussion({ numReplies: 5 }),
+        discussion: createMockDiscussion(),
         // Need 6 posts total (1 root + 5 replies) to get numReplies: 5
         posts: [
           createMockApiPost({ id: 1, parentid: 0 }),
@@ -378,7 +355,7 @@ describe('useDiscussion Hook', () => {
         ],
       };
       const updatedData = {
-        discussion: createMockDiscussion({ numReplies: 6 }),
+        discussion: createMockDiscussion(),
         // Need 7 posts total with 2 roots to get numReplies: 6 and posts.length: 2
         // Root 1 with 3 replies, Root 2 with 2 replies = 7 total
         posts: [
@@ -430,7 +407,7 @@ describe('useDiscussion Hook', () => {
       });
 
       const newPost = createMockApiPost({ id: 999, discussionid: discussionId, parentid: parentPostId, subject: 'New Reply' });
-      vi.mocked(forumApi.createPost).mockResolvedValue({ post: newPost, message: 'Post created successfully' });
+      vi.mocked(forumApi.createPost).mockResolvedValue({ ...newPost, discussionId: discussionId });
 
       const { result } = renderHook(
         () => useDiscussion(discussionId),
@@ -567,25 +544,24 @@ describe('useDiscussion Hook', () => {
       const discussionId = 100;
       const postId = 1;
       const mockDiscussion = createMockDiscussion({ id: discussionId });
-      const mockPost = createMockApiPost({ id: postId, discussionid: discussionId, parentid: 0, version: 1, modified: Date.now() - 1000 });
+      const mockPost = createMockApiPost({ id: postId, discussionid: discussionId, parentid: 0, timemodified: Math.floor((Date.now() - 1000) / 1000) });
 
       vi.mocked(forumApi.getDiscussionPosts).mockResolvedValue({
         discussion: mockDiscussion,
         posts: [mockPost],
       });
 
-      const updatedPost = createMockApiPost({ 
-        id: postId, 
-        discussionid: discussionId,
-        parentid: 0,
-        subject: 'Updated Subject',
-        version: 2,
-        modified: Date.now(),
-      });
-      vi.mocked(forumApi.updatePost).mockResolvedValue({
-        post: updatedPost,
-        message: 'Post updated successfully'
-      });
+      const updatedPost: forumApi.PostResponse = { 
+        ...createMockApiPost({ 
+          id: postId, 
+          discussionid: discussionId,
+          parentid: 0,
+          subject: 'Updated Subject',
+          timemodified: Math.floor(Date.now() / 1000),
+        }),
+        discussionId: discussionId,
+      };
+      vi.mocked(forumApi.updatePost).mockResolvedValue(updatedPost);
 
       const onEditSuccess = vi.fn();
 
@@ -621,7 +597,7 @@ describe('useDiscussion Hook', () => {
       const discussionId = 100;
       const postId = 1;
       const mockDiscussion = createMockDiscussion({ id: discussionId });
-      const mockPost = createMockApiPost({ id: postId, discussionid: discussionId, parentid: 0, version: 1 });
+      const mockPost = createMockApiPost({ id: postId, discussionid: discussionId, parentid: 0 });
 
       vi.mocked(forumApi.getDiscussionPosts).mockResolvedValue({
         discussion: mockDiscussion,
@@ -637,7 +613,7 @@ describe('useDiscussion Hook', () => {
           error: 'EDIT_CONFLICT',
           message: 'Post was modified by another user',
           currentVersion: 2,
-          post: createMockApiPost({ id: postId, version: 2 }),
+          post: createMockApiPost({ id: postId, timemodified: Math.floor(Date.now() / 1000) }),
         },
       };
       vi.mocked(forumApi.updatePost).mockRejectedValue(conflictError);
@@ -686,7 +662,7 @@ describe('useDiscussion Hook', () => {
       const discussionId = 100;
       const postId = 1;
       const mockDiscussion = createMockDiscussion({ id: discussionId });
-      const mockPost = createMockApiPost({ id: postId, discussionid: discussionId, parentid: 0, version: 1 });
+      const mockPost = createMockApiPost({ id: postId, discussionid: discussionId, parentid: 0 });
 
       vi.mocked(forumApi.getDiscussionPosts).mockResolvedValue({
         discussion: mockDiscussion,
@@ -699,7 +675,7 @@ describe('useDiscussion Hook', () => {
         status: 409,
         data: {
           error: 'EDIT_CONFLICT',
-          currentPost: createMockApiPost({ id: postId, discussionid: discussionId, parentid: 0, version: 2, subject: 'Changed by other user' }),
+          currentPost: createMockApiPost({ id: postId, discussionid: discussionId, parentid: 0, subject: 'Changed by other user', timemodified: Math.floor(Date.now() / 1000) }),
         },
       };
       vi.mocked(forumApi.updatePost).mockRejectedValue(conflictError);
@@ -721,7 +697,6 @@ describe('useDiscussion Hook', () => {
             postId,
             postData: {
               message: 'My message',
-              version: 1,
             }
           });
         } catch (err) {
@@ -872,7 +847,7 @@ describe('useDiscussion Hook', () => {
 
       vi.mocked(forumApi.deletePost).mockResolvedValue({ 
         softDeleted: true,
-        cascadeCount: 3,
+        message: '3 posts affected',
       });
 
       const onDeleteSuccess = vi.fn();
@@ -897,7 +872,6 @@ describe('useDiscussion Hook', () => {
         expect(onDeleteSuccess).toHaveBeenCalledWith(
           expect.objectContaining({
             softDeleted: true,
-            cascadeCount: 3,
           })
         );
       });
@@ -916,7 +890,10 @@ describe('useDiscussion Hook', () => {
         subscribed: false, // Include subscription status in API response
       });
 
-      vi.mocked(forumApi.subscribeDiscussion).mockResolvedValue({ subscribed: true });
+      vi.mocked(forumApi.subscribeDiscussion).mockResolvedValue({ 
+        subscribed: true,
+        message: 'Successfully subscribed to discussion'
+      });
 
       const onSubscribeSuccess = vi.fn();
 
@@ -936,7 +913,10 @@ describe('useDiscussion Hook', () => {
 
       await waitFor(() => {
         expect(forumApi.subscribeDiscussion).toHaveBeenCalledWith(discussionId);
-        expect(onSubscribeSuccess).toHaveBeenCalledWith({ subscribed: true });
+        expect(onSubscribeSuccess).toHaveBeenCalledWith({ 
+          subscribed: true,
+          message: 'Successfully subscribed to discussion'
+        });
       });
     });
 
@@ -951,7 +931,10 @@ describe('useDiscussion Hook', () => {
         subscribed: true, // Include subscription status in API response
       });
 
-      vi.mocked(forumApi.unsubscribeDiscussion).mockResolvedValue({ subscribed: false });
+      vi.mocked(forumApi.unsubscribeDiscussion).mockResolvedValue({ 
+        subscribed: false,
+        message: 'Successfully unsubscribed from discussion'
+      });
 
       const onUnsubscribeSuccess = vi.fn();
 
@@ -971,7 +954,10 @@ describe('useDiscussion Hook', () => {
 
       await waitFor(() => {
         expect(forumApi.unsubscribeDiscussion).toHaveBeenCalledWith(discussionId);
-        expect(onUnsubscribeSuccess).toHaveBeenCalledWith({ subscribed: false });
+        expect(onUnsubscribeSuccess).toHaveBeenCalledWith({ 
+          subscribed: false,
+          message: 'Successfully unsubscribed from discussion'
+        });
       });
     });
 
@@ -1027,15 +1013,19 @@ describe('useDiscussion Hook', () => {
   describe('Mark as Read Functionality', () => {
     it('should mark discussion as read', async () => {
       const discussionId = 100;
-      const mockDiscussion = createMockDiscussion({ id: discussionId, numUnread: 5 });
+      const mockDiscussion = createMockDiscussion({ id: discussionId });
       const mockPosts = [createMockApiPost({ discussionid: discussionId, parentid: 0 })];
 
       vi.mocked(forumApi.getDiscussionPosts).mockResolvedValue({
-        discussion: mockDiscussion,
+        discussion: { ...mockDiscussion, unreadCount: 5 } as any,
         posts: mockPosts,
       });
 
-      vi.mocked(forumApi.markDiscussionRead).mockResolvedValue({ numUnread: 0 });
+      vi.mocked(forumApi.markDiscussionRead).mockResolvedValue({
+        postsRead: 5,
+        unreadCount: 0,
+        message: 'Discussion marked as read',
+      });
 
       const onMarkAsReadSuccess = vi.fn();
 
@@ -1045,7 +1035,7 @@ describe('useDiscussion Hook', () => {
       );
 
       await waitFor(() => {
-        expect(result.current.discussion?.numUnread).toBe(5);
+        expect(result.current.discussion?.unreadCount).toBe(5);
       });
 
       // eslint-disable-next-line @typescript-eslint/require-await
@@ -1055,21 +1045,29 @@ describe('useDiscussion Hook', () => {
 
       await waitFor(() => {
         expect(forumApi.markDiscussionRead).toHaveBeenCalledWith(discussionId);
-        expect(onMarkAsReadSuccess).toHaveBeenCalledWith({ numUnread: 0 });
+        expect(onMarkAsReadSuccess).toHaveBeenCalledWith({
+          postsRead: 5,
+          unreadCount: 0,
+          message: 'Discussion marked as read',
+        });
       });
     });
 
     it('should update unread post count in cache', async () => {
       const discussionId = 100;
-      const mockDiscussion = createMockDiscussion({ id: discussionId, numUnread: 3 });
+      const mockDiscussion = createMockDiscussion({ id: discussionId });
       const mockPosts = [createMockApiPost({ discussionid: discussionId, parentid: 0 })];
 
       vi.mocked(forumApi.getDiscussionPosts).mockResolvedValue({
-        discussion: mockDiscussion,
+        discussion: { ...mockDiscussion, unreadCount: 3 } as any,
         posts: mockPosts,
       });
 
-      vi.mocked(forumApi.markDiscussionRead).mockResolvedValue({ numUnread: 0 });
+      vi.mocked(forumApi.markDiscussionRead).mockResolvedValue({
+        postsRead: 3,
+        unreadCount: 0,
+        message: 'Discussion marked as read',
+      });
 
       const { result } = renderHook(
         () => useDiscussion(discussionId),
@@ -1077,7 +1075,7 @@ describe('useDiscussion Hook', () => {
       );
 
       await waitFor(() => {
-        expect(result.current.discussion?.numUnread).toBe(3);
+        expect(result.current.discussion?.unreadCount).toBe(3);
       });
 
       // eslint-disable-next-line @typescript-eslint/require-await
@@ -1086,24 +1084,28 @@ describe('useDiscussion Hook', () => {
       });
 
       await waitFor(() => {
-        expect(result.current.discussion?.numUnread).toBe(0);
+        expect(result.current.discussion?.unreadCount).toBe(0);
       });
     });
 
     it('should mark discussion as read', async () => {
       const discussionId = 100;
-      const mockDiscussion = createMockDiscussion({ id: discussionId, numUnread: 2 });
+      const mockDiscussion = createMockDiscussion({ id: discussionId });
       const mockPosts = [
         createMockApiPost({ id: 1, discussionid: discussionId, parentid: 0 }),
         createMockApiPost({ id: 2, discussionid: discussionId, parentid: 0 }),
       ];
 
       vi.mocked(forumApi.getDiscussionPosts).mockResolvedValue({
-        discussion: mockDiscussion,
+        discussion: { ...mockDiscussion, unreadCount: 2 } as any,
         posts: mockPosts,
       });
 
-      vi.mocked(forumApi.markDiscussionRead).mockResolvedValue({ numUnread: 0 });
+      vi.mocked(forumApi.markDiscussionRead).mockResolvedValue({
+        postsRead: 2,
+        unreadCount: 0,
+        message: 'Discussion marked as read',
+      });
 
       const { result } = renderHook(
         () => useDiscussion(discussionId),
@@ -1111,7 +1113,7 @@ describe('useDiscussion Hook', () => {
       );
 
       await waitFor(() => {
-        expect(result.current.discussion?.numUnread).toBe(2);
+        expect(result.current.discussion?.unreadCount).toBe(2);
       });
 
       // eslint-disable-next-line @typescript-eslint/require-await
@@ -1121,7 +1123,7 @@ describe('useDiscussion Hook', () => {
 
       await waitFor(() => {
         expect(forumApi.markDiscussionRead).toHaveBeenCalledWith(discussionId);
-        expect(result.current.discussion?.numUnread).toBe(0);
+        expect(result.current.discussion?.unreadCount).toBe(0);
       });
     });
   });
@@ -1132,7 +1134,6 @@ describe('useDiscussion Hook', () => {
       const mockDiscussion = createMockDiscussion({ 
         id: discussionId, 
         pinned: false,
-        canPin: true,
       });
       const mockPosts = [createMockApiPost({ discussionid: discussionId, parentid: 0 })];
 
@@ -1141,7 +1142,10 @@ describe('useDiscussion Hook', () => {
         posts: mockPosts,
       });
 
-      vi.mocked(forumApi.pinDiscussion).mockResolvedValue({ pinned: true });
+      vi.mocked(forumApi.pinDiscussion).mockResolvedValue({ 
+        discussion: { ...mockDiscussion, pinned: true },
+        message: 'Discussion pinned successfully'
+      });
 
       const onPinSuccess = vi.fn();
 
@@ -1161,7 +1165,10 @@ describe('useDiscussion Hook', () => {
 
       await waitFor(() => {
         expect(forumApi.pinDiscussion).toHaveBeenCalledWith(discussionId);
-        expect(onPinSuccess).toHaveBeenCalledWith({ pinned: true });
+        expect(onPinSuccess).toHaveBeenCalledWith({ 
+          discussion: expect.objectContaining({ pinned: true }),
+          message: 'Discussion pinned successfully'
+        });
       });
     });
 
@@ -1170,7 +1177,6 @@ describe('useDiscussion Hook', () => {
       const mockDiscussion = createMockDiscussion({ 
         id: discussionId, 
         pinned: true,
-        canPin: true,
       });
       const mockPosts = [createMockApiPost({ discussionid: discussionId, parentid: 0 })];
 
@@ -1179,7 +1185,10 @@ describe('useDiscussion Hook', () => {
         posts: mockPosts,
       });
 
-      vi.mocked(forumApi.unpinDiscussion).mockResolvedValue({ pinned: false });
+      vi.mocked(forumApi.unpinDiscussion).mockResolvedValue({ 
+        discussion: { ...mockDiscussion, pinned: false },
+        message: 'Discussion unpinned successfully'
+      });
 
       const onUnpinSuccess = vi.fn();
 
@@ -1199,16 +1208,19 @@ describe('useDiscussion Hook', () => {
 
       await waitFor(() => {
         expect(forumApi.unpinDiscussion).toHaveBeenCalledWith(discussionId);
-        expect(onUnpinSuccess).toHaveBeenCalledWith({ pinned: false });
+        expect(onUnpinSuccess).toHaveBeenCalledWith({ 
+          discussion: expect.objectContaining({ pinned: false }),
+          message: 'Discussion unpinned successfully'
+        });
       });
     });
 
     it('should lock discussion', async () => {
       const discussionId = 100;
+      const lockTime = Math.floor(Date.now() / 1000);
       const mockDiscussion = createMockDiscussion({ 
         id: discussionId, 
-        locked: false,
-        canLock: true,
+        timelocked: 0,
       });
       const mockPosts = [createMockApiPost({ discussionid: discussionId, parentid: 0 })];
 
@@ -1217,7 +1229,10 @@ describe('useDiscussion Hook', () => {
         posts: mockPosts,
       });
 
-      vi.mocked(forumApi.lockDiscussion).mockResolvedValue({ locked: true });
+      vi.mocked(forumApi.lockDiscussion).mockResolvedValue({ 
+        discussion: { ...mockDiscussion, timelocked: lockTime },
+        message: 'Discussion locked successfully'
+      });
 
       const onLockSuccess = vi.fn();
 
@@ -1227,7 +1242,7 @@ describe('useDiscussion Hook', () => {
       );
 
       await waitFor(() => {
-        expect(result.current.discussion?.locked).toBe(false);
+        expect(result.current.discussion?.timelocked).toBe(0);
       });
 
       // eslint-disable-next-line @typescript-eslint/require-await
@@ -1237,16 +1252,19 @@ describe('useDiscussion Hook', () => {
 
       await waitFor(() => {
         expect(forumApi.lockDiscussion).toHaveBeenCalledWith(discussionId);
-        expect(onLockSuccess).toHaveBeenCalledWith({ locked: true });
+        expect(onLockSuccess).toHaveBeenCalledWith({ 
+          discussion: expect.objectContaining({ timelocked: lockTime }),
+          message: 'Discussion locked successfully'
+        });
       });
     });
 
     it('should unlock discussion', async () => {
       const discussionId = 100;
+      const lockTime = Math.floor(Date.now() / 1000) - 3600;
       const mockDiscussion = createMockDiscussion({ 
         id: discussionId, 
-        locked: true,
-        canLock: true,
+        timelocked: lockTime,
       });
       const mockPosts = [createMockApiPost({ discussionid: discussionId, parentid: 0 })];
 
@@ -1255,7 +1273,10 @@ describe('useDiscussion Hook', () => {
         posts: mockPosts,
       });
 
-      vi.mocked(forumApi.unlockDiscussion).mockResolvedValue({ locked: false });
+      vi.mocked(forumApi.unlockDiscussion).mockResolvedValue({ 
+        discussion: { ...mockDiscussion, timelocked: 0 },
+        message: 'Discussion unlocked successfully'
+      });
 
       const onUnlockSuccess = vi.fn();
 
@@ -1265,7 +1286,7 @@ describe('useDiscussion Hook', () => {
       );
 
       await waitFor(() => {
-        expect(result.current.discussion?.locked).toBe(true);
+        expect(result.current.discussion?.timelocked).toBe(lockTime);
       });
 
       // eslint-disable-next-line @typescript-eslint/require-await
@@ -1275,7 +1296,10 @@ describe('useDiscussion Hook', () => {
 
       await waitFor(() => {
         expect(forumApi.unlockDiscussion).toHaveBeenCalledWith(discussionId);
-        expect(onUnlockSuccess).toHaveBeenCalledWith({ locked: false });
+        expect(onUnlockSuccess).toHaveBeenCalledWith({ 
+          discussion: expect.objectContaining({ timelocked: 0 }),
+          message: 'Discussion unlocked successfully'
+        });
       });
     });
 
@@ -1284,8 +1308,7 @@ describe('useDiscussion Hook', () => {
       const targetForumId = 200;
       const mockDiscussion = createMockDiscussion({ 
         id: discussionId, 
-        forumId: 50,
-        canMove: true,
+        forumid: 50,
       });
       const mockPosts = [createMockApiPost({ discussionid: discussionId, parentid: 0 })];
 
@@ -1295,7 +1318,8 @@ describe('useDiscussion Hook', () => {
       });
 
       vi.mocked(forumApi.moveDiscussion).mockResolvedValue({ 
-        forumId: targetForumId,
+        discussion: { ...mockDiscussion, forumid: targetForumId },
+        message: 'Discussion moved successfully'
       });
 
       const onMoveSuccess = vi.fn();
@@ -1306,7 +1330,7 @@ describe('useDiscussion Hook', () => {
       );
 
       await waitFor(() => {
-        expect(result.current.discussion?.forumId).toBe(50);
+        expect(result.current.discussion?.forumid).toBe(50);
       });
 
       // eslint-disable-next-line @typescript-eslint/require-await
@@ -1316,7 +1340,10 @@ describe('useDiscussion Hook', () => {
 
       await waitFor(() => {
         expect(forumApi.moveDiscussion).toHaveBeenCalledWith(discussionId, targetForumId);
-        expect(onMoveSuccess).toHaveBeenCalledWith({ forumId: targetForumId });
+        expect(onMoveSuccess).toHaveBeenCalledWith({ 
+          discussion: expect.objectContaining({ forumid: targetForumId }),
+          message: 'Discussion moved successfully'
+        });
       });
     });
 
@@ -1325,7 +1352,6 @@ describe('useDiscussion Hook', () => {
       const postId = 5;
       const mockDiscussion = createMockDiscussion({ 
         id: discussionId,
-        canSplit: true,
       });
       const mockPosts = [
         createMockApiPost({ id: 1, discussionid: discussionId, parentid: 0 }),
@@ -1337,8 +1363,10 @@ describe('useDiscussion Hook', () => {
         posts: mockPosts,
       });
 
+      const newDiscussion = createMockDiscussion({ id: 101 });
       vi.mocked(forumApi.splitDiscussion).mockResolvedValue({ 
-        newDiscussionId: 101,
+        discussion: newDiscussion,
+        message: 'Discussion split successfully'
       });
 
       const onSplitSuccess = vi.fn();
@@ -1359,7 +1387,10 @@ describe('useDiscussion Hook', () => {
 
       await waitFor(() => {
         expect(forumApi.splitDiscussion).toHaveBeenCalledWith(discussionId, postId);
-        expect(onSplitSuccess).toHaveBeenCalledWith({ newDiscussionId: 101 });
+        expect(onSplitSuccess).toHaveBeenCalledWith({ 
+          discussion: expect.objectContaining({ id: 101 }),
+          message: 'Discussion split successfully'
+        });
       });
     });
 
@@ -1410,7 +1441,7 @@ describe('useDiscussion Hook', () => {
   describe('Pagination and Incremental Loading', () => {
     it('should support pagination for long discussion threads', async () => {
       const discussionId = 100;
-      const mockDiscussion = createMockDiscussion({ id: discussionId, numReplies: 50 });
+      const mockDiscussion = createMockDiscussion({ id: discussionId });
       
       // First page of posts
       const firstPagePosts = Array.from({ length: 20 }, (_, i) => 
@@ -1514,7 +1545,7 @@ describe('useDiscussion Hook', () => {
       });
 
       const newPost = createMockApiPost({ id: 2, discussionid: discussionId, parentid: 0 });
-      vi.mocked(forumApi.createPost).mockResolvedValue({ post: newPost, message: 'Post created successfully' });
+      vi.mocked(forumApi.createPost).mockResolvedValue({ ...newPost, discussionId: discussionId });
 
       const onCreateSuccess = vi.fn();
 
@@ -1536,7 +1567,7 @@ describe('useDiscussion Hook', () => {
       });
 
       await waitFor(() => {
-        expect(onCreateSuccess).toHaveBeenCalledWith({ post: newPost, message: 'Post created successfully' });
+        expect(onCreateSuccess).toHaveBeenCalledWith({ ...newPost, discussionId: discussionId });
       });
 
       // Wait for cache invalidation to trigger refetch
@@ -1592,9 +1623,7 @@ describe('useDiscussion Hook', () => {
           id: 1,
           discussionid: discussionId,
           parentid: 0,
-          userid: 0, 
-          username: '[deleted user]',
-          userpictureurl: null,
+          authorid: 0, // Deleted user indicated by authorid: 0
         }),
       ];
 
@@ -1684,8 +1713,8 @@ describe('useDiscussion Hook', () => {
       });
 
       vi.mocked(forumApi.createPost)
-        .mockResolvedValueOnce({ post: reply1, message: 'Post created successfully' })
-        .mockResolvedValueOnce({ post: reply2, message: 'Post created successfully' });
+        .mockResolvedValueOnce({ ...reply1, discussionId: discussionId })
+        .mockResolvedValueOnce({ ...reply2, discussionId: discussionId });
 
       await act(async () => {
         // Create two replies simultaneously
@@ -1726,7 +1755,7 @@ describe('useDiscussion Hook', () => {
           { id: 1, filename: 'document.pdf', filesize: 1024000 },
         ],
       });
-      vi.mocked(forumApi.createPost).mockResolvedValue({ post: newPost, message: 'Post created successfully' });
+      vi.mocked(forumApi.createPost).mockResolvedValue({ ...newPost, discussionId: discussionId });
 
       const onCreateSuccess = vi.fn();
 
@@ -1753,7 +1782,7 @@ describe('useDiscussion Hook', () => {
       });
 
       await waitFor(() => {
-        expect(onCreateSuccess).toHaveBeenCalledWith({ post: newPost, message: 'Post created successfully' });
+        expect(onCreateSuccess).toHaveBeenCalledWith({ ...newPost, discussionId: discussionId });
       });
     });
   });
@@ -1852,7 +1881,6 @@ describe('useDiscussion Hook', () => {
       const {discussion} = result.current;
       const {posts} = result.current;
       const {isLoading} = result.current;
-      const _error = result.current.error; // React Query error type (Error | null)
 
       expect(typeof isLoading).toBe('boolean');
       expect(discussion).toBeDefined();
@@ -1872,7 +1900,7 @@ describe('useDiscussion Hook', () => {
       });
 
       const newPost = createMockApiPost({ id: 2, discussionid: discussionId, parentid: 0 });
-      vi.mocked(forumApi.createPost).mockResolvedValue({ post: newPost, message: 'Post created successfully' });
+      vi.mocked(forumApi.createPost).mockResolvedValue({ ...newPost, discussionId: discussionId });
 
       const onSuccess = vi.fn();
       const { result } = renderHook(
@@ -1893,7 +1921,7 @@ describe('useDiscussion Hook', () => {
       });
 
       await waitFor(() => {
-        expect(onSuccess).toHaveBeenCalledWith({ post: newPost, message: 'Post created successfully' });
+        expect(onSuccess).toHaveBeenCalledWith({ ...newPost, discussionId: discussionId });
       });
     });
 
@@ -1948,7 +1976,7 @@ describe('useDiscussion Hook', () => {
       });
 
       const newPost = createMockApiPost({ id: 2, discussionid: discussionId, parentid: 0 });
-      vi.mocked(forumApi.createPost).mockResolvedValue({ post: newPost, message: 'Post created successfully' });
+      vi.mocked(forumApi.createPost).mockResolvedValue({ ...newPost, discussionId: discussionId });
 
       const onSettled = vi.fn();
       const { result } = renderHook(

@@ -18,7 +18,7 @@
  * PHP file management system (public/files/index.php).
  */
 
-import { test, expect, _Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import { basename } from 'path';
 import { promises as fs } from 'fs';
 import * as path from 'path';
@@ -27,18 +27,15 @@ import { FileRepositoryPage } from './pages/FileRepositoryPage';
 import { 
   loginAsTeacher, 
   loginAsStudent, 
-  logout,
-  _isAuthenticated
+  logout
 } from './utils/auth';
 import { 
   generateTestFile, 
   createImageFile, 
-  _createTextFile,
   cleanupTestFiles 
 } from './utils/file-helpers';
 import { 
-  MAX_FILE_SIZE, 
-  _MIME_TYPES 
+  MAX_FILE_SIZE 
 } from './fixtures/files';
 
 test.describe('File Repository E2E Tests', () => {

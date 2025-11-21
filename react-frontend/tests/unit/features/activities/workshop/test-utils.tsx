@@ -448,7 +448,20 @@ function createTestQueryClient(): QueryClient {
  */
 function createTestStore() {
   const mockAuthState: AuthState = {
-    user: { id: 100, name: 'Test User', email: 'test@example.com', roles: ['student'] },
+    user: { 
+      id: 100, 
+      username: 'testuser',
+      name: 'Test User', 
+      email: 'test@example.com', 
+      firstname: 'Test',
+      lastname: 'User',
+      fullname: 'Test User',
+      auth: 'manual',
+      confirmed: true,
+      suspended: false,
+      roles: [{ id: 5, shortname: 'student', name: 'Student' }],
+      capabilities: []
+    },
     tokens: { accessToken: 'test-access-token', refreshToken: 'test-refresh-token' },
     isAuthenticated: true,
     isLoading: false,

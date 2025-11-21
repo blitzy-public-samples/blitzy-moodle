@@ -120,7 +120,7 @@ describe('FeedbackSummary Component', () => {
       );
 
       const responseCard = screen.getByText('Total Responses').closest('.MuiCard-root');
-      const icons = within(responseCard!).getAllByTestId('CheckCircleIcon');
+      const icons = within(responseCard! as HTMLElement).getAllByTestId('CheckCircleIcon');
       expect(icons.length).toBeGreaterThan(0);
       expect(icons[0]).toBeInTheDocument();
     });
@@ -224,7 +224,7 @@ describe('FeedbackSummary Component', () => {
       );
 
       const completionCard = screen.getByText('Completion Rate').closest('.MuiCard-root');
-      const icon = within(completionCard!).getByTestId('TrendingUpIcon');
+      const icon = within(completionCard! as HTMLElement).getByTestId('TrendingUpIcon');
       expect(icon).toBeInTheDocument();
     });
 
@@ -346,7 +346,7 @@ describe('FeedbackSummary Component', () => {
       );
 
       const timeCard = screen.getByText('Average Time').closest('.MuiCard-root');
-      const icon = within(timeCard!).getByTestId('ScheduleIcon');
+      const icon = within(timeCard! as HTMLElement).getByTestId('ScheduleIcon');
       expect(icon).toBeInTheDocument();
     });
 
@@ -391,8 +391,8 @@ describe('FeedbackSummary Component', () => {
       );
 
       const participantsCard = screen.getByText('Participants').closest('.MuiCard-root');
-      expect(within(participantsCard!).getByText('42')).toBeInTheDocument();
-      expect(within(participantsCard!).getByText('Responded')).toBeInTheDocument();
+      expect(within(participantsCard! as HTMLElement).getByText('42')).toBeInTheDocument();
+      expect(within(participantsCard! as HTMLElement).getByText('Responded')).toBeInTheDocument();
     });
 
     it('should display non-respondent count correctly', () => {
@@ -408,7 +408,7 @@ describe('FeedbackSummary Component', () => {
       );
 
       const participantsCard = screen.getByText('Participants').closest('.MuiCard-root');
-      expect(within(participantsCard!).getByText('18')).toBeInTheDocument();
+      expect(within(participantsCard! as HTMLElement).getByText('18')).toBeInTheDocument();
     });
 
     it('should render People icon for participants', () => {
@@ -422,7 +422,7 @@ describe('FeedbackSummary Component', () => {
       );
 
       const participantsCard = screen.getByText('Participants').closest('.MuiCard-root');
-      const icon = within(participantsCard!).getByTestId('PeopleIcon');
+      const icon = within(participantsCard! as HTMLElement).getByTestId('PeopleIcon');
       expect(icon).toBeInTheDocument();
     });
 
@@ -472,13 +472,13 @@ describe('FeedbackSummary Component', () => {
       );
 
       const participantsCard = screen.getByText('Participants').closest('.MuiCard-root');
-      const nonRespondentCount = within(participantsCard!).getByText('5');
+      const nonRespondentCount = within(participantsCard! as HTMLElement).getByText('5');
       
       // Verify element is rendered with correct structure
       expect(nonRespondentCount).toBeInTheDocument();
       expect(nonRespondentCount.tagName).toBe('P');
       // When nonRespondents > 0, "Pending" text should be visible
-      expect(within(participantsCard!).getByText('Pending')).toBeInTheDocument();
+      expect(within(participantsCard! as HTMLElement).getByText('Pending')).toBeInTheDocument();
     });
 
     it('should apply success color to respondent count', () => {
@@ -494,12 +494,12 @@ describe('FeedbackSummary Component', () => {
       );
 
       const participantsCard = screen.getByText('Participants').closest('.MuiCard-root');
-      const respondentCount = within(participantsCard!).getByText('35');
+      const respondentCount = within(participantsCard! as HTMLElement).getByText('35');
       
       // Verify element is rendered with correct structure
       expect(respondentCount).toBeInTheDocument();
       expect(respondentCount.tagName).toBe('P');
-      expect(within(participantsCard!).getByText('Responded')).toBeInTheDocument();
+      expect(within(participantsCard! as HTMLElement).getByText('Responded')).toBeInTheDocument();
     });
   });
 
@@ -553,7 +553,7 @@ describe('FeedbackSummary Component', () => {
       );
 
       const mathCourseCard = screen.getByText('Math 101').closest('.MuiCard-root');
-      const countChip = within(mathCourseCard!).getByText('25');
+      const countChip = within(mathCourseCard! as HTMLElement).getByText('25');
       expect(countChip.closest('.MuiChip-root')).toHaveClass('MuiChip-colorPrimary');
     });
 
@@ -667,7 +667,7 @@ describe('FeedbackSummary Component', () => {
       );
 
       const groupCard = screen.getByText('Group A').closest('.MuiCard-root');
-      const countChip = within(groupCard!).getByText('18');
+      const countChip = within(groupCard! as HTMLElement).getByText('18');
       expect(countChip.closest('.MuiChip-root')).toHaveClass('MuiChip-colorSecondary');
     });
 
@@ -1436,8 +1436,8 @@ describe('FeedbackSummary Component', () => {
       await user.hover(responseCard!);
       
       // Content should remain visible after hover
-      expect(within(responseCard!).getByText('Total Responses')).toBeVisible();
-      expect(within(responseCard!).getByText('45')).toBeVisible();
+      expect(within(responseCard! as HTMLElement).getByText('Total Responses')).toBeVisible();
+      expect(within(responseCard! as HTMLElement).getByText('45')).toBeVisible();
     });
   });
 

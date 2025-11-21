@@ -72,22 +72,16 @@ export class QuizPage {
   private readonly attemptButton: Locator;
   private readonly timer: Locator;
   private readonly questionText: Locator;
-  // Defined for future use and POM consistency
-  private readonly _answerOptions: Locator;
 
   // Navigation locators
   private readonly nextButton: Locator;
   private readonly previousButton: Locator;
-  // Defined for future use and POM consistency
-  private readonly _questionSidebar: Locator;
 
   // Submission locators
   private readonly submitAllButton: Locator;
   private readonly confirmSubmitButton: Locator;
 
   // Results locators
-  // Defined for future use and POM consistency
-  private readonly _reviewSection: Locator;
   private readonly resultsSection: Locator;
   private readonly scoreSummary: Locator;
   private readonly feedbackSection: Locator;

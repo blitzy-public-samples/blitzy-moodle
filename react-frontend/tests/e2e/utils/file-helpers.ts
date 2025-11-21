@@ -179,7 +179,7 @@ export function getMimeTypeFromFilename(filename: string): string {
     return 'application/octet-stream';
   }
   
-  const extension = extensionMatch[1].toLowerCase();
+  const extension = extensionMatch[1]!.toLowerCase();
   
   // Map to FileType if it exists in our MIME_TYPES
   return MIME_TYPES[extension as FileType] || 'application/octet-stream';

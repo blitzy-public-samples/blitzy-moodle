@@ -11,18 +11,15 @@
  * @copyright 2024 Moodle
  */
 
-import { describe, it, expect, _beforeAll, _afterAll, afterEach, vi, _beforeEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../../mocks/server';
 import type { AxiosError } from 'axios';
 import _axios from 'axios';
 import { 
   fetchUserProfile, 
-  _fetchCurrentUserProfile,
   updateUserProfile, 
-  uploadAvatar,
-  _deleteAvatar,
-  _updateUserPreferences
+  uploadAvatar
 } from '@/features/profile/api/profileApi';
 import type { User, UpdateProfilePayload, UpdateProfileData } from '@/features/profile/types/profile.types';
 
@@ -311,7 +308,7 @@ describe('profileApi', () => {
       server.use(
         http.put(`${API_BASE_URL}/api/v1/users/${userId}`, async ({ request }) => {
           capturedMethod = request.method;
-          capturedBody = await request.json();
+          capturedBody = await request.json() as UpdateProfilePayload;
           return HttpResponse.json({
             success: true,
             data: { ...mockProfile, ...mockProfileUpdateData },
@@ -331,7 +328,7 @@ describe('profileApi', () => {
       
       server.use(
         http.put(`${API_BASE_URL}/api/v1/users/${userId}`, async ({ request }) => {
-          capturedBody = await request.json();
+          capturedBody = await request.json() as UpdateProfilePayload;
           return HttpResponse.json({
             success: true,
             data: { ...mockProfile, ...mockProfileUpdateData },
@@ -749,8 +746,8 @@ interface _ApiErrorResponse {
       
       // Verify exponential backoff (second attempt should be delayed more than first)
       if (attemptTimestamps.length >= 3) {
-        const firstDelay = attemptTimestamps[1] - attemptTimestamps[0];
-        const secondDelay = attemptTimestamps[2] - attemptTimestamps[1];
+        const firstDelay = attemptTimestamps[1]! - attemptTimestamps[0]!;
+        const secondDelay = attemptTimestamps[2]! - attemptTimestamps[1]!;
         expect(secondDelay).toBeGreaterThanOrEqual(firstDelay);
       }
     }, 10000);
@@ -863,7 +860,7 @@ interface _ApiErrorResponse {
       
       server.use(
         http.put(`${API_BASE_URL}/api/v1/users/${userId}`, async ({ request }) => {
-          capturedBody = await request.json();
+          capturedBody = await request.json() as UpdateProfilePayload;
           return HttpResponse.json({
             success: true,
             data: { ...mockProfile, ...specialCharsData },

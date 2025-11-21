@@ -17,6 +17,7 @@ import { http, HttpResponse } from 'msw';
 import { server } from '../../../../mocks/server';
 import type { ReactNode } from 'react';
 import { useForum } from '@/features/activities/forums/hooks/useForum';
+import type { Discussion } from '@/features/activities/forums/types/forum.types';
 
 // Mock API base URL
 const API_BASE_URL = 'http://localhost:8000/api/v1';
@@ -67,7 +68,15 @@ const getMockForumData = () => ({
 });
 
 // Mock discussions data
-const mockDiscussionsData = {
+const mockDiscussionsData: {
+  discussions: Discussion[];
+  pagination: {
+    page: number;
+    perPage: number;
+    total: number;
+    totalPages: number;
+  };
+} = {
   discussions: [
     {
       id: 101,
@@ -236,10 +245,7 @@ const handlers = [
     const discussionIndex = mockDiscussionsData.discussions.findIndex(d => d.id === discussionId);
     if (discussionIndex !== -1) {
       // Update the mock data to persist the pinned state
-      mockDiscussionsData.discussions[discussionIndex] = {
-        ...mockDiscussionsData.discussions[discussionIndex],
-        pinned: true
-      };
+      mockDiscussionsData.discussions[discussionIndex]!.pinned = true;
       return HttpResponse.json({
         success: true,
         data: {
@@ -263,10 +269,7 @@ const handlers = [
     const discussionIndex = mockDiscussionsData.discussions.findIndex(d => d.id === discussionId);
     if (discussionIndex !== -1) {
       // Update the mock data to persist the locked state
-      mockDiscussionsData.discussions[discussionIndex] = {
-        ...mockDiscussionsData.discussions[discussionIndex],
-        timelocked: Math.floor(Date.now() / 1000)  // Unix timestamp
-      };
+      mockDiscussionsData.discussions[discussionIndex]!.timelocked = Math.floor(Date.now() / 1000);  // Unix timestamp
       return HttpResponse.json({
         success: true,
         data: {
@@ -299,10 +302,10 @@ beforeEach(() => {
   forumRequestCount = 0;
   
   // Reset discussion states to original values
-  mockDiscussionsData.discussions[0].pinned = true;
-  mockDiscussionsData.discussions[0].timelocked = 0;
-  mockDiscussionsData.discussions[1].pinned = false;
-  mockDiscussionsData.discussions[1].timelocked = 0;
+  mockDiscussionsData.discussions[0]!.pinned = true;
+  mockDiscussionsData.discussions[0]!.timelocked = 0;
+  mockDiscussionsData.discussions[1]!.pinned = false;
+  mockDiscussionsData.discussions[1]!.timelocked = 0;
 });
 
 // Reset handlers after each test

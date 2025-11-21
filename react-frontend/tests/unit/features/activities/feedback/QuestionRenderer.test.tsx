@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, _within } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { axe, toHaveNoViolations } from 'jest-axe';
@@ -1072,7 +1072,7 @@ describe('QuestionRenderer Component', () => {
       await user.type(input, 'test');
 
       expect(mockOnChange).toHaveBeenCalled();
-      expect(typeof mockOnChange.mock.calls[0][0]).toBe('string');
+      expect(typeof mockOnChange.mock.calls[0]![0]).toBe('string');
     });
 
     // eslint-disable-next-line @typescript-eslint/require-await
@@ -1130,7 +1130,7 @@ describe('QuestionRenderer Component', () => {
       await user.click(option1);
 
       expect(mockOnChange).toHaveBeenCalledWith(['1']);
-      expect(Array.isArray(mockOnChange.mock.calls[0][0])).toBe(true);
+      expect(Array.isArray(mockOnChange.mock.calls[0]![0])).toBe(true);
     });
 
     it('does not call onChange for info type', () => {
@@ -1514,8 +1514,6 @@ describe('QuestionRenderer Component', () => {
 
     // eslint-disable-next-line @typescript-eslint/require-await
     it('handles extremely long text input', async () => {
-      const _user = userEvent.setup();
-      const _longText = 'a'.repeat(1000);
       const props: QuestionRendererProps = {
         id: 41,
         type: 'textfield',

@@ -270,54 +270,7 @@ interface AllTheProvidersProps {
   initialRoutes?: string[];
 }
 
-/**
- * All Providers Wrapper Component
- *
- * Combines all necessary context providers into a single wrapper component
- * for consistent test environment setup. This ensures components have access
- * to all required contexts (Redux, React Query, Theme, Router).
- *
- * Provider Hierarchy (outer to inner):
- * 1. Redux Provider - Provides Redux store to all components
- * 2. React Query Provider - Provides React Query client for data fetching
- * 3. Material-UI Theme Provider - Provides theme for styled components
- * 4. React Router Memory Router - Provides routing context for navigation
- *
- * Features:
- * - Redux store with optional preloaded state
- * - React Query client with test-optimized settings
- * - Material-UI theme matching production environment
- * - Memory router with configurable initial routes
- *
- * @param props - Component props including children, preloadedState, initialRoutes
- * @returns JSX element with all providers properly nested
- *
- * @example
- * ```typescript
- * <AllTheProviders
- *   preloadedState={{ auth: { isAuthenticated: true } }}
- *   initialRoutes={['/dashboard']}
- * >
- *   <MyComponent />
- * </AllTheProviders>
- * ```
- */
-function _AllTheProviders({ children, preloadedState, initialRoutes = ['/'] }: AllTheProvidersProps) {
-  // Create a new store instance for this test with optional preloaded state
-  const store = setupStore(preloadedState);
 
-  return (
-    <Provider store={store}>
-      <QueryClientProvider client={testQueryClient}>
-        <ThemeProvider theme={theme}>
-          <MemoryRouter initialEntries={initialRoutes}>
-            {children}
-          </MemoryRouter>
-        </ThemeProvider>
-      </QueryClientProvider>
-    </Provider>
-  );
-}
 
 // ============================================================================
 // Custom Render Function

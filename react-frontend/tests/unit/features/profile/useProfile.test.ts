@@ -21,7 +21,7 @@ import type { ReactNode } from 'react';
 // Mock the profile API module
 vi.mock('@/features/profile/api/profileApi', () => ({
   fetchUserProfile: vi.fn(),
-  fetchCurrentUserProfile: vi.fn(),
+  fetchCurrentUser: vi.fn(),
   updateUserProfile: vi.fn(),
 }));
 
@@ -29,21 +29,10 @@ vi.mock('@/features/profile/api/profileApi', () => ({
 import { fetchUserProfile, updateUserProfile } from '@/features/profile/api/profileApi';
 
 // Import the hook to test
-import { useProfile, _useUpdateProfile } from '@/features/profile/hooks/useProfile';
+import { useProfile } from '@/features/profile/hooks/useProfile';
 
-// Type definitions based on expected profile structure
-interface UserProfile {
-  id: number;
-  username: string;
-  firstname: string;
-  lastname: string;
-  email: string;
-  description?: string;
-  city?: string;
-  country?: string;
-  profileimageurl?: string;
-  interests?: string[];
-}
+// Import User type from profile types
+import type { User } from '@/features/profile/types/profile.types';
 
 interface UpdateProfileData {
   firstname?: string;
@@ -52,6 +41,28 @@ interface UpdateProfileData {
   description?: string;
   city?: string;
   country?: string;
+}
+
+/**
+ * Helper function to create a mock User object with all required properties
+ * @param overrides - Optional properties to override defaults
+ * @returns A complete User object with all required fields
+ */
+function createMockUser(overrides: Partial<User> = {}): User {
+  return {
+    id: 123,
+    username: 'testuser',
+    firstname: 'Test',
+    lastname: 'User',
+    fullname: 'Test User',
+    email: 'test@example.com',
+    profileimageurlsmall: 'https://example.com/avatar-small.jpg',
+    profileimageurl: 'https://example.com/avatar.jpg',
+    description: 'Test user description',
+    city: 'Test City',
+    country: 'US',
+    ...overrides,
+  };
 }
 
 describe('useProfile Hook', () => {
@@ -91,16 +102,7 @@ describe('useProfile Hook', () => {
 
   describe('Profile Data Fetching', () => {
     it('should fetch user profile data with correct query key', async () => {
-      const mockProfile: UserProfile = {
-        id: 123,
-        username: 'testuser',
-        firstname: 'Test',
-        lastname: 'User',
-        email: 'test@example.com',
-        description: 'Test user description',
-        city: 'Test City',
-        country: 'US',
-      };
+      const mockProfile = createMockUser();
 
       vi.mocked(fetchUserProfile).mockResolvedValue(mockProfile);
 
@@ -160,13 +162,14 @@ describe('useProfile Hook', () => {
 
   describe('React Query Cache Integration', () => {
     it('should cache profile data and reuse across components', async () => {
-      const mockProfile: UserProfile = {
+      const mockProfile = createMockUser({
         id: 456,
         username: 'cacheduser',
         firstname: 'Cached',
         lastname: 'User',
+        fullname: 'Cached User',
         email: 'cached@example.com',
-      };
+      });
 
       vi.mocked(fetchUserProfile).mockResolvedValue(mockProfile);
 
@@ -196,18 +199,20 @@ describe('useProfile Hook', () => {
     });
 
     it('should refetch data when cache is stale', async () => {
-      const initialProfile: UserProfile = {
+      const initialProfile = createMockUser({
         id: 789,
         username: 'staleuser',
         firstname: 'Stale',
         lastname: 'User',
+        fullname: 'Stale User',
         email: 'stale@example.com',
-      };
+      });
 
-      const updatedProfile: UserProfile = {
+      const updatedProfile = createMockUser({
         ...initialProfile,
         firstname: 'Fresh',
-      };
+        fullname: 'Fresh User',
+      });
 
       vi.mocked(fetchUserProfile)
         .mockResolvedValueOnce(initialProfile)
@@ -218,7 +223,7 @@ describe('useProfile Hook', () => {
         staleTime: 0, // Data is immediately stale
       });
 
-      const { result, _rerender } = renderHook(() => useProfile(789), {
+      const { result } = renderHook(() => useProfile(789), {
         wrapper: createWrapper(),
       });
 
@@ -242,23 +247,25 @@ describe('useProfile Hook', () => {
 
   describe('Profile Update Mutation', () => {
     it('should update profile using mutation', async () => {
-      const mockProfile: UserProfile = {
+      const mockProfile = createMockUser({
         id: 111,
         username: 'updateuser',
         firstname: 'Original',
         lastname: 'Name',
+        fullname: 'Original Name',
         email: 'original@example.com',
-      };
+      });
 
       const updateData: UpdateProfileData = {
         firstname: 'Updated',
         lastname: 'Name',
       };
 
-      const updatedProfile: UserProfile = {
+      const updatedProfile = createMockUser({
         ...mockProfile,
         ...updateData,
-      };
+        fullname: 'Updated Name',
+      });
 
       vi.mocked(fetchUserProfile).mockResolvedValue(mockProfile);
       // Delay the update response to allow test to observe pending state
@@ -294,13 +301,14 @@ describe('useProfile Hook', () => {
     });
 
     it('should handle update errors correctly', { timeout: 12000 }, async () => {
-      const mockProfile: UserProfile = {
+      const mockProfile = createMockUser({
         id: 222,
         username: 'erroruser',
         firstname: 'Error',
         lastname: 'User',
+        fullname: 'Error User',
         email: 'error@example.com',
-      };
+      });
 
       const updateData: UpdateProfileData = {
         email: 'invalid-email',
@@ -345,13 +353,14 @@ describe('useProfile Hook', () => {
 
   describe('Optimistic Updates', () => {
     it('should immediately reflect updates in UI before server confirmation', async () => {
-      const mockProfile: UserProfile = {
+      const mockProfile = createMockUser({
         id: 333,
         username: 'optimisticuser',
         firstname: 'Before',
         lastname: 'Update',
+        fullname: 'Before Update',
         email: 'before@example.com',
-      };
+      });
 
       const updateData: UpdateProfileData = {
         firstname: 'After',
@@ -359,7 +368,7 @@ describe('useProfile Hook', () => {
 
       vi.mocked(fetchUserProfile).mockResolvedValue(mockProfile);
       vi.mocked(updateUserProfile).mockImplementation(
-        () => new Promise((resolve) => setTimeout(() => resolve({ ...mockProfile, ...updateData }), 100))
+        () => new Promise((resolve) => setTimeout(() => resolve({ ...mockProfile, ...updateData, fullname: 'After Update' }), 100))
       );
 
       const { result } = renderHook(() => useProfile(333), {
@@ -388,13 +397,14 @@ describe('useProfile Hook', () => {
     });
 
     it('should rollback optimistic update on mutation failure', { timeout: 12000 }, async () => {
-      const mockProfile: UserProfile = {
+      const mockProfile = createMockUser({
         id: 444,
         username: 'rollbackuser',
         firstname: 'Original',
         lastname: 'Value',
+        fullname: 'Original Value',
         email: 'rollback@example.com',
-      };
+      });
 
       const updateData: UpdateProfileData = {
         firstname: 'Failed Update',
@@ -403,7 +413,7 @@ describe('useProfile Hook', () => {
       vi.mocked(fetchUserProfile).mockResolvedValue(mockProfile);
       
       // Mock API to fail immediately - React Query will handle retries
-      const _updateSpy = vi.mocked(updateUserProfile).mockImplementation(() => {
+      vi.mocked(updateUserProfile).mockImplementation(() => {
         return Promise.reject(new Error('Update failed'));
       });
 
@@ -441,13 +451,14 @@ describe('useProfile Hook', () => {
 
   describe('Loading and Refetching States', () => {
     it('should correctly indicate loading state during initial fetch', async () => {
-      const mockProfile: UserProfile = {
+      const mockProfile = createMockUser({
         id: 555,
         username: 'loadinguser',
         firstname: 'Loading',
         lastname: 'Test',
+        fullname: 'Loading Test',
         email: 'loading@example.com',
-      };
+      });
 
       vi.mocked(fetchUserProfile).mockImplementation(
         () => new Promise((resolve) => setTimeout(() => resolve(mockProfile), 50))
@@ -471,13 +482,14 @@ describe('useProfile Hook', () => {
     });
 
     it('should indicate fetching state during background refetch', async () => {
-      const mockProfile: UserProfile = {
+      const mockProfile = createMockUser({
         id: 666,
         username: 'refetchuser',
         firstname: 'Refetch',
         lastname: 'Test',
+        fullname: 'Refetch Test',
         email: 'refetch@example.com',
-      };
+      });
 
       vi.mocked(fetchUserProfile).mockResolvedValue(mockProfile);
 
@@ -516,22 +528,24 @@ describe('useProfile Hook', () => {
 
   describe('Cache Invalidation', () => {
     it('should invalidate cache after successful mutation', async () => {
-      const originalProfile: UserProfile = {
+      const originalProfile = createMockUser({
         id: 777,
         username: 'invalidateuser',
         firstname: 'Original',
         lastname: 'Profile',
+        fullname: 'Original Profile',
         email: 'invalidate@example.com',
-      };
+      });
 
       const updateData: UpdateProfileData = {
         firstname: 'Updated',
       };
 
-      const serverProfile: UserProfile = {
+      const serverProfile = createMockUser({
         ...originalProfile,
         firstname: 'Server Updated',
-      };
+        fullname: 'Server Updated Profile',
+      });
 
       vi.mocked(fetchUserProfile)
         .mockResolvedValueOnce(originalProfile)
@@ -566,13 +580,14 @@ describe('useProfile Hook', () => {
 
   describe('Retry Logic', () => {
     it('should retry failed requests with exponential backoff', async () => {
-      const mockProfile: UserProfile = {
+      const mockProfile = createMockUser({
         id: 888,
         username: 'retryuser',
         firstname: 'Retry',
         lastname: 'Test',
+        fullname: 'Retry Test',
         email: 'retry@example.com',
-      };
+      });
 
       // Create a new query client with retry enabled for this test
       const retryQueryClient = new QueryClient({
@@ -652,13 +667,14 @@ describe('useProfile Hook', () => {
 
   describe('Multiple Concurrent Updates', () => {
     it('should queue and handle multiple concurrent update mutations', async () => {
-      const mockProfile: UserProfile = {
+      const mockProfile = createMockUser({
         id: 1010,
         username: 'concurrentuser',
         firstname: 'Initial',
         lastname: 'Name',
+        fullname: 'Initial Name',
         email: 'concurrent@example.com',
-      };
+      });
 
       const update1: UpdateProfileData = { firstname: 'First' };
       const update2: UpdateProfileData = { lastname: 'Second' };
@@ -697,20 +713,21 @@ describe('useProfile Hook', () => {
 
   describe('Stale Data Handling', () => {
     it('should properly handle stale time configuration', async () => {
-      const mockProfile: UserProfile = {
+      const mockProfile = createMockUser({
         id: 1111,
         username: 'staleuser',
         firstname: 'Stale',
         lastname: 'Data',
+        fullname: 'Stale Data',
         email: 'stale@example.com',
-      };
+      });
 
       // Configure a short stale time for this test
       const staleTimeClient = new QueryClient({
         defaultOptions: {
           queries: {
             staleTime: 100, // 100ms
-            cacheTime: 1000,
+            gcTime: 1000,
           },
         },
       });
@@ -721,7 +738,7 @@ describe('useProfile Hook', () => {
 
       vi.mocked(fetchUserProfile).mockResolvedValue(mockProfile);
 
-      const { result, _rerender } = renderHook(() => useProfile(1111), {
+      const { result } = renderHook(() => useProfile(1111), {
         wrapper: staleWrapper,
       });
 
@@ -745,18 +762,20 @@ describe('useProfile Hook', () => {
     });
 
     it('should serve cached data while refetching in background', async () => {
-      const initialProfile: UserProfile = {
+      const initialProfile = createMockUser({
         id: 1212,
         username: 'backgrounduser',
         firstname: 'Cached',
         lastname: 'Data',
+        fullname: 'Cached Data',
         email: 'background@example.com',
-      };
+      });
 
-      const updatedProfile: UserProfile = {
+      const updatedProfile = createMockUser({
         ...initialProfile,
         firstname: 'Fresh',
-      };
+        fullname: 'Fresh Data',
+      });
 
       // First fetch returns immediately
       vi.mocked(fetchUserProfile).mockResolvedValueOnce(initialProfile);
@@ -775,7 +794,7 @@ describe('useProfile Hook', () => {
       );
 
       // Trigger background refetch
-      const _refetchPromise = result.current.refetch();
+      result.current.refetch();
 
       // Wait for isFetching to become true (async state update)
       await waitFor(() => {
@@ -797,21 +816,23 @@ describe('useProfile Hook', () => {
 
   describe('Edge Cases', () => {
     it('should handle switching between different user IDs', async () => {
-      const profile1: UserProfile = {
+      const profile1 = createMockUser({
         id: 1313,
         username: 'user1',
         firstname: 'User',
         lastname: 'One',
+        fullname: 'User One',
         email: 'user1@example.com',
-      };
+      });
 
-      const profile2: UserProfile = {
+      const profile2 = createMockUser({
         id: 1414,
         username: 'user2',
         firstname: 'User',
         lastname: 'Two',
+        fullname: 'User Two',
         email: 'user2@example.com',
-      };
+      });
 
       vi.mocked(fetchUserProfile)
         // eslint-disable-next-line @typescript-eslint/require-await
@@ -846,13 +867,14 @@ describe('useProfile Hook', () => {
     });
 
     it('should handle rapid enabled/disabled toggling', async () => {
-      const mockProfile: UserProfile = {
+      const mockProfile = createMockUser({
         id: 1515,
         username: 'toggleuser',
         firstname: 'Toggle',
         lastname: 'User',
+        fullname: 'Toggle User',
         email: 'toggle@example.com',
-      };
+      });
 
       vi.mocked(fetchUserProfile).mockResolvedValue(mockProfile);
 

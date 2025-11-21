@@ -172,19 +172,19 @@ const sampleSections: Section[] = [
   createSampleSection(1, {
     name: 'Introduction',
     summary: '<p>Welcome to the course!</p>',
-    activities: [sampleActivities[0], sampleActivities[3]],
+    activities: [sampleActivities[0]!, sampleActivities[3]!],
     completionPercentage: 100,
   }),
   createSampleSection(2, {
     name: 'Week 1: Getting Started',
     summary: '<p>This week we will cover the basics.</p>',
-    activities: [sampleActivities[1], sampleActivities[2]],
+    activities: [sampleActivities[1]!, sampleActivities[2]!],
     completionPercentage: 50,
   }),
   createSampleSection(3, {
     name: 'Hidden Section',
     summary: '<p>This section is hidden from students.</p>',
-    activities: [sampleActivities[4]],
+    activities: [sampleActivities[4]!],
     completionPercentage: 0,
     visible: false,
   }),
@@ -230,13 +230,13 @@ describe('SectionList', () => {
     });
 
     it('renders AccordionSummary with section name', () => {
-      renderSectionList({ sections: [sampleSections[0]] });
+      renderSectionList({ sections: [sampleSections[0]!] });
 
       expect(screen.getByText('Introduction')).toBeInTheDocument();
     });
 
     it('renders AccordionDetails with activities', () => {
-      renderSectionList({ sections: [sampleSections[0]] });
+      renderSectionList({ sections: [sampleSections[0]!] });
 
       // Activities are in the DOM but may not be visible until expanded
       const section = screen.getByTestId('section-1');
@@ -244,7 +244,7 @@ describe('SectionList', () => {
     });
 
     it('has proper data-testid attributes', () => {
-      renderSectionList({ sections: [sampleSections[0]] });
+      renderSectionList({ sections: [sampleSections[0]!] });
 
       expect(screen.getByTestId('section-list')).toBeInTheDocument();
       expect(screen.getByTestId('section-1')).toBeInTheDocument();
@@ -264,14 +264,14 @@ describe('SectionList', () => {
     });
 
     it('shows AccordionSummary with section name', () => {
-      renderSectionList({ sections: [sampleSections[0]] });
+      renderSectionList({ sections: [sampleSections[0]!] });
 
       expect(screen.getByText('Introduction')).toBeInTheDocument();
       expect(screen.getByText('Introduction').tagName).toBe('H3');
     });
 
     it('displays ExpandMore icon in summary', () => {
-      renderSectionList({ sections: [sampleSections[0]] });
+      renderSectionList({ sections: [sampleSections[0]!] });
 
       const section = screen.getByTestId('section-1');
       const expandButton = within(section).getByRole('button', {
@@ -281,7 +281,7 @@ describe('SectionList', () => {
     });
 
     it('contains AccordionDetails with activity list', async () => {
-      renderSectionList({ sections: [sampleSections[0]] });
+      renderSectionList({ sections: [sampleSections[0]!] });
 
       // Expand the section
       const expandButton = screen.getByRole('button', {
@@ -296,7 +296,7 @@ describe('SectionList', () => {
     });
 
     it('sections initially collapsed', () => {
-      renderSectionList({ sections: [sampleSections[0]] });
+      renderSectionList({ sections: [sampleSections[0]!] });
 
       const section = screen.getByTestId('section-1');
       const expandButton = within(section).getByRole('button', {
@@ -314,7 +314,7 @@ describe('SectionList', () => {
 
   describe('Section Information', () => {
     it('displays section name prominently', () => {
-      renderSectionList({ sections: [sampleSections[0]] });
+      renderSectionList({ sections: [sampleSections[0]!] });
 
       const sectionName = screen.getByText('Introduction');
       expect(sectionName).toBeInTheDocument();
@@ -322,7 +322,7 @@ describe('SectionList', () => {
     });
 
     it('shows section summary when provided', async () => {
-      renderSectionList({ sections: [sampleSections[0]] });
+      renderSectionList({ sections: [sampleSections[0]!] });
 
       // Expand section to see summary
       const expandButton = screen.getByRole('button', {
@@ -339,7 +339,7 @@ describe('SectionList', () => {
 
     it('displays section completion percentage chip for enrolled students', () => {
       renderSectionList({
-        sections: [sampleSections[0]],
+        sections: [sampleSections[0]!],
         isTeacher: false,
       });
 
@@ -348,7 +348,7 @@ describe('SectionList', () => {
 
     it('does not show completion chip for teachers', () => {
       renderSectionList({
-        sections: [sampleSections[0]],
+        sections: [sampleSections[0]!],
         isTeacher: true,
       });
 
@@ -382,7 +382,7 @@ describe('SectionList', () => {
 
   describe('Section Visibility', () => {
     it('renders visible sections normally', () => {
-      renderSectionList({ sections: [sampleSections[0]] });
+      renderSectionList({ sections: [sampleSections[0]!] });
 
       const section = screen.getByTestId('section-1');
       expect(section).toBeInTheDocument();
@@ -391,7 +391,7 @@ describe('SectionList', () => {
 
     it('indicates hidden sections with icon in teacher view', () => {
       renderSectionList({
-        sections: [sampleSections[2]],
+        sections: [sampleSections[2]!],
         isTeacher: true,
       });
 
@@ -400,7 +400,7 @@ describe('SectionList', () => {
 
     it('applies reduced opacity to hidden sections in teacher view', () => {
       renderSectionList({
-        sections: [sampleSections[2]],
+        sections: [sampleSections[2]!],
         isTeacher: true,
       });
 
@@ -410,7 +410,7 @@ describe('SectionList', () => {
 
     it('shows VisibilityOff icon for hidden sections', () => {
       renderSectionList({
-        sections: [sampleSections[2]],
+        sections: [sampleSections[2]!],
         isTeacher: true,
       });
 
@@ -435,7 +435,7 @@ describe('SectionList', () => {
 
   describe('Section Expansion', () => {
     it('clicking AccordionSummary expands section', async () => {
-      renderSectionList({ sections: [sampleSections[0]] });
+      renderSectionList({ sections: [sampleSections[0]!] });
 
       const expandButton = screen.getByRole('button', {
         name: /expand section introduction/i,
@@ -451,7 +451,7 @@ describe('SectionList', () => {
     });
 
     it('clicking again collapses section', async () => {
-      renderSectionList({ sections: [sampleSections[0]] });
+      renderSectionList({ sections: [sampleSections[0]!] });
 
       const expandButton = screen.getByRole('button', {
         name: /expand section introduction/i,
@@ -490,7 +490,7 @@ describe('SectionList', () => {
     });
 
     it('expansion state managed correctly', async () => {
-      renderSectionList({ sections: [sampleSections[0]] });
+      renderSectionList({ sections: [sampleSections[0]!] });
 
       const expandButton = screen.getByRole('button', {
         name: /expand section introduction/i,
@@ -516,7 +516,7 @@ describe('SectionList', () => {
 
   describe('Activity List Rendering', () => {
     it('renders activities as List/ListItem components', async () => {
-      renderSectionList({ sections: [sampleSections[0]] });
+      renderSectionList({ sections: [sampleSections[0]!] });
 
       // Expand section
       await user.click(
@@ -531,7 +531,7 @@ describe('SectionList', () => {
     });
 
     it('each activity has ListItemButton for interaction', async () => {
-      renderSectionList({ sections: [sampleSections[0]] });
+      renderSectionList({ sections: [sampleSections[0]!] });
 
       await user.click(
         screen.getByRole('button', { name: /expand section introduction/i })
@@ -544,7 +544,7 @@ describe('SectionList', () => {
     });
 
     it('activities in correct order', async () => {
-      renderSectionList({ sections: [sampleSections[0]] });
+      renderSectionList({ sections: [sampleSections[0]!] });
 
       await user.click(
         screen.getByRole('button', { name: /expand section introduction/i })
@@ -672,7 +672,7 @@ describe('SectionList', () => {
 
   describe('Activity Information', () => {
     it('displays activity name as primary text', async () => {
-      renderSectionList({ sections: [sampleSections[0]] });
+      renderSectionList({ sections: [sampleSections[0]!] });
 
       await user.click(
         screen.getByRole('button', { name: /expand section introduction/i })
@@ -684,7 +684,7 @@ describe('SectionList', () => {
     });
 
     it('displays activity type as secondary text', async () => {
-      renderSectionList({ sections: [sampleSections[0]] });
+      renderSectionList({ sections: [sampleSections[0]!] });
 
       await user.click(
         screen.getByRole('button', { name: /expand section introduction/i })
@@ -721,7 +721,7 @@ describe('SectionList', () => {
   describe('Activity Completion', () => {
     it('displays completion checkbox for students', async () => {
       renderSectionList({
-        sections: [sampleSections[0]],
+        sections: [sampleSections[0]!],
         isTeacher: false,
       });
 
@@ -737,7 +737,7 @@ describe('SectionList', () => {
 
     it('checkbox checked when activity completed', async () => {
       renderSectionList({
-        sections: [sampleSections[0]],
+        sections: [sampleSections[0]!],
         isTeacher: false,
       });
 
@@ -773,7 +773,7 @@ describe('SectionList', () => {
 
     it('shows CheckCircle icon for completed activities', async () => {
       renderSectionList({
-        sections: [sampleSections[0]],
+        sections: [sampleSections[0]!],
         isTeacher: false,
       });
 
@@ -794,7 +794,7 @@ describe('SectionList', () => {
   describe('Activity Visibility (Teacher View)', () => {
     it('displays visibility toggle icon for each activity', async () => {
       renderSectionList({
-        sections: [sampleSections[0]],
+        sections: [sampleSections[0]!],
         isTeacher: true,
       });
 
@@ -812,7 +812,7 @@ describe('SectionList', () => {
 
     it('shows Visibility icon for visible activities', async () => {
       renderSectionList({
-        sections: [sampleSections[0]],
+        sections: [sampleSections[0]!],
         isTeacher: true,
       });
 
@@ -870,7 +870,7 @@ describe('SectionList', () => {
   describe('Teacher-Specific Features', () => {
     it('isTeacher prop enables teacher features', () => {
       renderSectionList({
-        sections: [sampleSections[0]],
+        sections: [sampleSections[0]!],
         isTeacher: true,
       });
 
@@ -881,7 +881,7 @@ describe('SectionList', () => {
 
     it('shows DragIndicator icon for reordering', () => {
       renderSectionList({
-        sections: [sampleSections[0]],
+        sections: [sampleSections[0]!],
         isTeacher: true,
       });
 
@@ -892,7 +892,7 @@ describe('SectionList', () => {
 
     it('shows Edit IconButton for inline editing', () => {
       renderSectionList({
-        sections: [sampleSections[0]],
+        sections: [sampleSections[0]!],
         isTeacher: true,
         onSectionEdit: vi.fn(),
       });
@@ -904,7 +904,7 @@ describe('SectionList', () => {
       const onSectionEdit = vi.fn();
 
       renderSectionList({
-        sections: [sampleSections[0]],
+        sections: [sampleSections[0]!],
         isTeacher: true,
         onSectionEdit,
       });
@@ -926,7 +926,7 @@ describe('SectionList', () => {
 
     it('does not show completion chips for teachers', () => {
       renderSectionList({
-        sections: [sampleSections[0]],
+        sections: [sampleSections[0]!],
         isTeacher: true,
       });
 
@@ -943,7 +943,7 @@ describe('SectionList', () => {
       const onActivityClick = vi.fn();
 
       renderSectionList({
-        sections: [sampleSections[0]],
+        sections: [sampleSections[0]!],
         onActivityClick,
       });
 
@@ -967,7 +967,7 @@ describe('SectionList', () => {
       const onActivityClick = vi.fn();
 
       renderSectionList({
-        sections: [sampleSections[1]],
+        sections: [sampleSections[1]!],
         onActivityClick,
       });
 
@@ -1015,7 +1015,7 @@ describe('SectionList', () => {
 
   describe('Accessibility', () => {
     it('accordion accessible via keyboard', async () => {
-      renderSectionList({ sections: [sampleSections[0]] });
+      renderSectionList({ sections: [sampleSections[0]!] });
 
       const expandButton = screen.getByRole('button', {
         name: /expand section introduction/i,
@@ -1032,7 +1032,7 @@ describe('SectionList', () => {
     });
 
     it('has proper ARIA labels on accordions', () => {
-      renderSectionList({ sections: [sampleSections[0]] });
+      renderSectionList({ sections: [sampleSections[0]!] });
 
       expect(
         screen.getByLabelText('Section: Introduction')
@@ -1040,7 +1040,7 @@ describe('SectionList', () => {
     });
 
     it('screen reader announces section expansion', () => {
-      renderSectionList({ sections: [sampleSections[0]] });
+      renderSectionList({ sections: [sampleSections[0]!] });
 
       const expandButton = screen.getByRole('button', {
         name: /expand section introduction/i,
@@ -1055,7 +1055,7 @@ describe('SectionList', () => {
 
     it('completion checkboxes have proper aria labels', async () => {
       renderSectionList({
-        sections: [sampleSections[0]],
+        sections: [sampleSections[0]!],
         isTeacher: false,
       });
 
@@ -1069,7 +1069,7 @@ describe('SectionList', () => {
     });
 
     it('course sections list has role="list"', () => {
-      renderSectionList({ sections: [sampleSections[0]] });
+      renderSectionList({ sections: [sampleSections[0]!] });
 
       const sectionList = screen.getByTestId('section-list');
       expect(sectionList).toHaveAttribute('role', 'list');
@@ -1077,7 +1077,7 @@ describe('SectionList', () => {
     });
 
     it('activity list has proper aria label', async () => {
-      renderSectionList({ sections: [sampleSections[0]] });
+      renderSectionList({ sections: [sampleSections[0]!] });
 
       await user.click(
         screen.getByRole('button', { name: /expand section introduction/i })
@@ -1100,13 +1100,13 @@ describe('SectionList', () => {
 
   describe('Theme Integration', () => {
     it('renders with theme provider', () => {
-      renderSectionList({ sections: [sampleSections[0]] });
+      renderSectionList({ sections: [sampleSections[0]!] });
 
       expect(screen.getByTestId('section-list')).toBeInTheDocument();
     });
 
     it('accordion uses theme styling', () => {
-      renderSectionList({ sections: [sampleSections[0]] });
+      renderSectionList({ sections: [sampleSections[0]!] });
 
       const section = screen.getByTestId('section-1');
       expect(section).toHaveClass('MuiAccordion-root');
@@ -1119,7 +1119,7 @@ describe('SectionList', () => {
 
   describe('Section Summary', () => {
     it('displays section summary text', async () => {
-      renderSectionList({ sections: [sampleSections[0]] });
+      renderSectionList({ sections: [sampleSections[0]!] });
 
       await user.click(
         screen.getByRole('button', { name: /expand section introduction/i })
@@ -1132,7 +1132,7 @@ describe('SectionList', () => {
     });
 
     it('summary can include HTML', async () => {
-      renderSectionList({ sections: [sampleSections[0]] });
+      renderSectionList({ sections: [sampleSections[0]!] });
 
       await user.click(
         screen.getByRole('button', { name: /expand section introduction/i })
@@ -1191,7 +1191,7 @@ describe('SectionList', () => {
   describe('Completion Percentage Display', () => {
     it('shows completion chip with correct percentage', () => {
       renderSectionList({
-        sections: [sampleSections[0]],
+        sections: [sampleSections[0]!],
         isTeacher: false,
       });
 
@@ -1217,7 +1217,7 @@ describe('SectionList', () => {
 
     it('chip only shown for enrolled students', () => {
       renderSectionList({
-        sections: [sampleSections[0]],
+        sections: [sampleSections[0]!],
         isTeacher: true,
       });
 

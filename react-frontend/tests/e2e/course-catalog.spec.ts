@@ -22,14 +22,9 @@
 
 import { test, expect, type Page } from '@playwright/test';
 import { CourseCatalogPage } from './pages/CourseCatalogPage';
-import { _login, loginAsStudent, isAuthenticated, _getAuthToken, _logout } from './utils/auth';
+import { loginAsStudent, isAuthenticated } from './utils/auth';
 import { 
-  testCourse1, 
-  _testCourse2, 
-  _testCourse3, 
-  _testCourse4, 
-  _createCourse, 
-  _getCourseWithActivities 
+  testCourse1
 } from './fixtures/courses';
 import { setViewport, clearBrowserStorage, navigateToPage } from './utils/browser-helpers';
 
@@ -169,7 +164,7 @@ test.describe('Course Catalog - Browsing and Search', () => {
       expect(courseCards.length).toBeGreaterThan(0);
 
       // Check first course card in detail
-      const firstCard = courseCards[0];
+      const firstCard = courseCards[0]!;
 
       // Verify instructor information
       expect(firstCard.instructor).toBeTruthy();
@@ -210,7 +205,7 @@ test.describe('Course Catalog - Browsing and Search', () => {
       // This is a component implementation issue outside the scope of this E2E test file validation
       
       // Get initial view state (should default to grid)
-      const _initialView = await page.getAttribute('[data-testid="view-toggle"]', 'data-view');
+      await page.getAttribute('[data-testid="view-toggle"]', 'data-view');
       
       // Toggle to list view
       await catalogPage.toggleView('list');
@@ -401,7 +396,7 @@ test.describe('Course Catalog - Browsing and Search', () => {
 
       // Verify breadcrumbs show the path: Home > Mathematics
       expect(breadcrumbs.length).toBeGreaterThanOrEqual(2);
-      expect(breadcrumbs[0].label).toContain('Home');
+      expect(breadcrumbs[0]!.label).toContain('Home');
       expect(breadcrumbs.some(b => b.label === 'Mathematics')).toBe(true);
 
       // Navigate to another category
@@ -484,8 +479,8 @@ test.describe('Course Catalog - Browsing and Search', () => {
 
       // Verify courses are sorted alphabetically by title
       for (let i = 0; i < sortedCourses.length - 1; i++) {
-        const currentTitle = sortedCourses[i].title.toLowerCase();
-        const nextTitle = sortedCourses[i + 1].title.toLowerCase();
+        const currentTitle = sortedCourses[i]!.title.toLowerCase();
+        const nextTitle = sortedCourses[i + 1]!.title.toLowerCase();
         expect(currentTitle.localeCompare(nextTitle)).toBeLessThanOrEqual(0);
       }
     });
@@ -502,8 +497,8 @@ test.describe('Course Catalog - Browsing and Search', () => {
 
       // Verify courses are sorted in reverse alphabetical order
       for (let i = 0; i < sortedCourses.length - 1; i++) {
-        const currentTitle = sortedCourses[i].title.toLowerCase();
-        const nextTitle = sortedCourses[i + 1].title.toLowerCase();
+        const currentTitle = sortedCourses[i]!.title.toLowerCase();
+        const nextTitle = sortedCourses[i + 1]!.title.toLowerCase();
         expect(currentTitle.localeCompare(nextTitle)).toBeGreaterThanOrEqual(0);
       }
     });
@@ -521,8 +516,8 @@ test.describe('Course Catalog - Browsing and Search', () => {
 
       // Verify courses with dates are sorted correctly (ascending - oldest first)
       for (let i = 0; i < coursesWithDates.length - 1; i++) {
-        const currentDate = new Date(coursesWithDates[i].startDate!);
-        const nextDate = new Date(coursesWithDates[i + 1].startDate!);
+        const currentDate = new Date(coursesWithDates[i]!.startDate!);
+        const nextDate = new Date(coursesWithDates[i + 1]!.startDate!);
         // Older dates should come first (ascending order)
         expect(currentDate.getTime()).toBeLessThanOrEqual(nextDate.getTime());
       }
@@ -538,8 +533,8 @@ test.describe('Course Catalog - Browsing and Search', () => {
 
       // Verify courses are sorted by enrollment count (ascending - least popular first)
       for (let i = 0; i < sortedCourses.length - 1; i++) {
-        const currentEnrollment = sortedCourses[i].enrollmentCount;
-        const nextEnrollment = sortedCourses[i + 1].enrollmentCount;
+        const currentEnrollment = sortedCourses[i]!.enrollmentCount;
+        const nextEnrollment = sortedCourses[i + 1]!.enrollmentCount;
         // Lower enrollment should come first (ascending order)
         expect(currentEnrollment).toBeLessThanOrEqual(nextEnrollment);
       }
@@ -671,7 +666,7 @@ test.describe('Course Catalog - Browsing and Search', () => {
       const courseCards = await catalogPage.getCourseCards();
       expect(courseCards.length).toBeGreaterThan(0);
 
-      const firstCourse = courseCards[0];
+      const firstCourse = courseCards[0]!;
       const {courseId} = firstCourse;
 
       // Click on course card to navigate to detail page
@@ -694,7 +689,7 @@ test.describe('Course Catalog - Browsing and Search', () => {
       const courseCards = await catalogPage.getCourseCards();
       expect(courseCards.length).toBeGreaterThan(0);
 
-      const firstCourse = courseCards[0];
+      const firstCourse = courseCards[0]!;
 
       // Hover over course card to trigger preview
       const previewData = await catalogPage.getCoursePreview(firstCourse.courseId);

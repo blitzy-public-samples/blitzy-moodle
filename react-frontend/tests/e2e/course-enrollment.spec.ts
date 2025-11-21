@@ -21,9 +21,9 @@ import { CoursePage } from './pages/CoursePage';
 import { EnrollmentPage } from './pages/EnrollmentPage';
 import { CourseCatalogPage } from './pages/CourseCatalogPage';
 import { DashboardPage } from './pages/DashboardPage';
-import { login, loginAsStudent, isAuthenticated, logout, _getAuthToken, clearAuthenticationState } from './utils/auth';
+import { login, loginAsStudent, isAuthenticated, logout, clearAuthenticationState } from './utils/auth';
 import { testCourse1, testCourse2, testCourse3, testCourse4, createCourse, getCourseWithActivities } from './fixtures/courses';
-import { _testStudent, TEST_PASSWORD, testTeacher } from './fixtures/users';
+import { TEST_PASSWORD, testTeacher } from './fixtures/users';
 
 test.describe('Course Enrollment Workflow', () => {
   let page: Page;
@@ -294,7 +294,7 @@ test.describe('Course Enrollment Workflow', () => {
     await enrollmentPage.waitForEnrollmentDialog();
     
     // Enter valid enrollment key from fixture
-    const validKey = testCourse2.enrollmentmethods[0].password;
+    const validKey = testCourse2.enrollmentmethods[0]!.password;
     if (!validKey) {
       throw new Error('Test course 2 must have an enrollment key configured');
     }

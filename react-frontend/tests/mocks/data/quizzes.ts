@@ -18,8 +18,6 @@
 
 import type { Quiz, QuizAttempt } from '@/types/entities';
 import type { QuizId, CourseId, UserId, Id } from '@/types/common';
-import { _mockCourse } from './courses';
-import { _mockUser } from './users';
 
 // ============================================================================
 // Utility Types
@@ -122,7 +120,7 @@ export function getRandomState(): 'inprogress' | 'overdue' | 'finished' | 'aband
     'abandoned',
   ];
   const index = Math.floor(Math.random() * states.length);
-  return states[index];
+  return states[index]!;
 }
 
 /**
@@ -154,32 +152,7 @@ export function generateQuestionLayout(numQuestions: number): string {
   return layout.join(',');
 }
 
-/**
- * Returns a random preferred behaviour from common Moodle quiz settings
- * 
- * @returns {string} Quiz behaviour setting
- */
-function _getRandomBehaviour(): string {
-  const behaviours = [
-    'deferredfeedback',
-    'adaptive',
-    'immediatefeedback',
-    'interactive',
-  ];
-  const index = Math.floor(Math.random() * behaviours.length);
-  return behaviours[index];
-}
 
-/**
- * Returns a random overdue handling method
- * 
- * @returns {string} Overdue handling setting
- */
-function _getRandomOverdueHandling(): string {
-  const methods = ['autosubmit', 'graceperiod', 'autoabandon'];
-  const index = Math.floor(Math.random() * methods.length);
-  return methods[index];
-}
 
 // ============================================================================
 // Quiz Factory

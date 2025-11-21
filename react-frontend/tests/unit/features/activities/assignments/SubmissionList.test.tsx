@@ -18,7 +18,8 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { format, formatDistanceToNow } from 'date-fns';
 import SubmissionList from '@/features/activities/assignments/components/SubmissionList';
-import type { Submission, Assignment, SubmissionStatus } from '@/features/activities/assignments/types/assignment.types';
+import { SubmissionStatus } from '@/features/activities/assignments/types/assignment.types';
+import type { Submission, Assignment } from '@/features/activities/assignments/types/assignment.types';
 
 /**
  * Test Utilities
@@ -49,7 +50,7 @@ const createMockSubmission = (overrides: Partial<Submission> = {}): Submission =
  * Creates an array of mock submissions with various statuses
  */
 const createMockSubmissions = (count: number, overrides: Partial<Submission>[] = []): Submission[] => {
-  const statuses: SubmissionStatus[] = ['new', 'draft', 'submitted', 'reopened'];
+  const statuses: SubmissionStatus[] = [SubmissionStatus.NEW, SubmissionStatus.DRAFT, SubmissionStatus.SUBMITTED, SubmissionStatus.REOPENED];
   const submissions: Submission[] = [];
   
   for (let i = 0; i < count; i++) {
@@ -80,7 +81,7 @@ const createMockAssignment = (overrides: Partial<Assignment> = {}): Assignment =
     intro: 'Test assignment description',
     introformat: 1,
     activity: 'assign',
-    activityformat: '',
+    activityformat: 0,
     alwaysshowdescription: 1,
     submissiondrafts: 1,
     sendnotifications: 1,
@@ -109,26 +110,6 @@ const createMockAssignment = (overrides: Partial<Assignment> = {}): Assignment =
     configs: {},
     ...overrides,
   };
-};
-
-/**
- * Helper to sort submissions for comparison
- */
-const _sortSubmissions = (submissions: Submission[], field: keyof Submission, order: 'asc' | 'desc'): Submission[] => {
-  const sorted = [...submissions].sort((a, b) => {
-    const aVal = a[field];
-    const bVal = b[field];
-    
-    if (aVal === undefined && bVal === undefined) {return 0;}
-    if (aVal === undefined) {return order === 'asc' ? 1 : -1;}
-    if (bVal === undefined) {return order === 'asc' ? -1 : 1;}
-    
-    if (aVal < bVal) {return order === 'asc' ? -1 : 1;}
-    if (aVal > bVal) {return order === 'asc' ? 1 : -1;}
-    return 0;
-  });
-  
-  return sorted;
 };
 
 /**
@@ -945,7 +926,7 @@ describe('SubmissionList Component', () => {
 
       expect(mockOnViewSubmission).toHaveBeenCalledTimes(1);
       // Verify that a submission was passed (the actual submission depends on table sorting)
-      const calledSubmission = mockOnViewSubmission.mock.calls[0][0] as Submission;
+      const calledSubmission = mockOnViewSubmission.mock.calls[0]![0] as Submission;
       expect(calledSubmission).toMatchObject({
         assignment: 1,
         attemptnumber: 1,
@@ -1155,7 +1136,7 @@ describe('SubmissionList Component', () => {
     });
 
     it('maps status to correct chip colors', () => {
-      const statuses: SubmissionStatus[] = ['new', 'draft', 'submitted', 'reopened'];
+      const statuses: SubmissionStatus[] = [SubmissionStatus.NEW, SubmissionStatus.DRAFT, SubmissionStatus.SUBMITTED, SubmissionStatus.REOPENED];
       const submissions = statuses.map((status, idx) =>
         createMockSubmission({ id: idx + 1, status })
       );
@@ -1373,7 +1354,7 @@ describe('SubmissionList Component', () => {
         />
       );
 
-      const viewButton = screen.getAllByLabelText(/view submission/i)[0];
+      const viewButton = screen.getAllByLabelText(/view submission/i)[0]!;
       
       // Focus the button directly (in real usage, user would tab to it)
       viewButton.focus();

@@ -55,14 +55,14 @@ describe('QuestionRenderer Component', () => {
    */
   const ControlledQuestionRenderer: React.FC<{
     question: QuizQuestion;
-    initialValue?: string;
-    onChange: (value: string) => void;
+    initialValue?: string | string[];
+    onChange: (value: string | string[]) => void;
     onFlag?: (flagged: boolean) => void;
     disabled?: boolean;
-  }> = ({ question, initialValue = '', onChange, onFlag, disabled }) => {
-    const [value, setValue] = React.useState(initialValue);
+  }> = ({ question, initialValue = '', onChange, onFlag: _onFlag, disabled }) => {
+    const [value, setValue] = React.useState<string | string[]>(initialValue);
 
-    const handleChange = (newValue: string) => {
+    const handleChange = (newValue: string | string[]) => {
       setValue(newValue);
       onChange(newValue);
     };
@@ -72,7 +72,6 @@ describe('QuestionRenderer Component', () => {
         question={question}
         value={value}
         onChange={handleChange}
-        onFlag={onFlag}
         disabled={disabled}
       />
     );
@@ -571,7 +570,7 @@ describe('QuestionRenderer Component', () => {
         expect(mockOnChange).toHaveBeenCalled();
         // Check that onChange was called with partial input as user types
         const {calls} = mockOnChange.mock;
-        expect(calls[calls.length - 1][0]).toBe('H2O');
+        expect(calls[calls.length - 1]![0]).toBe('H2O');
       });
     });
 
@@ -684,7 +683,7 @@ describe('QuestionRenderer Component', () => {
       await waitFor(() => {
         expect(mockOnChange).toHaveBeenCalled();
         const {calls} = mockOnChange.mock;
-        expect(calls[calls.length - 1][0]).toBe('42');
+        expect(calls[calls.length - 1]![0]).toBe('42');
       });
     });
 
@@ -726,7 +725,7 @@ describe('QuestionRenderer Component', () => {
 
       await waitFor(() => {
         const {calls} = mockOnChange.mock;
-        expect(calls[calls.length - 1][0]).toBe('-25');
+        expect(calls[calls.length - 1]![0]).toBe('-25');
       });
     });
 
@@ -750,7 +749,7 @@ describe('QuestionRenderer Component', () => {
 
       await waitFor(() => {
         const {calls} = mockOnChange.mock;
-        expect(calls[calls.length - 1][0]).toBe('3.14');
+        expect(calls[calls.length - 1]![0]).toBe('3.14');
       });
     });
   });
@@ -807,7 +806,7 @@ describe('QuestionRenderer Component', () => {
       await waitFor(() => {
         expect(mockOnChange).toHaveBeenCalled();
         const {calls} = mockOnChange.mock;
-        expect(calls[calls.length - 1][0]).toBe(essayText);
+        expect(calls[calls.length - 1]![0]).toBe(essayText);
       });
     });
 

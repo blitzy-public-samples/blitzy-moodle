@@ -56,7 +56,7 @@ function createTestQueryClient(): QueryClient {
     defaultOptions: {
       queries: {
         retry: false,
-        cacheTime: 0, // Disable cache between tests
+        gcTime: 0, // React Query v5: renamed from cacheTime - disable cache between tests
       },
       mutations: {
         retry: false,
@@ -152,17 +152,6 @@ const mockApiResponseUserAttempts = {
   },
 };
 
-const _mockApiResponseAttempts = {
-  success: true,
-  data: {
-    activityid: 1,
-    attempts: [
-      ...mockUserAttempt.attempts,
-      ...mockUserAttempt2.attempts,
-    ],
-  },
-};
-
 // Create convenient aliases for refactored tests
 const mockH5PAttemptsResponse = mockApiResponseUserAttempts;
 const mockH5PAttemptsData = mockApiResponseUserAttempts.data;
@@ -217,7 +206,7 @@ describe('useH5PAttempts - Basic Fetching', () => {
     expect(result.current.attempts.length).toBe(2);
     
     // Verify first user attempt has expected fields
-    const firstUserAttempt = result.current.attempts[0];
+    const firstUserAttempt = result.current.attempts[0]!;
     expect(firstUserAttempt).toHaveProperty('userid', 101);
     expect(firstUserAttempt).toHaveProperty('firstname', 'John');
     expect(firstUserAttempt).toHaveProperty('lastname', 'Doe');
@@ -227,7 +216,7 @@ describe('useH5PAttempts - Basic Fetching', () => {
     expect(firstUserAttempt.attempts.length).toBe(2);
     
     // Verify individual attempt structure
-    const firstAttempt = firstUserAttempt.attempts[0];
+    const firstAttempt = firstUserAttempt.attempts[0]!;
     expect(firstAttempt).toHaveProperty('id');
     expect(firstAttempt).toHaveProperty('timecreated');
     expect(firstAttempt).toHaveProperty('timemodified');
@@ -323,7 +312,7 @@ describe('useH5PAttempts - Filtering', () => {
 
     // All attempts should be for user ID 101
     expect(result.current.attempts.length).toBe(1);
-    expect(result.current.attempts[0].userid).toBe(101);
+    expect(result.current.attempts[0]!.userid).toBe(101);
   });
 
   it('should filter attempts by multiple userIds', async () => {
@@ -533,11 +522,11 @@ describe('useH5PAttempts - Sorting', () => {
     });
 
     // Verify attempts are sorted by scaled score in descending order
-    const userAttempt = result.current.attempts[0];
+    const userAttempt = result.current.attempts[0]!;
     expect(userAttempt.attempts.length).toBe(3);
-    expect(userAttempt.attempts[0].scaled).toBe(0.9); // Highest
-    expect(userAttempt.attempts[1].scaled).toBe(0.5); // Middle
-    expect(userAttempt.attempts[2].scaled).toBe(0.3); // Lowest
+    expect(userAttempt.attempts[0]!.scaled).toBe(0.9); // Highest
+    expect(userAttempt.attempts[1]!.scaled).toBe(0.5); // Middle
+    expect(userAttempt.attempts[2]!.scaled).toBe(0.3); // Lowest
   });
 
   it('should sort attempts by attempt number ascending', async () => {
@@ -973,8 +962,8 @@ describe('useH5PAttempts - Combined Scenarios', () => {
     result.current.attempts.forEach((userAttempt) => {
       if (userAttempt.attempts.length > 1) {
         for (let i = 0; i < userAttempt.attempts.length - 1; i++) {
-          const score1 = userAttempt.attempts[i].scaled;
-          const score2 = userAttempt.attempts[i + 1].scaled;
+          const score1 = userAttempt.attempts[i]!.scaled;
+          const score2 = userAttempt.attempts[i + 1]!.scaled;
           expect(score1).toBeGreaterThanOrEqual(score2);
         }
       }

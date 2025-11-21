@@ -18,7 +18,7 @@ import { test, expect } from '@playwright/test';
 import { AdminRolePage } from './pages/AdminRolePage';
 import { CoursePage } from './pages/CoursePage';
 import { loginAsAdmin, loginAsStudent, logout, isAuthenticated } from './utils/auth';
-import { _testAdmin, testStudent, _TEST_PASSWORD } from './fixtures/users';
+import { testStudent } from './fixtures/users';
 import { testCourse1 } from './fixtures/courses';
 
 test.describe('Admin Role Assignment Workflow', () => {

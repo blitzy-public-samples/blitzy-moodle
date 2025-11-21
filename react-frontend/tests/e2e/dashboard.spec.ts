@@ -22,7 +22,7 @@ import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { DashboardPage } from './pages/DashboardPage';
 import { login, isAuthenticated, logout, getAuthToken, clearAuthenticationState } from './utils/auth';
-import { waitForPageLoad, waitForNetworkIdle, waitForCondition, _pollUntil, waitForElement } from './utils/wait-helpers';
+import { waitForPageLoad, waitForNetworkIdle, waitForCondition, waitForElement } from './utils/wait-helpers';
 import { apiRequest, setupTestEnvironment, cleanupTestEnvironment, createTestUser, type TestEnvironment } from './utils/api-helpers';
 import type { Assignment } from '@/features/activities/assignments/types/assignment.types';
 
@@ -239,7 +239,7 @@ test.describe('Dashboard E2E Tests', () => {
       expect(events.length).toBeGreaterThan(0);
 
       // Click on first event
-      const firstEvent = events[0];
+      const firstEvent = events[0]!;
       const eventElement = page.locator(`[data-testid="calendar-event"][data-event-id="${firstEvent.eventId}"]`);
       await eventElement.click();
 
@@ -278,11 +278,11 @@ test.describe('Dashboard E2E Tests', () => {
 
       // Verify activities are sorted chronologically (earliest first)
       for (let i = 0; i < dueDates.length - 1; i++) {
-        expect(dueDates[i].getTime()).toBeLessThanOrEqual(dueDates[i + 1].getTime());
+        expect(dueDates[i]!.getTime()).toBeLessThanOrEqual(dueDates[i + 1]!.getTime());
       }
 
       // Verify timeline shows activity types by checking the first item in the DOM
-      const firstItem = timelineItems[0];
+      const firstItem = timelineItems[0]!;
       const firstItemElement = page.locator(`[data-testid="timeline-item"][data-item-id="${firstItem.itemId}"]`);
       await expect(firstItemElement.locator('[data-testid="activity-type"]')).toBeVisible();
       await expect(firstItemElement.locator('[data-testid="activity-title"]')).toBeVisible();
@@ -302,7 +302,7 @@ test.describe('Dashboard E2E Tests', () => {
 
       // Verify all items are assignments (using data from the interface)
       for (const item of filteredItems) {
-        expect(item.activityType.toLowerCase()).toContain('assignment');
+        expect(item.activityType!.toLowerCase()).toContain('assignment');
       }
 
       // Verify count changed (filtered)
@@ -323,7 +323,7 @@ test.describe('Dashboard E2E Tests', () => {
 
       // Verify all items are quizzes (using data from the interface)
       for (const item of filteredItems) {
-        expect(item.activityType.toLowerCase()).toContain('quiz');
+        expect(item.activityType!.toLowerCase()).toContain('quiz');
       }
 
       // Verify count changed (filtered)
@@ -366,7 +366,7 @@ test.describe('Dashboard E2E Tests', () => {
       expect(recentActivities.length).toBeGreaterThan(0);
 
       // Verify recent activity structure by checking the first item in the DOM
-      const firstActivity = recentActivities[0];
+      const firstActivity = recentActivities[0]!;
       const firstActivityElement = page.locator(`[data-testid="activity-item"][data-activity-id="${firstActivity.activityId}"]`);
       await expect(firstActivityElement.locator('[data-testid="activity-course"]')).toBeVisible();
       await expect(firstActivityElement.locator('[data-testid="activity-description"]')).toBeVisible();
@@ -404,7 +404,7 @@ test.describe('Dashboard E2E Tests', () => {
       expect(onlineUsers.length).toBeGreaterThanOrEqual(2);
 
       // Verify user structure by constructing locator for first user
-      const firstUser = onlineUsers[0];
+      const firstUser = onlineUsers[0]!;
       const firstUserElement = page.locator(`[data-testid="online-user"][data-user-id="${firstUser.userId}"]`);
       await expect(firstUserElement.locator('[data-testid="user-name"]')).toBeVisible();
       await expect(firstUserElement.locator('[data-testid="user-avatar"]')).toBeVisible();
@@ -439,7 +439,7 @@ test.describe('Dashboard E2E Tests', () => {
       expect(courseCards.length).toBeGreaterThanOrEqual(2); // At least testCourse1 and testCourse2
 
       // Verify course card structure
-      const firstCourse = courseCards[0];
+      const firstCourse = courseCards[0]!;
       const firstCourseElement = page.locator(`[data-testid="course-card"][data-course-id="${firstCourse.courseId}"]`);
       await expect(firstCourseElement.locator('[data-testid="course-name"]')).toBeVisible();
       await expect(firstCourseElement.locator('[data-testid="course-progress"]')).toBeVisible();
@@ -460,7 +460,7 @@ test.describe('Dashboard E2E Tests', () => {
       expect(courseCards.length).toBeGreaterThan(0);
 
       // Get first course name for verification (from data object)
-      const firstCourse = courseCards[0];
+      const firstCourse = courseCards[0]!;
       const firstCourseName = firstCourse.courseName;
 
       // Click first course card (pass courseId as string)
@@ -573,8 +573,7 @@ test.describe('Dashboard E2E Tests', () => {
   test.describe('Widget Refresh', () => {
     test('should refresh widget data when refresh button clicked', async () => {
       // Get initial timeline items count
-      const initialItems = await dashboardPage.getTimelineItems();
-      const _initialCount = initialItems.length;
+      await dashboardPage.getTimelineItems();
 
       // Setup API request monitoring
       const apiRequestPromise = page.waitForResponse(
@@ -628,7 +627,7 @@ test.describe('Dashboard E2E Tests', () => {
       expect(courseCards.length).toBeGreaterThan(0);
 
       // Click first course (pass courseId as string)
-      const firstCourse = courseCards[0];
+      const firstCourse = courseCards[0]!;
       await dashboardPage.clickCourseCard(firstCourse.courseId);
 
       // Verify navigation
@@ -646,7 +645,7 @@ test.describe('Dashboard E2E Tests', () => {
       expect(timelineItems.length).toBeGreaterThan(0);
 
       // Click first timeline item (construct locator from data)
-      const firstItem = timelineItems[0];
+      const firstItem = timelineItems[0]!;
       const firstItemElement = page.locator(`[data-testid="timeline-item"][data-item-id="${firstItem.itemId}"]`);
       await firstItemElement.click();
 
@@ -714,7 +713,7 @@ test.describe('Dashboard E2E Tests', () => {
 
       // Create a new assignment via API
       const newAssignment = await apiRequest<Assignment>({
-        token: authToken,
+        token: authToken!,
         endpoint: '/api/v1/assignments',
         method: 'POST',
         body: {
@@ -742,7 +741,7 @@ test.describe('Dashboard E2E Tests', () => {
 
       // Cleanup: Remove test assignment via API
       await apiRequest({
-        token: authToken,
+        token: authToken!,
         endpoint: `/api/v1/assignments/${newAssignment.id}`,
         method: 'DELETE'
       });
