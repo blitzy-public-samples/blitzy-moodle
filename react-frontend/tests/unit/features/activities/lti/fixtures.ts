@@ -95,14 +95,6 @@ export const mockLTI13Tool: LtiTool = {
   servicesalt: 'xyz789uvw456rst123',
   icon: 'https://lti13-provider.example.com/icon.png',
   secureicon: 'https://lti13-provider.example.com/icon.png',
-  publickeyset: 'https://lti13-provider.example.com/.well-known/jwks.json',
-  accesstokenurl: 'https://lti13-provider.example.com/auth/token',
-  authurl: 'https://lti13-provider.example.com/oidc/login',
-  ltiversion: 'LTI-1p3',
-  initiatelogin: 'https://lti13-provider.example.com/oidc/login',
-  supportsags: true,
-  clientid: 'moodle-client-abc123',
-  deploymentid: 'deployment-1',
 };
 
 /**
@@ -151,43 +143,6 @@ export const mockLTI11LaunchParams: LtiLaunchData = {
     { name: 'oauth_signature_method', value: 'HMAC-SHA1' },
     { name: 'oauth_signature', value: 'dGVzdC1zaWduYXR1cmUtaGFzaA==' },
   ],
-  // Direct properties for test access
-  lti_message_type: 'basic-lti-launch-request',
-  lti_version: 'LTI-1p0',
-  resource_link_id: 'lti-instance-1',
-  resource_link_title: 'Sample LTI 1.1 Tool',
-  resource_link_description: 'This is a sample LTI 1.1 external tool for testing purposes',
-  user_id: '12345',
-  user_image: 'https://moodle.example.com/user/pix.php/12345/f1.jpg',
-  roles: 'Learner',
-  lis_person_name_given: 'John',
-  lis_person_name_family: 'Doe',
-  lis_person_name_full: 'John Doe',
-  lis_person_contact_email_primary: 'john.doe@example.com',
-  context_id: 'course-101',
-  context_type: 'CourseSection',
-  context_label: 'CS101',
-  context_title: 'Introduction to Computer Science',
-  launch_presentation_locale: 'en',
-  launch_presentation_document_target: 'iframe',
-  launch_presentation_return_url: 'https://moodle.example.com/mod/lti/return.php?course=101',
-  tool_consumer_instance_guid: 'moodle.example.com',
-  tool_consumer_instance_name: 'Example Moodle Site',
-  tool_consumer_instance_description: 'Example Moodle site for testing',
-  tool_consumer_instance_url: 'https://moodle.example.com',
-  tool_consumer_instance_contact_email: 'admin@moodle.example.com',
-  tool_consumer_info_product_family_code: 'moodle',
-  tool_consumer_info_version: '4.4',
-  lis_result_sourcedid: 'course-101:lti-1:user-12345',
-  lis_outcome_service_url: 'https://moodle.example.com/mod/lti/service.php/outcome',
-  custom_param1: 'value1',
-  custom_param2: 'value2',
-  oauth_callback: 'about:blank',
-  oauth_consumer_key: 'test-consumer-key-12345',
-  oauth_version: '1.0',
-  oauth_nonce: 'a1b2c3d4e5f6g7h8i9j0',
-  oauth_timestamp: '1704067200',
-  oauth_signature_method: 'HMAC-SHA1',
   oauth_signature: 'dGVzdC1zaWduYXR1cmUtaGFzaA==',
 };
 
@@ -209,7 +164,7 @@ export const mockLTI13OIDCParams = {
  * Mock Student User
  * Represents a student user with learner role for testing
  */
-export const mockStudent: User = {
+export const mockStudent: Partial<User> = {
   id: 1001,
   username: 'student1',
   firstname: 'John',
@@ -226,14 +181,13 @@ export const mockStudent: User = {
   lastip: '192.168.1.100',
   timecreated: Math.floor(Date.now() / 1000) - 86400 * 60, // 60 days ago
   timemodified: Math.floor(Date.now() / 1000) - 86400, // 1 day ago
-  roles: ['Learner'],
 };
 
 /**
  * Mock Teacher User
  * Represents a teacher/instructor user with instructor role for testing
  */
-export const mockTeacher: User = {
+export const mockTeacher: Partial<User> = {
   id: 2001,
   username: 'teacher1',
   firstname: 'Jane',
@@ -250,14 +204,13 @@ export const mockTeacher: User = {
   lastip: '192.168.1.200',
   timecreated: Math.floor(Date.now() / 1000) - 86400 * 180, // 180 days ago
   timemodified: Math.floor(Date.now() / 1000) - 86400 * 7, // 7 days ago
-  roles: ['Instructor'],
 };
 
 /**
  * Mock Admin User
  * Represents an administrator user with admin role for testing
  */
-export const mockAdmin: User = {
+export const mockAdmin: Partial<User> = {
   id: 3001,
   username: 'admin1',
   firstname: 'Admin',
@@ -274,14 +227,13 @@ export const mockAdmin: User = {
   lastip: '192.168.1.1',
   timecreated: Math.floor(Date.now() / 1000) - 86400 * 730, // 2 years ago
   timemodified: Math.floor(Date.now() / 1000) - 86400 * 2, // 2 days ago
-  roles: ['Administrator'],
 };
 
 /**
  * Mock Course
  * Represents a course context for LTI tool launches
  */
-export const mockCourse: Course = {
+export const mockCourse: Partial<Course> = {
   id: 101,
   fullname: 'Introduction to Computer Science',
   shortname: 'CS101',
@@ -324,10 +276,6 @@ export const mockGrade: LtiGradeResult = {
   originalgrade: 85,
   launchid: 1,
   state: 1,
-  rawgrade: 85,
-  rawgrademax: 100,
-  rawgrademin: 0,
-  timemodified: 1704153600,
 };
 
 /**
