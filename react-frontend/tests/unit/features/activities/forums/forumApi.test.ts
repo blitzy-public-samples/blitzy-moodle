@@ -474,7 +474,14 @@ const handlers = [
       }, { status: 403 });
     }
     
-    return new HttpResponse(null, { status: 204 });
+    // Return proper JSON response for successful deletion
+    return HttpResponse.json({
+      success: true,
+      data: {
+        softDeleted: true,
+        message: 'Post deleted successfully'
+      }
+    }, { status: 200 });
   }),
 
   // POST subscribe to forum
@@ -1231,11 +1238,13 @@ describe('forumApi', () => {
       await expect(forumApi.deletePost(1)).resolves.not.toThrow();
     });
 
-    it('should return 204 No Content response', async () => {
+    it('should return success response', async () => {
       const result = await forumApi.deletePost(1);
       
-      // Should return void or undefined for 204 response
-      expect(result).toBeUndefined();
+      // Should return an object with optional status fields
+      expect(result).toBeDefined();
+      expect(typeof result).toBe('object');
+      // May contain message, softDeleted, or hardDeleted fields
     });
 
     it('should throw 403 error for unauthorized deletion', async () => {

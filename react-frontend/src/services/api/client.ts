@@ -367,6 +367,31 @@ if (isDevelopment) {
 export default apiClient;
 
 /**
+ * Utility function to extract data from standard API response envelope
+ *
+ * Extracts the `data` field from the API response envelope structure:
+ * `{ success: true, data: T, meta?: ... }` and returns just the data payload.
+ *
+ * This is a convenience function for API service functions that need to extract
+ * the data from the response before returning it to React Query hooks.
+ *
+ * @template T - Type of the data payload
+ * @param response - Axios response containing an ApiResponse in its data field
+ * @returns The extracted data payload of type T
+ *
+ * @example
+ * ```typescript
+ * async function fetchCourses(): Promise<Course[]> {
+ *   const response = await apiClient.get<ApiResponse<Course[]>>('/courses');
+ *   return extractData(response);
+ * }
+ * ```
+ */
+export function extractData<T>(response: { data: { success: true; data: T; meta?: unknown } }): T {
+  return response.data.data;
+}
+
+/**
  * Named export for explicit imports
  *
  * Provides the same instance as the default export

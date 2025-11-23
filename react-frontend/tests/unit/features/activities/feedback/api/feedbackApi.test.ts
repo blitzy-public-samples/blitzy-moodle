@@ -1166,9 +1166,14 @@ describe('Feedback API Client', () => {
         expect(true).toBe(false);
       } catch (error: any) {
         expect(error).toBeDefined();
-        // Error should contain response data
+        // Error interceptor transforms errors into plain objects
+        // with status, code, message, and details properties
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        expect(error.response).toBeDefined();
+        expect(error.status).toBeDefined();
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        expect(error.code).toBeDefined();
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        expect(error.message).toBeDefined();
       }
     });
 
