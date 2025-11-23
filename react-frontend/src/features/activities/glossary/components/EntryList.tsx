@@ -41,7 +41,7 @@ import {
   IconButton,
   Skeleton,
   InputAdornment,
-  Stack,
+  SelectChangeEvent,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -54,7 +54,7 @@ import {
 import type { GlossaryEntry } from '../types/glossary.types';
 import { stripHtml } from '@/utils/string';
 import { formatRelativeTime } from '@/utils/date';
-import { useDebounce } from '@/hooks/useDebounce';
+import useDebounce from '@/hooks/useDebounce';
 import { usePermissions } from '@/hooks/usePermissions';
 
 // ============================================================================
@@ -148,7 +148,7 @@ export function EntryList({
   onSearchChange,
   onSortChange,
   onAddEntry,
-  glossaryId,
+  glossaryId: _glossaryId,
 }: EntryListProps): JSX.Element {
   // ============================================================================
   // State Management
@@ -234,7 +234,7 @@ export function EntryList({
   /**
    * Handle sort key selection change
    */
-  const handleSortKeyChange = (event: React.ChangeEvent<{ value: unknown }>) => {
+  const handleSortKeyChange = (event: SelectChangeEvent<GlossarySortKey | ''>) => {
     const newSortKey = event.target.value as GlossarySortKey | '';
     if (onSortChange) {
       onSortChange(newSortKey, filters.sortorder);
