@@ -29,7 +29,7 @@
  * @module tests/unit/hooks/usePermissions
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
@@ -37,7 +37,7 @@ import type { ReactNode } from 'react';
 import { usePermissions } from '@/hooks/usePermissions';
 import type { RootState } from '@/app/store';
 import { authReducer } from '@/features/auth/store/authSlice';
-import type { User, Role, Permission } from '@/features/auth/types/auth.types';
+import { AuthStatus, type User, type Role, type Permission } from '@/features/auth/types/auth.types';
 
 // ============================================================================
 // Test Helper Functions
@@ -227,7 +227,7 @@ describe('usePermissions', () => {
           isAuthenticated: true,
           isLoading: false,
           error: null,
-          status: 'authenticated',
+          status: AuthStatus.AUTHENTICATED,
         },
       });
 
@@ -253,7 +253,7 @@ describe('usePermissions', () => {
           isAuthenticated: false,
           isLoading: false,
           error: null,
-          status: 'unauthenticated',
+          status: AuthStatus.UNAUTHENTICATED,
         },
       });
 
@@ -272,7 +272,7 @@ describe('usePermissions', () => {
           isAuthenticated: true,
           isLoading: false,
           error: null,
-          status: 'authenticated',
+          status: AuthStatus.AUTHENTICATED,
         },
       });
 
@@ -295,7 +295,7 @@ describe('usePermissions', () => {
           isAuthenticated: true,
           isLoading: false,
           error: null,
-          status: 'authenticated',
+          status: AuthStatus.AUTHENTICATED,
         },
       });
 
@@ -314,7 +314,7 @@ describe('usePermissions', () => {
           isAuthenticated: true,
           isLoading: false,
           error: null,
-          status: 'authenticated',
+          status: AuthStatus.AUTHENTICATED,
         },
       });
 
@@ -334,7 +334,7 @@ describe('usePermissions', () => {
           isAuthenticated: false,
           isLoading: false,
           error: null,
-          status: 'unauthenticated',
+          status: AuthStatus.UNAUTHENTICATED,
         },
       });
 
@@ -358,7 +358,7 @@ describe('usePermissions', () => {
           isAuthenticated: true,
           isLoading: false,
           error: null,
-          status: 'authenticated',
+          status: AuthStatus.AUTHENTICATED,
         },
       });
 
@@ -381,7 +381,7 @@ describe('usePermissions', () => {
           isAuthenticated: true,
           isLoading: false,
           error: null,
-          status: 'authenticated',
+          status: AuthStatus.AUTHENTICATED,
         },
       });
 
@@ -404,7 +404,7 @@ describe('usePermissions', () => {
           isAuthenticated: true,
           isLoading: false,
           error: null,
-          status: 'authenticated',
+          status: AuthStatus.AUTHENTICATED,
         },
       });
 
@@ -429,7 +429,7 @@ describe('usePermissions', () => {
           isAuthenticated: true,
           isLoading: false,
           error: null,
-          status: 'authenticated',
+          status: AuthStatus.AUTHENTICATED,
         },
       });
 
@@ -461,7 +461,7 @@ describe('usePermissions', () => {
           isAuthenticated: true,
           isLoading: false,
           error: null,
-          status: 'authenticated',
+          status: AuthStatus.AUTHENTICATED,
         },
       });
 
@@ -484,7 +484,7 @@ describe('usePermissions', () => {
           isAuthenticated: true,
           isLoading: false,
           error: null,
-          status: 'authenticated',
+          status: AuthStatus.AUTHENTICATED,
         },
       });
 
@@ -513,7 +513,7 @@ describe('usePermissions', () => {
           isAuthenticated: true,
           isLoading: false,
           error: null,
-          status: 'authenticated',
+          status: AuthStatus.AUTHENTICATED,
         },
       });
 
@@ -530,7 +530,7 @@ describe('usePermissions', () => {
           isAuthenticated: true,
           isLoading: false,
           error: null,
-          status: 'authenticated',
+          status: AuthStatus.AUTHENTICATED,
         },
       });
 
@@ -549,7 +549,7 @@ describe('usePermissions', () => {
           isAuthenticated: true,
           isLoading: false,
           error: null,
-          status: 'authenticated',
+          status: AuthStatus.AUTHENTICATED,
         },
       });
 
@@ -574,7 +574,7 @@ describe('usePermissions', () => {
           isAuthenticated: true,
           isLoading: false,
           error: null,
-          status: 'authenticated',
+          status: AuthStatus.AUTHENTICATED,
         },
       });
 
@@ -594,7 +594,7 @@ describe('usePermissions', () => {
           isAuthenticated: true,
           isLoading: false,
           error: null,
-          status: 'authenticated',
+          status: AuthStatus.AUTHENTICATED,
         },
       });
 
@@ -614,7 +614,7 @@ describe('usePermissions', () => {
           isAuthenticated: true,
           isLoading: false,
           error: null,
-          status: 'authenticated',
+          status: AuthStatus.AUTHENTICATED,
         },
       });
 
@@ -634,7 +634,7 @@ describe('usePermissions', () => {
           isAuthenticated: true,
           isLoading: false,
           error: null,
-          status: 'authenticated',
+          status: AuthStatus.AUTHENTICATED,
         },
       });
 
@@ -654,7 +654,7 @@ describe('usePermissions', () => {
           isAuthenticated: true,
           isLoading: false,
           error: null,
-          status: 'authenticated',
+          status: AuthStatus.AUTHENTICATED,
         },
       });
 
@@ -680,7 +680,7 @@ describe('usePermissions', () => {
           isAuthenticated: true,
           isLoading: false,
           error: null,
-          status: 'authenticated',
+          status: AuthStatus.AUTHENTICATED,
         },
       });
 
@@ -697,14 +697,28 @@ describe('usePermissions', () => {
   describe('Convenience Functions', () => {
     describe('canViewCourse', () => {
       it('should return true for users with moodle/course:view capability', () => {
+        // Create user with capability for course context 123
+        const userWithCourseView = createMockUser(
+          3,
+          ['student'],
+          [
+            'moodle/course:view',
+            'mod/assign:submit',
+            'mod/assign:view',
+            'mod/quiz:attempt',
+            'mod/quiz:view',
+          ],
+          123 // contextId for course 123
+        );
+
         const wrapper = createWrapper({
           auth: {
-            user: mockStudentUser,
+            user: userWithCourseView,
             tokens: null,
             isAuthenticated: true,
             isLoading: false,
             error: null,
-            status: 'authenticated',
+            status: AuthStatus.AUTHENTICATED,
           },
         });
 
@@ -714,10 +728,12 @@ describe('usePermissions', () => {
       });
 
       it('should return false for users without moodle/course:view capability', () => {
+        // Create user without course:view capability for course 123
         const userWithoutView = createMockUser(
           8,
           ['student'],
-          ['mod/assign:submit']
+          ['mod/assign:submit'], // Has other capabilities but not course:view
+          123 // contextId for course 123
         );
 
         const wrapper = createWrapper({
@@ -727,7 +743,7 @@ describe('usePermissions', () => {
             isAuthenticated: true,
             isLoading: false,
             error: null,
-            status: 'authenticated',
+            status: AuthStatus.AUTHENTICATED,
           },
         });
 
@@ -739,14 +755,28 @@ describe('usePermissions', () => {
 
     describe('canEditCourse', () => {
       it('should return true for teachers with moodle/course:update capability', () => {
+        // Create teacher with course:update capability for course 123
+        const teacherWithUpdate = createMockUser(
+          2,
+          ['editingteacher'],
+          [
+            'moodle/course:view',
+            'moodle/course:update',
+            'mod/assign:grade',
+            'mod/quiz:grade',
+            'mod/forum:deleteanypost',
+          ],
+          123 // contextId for course 123
+        );
+
         const wrapper = createWrapper({
           auth: {
-            user: mockTeacherUser,
+            user: teacherWithUpdate,
             tokens: null,
             isAuthenticated: true,
             isLoading: false,
             error: null,
-            status: 'authenticated',
+            status: AuthStatus.AUTHENTICATED,
           },
         });
 
@@ -756,14 +786,27 @@ describe('usePermissions', () => {
       });
 
       it('should return false for students without moodle/course:update capability', () => {
+        // Create student without course:update capability for course 123
+        const studentWithoutUpdate = createMockUser(
+          3,
+          ['student'],
+          [
+            'moodle/course:view',
+            'mod/assign:submit',
+            'mod/assign:view',
+            'mod/quiz:attempt',
+          ],
+          123 // contextId for course 123
+        );
+
         const wrapper = createWrapper({
           auth: {
-            user: mockStudentUser,
+            user: studentWithoutUpdate,
             tokens: null,
             isAuthenticated: true,
             isLoading: false,
             error: null,
-            status: 'authenticated',
+            status: AuthStatus.AUTHENTICATED,
           },
         });
 
@@ -775,14 +818,28 @@ describe('usePermissions', () => {
 
     describe('canGrade', () => {
       it('should return true for teachers with mod/assign:grade capability', () => {
+        // Create teacher with assign:grade capability for course 123
+        const teacherWithGrade = createMockUser(
+          2,
+          ['editingteacher'],
+          [
+            'moodle/course:view',
+            'moodle/course:update',
+            'mod/assign:grade',
+            'mod/quiz:grade',
+            'mod/forum:deleteanypost',
+          ],
+          123 // contextId for course 123
+        );
+
         const wrapper = createWrapper({
           auth: {
-            user: mockTeacherUser,
+            user: teacherWithGrade,
             tokens: null,
             isAuthenticated: true,
             isLoading: false,
             error: null,
-            status: 'authenticated',
+            status: AuthStatus.AUTHENTICATED,
           },
         });
 
@@ -792,14 +849,27 @@ describe('usePermissions', () => {
       });
 
       it('should return false for students without mod/assign:grade capability', () => {
+        // Create student without assign:grade capability for course 123
+        const studentWithoutGrade = createMockUser(
+          3,
+          ['student'],
+          [
+            'moodle/course:view',
+            'mod/assign:submit',
+            'mod/assign:view',
+            'mod/quiz:attempt',
+          ],
+          123 // contextId for course 123
+        );
+
         const wrapper = createWrapper({
           auth: {
-            user: mockStudentUser,
+            user: studentWithoutGrade,
             tokens: null,
             isAuthenticated: true,
             isLoading: false,
             error: null,
-            status: 'authenticated',
+            status: AuthStatus.AUTHENTICATED,
           },
         });
 
@@ -823,7 +893,7 @@ describe('usePermissions', () => {
           isAuthenticated: true,
           isLoading: false,
           error: null,
-          status: 'authenticated',
+          status: AuthStatus.AUTHENTICATED,
         },
       });
 
@@ -847,7 +917,7 @@ describe('usePermissions', () => {
           isAuthenticated: true,
           isLoading: false,
           error: null,
-          status: 'authenticated',
+          status: AuthStatus.AUTHENTICATED,
         },
       });
 
@@ -867,7 +937,7 @@ describe('usePermissions', () => {
           isAuthenticated: true,
           isLoading: false,
           error: null,
-          status: 'authenticated',
+          status: AuthStatus.AUTHENTICATED,
         },
       });
 
@@ -893,7 +963,7 @@ describe('usePermissions', () => {
           isAuthenticated: true,
           isLoading: false,
           error: null,
-          status: 'authenticated',
+          status: AuthStatus.AUTHENTICATED,
         },
       });
 
@@ -915,7 +985,7 @@ describe('usePermissions', () => {
           isAuthenticated: true,
           isLoading: false,
           error: null,
-          status: 'authenticated',
+          status: AuthStatus.AUTHENTICATED,
         },
       });
 
@@ -974,7 +1044,7 @@ describe('usePermissions', () => {
           isAuthenticated: true,
           isLoading: false,
           error: null,
-          status: 'authenticated',
+          status: AuthStatus.AUTHENTICATED,
         },
       });
 
@@ -1012,7 +1082,7 @@ describe('usePermissions', () => {
           isAuthenticated: true,
           isLoading: false,
           error: null,
-          status: 'authenticated',
+          status: AuthStatus.AUTHENTICATED,
         },
       });
 
@@ -1050,7 +1120,7 @@ describe('usePermissions', () => {
           isAuthenticated: true,
           isLoading: false,
           error: null,
-          status: 'authenticated',
+          status: AuthStatus.AUTHENTICATED,
         },
       });
 
@@ -1095,7 +1165,7 @@ describe('usePermissions', () => {
           isAuthenticated: true,
           isLoading: false,
           error: null,
-          status: 'authenticated',
+          status: AuthStatus.AUTHENTICATED,
         },
       });
 
@@ -1129,7 +1199,7 @@ describe('usePermissions', () => {
           isAuthenticated: true,
           isLoading: false,
           error: null,
-          status: 'authenticated',
+          status: AuthStatus.AUTHENTICATED,
         },
       });
 
