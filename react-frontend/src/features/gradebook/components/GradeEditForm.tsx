@@ -17,7 +17,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { useForm, Controller, FieldErrors } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -37,7 +37,7 @@ import { DateTimePicker } from '@mui/x-date-pickers';
 // Internal imports
 import type { Grade, GradeItem } from '../types/grade.types';
 import { usePermissions } from '../../../hooks/usePermissions';
-import { RichTextEditor } from '../../../components/editor/RichTextEditor';
+import RichTextEditor from '../../../components/editor/RichTextEditor';
 import { useToast } from '../../../hooks/useToast';
 
 /**
@@ -78,12 +78,20 @@ const createGradeSchema = (grademax: number, grademin: number) => {
       .max(grademax, `Grade cannot exceed ${grademax}`)
       .nullable(),
     feedback: z.string().optional(),
-    overridden: z.boolean(),
-    excluded: z.boolean(),
-    hidden: z.boolean(),
-    hiddenUntil: z.date().nullable().optional(),
-    locked: z.boolean(),
-    lockTime: z.date().nullable().optional(),
+    overridden: z.number().int().min(0).max(1),
+    excluded: z.number().int().min(0).max(1),
+    hidden: z.number().int().min(0),
+    locked: z.number().int().min(0),
+    locktime: z.number().int().min(0),
+  }).refine((data) => {
+    // When override is checked, finalgrade must not be null
+    if (data.overridden === 1 && data.finalgrade === null) {
+      return false;
+    }
+    return true;
+  }, {
+    message: 'Grade is required when override is checked',
+    path: ['finalgrade'],
   });
 };
 
@@ -135,12 +143,11 @@ const GradeEditForm: React.FC<GradeEditFormProps> = ({
     defaultValues: {
       finalgrade: initialValues?.finalgrade ?? null,
       feedback: initialValues?.feedback ?? '',
-      overridden: initialValues?.overridden ?? false,
-      excluded: initialValues?.excluded ?? false,
-      hidden: initialValues?.hidden ?? false,
-      hiddenUntil: initialValues?.hiddenUntil ? new Date(initialValues.hiddenUntil) : null,
-      locked: initialValues?.locked ?? false,
-      lockTime: initialValues?.lockTime ? new Date(initialValues.lockTime) : null,
+      overridden: initialValues?.overridden ?? 0,
+      excluded: initialValues?.excluded ?? 0,
+      hidden: initialValues?.hidden ?? 0,
+      locked: initialValues?.locked ?? 0,
+      locktime: initialValues?.locktime ?? 0,
     },
     mode: 'onBlur',
   });
@@ -149,6 +156,7 @@ const GradeEditForm: React.FC<GradeEditFormProps> = ({
   const overridden = watch('overridden');
   const hidden = watch('hidden');
   const locked = watch('locked');
+  const locktime = watch('locktime');
   const excluded = watch('excluded');
 
   /**
@@ -171,9 +179,8 @@ const GradeEditForm: React.FC<GradeEditFormProps> = ({
         overridden: data.overridden,
         excluded: data.excluded,
         hidden: data.hidden,
-        hiddenUntil: data.hiddenUntil ? data.hiddenUntil.toISOString() : null,
         locked: data.locked,
-        lockTime: data.lockTime ? data.lockTime.toISOString() : null,
+        locktime: data.locktime,
       };
 
       // Call the onSubmit callback with the transformed data
@@ -196,7 +203,7 @@ const GradeEditForm: React.FC<GradeEditFormProps> = ({
    */
   const handleOverrideChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const isOverridden = event.target.checked;
-    setValue('overridden', isOverridden);
+    setValue('overridden', isOverridden ? 1 : 0);
     
     // If override is disabled and grade was previously overridden, clear the grade
     if (!isOverridden && initialValues?.overridden) {
@@ -210,7 +217,7 @@ const GradeEditForm: React.FC<GradeEditFormProps> = ({
    */
   const handleExcludedChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const isExcluded = event.target.checked;
-    setValue('excluded', isExcluded);
+    setValue('excluded', isExcluded ? 1 : 0);
   };
 
   // If user doesn't have permission, show error message
@@ -251,7 +258,7 @@ const GradeEditForm: React.FC<GradeEditFormProps> = ({
               render={({ field }) => (
                 <Checkbox
                   {...field}
-                  checked={field.value}
+                  checked={field.value === 1}
                   onChange={(e) => {
                     field.onChange(e);
                     handleOverrideChange(e);
@@ -264,7 +271,7 @@ const GradeEditForm: React.FC<GradeEditFormProps> = ({
           }
           label="Override calculated grade"
         />
-        {!overridden && (
+        {overridden === 0 && (
           <FormHelperText>
             Check this box to manually enter a grade that overrides any calculated grade.
           </FormHelperText>
@@ -280,7 +287,7 @@ const GradeEditForm: React.FC<GradeEditFormProps> = ({
               label={`Grade (out of ${gradeItem.grademax || 100})`}
               type="number"
               fullWidth
-              disabled={!overridden || readOnly || isLoading || excluded}
+              disabled={overridden === 0 || readOnly || isLoading || excluded === 1}
               error={!!errors.finalgrade}
               helperText={
                 errors.finalgrade?.message ||
@@ -310,7 +317,7 @@ const GradeEditForm: React.FC<GradeEditFormProps> = ({
               render={({ field }) => (
                 <Checkbox
                   {...field}
-                  checked={field.value}
+                  checked={field.value === 1}
                   onChange={(e) => {
                     field.onChange(e);
                     handleExcludedChange(e);
@@ -323,7 +330,7 @@ const GradeEditForm: React.FC<GradeEditFormProps> = ({
           }
           label="Exclude from calculations"
         />
-        {excluded && (
+        {excluded === 1 && (
           <FormHelperText>
             This grade will be excluded from aggregation calculations.
           </FormHelperText>
@@ -336,6 +343,7 @@ const GradeEditForm: React.FC<GradeEditFormProps> = ({
             control={control}
             render={({ field }) => (
               <RichTextEditor
+                name="feedback"
                 label="Feedback"
                 placeholder="Enter feedback for student"
                 value={field.value || ''}
@@ -358,7 +366,12 @@ const GradeEditForm: React.FC<GradeEditFormProps> = ({
                 render={({ field }) => (
                   <Switch
                     {...field}
-                    checked={field.value}
+                    checked={field.value > 0}
+                    onChange={(e) => {
+                      // Set to current timestamp if checked, 0 if unchecked
+                      const newValue = e.target.checked ? Math.floor(Date.now() / 1000) : 0;
+                      field.onChange(newValue);
+                    }}
                     disabled={readOnly || isLoading}
                     aria-label="Hide grade from student"
                   />
@@ -367,28 +380,10 @@ const GradeEditForm: React.FC<GradeEditFormProps> = ({
             }
             label="Hide from student"
           />
-          {hidden && (
-            <Box sx={{ mt: 2 }}>
-              <Controller
-                name="hiddenUntil"
-                control={control}
-                render={({ field }) => (
-                  <DateTimePicker
-                    label="Hidden until"
-                    value={field.value}
-                    onChange={field.onChange}
-                    disabled={readOnly || isLoading}
-                    slotProps={{
-                      textField: {
-                        fullWidth: true,
-                        helperText: 'Grade will be hidden from student until this date/time',
-                        error: !!errors.hiddenUntil,
-                      },
-                    }}
-                  />
-                )}
-              />
-            </Box>
+          {hidden > 0 && (
+            <FormHelperText>
+              Grade is hidden from student until {new Date(hidden * 1000).toLocaleString()}
+            </FormHelperText>
           )}
         </Box>
 
@@ -402,7 +397,15 @@ const GradeEditForm: React.FC<GradeEditFormProps> = ({
                 render={({ field }) => (
                   <Switch
                     {...field}
-                    checked={field.value}
+                    checked={field.value === 1}
+                    onChange={(e) => {
+                      const newValue = e.target.checked ? 1 : 0;
+                      field.onChange(newValue);
+                      // If locking, set locktime to current timestamp
+                      if (e.target.checked && locktime === 0) {
+                        setValue('locktime', Math.floor(Date.now() / 1000));
+                      }
+                    }}
                     disabled={readOnly || isLoading}
                     aria-label="Lock grade"
                   />
@@ -411,22 +414,25 @@ const GradeEditForm: React.FC<GradeEditFormProps> = ({
             }
             label="Lock grade"
           />
-          {locked && (
+          {locked === 1 && (
             <Box sx={{ mt: 2 }}>
               <Controller
-                name="lockTime"
+                name="locktime"
                 control={control}
                 render={({ field }) => (
                   <DateTimePicker
-                    label="Locked after"
-                    value={field.value}
-                    onChange={field.onChange}
+                    label="Locked at"
+                    value={field.value > 0 ? new Date(field.value * 1000) : null}
+                    onChange={(date) => {
+                      const timestamp = date ? Math.floor(date.getTime() / 1000) : 0;
+                      field.onChange(timestamp);
+                    }}
                     disabled={readOnly || isLoading}
                     slotProps={{
                       textField: {
                         fullWidth: true,
-                        helperText: 'Grade will be locked after this date/time',
-                        error: !!errors.lockTime,
+                        helperText: 'Date and time when grade was locked',
+                        error: !!errors.locktime,
                       },
                     }}
                   />
