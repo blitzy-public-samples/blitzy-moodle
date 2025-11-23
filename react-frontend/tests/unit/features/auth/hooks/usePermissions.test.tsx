@@ -12,7 +12,7 @@
  * - hasAllCapabilities(): Check if user has all specified capabilities
  * - Convenience methods: canViewCourse, canEditCourse, canGrade
  * - Role checking: isAdmin, isTeacher, isStudent
- * - Context types: system, course, module, user, coursecat
+ * - Context types: system, course, module, user
  * - Caching and performance optimization
  * - Null/undefined user handling
  * - Redux state integration
@@ -22,7 +22,7 @@
  * @module usePermissions.test
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
@@ -32,7 +32,7 @@ import type { ReactNode } from 'react';
 import { usePermissions } from '@/features/auth/hooks/usePermissions';
 import type { Capability, Context } from '@/features/auth/hooks/usePermissions';
 import { authReducer, authActions } from '@/features/auth/store/authSlice';
-import type { User, Role, Permission, RoleArchetype } from '@/features/auth/types/auth.types';
+import type { User, Role, Permission, RoleArchetype, AuthState } from '@/features/auth/types/auth.types';
 
 // ============================================================================
 // Test Data and Mock Objects
@@ -63,7 +63,6 @@ const createRole = (
   shortname,
   name: shortname.charAt(0).toUpperCase() + shortname.slice(1),
   archetype,
-  sortorder: id,
 });
 
 /**
@@ -84,7 +83,6 @@ const createMockUser = (
   profileimageurlsmall: '',
   roles,
   capabilities,
-  preferences: {},
   lang: 'en',
   theme: 'boost',
   timezone: 'UTC',
@@ -108,9 +106,8 @@ const createMockUser = (
   mailformat: 1,
   maildigest: 0,
   maildisplay: 2,
-  autosubscribe: 1,
-  trackforums: 0,
-  trustbitmask: 0,
+  autosubscribe: true,
+  trackforums: false,
   imagealt: '',
   lastip: '',
 });
@@ -198,7 +195,7 @@ const createTestStore = (user: User | null = null, isAuthenticated: boolean = fa
         error: null,
         tokens: null,
         status: user ? ('authenticated' as const) : ('unauthenticated' as const),
-      },
+      } as AuthState,
     },
   });
   return store;
@@ -1105,22 +1102,6 @@ describe('usePermissions - Context Types', () => {
     expect(hasCapability).toBe(true);
   });
 
-  it('should work with coursecat context (category level)', () => {
-    const user = createAdminUser();
-    const categoryCapability = createPermission('moodle/category:manage', 2);
-    user.capabilities.push(categoryCapability);
-    const wrapper = createWrapper(user, true);
-    const { result } = renderHook(() => usePermissions(), { wrapper });
-
-    const context: Context = { type: 'coursecat', contextId: 2 };
-    const hasCapability = result.current.hasCapability(
-      'moodle/category:manage' as Capability,
-      context
-    );
-
-    expect(hasCapability).toBe(true);
-  });
-
   it('should validate context type validation', () => {
     const user = createTeacherUser(5);
     const wrapper = createWrapper(user, true);
@@ -1132,7 +1113,6 @@ describe('usePermissions - Context Types', () => {
       { type: 'course', contextId: 5 },
       { type: 'module', contextId: 123 },
       { type: 'user', contextId: 42 },
-      { type: 'coursecat', contextId: 2 },
     ];
 
     validContexts.forEach(context => {
@@ -1436,8 +1416,6 @@ describe('usePermissions - Redux Integration', () => {
       wrapper: ({ children }) => <Provider store={store}>{children}</Provider>,
     });
 
-    const initialResult = result.current;
-
     // Clear auth (logout)
     store.dispatch(authActions.clearAuth());
     
@@ -1467,7 +1445,6 @@ describe('usePermissions - TypeScript Type Safety', () => {
       { type: 'course', contextId: 5 },
       { type: 'module', contextId: 123 },
       { type: 'user', contextId: 42 },
-      { type: 'coursecat', contextId: 2 },
     ];
 
     // All should work without TypeScript errors

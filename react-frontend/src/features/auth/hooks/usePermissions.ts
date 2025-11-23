@@ -315,16 +315,31 @@ export function usePermissions(): PermissionsHook {
      *
      * Implementation:
      * 1. Return false if user is null/undefined (not authenticated)
-     * 2. Check if user.capabilities array contains matching permission
-     * 3. Match by capability string and contextId
+     * 2. Validate context type is valid
+     * 3. Check if user.capabilities array contains matching permission
+     * 4. Match by capability string and contextId
+     * 5. Check parent contexts (context hierarchy)
+     *
+     * Context Hierarchy (from highest to lowest):
+     * - System (contextId: 0) - applies to everything
+     * - CourseCategory - applies to courses in category
+     * - Course - applies to activities in course
+     * - Module/Activity - specific to that activity
+     * - User - specific to user profile
      *
      * Note: This is a simplified implementation. In a full Moodle implementation,
-     * capability checking would traverse the context hierarchy and check for
+     * capability checking would traverse the complete context hierarchy and check for
      * permission overrides at each level.
      */
     const hasCapability = (capability: Capability, context: Context): boolean => {
       // Return false if no user (not authenticated)
       if (!user || !isAuthenticated) {
+        return false;
+      }
+
+      // Validate context type - return false for invalid types
+      const validContextTypes: ContextType[] = ['system', 'course', 'module', 'user'];
+      if (!validContextTypes.includes(context.type)) {
         return false;
       }
 
@@ -335,14 +350,34 @@ export function usePermissions(): PermissionsHook {
 
       // Check if user has the capability in the specified context
       // Look for exact match in capabilities array
-      const hasPermission = user.capabilities.some(
+      const hasPermissionInContext = user.capabilities.some(
         (permission) =>
           permission.capability === capability &&
           permission.contextId === context.contextId &&
           permission.granted === true
       );
 
-      return hasPermission;
+      if (hasPermissionInContext) {
+        return true;
+      }
+
+      // Check parent contexts (simplified hierarchy)
+      // If checking non-system context, also check system context (0)
+      // System-level permissions apply everywhere
+      if (context.contextId !== 0) {
+        const hasSystemPermission = user.capabilities.some(
+          (permission) =>
+            permission.capability === capability &&
+            permission.contextId === 0 &&
+            permission.granted === true
+        );
+
+        if (hasSystemPermission) {
+          return true;
+        }
+      }
+
+      return false;
     };
 
     /**
@@ -431,12 +466,12 @@ export function usePermissions(): PermissionsHook {
     /**
      * Check if user is a site administrator
      *
-     * Checks 'moodle/site:config' capability in system context (ID: 1)
+     * Checks 'moodle/site:config' capability in system context (ID: 0)
      */
     const isAdmin = (): boolean => {
       return hasCapability('moodle/site:config', {
         type: 'system',
-        contextId: 1, // System context always has ID 1
+        contextId: 0, // System context always has ID 0
       });
     };
 

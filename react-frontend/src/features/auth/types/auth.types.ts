@@ -487,7 +487,7 @@ export interface AuthState {
   /**
    * Loading state for auth operations
    */
-  loading: boolean;
+  isLoading: boolean;
 
   /**
    * Error information if authentication failed
