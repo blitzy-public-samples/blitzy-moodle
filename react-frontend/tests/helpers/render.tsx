@@ -14,7 +14,7 @@
  * @see @testing-library/react - Base testing library
  */
 
-import React, { ReactElement, ReactNode } from 'react';
+import { ReactElement, ReactNode } from 'react';
 import {
   render as rtlRender,
   RenderOptions as RTLRenderOptions,
@@ -37,10 +37,10 @@ import { afterEach } from 'vitest';
 
 // Internal imports
 import { RootState } from '@/app/store';
-import theme from '@/styles/theme';
+import theme, { createAppTheme } from '@/styles/theme';
 import { createMockStore } from './mockStore';
 import { createMockUser } from './mockData';
-import type { User } from '@/types/entities';
+import { AuthStatus, type User } from '@/features/auth/types/auth.types';
 
 /**
  * Extended render options for custom render function.
@@ -106,15 +106,15 @@ export function createTestQueryClient(): QueryClient {
         retry: false,
         gcTime: 0,
         staleTime: 0,
+        networkMode: 'always', // Execute queries even in test environment without network
+        refetchOnMount: true, // Always refetch on mount
+        refetchOnWindowFocus: false, // Don't refetch on window focus in tests
+        refetchOnReconnect: false, // Don't refetch on reconnect in tests
       },
       mutations: {
         retry: false,
+        networkMode: 'always', // Execute mutations even in test environment without network
       },
-    },
-    logger: {
-      log: () => {},
-      warn: () => {},
-      error: () => {},
     },
   });
 }
@@ -225,10 +225,15 @@ export function render(
           auth: {
             user: customUser || createMockUser(),
             isAuthenticated: true,
-            token: 'mock-jwt-token',
-            refreshToken: 'mock-refresh-token',
-            loading: false,
+            tokens: {
+              accessToken: 'mock-jwt-token',
+              refreshToken: 'mock-refresh-token',
+              expiresIn: 3600,
+              tokenType: 'Bearer',
+            },
+            isLoading: false,
             error: null,
+            status: AuthStatus.AUTHENTICATED,
           },
         }
       : {};
@@ -249,10 +254,8 @@ export function render(
   if (customTheme) {
     themeInstance = customTheme;
   } else if (themeMode) {
-    // For dark mode, we would need to create a theme variant
-    // For now, use the default theme (light mode)
-    // In a complete implementation, you'd call createAppTheme('dark')
-    themeInstance = theme;
+    // Create theme with specified mode (light or dark)
+    themeInstance = createAppTheme(themeMode);
   } else {
     themeInstance = theme;
   }
@@ -276,10 +279,10 @@ export function render(
     ...renderOptions,
   });
 
-  // Reset query errors after render if not disabled
-  if (!disableQueryErrorReset) {
-    queryClientInstance.clear();
-  }
+  // NOTE: We do NOT clear the queryClient here because:
+  // 1. Clearing immediately prevents queries from executing
+  // 2. We have gcTime: 0 in createTestQueryClient which already prevents caching
+  // 3. Query cleanup happens automatically in afterEach hooks in tests/setup.ts
 
   // Return enhanced result
   return {
