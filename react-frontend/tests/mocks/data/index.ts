@@ -73,7 +73,11 @@
  * Provides generators for JWT tokens, decoded JWT payloads, and login responses
  * used in authentication testing scenarios.
  */
-export * from './auth';
+export {
+  mockJwtTokens,
+  mockDecodedJwt,
+  mockLoginResponse,
+} from './auth';
 
 // ============================================================================
 // User Mock Data
@@ -84,7 +88,13 @@ export * from './auth';
  * Provides generators for users with different roles (student, teacher, admin)
  * and functions to create arrays of users for testing list operations.
  */
-export * from './users';
+export {
+  mockUser,
+  mockStudent,
+  mockTeacher,
+  mockAdmin,
+  mockUserArray,
+} from './users';
 
 // ============================================================================
 // Course Mock Data
@@ -95,7 +105,13 @@ export * from './users';
  * Provides generators for courses, course modules, course categories, and
  * functions to create arrays for testing course catalogs and course content.
  */
-export * from './courses';
+export {
+  mockCourse,
+  mockCourseModule,
+  mockCourseCategory,
+  mockCourseArray,
+  mockCourseModuleArray,
+} from './courses';
 
 // ============================================================================
 // Assignment Mock Data
@@ -106,7 +122,14 @@ export * from './courses';
  * Provides generators for assignments, submissions in various states (draft,
  * submitted), and functions to create arrays for testing assignment workflows.
  */
-export * from './assignments';
+export {
+  mockAssignment,
+  mockAssignmentSubmission,
+  mockDraftSubmission,
+  mockSubmittedSubmission,
+  mockAssignmentArray,
+  mockSubmissionArray,
+} from './assignments';
 
 // ============================================================================
 // Quiz Mock Data
@@ -117,7 +140,15 @@ export * from './assignments';
  * Provides generators for quizzes, quiz attempts in various states (in-progress,
  * finished, overdue), and functions to create arrays for testing quiz functionality.
  */
-export * from './quizzes';
+export {
+  mockQuiz,
+  mockQuizAttempt,
+  mockInProgressAttempt,
+  mockFinishedAttempt,
+  mockOverdueAttempt,
+  mockQuizArray,
+  mockAttemptArray,
+} from './quizzes';
 
 // ============================================================================
 // Grade Mock Data
@@ -128,7 +159,16 @@ export * from './quizzes';
  * Provides generators for grades, grade items, specialized grade states (passing,
  * failing, overridden), and functions to create complete gradebook scenarios.
  */
-export * from './grades';
+export {
+  mockGrade,
+  mockGradeItem,
+  mockPassingGrade,
+  mockFailingGrade,
+  mockOverriddenGrade,
+  mockGradeArray,
+  mockGradeItemArray,
+  mockCourseGradebook,
+} from './grades';
 
 // ============================================================================
 // Message Mock Data
@@ -139,4 +179,14 @@ export * from './grades';
  * Provides generators for messages, notifications, conversations (individual and
  * group), and functions to create complete messaging scenarios for testing.
  */
-export * from './messages';
+export {
+  mockMessage,
+  mockReadMessage,
+  mockUnreadMessage,
+  mockNotification,
+  mockConversation,
+  mockGroupConversation,
+  mockMessageArray,
+  mockConversationWithMessages,
+  mockNotificationArray,
+} from './messages';
