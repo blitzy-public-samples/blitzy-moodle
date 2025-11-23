@@ -65,6 +65,24 @@ interface ResourceUrl extends BaseResource {
   parameters: string;
 }
 
+export interface FolderNode {
+  id: string;
+  name: string;
+  isFolder: boolean;
+  isRoot?: boolean;
+  children?: FolderNode[];
+  file?: {
+    filename: string;
+    filepath: string;
+    filesize: number;
+    mimetype: string;
+    timemodified: number;
+    url: string;
+  };
+  path: string;
+  parentPath?: string;
+}
+
 interface ResourceFolder extends BaseResource {
   type: 'folder';
   files: Array<{
@@ -79,6 +97,11 @@ interface ResourceFolder extends BaseResource {
   display: number;
   showexpanded: number;
   showdownloadfolder: number;
+  tree: FolderNode;
+  canManageFiles: boolean;
+  canDownload: boolean;
+  archiveUrl?: string;
+  editUrl?: string;
 }
 
 type Resource = ResourceFile | ResourcePage | ResourceUrl | ResourceFolder;

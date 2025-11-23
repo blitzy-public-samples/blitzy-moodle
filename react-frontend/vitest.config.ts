@@ -25,6 +25,8 @@ export default defineConfig({
       // This fixes ESM compatibility issues with date-fns v3 internal paths
       'date-fns',
       /@mui\/x-date-pickers/,
+      // Force bundling of MUI X Tree View to ensure proper rendering in test environment
+      /@mui\/x-tree-view/,
       // Force bundling of msw to handle MSW v2 exports properly in Vitest
       'msw'
     ]
@@ -55,7 +57,8 @@ export default defineConfig({
         // This fixes ESM module issues with date-fns and MUI date pickers
         inline: [
           'date-fns',
-          /@mui\/x-date-pickers/
+          /@mui\/x-date-pickers/,
+          /@mui\/x-tree-view/
         ]
       }
     },
@@ -184,7 +187,11 @@ export default defineConfig({
       '@config': path.resolve(__dirname, './src/config'),
       
       // Alias msw/node to directly resolve to the file, bypassing export map issues
-      'msw/node': path.resolve(__dirname, './node_modules/msw/lib/node/index.mjs')
+      'msw/node': path.resolve(__dirname, './node_modules/msw/lib/node/index.mjs'),
+      
+      // Mock @mui/x-tree-view components to fix test environment rendering issues
+      // The TreeView components don't render properly in JSDOM/happy-dom
+      '@mui/x-tree-view': path.resolve(__dirname, './tests/mocks/treeViewMock.tsx')
     },
     // Module resolution conditions for handling ESM/CJS compatibility
     // 'node' condition is required for msw/node in MSW v2

@@ -33,12 +33,15 @@ import {
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 
-import { File } from '../types/resource.types';
-import { useResourceFolder } from '../hooks/useResource';
-import { LoadingSpinner } from '../../../../components/feedback/LoadingSpinner';
+import { useResourceFolder, FolderNode } from '../hooks/useResource';
 import { Alert } from '../../../../components/feedback/Alert';
-import { useDebounce } from '../../../../hooks/useDebounce';
+import useDebounce from '../../../../hooks/useDebounce';
 import { usePermissions } from '../../../../hooks/usePermissions';
+
+/**
+ * File info type from FolderNode (matches the inline file object type)
+ */
+type FileInfo = NonNullable<FolderNode['file']>;
 
 /**
  * Props interface for FolderBrowser component
@@ -54,35 +57,6 @@ export interface FolderBrowserProps {
   displayMode?: 'inline' | 'page';
   /** Force file downloads instead of inline display */
   forcedownload?: boolean;
-}
-
-/**
- * Represents a node in the folder tree structure
- */
-interface FolderNode {
-  id: string;
-  name: string;
-  isFolder: boolean;
-  isRoot?: boolean;
-  children?: FolderNode[];
-  file?: File;
-  path: string;
-  parentPath?: string;
-}
-
-/**
- * Folder data structure from API
- */
-interface FolderData {
-  id: number;
-  name: string;
-  intro?: string;
-  introformat?: number;
-  tree: FolderNode;
-  canManageFiles: boolean;
-  canDownload: boolean;
-  archiveUrl?: string;
-  editUrl?: string;
 }
 
 /**
@@ -199,7 +173,7 @@ export const FolderBrowser: React.FC<FolderBrowserProps> = ({
   folderId,
   showdescription = true,
   showexpanded = false,
-  displayMode = 'page',
+  // displayMode = 'page', // TODO: Use for conditional folder name display (FOLDER_DISPLAY_INLINE)
   forcedownload = false,
 }) => {
   // Fetch folder data using React Query hook
@@ -234,28 +208,39 @@ export const FolderBrowser: React.FC<FolderBrowserProps> = ({
     return filterTree(folderData.tree, debouncedSearchQuery);
   }, [folderData?.tree, debouncedSearchQuery]);
   
+  // Auto-expand folders when search is active
+  useEffect(() => {
+    if (debouncedSearchQuery.trim() && filteredTree) {
+      const allIds = collectNodeIds(filteredTree);
+      setExpanded(allIds);
+    } else if (!debouncedSearchQuery.trim() && folderData?.tree && !showexpanded) {
+      // Reset to root only when search is cleared
+      setExpanded([folderData.tree.id]);
+    }
+  }, [debouncedSearchQuery, filteredTree, folderData?.tree, showexpanded]);
+  
   // Get breadcrumbs for current path
   const breadcrumbs = useMemo(() => {
     if (!folderData?.name) return [];
     return getBreadcrumbsFromPath(currentBreadcrumb, folderData.name);
   }, [currentBreadcrumb, folderData?.name]);
   
-  // Handle tree node toggle
-  const handleToggle = useCallback((event: React.SyntheticEvent, nodeIds: string[]) => {
+  // Handle tree node toggle (MUI X v6 API)
+  const handleToggle = useCallback((_event: React.SyntheticEvent, nodeIds: string[]) => {
     setExpanded(nodeIds);
   }, []);
   
-  // Handle tree node selection
-  const handleSelect = useCallback((event: React.SyntheticEvent, nodeIds: string[]) => {
+  // Handle tree node selection (MUI X v6 API)
+  const handleSelect = useCallback((_event: React.SyntheticEvent, nodeIds: string[]) => {
     setSelected(nodeIds);
   }, []);
   
   // Handle file download
-  const handleFileDownload = useCallback((file: File) => {
-    if (file.fileurl) {
-      const url = forcedownload && !file.fileurl.includes('forcedownload')
-        ? `${file.fileurl}${file.fileurl.includes('?') ? '&' : '?'}forcedownload=1`
-        : file.fileurl;
+  const handleFileDownload = useCallback((file: FileInfo) => {
+    if (file.url) {
+      const url = forcedownload && !file.url.includes('forcedownload')
+        ? `${file.url}${file.url.includes('?') ? '&' : '?'}forcedownload=1`
+        : file.url;
       
       window.open(url, '_blank');
     }
@@ -285,6 +270,8 @@ export const FolderBrowser: React.FC<FolderBrowserProps> = ({
     const nodeId = node.id;
     const isFolder = node.isFolder;
     
+    console.log('[renderTreeNode] Rendering node:', node.name, 'isFolder:', isFolder, 'hasChildren:', !!node.children, 'childrenCount:', node.children?.length);
+    
     // Prepare node label
     const label = (
       <Box
@@ -312,7 +299,16 @@ export const FolderBrowser: React.FC<FolderBrowserProps> = ({
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
+              cursor: !isFolder ? 'pointer' : 'default',
+              color: !isFolder ? 'primary.main' : 'text.primary',
+              '&:hover': !isFolder ? {
+                textDecoration: 'underline',
+              } : {},
             }}
+            onClick={!isFolder && node.file ? (e) => {
+              e.stopPropagation();
+              handleFileDownload(node.file!);
+            } : undefined}
           >
             {node.name}
           </Typography>
@@ -334,10 +330,10 @@ export const FolderBrowser: React.FC<FolderBrowserProps> = ({
           )}
         </Box>
         
-        {!isFolder && node.file && isWebImage(node.file.mimetype) && node.file.fileurl && (
+        {!isFolder && node.file && isWebImage(node.file.mimetype) && node.file.url && (
           <Box
             component="img"
-            src={node.file.fileurl}
+            src={node.file.url}
             alt={node.name}
             sx={{
               width: 40,
@@ -369,6 +365,8 @@ export const FolderBrowser: React.FC<FolderBrowserProps> = ({
       </Box>
     );
     
+    console.log('[renderTreeNode] Creating TreeItem for:', node.name, 'will render children:', isFolder && node.children && node.children.length > 0);
+    
     return (
       <TreeItem
         key={nodeId}
@@ -398,7 +396,10 @@ export const FolderBrowser: React.FC<FolderBrowserProps> = ({
         }}
       >
         {isFolder && node.children && node.children.length > 0
-          ? node.children.map(child => renderTreeNode(child))
+          ? node.children.map(child => {
+              console.log('[renderTreeNode] Recursively rendering child:', child.name, 'of parent:', node.name);
+              return renderTreeNode(child);
+            })
           : null}
       </TreeItem>
     );
@@ -409,9 +410,9 @@ export const FolderBrowser: React.FC<FolderBrowserProps> = ({
     return (
       <Box sx={{ p: 3 }}>
         <Stack spacing={2}>
-          <Skeleton variant="text" width="60%" height={40} />
-          <Skeleton variant="rectangular" height={60} />
-          <Skeleton variant="rectangular" height={200} />
+          <Skeleton variant="text" width="60%" height={40} data-testid="skeleton" />
+          <Skeleton variant="rectangular" height={60} data-testid="skeleton" />
+          <Skeleton variant="rectangular" height={200} data-testid="skeleton" />
         </Stack>
       </Box>
     );
@@ -421,9 +422,7 @@ export const FolderBrowser: React.FC<FolderBrowserProps> = ({
   if (error) {
     return (
       <Box sx={{ p: 3 }}>
-        <Alert severity="error">
-          Failed to load folder contents. Please try again later.
-        </Alert>
+        <Alert severity="error" message="Failed to load folder contents. Please try again later." />
       </Box>
     );
   }
@@ -432,9 +431,7 @@ export const FolderBrowser: React.FC<FolderBrowserProps> = ({
   if (!folderData || !filteredTree) {
     return (
       <Box sx={{ p: 3 }}>
-        <Alert severity="info">
-          No folder data available.
-        </Alert>
+        <Alert severity="info" message="No folder data available." />
       </Box>
     );
   }
@@ -457,9 +454,10 @@ export const FolderBrowser: React.FC<FolderBrowserProps> = ({
           }}
           sx={{ mb: 2 }}
         />
-        <Alert severity="info">
-          No files or folders match your search query "{debouncedSearchQuery}".
-        </Alert>
+        <Alert 
+          severity="info" 
+          message={`No files or folders match your search query "${debouncedSearchQuery}".`}
+        />
       </Box>
     );
   }
@@ -473,53 +471,50 @@ export const FolderBrowser: React.FC<FolderBrowserProps> = ({
     return count;
   };
   
+  console.log('[FolderBrowser] About to calculate totalFiles, filteredTree:', filteredTree);
   const totalFiles = countFiles(filteredTree);
+  console.log('[FolderBrowser] totalFiles:', totalFiles);
+  console.log('[FolderBrowser] filteredTree.children:', filteredTree?.children);
   
   return (
     <Box sx={{ width: '100%' }}>
-      {/* Header with title and actions */}
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          mb: 2,
-          flexWrap: 'wrap',
-          gap: 2,
-        }}
-      >
-        <Typography
-          variant="h5"
-          component="h2"
-          sx={{ fontWeight: 600 }}
+      {/* Action buttons - breadcrumbs serve as the heading */}
+      {(folderData.canManageFiles || folderData.canDownload) && (
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            mb: 2,
+            flexWrap: 'wrap',
+            gap: 2,
+          }}
         >
-          {folderData.name}
-        </Typography>
-        
-        <Stack direction="row" spacing={1}>
-          {folderData.canManageFiles && hasCapability('mod/folder:managefiles') && folderData.editUrl && (
-            <Button
-              variant="outlined"
-              startIcon={<EditIcon />}
-              onClick={handleEdit}
-              aria-label="Edit folder"
-            >
-              Edit
-            </Button>
-          )}
-          
-          {folderData.canDownload && folderData.archiveUrl && (
-            <Button
-              variant="contained"
-              startIcon={<DownloadIcon />}
-              onClick={handleDownloadFolder}
-              aria-label="Download entire folder as archive"
-            >
-              Download Folder
-            </Button>
-          )}
-        </Stack>
-      </Box>
+          <Stack direction="row" spacing={1}>
+            {folderData.canManageFiles && hasCapability('mod/folder:managefiles') && folderData.editUrl && (
+              <Button
+                variant="outlined"
+                startIcon={<EditIcon />}
+                onClick={handleEdit}
+                aria-label="Edit folder"
+              >
+                Edit
+              </Button>
+            )}
+            
+            {folderData.canDownload && folderData.archiveUrl && (
+              <Button
+                variant="contained"
+                startIcon={<DownloadIcon />}
+                onClick={handleDownloadFolder}
+                aria-label="Download entire folder as archive"
+              >
+                Download Folder
+              </Button>
+            )}
+          </Stack>
+        </Box>
+      )}
       
       {/* Folder introduction text */}
       {showdescription && folderData.intro && (
@@ -557,36 +552,36 @@ export const FolderBrowser: React.FC<FolderBrowserProps> = ({
       />
       
       {/* Breadcrumb navigation */}
-      {breadcrumbs.length > 1 && (
-        <Breadcrumbs
-          aria-label="Folder navigation breadcrumbs"
-          sx={{ mb: 2 }}
-        >
-          {breadcrumbs.map((crumb, index) => {
-            const isLast = index === breadcrumbs.length - 1;
-            return isLast ? (
-              <Typography key={crumb.path} color="text.primary">
-                {crumb.label}
-              </Typography>
-            ) : (
-              <Link
-                key={crumb.path}
-                component="button"
-                variant="body2"
-                onClick={() => handleBreadcrumbClick(crumb.path)}
-                sx={{
-                  cursor: 'pointer',
-                  textDecoration: 'underline',
-                  '&:hover': {
-                    textDecoration: 'none',
-                  },
-                }}
-              >
-                {crumb.label}
-              </Link>
-            );
-          })}
-        </Breadcrumbs>
+      {/* Breadcrumbs component already renders its own nav element */}
+      {breadcrumbs.length > 0 && (
+        <Box sx={{ mb: 2 }}>
+          <Breadcrumbs aria-label="Folder navigation breadcrumbs">
+            {breadcrumbs.map((crumb, index) => {
+              const isLast = index === breadcrumbs.length - 1;
+              return isLast ? (
+                <Typography key={crumb.path} color="text.primary">
+                  {crumb.label}
+                </Typography>
+              ) : (
+                <Link
+                  key={crumb.path}
+                  component="button"
+                  variant="body2"
+                  onClick={() => handleBreadcrumbClick(crumb.path)}
+                  sx={{
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                    '&:hover': {
+                      textDecoration: 'none',
+                    },
+                  }}
+                >
+                  {crumb.label}
+                </Link>
+              );
+            })}
+          </Breadcrumbs>
+        </Box>
       )}
       
       {/* File count indicator */}
@@ -601,26 +596,40 @@ export const FolderBrowser: React.FC<FolderBrowserProps> = ({
       {/* Tree view */}
       <Card>
         <CardContent>
+          {(() => {
+            console.log('[FolderBrowser] Rendering TreeView Card');
+            console.log('[FolderBrowser] filteredTree.children:', filteredTree?.children);
+            console.log('[FolderBrowser] Condition check:', filteredTree.children && filteredTree.children.length > 0);
+            return null;
+          })()}
           {filteredTree.children && filteredTree.children.length > 0 ? (
-            <TreeView
-              aria-label="Folder structure"
-              defaultCollapseIcon={<ExpandMoreIcon />}
-              defaultExpandIcon={<ChevronRightIcon />}
-              expanded={expanded}
-              selected={selected}
-              onNodeToggle={handleToggle}
-              onNodeSelect={handleSelect}
-              sx={{
-                flexGrow: 1,
-                overflowY: 'auto',
-              }}
-            >
-              {filteredTree.children.map(child => renderTreeNode(child))}
-            </TreeView>
+            <>
+              {console.log('[FolderBrowser] Rendering TreeView component')}
+              <TreeView
+                aria-label="Folder structure"
+                defaultCollapseIcon={<ExpandMoreIcon />}
+                defaultExpandIcon={<ChevronRightIcon />}
+                expanded={expanded}
+                selected={selected}
+                onNodeToggle={handleToggle}
+                onNodeSelect={handleSelect}
+                multiSelect
+                sx={{
+                  flexGrow: 1,
+                  overflowY: 'auto',
+                }}
+              >
+                {filteredTree.children.map(child => {
+                  console.log('[FolderBrowser] Rendering child node:', child.name);
+                  return renderTreeNode(child);
+                })}
+              </TreeView>
+            </>
           ) : (
-            <Alert severity="info">
-              This folder is empty.
-            </Alert>
+            <>
+              {console.log('[FolderBrowser] Rendering Alert for empty directory')}
+              <Alert severity="info" message="No files or folders in this directory." />
+            </>
           )}
         </CardContent>
       </Card>

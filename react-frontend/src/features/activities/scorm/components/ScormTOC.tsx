@@ -26,8 +26,7 @@ import type React from 'react';
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { TreeView } from '@mui/x-tree-view/TreeView';
-import { TreeItem } from '@mui/x-tree-view/TreeItem';
+import { TreeView, TreeItem } from '@mui/x-tree-view';
 import {
   Box,
   Typography,
