@@ -28,7 +28,7 @@
  * @module tests/unit/hooks/useApi
  */
 
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import axios from 'axios';
@@ -36,8 +36,20 @@ import type { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse, AxiosErr
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useApi } from '@/hooks/useApi';
 import type { RootState } from '@/app/store';
-import { logout } from '@/features/auth/store/authSlice';
 import { authReducer } from '@/features/auth/store/authSlice';
+import { AuthStatus, type Role, type Permission } from '@/features/auth/types/auth.types';
+
+// ============================================================================
+// Module Mocks
+// ============================================================================
+
+/**
+ * Mock axios module at module level
+ * 
+ * This is required for vi.mocked(axios.create) to work properly in beforeEach.
+ * Vitest needs to know that axios is being mocked before we can use vi.mocked().
+ */
+vi.mock('axios');
 
 // ============================================================================
 // Mock Setup
@@ -114,8 +126,24 @@ function createWrapper(accessToken: string | null, refreshToken: string | null =
             firstname: 'Test',
             lastname: 'User',
             fullname: 'Test User',
-            roles: ['student'],
-            capabilities: ['moodle/course:view'],
+            auth: 'manual',
+            confirmed: true,
+            suspended: false,
+            roles: [
+              {
+                id: 5,
+                shortname: 'student',
+                name: 'Student',
+                description: 'Students can view courses',
+              } as Role,
+            ],
+            capabilities: [
+              {
+                capability: 'moodle/course:view',
+                contextId: 1,
+                granted: true,
+              } as Permission,
+            ],
           }
         : null,
       tokens: accessToken
@@ -129,7 +157,7 @@ function createWrapper(accessToken: string | null, refreshToken: string | null =
       isAuthenticated: !!accessToken,
       isLoading: false,
       error: null,
-      status: accessToken ? ('authenticated' as const) : ('unauthenticated' as const),
+      status: accessToken ? AuthStatus.AUTHENTICATED : AuthStatus.UNAUTHENTICATED,
     },
     sidebar: {
       isOpen: false,
@@ -198,7 +226,7 @@ describe('useApi', () => {
     vi.mocked(axios.create).mockReturnValue(mockAxiosInstance);
 
     // Mock request interceptor registration
-    mockAxiosInstance.interceptors.request.use.mockImplementation(
+    (mockAxiosInstance.interceptors.request.use as any).mockImplementation(
       (onFulfilled: any, onRejected: any) => {
         requestInterceptor.onFulfilled = onFulfilled;
         requestInterceptor.onRejected = onRejected;
@@ -208,7 +236,7 @@ describe('useApi', () => {
     );
 
     // Mock response interceptor registration
-    mockAxiosInstance.interceptors.response.use.mockImplementation(
+    (mockAxiosInstance.interceptors.response.use as any).mockImplementation(
       (onFulfilled: any, onRejected: any) => {
         responseInterceptor.onFulfilled = onFulfilled;
         responseInterceptor.onRejected = onRejected;
@@ -391,7 +419,7 @@ describe('useApi', () => {
       const error401 = createMockAxiosError(401, { error: 'Unauthorized' }, originalRequest);
 
       // Mock successful token refresh
-      mockAxiosInstance.post.mockResolvedValueOnce({
+      (mockAxiosInstance.post as any).mockResolvedValueOnce({
         data: {
           success: true,
           data: {
@@ -408,7 +436,7 @@ describe('useApi', () => {
       });
 
       // Mock retry of original request with new token
-      mockAxiosInstance.request.mockResolvedValueOnce({
+      (mockAxiosInstance.request as any).mockResolvedValueOnce({
         data: { success: true, data: { id: 5, name: 'Course Name' } },
         status: 200,
         statusText: 'OK',
@@ -463,8 +491,24 @@ describe('useApi', () => {
             firstname: 'Test',
             lastname: 'User',
             fullname: 'Test User',
-            roles: ['student'],
-            capabilities: ['moodle/course:view'],
+            auth: 'manual',
+            confirmed: true,
+            suspended: false,
+            roles: [
+              {
+                id: 5,
+                shortname: 'student',
+                name: 'Student',
+                description: 'Students can view courses',
+              } as Role,
+            ],
+            capabilities: [
+              {
+                capability: 'moodle/course:view',
+                contextId: 1,
+                granted: true,
+              } as Permission,
+            ],
           },
           tokens: {
             accessToken,
@@ -475,7 +519,7 @@ describe('useApi', () => {
           isAuthenticated: true,
           isLoading: false,
           error: null,
-          status: 'authenticated' as const,
+          status: AuthStatus.AUTHENTICATED,
         },
         sidebar: {
           isOpen: false,
@@ -513,7 +557,7 @@ describe('useApi', () => {
 
       // Mock failed token refresh (refresh token expired)
       const refreshError = createMockAxiosError(401, { error: 'Refresh token expired' });
-      mockAxiosInstance.post.mockRejectedValueOnce(refreshError);
+      (mockAxiosInstance.post as any).mockRejectedValueOnce(refreshError);
 
       // Act & Assert
       await expect(onRejected(error401)).rejects.toThrow();
@@ -534,8 +578,24 @@ describe('useApi', () => {
             firstname: 'Test',
             lastname: 'User',
             fullname: 'Test User',
-            roles: ['student'],
-            capabilities: ['moodle/course:view'],
+            auth: 'manual',
+            confirmed: true,
+            suspended: false,
+            roles: [
+              {
+                id: 5,
+                shortname: 'student',
+                name: 'Student',
+                description: 'Students can view courses',
+              } as Role,
+            ],
+            capabilities: [
+              {
+                capability: 'moodle/course:view',
+                contextId: 1,
+                granted: true,
+              } as Permission,
+            ],
           },
           tokens: {
             accessToken: 'access-token',
@@ -546,7 +606,7 @@ describe('useApi', () => {
           isAuthenticated: true,
           isLoading: false,
           error: null,
-          status: 'authenticated' as const,
+          status: AuthStatus.AUTHENTICATED,
         },
         sidebar: {
           isOpen: false,
@@ -855,18 +915,16 @@ describe('useApi', () => {
     it('should recreate axios instance when access token changes', () => {
       // Arrange
       const wrapper1 = createWrapper('token-1', 'refresh-token');
-      const { result, rerender } = renderHook(() => useApi(), { wrapper: wrapper1 });
-      const instance1 = result.current;
+      const { rerender } = renderHook(() => useApi(), { wrapper: wrapper1 });
 
-      // Act - change wrapper to simulate token change
-      const wrapper2 = createWrapper('token-2', 'refresh-token');
+      // Act - rerender (in actual implementation, token change via Redux dispatch
+      // would trigger useMemo to recreate instance due to token dependency)
       rerender();
-      const instance2 = result.current;
 
       // Note: In actual implementation, changing token via Redux would trigger
       // useMemo to recreate instance. In this test, we verify the hook
       // uses useMemo with token dependency by checking that axios.create
-      // was called again when token changes in Redux state
+      // was called when the hook is rendered
 
       // For this test, we verify the memoization dependency pattern
       // by checking that the instance uses the token from state

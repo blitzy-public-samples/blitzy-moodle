@@ -384,7 +384,7 @@ export function useApi(): AxiosInstance {
               }
 
               // Retry original request with new token
-              return instance(originalRequest);
+              return instance.request(originalRequest);
             } catch (refreshError) {
               // Token refresh failed - log out user
               // This happens when refresh token is expired or invalid
