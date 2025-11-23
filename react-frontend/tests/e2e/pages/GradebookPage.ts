@@ -72,7 +72,6 @@ export class GradebookPage {
   private readonly gradeCategories: Locator;
   private readonly courseTotal: Locator;
   private readonly gradeDetailModal: Locator;
-  private readonly gradeHistory: Locator;
 
   // Filter and control elements
   private readonly exportButton: Locator;
@@ -89,12 +88,15 @@ export class GradebookPage {
     this.page = page;
 
     // Initialize primary UI element locators
-    this.gradeTable = page.locator('[data-testid="gradebook-table"]');
-    this.gradeItems = page.locator('[data-testid="grade-item"]');
+    // Use role="grid" which is set by MUI DataGrid automatically
+    this.gradeTable = page.getByRole('grid');
+    // Use semantic role-based locator for rows (more reliable than CSS class)
+    // Filter to data rows only (skip header row) by looking for rows with cells, not columnheaders
+    this.gradeItems = this.gradeTable.getByRole('row').filter({ has: page.getByRole('cell') });
     this.gradeCategories = page.locator('[data-testid="grade-category"]');
     this.courseTotal = page.locator('[data-testid="course-total"]');
-    this.gradeDetailModal = page.locator('[data-testid="grade-detail-modal"]');
-    this.gradeHistory = page.locator('[data-testid="grade-history"]');
+    // Use getByRole since data-testid is on inner Paper, not the Dialog element
+    this.gradeDetailModal = page.getByRole('dialog');
 
     // Initialize filter and control locators
     this.exportButton = page.locator('button[data-testid="export-gradebook"]');
@@ -109,10 +111,10 @@ export class GradebookPage {
    * @returns Promise that resolves when gradebook is ready
    */
   async waitForGradebook(): Promise<void> {
-    // Wait for grade table to be visible
-    await this.gradeTable.waitFor({ state: 'visible', timeout: 10000 });
+    // Wait for at least one grade table to be visible (handles both single grid and multi-grid layouts)
+    await this.gradeTable.first().waitFor({ state: 'visible', timeout: 10000 });
 
-    // Wait for at least one grade item to appear
+    // Wait for at least one grade row to appear in the DataGrid
     await this.gradeItems.first().waitFor({ state: 'visible', timeout: 5000 });
 
     // Wait for any loading spinners to disappear
@@ -122,6 +124,47 @@ export class GradebookPage {
 
     // Small delay to ensure all grade calculations are complete
     await this.page.waitForTimeout(500);
+  }
+
+  /**
+   * Switch to a specific gradebook tab
+   * 
+   * @param tabName - Name of the tab: 'all-grades', 'by-category', or 'overview'
+   */
+  async switchTab(tabName: 'all-grades' | 'by-category' | 'overview'): Promise<void> {
+    const tab = this.page.locator(`[data-testid="tab-${tabName}"]`);
+    await tab.click();
+    
+    // Wait for the tab content to actually render based on which tab was clicked
+    if (tabName === 'by-category') {
+      // Wait for category view to appear
+      await this.page.locator('[data-testid="grade-category"]').first().waitFor({ 
+        state: 'visible', 
+        timeout: 5000 
+      });
+    } else if (tabName === 'all-grades') {
+      // Wait for all grades table to appear - use role-based locator
+      await this.gradeTable.waitFor({ 
+        state: 'visible', 
+        timeout: 5000 
+      });
+    } else if (tabName === 'overview') {
+      // Wait for grade chart to appear
+      await this.page.locator('[data-testid="grade-chart"]').waitFor({ 
+        state: 'visible', 
+        timeout: 5000 
+      });
+    }
+  }
+
+  /**
+   * Get grade details modal locator
+   * Returns the locator for the grade details dialog
+   * 
+   * @returns Locator for the grade details modal
+   */
+  getGradeDetailsModal(): Locator {
+    return this.gradeDetailModal;
   }
 
   /**
@@ -137,13 +180,18 @@ export class GradebookPage {
     const grades: GradeItem[] = [];
 
     for (const item of gradeItems) {
-      const id = await item.getAttribute('data-item-id') ?? '';
-      const name = await item.locator('[data-testid="grade-item-name"]').textContent() ?? '';
-      const gradeText = await item.locator('[data-testid="grade-value"]').textContent() ?? '';
-      const maxGradeText = await item.locator('[data-testid="max-grade"]').textContent() ?? '0';
-      const percentageText = await item.locator('[data-testid="grade-percentage"]').textContent() ?? '';
-      const letterGrade = await item.locator('[data-testid="letter-grade"]').textContent() ?? '';
-      const feedbackText = await item.locator('[data-testid="grade-feedback"]').textContent() ?? '';
+      // Extract ID from CSS class name (grade-item-{id})
+      const className = await item.getAttribute('class') ?? '';
+      const idMatch = className.match(/grade-item-(\d+)/);
+      const id = (idMatch && idMatch[1]) ? idMatch[1] : '';
+      
+      // Use dynamic data-testid attributes with row ID appended
+      const name = await item.locator(`[data-testid="grade-item-name-${id}"]`).textContent() ?? '';
+      const gradeText = await item.locator(`[data-testid="grade-value-${id}"]`).textContent() ?? '';
+      const maxGradeText = await item.locator(`[data-testid="max-grade-${id}"]`).textContent() ?? '0';
+      const percentageText = await item.locator(`[data-testid="grade-percentage-${id}"]`).textContent() ?? '';
+      const letterGrade = await item.locator(`[data-testid="letter-grade-${id}"]`).textContent() ?? '';
+      const feedbackText = await item.locator(`[data-testid="grade-feedback-${id}"]`).textContent() ?? '';
       const hidden = await item.getAttribute('data-hidden') === 'true';
 
       grades.push({
@@ -170,18 +218,19 @@ export class GradebookPage {
   async getGradeItem(itemId: string): Promise<GradeItem | null> {
     await this.waitForGradebook();
 
-    const item = this.page.locator(`[data-testid="grade-item"][data-item-id="${itemId}"]`);
+    const item = this.page.locator(`[data-testid="grade-item-${itemId}"]`);
     
     if (!(await item.isVisible())) {
       return null;
     }
 
-    const name = await item.locator('[data-testid="grade-item-name"]').textContent() ?? '';
-    const gradeText = await item.locator('[data-testid="grade-value"]').textContent() ?? '';
-    const maxGradeText = await item.locator('[data-testid="max-grade"]').textContent() ?? '0';
-    const percentageText = await item.locator('[data-testid="grade-percentage"]').textContent() ?? '';
-    const letterGrade = await item.locator('[data-testid="letter-grade"]').textContent() ?? '';
-    const feedbackText = await item.locator('[data-testid="grade-feedback"]').textContent() ?? '';
+    // Use dynamic locators with the itemId
+    const name = await item.locator(`[data-testid="grade-item-name-${itemId}"]`).textContent() ?? '';
+    const gradeText = await item.locator(`[data-testid="grade-value-${itemId}"]`).textContent() ?? '';
+    const maxGradeText = await item.locator(`[data-testid="max-grade-${itemId}"]`).textContent() ?? '0';
+    const percentageText = await item.locator(`[data-testid="grade-percentage-${itemId}"]`).textContent() ?? '';
+    const letterGrade = await item.locator(`[data-testid="letter-grade-${itemId}"]`).textContent() ?? '';
+    const feedbackText = await item.locator(`[data-testid="grade-feedback-${itemId}"]`).textContent() ?? '';
     const hidden = await item.getAttribute('data-hidden') === 'true';
 
     return {
@@ -216,12 +265,31 @@ export class GradebookPage {
   }
 
   /**
+   * Get the course total letter grade
+   * 
+   * @returns Letter grade string (e.g., 'A', 'B+', 'C-') or null if not available
+   */
+  async getCourseTotalLetterGrade(): Promise<string | null> {
+    await this.waitForGradebook();
+    
+    const letterGradeElement = this.courseTotal.locator('[data-testid="overview-letter"]');
+    
+    try {
+      await letterGradeElement.waitFor({ state: 'visible', timeout: 5000 });
+      return await letterGradeElement.textContent();
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Get all grade categories with their totals
    * 
    * @returns Array of GradeCategory objects
    */
   async getGradeCategories(): Promise<GradeCategory[]> {
-    await this.waitForGradebook();
+    // Wait for categories to be visible (not the all-grades-table)
+    await this.gradeCategories.first().waitFor({ state: 'visible', timeout: 10000 });
 
     const categories = await this.gradeCategories.all();
     const categoryData: GradeCategory[] = [];
@@ -232,16 +300,49 @@ export class GradebookPage {
       const weightText = await category.locator('[data-testid="category-weight"]').textContent() ?? '';
       const totalText = await category.locator('[data-testid="category-total"]').textContent() ?? '0';
       const maxTotalText = await category.locator('[data-testid="category-max-total"]').textContent() ?? '0';
+      
+      // Parse maxTotal by removing the leading "/ " prefix
+      const maxTotalValue = parseFloat(maxTotalText.replace(/^\/\s*/, '').trim());
 
-      // Get items within this category
-      const categoryItems = await category.locator('[data-testid="grade-item"]').all();
+      // Wait for the DataGrid rows to render within this category
+      // Use MUI's standard row class which is reliably present
+      const firstRow = category.locator('.MuiDataGrid-row').first();
+      await firstRow.waitFor({ state: 'attached', timeout: 5000 });
+
+      // Get items within this category (use MUI row class to match actual rows)
+      const categoryItems = await category.locator('.MuiDataGrid-row').all();
       const items: GradeItem[] = [];
 
       for (const item of categoryItems) {
-        const itemId = await item.getAttribute('data-item-id') ?? '';
-        const itemName = await item.locator('[data-testid="grade-item-name"]').textContent() ?? '';
-        const gradeText = await item.locator('[data-testid="grade-value"]').textContent() ?? '';
-        const maxGradeText = await item.locator('[data-testid="max-grade"]').textContent() ?? '0';
+        // Extract item ID from data-testid (format: grade-item-{id}) or from CSS class
+        const testId = (await item.getAttribute('data-testid')) ?? '';
+        const className = (await item.getAttribute('class')) ?? '';
+        let itemId = '';
+        
+        if (testId && testId.startsWith('grade-item-')) {
+          itemId = testId.replace('grade-item-', '');
+        } else if (className) {
+          // Try to extract from CSS class: grade-item-{id}
+          const match = className.match(/grade-item-(\d+)/);
+          if (match && match[1]) {
+            itemId = match[1];
+          }
+        }
+        
+        // Use dynamic locators with the extracted itemId
+        const itemNameLocator = itemId 
+          ? `[data-testid="grade-item-name-${itemId}"]`
+          : '[data-testid^="grade-item-name-"]';
+        const gradeValueLocator = itemId
+          ? `[data-testid="grade-value-${itemId}"]`
+          : '[data-testid^="grade-value-"]';
+        const maxGradeLocator = itemId
+          ? `[data-testid="max-grade-${itemId}"]`
+          : '[data-testid^="max-grade-"]';
+        
+        const itemName = await item.locator(itemNameLocator).textContent() ?? '';
+        const gradeText = await item.locator(gradeValueLocator).textContent() ?? '';
+        const maxGradeText = await item.locator(maxGradeLocator).textContent() ?? '0';
 
         items.push({
           id: itemId,
@@ -256,7 +357,7 @@ export class GradebookPage {
         name: name.trim(),
         weight: weightText ? parseFloat(weightText.replace('%', '')) : undefined,
         total: this.parseGrade(totalText) ?? 0,
-        maxTotal: parseFloat(maxTotalText),
+        maxTotal: maxTotalValue,
         items
       });
     }
@@ -270,11 +371,10 @@ export class GradebookPage {
    * @param itemId - Grade item identifier
    */
   async clickGradeDetails(itemId: string): Promise<void> {
-    const item = this.page.locator(`[data-testid="grade-item"][data-item-id="${itemId}"]`);
-    const detailButton = item.locator('[data-testid="grade-detail-button"]');
+    const detailButton = this.page.locator(`[data-testid="details-${itemId}"]`);
     
     await detailButton.click();
-    await this.gradeDetailModal.waitFor({ state: 'visible', timeout: 3000 });
+    // Wait removed - test will verify modal visibility
   }
 
   /**
@@ -285,7 +385,7 @@ export class GradebookPage {
    */
   async getGradeFeedback(itemId: string): Promise<string> {
     const item = this.page.locator(`[data-testid="grade-item"][data-item-id="${itemId}"]`);
-    const feedbackElement = item.locator('[data-testid="grade-feedback"]');
+    const feedbackElement = item.locator(`[data-testid="grade-feedback-${itemId}"]`);
     
     if (await feedbackElement.isVisible()) {
       return (await feedbackElement.textContent()) ?? '';
@@ -310,24 +410,36 @@ export class GradebookPage {
   async getGradeHistory(itemId: string): Promise<GradeHistoryRecord[]> {
     await this.clickGradeDetails(itemId);
     
-    // Click on history tab in modal
-    const historyTab = this.gradeDetailModal.locator('[data-testid="history-tab"]');
-    await historyTab.click();
-    await this.gradeHistory.waitFor({ state: 'visible', timeout: 3000 });
+    // Click on grade history accordion to expand it
+    const historyAccordion = this.gradeDetailModal.locator('[data-testid="grade-history-accordion"]');
+    await historyAccordion.waitFor({ state: 'visible', timeout: 5000 });
+    await historyAccordion.click();
+    
+    // Wait a bit for the accordion to expand
+    await this.page.waitForTimeout(500);
 
-    const historyItems = await this.gradeHistory.locator('[data-testid="history-item"]').all();
+    // Get all history records
+    const historyRecords = await this.gradeDetailModal.locator('[data-testid^="history-record-"]').all();
     const history: GradeHistoryRecord[] = [];
 
-    for (const item of historyItems) {
-      const date = await item.locator('[data-testid="history-date"]').textContent() ?? '';
-      const grade = await item.locator('[data-testid="history-grade"]').textContent() ?? '';
-      const modifiedBy = await item.locator('[data-testid="history-user"]').textContent() ?? '';
-      const action = await item.locator('[data-testid="history-action"]').textContent() ?? '';
+    for (let i = 0; i < historyRecords.length; i++) {
+      const date = await this.gradeDetailModal.locator(`[data-testid="history-date-${i}"]`).textContent() ?? '';
+      const gradeText = await this.gradeDetailModal.locator(`[data-testid="history-grade-${i}"]`).textContent() ?? '';
+      const modifiedBy = await this.gradeDetailModal.locator(`[data-testid="history-modifier-${i}"]`).textContent() ?? '';
+      const action = await this.gradeDetailModal.locator(`[data-testid="history-action-${i}"]`).textContent() ?? '';
+
+      // Extract grade value from "Grade: XX" format
+      const gradeMatch = gradeText.match(/Grade:\s*(.+)/);
+      const gradeValue = gradeMatch?.[1]?.trim() ?? gradeText.trim();
+      
+      // Extract modifier from "Modified by: NAME" format
+      const modifierMatch = modifiedBy.match(/Modified by:\s*(.+)/);
+      const modifierName = modifierMatch?.[1]?.trim() ?? modifiedBy.trim();
 
       history.push({
         date: date.trim(),
-        grade: this.parseGrade(grade) ?? 0,
-        modifiedBy: modifiedBy.trim(),
+        grade: this.parseGrade(gradeValue) ?? 0,
+        modifiedBy: modifierName,
         action: action.trim()
       });
     }

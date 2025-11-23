@@ -89,6 +89,12 @@ interface GradeItemWithGrade extends GradeItem {
   percentage?: number;
   contributionToCategory?: number;
   contributionToCourse?: number;
+  modificationHistory?: Array<{
+    date: string;
+    grade: number | string;
+    modifiedBy: string;
+    action: string;
+  }>;
 }
 
 /**
@@ -113,33 +119,35 @@ interface StudentGrade {
 }
 
 /**
- * User grades across all enrolled courses
+ * DEPRECATED: This interface is no longer used.
+ * The actual API response format is defined in gradebookApi.ts as UserGradebookResponse.
+ * Mock handlers now return data matching that format with camelCase property names.
  */
-interface UserGradesResponse {
-  userid: number;
-  courses: Array<{
-    courseid: number;
-    coursename: string;
-    coursetotal?: number;
-    coursetotalpercentage?: number;
-    lettergrade?: string;
-    categories: Array<{
-      categoryid: number;
-      categoryname: string;
-      total?: number;
-      weight?: number;
-    }>;
-    items: GradeItemWithGrade[];
-    history?: Array<{
-      itemid: number;
-      oldgrade?: number;
-      newgrade?: number;
-      timemodified: number;
-      usermodified: number;
-      reason?: string;
-    }>;
-  }>;
-}
+// interface UserGradesResponse {
+//   userid: number;
+//   courses: Array<{
+//     courseid: number;
+//     coursename: string;
+//     coursetotal?: number;
+//     coursetotalpercentage?: number;
+//     lettergrade?: string;
+//     categories: Array<{
+//       categoryid: number;
+//       categoryname: string;
+//       total?: number;
+//       weight?: number;
+//     }>;
+//     items: GradeItemWithGrade[];
+//     history?: Array<{
+//       itemid: number;
+//       oldgrade?: number;
+//       newgrade?: number;
+//       timemodified: number;
+//       usermodified: number;
+//       reason?: string;
+//     }>;
+//   }>;
+// }
 
 /**
  * Grade update request
@@ -354,7 +362,7 @@ const mockGradebooks: Record<number, CourseGradebook> = {
           timemodified: Date.now() - 86400000 * 3,
         },
         percentage: 78,
-        lettergrade: 'C+',
+        lettergrade: 'C',
         contributionToCategory: 19.5,
         contributionToCourse: 7.8,
       },
@@ -439,7 +447,7 @@ const mockGradebooks: Record<number, CourseGradebook> = {
           timemodified: Date.now() - 86400000 * 10,
         },
         percentage: 88,
-        lettergrade: 'B+',
+        lettergrade: 'B',
         contributionToCategory: 44.0,
         contributionToCourse: 13.2,
       },
@@ -481,7 +489,7 @@ const mockGradebooks: Record<number, CourseGradebook> = {
           timemodified: Date.now() - 86400000 * 2,
         },
         percentage: 91,
-        lettergrade: 'A-',
+        lettergrade: 'A',
         contributionToCategory: 45.5,
         contributionToCourse: 13.65,
       },
@@ -524,7 +532,7 @@ const mockGradebooks: Record<number, CourseGradebook> = {
           timemodified: Date.now() - 86400000,
         },
         percentage: 89,
-        lettergrade: 'B+',
+        lettergrade: 'B',
         contributionToCategory: 89.0,
         contributionToCourse: 26.7,
       },
@@ -567,7 +575,7 @@ const mockGradebooks: Record<number, CourseGradebook> = {
           timemodified: Date.now() - 86400000 * 5,
         },
         percentage: 80,
-        lettergrade: 'B-',
+        lettergrade: 'B',
         contributionToCategory: 20.0,
         contributionToCourse: 8.0,
       },
@@ -605,7 +613,7 @@ const mockGradebooks: Record<number, CourseGradebook> = {
           timemodified: Date.now(),
         },
         percentage: 87.85,
-        lettergrade: 'B+',
+        lettergrade: 'B',
         contributionToCourse: 100,
       },
     ],
@@ -717,7 +725,7 @@ const mockGradebooks: Record<number, CourseGradebook> = {
           timemodified: Date.now() - 86400000 * 8,
         },
         percentage: 82,
-        lettergrade: 'B-',
+        lettergrade: 'B',
       },
       {
         id: 1003,
@@ -755,7 +763,7 @@ const mockGradebooks: Record<number, CourseGradebook> = {
           timemodified: Date.now() - 86400000,
         },
         percentage: 88,
-        lettergrade: 'B+',
+        lettergrade: 'B',
       },
       {
         id: 2000,
@@ -789,26 +797,26 @@ const mockGradebooks: Record<number, CourseGradebook> = {
           timemodified: Date.now(),
         },
         percentage: 81.67,
-        lettergrade: 'B-',
+        lettergrade: 'B',
       },
     ],
     students: [],
   },
-  // Course 101: Test course for ad-hoc unit tests
+  // Course 101: Test course for E2E tests (matches testCourse1 in fixtures/courses.ts)
   101: {
     courseid: 101,
-    coursename: 'Test Course for Validation',
+    coursename: 'Introduction to Programming',
     aggregation: 'AGGREGATION_MEAN_WEIGHTED',
     canViewAllGrades: true,
     canEditGrades: true,
     categories: [
       {
-        id: 101,
+        id: 1001,
         courseid: 101,
         depth: 1,
-        path: '/101',
-        fullname: 'Tests',
-        aggregation: 'AGGREGATION_MEAN_SIMPLE',
+        path: '/1001',
+        fullname: 'Assignments',
+        aggregation: 'AGGREGATION_MEAN_WEIGHTED',
         keephigh: 0,
         droplow: 0,
         aggregateonlygraded: true,
@@ -818,15 +826,15 @@ const mockGradebooks: Record<number, CourseGradebook> = {
         weight: 50,
       },
       {
-        id: 102,
+        id: 1002,
         courseid: 101,
         depth: 1,
-        path: '/102',
-        fullname: 'Projects',
-        aggregation: 'AGGREGATION_SUM',
+        path: '/1002',
+        fullname: 'Quizzes',
+        aggregation: 'AGGREGATION_MEAN_SIMPLE',
         keephigh: 0,
-        droplow: 0,
-        aggregateonlygraded: false,
+        droplow: 1,
+        aggregateonlygraded: true,
         aggregateoutcomes: false,
         hidden: false,
         locked: false,
@@ -834,98 +842,12 @@ const mockGradebooks: Record<number, CourseGradebook> = {
       },
     ],
     items: [
-      // Visible test item
+      // Programming Assignment 1 (Visible)
       {
-        id: 10101,
+        id: 2001,
         courseid: 101,
-        categoryid: 101,
-        itemname: 'Test 1: Visible',
-        itemtype: 'mod',
-        itemmodule: 'quiz',
-        iteminstance: 101,
-        gradetype: 1,
-        grademax: 100,
-        grademin: 0,
-        gradepass: 60,
-        multfactor: 1.0,
-        plusfactor: 0.0,
-        aggregationcoef: 0.0,
-        aggregationcoef2: 1.0,
-        weightoverride: false,
-        sortorder: 1,
-        display: 1,
-        decimals: 2,
-        hidden: false,
-        locked: false,
-        categoryname: 'Tests',
-        weight: 50,
-        grade: {
-          id: 101001,
-          userid: 1,
-          rawgrade: 90,
-          finalgrade: 90,
-          feedback: 'Excellent work',
-          feedbackformat: 1,
-          hidden: false,
-          locked: false,
-          overridden: false,
-          excluded: false,
-          timemodified: Date.now() - 86400000 * 3,
-        },
-        percentage: 90,
-        lettergrade: 'A-',
-        contributionToCategory: 45,
-        contributionToCourse: 22.5,
-      },
-      // Hidden test item (for filtering tests)
-      {
-        id: 10102,
-        courseid: 101,
-        categoryid: 101,
-        itemname: 'Test 2: Hidden',
-        itemtype: 'mod',
-        itemmodule: 'quiz',
-        iteminstance: 102,
-        gradetype: 1,
-        grademax: 100,
-        grademin: 0,
-        gradepass: 60,
-        multfactor: 1.0,
-        plusfactor: 0.0,
-        aggregationcoef: 0.0,
-        aggregationcoef2: 1.0,
-        weightoverride: false,
-        sortorder: 2,
-        display: 1,
-        decimals: 2,
-        hidden: true, // HIDDEN ITEM
-        locked: false,
-        categoryname: 'Tests',
-        weight: 50,
-        grade: {
-          id: 101002,
-          userid: 1,
-          rawgrade: 75,
-          finalgrade: 75,
-          feedback: 'Good',
-          feedbackformat: 1,
-          hidden: true,
-          locked: false,
-          overridden: false,
-          excluded: false,
-          timemodified: Date.now() - 86400000 * 2,
-        },
-        percentage: 75,
-        lettergrade: 'C',
-        contributionToCategory: 37.5,
-        contributionToCourse: 18.75,
-      },
-      // Visible project item
-      {
-        id: 10103,
-        courseid: 101,
-        categoryid: 102,
-        itemname: 'Project 1: Visible',
+        categoryid: 1001,
+        itemname: 'Programming Assignment 1',
         itemtype: 'mod',
         itemmodule: 'assign',
         iteminstance: 101,
@@ -935,7 +857,121 @@ const mockGradebooks: Record<number, CourseGradebook> = {
         gradepass: 60,
         multfactor: 1.0,
         plusfactor: 0.0,
-        aggregationcoef: 0.0,
+        aggregationcoef: 2.0, // Weight of 2x
+        aggregationcoef2: 1.0,
+        weightoverride: false,
+        sortorder: 1,
+        display: 1,
+        decimals: 2,
+        hidden: false,
+        locked: false,
+        categoryname: 'Assignments',
+        weight: 50,
+        grade: {
+          id: 3001,
+          userid: 1001,
+          rawgrade: 85.0,
+          finalgrade: 85.0,
+          feedback: 'Good work on the assignment',
+          feedbackformat: 1,
+          hidden: false,
+          locked: false,
+          overridden: false,
+          excluded: false,
+          timemodified: Date.now() - 86400000 * 3,
+        },
+        percentage: 85.0,
+        lettergrade: 'B',
+        contributionToCategory: 42.5,
+        contributionToCourse: 21.25,
+        modificationHistory: [
+          {
+            date: new Date(Date.now() - 86400000 * 5).toISOString(),
+            grade: 85.0,
+            modifiedBy: 'Prof. Smith',
+            action: 'update',
+          },
+          {
+            date: new Date(Date.now() - 86400000 * 10).toISOString(),
+            grade: 80.0,
+            modifiedBy: 'Prof. Smith',
+            action: 'create',
+          },
+        ],
+      },
+      // Essay Assignment (Visible)
+      {
+        id: 2002,
+        courseid: 101,
+        categoryid: 1001,
+        itemname: 'Essay Assignment: Programming Paradigms',
+        itemtype: 'mod',
+        itemmodule: 'assign',
+        iteminstance: 102,
+        gradetype: 1,
+        grademax: 100,
+        grademin: 0,
+        gradepass: 60,
+        multfactor: 1.0,
+        plusfactor: 0.0,
+        aggregationcoef: 1.0, // Normal weight
+        aggregationcoef2: 1.0,
+        weightoverride: false,
+        sortorder: 2,
+        display: 1,
+        decimals: 2,
+        hidden: false,
+        locked: false,
+        categoryname: 'Assignments',
+        weight: 50,
+        grade: {
+          id: 3002,
+          userid: 1001,
+          rawgrade: 92.0,
+          finalgrade: 92.0,
+          feedback: 'Excellent analysis',
+          feedbackformat: 1,
+          hidden: false,
+          locked: false,
+          overridden: false,
+          excluded: false,
+          timemodified: Date.now() - 86400000 * 2,
+        },
+        percentage: 92.0,
+        lettergrade: 'A',
+        contributionToCategory: 46.0,
+        contributionToCourse: 23.0,
+        modificationHistory: [
+          {
+            date: new Date(Date.now() - 86400000 * 8).toISOString(),
+            grade: 88.0,
+            modifiedBy: 'Prof. Smith',
+            action: 'Graded',
+          },
+          {
+            date: new Date(Date.now() - 86400000 * 6).toISOString(),
+            grade: 92.0,
+            modifiedBy: 'Prof. Smith',
+            action: 'Updated',
+          },
+        ],
+      },
+      // Python Quiz (Visible)
+      {
+        id: 2003,
+        courseid: 101,
+        categoryid: 1002,
+        itemname: 'Python Fundamentals Quiz',
+        itemtype: 'mod',
+        itemmodule: 'quiz',
+        iteminstance: 103,
+        gradetype: 1,
+        grademax: 8.0,
+        grademin: 0,
+        gradepass: 5.0,
+        multfactor: 1.0,
+        plusfactor: 0.0,
+        aggregationcoef: 1.0, // Normal weight
         aggregationcoef2: 1.0,
         weightoverride: false,
         sortorder: 3,
@@ -943,14 +979,14 @@ const mockGradebooks: Record<number, CourseGradebook> = {
         decimals: 2,
         hidden: false,
         locked: false,
-        categoryname: 'Projects',
-        weight: 100,
+        categoryname: 'Quizzes',
+        weight: 50,
         grade: {
-          id: 101003,
-          userid: 1,
-          rawgrade: 88,
-          finalgrade: 88,
-          feedback: 'Well done',
+          id: 3003,
+          userid: 1001,
+          rawgrade: 7.0,
+          finalgrade: 7.0,
+          feedback: 'Great understanding',
           feedbackformat: 1,
           hidden: false,
           locked: false,
@@ -958,10 +994,53 @@ const mockGradebooks: Record<number, CourseGradebook> = {
           excluded: false,
           timemodified: Date.now() - 86400000,
         },
-        percentage: 88,
-        lettergrade: 'B+',
-        contributionToCategory: 88,
-        contributionToCourse: 44,
+        percentage: 87.5,
+        lettergrade: 'B',
+        contributionToCategory: 43.75,
+        contributionToCourse: 21.875,
+      },
+      // Midterm Exam (Hidden for privacy test)
+      {
+        id: 2004,
+        courseid: 101,
+        categoryid: 1002,
+        itemname: 'Midterm Exam: Programming Concepts',
+        itemtype: 'mod',
+        itemmodule: 'quiz',
+        iteminstance: 104,
+        gradetype: 1,
+        grademax: 50,
+        grademin: 0,
+        gradepass: 30,
+        multfactor: 1.0,
+        plusfactor: 0.0,
+        aggregationcoef: 1.5, // Extra weight (1.5x)
+        aggregationcoef2: 1.0,
+        weightoverride: false,
+        sortorder: 4,
+        display: 1,
+        decimals: 2,
+        hidden: true, // HIDDEN ITEM for privacy test
+        locked: false,
+        categoryname: 'Quizzes',
+        weight: 50,
+        grade: {
+          id: 3004,
+          userid: 1001,
+          rawgrade: 45.0,
+          finalgrade: 45.0,
+          feedback: 'Well done on the exam',
+          feedbackformat: 1,
+          hidden: true,
+          locked: false,
+          overridden: false,
+          excluded: false,
+          timemodified: Date.now() - 86400000 * 0.5,
+        },
+        percentage: 90.0,
+        lettergrade: 'A',
+        contributionToCategory: 45.0,
+        contributionToCourse: 22.5,
       },
       // Course total
       {
@@ -984,9 +1063,9 @@ const mockGradebooks: Record<number, CourseGradebook> = {
         locked: false,
         grade: {
           id: 1010000,
-          userid: 1,
-          rawgrade: 85.25,
-          finalgrade: 85.25,
+          userid: 1001,
+          rawgrade: 88.5,
+          finalgrade: 88.5,
           feedback: '',
           feedbackformat: 1,
           hidden: false,
@@ -995,8 +1074,301 @@ const mockGradebooks: Record<number, CourseGradebook> = {
           excluded: false,
           timemodified: Date.now(),
         },
-        percentage: 85.25,
+        percentage: 88.5,
         lettergrade: 'B',
+      },
+    ],
+    students: [],
+  },
+  // Course 104: CS202 - Data Structures and Algorithms (for E2E tests)
+  104: {
+    courseid: 104,
+    coursename: 'Data Structures and Algorithms',
+    aggregation: 'AGGREGATION_MEAN_WEIGHTED',
+    canViewAllGrades: true,
+    canEditGrades: false, // Student view
+    categories: [
+      {
+        id: 201,
+        courseid: 104,
+        depth: 1,
+        path: '/201',
+        fullname: 'Assignments',
+        aggregation: 'AGGREGATION_MEAN_WEIGHTED',
+        keephigh: 0,
+        droplow: 0,
+        aggregateonlygraded: true,
+        aggregateoutcomes: false,
+        hidden: false,
+        locked: false,
+        weight: 60,
+      },
+      {
+        id: 202,
+        courseid: 104,
+        depth: 1,
+        path: '/202',
+        fullname: 'Exams',
+        aggregation: 'AGGREGATION_MEAN_SIMPLE',
+        keephigh: 0,
+        droplow: 0,
+        aggregateonlygraded: false,
+        aggregateoutcomes: false,
+        hidden: false,
+        locked: false,
+        weight: 40,
+      },
+    ],
+    items: [
+      // Assignment 1
+      {
+        id: 10401,
+        courseid: 104,
+        categoryid: 201,
+        itemname: 'Assignment 1: Arrays and Linked Lists',
+        itemtype: 'mod',
+        itemmodule: 'assign',
+        iteminstance: 401,
+        gradetype: 1,
+        grademax: 100,
+        grademin: 0,
+        gradepass: 60,
+        multfactor: 1.0,
+        plusfactor: 0.0,
+        aggregationcoef: 0.0,
+        aggregationcoef2: 1.0,
+        weightoverride: false,
+        sortorder: 1,
+        display: 1,
+        decimals: 2,
+        hidden: false,
+        locked: false,
+        categoryname: 'Assignments',
+        weight: 33.33,
+        grade: {
+          id: 104001,
+          userid: 1001,
+          rawgrade: 92,
+          finalgrade: 92,
+          feedback: 'Excellent implementation of linked list operations',
+          feedbackformat: 1,
+          hidden: false,
+          locked: false,
+          overridden: false,
+          excluded: false,
+          timemodified: Date.now() - 86400000 * 5,
+        },
+        percentage: 92,
+        lettergrade: 'A',
+        contributionToCategory: 30.67,
+        contributionToCourse: 18.4,
+      },
+      // Assignment 2
+      {
+        id: 10402,
+        courseid: 104,
+        categoryid: 201,
+        itemname: 'Assignment 2: Trees and Graphs',
+        itemtype: 'mod',
+        itemmodule: 'assign',
+        iteminstance: 402,
+        gradetype: 1,
+        grademax: 100,
+        grademin: 0,
+        gradepass: 60,
+        multfactor: 1.0,
+        plusfactor: 0.0,
+        aggregationcoef: 0.0,
+        aggregationcoef2: 1.0,
+        weightoverride: false,
+        sortorder: 2,
+        display: 1,
+        decimals: 2,
+        hidden: false,
+        locked: false,
+        categoryname: 'Assignments',
+        weight: 33.33,
+        grade: {
+          id: 104002,
+          userid: 1001,
+          rawgrade: 88,
+          finalgrade: 88,
+          feedback: 'Good work on graph traversal algorithms',
+          feedbackformat: 1,
+          hidden: false,
+          locked: false,
+          overridden: false,
+          excluded: false,
+          timemodified: Date.now() - 86400000 * 3,
+        },
+        percentage: 88,
+        lettergrade: 'B',
+        contributionToCategory: 29.33,
+        contributionToCourse: 17.6,
+      },
+      // Assignment 3
+      {
+        id: 10403,
+        courseid: 104,
+        categoryid: 201,
+        itemname: 'Assignment 3: Sorting Algorithms',
+        itemtype: 'mod',
+        itemmodule: 'assign',
+        iteminstance: 403,
+        gradetype: 1,
+        grademax: 100,
+        grademin: 0,
+        gradepass: 60,
+        multfactor: 1.0,
+        plusfactor: 0.0,
+        aggregationcoef: 0.0,
+        aggregationcoef2: 1.0,
+        weightoverride: false,
+        sortorder: 3,
+        display: 1,
+        decimals: 2,
+        hidden: false,
+        locked: false,
+        categoryname: 'Assignments',
+        weight: 33.33,
+        grade: {
+          id: 104003,
+          userid: 1001,
+          rawgrade: 95,
+          finalgrade: 95,
+          feedback: 'Excellent optimization of quicksort',
+          feedbackformat: 1,
+          hidden: false,
+          locked: false,
+          overridden: false,
+          excluded: false,
+          timemodified: Date.now() - 86400000,
+        },
+        percentage: 95,
+        lettergrade: 'A',
+        contributionToCategory: 31.67,
+        contributionToCourse: 19,
+      },
+      // Midterm Exam
+      {
+        id: 10404,
+        courseid: 104,
+        categoryid: 202,
+        itemname: 'Midterm Exam',
+        itemtype: 'mod',
+        itemmodule: 'quiz',
+        iteminstance: 404,
+        gradetype: 1,
+        grademax: 100,
+        grademin: 0,
+        gradepass: 60,
+        multfactor: 1.0,
+        plusfactor: 0.0,
+        aggregationcoef: 0.0,
+        aggregationcoef2: 1.0,
+        weightoverride: false,
+        sortorder: 4,
+        display: 1,
+        decimals: 2,
+        hidden: false,
+        locked: false,
+        categoryname: 'Exams',
+        weight: 50,
+        grade: {
+          id: 104004,
+          userid: 1001,
+          rawgrade: 86,
+          finalgrade: 86,
+          feedback: 'Strong understanding of core concepts',
+          feedbackformat: 1,
+          hidden: false,
+          locked: false,
+          overridden: false,
+          excluded: false,
+          timemodified: Date.now() - 86400000 * 7,
+        },
+        percentage: 86,
+        lettergrade: 'B',
+        contributionToCategory: 43,
+        contributionToCourse: 17.2,
+      },
+      // Final Exam
+      {
+        id: 10405,
+        courseid: 104,
+        categoryid: 202,
+        itemname: 'Final Exam',
+        itemtype: 'mod',
+        itemmodule: 'quiz',
+        iteminstance: 405,
+        gradetype: 1,
+        grademax: 100,
+        grademin: 0,
+        gradepass: 60,
+        multfactor: 1.0,
+        plusfactor: 0.0,
+        aggregationcoef: 0.0,
+        aggregationcoef2: 1.0,
+        weightoverride: false,
+        sortorder: 5,
+        display: 1,
+        decimals: 2,
+        hidden: false,
+        locked: false,
+        categoryname: 'Exams',
+        weight: 50,
+        grade: {
+          id: 104005,
+          userid: 1001,
+          rawgrade: 90,
+          finalgrade: 90,
+          feedback: 'Excellent performance on the final exam',
+          feedbackformat: 1,
+          hidden: false,
+          locked: false,
+          overridden: false,
+          excluded: false,
+          timemodified: Date.now() - 86400000 * 2,
+        },
+        percentage: 90,
+        lettergrade: 'A',
+        contributionToCategory: 45,
+        contributionToCourse: 18,
+      },
+      // Course total (weighted average: 60% assignments + 40% exams = 0.6*91.67 + 0.4*88 = 55 + 35.2 = 90.2)
+      {
+        id: 104000,
+        courseid: 104,
+        itemname: 'Course Total',
+        itemtype: 'course',
+        gradetype: 1,
+        grademax: 100,
+        grademin: 0,
+        multfactor: 1.0,
+        plusfactor: 0.0,
+        aggregationcoef: 0.0,
+        aggregationcoef2: 1.0,
+        weightoverride: false,
+        sortorder: 9999,
+        display: 1,
+        decimals: 2,
+        hidden: false,
+        locked: false,
+        grade: {
+          id: 1040000,
+          userid: 1001,
+          rawgrade: 90.2,
+          finalgrade: 90.2,
+          feedback: '',
+          feedbackformat: 1,
+          hidden: false,
+          locked: false,
+          overridden: false,
+          excluded: false,
+          timemodified: Date.now(),
+        },
+        percentage: 90.2,
+        lettergrade: 'A',
       },
     ],
     students: [],
@@ -1106,11 +1478,53 @@ const getCourseGradebookHandler = http.get('http://*/api/v1/gradebook/course/:id
       items = items.filter((item) => !item.hidden && !item.grade?.hidden);
     }
 
-    const response: ApiResponse<CourseGradebook> = {
+    // Transform CourseGradebook to CourseGradebookResponse
+    // Separate grade items from user grades
+    const gradeItems = items.map((item) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { grade, percentage, lettergrade, contributionToCategory, contributionToCourse, ...gradeItem } = item;
+      return gradeItem;
+    });
+
+    const userGrades = items.map((item) => ({
+      id: item.id,
+      itemname: item.itemname,
+      category: item.categoryname || null,
+      grade: item.grade?.finalgrade ?? null,
+      lettergrade: item.lettergrade || null,
+      percentage: item.percentage ?? null,
+      range: `${item.grademin}-${item.grademax}`,
+      grademax: item.grademax,
+      grademin: item.grademin,
+      feedback: item.grade?.feedback || null,
+      timemodified: item.grade?.timemodified,
+      weight: item.weight ?? null,
+      contributiontocoursetotal: item.contributionToCourse ?? null,
+      rank: null, // Not implemented in mock
+      average: null, // Not implemented in mock
+      parentcategories: item.categoryname ? [item.categoryname] : [],
+      hidden: item.grade?.hidden ?? false,
+      locked: item.grade?.locked ?? false,
+      overridden: item.grade?.overridden ?? false,
+      excluded: item.grade?.excluded ?? false,
+      aggregationstatus: 'included' as const,
+      modificationHistory: item.modificationHistory || undefined,
+    }));
+
+    const response: ApiResponse<{
+      courseId: number;
+      courseName: string;
+      items: typeof gradeItems;
+      categories: typeof gradebook.categories;
+      userGrades: typeof userGrades;
+    }> = {
       success: true,
       data: {
-        ...gradebook,
-        items,
+        courseId: gradebook.courseid,
+        courseName: gradebook.coursename,
+        items: gradeItems,
+        categories: gradebook.categories,
+        userGrades,
       },
       meta: {
         timestamp: Date.now(),
@@ -1144,8 +1558,8 @@ const getUserGradesHandler = http.get('http://*/api/v1/gradebook/user/:id', asyn
       );
     }
 
-    // Check if user exists (mock: users with ID > 1000 don't exist)
-    if (userId > 1000) {
+    // Check if user exists (mock: users with ID > 10000 don't exist)
+    if (userId > 10000) {
       return HttpResponse.json(
         {
           success: false,
@@ -1158,39 +1572,54 @@ const getUserGradesHandler = http.get('http://*/api/v1/gradebook/user/:id', asyn
       );
     }
 
-    // Build user grades response
-    const userGrades: UserGradesResponse = {
-      userid: userId,
-      courses: Object.values(mockGradebooks).map((gradebook) => ({
-        courseid: gradebook.courseid,
-        coursename: gradebook.coursename,
-        coursetotal: gradebook.items.find((i) => i.itemtype === 'course')
-          ?.grade?.finalgrade,
-        coursetotalpercentage: gradebook.items.find((i) => i.itemtype === 'course')
-          ?.percentage,
-        lettergrade: gradebook.items.find((i) => i.itemtype === 'course')
-          ?.lettergrade,
-        categories: gradebook.categories.map((cat) => ({
-          categoryid: cat.id,
-          categoryname: cat.fullname,
-          total: undefined, // Would calculate from items
-          weight: cat.weight,
-        })),
-        items: gradebook.items.filter((item) => item.itemtype !== 'course'),
-        history: [
-          {
-            itemid: 101,
-            oldgrade: 82,
-            newgrade: 85,
-            timemodified: Date.now() - 86400000 * 8,
-            usermodified: 1,
-            reason: 'Grade adjustment after review',
-          },
-        ],
-      })),
+    // Build user grades response (matching UserGradebookResponse from gradebookApi.ts)
+    const userGrades = {
+      userId: userId,
+      courses: Object.values(mockGradebooks).map((gradebook) => {
+        // Check if course item has a grade for the requested user
+        const courseItem = gradebook.items.find((i) => i.itemtype === 'course');
+        const courseGradeMatchesUser = courseItem?.grade?.userid === userId || courseItem?.grade?.userid === 42;
+        
+        return {
+          courseId: gradebook.courseid,
+          courseName: gradebook.coursename,
+          courseTotal: courseGradeMatchesUser ? (courseItem?.grade?.finalgrade ?? null) : null,
+          percentage: courseGradeMatchesUser ? (courseItem?.percentage ?? null) : null,
+          letterGrade: courseGradeMatchesUser ? (courseItem?.lettergrade ?? null) : null,
+          grades: gradebook.items.filter((item) => item.itemtype !== 'course').map((item) => {
+            // Check if this item has a grade for the requested user
+            // Allow userid 42 to match any test user (1000+) for E2E testing flexibility
+            const gradeMatchesUser = !item.grade || item.grade.userid === userId || (userId >= 1000 && item.grade.userid === 42);
+            
+            return {
+              id: item.id,
+              itemname: item.itemname,
+              category: item.categoryid ? gradebook.categories.find(c => c.id === item.categoryid)?.fullname ?? null : null,
+              grade: gradeMatchesUser ? (item.grade?.finalgrade ?? null) : null,
+              lettergrade: gradeMatchesUser ? (item.lettergrade ?? null) : null,
+              percentage: gradeMatchesUser ? (item.percentage ?? null) : null,
+              range: `${item.grademin}-${item.grademax}`,
+              grademax: item.grademax,
+              grademin: item.grademin,
+              feedback: gradeMatchesUser ? (item.grade?.feedback ?? null) : null,
+              timemodified: gradeMatchesUser ? item.grade?.timemodified : undefined,
+              weight: item.weight ?? null,
+              contributiontocoursetotal: null, // Would calculate from aggregation
+              rank: null,
+              average: null,
+              parentcategories: [],
+              hidden: item.hidden,
+              locked: item.locked,
+              overridden: false,
+              excluded: false,
+              aggregationstatus: 'included' as const,
+            };
+          }),
+        };
+      }),
     };
 
-    const response: ApiResponse<UserGradesResponse> = {
+    const response = {
       success: true,
       data: userGrades,
       meta: {

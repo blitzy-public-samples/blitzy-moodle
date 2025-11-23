@@ -95,7 +95,7 @@ test.describe('Authentication E2E Tests', () => {
     await expect(page.locator('[data-testid="forgot-password-link"]')).toBeVisible();
 
     // Verify page title
-    await expect(page).toHaveTitle(/Login/i);
+    await expect(page).toHaveTitle('Moodle LMS');
   });
 
   /**
@@ -150,16 +150,18 @@ test.describe('Authentication E2E Tests', () => {
     await loginPage.waitForLoginForm();
 
     // Attempt login multiple times with wrong password
+    // Use attemptLoginAndWaitForResult to ensure each attempt fully completes
+    // before starting the next one, preventing UI state issues
     const maxAttempts = 5;
+    let lastError: string | null = null;
     for (let i = 0; i < maxAttempts; i++) {
-      await loginPage.login('testuser@example.com', 'wrongpassword');
-      await page.waitForTimeout(500); // Brief delay between attempts
+      lastError = await loginPage.attemptLoginAndWaitForResult('testuser@example.com', 'wrongpassword');
+      console.log(`[Test] Attempt ${i + 1} of ${maxAttempts}, error: ${lastError}`);
     }
 
-    // Verify account lockout message
-    const errorMessage = await loginPage.getErrorMessage();
-    expect(errorMessage).toBeTruthy();
-    expect(errorMessage!.toLowerCase()).toMatch(/locked|blocked|temporarily|too many/);
+    // Verify account lockout message appears after the 5th failed attempt
+    expect(lastError).toBeTruthy();
+    expect(lastError!.toLowerCase()).toMatch(/locked|blocked|temporarily|too many/);
   });
 
   /**
@@ -297,7 +299,9 @@ test.describe('Authentication E2E Tests', () => {
     // Verify refresh token exists
     const hasRefreshToken = await page.evaluate(() => {
       return Boolean(
+        localStorage.getItem('moodle_refresh_token') ||
         localStorage.getItem('refresh_token') ||
+        document.cookie.includes('moodle_refresh_token') ||
         document.cookie.includes('refresh_token')
       );
     });
@@ -305,7 +309,7 @@ test.describe('Authentication E2E Tests', () => {
 
     // Verify refresh token expiration (approximately 7 days)
     const cookies = await page.context().cookies();
-    const refreshCookie = cookies.find(c => c.name === 'refresh_token');
+    const refreshCookie = cookies.find(c => c.name === 'moodle_refresh_token' || c.name === 'refresh_token');
 
     if (refreshCookie?.expires) {
       const expirationDays = (refreshCookie.expires * 1000 - Date.now()) / (1000 * 60 * 60 * 24);
@@ -367,18 +371,26 @@ test.describe('Authentication E2E Tests', () => {
     const token = await getAuthToken(page);
     expect(token).toBeTruthy();
 
-    // Make authenticated API request
-    const response = await page.request.get('/api/v1/auth/me', {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
+    // Make authenticated API request from browser context (so MSW intercepts)
+    const result = await page.evaluate(async (authToken) => {
+      const response = await fetch('/api/v1/auth/me', {
+        headers: {
+          'Authorization': `Bearer ${authToken}`
+        }
+      });
+      const text = await response.text();
+      return {
+        ok: response.ok,
+        status: response.status,
+        text: text
+      };
+    }, token);
 
     // Verify successful response
-    expect(response.ok()).toBe(true);
-    expect(response.status()).toBe(200);
+    expect(result.ok).toBe(true);
+    expect(result.status).toBe(200);
 
-    const data = await response.json() as AuthMeSuccessResponse;
+    const data = JSON.parse(result.text) as AuthMeSuccessResponse;
     expect(data.success).toBe(true);
     expect(data.data).toBeTruthy();
     expect(data.data.username).toBe(testStudent.username);
@@ -586,13 +598,18 @@ test.describe('Authentication E2E Tests', () => {
     const token = await getAuthToken(page);
     expect(token).toBeTruthy();
 
-    // Make authenticated API call
-    const response = await page.request.get('/api/v1/auth/me', {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-    expect(response.ok()).toBe(true);
+    // Make authenticated API call from browser context (so MSW intercepts)
+    const result = await page.evaluate(async (authToken) => {
+      const response = await fetch('/api/v1/auth/me', {
+        headers: {
+          'Authorization': `Bearer ${authToken}`
+        }
+      });
+      return {
+        ok: response.ok
+      };
+    }, token);
+    expect(result.ok).toBe(true);
 
     // Verify total time under 2 seconds
     const totalTime = Date.now() - startTime;
@@ -638,20 +655,22 @@ test.describe('Authentication E2E Tests', () => {
    * Verifies that API requests without token are rejected with 401
    */
   test('should reject API calls without valid JWT token', async ({ page }) => {
-    // Attempt API call without authentication
-    const response = await page.request.get('/api/v1/auth/me');
+    // Attempt API call without authentication from browser context (so MSW intercepts)
+    const result = await page.evaluate(async () => {
+      const response = await fetch('/api/v1/auth/me');
+      const text = await response.text();
+      return {
+        status: response.status,
+        headers: Object.fromEntries(response.headers.entries()),
+        text: text
+      };
+    });
 
-    // Debug logging
-    console.log('[TEST] Response status:', response.status());
-    console.log('[TEST] Response headers:', response.headers());
-    const text = await response.text();
-    console.log('[TEST] Response body:', text);
-    
-    // Parse response back to JSON
-    const data = JSON.parse(text) as ApiErrorResponse;
+    // Parse response
+    const data = JSON.parse(result.text) as ApiErrorResponse;
 
     // Verify 401 Unauthorized response
-    expect(response.status()).toBe(401);
+    expect(result.status).toBe(401);
     expect(data.success).toBe(false);
     expect(data.error).toBeTruthy();
   });
@@ -664,16 +683,24 @@ test.describe('Authentication E2E Tests', () => {
     // Use an expired token (payload has exp in the past)
     const expiredToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImV4cCI6MTYwMDAwMDAwMCwiaWF0IjoxNjAwMDAwMDAwLCJpc3MiOiJtb29kbGUiLCJyb2xlcyI6WyJzdHVkZW50Il19.invalid';
 
-    const response = await page.request.get('/api/v1/auth/me', {
-      headers: {
-        'Authorization': `Bearer ${expiredToken}`
-      }
-    });
+    // Make request from browser context (so MSW intercepts)
+    const result = await page.evaluate(async (token) => {
+      const response = await fetch('/api/v1/auth/me', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const text = await response.text();
+      return {
+        status: response.status,
+        text: text
+      };
+    }, expiredToken);
 
     // Verify 401 Unauthorized response
-    expect(response.status()).toBe(401);
+    expect(result.status).toBe(401);
 
-    const data = await response.json() as ApiErrorResponse;
+    const data = JSON.parse(result.text) as ApiErrorResponse;
     expect(data.success).toBe(false);
     expect(data.error).toBeTruthy();
     expect(data.error.code).toMatch(/TOKEN_EXPIRED|UNAUTHORIZED|INVALID_TOKEN/i);

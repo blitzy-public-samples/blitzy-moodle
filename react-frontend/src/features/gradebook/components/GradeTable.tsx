@@ -34,17 +34,23 @@ import {
   Button,
   Stack,
   Paper,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from '@mui/material';
 import {
   DataGrid,
+  GridRow,
   type GridColDef,
   type GridRenderCellParams,
+  type GridRowProps,
 } from '@mui/x-data-grid';
 import {
   Info as InfoIcon,
   History as HistoryIcon,
   Lock as LockIcon,
   VisibilityOff as HiddenIcon,
+  ExpandMore as ExpandMoreIcon,
 } from '@mui/icons-material';
 import type { GradeSummary } from '../types/grade.types';
 
@@ -70,6 +76,7 @@ export interface GradeTableProps {
     lettergrade: string | null;
     percentage: number | null;
     range: string;
+    maxGrade?: number;
   };
 
   /**
@@ -91,6 +98,24 @@ export interface GradeTableProps {
    * Test ID for E2E testing
    */
   'data-testid'?: string;
+}
+
+/**
+ * Custom row component that adds data-item-id attribute to each row
+ */
+function CustomGradeRow(props: GridRowProps) {
+  const { row } = props;
+  if (!row) {
+    return <GridRow {...props} />;
+  }
+  return (
+    <GridRow
+      {...props}
+      data-testid={`grade-item-${row.id}`}
+      data-item-id={String(row.id)}
+      tabIndex={0}
+    />
+  );
 }
 
 /**
@@ -135,7 +160,7 @@ export function GradeTable({
         minWidth: 200,
         renderCell: (params: GridRenderCellParams<GradeSummary>) => (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography variant="body2">{params.row.itemname}</Typography>
+            <Typography variant="body2" data-testid={`grade-item-name-${params.row.id}`}>{params.row.itemname}</Typography>
             {params.row.hidden && (
               <Tooltip title="Hidden grade">
                 <HiddenIcon fontSize="small" color="disabled" />
@@ -172,7 +197,7 @@ export function GradeTable({
             return <Typography variant="body2">—</Typography>;
           }
           return (
-            <Typography variant="body2" data-testid={`grade-${params.row.id}`}>
+            <Typography variant="body2" data-testid={`grade-value-${params.row.id}`}>
               {grade.toFixed(2)}
             </Typography>
           );
@@ -180,13 +205,13 @@ export function GradeTable({
       },
       {
         field: 'range',
-        headerName: 'Range',
+        headerName: 'Max Grade',
         width: 100,
-        align: 'center',
-        headerAlign: 'center',
+        align: 'right',
+        headerAlign: 'right',
         renderCell: (params: GridRenderCellParams<GradeSummary>) => (
-          <Typography variant="body2" color="text.secondary">
-            {params.row.range}
+          <Typography variant="body2" color="text.secondary" data-testid={`max-grade-${params.row.id}`}>
+            {params.row.grademax}
           </Typography>
         ),
       },
@@ -199,10 +224,10 @@ export function GradeTable({
         renderCell: (params: GridRenderCellParams<GradeSummary>) => {
           const {percentage} = params.row;
           if (percentage === null || percentage === undefined) {
-            return <Typography variant="body2">—</Typography>;
+            return <Typography variant="body2" data-testid={`grade-percentage-${params.row.id}`}>—</Typography>;
           }
           return (
-            <Typography variant="body2" data-testid={`percentage-${params.row.id}`}>
+            <Typography variant="body2" data-testid={`grade-percentage-${params.row.id}`}>
               {percentage.toFixed(1)}%
             </Typography>
           );
@@ -217,7 +242,7 @@ export function GradeTable({
         renderCell: (params: GridRenderCellParams<GradeSummary>) => {
           const letter = params.row.lettergrade;
           if (!letter) {
-            return <Typography variant="body2">—</Typography>;
+            return <Typography variant="body2" data-testid={`letter-grade-${params.row.id}`}>—</Typography>;
           }
           return (
             <Chip
@@ -225,7 +250,7 @@ export function GradeTable({
               size="small"
               color="primary"
               variant="outlined"
-              data-testid={`letter-${params.row.id}`}
+              data-testid={`letter-grade-${params.row.id}`}
             />
           );
         },
@@ -238,12 +263,13 @@ export function GradeTable({
         renderCell: (params: GridRenderCellParams<GradeSummary>) => {
           const {feedback} = params.row;
           if (!feedback) {
-            return <Typography variant="body2" color="text.disabled">—</Typography>;
+            return <Typography variant="body2" color="text.disabled" data-testid={`grade-feedback-${params.row.id}`}>—</Typography>;
           }
           return (
             <Tooltip title={feedback}>
               <Typography
                 variant="body2"
+                data-testid={`grade-feedback-${params.row.id}`}
                 sx={{
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
@@ -298,7 +324,7 @@ export function GradeTable({
   };
 
   return (
-    <Box data-testid={testId}>
+    <Box>
       {/* Course Total Summary */}
       {courseTotal && (
         <Paper
@@ -308,15 +334,17 @@ export function GradeTable({
           <Stack direction="row" spacing={3} alignItems="center">
             <Typography variant="h6">Course Total:</Typography>
             <Box>
-              <Typography variant="h5" component="span" data-testid="course-total-grade">
+              <Typography variant="h5" component="span" data-testid="total-grade">
                 {courseTotal.grade !== null ? courseTotal.grade.toFixed(2) : '—'}
               </Typography>
               <Typography variant="body2" component="span" color="text.secondary" sx={{ ml: 1 }}>
-                ({courseTotal.range})
+                / <Typography variant="body1" component="span" data-testid="max-total-grade">
+                  {courseTotal.maxGrade !== undefined ? courseTotal.maxGrade.toFixed(2) : courseTotal.range.split('-')[1]}
+                </Typography>
               </Typography>
             </Box>
             {courseTotal.percentage !== null && (
-              <Typography variant="h6" data-testid="course-total-percentage">
+              <Typography variant="h6" data-testid="total-percentage">
                 {courseTotal.percentage.toFixed(1)}%
               </Typography>
             )}
@@ -324,7 +352,7 @@ export function GradeTable({
               <Chip
                 label={courseTotal.lettergrade}
                 color="primary"
-                data-testid="course-total-letter"
+                data-testid="overview-letter"
               />
             )}
           </Stack>
@@ -332,25 +360,34 @@ export function GradeTable({
       )}
 
       {/* Grades Table */}
-      <DataGrid
-        rows={visibleGrades}
-        columns={columns}
-        loading={loading}
-        autoHeight
-        disableRowSelectionOnClick
-        pageSizeOptions={[10, 25, 50, 100]}
-        initialState={{
-          pagination: { paginationModel: { pageSize: 25 } },
-        }}
-        sx={{
-          '& .MuiDataGrid-cell:focus': {
-            outline: 'none',
-          },
-          '& .MuiDataGrid-row:hover': {
-            backgroundColor: 'action.hover',
-          },
-        }}
-      />
+      <Box>
+        <DataGrid
+          rows={visibleGrades}
+          columns={columns}
+          loading={loading}
+          autoHeight
+          disableRowSelectionOnClick
+          pageSizeOptions={[10, 25, 50, 100]}
+          initialState={{
+            pagination: { paginationModel: { pageSize: 25 } },
+          }}
+          getRowId={(row) => row.id}
+          getRowClassName={(params) => `grade-item grade-item-${params.id}`}
+          aria-label="Student grades table"
+          data-testid={testId}
+          slots={{
+            row: CustomGradeRow,
+          }}
+          sx={{
+            '& .MuiDataGrid-cell:focus': {
+              outline: 'none',
+            },
+            '& .MuiDataGrid-row:hover': {
+              backgroundColor: 'action.hover',
+            },
+          }}
+        />
+      </Box>
 
       {/* Grade Details Modal */}
       <Dialog
@@ -358,12 +395,15 @@ export function GradeTable({
         onClose={handleCloseDetails}
         maxWidth="sm"
         fullWidth
-        data-testid="grade-details-modal"
+        aria-labelledby="grade-details-title"
+        PaperProps={{
+          'data-testid': 'grade-details-modal'
+        } as any}
       >
         {selectedGrade && (
           <>
-            <DialogTitle>
-              <Typography variant="h6">{selectedGrade.itemname}</Typography>
+            <DialogTitle id="grade-details-title">
+              <Typography variant="h6" data-testid="grade-item-name">{selectedGrade.itemname}</Typography>
               <Typography variant="body2" color="text.secondary">
                 {selectedGrade.category ?? 'No category'}
               </Typography>
@@ -374,8 +414,11 @@ export function GradeTable({
                   <Typography variant="subtitle2" color="text.secondary">
                     Grade
                   </Typography>
-                  <Typography variant="h4" data-testid="modal-grade">
+                  <Typography variant="h4" data-testid="grade-value">
                     {selectedGrade.grade !== null ? selectedGrade.grade.toFixed(2) : '—'}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    out of <span data-testid="max-grade">{selectedGrade.grademax}</span>
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     Range: {selectedGrade.range}
@@ -412,8 +455,19 @@ export function GradeTable({
                     <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                       Feedback
                     </Typography>
-                    <Typography variant="body1" data-testid="modal-feedback">
+                    <Typography variant="body1" data-testid="grade-feedback">
                       {selectedGrade.feedback}
+                    </Typography>
+                  </Box>
+                )}
+
+                {selectedGrade.timemodified && (
+                  <Box>
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                      Date Graded
+                    </Typography>
+                    <Typography variant="body1" data-testid="date-graded">
+                      {new Date(selectedGrade.timemodified).toLocaleString()}
                     </Typography>
                   </Box>
                 )}
@@ -428,10 +482,56 @@ export function GradeTable({
                     </Typography>
                   </Box>
                 )}
+
+                {selectedGrade.modificationHistory && selectedGrade.modificationHistory.length > 0 && (
+                  <Accordion data-testid="grade-history-accordion">
+                    <AccordionSummary
+                      expandIcon={<ExpandMoreIcon />}
+                      aria-controls="grade-history-content"
+                      id="grade-history-header"
+                    >
+                      <Typography variant="subtitle2">
+                        Grade History ({selectedGrade.modificationHistory.length} changes)
+                      </Typography>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                      <Stack spacing={1.5}>
+                        {selectedGrade.modificationHistory.map((record, index) => (
+                          <Paper
+                            key={index}
+                            variant="outlined"
+                            sx={{ p: 1.5 }}
+                            data-testid={`history-record-${index}`}
+                          >
+                            <Stack spacing={0.5}>
+                              <Box display="flex" justifyContent="space-between" alignItems="center">
+                                <Typography variant="body2" fontWeight="medium" data-testid={`history-grade-${index}`}>
+                                  Grade: {record.grade}
+                                </Typography>
+                                <Chip
+                                  label={record.action}
+                                  size="small"
+                                  color={record.action === 'Graded' ? 'primary' : 'default'}
+                                  data-testid={`history-action-${index}`}
+                                />
+                              </Box>
+                              <Typography variant="caption" color="text.secondary" data-testid={`history-date-${index}`}>
+                                {new Date(record.date).toLocaleString()}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary" data-testid={`history-modifier-${index}`}>
+                                Modified by: {record.modifiedBy}
+                              </Typography>
+                            </Stack>
+                          </Paper>
+                        ))}
+                      </Stack>
+                    </AccordionDetails>
+                  </Accordion>
+                )}
               </Stack>
             </DialogContent>
             <DialogActions>
-              <Button onClick={handleCloseDetails}>Close</Button>
+              <Button onClick={handleCloseDetails} data-testid="close-modal">Close</Button>
             </DialogActions>
           </>
         )}

@@ -91,6 +91,7 @@ interface UserData {
   confirmed: number;
   role?: string; // User role (student, teacher, admin, etc.)
   roles?: string[]; // Multiple roles for filtering
+  rolesDetail?: Array<{ roleid: number; name: string; shortname: string }>; // Original role objects for E2E tests
 }
 
 /**
@@ -222,6 +223,7 @@ export function UserManagementPage() {
       confirmed: 1, // Not provided by API
       role: user.roles?.[0]?.shortname ?? 'student', // Extract shortname from first role with optional chaining
       roles: user.roles?.map(r => r.shortname) || [], // Transform roles to array of shortnames for filtering
+      rolesDetail: user.roles || [], // Preserve original role objects for E2E tests
     }));
   }, [apiUsers]);
 
@@ -252,10 +254,10 @@ export function UserManagementPage() {
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       result = result.filter(user =>
-        user.username.toLowerCase().includes(query) ||
-        user.firstname.toLowerCase().includes(query) ||
-        user.lastname.toLowerCase().includes(query) ||
-        user.email.toLowerCase().includes(query)
+        user.username?.toLowerCase().includes(query) ||
+        user.firstname?.toLowerCase().includes(query) ||
+        user.lastname?.toLowerCase().includes(query) ||
+        user.email?.toLowerCase().includes(query)
       );
     }
     
@@ -403,7 +405,7 @@ export function UserManagementPage() {
       errors.username = 'Username is required';
     } else {
       // Check for duplicate username
-      const isDuplicate = users.some(user => user.username.toLowerCase() === formData.username.toLowerCase());
+      const isDuplicate = users.some(user => user.username?.toLowerCase() === formData.username.toLowerCase());
       if (isDuplicate) {
         errors.username = 'Username already exists';
       }
@@ -837,7 +839,7 @@ export function UserManagementPage() {
                   <TableRow 
                     key={user.id} 
                     data-testid={`user-row-${user.id}`}
-                    data-user-roles={JSON.stringify(user.roles ?? [user.role])}
+                    data-user-roles={JSON.stringify(user.rolesDetail ?? (user.role ? [{shortname: user.role, name: user.role}] : []))}
                     data-user-suspended={user.suspended}
                   >
                     <TableCell padding="checkbox">

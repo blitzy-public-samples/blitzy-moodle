@@ -604,20 +604,21 @@ const loginHandler = http.post('*/api/v1/auth/login', async ({ request }) => {
     });
 
     // Return success response
-    return HttpResponse.json(
-      {
-        success: true,
-        data: {
-          tokens,
-          user: sanitizeUser(user),
-        },
-        meta: {
-          timestamp: new Date().toISOString(),
-          server_time: Date.now(),
-        },
+    const successResponse = {
+      success: true,
+      data: {
+        tokens,
+        user: sanitizeUser(user),
       },
-      { status: 200 }
-    );
+      meta: {
+        timestamp: new Date().toISOString(),
+        server_time: Date.now(),
+      },
+    };
+    
+    console.log('[MSW Handler] Returning success response:', JSON.stringify(successResponse, null, 2));
+    
+    return HttpResponse.json(successResponse, { status: 200 });
   } catch (error) {
     return HttpResponse.json(
       {

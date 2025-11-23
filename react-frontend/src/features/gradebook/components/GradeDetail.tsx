@@ -148,6 +148,8 @@ export interface GradeDetailData {
   scale?: GradeScale;
   /** Selected scale option ID if gradetype is SCALE */
   scaleid: number | null;
+  /** Unix timestamp when grade was last modified */
+  timemodified?: number;
 }
 
 /**
@@ -461,7 +463,7 @@ export default function GradeDetail({ gradeItem, loading = false }: GradeDetailP
       <CardHeader
         title={
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography variant="h6" component="h2">
+            <Typography variant="h6" component="h2" data-testid="grade-item-name">
               {gradeItem.name}
             </Typography>
             {gradeItem.submissionStatus === 'missing' && (
@@ -493,6 +495,15 @@ export default function GradeDetail({ gradeItem, loading = false }: GradeDetailP
                 size="small"
               />
             </Box>
+
+            {/* Date Graded */}
+            {gradeItem.timemodified && gradeItem.timemodified > 0 && (
+              <Box sx={{ mt: 1 }}>
+                <Typography variant="caption" color="text.secondary" data-testid="date-graded">
+                  Graded: {formatDate(new Date(gradeItem.timemodified * 1000))}
+                </Typography>
+              </Box>
+            )}
           </Box>
 
           <Divider />
@@ -621,6 +632,7 @@ export default function GradeDetail({ gradeItem, loading = false }: GradeDetailP
                       '& li': { mb: 0.5 },
                     }}
                     dangerouslySetInnerHTML={{ __html: sanitizedFeedback }}
+                    data-testid="grade-feedback"
                   />
                 </AccordionDetails>
               </Accordion>
@@ -631,7 +643,7 @@ export default function GradeDetail({ gradeItem, loading = false }: GradeDetailP
 
           {/* Modification History Section */}
           {gradeItem.modificationHistory.length > 0 && (
-            <Accordion>
+            <Accordion data-testid="grade-history-accordion">
               <AccordionSummary
                 expandIcon={<ExpandMoreIcon />}
                 aria-controls="grade-history-content"
@@ -642,31 +654,31 @@ export default function GradeDetail({ gradeItem, loading = false }: GradeDetailP
                 </Typography>
               </AccordionSummary>
               <AccordionDetails>
-                <Timeline>
+                <Timeline data-testid="grade-history-list">
                   {gradeItem.modificationHistory.map((entry, index) => (
-                    <TimelineItem key={entry.id}>
+                    <TimelineItem key={entry.id} data-testid="history-entry">
                       <TimelineSeparator>
                         <TimelineDot color="primary" />
                         {index < gradeItem.modificationHistory.length - 1 && <TimelineConnector />}
                       </TimelineSeparator>
                       <TimelineContent>
                         <Box sx={{ mb: 2 }}>
-                          <Typography variant="subtitle2" component="h3">
+                          <Typography variant="subtitle2" component="h3" data-testid="history-user">
                             {entry.modifierName}
                           </Typography>
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography variant="caption" color="text.secondary" data-testid="history-date">
                             {formatDistanceToNow(new Date(entry.timestamp * 1000), { addSuffix: true })}
                             {' · '}
                             {formatDate(new Date(entry.timestamp * 1000))}
                           </Typography>
                           <Box sx={{ mt: 1 }}>
-                            <Typography variant="body2">
+                            <Typography variant="body2" data-testid="history-grade">
                               Grade changed from{' '}
                               <strong>{entry.oldGrade !== null ? entry.oldGrade.toFixed(2) : 'Not graded'}</strong> to{' '}
                               <strong>{entry.newGrade !== null ? entry.newGrade.toFixed(2) : 'Not graded'}</strong>
                             </Typography>
                             {entry.reason && (
-                              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }} data-testid="history-reason">
                                 Reason: {entry.reason}
                               </Typography>
                             )}

@@ -26,6 +26,7 @@ test.describe('Admin Role Assignment Workflow', () => {
   let adminRolePage: AdminRolePage;
   let customRoleName: string;
   let customRoleId: number;
+  let browser: import('@playwright/test').Browser;
   const customRoleDescription = 'Custom role for E2E testing with course management capabilities';
   
   // Capabilities to assign to custom role
@@ -39,7 +40,11 @@ test.describe('Admin Role Assignment Workflow', () => {
   /**
    * Setup: Login as admin user, navigate to role management
    */
-  test.beforeAll(async ({ browser }) => {
+  test.beforeAll(async () => {
+    // Import chromium to create browser manually (avoid fixture lifecycle issues)
+    const { chromium } = await import('@playwright/test');
+    browser = await chromium.launch();
+    
     // Step 1: Login as admin user
     adminPage = await browser.newPage();
     await loginAsAdmin(adminPage);
@@ -72,9 +77,10 @@ test.describe('Admin Role Assignment Workflow', () => {
       console.log('Cleanup: Role may have already been deleted or does not exist');
     }
     
-    // Logout admin user
+    // Logout admin user and cleanup
     await logout(adminPage);
     await adminPage.close();
+    await browser.close();
   });
 
   /**

@@ -41,6 +41,7 @@
  */
 
 import type { RequestHandler } from 'msw';
+import { http } from 'msw';
 
 // ============================================================================
 // Authentication & Authorization
@@ -206,6 +207,19 @@ export const handlers: RequestHandler[] = [
   ...messagesHandlers,
   ...filesHandlers,
   ...adminHandlers,
+  
+  // Mock handler for external images and placeholder services (must be last)
+  // Returns a minimal SVG image to avoid network errors in test environment
+  http.get(/^https?:\/\/(via\.placeholder\.com|.*\.(png|jpg|jpeg|gif|svg|webp))/, () => {
+    // Return a minimal SVG placeholder
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="150" height="150"><rect fill="#cccccc" width="150" height="150"/></svg>';
+    return new Response(svg, {
+      status: 200,
+      headers: {
+        'Content-Type': 'image/svg+xml',
+      },
+    });
+  }),
 ];
 
 /**

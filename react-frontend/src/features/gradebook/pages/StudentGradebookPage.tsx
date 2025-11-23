@@ -29,8 +29,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import { useState, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useMemo, useEffect } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Box,
   Container,
@@ -47,14 +47,16 @@ import {
   CardContent,
   Grid,
   Divider,
+  Button,
 } from '@mui/material';
 import {
   NavigateNext as NavigateNextIcon,
   School as SchoolIcon,
   BarChart as ChartIcon,
 } from '@mui/icons-material';
-import { useUserGrades } from '../api/gradebookApi';
+import { useCourseGrades } from '../api/gradebookApi';
 import { GradeTable } from '../components/GradeTable';
+import { GradeChart } from '../components/GradeChart';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import type { GradeSummary } from '../types/grade.types';
 
@@ -65,37 +67,66 @@ export function StudentGradebookPage() {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(0);
+  const [showChart, setShowChart] = useState(false);
+  const [accessDenied, setAccessDenied] = useState(false);
 
-  // Fetch student's grades
+  // Privacy enforcement: Check if userid param is present and matches logged-in user
+  useEffect(() => {
+    const requestedUserId = searchParams.get('userid');
+    
+    if (requestedUserId) {
+      // Convert to string for comparison since URL params are strings
+      const loggedInUserId = user?.id?.toString();
+      
+      if (requestedUserId !== loggedInUserId) {
+        // Access denied: student attempting to view another student's grades
+        setAccessDenied(true);
+      } else {
+        // Valid access: userid matches logged-in user
+        setAccessDenied(false);
+      }
+    } else {
+      // No userid param: viewing own gradebook (default behavior)
+      setAccessDenied(false);
+    }
+  }, [searchParams, user?.id]);
+
+  // Fetch student's grades for this specific course
   const {
-    data: gradesData,
+    data: courseGrades,
     isLoading,
     isError,
     error,
-  } = useUserGrades(user?.id ?? 0);
-
-  // Find the current course's grades
-  const courseGrades = useMemo(() => {
-    if (!gradesData || !courseId) {return null;}
-
-    const course = gradesData.courses.find(
-      (c) => c.courseId === parseInt(courseId, 10)
-    );
-
-    return course ?? null;
-  }, [gradesData, courseId]);
+  } = useCourseGrades(parseInt(courseId ?? '0', 10));
 
   // Calculate course total
   const courseTotal = useMemo(() => {
-    if (!courseGrades?.grades) {
+    // Debug logging for E2E tests
+    if (import.meta.env.MODE === 'e2e') {
+      console.log('[StudentGradebookPage courseTotal] courseGrades:', courseGrades);
+      console.log('[StudentGradebookPage courseTotal] courseGrades?.userGrades:', courseGrades?.userGrades);
+    }
+
+    if (!courseGrades?.userGrades) {
+      if (import.meta.env.MODE === 'e2e') {
+        console.log('[StudentGradebookPage courseTotal] EARLY RETURN - no userGrades array');
+      }
       return null;
     }
 
     // Calculate total from non-hidden grades
-    const visibleGrades = courseGrades.grades.filter((g) => !g.hidden);
+    const visibleGrades = courseGrades.userGrades.filter((g) => !g.hidden);
+
+    if (import.meta.env.MODE === 'e2e') {
+      console.log('[StudentGradebookPage courseTotal] visibleGrades count:', visibleGrades.length);
+    }
 
     if (visibleGrades.length === 0) {
+      if (import.meta.env.MODE === 'e2e') {
+        console.log('[StudentGradebookPage courseTotal] EARLY RETURN - no visible grades');
+      }
       return null;
     }
 
@@ -129,23 +160,35 @@ export function StudentGradebookPage() {
       else {lettergrade = 'F';}
     }
 
-    return {
+    const result = {
       grade: finalGrade,
       percentage,
       lettergrade,
       range: `0-${totalPossible.toFixed(0)}`,
+      maxGrade: totalPossible,
     };
+
+    // Debug logging for E2E tests
+    if (import.meta.env.MODE === 'e2e') {
+      console.log('[StudentGradebookPage courseTotal] Calculated courseTotal:', result);
+    }
+
+    return result;
   }, [courseGrades]);
 
   // Group grades by category
   const categorizedGrades = useMemo(() => {
-    if (!courseGrades?.grades) {
+    if (!courseGrades?.userGrades) {
+      // Debug logging for E2E tests
+      if (import.meta.env.MODE === 'e2e') {
+        console.log('[StudentGradebookPage categorizedGrades] No courseGrades or userGrades array');
+      }
       return new Map<string, GradeSummary[]>();
     }
 
     const categories = new Map<string, GradeSummary[]>();
 
-    courseGrades.grades.forEach((grade) => {
+    courseGrades.userGrades.forEach((grade) => {
       const categoryName = grade.category ?? 'Uncategorized';
       if (!categories.has(categoryName)) {
         categories.set(categoryName, []);
@@ -156,6 +199,19 @@ export function StudentGradebookPage() {
       }
     });
 
+    // Debug logging for E2E tests
+    if (import.meta.env.MODE === 'e2e') {
+      console.log('[StudentGradebookPage categorizedGrades] Categories created:', {
+        categoryCount: categories.size,
+        categoryNames: Array.from(categories.keys()),
+        gradesPerCategory: Array.from(categories.entries()).map(([name, grades]) => ({
+          name,
+          count: grades.length,
+          grades: grades.map(g => ({ itemname: g.itemname, category: g.category, hidden: g.hidden, grade: g.grade }))
+        }))
+      });
+    }
+
     return categories;
   }, [courseGrades]);
 
@@ -163,8 +219,24 @@ export function StudentGradebookPage() {
   const categoryTotals = useMemo(() => {
     const totals = new Map<string, { grade: number; percentage: number; count: number }>();
 
+    // Debug logging for E2E tests
+    if (import.meta.env.MODE === 'e2e') {
+      console.log('[StudentGradebookPage categoryTotals] Starting calculation with categorizedGrades size:', categorizedGrades.size);
+    }
+
     categorizedGrades.forEach((grades, categoryName) => {
       const visibleGrades = grades.filter((g) => !g.hidden && g.grade !== null);
+      
+      // Debug logging for E2E tests
+      if (import.meta.env.MODE === 'e2e') {
+        console.log(`[StudentGradebookPage categoryTotals] Category "${categoryName}":`, {
+          totalGrades: grades.length,
+          visibleGrades: visibleGrades.length,
+          hiddenGrades: grades.filter(g => g.hidden).length,
+          nullGrades: grades.filter(g => g.grade === null).length,
+        });
+      }
+      
       if (visibleGrades.length === 0) {return;}
 
       let totalEarned = 0;
@@ -187,6 +259,19 @@ export function StudentGradebookPage() {
       });
     });
 
+    // Debug logging for E2E tests
+    if (import.meta.env.MODE === 'e2e') {
+      console.log('[StudentGradebookPage categoryTotals] Final totals:', {
+        totalCount: totals.size,
+        categories: Array.from(totals.entries()).map(([name, total]) => ({
+          name,
+          grade: total.grade,
+          percentage: total.percentage,
+          count: total.count,
+        }))
+      });
+    }
+
     return totals;
   }, [categorizedGrades]);
 
@@ -197,6 +282,22 @@ export function StudentGradebookPage() {
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
   };
+
+  // Access denied state - privacy enforcement
+  if (accessDenied) {
+    return (
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Alert severity="error" data-testid="access-denied">
+          <Typography variant="h6" gutterBottom data-testid="error-heading">
+            Access Denied
+          </Typography>
+          <Typography variant="body2" data-testid="error-description">
+            You do not have permission to view another student&apos;s grades. You can only view your own grades.
+          </Typography>
+        </Alert>
+      </Container>
+    );
+  }
 
   // Loading state
   if (isLoading) {
@@ -234,7 +335,7 @@ export function StudentGradebookPage() {
   return (
     <Container maxWidth="lg" sx={{ py: 4 }} data-testid="student-gradebook-page">
       {/* Breadcrumbs */}
-      <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} sx={{ mb: 2 }}>
+      <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} sx={{ mb: 2 }} data-testid="breadcrumb">
         <MuiLink
           component="button"
           variant="body2"
@@ -270,6 +371,11 @@ export function StudentGradebookPage() {
             <Typography variant="h6" color="text.secondary">
               {courseGrades.courseName}
             </Typography>
+            {user && (
+              <Typography variant="body2" color="text.secondary" data-testid="student-name">
+                Viewing grades for: {user.fullname || user.username}
+              </Typography>
+            )}
           </Box>
         </Stack>
       </Paper>
@@ -285,13 +391,39 @@ export function StudentGradebookPage() {
 
       {/* Tab Content: All Grades */}
       {activeTab === 0 && (
-        <GradeTable
-          grades={courseGrades.grades}
-          courseTotal={courseTotal ?? undefined}
-          onViewHistory={handleViewHistory}
-          showHidden={false}
-          data-testid="all-grades-table"
-        />
+        <Stack spacing={3}>
+          <GradeTable
+            grades={courseGrades.userGrades}
+            courseTotal={courseTotal ?? undefined}
+            onViewHistory={handleViewHistory}
+            showHidden={false}
+            data-testid="all-grades-table"
+          />
+          
+          {/* View Chart Button */}
+          <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+            <Button
+              variant="outlined"
+              onClick={() => setShowChart(!showChart)}
+              data-testid="view-chart-button"
+            >
+              {showChart ? 'Hide Chart' : 'View Chart'}
+            </Button>
+          </Box>
+
+          {/* Grade Visualization Chart */}
+          {showChart && courseGrades?.userGrades && (
+            <Card>
+              <CardContent>
+                <GradeChart
+                  grades={courseGrades.userGrades.filter(grade => !grade.hidden)}
+                  chartType="bar"
+                  title={`Grade Distribution - ${courseGrades.courseName}`}
+                />
+              </CardContent>
+            </Card>
+          )}
+        </Stack>
       )}
 
       {/* Tab Content: By Category */}
@@ -300,19 +432,22 @@ export function StudentGradebookPage() {
           {Array.from(categorizedGrades.entries()).map(([categoryName, grades]) => {
             const categoryTotal = categoryTotals.get(categoryName);
             return (
-              <Paper key={categoryName} sx={{ p: 2 }}>
+              <Paper key={categoryName} sx={{ p: 2 }} data-testid="grade-category" data-category-id={categoryName}>
                 <Box sx={{ mb: 2 }}>
                   <Stack direction="row" justifyContent="space-between" alignItems="center">
-                    <Typography variant="h6" data-testid={`category-${categoryName}`}>
+                    <Typography variant="h6" data-testid="category-name">
                       {categoryName}
                     </Typography>
                     {categoryTotal && (
                       <Box>
-                        <Typography variant="body1" component="span" data-testid={`category-total-${categoryName}`}>
-                          {categoryTotal.percentage.toFixed(1)}%
+                        <Typography variant="body1" component="span" data-testid="category-total">
+                          {categoryTotal.grade.toFixed(2)}
                         </Typography>
-                        <Typography variant="body2" component="span" color="text.secondary" sx={{ ml: 1 }}>
-                          ({categoryTotal.count} items)
+                        <Typography variant="body2" component="span" color="text.secondary" sx={{ ml: 1 }} data-testid="category-max-total">
+                          / {(grades.reduce((sum, g) => sum + parseFloat(g.range.split('-')[1] ?? '100'), 0)).toFixed(2)}
+                        </Typography>
+                        <Typography variant="body2" component="span" color="text.secondary" sx={{ ml: 1 }} data-testid="category-weight">
+                          ({categoryTotal.percentage.toFixed(1)}%)
                         </Typography>
                       </Box>
                     )}
@@ -335,7 +470,7 @@ export function StudentGradebookPage() {
         <Grid container spacing={3}>
           <Grid item xs={12}>
             <Card>
-              <CardContent>
+              <CardContent data-testid="course-total">
                 <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
                   <ChartIcon color="primary" />
                   <Typography variant="h6">Course Total</Typography>
@@ -347,15 +482,23 @@ export function StudentGradebookPage() {
                       <Typography variant="body2" color="text.secondary">
                         Final Grade
                       </Typography>
-                      <Typography variant="h3" data-testid="overview-grade">
+                      <Typography variant="h3" data-testid="total-grade">
                         {courseTotal.grade !== null ? courseTotal.grade.toFixed(2) : '—'}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">
+                        Max Grade
+                      </Typography>
+                      <Typography variant="h4" data-testid="max-total-grade">
+                        {courseTotal.maxGrade !== undefined ? courseTotal.maxGrade.toFixed(2) : '—'}
                       </Typography>
                     </Box>
                     <Box>
                       <Typography variant="body2" color="text.secondary">
                         Percentage
                       </Typography>
-                      <Typography variant="h4" data-testid="overview-percentage">
+                      <Typography variant="h4" data-testid="total-percentage">
                         {courseTotal.percentage !== null
                           ? `${courseTotal.percentage.toFixed(1)}%`
                           : '—'}

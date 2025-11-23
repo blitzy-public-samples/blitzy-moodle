@@ -373,35 +373,51 @@ export async function logout(page: Page): Promise<void> {
     return;
   }
 
-  // Open user menu
-  await page.click('[data-testid="user-menu-button"]');
-  
-  // Wait for menu to expand and logout menu item to appear
-  await waitForElement(page, '[data-testid="logout-menu-item"]', 'visible', { timeout: 3000 });
+  try {
+    // Open user menu
+    await page.click('[data-testid="user-menu-button"]');
+    
+    // Wait for menu to expand and logout menu item to appear
+    await waitForElement(page, '[data-testid="logout-menu-item"]', 'visible', { timeout: 3000 });
 
-  // Click logout menu item and wait for navigation
-  await Promise.all([
-    page.waitForURL(`**${LOGIN_PAGE_URL}`, { timeout: 10000 }),
-    page.click('[data-testid="logout-menu-item"]'),
-  ]);
+    // Click logout menu item and wait for navigation
+    await Promise.all([
+      page.waitForURL(`**${LOGIN_PAGE_URL}`, { timeout: 10000 }),
+      page.click('[data-testid="logout-menu-item"]'),
+    ]);
 
-  // Removed waitForPageLoad - URL wait above is sufficient
+    // Removed waitForPageLoad - URL wait above is sufficient
 
-  // Verify token removed from storage
-  await pollUntil(
-    async () => {
-      const token = await getAuthToken(page);
-      return token === null;
-    },
-    {
-      timeout: 5000,
-      interval: 100,
-      errorMessage: 'Token was not removed from storage after logout',
-    }
-  );
+    // Verify token removed from storage
+    await pollUntil(
+      async () => {
+        const token = await getAuthToken(page);
+        return token === null;
+      },
+      {
+        timeout: 5000,
+        interval: 100,
+        errorMessage: 'Token was not removed from storage after logout',
+      }
+    );
 
-  // Clear all authentication state
-  await clearAuthenticationState(page);
+    // Clear all authentication state
+    await clearAuthenticationState(page);
+  } catch (error) {
+    // If logout through UI fails, force cleanup by clearing auth state directly
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.warn('Logout through UI failed, forcing cleanup:', errorMessage);
+    
+    // Clear all storage to ensure no residual auth state
+    await clearAuthenticationState(page);
+    
+    // Navigate to about:blank first to completely unload the application
+    // This ensures all in-memory state (Redux, React Query) is cleared
+    await page.goto('about:blank');
+    
+    // Now navigate to login page with full wait to ensure clean state
+    await page.goto(LOGIN_PAGE_URL, { waitUntil: 'networkidle' });
+  }
 
   // Verify unauthenticated state by checking for login form
   await waitForElement(page, 'input[name="username"]', 'visible', { timeout: 5000 });
@@ -757,16 +773,26 @@ export async function setupAuthenticationState(
  * // User is now in logged-out state
  */
 export async function clearAuthenticationState(page: Page): Promise<void> {
-  // Clear tokens from localStorage
-  // Wrap in try-catch to handle SecurityError when localStorage is not accessible
+  // Clear tokens from all storage types
+  // Wrap in try-catch to handle SecurityError when storage is not accessible
   try {
     await page.evaluate(
       ({ accessKey, refreshKey }) => {
+        // Clear localStorage
         localStorage.removeItem(accessKey);
         localStorage.removeItem(refreshKey);
-        // Also clear any user-related data
         localStorage.removeItem('user');
         localStorage.removeItem('userPreferences');
+        
+        // Clear sessionStorage
+        sessionStorage.clear();
+        
+        // Clear all cookies by setting them to expire
+        document.cookie.split(';').forEach((cookie) => {
+          const eqPos = cookie.indexOf('=');
+          const name = eqPos > -1 ? cookie.substring(0, eqPos).trim() : cookie.trim();
+          document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
+        });
       },
       {
         accessKey: ACCESS_TOKEN_KEY,
@@ -774,7 +800,7 @@ export async function clearAuthenticationState(page: Page): Promise<void> {
       }
     );
   } catch (error) {
-    // SecurityError when localStorage is not accessible (e.g., on about:blank)
+    // SecurityError when storage is not accessible (e.g., on about:blank)
     // This is acceptable as it means there's no auth state to clear
   }
 

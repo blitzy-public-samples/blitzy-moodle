@@ -1144,8 +1144,8 @@ const getUserGradesHandler = http.get('http://*/api/v1/gradebook/user/:id', asyn
       );
     }
 
-    // Check if user exists (mock: users with ID > 1000 don't exist)
-    if (userId > 1000) {
+    // Check if user exists (mock: users with ID > 10000 don't exist)
+    if (userId > 10000) {
       return HttpResponse.json(
         {
           success: false,

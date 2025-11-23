@@ -9,8 +9,9 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/services/api/client';
+import { apiClient, extractData } from '@/services/api/client';
 import { GRADEBOOK_ENDPOINTS } from '@/services/api/endpoints';
+import type { ApiResponse } from '@/types/api';
 import type {
   GradeItem,
   GradeCategory,
@@ -66,11 +67,11 @@ export interface CourseGradebookResponse {
  * @returns User's grades across all courses
  */
 export async function fetchUserGrades(userId: number): Promise<UserGradebookResponse> {
-  const response = await apiClient.get<UserGradebookResponse>(
+  const response = await apiClient.get<ApiResponse<UserGradebookResponse>>(
     GRADEBOOK_ENDPOINTS.USER(userId)
   );
 
-  return response.data;
+  return extractData(response);
 }
 
 /**
@@ -83,11 +84,11 @@ export async function fetchUserGrades(userId: number): Promise<UserGradebookResp
  * @returns Course gradebook with all items and user grades
  */
 export async function fetchCourseGrades(courseId: number): Promise<CourseGradebookResponse> {
-  const response = await apiClient.get<CourseGradebookResponse>(
+  const response = await apiClient.get<ApiResponse<CourseGradebookResponse>>(
     GRADEBOOK_ENDPOINTS.COURSE(courseId)
   );
 
-  return response.data;
+  return extractData(response);
 }
 
 /**
@@ -99,11 +100,11 @@ export async function fetchCourseGrades(courseId: number): Promise<CourseGradebo
  * @returns List of grade items
  */
 export async function fetchGradeItems(): Promise<GradeItem[]> {
-  const response = await apiClient.get<{ items: GradeItem[] }>(
+  const response = await apiClient.get<ApiResponse<{ items: GradeItem[] }>>(
     GRADEBOOK_ENDPOINTS.ITEMS
   );
 
-  return response.data.items;
+  return extractData(response).items;
 }
 
 /**
@@ -115,11 +116,11 @@ export async function fetchGradeItems(): Promise<GradeItem[]> {
  * @returns List of grade categories
  */
 export async function fetchGradeCategories(): Promise<GradeCategory[]> {
-  const response = await apiClient.get<{ categories: GradeCategory[] }>(
+  const response = await apiClient.get<ApiResponse<{ categories: GradeCategory[] }>>(
     GRADEBOOK_ENDPOINTS.CATEGORIES
   );
 
-  return response.data.categories;
+  return extractData(response).categories;
 }
 
 /**
@@ -136,12 +137,12 @@ export async function updateGradeItem(
   itemId: number,
   data: Partial<GradeItem>
 ): Promise<GradeItem> {
-  const response = await apiClient.put<GradeItem>(
+  const response = await apiClient.put<ApiResponse<GradeItem>>(
     GRADEBOOK_ENDPOINTS.UPDATE_GRADE(itemId),
     data
   );
 
-  return response.data;
+  return extractData(response);
 }
 
 // ============================================================================

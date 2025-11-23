@@ -78,6 +78,14 @@ export const useAuth = (): UseAuthReturn => {
   // If there's an API error (like 401), the token is invalid and we're not authenticated
   const isAuthenticated = !isError && (!!user || hasToken);
 
+  console.log('[useAuth]', {
+    hasToken,
+    hasUser: !!user,
+    isError,
+    isLoading,
+    isAuthenticated
+  });
+
   return {
     user: user ?? null,
     isAuthenticated,

@@ -66,7 +66,7 @@ export interface GradeChartProps {
   /** Array of grade summary data to visualize */
   grades: GradeSummary[];
   /** Type of chart to render (bar, line, or area) */
-  chartType: ChartType;
+  chartType: 'bar' | 'line' | 'area';
   /** Chart title displayed above the visualization */
   title: string;
   /** Chart height in pixels (default: 300) */
@@ -282,7 +282,7 @@ function GradeChart({
               radius={[8, 8, 0, 0]}
               name={yAxisKey === 'count' ? 'Count' : 'Grade (%)'}
             />
-            {yAxisKey === 'percentage' && chartData[0] && 'average' in chartData[0] && chartData[0].average !== undefined && (
+            {yAxisKey === 'percentage' && chartData[0] && 'average' in chartData[0] && typeof chartData[0].average === 'number' && (
               <Bar
                 dataKey="average"
                 fill={theme.palette.secondary.main}
@@ -324,7 +324,7 @@ function GradeChart({
               activeDot={{ r: 6 }}
               name={yAxisKey === 'count' ? 'Count' : 'Grade (%)'}
             />
-            {yAxisKey === 'percentage' && chartData[0] && 'average' in chartData[0] && chartData[0].average !== undefined && (
+            {yAxisKey === 'percentage' && chartData[0] && 'average' in chartData[0] && typeof chartData[0].average === 'number' && (
               <Line
                 type="monotone"
                 dataKey="average"
@@ -368,7 +368,7 @@ function GradeChart({
               fillOpacity={0.6}
               name={yAxisKey === 'count' ? 'Count' : 'Grade (%)'}
             />
-            {yAxisKey === 'percentage' && chartData[0] && 'average' in chartData[0] && chartData[0].average !== undefined && (
+            {yAxisKey === 'percentage' && chartData[0] && 'average' in chartData[0] && typeof chartData[0].average === 'number' && (
               <Area
                 type="monotone"
                 dataKey="average"
@@ -409,7 +409,7 @@ function GradeChart({
               radius={[8, 8, 0, 0]}
               name={yAxisKey === 'count' ? 'Count' : 'Grade (%)'}
             />
-            {yAxisKey === 'percentage' && chartData[0] && 'average' in chartData[0] && chartData[0].average !== undefined && (
+            {yAxisKey === 'percentage' && chartData[0] && 'average' in chartData[0] && typeof chartData[0].average === 'number' && (
               <Bar
                 dataKey="average"
                 fill={theme.palette.secondary.main}
@@ -432,12 +432,14 @@ function GradeChart({
       }}
       role="img"
       aria-label={`${title} chart`}
+      data-testid="grade-chart"
     >
       <Typography
         variant="h6"
         color="primary"
         gutterBottom
         sx={{ mb: 2, fontWeight: 600 }}
+        data-testid="chart-title"
       >
         {title}
       </Typography>

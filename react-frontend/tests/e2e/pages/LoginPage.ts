@@ -141,6 +141,101 @@ export class LoginPage {
   }
 
   /**
+   * Attempts login and waits for the result (success or error)
+   * 
+   * This method is more robust than the standard login() method as it waits
+   * for the login mutation to fully complete before returning. It's specifically
+   * designed for test scenarios where you need to ensure each login attempt
+   * has fully resolved before proceeding (e.g., testing account lockout).
+   * 
+   * This method waits for one of three outcomes:
+   * 1. Error message appears (failed login)
+   * 2. Navigation to dashboard occurs (successful login)
+   * 3. Submit button is re-enabled (mutation completed)
+   * 
+   * @param username - User's username or email address
+   * @param password - User's password
+   * @param rememberMe - Optional flag to keep user logged in across sessions
+   * @returns The error message if login failed, or null if login succeeded
+   * 
+   * @example Testing Failed Login
+   * ```typescript
+   * const error = await loginPage.attemptLoginAndWaitForResult('user@example.com', 'wrongpass');
+   * expect(error).toContain('Invalid credentials');
+   * ```
+   * 
+   * @example Testing Successful Login
+   * ```typescript
+   * const error = await loginPage.attemptLoginAndWaitForResult('user@example.com', 'correctpass');
+   * expect(error).toBeNull();
+   * ```
+   */
+  async attemptLoginAndWaitForResult(username: string, password: string, rememberMe?: boolean): Promise<string | null> {
+    // Fill username field
+    await this.usernameInput.fill(username);
+    
+    // Fill password field
+    await this.passwordInput.fill(password);
+    
+    // Handle remember me checkbox if specified
+    if (rememberMe !== undefined) {
+      const isChecked = await this.rememberMeCheckbox.isChecked();
+      if (rememberMe && !isChecked) {
+        await this.rememberMeCheckbox.check();
+      } else if (!rememberMe && isChecked) {
+        await this.rememberMeCheckbox.uncheck();
+      }
+    }
+    
+    // Submit the form
+    await this.submitButton.click();
+    
+    // Wait for the button to become disabled (mutation starts)
+    await this.page.waitForTimeout(100); // Give the button time to disable
+    
+    // Wait for one of three outcomes:
+    // 1. Error message appears (failed login)
+    // 2. URL changes to dashboard (successful login)
+    // 3. Submit button's text changes back to "Sign In" (mutation completed)
+    
+    try {
+      await Promise.race([
+        // Wait for error message to appear
+        this.errorMessage.waitFor({ state: 'visible', timeout: 10000 }),
+        // Wait for navigation to dashboard
+        this.page.waitForURL(/\/(dashboard|my)/, { timeout: 10000 }),
+        // Wait for button to be clickable again (use a function that checks the disabled attribute)
+        (async () => {
+          // Poll until the button is not disabled
+          for (let i = 0; i < 100; i++) {
+            const isDisabled = await this.submitButton.isDisabled();
+            if (!isDisabled) {
+              return;
+            }
+            await this.page.waitForTimeout(100);
+          }
+          throw new Error('Timeout waiting for button to be re-enabled');
+        })(),
+      ]);
+    } catch (error) {
+      // If all promises timeout, log warning but continue
+      console.warn('[LoginPage] Timeout waiting for login result, continuing anyway');
+    }
+    
+    // Give UI a moment to fully update
+    await this.page.waitForTimeout(100);
+    
+    // Check if we're on the dashboard (successful login)
+    const currentUrl = this.page.url();
+    if (currentUrl.includes('/dashboard') || currentUrl.includes('/my')) {
+      return null; // Success
+    }
+    
+    // Otherwise, get and return the error message
+    return await this.getErrorMessage();
+  }
+
+  /**
    * Performs SSO login by clicking the specified provider button
    * 
    * Initiates Single Sign-On authentication flow with external identity providers
@@ -305,7 +400,8 @@ export class LoginPage {
     try {
       // Try localStorage first (common storage for JWT in SPA applications)
       const localStorageToken = await this.page.evaluate(() => {
-        return localStorage.getItem('moodle_jwt_token') || 
+        return localStorage.getItem('moodle_access_token') || 
+               localStorage.getItem('moodle_jwt_token') || 
                localStorage.getItem('jwt_token') ||
                localStorage.getItem('auth_token');
       });
@@ -317,6 +413,7 @@ export class LoginPage {
       // Try cookies as alternative storage (may be httpOnly for security)
       const cookies = await this.page.context().cookies();
       const jwtCookie = cookies.find(cookie => 
+        cookie.name === 'moodle_access_token' ||
         cookie.name === 'moodle_jwt_token' || 
         cookie.name === 'jwt_token' ||
         cookie.name === 'auth_token'

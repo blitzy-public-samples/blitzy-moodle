@@ -284,7 +284,11 @@ apiClient.interceptors.response.use(
     }
 
     // Handle 401 Unauthorized - attempt token refresh
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Skip token refresh for login and refresh endpoints (they should not trigger refresh)
+    const isLoginEndpoint = originalRequest?.url?.includes('/auth/login');
+    const isRefreshEndpoint = originalRequest?.url?.includes('/auth/refresh');
+    
+    if (error.response?.status === 401 && !originalRequest._retry && !isLoginEndpoint && !isRefreshEndpoint) {
       if (isRefreshing) {
         // Wait for ongoing refresh to complete
         return new Promise((resolve) => {

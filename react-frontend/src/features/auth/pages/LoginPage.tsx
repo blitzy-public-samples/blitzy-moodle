@@ -61,18 +61,24 @@ export function LoginPage() {
    * Updates Redux auth state and navigates to the return URL.
    */
   const handleLoginSuccess = async (response: LoginResponse) => {
+    console.log('[LoginPage] handleLoginSuccess called with response:', response);
+    console.log('[LoginPage] returnUrl:', returnUrl);
+    
     // Dispatch login success action to Redux store
     // This updates the isAuthenticated flag and makes the user menu visible
     dispatch(loginSuccess({ user: response.user, tokens: response.tokens }));
+    console.log('[LoginPage] Dispatched loginSuccess to Redux');
     
     // Wait a brief moment to ensure state update has propagated to all components
     // This prevents a race condition where ProtectedRoute or Header checks authentication
     // before the Redux state has fully updated
     await new Promise(resolve => setTimeout(resolve, 100));
+    console.log('[LoginPage] Waited 100ms, now navigating to:', returnUrl);
     
     // Navigate to the return URL
     // The token and user data are now in Redux state, localStorage, and React Query cache
     navigate(returnUrl, { replace: true });
+    console.log('[LoginPage] navigate() called');
   };
 
   /**

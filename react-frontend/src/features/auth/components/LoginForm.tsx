@@ -185,6 +185,7 @@ export function LoginForm({
     <Box
       component="form"
       onSubmit={handleSubmit}
+      noValidate
       sx={{
         width: '100%',
         maxWidth: 400,

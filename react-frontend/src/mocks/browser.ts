@@ -48,7 +48,16 @@ export async function initMswForE2E(): Promise<void> {
   
   try {
     await worker.start({
-      onUnhandledRequest: 'warn',
+      onUnhandledRequest: (request, print) => {
+        // Bypass external URLs (not targeting our API) - don't even log them
+        const url = new URL(request.url);
+        if (!url.origin.includes('localhost') && !url.origin.includes('127.0.0.1')) {
+          return; // Silently bypass external requests
+        }
+        
+        // Warn about unhandled local API requests only
+        print.warning();
+      },
       serviceWorker: {
         url: '/mockServiceWorker.js',
       },

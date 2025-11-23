@@ -50,6 +50,20 @@ const tokenBlacklist = new Set<string>();
 const userTokens = new Map<number, { accessToken: string; refreshToken: string }>();
 
 /**
+ * Map of usernames to failed login attempt counts
+ * 
+ * Tracks the number of consecutive failed login attempts for each username.
+ * After a configurable threshold (default 5), the account is locked.
+ * The counter is reset on successful login.
+ */
+const failedLoginAttempts = new Map<string, number>();
+
+/**
+ * Maximum failed login attempts before account lockout
+ */
+const MAX_FAILED_ATTEMPTS = 5;
+
+/**
  * Clear all blacklisted tokens and user token mappings
  * 
  * This function is exported for test setup/teardown to ensure clean state
@@ -58,6 +72,7 @@ const userTokens = new Map<number, { accessToken: string; refreshToken: string }
 export function clearTokenBlacklist(): void {
   tokenBlacklist.clear();
   userTokens.clear();
+  failedLoginAttempts.clear();
 }
 
 /**
@@ -539,6 +554,35 @@ const loginHandler = http.post('*/api/v1/auth/login', async ({ request }) => {
 
     // Check if user exists and password matches
     if (!user || user.password !== password) {
+      // Track failed login attempt
+      const currentAttempts = failedLoginAttempts.get(username) || 0;
+      const newAttempts = currentAttempts + 1;
+      failedLoginAttempts.set(username, newAttempts);
+      
+      console.log(`[MSW Handler] Failed login attempt ${newAttempts} for user: ${username}`);
+      
+      // Lock account if threshold exceeded
+      if (user && newAttempts >= MAX_FAILED_ATTEMPTS) {
+        user.status = 'locked';
+        console.log(`[MSW Handler] Account locked for user: ${username} after ${newAttempts} failed attempts`);
+        
+        return HttpResponse.json(
+          {
+            success: false,
+            error: {
+              code: 'ACCOUNT_LOCKED',
+              message: 'Your account has been locked due to multiple failed login attempts. Please reset your password.',
+              details: {
+                username: user.username,
+                reset_url: '/login/forgot_password.php',
+                failed_attempts: newAttempts,
+              },
+            },
+          },
+          { status: 403 }
+        );
+      }
+      
       return HttpResponse.json(
         {
           success: false,
@@ -547,6 +591,7 @@ const loginHandler = http.post('*/api/v1/auth/login', async ({ request }) => {
             message: 'Invalid username or password',
             details: {
               error_code: 2, // Matches Moodle error code convention
+              remaining_attempts: MAX_FAILED_ATTEMPTS - newAttempts,
             },
           },
         },
@@ -587,6 +632,12 @@ const loginHandler = http.post('*/api/v1/auth/login', async ({ request }) => {
         },
         { status: 403 }
       );
+    }
+
+    // Reset failed login attempts on successful login
+    if (failedLoginAttempts.has(username)) {
+      console.log(`[MSW Handler] Resetting failed login attempts for user: ${username}`);
+      failedLoginAttempts.delete(username);
     }
 
     // Generate tokens

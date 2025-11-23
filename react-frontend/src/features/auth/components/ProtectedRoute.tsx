@@ -71,6 +71,13 @@ export function ProtectedRoute({
   // user will be needed for permission checking when implemented (see TODO below)
   const { user: _user, isLoading, isAuthenticated } = useAuth();
   const location = useLocation();
+  
+  console.log('[ProtectedRoute] Render:', { 
+    pathname: location.pathname,
+    isLoading, 
+    isAuthenticated, 
+    hasUser: !!_user 
+  });
 
   // Show loading state while checking authentication
   if (isLoading) {

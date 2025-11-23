@@ -271,6 +271,21 @@ export interface GradeCategory {
 }
 
 /**
+ * Grade modification history record.
+ * Represents a single change to a grade value.
+ */
+export interface GradeHistoryRecord {
+  /** ISO 8601 timestamp or formatted date string */
+  date: string;
+  /** Grade value at this point in history */
+  grade: number | string;
+  /** User who modified the grade */
+  modifiedBy: string;
+  /** Type of modification (e.g., 'Graded', 'Updated', 'Override') */
+  action: string;
+}
+
+/**
  * Grade summary for display.
  * Combines grade data with item information for UI rendering.
  * Used in grade tables and reports.
@@ -290,8 +305,14 @@ export interface GradeSummary {
   percentage: number | null;
   /** Grade range (e.g., "0-100") */
   range: string;
+  /** Maximum grade value */
+  grademax: number;
+  /** Minimum grade value */
+  grademin: number;
   /** Feedback text for this grade */
   feedback: string | null;
+  /** Unix timestamp (milliseconds) when grade was last modified */
+  timemodified?: number;
   /** Weight of this item in course total */
   weight: number | null;
   /** Contribution to course total percentage */
@@ -312,6 +333,8 @@ export interface GradeSummary {
   excluded: boolean;
   /** Aggregation status of this grade */
   aggregationstatus: AggregationStatus;
+  /** History of modifications to this grade */
+  modificationHistory?: GradeHistoryRecord[];
 }
 
 // ============================================================================

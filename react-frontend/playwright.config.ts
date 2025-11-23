@@ -96,5 +96,8 @@ export default defineConfig({
     url: 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,
     timeout: 120000, // Allow 2 minutes for build + server start
+    // Ensure clean shutdown by setting stderr to 'pipe'
+    stderr: 'pipe',
+    stdout: 'pipe',
   },
 });

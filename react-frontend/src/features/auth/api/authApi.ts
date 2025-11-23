@@ -80,7 +80,14 @@ export async function login(params: LoginParams): Promise<LoginResponse> {
     params
   );
 
+  // Debug logging
+  console.log('[authApi.login] Full response:', response);
+  console.log('[authApi.login] response.data:', response.data);
+  console.log('[authApi.login] response.data.success:', response.data.success);
+  console.log('[authApi.login] response.data.data:', response.data.data);
+
   if (!response.data.success || !response.data.data) {
+    console.error('[authApi.login] Validation failed - throwing error');
     throw new Error('Login failed');
   }
 
