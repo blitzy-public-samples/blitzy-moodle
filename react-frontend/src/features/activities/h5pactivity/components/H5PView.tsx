@@ -256,9 +256,13 @@ export function H5PView({ activityId: propActivityId, courseId, cmId }: H5PViewP
       {/* Tracking Disabled Warning - Maps to view.php lines 81-89 */}
       {renderTrackingWarning()}
 
+      {/* Activity Title - Semantic heading for accessibility */}
+      <Typography variant="h4" component="h1" gutterBottom sx={{ mb: 2 }}>
+        {activity.name}
+      </Typography>
+
       {/* Main Activity Card */}
       <Card
-        title={activity.name}
         elevation={2}
         sx={{ mb: 3 }}
         aria-label={`H5P Activity: ${activity.name}`}
