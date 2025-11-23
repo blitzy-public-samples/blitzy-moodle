@@ -33,10 +33,14 @@ export const GRADE_AGGREGATION = {
 } as const;
 
 /**
- * Grade item interface matching Moodle grade_items table structure
+ * Moodle grade item interface matching Moodle grade_items table structure
  * Represents a gradable item (assignment, quiz, manual item, category, or course)
+ * from the backend/database perspective.
+ * 
+ * Note: This is distinct from the GradeItem interface in GradebookPage.ts
+ * which represents the frontend React component's data structure.
  */
-export interface GradeItem {
+export interface MoodleGradeItem {
   /** Unique grade item identifier */
   id: number;
   /** Course ID this grade item belongs to */
@@ -63,6 +67,32 @@ export interface GradeItem {
   hidden?: boolean;
   /** Unix timestamp of last modification */
   timemodified?: number;
+}
+
+/**
+ * Transforms a Moodle backend grade item to the frontend GradeItem format
+ * used by the GradebookPage POM.
+ * 
+ * This helper bridges the gap between backend data structures (from fixtures/API)
+ * and frontend React component data structures (expected by POM methods).
+ * 
+ * @param moodleItem - Backend grade item from Moodle database structure
+ * @returns Frontend grade item compatible with GradebookPage methods
+ */
+export function transformToFrontendGradeItem(moodleItem: MoodleGradeItem): {
+  id: string;
+  name: string;
+  maxGrade: number;
+  category?: string;
+  weight?: number;
+} {
+  return {
+    id: moodleItem.id.toString(),
+    name: moodleItem.itemname,
+    maxGrade: moodleItem.grademax,
+    category: moodleItem.categoryid?.toString(),
+    weight: moodleItem.aggregationcoef,
+  };
 }
 
 /**
@@ -195,7 +225,7 @@ export const finalExamCategory: GradeCategory = {
  * Test grade item 1: Programming Assignment 1
  * Grade item linked to testAssignment1 with weight 2.0 (counts double)
  */
-export const testGradeItem1: GradeItem = {
+export const testGradeItem1: MoodleGradeItem = {
   id: 2001,
   courseid: testCourse1.id,
   itemname: testAssignment1.name,
@@ -215,7 +245,7 @@ export const testGradeItem1: GradeItem = {
  * Test grade item 2: Essay Assignment
  * Grade item linked to testAssignment2 with standard weight
  */
-export const testGradeItem2: GradeItem = {
+export const testGradeItem2: MoodleGradeItem = {
   id: 2002,
   courseid: testCourse1.id,
   itemname: testAssignment2.name,
@@ -235,7 +265,7 @@ export const testGradeItem2: GradeItem = {
  * Test grade item 3: Python Fundamentals Quiz
  * Grade item linked to testQuiz1 with standard weight
  */
-export const testGradeItem3: GradeItem = {
+export const testGradeItem3: MoodleGradeItem = {
   id: 2003,
   courseid: testCourse1.id,
   itemname: testQuiz1.name,
@@ -255,7 +285,7 @@ export const testGradeItem3: GradeItem = {
  * Test grade item 4: Midterm Exam Quiz
  * Grade item linked to testQuiz2 with higher weight
  */
-export const testGradeItem4: GradeItem = {
+export const testGradeItem4: MoodleGradeItem = {
   id: 2004,
   courseid: testCourse1.id,
   itemname: testQuiz2.name,
@@ -418,9 +448,9 @@ export const gradeHistory: GradeHistory[] = [
  * Helper function to create a custom grade item for testing
  * 
  * @param overrides - Partial grade item properties to override defaults
- * @returns Complete GradeItem object with all required properties
+ * @returns Complete MoodleGradeItem object with all required properties
  */
-export function createGradeItem(overrides: Partial<GradeItem> = {}): GradeItem {
+export function createGradeItem(overrides: Partial<MoodleGradeItem> = {}): MoodleGradeItem {
   return {
     id: Math.floor(Math.random() * 10000) + 5000,
     courseid: testCourse1.id,
@@ -501,11 +531,11 @@ export function createUserGrade(overrides: Partial<UserGrade> = {}): UserGrade {
  */
 export function calculateCourseGrade(
   grades: UserGrade[],
-  items: GradeItem[],
+  items: MoodleGradeItem[],
   categories: GradeCategory[]
 ): number {
   // Group grades by category
-  const gradesByCategory = new Map<number | null, Array<{ grade: UserGrade; item: GradeItem }>>();
+  const gradesByCategory = new Map<number | null, Array<{ grade: UserGrade; item: MoodleGradeItem }>>();
   
   grades.forEach(grade => {
     const item = items.find(i => i.id === grade.itemid);

@@ -16,7 +16,7 @@ import type { Page, Locator } from '@playwright/test';
 /**
  * Represents a single grade item with all associated data
  */
-interface GradeItem {
+export interface GradeItem {
   id: string;
   name: string;
   grade: number | string | null;
@@ -31,7 +31,7 @@ interface GradeItem {
 /**
  * Represents a grade category with aggregated totals
  */
-interface GradeCategory {
+export interface GradeCategory {
   id: string;
   name: string;
   weight?: number;
@@ -43,7 +43,7 @@ interface GradeCategory {
 /**
  * Represents a bulk grade entry for multiple students/items
  */
-interface BulkGradeEntry {
+export interface BulkGradeEntry {
   studentId: string;
   itemId: string;
   grade: number;
@@ -52,7 +52,7 @@ interface BulkGradeEntry {
 /**
  * Represents grade history record
  */
-interface GradeHistoryRecord {
+export interface GradeHistoryRecord {
   date: string;
   grade: number | string;
   modifiedBy: string;
