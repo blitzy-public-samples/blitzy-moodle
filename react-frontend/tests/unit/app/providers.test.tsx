@@ -23,7 +23,7 @@
  * @module tests/unit/app/providers.test
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, waitFor, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React, { useState } from 'react';
@@ -110,11 +110,19 @@ function TestQueryClientConfigComponent(): React.ReactElement {
   const queryClient = useQueryClient();
   const defaultOptions = queryClient.getDefaultOptions();
 
+  // Convert staleTime and retry to strings since they can be functions
+  const staleTimeValue = typeof defaultOptions.queries?.staleTime === 'function' 
+    ? 'function' 
+    : String(defaultOptions.queries?.staleTime);
+  const retryValue = typeof defaultOptions.queries?.retry === 'function'
+    ? 'function'
+    : String(defaultOptions.queries?.retry);
+
   return (
     <div>
-      <span>Stale Time: {defaultOptions.queries?.staleTime}</span>
+      <span>Stale Time: {staleTimeValue}</span>
       <span>Refetch On Focus: {String(defaultOptions.queries?.refetchOnWindowFocus)}</span>
-      <span>Retry: {defaultOptions.queries?.retry}</span>
+      <span>Retry: {retryValue}</span>
     </div>
   );
 }
