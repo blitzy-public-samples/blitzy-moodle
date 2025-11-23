@@ -36,10 +36,9 @@ import { PlayArrow, Assessment, Edit } from '@mui/icons-material';
 
 // Internal imports from dependency whitelist
 import useH5PActivity from '../hooks/useH5PActivity';
-import type { H5PAccessInfo } from '../types/h5p.types';
 import { usePermissions } from '@/features/auth/hooks/usePermissions';
 import { Alert } from '@/components/feedback/Alert';
-import { Card } from '@/components/data-display/Card';
+import Card from '@/components/data-display/Card';
 import { LoadingSpinner } from '@/components/feedback/LoadingSpinner';
 
 /**
