@@ -24,7 +24,7 @@ import { useForm, FormProvider } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import React from 'react';
-import FormSelect, { type SelectOption } from '@/components/forms/FormSelect';
+import { FormSelect, type SelectOption } from '@/components/forms/FormSelect';
 
 /**
  * Test helper: Creates a wrapper component with React Hook Form context
@@ -844,7 +844,10 @@ describe('FormSelect Component', () => {
         expect(options).toHaveLength(basicOptions.length);
         
         options.forEach((option, index) => {
-          expect(option).toHaveTextContent(basicOptions[index].label);
+          const expectedOption = basicOptions[index];
+          if (expectedOption) {
+            expect(option).toHaveTextContent(expectedOption.label);
+          }
         });
       });
     });
