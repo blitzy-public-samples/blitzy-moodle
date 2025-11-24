@@ -370,7 +370,14 @@ export function Modal({
       aria-labelledby={titleId}
       aria-describedby={description ? descriptionId : undefined}
       className={className}
-      PaperProps={PaperProps}
+      PaperProps={{
+        ...PaperProps,
+        'aria-modal': 'true'
+      }}
+      BackdropProps={{
+        'data-testid': 'modal-backdrop',
+        sx: { backgroundColor: 'rgba(0, 0, 0, 0.5)' }
+      } as any}
       // Ensure focus trap and keyboard navigation
       disableEscapeKeyDown={disableEscapeKeyDown}
     >
