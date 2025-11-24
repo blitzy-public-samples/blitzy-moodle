@@ -155,18 +155,18 @@ export function ProgressBar({
   // Determine variant automatically based on value and buffer
   const effectiveVariant: LinearProgressProps['variant'] =
     variant ??
-    (buffer !== undefined ? 'buffer' : value !== undefined ? 'determinate' : 'indeterminate');
+    (buffer !== undefined ? 'buffer' : value !== undefined && value !== null ? 'determinate' : 'indeterminate');
 
-  // Clamp value between 0 and 100
-  const clampedValue = value !== undefined ? Math.max(0, Math.min(100, value)) : undefined;
+  // Clamp value between 0 and 100, treating null as undefined
+  const clampedValue = value !== undefined && value !== null ? Math.max(0, Math.min(100, value)) : undefined;
 
   // Clamp buffer between 0 and 100
   const clampedBuffer = buffer !== undefined ? Math.max(0, Math.min(100, buffer)) : undefined;
 
-  // Determine label text
+  // Determine label text - filter out empty strings
   const labelText =
     label !== undefined
-      ? label
+      ? label === '' ? undefined : label
       : clampedValue !== undefined
         ? `${Math.round(clampedValue)}%`
         : undefined;
@@ -203,13 +203,15 @@ export function ProgressBar({
           valueBuffer={clampedBuffer}
           color={progressColor}
           sx={{
-            height,
-            borderRadius: height / 2,
+            height: `${height}px`,
+            borderRadius: `${height / 2}px`,
           }}
           aria-label={ariaLabel}
-          aria-valuenow={clampedValue}
-          aria-valuemin={0}
-          aria-valuemax={100}
+          {...(effectiveVariant === 'determinate' || effectiveVariant === 'buffer' ? {
+            'aria-valuenow': clampedValue,
+            'aria-valuemin': 0,
+            'aria-valuemax': 100,
+          } : {})}
           role="progressbar"
         />
 
@@ -254,6 +256,7 @@ export function ProgressBar({
           }}
         >
           <Typography
+            component="p"
             variant="caption"
             color="text.secondary"
             sx={{

@@ -10,9 +10,8 @@
  * @see Section 0.4 Transformation Mapping - React feedback components
  */
 
-import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
-import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest';
+import { vi, describe, test, expect, afterEach } from 'vitest';
 import { ProgressBar } from '@/components/feedback/ProgressBar';
 
 describe('ProgressBar Component', () => {
@@ -786,10 +785,15 @@ describe('ProgressBar Component', () => {
     });
 
     test('handles empty string label', () => {
-      render(<ProgressBar value={50} showLabel label="" />);
+      const { container } = render(<ProgressBar value={50} showLabel label="" />);
       
-      // Empty label should not render
-      expect(screen.queryByText('')).not.toBeInTheDocument();
+      // Empty label should not render - check that no label text is displayed
+      // Since label="" is provided, it should not fall back to showing percentage
+      expect(screen.queryByText('50%')).not.toBeInTheDocument();
+      
+      // Verify no Typography element for label is rendered
+      const typography = container.querySelector('.MuiTypography-root');
+      expect(typography).not.toBeInTheDocument();
     });
   });
 });
