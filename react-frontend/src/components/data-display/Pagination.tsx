@@ -166,9 +166,11 @@ function Pagination({
 
   // Handle page change for simple pagination (MUI Pagination uses 1-indexed pages)
   const handleSimplePageChange = useCallback(
-    (_event: ChangeEvent<unknown>, value: number) => {
+    (_event: ChangeEvent<unknown>, value: number | { page: number; selected: number }) => {
       if (!disabled) {
-        onPageChange(value);
+        // MUI Pagination may pass either a number or an object with page property
+        const pageNumber = typeof value === 'number' ? value : value.page;
+        onPageChange(pageNumber);
       }
     },
     [disabled, onPageChange]
