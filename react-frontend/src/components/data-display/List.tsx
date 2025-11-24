@@ -28,7 +28,6 @@ import {
   ListItemText,
   ListItemSecondaryAction,
   ListItemButton,
-  Divider,
   Avatar,
   IconButton,
   Box,
@@ -229,10 +228,14 @@ function List({
 
   /**
    * Renders a default list item using MUI components
+   * @param item - The list item data
+   * @param index - The item index for divider calculation
+   * @param totalItems - Total number of items for divider calculation
    */
   const renderDefaultItem = useCallback(
-    (item: ListItemData): ReactNode => {
+    (item: ListItemData, index: number, totalItems: number): ReactNode => {
       const hasClick = Boolean(item.onClick ?? onItemClick);
+      const shouldShowDivider = showDividers && index < totalItems - 1;
 
       // Shared content for both interactive and static items
       const itemContent = (
@@ -255,16 +258,24 @@ function List({
       );
 
       // Use ListItemButton for interactive items, ListItem for static items
+      // ListItemButton must be wrapped in ListItem for proper accessibility
       if (hasClick) {
         return (
-          <ListItemButton
+          <ListItem
             key={item.id}
             disabled={item.disabled}
-            onClick={(event) => handleItemClick(item, event)}
-            aria-label={typeof item.primary === 'string' ? item.primary : undefined}
+            divider={shouldShowDivider}
+            disablePadding
           >
-            {itemContent}
-          </ListItemButton>
+            <ListItemButton
+              disabled={item.disabled}
+              onClick={(event) => handleItemClick(item, event)}
+              aria-label={typeof item.primary === 'string' ? item.primary : undefined}
+              sx={{ width: '100%' }}
+            >
+              {itemContent}
+            </ListItemButton>
+          </ListItem>
         );
       }
 
@@ -272,13 +283,14 @@ function List({
         <ListItem
           key={item.id}
           disabled={item.disabled}
+          divider={shouldShowDivider}
           aria-label={typeof item.primary === 'string' ? item.primary : undefined}
         >
           {itemContent}
         </ListItem>
       );
     },
-    [handleItemClick, onItemClick, renderAvatar, renderActions]
+    [handleItemClick, onItemClick, renderAvatar, renderActions, showDividers]
   );
 
   /**
@@ -286,36 +298,40 @@ function List({
    */
   const listItems = useMemo(() => {
     return items.map((item, index) => {
+      const shouldShowDivider = showDividers && index < items.length - 1;
+
       // Use custom renderer if provided
       if (renderItem) {
         const customItem = renderItem(item, index);
 
         // If custom renderer returns a ListItem or ListItemButton, use it directly
+        // Clone it to add divider prop if needed
         if (React.isValidElement(customItem)) {
+          // Check if it's a ListItem to add divider prop
+          if (customItem.type === ListItem) {
+            return React.cloneElement(customItem as React.ReactElement<any>, {
+              key: item.id,
+              divider: shouldShowDivider,
+            });
+          }
+          // For other elements, wrap in ListItem with divider
           return (
-            <React.Fragment key={item.id}>
+            <ListItem key={item.id} divider={shouldShowDivider}>
               {customItem}
-              {showDividers && index < items.length - 1 && <Divider component="li" />}
-            </React.Fragment>
+            </ListItem>
           );
         }
 
-        // Otherwise wrap in ListItem
+        // Otherwise wrap in ListItem with divider
         return (
-          <React.Fragment key={item.id}>
-            <ListItem>{customItem}</ListItem>
-            {showDividers && index < items.length - 1 && <Divider component="li" />}
-          </React.Fragment>
+          <ListItem key={item.id} divider={shouldShowDivider}>
+            {customItem}
+          </ListItem>
         );
       }
 
-      // Use default renderer
-      return (
-        <React.Fragment key={item.id}>
-          {renderDefaultItem(item)}
-          {showDividers && index < items.length - 1 && <Divider component="li" />}
-        </React.Fragment>
-      );
+      // Use default renderer (already includes divider prop)
+      return renderDefaultItem(item, index, items.length);
     });
   }, [items, renderItem, showDividers, renderDefaultItem]);
 
