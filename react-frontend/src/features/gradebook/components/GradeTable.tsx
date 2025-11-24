@@ -374,11 +374,12 @@ export function GradeTable({
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['grades'] });
 
-      // Snapshot previous value
+      // Snapshot previous value for rollback on error
       const previousGrades = queryClient.getQueryData(['grades']);
 
-      // Optimistically update cache (if needed based on your caching strategy)
-      // This is a placeholder - actual implementation depends on your data structure
+      // Note: Optimistic UI update is handled by the parent component
+      // since grades are passed as props. The query invalidation on
+      // success will trigger a re-fetch and update.
 
       return { previousGrades };
     },
