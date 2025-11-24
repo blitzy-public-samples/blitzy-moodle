@@ -20,8 +20,8 @@
  */
 
 import React, { Suspense, useState } from 'react';
-import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@/tests/helpers/render';
+import { describe, test, expect, vi } from 'vitest';
+import { render, screen, waitFor } from '../../../helpers/render';
 import { LoadingSpinner } from '@/components/feedback/LoadingSpinner';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { ThemeProvider, createTheme } from '@mui/material';
@@ -90,33 +90,32 @@ describe('LoadingSpinner Component', () => {
       // MUI CircularProgress applies size via inline style
       expect(spinner).toHaveAttribute('aria-label', 'Loading');
       
-      // Verify CircularProgress is rendered with correct size
-      const svgElement = spinner.querySelector('svg');
-      expect(svgElement).toHaveStyle({ width: '24px', height: '24px' });
+      // Verify CircularProgress container has correct size (MUI applies size to span, not SVG)
+      expect(spinner).toHaveStyle({ width: '24px', height: '24px' });
     });
 
     test('renders medium size (40px) - default', () => {
       render(<LoadingSpinner size="medium" />);
 
       const spinner = screen.getByRole('progressbar');
-      const svgElement = spinner.querySelector('svg');
-      expect(svgElement).toHaveStyle({ width: '40px', height: '40px' });
+      // MUI applies size to CircularProgress container, not SVG
+      expect(spinner).toHaveStyle({ width: '40px', height: '40px' });
     });
 
     test('renders large size (60px)', () => {
       render(<LoadingSpinner size="large" />);
 
       const spinner = screen.getByRole('progressbar');
-      const svgElement = spinner.querySelector('svg');
-      expect(svgElement).toHaveStyle({ width: '60px', height: '60px' });
+      // MUI applies size to CircularProgress container, not SVG
+      expect(spinner).toHaveStyle({ width: '60px', height: '60px' });
     });
 
     test('defaults to medium size when size prop omitted', () => {
       render(<LoadingSpinner />);
 
       const spinner = screen.getByRole('progressbar');
-      const svgElement = spinner.querySelector('svg');
-      expect(svgElement).toHaveStyle({ width: '40px', height: '40px' });
+      // MUI applies size to CircularProgress container, not SVG
+      expect(spinner).toHaveStyle({ width: '40px', height: '40px' });
     });
   });
 
@@ -243,7 +242,8 @@ describe('LoadingSpinner Component', () => {
       render(<LoadingSpinner fullPage />);
 
       const container = screen.getByTestId('loading-spinner').parentElement as HTMLElement;
-      expect(container).toHaveStyle({ minHeight: '100vh' });
+      // jsdom computes 100vh as 768px (default viewport height)
+      expect(container).toHaveStyle({ minHeight: '768px' });
     });
 
     test('inline mode without fullPage uses auto height', () => {
@@ -487,8 +487,10 @@ describe('LoadingSpinner Component', () => {
       render(<LoadingSpinner message="Loading..." />);
 
       const message = screen.getByText('Loading...');
-      // MUI applies color via class
-      expect(message).toHaveClass('MuiTypography-colorTextSecondary');
+      // MUI v5 with emotion applies color via computed styles, not class
+      // text.secondary in default light theme is rgba(0, 0, 0, 0.6)
+      const computedStyle = window.getComputedStyle(message);
+      expect(computedStyle.color).toBe('rgba(0, 0, 0, 0.6)');
     });
 
     test('message text is centered', () => {
@@ -531,7 +533,8 @@ describe('LoadingSpinner Component', () => {
       );
 
       // Spinner should be visible in dark mode
-      const spinner = screen.getByRole('progressbar');
+      // Backdrop has aria-hidden="true", so need to query hidden elements
+      const spinner = screen.getByRole('progressbar', { hidden: true });
       expect(spinner).toBeInTheDocument();
 
       // Backdrop should have white color for dark mode
@@ -610,7 +613,9 @@ describe('LoadingSpinner Component', () => {
       }).not.toThrow();
 
       // Verify all props are applied
-      expect(screen.getByRole('progressbar')).toBeInTheDocument();
+      // Backdrop has aria-hidden="true", so need to query hidden elements for role
+      expect(screen.getByRole('progressbar', { hidden: true })).toBeInTheDocument();
+      // getByText and getByLabelText find elements even within aria-hidden containers
       expect(screen.getByText('Loading everything...')).toBeInTheDocument();
       expect(screen.getByLabelText('Loading all content')).toBeInTheDocument();
     });
