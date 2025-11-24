@@ -22,6 +22,7 @@ export default defineConfig(({ mode }) => {
     // Path aliases for cleaner imports
     alias: {
       '@': path.resolve(__dirname, './src'),
+      '@tests': path.resolve(__dirname, './tests'),
     },
   },
 

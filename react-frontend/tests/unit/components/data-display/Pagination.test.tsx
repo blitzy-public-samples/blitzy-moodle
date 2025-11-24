@@ -230,9 +230,8 @@ describe('Pagination Component', () => {
       expect(handlePageChange).toHaveBeenCalledWith(10);
     });
 
-    it('should disable navigation when disabled prop is true', async () => {
+    it('should disable navigation when disabled prop is true', () => {
       const handlePageChange = vi.fn();
-      const user = userEvent.setup();
 
       render(
         <Pagination

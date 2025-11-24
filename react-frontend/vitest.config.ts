@@ -176,6 +176,9 @@ export default defineConfig({
       // Enable @/ import alias to reference src/ directory
       '@': path.resolve(__dirname, './src'),
       
+      // Enable @tests/ import alias to reference tests/ directory
+      '@tests': path.resolve(__dirname, './tests'),
+      
       // Additional aliases for common paths
       '@components': path.resolve(__dirname, './src/components'),
       '@features': path.resolve(__dirname, './src/features'),
