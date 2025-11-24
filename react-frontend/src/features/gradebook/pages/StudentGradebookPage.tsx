@@ -105,12 +105,15 @@ export function StudentGradebookPage() {
   const courseTotal = useMemo(() => {
     // Debug logging for E2E tests
     if (import.meta.env.MODE === 'e2e') {
+      // eslint-disable-next-line no-console
       console.log('[StudentGradebookPage courseTotal] courseGrades:', courseGrades);
+      // eslint-disable-next-line no-console
       console.log('[StudentGradebookPage courseTotal] courseGrades?.userGrades:', courseGrades?.userGrades);
     }
 
     if (!courseGrades?.userGrades) {
       if (import.meta.env.MODE === 'e2e') {
+        // eslint-disable-next-line no-console
         console.log('[StudentGradebookPage courseTotal] EARLY RETURN - no userGrades array');
       }
       return null;
@@ -120,11 +123,13 @@ export function StudentGradebookPage() {
     const visibleGrades = courseGrades.userGrades.filter((g) => !g.hidden);
 
     if (import.meta.env.MODE === 'e2e') {
+      // eslint-disable-next-line no-console
       console.log('[StudentGradebookPage courseTotal] visibleGrades count:', visibleGrades.length);
     }
 
     if (visibleGrades.length === 0) {
       if (import.meta.env.MODE === 'e2e') {
+        // eslint-disable-next-line no-console
         console.log('[StudentGradebookPage courseTotal] EARLY RETURN - no visible grades');
       }
       return null;
@@ -170,6 +175,7 @@ export function StudentGradebookPage() {
 
     // Debug logging for E2E tests
     if (import.meta.env.MODE === 'e2e') {
+      // eslint-disable-next-line no-console
       console.log('[StudentGradebookPage courseTotal] Calculated courseTotal:', result);
     }
 
@@ -181,6 +187,7 @@ export function StudentGradebookPage() {
     if (!courseGrades?.userGrades) {
       // Debug logging for E2E tests
       if (import.meta.env.MODE === 'e2e') {
+        // eslint-disable-next-line no-console
         console.log('[StudentGradebookPage categorizedGrades] No courseGrades or userGrades array');
       }
       return new Map<string, GradeSummary[]>();
@@ -201,6 +208,7 @@ export function StudentGradebookPage() {
 
     // Debug logging for E2E tests
     if (import.meta.env.MODE === 'e2e') {
+      // eslint-disable-next-line no-console
       console.log('[StudentGradebookPage categorizedGrades] Categories created:', {
         categoryCount: categories.size,
         categoryNames: Array.from(categories.keys()),
@@ -221,6 +229,7 @@ export function StudentGradebookPage() {
 
     // Debug logging for E2E tests
     if (import.meta.env.MODE === 'e2e') {
+      // eslint-disable-next-line no-console
       console.log('[StudentGradebookPage categoryTotals] Starting calculation with categorizedGrades size:', categorizedGrades.size);
     }
 
@@ -229,6 +238,7 @@ export function StudentGradebookPage() {
       
       // Debug logging for E2E tests
       if (import.meta.env.MODE === 'e2e') {
+        // eslint-disable-next-line no-console
         console.log(`[StudentGradebookPage categoryTotals] Category "${categoryName}":`, {
           totalGrades: grades.length,
           visibleGrades: visibleGrades.length,
@@ -261,6 +271,7 @@ export function StudentGradebookPage() {
 
     // Debug logging for E2E tests
     if (import.meta.env.MODE === 'e2e') {
+      // eslint-disable-next-line no-console
       console.log('[StudentGradebookPage categoryTotals] Final totals:', {
         totalCount: totals.size,
         categories: Array.from(totals.entries()).map(([name, total]) => ({

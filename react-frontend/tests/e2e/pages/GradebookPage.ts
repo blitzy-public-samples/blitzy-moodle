@@ -183,7 +183,7 @@ export class GradebookPage {
       // Extract ID from CSS class name (grade-item-{id})
       const className = await item.getAttribute('class') ?? '';
       const idMatch = className.match(/grade-item-(\d+)/);
-      const id = (idMatch && idMatch[1]) ? idMatch[1] : '';
+      const id = (idMatch?.[1]) ? idMatch[1] : '';
       
       // Use dynamic data-testid attributes with row ID appended
       const name = await item.locator(`[data-testid="grade-item-name-${id}"]`).textContent() ?? '';
@@ -324,7 +324,7 @@ export class GradebookPage {
         } else if (className) {
           // Try to extract from CSS class: grade-item-{id}
           const match = className.match(/grade-item-(\d+)/);
-          if (match && match[1]) {
+          if (match?.[1]) {
             itemId = match[1];
           }
         }

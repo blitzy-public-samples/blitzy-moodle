@@ -217,7 +217,7 @@ describe('Alert Component', () => {
     });
 
     test('removes alert from DOM on close with Collapse animation', async () => {
-      const TestWrapper = () => {
+      function TestWrapper() {
         const [showAlert, setShowAlert] = React.useState(true);
 
         return (
@@ -233,7 +233,7 @@ describe('Alert Component', () => {
             <div data-testid="other-content">Other content</div>
           </div>
         );
-      };
+      }
 
       render(<TestWrapper />);
 
@@ -660,7 +660,7 @@ describe('Alert Component', () => {
     });
 
     test('handles rapid open/close cycles', async () => {
-      const TestWrapper = () => {
+      function TestWrapper() {
         const [showAlert, setShowAlert] = React.useState(true);
         const [clickCount, setClickCount] = React.useState(0);
 
@@ -682,7 +682,7 @@ describe('Alert Component', () => {
             )}
           </div>
         );
-      };
+      }
 
       render(<TestWrapper />);
 

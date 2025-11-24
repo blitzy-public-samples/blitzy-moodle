@@ -34,7 +34,7 @@
  * - grades: Grade item fixtures and calculation helpers
  */
 
-import { test, expect, type Page, type TestInfo } from '@playwright/test';
+import { test, expect, type Page, type TestInfo, type Browser, type BrowserContext } from '@playwright/test';
 import { GradebookPage } from './pages/GradebookPage';
 import { 
   loginAsStudent, 
@@ -57,8 +57,8 @@ import {
  * accessibility across all gradebook features.
  */
 test.describe('Student Gradebook - Complete E2E Workflow', () => {
-  let browser: any; // Browser instance for manual lifecycle management
-  let context: any; // Browser context for proper baseURL support
+  let browser: Browser; // Browser instance for manual lifecycle management
+  let context: BrowserContext; // Browser context for proper baseURL support
   let page: Page;
   let gradebookPage: GradebookPage;
   
@@ -152,11 +152,11 @@ test.describe('Student Gradebook - Complete E2E Workflow', () => {
   /**
    * After Each Test: Capture screenshots on failure
    * Directive: "Capture screenshots on failure"
-   * Note: Using empty destructuring for fixtures since we manage browser lifecycle manually.
+   * Note: Not using any fixtures since we manage browser lifecycle manually.
    * Explicitly typing testInfo to ensure proper TypeScript type checking.
    */
    
-  test.afterEach(async ({}, testInfo: TestInfo) => {
+  test.afterEach(async (_fixtures, testInfo: TestInfo) => {
     // Only capture screenshots if test failed and page is available
     if (testInfo.status !== 'passed' && page && !page.isClosed()) {
       try {

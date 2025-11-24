@@ -13,7 +13,7 @@
  * @module tests/e2e/admin-role-assignment.spec
  */
 
-import type { Page } from '@playwright/test';
+import type { Page, Browser } from '@playwright/test';
 import { test, expect } from '@playwright/test';
 import { AdminRolePage } from './pages/AdminRolePage';
 import { CoursePage } from './pages/CoursePage';
@@ -26,7 +26,7 @@ test.describe('Admin Role Assignment Workflow', () => {
   let adminRolePage: AdminRolePage;
   let customRoleName: string;
   let customRoleId: number;
-  let browser: import('@playwright/test').Browser;
+  let browser: Browser;
   const customRoleDescription = 'Custom role for E2E testing with course management capabilities';
   
   // Capabilities to assign to custom role

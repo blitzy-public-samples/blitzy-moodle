@@ -1574,7 +1574,7 @@ const getUserGradesHandler = http.get('http://*/api/v1/gradebook/user/:id', asyn
 
     // Build user grades response (matching UserGradebookResponse from gradebookApi.ts)
     const userGrades = {
-      userId: userId,
+      userId,
       courses: Object.values(mockGradebooks).map((gradebook) => {
         // Check if course item has a grade for the requested user
         const courseItem = gradebook.items.find((i) => i.itemtype === 'course');

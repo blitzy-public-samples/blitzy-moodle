@@ -629,7 +629,7 @@ describe('H5PView - Navigation Buttons', () => {
     expect(screen.queryByRole('link', { name: /view.*attempts.*report/i })).not.toBeInTheDocument();
   });
 
-  it('should navigate to H5P player when Launch button is clicked', async () => {
+  it('should navigate to H5P player when Launch button is clicked', () => {
     mockUseH5PActivitySuccess();
     mockUsePermissions();
 
@@ -641,7 +641,7 @@ describe('H5PView - Navigation Buttons', () => {
     expect(launchLink).toHaveAttribute('href', expect.stringContaining('/player'));
   });
 
-  it('should navigate to attempts report when View Attempts is clicked', async () => {
+  it('should navigate to attempts report when View Attempts is clicked', () => {
     mockUseH5PActivitySuccess(mockH5PActivity, mockAccessInfoTeacher);
     mockUsePermissions();
 
@@ -987,7 +987,7 @@ describe('H5PView - Accessibility', () => {
     expect(alerts.length).toBeGreaterThan(0);
   });
 
-  it('should support keyboard navigation for all buttons', async () => {
+  it('should support keyboard navigation for all buttons', () => {
     mockUseH5PActivitySuccess();
     mockUsePermissions();
 
@@ -1074,7 +1074,7 @@ describe('H5PView - Edge Cases', () => {
   it('should handle undefined tracking status', () => {
     const activityUndefinedTracking = {
       ...mockH5PActivity,
-      enabletracking: 0 as any,
+      enabletracking: 0,
     };
     mockUseH5PActivitySuccess(activityUndefinedTracking);
     mockUsePermissions();

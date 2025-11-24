@@ -104,7 +104,7 @@ export function H5PView({ activityId: propActivityId, courseId, cmId }: H5PViewP
   } = useH5PActivity(activityId);
 
   // Get permission checking hook for capability checks
-  const { hasCapability } = usePermissions();
+  const permissions = usePermissions();
 
   /**
    * Check if current user can manage activities (edit settings, enable tracking)
@@ -113,12 +113,12 @@ export function H5PView({ activityId: propActivityId, courseId, cmId }: H5PViewP
    * @returns true if user can manage course activities
    */
   const canManageActivities = React.useMemo(() => {
-    if (!courseId || !cmId) return false;
-    return hasCapability('moodle/course:manageactivities', {
+    if (!courseId || !cmId) {return false;}
+    return permissions.hasCapability('moodle/course:manageactivities', {
       type: 'module',
       contextId: cmId,
     });
-  }, [hasCapability, courseId, cmId]);
+  }, [permissions, courseId, cmId]);
 
   /**
    * Render loading state with spinner
@@ -155,7 +155,7 @@ export function H5PView({ activityId: propActivityId, courseId, cmId }: H5PViewP
           severity="error"
           title="Error Loading Activity"
           message={
-            error?.message ||
+            error?.message ??
             'Unable to load H5P activity. Please try refreshing the page or contact your administrator if the problem persists.'
           }
           closeable={false}

@@ -30,9 +30,9 @@
 
 import { renderHook } from '@testing-library/react';
 import { Provider } from 'react-redux';
-import { configureStore } from '@reduxjs/toolkit';
+import { configureStore, type UnknownAction } from '@reduxjs/toolkit';
 import axios from 'axios';
-import type { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
+import type { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse, AxiosError, AxiosRequestHeaders } from 'axios';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useApi } from '@/hooks/useApi';
 import type { RootState } from '@/app/store';
@@ -87,12 +87,12 @@ const mockAxiosInstance = {
  */
 let requestInterceptor: {
   onFulfilled?: (config: InternalAxiosRequestConfig) => InternalAxiosRequestConfig;
-  onRejected?: (error: any) => any;
+  onRejected?: (error: unknown) => unknown;
 } = {};
 
 let responseInterceptor: {
   onFulfilled?: (response: AxiosResponse) => AxiosResponse;
-  onRejected?: (error: any) => any;
+  onRejected?: (error: unknown) => unknown;
 } = {};
 
 /**
@@ -172,9 +172,10 @@ function createWrapper(accessToken: string | null, refreshToken: string | null =
     preloadedState: preloadedState as RootState,
   });
 
-  return function Wrapper({ children }: { children: React.ReactNode }) {
+  function Wrapper({ children }: { children: React.ReactNode }) {
     return <Provider store={store}>{children}</Provider>;
-  };
+  }
+  return Wrapper;
 }
 
 /**
@@ -187,7 +188,7 @@ function createWrapper(accessToken: string | null, refreshToken: string | null =
  */
 function createMockAxiosError(
   status: number,
-  data: any,
+  data: unknown,
   config?: Partial<InternalAxiosRequestConfig>
 ): AxiosError {
   const error = new Error('Request failed') as AxiosError;
@@ -223,11 +224,15 @@ describe('useApi', () => {
     responseInterceptorId = 0;
 
     // Mock axios.create to return mockAxiosInstance
-    vi.mocked(axios.create).mockReturnValue(mockAxiosInstance);
+    (vi.mocked(axios).create as ReturnType<typeof vi.fn>).mockReturnValue(mockAxiosInstance);
 
     // Mock request interceptor registration
-    (mockAxiosInstance.interceptors.request.use as any).mockImplementation(
-      (onFulfilled: any, onRejected: any) => {
+    const requestUseMock = mockAxiosInstance.interceptors.request.use as ReturnType<typeof vi.fn>;
+    requestUseMock.mockImplementation(
+      (
+        onFulfilled: (config: InternalAxiosRequestConfig) => InternalAxiosRequestConfig,
+        onRejected: (error: unknown) => unknown
+      ) => {
         requestInterceptor.onFulfilled = onFulfilled;
         requestInterceptor.onRejected = onRejected;
         requestInterceptorId = Math.random();
@@ -236,8 +241,12 @@ describe('useApi', () => {
     );
 
     // Mock response interceptor registration
-    (mockAxiosInstance.interceptors.response.use as any).mockImplementation(
-      (onFulfilled: any, onRejected: any) => {
+    const responseUseMock = mockAxiosInstance.interceptors.response.use as ReturnType<typeof vi.fn>;
+    responseUseMock.mockImplementation(
+      (
+        onFulfilled: (response: AxiosResponse) => AxiosResponse,
+        onRejected: (error: unknown) => unknown
+      ) => {
         responseInterceptor.onFulfilled = onFulfilled;
         responseInterceptor.onRejected = onRejected;
         responseInterceptorId = Math.random();
@@ -260,11 +269,14 @@ describe('useApi', () => {
       const wrapper = createWrapper('test-token', 'refresh-token');
 
       // Act
-      renderHook(() => useApi(), { wrapper });
+      const { result } = renderHook(() => useApi(), { wrapper });
 
       // Assert
-      expect(axios.create).toHaveBeenCalledWith(
+      expect(result.current).toBeDefined();
+      expect(vi.mocked(axios).create).toHaveBeenCalledWith(
+         
         expect.objectContaining({
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           baseURL: expect.stringMatching(/\/api\/v1$/),
           timeout: 30000,
           headers: {
@@ -305,7 +317,7 @@ describe('useApi', () => {
       const config: InternalAxiosRequestConfig = {
         url: '/courses',
         method: 'get',
-        headers: {} as any,
+        headers: {} as AxiosRequestHeaders,
       } as InternalAxiosRequestConfig;
 
       // Act
@@ -327,7 +339,7 @@ describe('useApi', () => {
       const config: InternalAxiosRequestConfig = {
         url: '/courses',
         method: 'get',
-        headers: {} as any,
+        headers: {} as AxiosRequestHeaders,
       } as InternalAxiosRequestConfig;
 
       // Act
@@ -337,7 +349,7 @@ describe('useApi', () => {
       expect(modifiedConfig.headers.Authorization).toBeUndefined();
     });
 
-    it('should handle request interceptor rejection', () => {
+    it('should handle request interceptor rejection', async () => {
       // Arrange
       const wrapper = createWrapper('test-token', 'refresh-token');
       renderHook(() => useApi(), { wrapper });
@@ -349,7 +361,7 @@ describe('useApi', () => {
       const requestError = new Error('Request setup failed');
 
       // Act & Assert
-      expect(() => onRejected(requestError)).rejects.toThrow(requestError);
+      await expect(() => onRejected(requestError)).rejects.toThrow(requestError);
     });
   });
 
@@ -367,7 +379,15 @@ describe('useApi', () => {
       const onFulfilled = responseInterceptor.onFulfilled!;
 
       // Mock successful response
-      const successResponse: AxiosResponse = {
+      interface CourseData {
+        id: number;
+        name: string;
+      }
+      interface ApiResponse {
+        success: boolean;
+        data: CourseData;
+      }
+      const successResponse: AxiosResponse<ApiResponse> = {
         data: {
           success: true,
           data: {
@@ -382,7 +402,7 @@ describe('useApi', () => {
       };
 
       // Act
-      const result = onFulfilled(successResponse);
+      const result = onFulfilled(successResponse) as AxiosResponse<ApiResponse>;
 
       // Assert
       expect(result).toBe(successResponse);
@@ -413,13 +433,13 @@ describe('useApi', () => {
       const originalRequest: InternalAxiosRequestConfig = {
         url: '/courses/5',
         method: 'get',
-        headers: {} as any,
+        headers: {} as AxiosRequestHeaders,
       } as InternalAxiosRequestConfig;
 
       const error401 = createMockAxiosError(401, { error: 'Unauthorized' }, originalRequest);
 
       // Mock successful token refresh
-      (mockAxiosInstance.post as any).mockResolvedValueOnce({
+      (mockAxiosInstance.post as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         data: {
           success: true,
           data: {
@@ -436,7 +456,7 @@ describe('useApi', () => {
       });
 
       // Mock retry of original request with new token
-      (mockAxiosInstance.request as any).mockResolvedValueOnce({
+      (mockAxiosInstance.request as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         data: { success: true, data: { id: 5, name: 'Course Name' } },
         status: 200,
         statusText: 'OK',
@@ -445,10 +465,19 @@ describe('useApi', () => {
       });
 
       // Act
-      const result = await onRejected(error401);
+      interface RefreshResponse {
+        data: {
+          success: boolean;
+          data: {
+            id: number;
+            name: string;
+          };
+        };
+      }
+      const result = (await onRejected(error401)) as RefreshResponse;
 
       // Assert - verify token refresh was called
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+      expect(vi.mocked(mockAxiosInstance).post).toHaveBeenCalledWith(
         expect.stringMatching(/\/auth\/refresh$/),
         { refreshToken },
         expect.objectContaining({
@@ -457,8 +486,10 @@ describe('useApi', () => {
       );
 
       // Assert - verify original request was retried
-      expect(mockAxiosInstance.request).toHaveBeenCalledWith(
+      expect(vi.mocked(mockAxiosInstance).request).toHaveBeenCalledWith(
+         
         expect.objectContaining({
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           headers: expect.objectContaining({
             Authorization: `Bearer ${newAccessToken}`,
           }),
@@ -476,8 +507,8 @@ describe('useApi', () => {
       const refreshToken = 'expired-refresh-token';
 
       // Create a mock store to capture dispatched actions
-      const dispatchedActions: any[] = [];
-      const mockDispatch = vi.fn((action) => {
+      const dispatchedActions: UnknownAction[] = [];
+      const mockDispatch = vi.fn((action: UnknownAction) => {
         dispatchedActions.push(action);
         return action;
       });
@@ -535,7 +566,8 @@ describe('useApi', () => {
       });
 
       // Override store.dispatch to capture actions
-      store.dispatch = mockDispatch;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      store.dispatch = mockDispatch as any;
 
       function Wrapper({ children }: { children: React.ReactNode }) {
         return <Provider store={store}>{children}</Provider>;
@@ -550,14 +582,14 @@ describe('useApi', () => {
       const originalRequest: InternalAxiosRequestConfig = {
         url: '/courses/5',
         method: 'get',
-        headers: {} as any,
+        headers: {} as AxiosRequestHeaders,
       } as InternalAxiosRequestConfig;
 
       const error401 = createMockAxiosError(401, { error: 'Unauthorized' }, originalRequest);
 
       // Mock failed token refresh (refresh token expired)
       const refreshError = createMockAxiosError(401, { error: 'Refresh token expired' });
-      (mockAxiosInstance.post as any).mockRejectedValueOnce(refreshError);
+      (mockAxiosInstance.post as ReturnType<typeof vi.fn>).mockRejectedValueOnce(refreshError);
 
       // Act & Assert
       await expect(onRejected(error401)).rejects.toThrow();
@@ -599,7 +631,7 @@ describe('useApi', () => {
           },
           tokens: {
             accessToken: 'access-token',
-            refreshToken: null as any, // No refresh token
+            refreshToken: '', // Empty refresh token for test
             expiresIn: 3600,
             tokenType: 'Bearer',
           },
@@ -613,8 +645,8 @@ describe('useApi', () => {
         },
       };
 
-      const dispatchedActions: any[] = [];
-      const mockDispatch = vi.fn((action) => {
+      const dispatchedActions: UnknownAction[] = [];
+      const mockDispatch = vi.fn((action: UnknownAction) => {
         dispatchedActions.push(action);
         return action;
       });
@@ -627,7 +659,8 @@ describe('useApi', () => {
         preloadedState: preloadedState as RootState,
       });
 
-      store.dispatch = mockDispatch;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      store.dispatch = mockDispatch as any;
 
       function Wrapper({ children }: { children: React.ReactNode }) {
         return <Provider store={store}>{children}</Provider>;
@@ -642,7 +675,7 @@ describe('useApi', () => {
       const originalRequest: InternalAxiosRequestConfig = {
         url: '/courses/5',
         method: 'get',
-        headers: {} as any,
+        headers: {} as AxiosRequestHeaders,
       } as InternalAxiosRequestConfig;
 
       const error401 = createMockAxiosError(401, { error: 'Unauthorized' }, originalRequest);
@@ -655,7 +688,7 @@ describe('useApi', () => {
       expect(logoutAction).toBeDefined();
 
       // Verify token refresh was NOT attempted
-      expect(mockAxiosInstance.post).not.toHaveBeenCalled();
+      expect(vi.mocked(mockAxiosInstance).post).not.toHaveBeenCalled();
     });
   });
 
@@ -676,6 +709,7 @@ describe('useApi', () => {
 
       // Act & Assert
       await expect(onRejected(error403)).rejects.toMatchObject({
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         response: expect.objectContaining({
           status: 403,
           data: {
@@ -708,6 +742,7 @@ describe('useApi', () => {
 
       // Act & Assert
       await expect(onRejected(error403)).rejects.toMatchObject({
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         response: expect.objectContaining({
           status: 403,
           data: customError,
@@ -727,6 +762,7 @@ describe('useApi', () => {
 
       // Act & Assert
       await expect(onRejected(error404)).rejects.toMatchObject({
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         response: expect.objectContaining({
           status: 404,
           data: {
@@ -752,6 +788,7 @@ describe('useApi', () => {
 
       // Act & Assert
       await expect(onRejected(error500)).rejects.toMatchObject({
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         response: expect.objectContaining({
           status: 500,
           data: {
@@ -777,6 +814,7 @@ describe('useApi', () => {
 
       // Act & Assert
       await expect(onRejected(error502)).rejects.toMatchObject({
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         response: expect.objectContaining({
           status: 502,
           data: {
@@ -811,11 +849,12 @@ describe('useApi', () => {
       networkError.config = {
         url: '/courses',
         method: 'get',
-        headers: {} as any,
+        headers: {} as AxiosRequestHeaders,
       } as InternalAxiosRequestConfig;
 
       // Act & Assert
       await expect(onRejected(networkError)).rejects.toMatchObject({
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         response: expect.objectContaining({
           data: {
             success: false,
@@ -842,11 +881,12 @@ describe('useApi', () => {
       timeoutError.config = {
         url: '/courses',
         method: 'get',
-        headers: {} as any,
+        headers: {} as AxiosRequestHeaders,
       } as InternalAxiosRequestConfig;
 
       // Act & Assert
       await expect(onRejected(timeoutError)).rejects.toMatchObject({
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         response: expect.objectContaining({
           data: {
             success: false,
@@ -873,11 +913,12 @@ describe('useApi', () => {
       genericError.config = {
         url: '/courses',
         method: 'get',
-        headers: {} as any,
+        headers: {} as AxiosRequestHeaders,
       } as InternalAxiosRequestConfig;
 
       // Act & Assert
       await expect(onRejected(genericError)).rejects.toMatchObject({
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         response: expect.objectContaining({
           data: {
             success: false,
@@ -928,7 +969,7 @@ describe('useApi', () => {
 
       // For this test, we verify the memoization dependency pattern
       // by checking that the instance uses the token from state
-      expect(axios.create).toHaveBeenCalledTimes(1); // Called once per render
+      expect(vi.mocked(axios).create).toHaveBeenCalledTimes(1); // Called once per render
     });
   });
 
@@ -984,7 +1025,7 @@ describe('useApi', () => {
       const config: InternalAxiosRequestConfig = {
         url: '/courses',
         method: 'get',
-        headers: {} as any,
+        headers: {} as AxiosRequestHeaders,
       } as InternalAxiosRequestConfig;
 
       // Call interceptor
@@ -1011,7 +1052,7 @@ describe('useApi', () => {
       const config: InternalAxiosRequestConfig = {
         url: '/login',
         method: 'post',
-        headers: {} as any,
+        headers: {} as AxiosRequestHeaders,
       } as InternalAxiosRequestConfig;
 
       // Call interceptor
@@ -1042,6 +1083,7 @@ describe('useApi', () => {
 
       // Act & Assert - should handle gracefully
       await expect(onRejected(errorWithoutConfig)).rejects.toMatchObject({
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         response: expect.objectContaining({
           data: {
             success: false,

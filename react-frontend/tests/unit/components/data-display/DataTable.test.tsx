@@ -830,7 +830,7 @@ describe('DataTable Component', () => {
       // The grid should be keyboard accessible
       // In MUI DataGrid, the grid itself or its child elements receive focus
       // We verify keyboard interaction is possible by checking the grid has tabindex
-      const gridElement = grid as HTMLElement;
+      const gridElement = grid;
       const isKeyboardAccessible = 
         gridElement.tabIndex >= 0 || 
         gridElement.querySelector('[tabindex]') !== null;

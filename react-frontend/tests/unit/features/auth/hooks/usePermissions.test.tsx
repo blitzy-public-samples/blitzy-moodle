@@ -206,9 +206,11 @@ const createTestStore = (user: User | null = null, isAuthenticated: boolean = fa
  */
 const createWrapper = (user: User | null = null, isAuthenticated: boolean = false) => {
   const store = createTestStore(user, isAuthenticated);
-  return ({ children }: { children: ReactNode }) => (
-    <Provider store={store}>{children}</Provider>
-  );
+  function Wrapper({ children }: { children: ReactNode }) {
+    return <Provider store={store}>{children}</Provider>;
+  }
+  Wrapper.displayName = 'TestWrapper';
+  return Wrapper;
 };
 
 // ============================================================================
@@ -298,7 +300,7 @@ describe('usePermissions - hasCapability', () => {
   });
 
   it('should return false for undefined user', () => {
-    const wrapper = createWrapper(undefined as any, false);
+    const wrapper = createWrapper(null, false);
     const { result } = renderHook(() => usePermissions(), { wrapper });
 
     const hasCapability = result.current.hasCapability(
@@ -413,10 +415,13 @@ describe('usePermissions - requireCapability', () => {
       );
       // Should not reach here
       expect(true).toBe(false);
-    } catch (error: any) {
-      expect(error.message).toContain('moodle/course:update');
-      expect(error.message).toContain('course');
-      expect(error.message).toContain('5');
+    } catch (error) {
+      expect(error instanceof Error).toBe(true);
+      if (error instanceof Error) {
+        expect(error.message).toContain('moodle/course:update');
+        expect(error.message).toContain('course');
+        expect(error.message).toContain('5');
+      }
     }
   });
 
@@ -892,7 +897,7 @@ describe('usePermissions - isAdmin', () => {
     const { result } = renderHook(() => usePermissions(), { wrapper });
 
     const isAdmin = result.current.isAdmin();
-    const hasManagerRole = user.roles.some(role => role.archetype === 'manager');
+    const hasManagerRole = user.roles.some(role => role.archetype === ('manager' as RoleArchetype));
 
     expect(isAdmin).toBe(true);
     expect(hasManagerRole).toBe(true);
@@ -950,7 +955,7 @@ describe('usePermissions - isTeacher', () => {
 
     const isTeacher = result.current.isTeacher();
     const hasTeacherRole = user.roles.some(
-      role => role.archetype === 'editingteacher' || role.archetype === 'teacher'
+      role => role.archetype === ('editingteacher' as RoleArchetype) || role.archetype === ('teacher' as RoleArchetype)
     );
 
     expect(isTeacher).toBe(true);
@@ -1019,7 +1024,7 @@ describe('usePermissions - isStudent', () => {
     const { result } = renderHook(() => usePermissions(), { wrapper });
 
     const isStudent = result.current.isStudent();
-    const hasStudentRole = user.roles.some(role => role.archetype === 'student');
+    const hasStudentRole = user.roles.some(role => role.archetype === ('student' as RoleArchetype));
 
     expect(isStudent).toBe(true);
     expect(hasStudentRole).toBe(true);
@@ -1130,7 +1135,8 @@ describe('usePermissions - Context Types', () => {
 
     // TypeScript should prevent invalid types at compile time
     // At runtime, invalid types would be handled gracefully
-    const invalidContext = { type: 'invalid' as any, contextId: 5 };
+     
+    const invalidContext = { type: 'invalid', contextId: 5 } as unknown as { type: 'course'; contextId: number };
 
     // Should return false for invalid context rather than throwing
     const hasCapability = result.current.hasCapability(
@@ -1273,7 +1279,7 @@ describe('usePermissions - Null/Undefined User Handling', () => {
   });
 
   it('should handle undefined user gracefully', () => {
-    const wrapper = createWrapper(undefined as any, false);
+    const wrapper = createWrapper(null, false);
     const { result } = renderHook(() => usePermissions(), { wrapper });
 
     expect(result.current.canViewCourse(5)).toBe(false);
@@ -1553,6 +1559,7 @@ describe('usePermissions - Edge Cases and Error Handling', () => {
 
   it('should handle missing capabilities property on user object', () => {
     const user = createStudentUser(5);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     delete (user as any).capabilities;
     const wrapper = createWrapper(user, true);
     const { result } = renderHook(() => usePermissions(), { wrapper });
@@ -1588,7 +1595,8 @@ describe('usePermissions - Edge Cases and Error Handling', () => {
     const { result } = renderHook(() => usePermissions(), { wrapper });
 
     // Should handle invalid context gracefully
-    const invalidContext = { type: 'invalid' as any, contextId: -1 };
+     
+    const invalidContext = { type: 'invalid', contextId: -1 } as unknown as { type: 'course'; contextId: number };
     
     expect(() => {
       result.current.hasCapability('moodle/course:view' as Capability, invalidContext);
@@ -1632,14 +1640,14 @@ describe('usePermissions - Edge Cases and Error Handling', () => {
 
   it('should handle very long capability names', () => {
     const user = createTeacherUser(5);
-    const longCapability = 'moodle/' + 'a'.repeat(200) + ':view';
+    const longCapability = `moodle/${  'a'.repeat(200)  }:view`;
     const permission = createPermission(longCapability, 5);
     user.capabilities.push(permission);
     const wrapper = createWrapper(user, true);
     const { result } = renderHook(() => usePermissions(), { wrapper });
 
     expect(() => {
-      result.current.hasCapability(longCapability as Capability, {
+      result.current.hasCapability(longCapability, {
         type: 'course',
         contextId: 5,
       });
@@ -1902,7 +1910,7 @@ describe('usePermissions - Comparison with PHP Moodle Functions', () => {
 
     validFormats.forEach(capability => {
       expect(() => {
-        result.current.hasCapability(capability as Capability, {
+        result.current.hasCapability(capability, {
           type: 'course',
           contextId: 5,
         });

@@ -9,8 +9,25 @@
 
 import React from 'react';
 
+/**
+ * Props for the TreeView mock component
+ */
+interface TreeViewProps extends React.HTMLAttributes<HTMLUListElement> {
+  'aria-label'?: string;
+  children?: React.ReactNode;
+}
+
+/**
+ * Props for the TreeItem mock component
+ */
+interface TreeItemProps extends React.HTMLAttributes<HTMLLIElement> {
+  nodeId: string;
+  label: React.ReactNode;
+  children?: React.ReactNode;
+}
+
 // Mock TreeView component
-export const TreeView = React.forwardRef<HTMLUListElement, any>(
+export const TreeView = React.forwardRef<HTMLUListElement, TreeViewProps>(
   ({ children, 'aria-label': ariaLabel, ...props }, ref) => {
     return (
       <ul 
@@ -29,12 +46,13 @@ export const TreeView = React.forwardRef<HTMLUListElement, any>(
 TreeView.displayName = 'TreeView';
 
 // Mock TreeItem component
-export const TreeItem = React.forwardRef<HTMLLIElement, any>(
+export const TreeItem = React.forwardRef<HTMLLIElement, TreeItemProps>(
   ({ nodeId, label, children, ...props }, ref) => {
     return (
       <li
         ref={ref}
         role="treeitem"
+        aria-selected="false"
         data-nodeid={nodeId}
         data-testid={`tree-item-${nodeId}`}
         {...props}

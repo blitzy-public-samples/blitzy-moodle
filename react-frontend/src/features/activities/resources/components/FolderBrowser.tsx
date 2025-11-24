@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import type React from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -33,7 +34,8 @@ import {
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 
-import { useResourceFolder, FolderNode } from '../hooks/useResource';
+import type { FolderNode } from '../hooks/useResource';
+import { useResourceFolder } from '../hooks/useResource';
 import { Alert } from '../../../../components/feedback/Alert';
 import useDebounce from '../../../../hooks/useDebounce';
 import { usePermissions } from '../../../../hooks/usePermissions';
@@ -63,23 +65,23 @@ export interface FolderBrowserProps {
  * Formats file size in human-readable format
  */
 const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) return '0 Bytes';
+  if (bytes === 0) {return '0 Bytes';}
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  return `${Math.round(bytes / Math.pow(k, i) * 100) / 100  } ${  sizes[i]}`;
 };
 
 /**
  * Gets appropriate icon for file based on MIME type
  */
 const getFileIcon = (mimetype?: string): React.ReactElement => {
-  if (!mimetype) return <FileIcon />;
+  if (!mimetype) {return <FileIcon />;}
   
-  if (mimetype.startsWith('image/')) return <ImageIcon color="primary" />;
-  if (mimetype.startsWith('video/')) return <VideoIcon color="secondary" />;
-  if (mimetype.startsWith('audio/')) return <AudioIcon color="info" />;
-  if (mimetype === 'application/pdf') return <PdfIcon color="error" />;
+  if (mimetype.startsWith('image/')) {return <ImageIcon color="primary" />;}
+  if (mimetype.startsWith('video/')) {return <VideoIcon color="secondary" />;}
+  if (mimetype.startsWith('audio/')) {return <AudioIcon color="info" />;}
+  if (mimetype === 'application/pdf') {return <PdfIcon color="error" />;}
   if (
     mimetype.includes('word') ||
     mimetype.includes('document') ||
@@ -96,7 +98,7 @@ const getFileIcon = (mimetype?: string): React.ReactElement => {
  * Checks if file is a web image that can display thumbnail
  */
 const isWebImage = (mimetype?: string): boolean => {
-  if (!mimetype) return false;
+  if (!mimetype) {return false;}
   return ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'].includes(mimetype);
 };
 
@@ -152,7 +154,7 @@ const getBreadcrumbsFromPath = (path: string, rootName: string): Array<{ label: 
   
   let currentPath = '';
   parts.forEach(part => {
-    currentPath += '/' + part;
+    currentPath += `/${  part}`;
     breadcrumbs.push({ label: part, path: currentPath });
   });
   
@@ -169,6 +171,7 @@ const getBreadcrumbsFromPath = (path: string, rootName: string): Array<{ label: 
  * search/filter capabilities, and maintains comprehensive accessibility support
  * with WCAG 2.1 AA compliance.
  */
+// eslint-disable-next-line react/function-component-definition
 export const FolderBrowser: React.FC<FolderBrowserProps> = ({
   folderId,
   showdescription = true,
@@ -202,8 +205,8 @@ export const FolderBrowser: React.FC<FolderBrowserProps> = ({
   
   // Filter tree based on search query
   const filteredTree = useMemo(() => {
-    if (!folderData?.tree) return null;
-    if (!debouncedSearchQuery.trim()) return folderData.tree;
+    if (!folderData?.tree) {return null;}
+    if (!debouncedSearchQuery.trim()) {return folderData.tree;}
     
     return filterTree(folderData.tree, debouncedSearchQuery);
   }, [folderData?.tree, debouncedSearchQuery]);
@@ -221,7 +224,7 @@ export const FolderBrowser: React.FC<FolderBrowserProps> = ({
   
   // Get breadcrumbs for current path
   const breadcrumbs = useMemo(() => {
-    if (!folderData?.name) return [];
+    if (!folderData?.name) {return [];}
     return getBreadcrumbsFromPath(currentBreadcrumb, folderData.name);
   }, [currentBreadcrumb, folderData?.name]);
   
@@ -268,9 +271,7 @@ export const FolderBrowser: React.FC<FolderBrowserProps> = ({
   // Render individual tree node recursively
   const renderTreeNode = useCallback((node: FolderNode): React.ReactElement => {
     const nodeId = node.id;
-    const isFolder = node.isFolder;
-    
-    console.log('[renderTreeNode] Rendering node:', node.name, 'isFolder:', isFolder, 'hasChildren:', !!node.children, 'childrenCount:', node.children?.length);
+    const {isFolder} = node;
     
     // Prepare node label
     const label = (
@@ -307,7 +308,9 @@ export const FolderBrowser: React.FC<FolderBrowserProps> = ({
             }}
             onClick={!isFolder && node.file ? (e) => {
               e.stopPropagation();
-              handleFileDownload(node.file!);
+              if (node.file) {
+                handleFileDownload(node.file);
+              }
             } : undefined}
           >
             {node.name}
@@ -365,8 +368,6 @@ export const FolderBrowser: React.FC<FolderBrowserProps> = ({
       </Box>
     );
     
-    console.log('[renderTreeNode] Creating TreeItem for:', node.name, 'will render children:', isFolder && node.children && node.children.length > 0);
-    
     return (
       <TreeItem
         key={nodeId}
@@ -396,10 +397,7 @@ export const FolderBrowser: React.FC<FolderBrowserProps> = ({
         }}
       >
         {isFolder && node.children && node.children.length > 0
-          ? node.children.map(child => {
-              console.log('[renderTreeNode] Recursively rendering child:', child.name, 'of parent:', node.name);
-              return renderTreeNode(child);
-            })
+          ? node.children.map(child => renderTreeNode(child))
           : null}
       </TreeItem>
     );
@@ -471,10 +469,7 @@ export const FolderBrowser: React.FC<FolderBrowserProps> = ({
     return count;
   };
   
-  console.log('[FolderBrowser] About to calculate totalFiles, filteredTree:', filteredTree);
   const totalFiles = countFiles(filteredTree);
-  console.log('[FolderBrowser] totalFiles:', totalFiles);
-  console.log('[FolderBrowser] filteredTree.children:', filteredTree?.children);
   
   return (
     <Box sx={{ width: '100%' }}>
@@ -596,16 +591,8 @@ export const FolderBrowser: React.FC<FolderBrowserProps> = ({
       {/* Tree view */}
       <Card>
         <CardContent>
-          {(() => {
-            console.log('[FolderBrowser] Rendering TreeView Card');
-            console.log('[FolderBrowser] filteredTree.children:', filteredTree?.children);
-            console.log('[FolderBrowser] Condition check:', filteredTree.children && filteredTree.children.length > 0);
-            return null;
-          })()}
           {filteredTree.children && filteredTree.children.length > 0 ? (
-            <>
-              {console.log('[FolderBrowser] Rendering TreeView component')}
-              <TreeView
+            <TreeView
                 aria-label="Folder structure"
                 defaultCollapseIcon={<ExpandMoreIcon />}
                 defaultExpandIcon={<ChevronRightIcon />}
@@ -619,17 +606,10 @@ export const FolderBrowser: React.FC<FolderBrowserProps> = ({
                   overflowY: 'auto',
                 }}
               >
-                {filteredTree.children.map(child => {
-                  console.log('[FolderBrowser] Rendering child node:', child.name);
-                  return renderTreeNode(child);
-                })}
+                {filteredTree.children.map(child => renderTreeNode(child))}
               </TreeView>
-            </>
           ) : (
-            <>
-              {console.log('[FolderBrowser] Rendering Alert for empty directory')}
-              <Alert severity="info" message="No files or folders in this directory." />
-            </>
+            <Alert severity="info" message="No files or folders in this directory." />
           )}
         </CardContent>
       </Card>

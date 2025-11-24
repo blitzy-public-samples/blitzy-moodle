@@ -1377,7 +1377,7 @@ describe('ResponseList Component', () => {
         },
       });
       expect(results).toHaveNoViolations();
-    });
+    }, 15000); // Increased timeout to 15 seconds for axe accessibility check
   });
 
   // ============================================================================

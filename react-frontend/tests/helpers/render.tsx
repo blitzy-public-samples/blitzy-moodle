@@ -14,11 +14,12 @@
  * @see @testing-library/react - Base testing library
  */
 
-import { ReactElement, ReactNode } from 'react';
+import type { ReactElement, ReactNode } from 'react';
+import type {
+  RenderOptions as RTLRenderOptions,
+  RenderResult} from '@testing-library/react';
 import {
   render as rtlRender,
-  RenderOptions as RTLRenderOptions,
-  RenderResult,
   screen,
   waitFor,
   within,
@@ -31,12 +32,13 @@ import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
-import { ThemeProvider, CssBaseline, Theme } from '@mui/material';
-import { EnhancedStore } from '@reduxjs/toolkit';
+import type { Theme } from '@mui/material';
+import { ThemeProvider, CssBaseline } from '@mui/material';
+import type { EnhancedStore } from '@reduxjs/toolkit';
 import { afterEach } from 'vitest';
 
 // Internal imports
-import { RootState } from '@/app/store';
+import type { RootState } from '@/app/store';
 import theme, { createAppTheme } from '@/styles/theme';
 import { createMockStore } from './mockStore';
 import { createMockUser } from './mockData';
@@ -136,6 +138,7 @@ interface AllTheProvidersProps {
   themeInstance: Theme;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- Internal test helper component
 function AllTheProviders({
   children,
   store,
@@ -210,7 +213,7 @@ export function render(
     themeMode,
     authenticated = false,
     user: customUser,
-    disableQueryErrorReset = false,
+    disableQueryErrorReset: _disableQueryErrorReset = false,
     ...renderOptions
   } = options;
 
@@ -261,8 +264,8 @@ export function render(
   }
 
   // Create wrapper with all providers
-  const Wrapper = ({ children }: { children: ReactNode }) => (
-    <AllTheProviders
+  function Wrapper({ children }: { children: ReactNode }) {
+  return <AllTheProviders
       store={storeInstance}
       queryClient={queryClientInstance}
       initialRoute={initialRoute}
@@ -271,7 +274,7 @@ export function render(
     >
       {children}
     </AllTheProviders>
-  );
+}
 
   // Render component with wrapper
   const renderResult = rtlRender(ui, {

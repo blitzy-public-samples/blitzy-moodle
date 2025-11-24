@@ -16,7 +16,8 @@
  * @module features/gradebook/components/GradeEditForm
  */
 
-import React, { useState, useEffect } from 'react';
+import type React from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -101,13 +102,13 @@ const createGradeSchema = (grademax: number, grademin: number) => {
  * Provides a form interface for editing student grades with comprehensive
  * validation, permission checking, and error handling.
  */
-const GradeEditForm: React.FC<GradeEditFormProps> = ({
+function GradeEditForm({
   gradeItem,
   initialValues,
   onSubmit,
   onCancel,
   readOnly = false,
-}) => {
+}: GradeEditFormProps) {
   // Hooks
   const { hasCapability } = usePermissions();
   const { success, error: showError } = useToast();
@@ -175,7 +176,7 @@ const GradeEditForm: React.FC<GradeEditFormProps> = ({
       // Transform form data to API format
       const gradeData: Partial<Grade> = {
         finalgrade: data.finalgrade,
-        feedback: data.feedback || '',
+        feedback: data.feedback ?? '',
         overridden: data.overridden,
         excluded: data.excluded,
         hidden: data.hidden,
@@ -290,8 +291,8 @@ const GradeEditForm: React.FC<GradeEditFormProps> = ({
               disabled={overridden === 0 || readOnly || isLoading || excluded === 1}
               error={!!errors.finalgrade}
               helperText={
-                errors.finalgrade?.message ||
-                `Enter a grade between ${gradeItem.grademin || 0} and ${gradeItem.grademax || 100}`
+                errors.finalgrade?.message ??
+                `Enter a grade between ${gradeItem.grademin ?? 0} and ${gradeItem.grademax ?? 100}`
               }
               inputProps={{
                 min: gradeItem.grademin || 0,
@@ -301,7 +302,7 @@ const GradeEditForm: React.FC<GradeEditFormProps> = ({
               }}
               value={field.value ?? ''}
               onChange={(e) => {
-                const value = e.target.value;
+                const {value} = e.target;
                 field.onChange(value === '' ? null : parseFloat(value));
               }}
             />
@@ -346,7 +347,7 @@ const GradeEditForm: React.FC<GradeEditFormProps> = ({
                 name="feedback"
                 label="Feedback"
                 placeholder="Enter feedback for student"
-                value={field.value || ''}
+                value={field.value ?? ''}
                 onChange={field.onChange}
                 disabled={readOnly || isLoading}
                 error={!!errors.feedback}
@@ -466,6 +467,6 @@ const GradeEditForm: React.FC<GradeEditFormProps> = ({
       </Stack>
     </Box>
   );
-};
+}
 
 export default GradeEditForm;

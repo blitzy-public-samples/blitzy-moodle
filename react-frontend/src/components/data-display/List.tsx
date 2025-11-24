@@ -31,6 +31,7 @@ import {
   Avatar,
   IconButton,
   Box,
+  type ListItemProps,
 } from '@mui/material';
 
 /**
@@ -309,7 +310,7 @@ function List({
         if (React.isValidElement(customItem)) {
           // Check if it's a ListItem to add divider prop
           if (customItem.type === ListItem) {
-            return React.cloneElement(customItem as React.ReactElement<any>, {
+            return React.cloneElement(customItem as React.ReactElement<ListItemProps>, {
               key: item.id,
               divider: shouldShowDivider,
             });

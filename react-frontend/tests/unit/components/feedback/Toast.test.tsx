@@ -39,7 +39,7 @@ function ToastWrapper(props: Partial<ToastProps> & { initialOpen?: boolean }) {
   const [open, setOpen] = useState(initialOpen);
 
   const defaultProps: ToastProps = {
-    open: open,
+    open,
     message: 'Test message',
     severity: 'info',
     onClose: () => setOpen(false),
@@ -105,7 +105,7 @@ describe('Toast Component', () => {
     test('renders toast when open=true', () => {
       render(
         <Toast
-          open={true}
+          open
           message="Test notification"
           severity="info"
           onClose={vi.fn()}
@@ -131,7 +131,7 @@ describe('Toast Component', () => {
     test('displays string message text', () => {
       render(
         <Toast
-          open={true}
+          open
           message="Simple string message"
           severity="info"
           onClose={vi.fn()}
@@ -144,7 +144,7 @@ describe('Toast Component', () => {
     test('displays ReactNode message with rich content', () => {
       render(
         <Toast
-          open={true}
+          open
           message={
             <div>
               <strong>Bold text</strong>
@@ -169,7 +169,7 @@ describe('Toast Component', () => {
     test('renders with success severity', () => {
       render(
         <Toast
-          open={true}
+          open
           message="Success message"
           severity="success"
           onClose={vi.fn()}
@@ -184,7 +184,7 @@ describe('Toast Component', () => {
     test('renders with info severity', () => {
       render(
         <Toast
-          open={true}
+          open
           message="Info message"
           severity="info"
           onClose={vi.fn()}
@@ -199,7 +199,7 @@ describe('Toast Component', () => {
     test('renders with warning severity', () => {
       render(
         <Toast
-          open={true}
+          open
           message="Warning message"
           severity="warning"
           onClose={vi.fn()}
@@ -214,7 +214,7 @@ describe('Toast Component', () => {
     test('renders with error severity', () => {
       render(
         <Toast
-          open={true}
+          open
           message="Error message"
           severity="error"
           onClose={vi.fn()}
@@ -236,7 +236,7 @@ describe('Toast Component', () => {
       const handleClose = vi.fn();
       render(
         <Toast
-          open={true}
+          open
           message="Auto-hide message"
           severity="info"
           onClose={handleClose}
@@ -262,7 +262,7 @@ describe('Toast Component', () => {
       const handleClose = vi.fn();
       render(
         <Toast
-          open={true}
+          open
           message="Custom duration"
           severity="info"
           autoHideDuration={3000}
@@ -285,10 +285,10 @@ describe('Toast Component', () => {
       const handleClose = vi.fn();
       render(
         <Toast
-          open={true}
+          open
           message="Persistent toast"
           severity="info"
-          autoHideDuration={null as any}
+          autoHideDuration={null}
           onClose={handleClose}
         />
       );
@@ -304,7 +304,7 @@ describe('Toast Component', () => {
       const handleClose = vi.fn();
       render(
         <Toast
-          open={true}
+          open
           message="Quick toast"
           severity="info"
           autoHideDuration={1000}
@@ -327,7 +327,7 @@ describe('Toast Component', () => {
     test('renders at top-right position (default)', () => {
       const { container } = render(
         <Toast
-          open={true}
+          open
           message="Top right"
           severity="info"
           onClose={vi.fn()}
@@ -341,7 +341,7 @@ describe('Toast Component', () => {
     test('renders at top-center position', () => {
       const { container } = render(
         <Toast
-          open={true}
+          open
           message="Top center"
           severity="info"
           position={{ vertical: 'top', horizontal: 'center' }}
@@ -356,7 +356,7 @@ describe('Toast Component', () => {
     test('renders at bottom-right position', () => {
       const { container } = render(
         <Toast
-          open={true}
+          open
           message="Bottom right"
           severity="info"
           position={{ vertical: 'bottom', horizontal: 'right' }}
@@ -371,7 +371,7 @@ describe('Toast Component', () => {
     test('renders at bottom-left position', () => {
       const { container } = render(
         <Toast
-          open={true}
+          open
           message="Bottom left"
           severity="info"
           position={{ vertical: 'bottom', horizontal: 'left' }}
@@ -386,7 +386,7 @@ describe('Toast Component', () => {
     test('renders at top-left position', () => {
       const { container } = render(
         <Toast
-          open={true}
+          open
           message="Top left"
           severity="info"
           position={{ vertical: 'top', horizontal: 'left' }}
@@ -401,7 +401,7 @@ describe('Toast Component', () => {
     test('renders at bottom-center position', () => {
       const { container } = render(
         <Toast
-          open={true}
+          open
           message="Bottom center"
           severity="info"
           position={{ vertical: 'bottom', horizontal: 'center' }}
@@ -419,10 +419,10 @@ describe('Toast Component', () => {
    * Verify manual dismissal via close button
    */
   describe('Close Button', () => {
-    test('shows close button in Alert', async () => {
+    test('shows close button in Alert', () => {
       render(
         <Toast
-          open={true}
+          open
           message="Closeable toast"
           severity="info"
           onClose={vi.fn()}
@@ -438,7 +438,7 @@ describe('Toast Component', () => {
       const handleClose = vi.fn();
       render(
         <Toast
-          open={true}
+          open
           message="Click to close"
           severity="info"
           onClose={handleClose}
@@ -454,7 +454,7 @@ describe('Toast Component', () => {
     test('close button has accessible label', () => {
       render(
         <Toast
-          open={true}
+          open
           message="Accessible close"
           severity="info"
           onClose={vi.fn()}
@@ -474,7 +474,7 @@ describe('Toast Component', () => {
     test('renders custom action button', () => {
       render(
         <Toast
-          open={true}
+          open
           message="With action"
           severity="info"
           onClose={vi.fn()}
@@ -494,7 +494,7 @@ describe('Toast Component', () => {
       const handleAction = vi.fn();
       render(
         <Toast
-          open={true}
+          open
           message="Action test"
           severity="info"
           onClose={vi.fn()}
@@ -515,7 +515,7 @@ describe('Toast Component', () => {
     test('renders multiple action buttons', () => {
       render(
         <Toast
-          open={true}
+          open
           message="Multiple actions"
           severity="info"
           onClose={vi.fn()}
@@ -541,7 +541,7 @@ describe('Toast Component', () => {
       const handleUndo = vi.fn();
       render(
         <Toast
-          open={true}
+          open
           message="Course deleted"
           severity="info"
           onClose={vi.fn()}
@@ -570,7 +570,7 @@ describe('Toast Component', () => {
     test('applies Slide transition component', () => {
       const { container } = render(
         <Toast
-          open={true}
+          open
           message="Animated toast"
           severity="info"
           onClose={vi.fn()}
@@ -589,7 +589,7 @@ describe('Toast Component', () => {
     test('slide direction is down for top position', () => {
       render(
         <Toast
-          open={true}
+          open
           message="Slide down"
           severity="info"
           position={{ vertical: 'top', horizontal: 'center' }}
@@ -604,7 +604,7 @@ describe('Toast Component', () => {
     test('slide direction is up for bottom position', () => {
       render(
         <Toast
-          open={true}
+          open
           message="Slide up"
           severity="info"
           position={{ vertical: 'bottom', horizontal: 'center' }}
@@ -625,7 +625,7 @@ describe('Toast Component', () => {
     test('info severity has role=status', () => {
       render(
         <Toast
-          open={true}
+          open
           message="Info message"
           severity="info"
           onClose={vi.fn()}
@@ -640,7 +640,7 @@ describe('Toast Component', () => {
     test('success severity has role=status', () => {
       render(
         <Toast
-          open={true}
+          open
           message="Success message"
           severity="success"
           onClose={vi.fn()}
@@ -655,7 +655,7 @@ describe('Toast Component', () => {
     test('warning severity has role=alert', () => {
       render(
         <Toast
-          open={true}
+          open
           message="Warning message"
           severity="warning"
           onClose={vi.fn()}
@@ -670,7 +670,7 @@ describe('Toast Component', () => {
     test('error severity has role=alert', () => {
       render(
         <Toast
-          open={true}
+          open
           message="Error message"
           severity="error"
           onClose={vi.fn()}
@@ -685,7 +685,7 @@ describe('Toast Component', () => {
     test('has appropriate aria attributes', () => {
       render(
         <Toast
-          open={true}
+          open
           message="Accessible toast"
           severity="success"
           onClose={vi.fn()}
@@ -706,7 +706,7 @@ describe('Toast Component', () => {
     test('renders filled variant (default)', () => {
       render(
         <Toast
-          open={true}
+          open
           message="Filled variant"
           severity="info"
           onClose={vi.fn()}
@@ -720,7 +720,7 @@ describe('Toast Component', () => {
     test('renders standard variant', () => {
       render(
         <Toast
-          open={true}
+          open
           message="Standard variant"
           severity="info"
           variant="standard"
@@ -735,7 +735,7 @@ describe('Toast Component', () => {
     test('renders outlined variant', () => {
       render(
         <Toast
-          open={true}
+          open
           message="Outlined variant"
           severity="info"
           variant="outlined"
@@ -823,7 +823,7 @@ describe('Toast Component', () => {
 
     test('default severity is info when not specified', async () => {
       const user = userEvent.setup({ delay: null });
-      const TestComponent = () => {
+      function TestComponent() {
         const { open, message, severity, showToast, hideToast } = useToast();
         return (
           <>
@@ -838,7 +838,7 @@ describe('Toast Component', () => {
             />
           </>
         );
-      };
+      }
 
       render(<TestComponent />);
 
@@ -874,7 +874,7 @@ describe('Toast Component', () => {
     test('handles empty message gracefully', () => {
       render(
         <Toast
-          open={true}
+          open
           message=""
           severity="info"
           onClose={vi.fn()}
@@ -890,7 +890,7 @@ describe('Toast Component', () => {
       const longMessage = 'A'.repeat(500);
       render(
         <Toast
-          open={true}
+          open
           message={longMessage}
           severity="info"
           onClose={vi.fn()}
@@ -906,7 +906,7 @@ describe('Toast Component', () => {
         <div>
           <div data-testid="outside">Outside element</div>
           <Toast
-            open={true}
+            open
             message="No clickaway close"
             severity="info"
             onClose={handleClose}
@@ -928,7 +928,7 @@ describe('Toast Component', () => {
       const handleClose = vi.fn();
       render(
         <Toast
-          open={true}
+          open
           message="Single close call"
           severity="info"
           onClose={handleClose}
@@ -945,7 +945,7 @@ describe('Toast Component', () => {
       const handleClose = vi.fn();
       render(
         <Toast
-          open={true}
+          open
           message="No auto-hide"
           severity="info"
           autoHideDuration={undefined}
@@ -969,7 +969,7 @@ describe('Toast Component', () => {
   describe('Integration with React Query', () => {
     test('shows success toast after mutation success', async () => {
       const user = userEvent.setup({ delay: null });
-      const TestComponent = () => {
+      function TestComponent() {
         const { open, message, severity, showToast, hideToast } = useToast();
 
         const handleSuccess = () => {
@@ -987,7 +987,7 @@ describe('Toast Component', () => {
             />
           </>
         );
-      };
+      }
 
       render(<TestComponent />);
 
@@ -1000,7 +1000,7 @@ describe('Toast Component', () => {
 
     test('shows error toast after mutation error', async () => {
       const user = userEvent.setup({ delay: null });
-      const TestComponent = () => {
+      function TestComponent() {
         const { open, message, severity, showToast, hideToast } = useToast();
 
         const handleError = () => {
@@ -1018,7 +1018,7 @@ describe('Toast Component', () => {
             />
           </>
         );
-      };
+      }
 
       render(<TestComponent />);
 
@@ -1031,7 +1031,7 @@ describe('Toast Component', () => {
 
     test('custom message in mutation callbacks', async () => {
       const user = userEvent.setup({ delay: null });
-      const TestComponent = () => {
+      function TestComponent() {
         const { open, message, severity, showToast, hideToast } = useToast();
 
         const handleCustomMessage = () => {
@@ -1054,7 +1054,7 @@ describe('Toast Component', () => {
             />
           </>
         );
-      };
+      }
 
       render(<TestComponent />);
 

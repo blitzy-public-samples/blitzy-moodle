@@ -375,9 +375,9 @@ export function Modal({
         'aria-modal': 'true'
       }}
       BackdropProps={{
-        'data-testid': 'modal-backdrop',
-        sx: { backgroundColor: 'rgba(0, 0, 0, 0.5)' }
-      } as any}
+        sx: { backgroundColor: 'rgba(0, 0, 0, 0.5)' },
+        ...({ 'data-testid': 'modal-backdrop' } as Record<string, unknown>),
+      }}
       // Ensure focus trap and keyboard navigation
       disableEscapeKeyDown={disableEscapeKeyDown}
     >

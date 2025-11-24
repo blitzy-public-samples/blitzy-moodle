@@ -71,7 +71,7 @@ test.describe('Global Search Functionality', () => {
    * Automatically captures full page screenshot when test fails
    * to facilitate debugging of search UI and results display issues.
    */
-  test.afterEach(async ({}, testInfo) => {
+  test.afterEach(async (_, testInfo) => {
     await captureOnFailure(page, testInfo);
     
     // Close page after test

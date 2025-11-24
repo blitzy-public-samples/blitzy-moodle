@@ -61,9 +61,11 @@ function createWrapper(preloadedState?: Partial<RootState>) {
     preloadedState: preloadedState as RootState,
   });
 
-  return function Wrapper({ children }: { children: ReactNode }) {
+  function Wrapper({ children }: { children: ReactNode }) {
     return <Provider store={store}>{children}</Provider>;
-  };
+  }
+
+  return Wrapper;
 }
 
 /**

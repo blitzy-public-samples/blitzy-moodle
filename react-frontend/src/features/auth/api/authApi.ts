@@ -81,12 +81,17 @@ export async function login(params: LoginParams): Promise<LoginResponse> {
   );
 
   // Debug logging
+  // eslint-disable-next-line no-console
   console.log('[authApi.login] Full response:', response);
+  // eslint-disable-next-line no-console
   console.log('[authApi.login] response.data:', response.data);
+  // eslint-disable-next-line no-console
   console.log('[authApi.login] response.data.success:', response.data.success);
+  // eslint-disable-next-line no-console
   console.log('[authApi.login] response.data.data:', response.data.data);
 
   if (!response.data.success || !response.data.data) {
+     
     console.error('[authApi.login] Validation failed - throwing error');
     throw new Error('Login failed');
   }

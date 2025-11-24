@@ -1,0 +1,394 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`FormFileUpload - Snapshot Tests > matches snapshot for empty state 1`] = `
+<form>
+  <div
+    class="MuiBox-root css-8atqhb"
+  >
+    <label
+      class="MuiTypography-root MuiTypography-body2 css-1rpaijs-MuiTypography-root"
+      for="files-file-input"
+    >
+      Upload Files
+    </label>
+    <input
+      aria-label="Upload Files"
+      id="files-file-input"
+      style="display: none;"
+      type="file"
+    />
+    <div
+      aria-disabled="false"
+      aria-label="Upload Upload Files"
+      class="MuiBox-root css-ybfg2a"
+      role="button"
+      tabindex="0"
+    >
+      <svg
+        aria-hidden="true"
+        class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-14uwstq-MuiSvgIcon-root"
+        data-testid="CloudUploadIcon"
+        focusable="false"
+        viewBox="0 0 24 24"
+      >
+        <path
+          d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96M14 13v4h-4v-4H7l5-5 5 5z"
+        />
+      </svg>
+      <p
+        class="MuiTypography-root MuiTypography-body1 css-1h6q7xl-MuiTypography-root"
+      >
+        Drag and drop files here, or click to select
+      </p>
+      <p
+        class="MuiTypography-root MuiTypography-body2 css-nsbjfb-MuiTypography-root"
+      >
+        Maximum file size: 
+        10 MB
+      </p>
+    </div>
+    <p
+      class="MuiFormHelperText-root css-1xgsz6j-MuiFormHelperText-root"
+    >
+      Maximum 5 files, 10MB each
+    </p>
+  </div>
+  <button
+    type="submit"
+  >
+    Submit
+  </button>
+</form>
+`;
+
+exports[`FormFileUpload - Snapshot Tests > matches snapshot in disabled state 1`] = `
+<form>
+  <div
+    class="MuiBox-root css-8atqhb"
+  >
+    <label
+      class="MuiTypography-root MuiTypography-body2 css-z04heh-MuiTypography-root"
+      for="files-file-input"
+    >
+      Upload Files
+    </label>
+    <input
+      aria-label="Upload Files"
+      disabled=""
+      id="files-file-input"
+      style="display: none;"
+      type="file"
+    />
+    <div
+      aria-disabled="true"
+      aria-label="Upload Upload Files"
+      class="MuiBox-root css-c4oigl"
+      role="button"
+      tabindex="-1"
+    >
+      <svg
+        aria-hidden="true"
+        class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-16s8co5-MuiSvgIcon-root"
+        data-testid="CloudUploadIcon"
+        focusable="false"
+        viewBox="0 0 24 24"
+      >
+        <path
+          d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96M14 13v4h-4v-4H7l5-5 5 5z"
+        />
+      </svg>
+      <p
+        class="MuiTypography-root MuiTypography-body1 css-uwx2rc-MuiTypography-root"
+      >
+        Drag and drop files here, or click to select
+      </p>
+      <p
+        class="MuiTypography-root MuiTypography-body2 css-15bqlzy-MuiTypography-root"
+      >
+        Maximum file size: 
+        10 MB
+      </p>
+    </div>
+    <p
+      class="MuiFormHelperText-root css-1xgsz6j-MuiFormHelperText-root"
+    >
+      Upload is currently disabled
+    </p>
+  </div>
+  <button
+    type="submit"
+  >
+    Submit
+  </button>
+</form>
+`;
+
+exports[`FormFileUpload - Snapshot Tests > matches snapshot in error state 1`] = `
+<form>
+  <div
+    class="MuiBox-root css-8atqhb"
+  >
+    <label
+      class="MuiTypography-root MuiTypography-body2 css-1rpaijs-MuiTypography-root"
+      for="file-file-input"
+    >
+      Upload File
+      <span
+        aria-label="required"
+        class="MuiTypography-root MuiTypography-body1 css-1eczqnd-MuiTypography-root"
+      >
+        *
+      </span>
+    </label>
+    <input
+      aria-label="Upload File"
+      id="file-file-input"
+      style="display: none;"
+      type="file"
+    />
+    <div
+      aria-disabled="false"
+      aria-label="Upload Upload File"
+      class="MuiBox-root css-1lgegav"
+      role="button"
+      tabindex="0"
+    >
+      <svg
+        aria-hidden="true"
+        class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-14uwstq-MuiSvgIcon-root"
+        data-testid="CloudUploadIcon"
+        focusable="false"
+        viewBox="0 0 24 24"
+      >
+        <path
+          d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96M14 13v4h-4v-4H7l5-5 5 5z"
+        />
+      </svg>
+      <p
+        class="MuiTypography-root MuiTypography-body1 css-1h6q7xl-MuiTypography-root"
+      >
+        Drag and drop files here, or click to select
+      </p>
+      <p
+        class="MuiTypography-root MuiTypography-body2 css-nsbjfb-MuiTypography-root"
+      >
+        Maximum file size: 
+        10 MB
+      </p>
+    </div>
+    <p
+      class="MuiFormHelperText-root Mui-error css-1xgsz6j-MuiFormHelperText-root"
+      role="alert"
+    >
+      File is required
+    </p>
+  </div>
+  <button
+    type="submit"
+  >
+    Submit
+  </button>
+</form>
+`;
+
+exports[`FormFileUpload - Snapshot Tests > matches snapshot with files loaded 1`] = `
+<form>
+  <div
+    class="MuiBox-root css-8atqhb"
+  >
+    <label
+      class="MuiTypography-root MuiTypography-body2 css-1rpaijs-MuiTypography-root"
+      for="files-file-input"
+    >
+      Upload Files
+    </label>
+    <input
+      aria-label="Upload Files"
+      id="files-file-input"
+      multiple=""
+      style="display: none;"
+      type="file"
+    />
+    <div
+      aria-disabled="false"
+      aria-label="Upload Upload Files"
+      class="MuiBox-root css-ybfg2a"
+      role="button"
+      tabindex="0"
+    >
+      <svg
+        aria-hidden="true"
+        class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-14uwstq-MuiSvgIcon-root"
+        data-testid="CloudUploadIcon"
+        focusable="false"
+        viewBox="0 0 24 24"
+      >
+        <path
+          d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96M14 13v4h-4v-4H7l5-5 5 5z"
+        />
+      </svg>
+      <p
+        class="MuiTypography-root MuiTypography-body1 css-1h6q7xl-MuiTypography-root"
+      >
+        Drag and drop files here, or click to select
+      </p>
+      <p
+        class="MuiTypography-root MuiTypography-body2 css-nsbjfb-MuiTypography-root"
+      >
+        Maximum file size: 
+        10 MB
+      </p>
+    </div>
+    <ul
+      aria-label="Selected files"
+      class="MuiList-root MuiList-padding css-1tcs5be-MuiList-root"
+    >
+      <li
+        class="MuiListItem-container css-oyakqy-MuiListItem-container"
+      >
+        <div
+          class="MuiListItem-root MuiListItem-gutters MuiListItem-padding MuiListItem-secondaryAction css-g141fa-MuiListItem-root"
+        >
+          <div
+            class="MuiBox-root css-5repp3"
+          >
+            <svg
+              aria-hidden="true"
+              class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-1jxdcj3-MuiSvgIcon-root"
+              data-testid="InsertDriveFileIcon"
+              focusable="false"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm7 7V3.5L18.5 9z"
+              />
+            </svg>
+          </div>
+          <div
+            class="MuiListItemText-root MuiListItemText-multiline css-konndc-MuiListItemText-root"
+          >
+            <p
+              class="MuiTypography-root MuiTypography-body2 css-1lutzs0-MuiTypography-root"
+            >
+              file1.txt
+            </p>
+            <p
+              class="MuiTypography-root MuiTypography-body2 MuiListItemText-secondary css-1kaxx78-MuiTypography-root"
+            >
+              <span
+                class="MuiBox-root css-0"
+              >
+                <span
+                  class="MuiTypography-root MuiTypography-caption css-s0lawg-MuiTypography-root"
+                >
+                  1 KB
+                </span>
+              </span>
+            </p>
+          </div>
+        </div>
+        <div
+          class="MuiListItemSecondaryAction-root css-518kzi-MuiListItemSecondaryAction-root"
+        >
+          <button
+            aria-label="Remove file1.txt"
+            class="MuiButtonBase-root MuiIconButton-root MuiIconButton-edgeEnd MuiIconButton-sizeSmall css-ig3tf3-MuiButtonBase-root-MuiIconButton-root"
+            tabindex="0"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-1jxdcj3-MuiSvgIcon-root"
+              data-testid="DeleteIcon"
+              focusable="false"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6zM19 4h-3.5l-1-1h-5l-1 1H5v2h14z"
+              />
+            </svg>
+            <span
+              class="MuiTouchRipple-root css-8je8zh-MuiTouchRipple-root"
+            />
+          </button>
+        </div>
+      </li>
+      <li
+        class="MuiListItem-container css-oyakqy-MuiListItem-container"
+      >
+        <div
+          class="MuiListItem-root MuiListItem-gutters MuiListItem-padding MuiListItem-secondaryAction css-g141fa-MuiListItem-root"
+        >
+          <div
+            class="MuiBox-root css-5repp3"
+          >
+            <svg
+              aria-hidden="true"
+              class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-1jxdcj3-MuiSvgIcon-root"
+              data-testid="InsertDriveFileIcon"
+              focusable="false"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm7 7V3.5L18.5 9z"
+              />
+            </svg>
+          </div>
+          <div
+            class="MuiListItemText-root MuiListItemText-multiline css-konndc-MuiListItemText-root"
+          >
+            <p
+              class="MuiTypography-root MuiTypography-body2 css-1lutzs0-MuiTypography-root"
+            >
+              file2.txt
+            </p>
+            <p
+              class="MuiTypography-root MuiTypography-body2 MuiListItemText-secondary css-1kaxx78-MuiTypography-root"
+            >
+              <span
+                class="MuiBox-root css-0"
+              >
+                <span
+                  class="MuiTypography-root MuiTypography-caption css-s0lawg-MuiTypography-root"
+                >
+                  1 KB
+                </span>
+              </span>
+            </p>
+          </div>
+        </div>
+        <div
+          class="MuiListItemSecondaryAction-root css-518kzi-MuiListItemSecondaryAction-root"
+        >
+          <button
+            aria-label="Remove file2.txt"
+            class="MuiButtonBase-root MuiIconButton-root MuiIconButton-edgeEnd MuiIconButton-sizeSmall css-ig3tf3-MuiButtonBase-root-MuiIconButton-root"
+            tabindex="0"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-1jxdcj3-MuiSvgIcon-root"
+              data-testid="DeleteIcon"
+              focusable="false"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6zM19 4h-3.5l-1-1h-5l-1 1H5v2h14z"
+              />
+            </svg>
+            <span
+              class="MuiTouchRipple-root css-8je8zh-MuiTouchRipple-root"
+            />
+          </button>
+        </div>
+      </li>
+    </ul>
+  </div>
+  <button
+    type="submit"
+  >
+    Submit
+  </button>
+</form>
+`;

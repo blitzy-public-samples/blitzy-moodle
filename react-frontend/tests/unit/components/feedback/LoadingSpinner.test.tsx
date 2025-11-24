@@ -310,17 +310,17 @@ describe('LoadingSpinner Component', () => {
   // ============================================================================
 
   describe('Integration with React Patterns', () => {
-    test('works as React Suspense fallback', async () => {
+    test('works as React Suspense fallback', () => {
       // Create a lazy-loaded component that delays
       const DelayedComponent = () => {
         throw new Promise((resolve) => setTimeout(resolve, 100));
       };
 
-      const TestComponent = () => (
-        <Suspense fallback={<LoadingSpinner message="Loading component..." />}>
+      function TestComponent() {
+  return <Suspense fallback={<LoadingSpinner message="Loading component..." />}>
           <DelayedComponent />
         </Suspense>
-      );
+}
 
       render(<TestComponent />);
 
@@ -331,7 +331,7 @@ describe('LoadingSpinner Component', () => {
 
     test('works with React Query loading state', () => {
       // Create a component that uses React Query
-      const TestComponent = () => {
+      function TestComponent() {
         const { isLoading } = useQuery({
           queryKey: ['test'],
           queryFn: async () => {
@@ -345,7 +345,7 @@ describe('LoadingSpinner Component', () => {
         }
 
         return <div>Data loaded</div>;
-      };
+      }
 
       const queryClient = new QueryClient({
         defaultOptions: {
@@ -368,7 +368,7 @@ describe('LoadingSpinner Component', () => {
 
     test('disappears when loading completes', async () => {
       // Component that toggles loading state
-      const TestComponent = () => {
+      function TestComponent() {
         const [isLoading, setIsLoading] = useState(true);
 
         React.useEffect(() => {
@@ -381,7 +381,7 @@ describe('LoadingSpinner Component', () => {
         }
 
         return <div>Content loaded</div>;
-      };
+      }
 
       render(<TestComponent />);
 
@@ -568,7 +568,7 @@ describe('LoadingSpinner Component', () => {
 
   describe('Edge Cases', () => {
     test('handles rapid show/hide cycles without errors', async () => {
-      const TestComponent = () => {
+      function TestComponent() {
         const [show, setShow] = useState(true);
 
         React.useEffect(() => {
@@ -582,7 +582,7 @@ describe('LoadingSpinner Component', () => {
         }, []);
 
         return show ? <LoadingSpinner /> : <div>Hidden</div>;
-      };
+      }
 
       render(<TestComponent />);
 
@@ -694,10 +694,10 @@ describe('LoadingSpinner Component', () => {
     test('renders efficiently without unnecessary re-renders', () => {
       const renderSpy = vi.fn();
 
-      const TestComponent = () => {
+      function TestComponent() {
         renderSpy();
         return <LoadingSpinner />;
-      };
+      }
 
       const { rerender } = render(<TestComponent />);
 

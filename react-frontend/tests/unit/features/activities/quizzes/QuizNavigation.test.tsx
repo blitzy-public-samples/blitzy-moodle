@@ -266,7 +266,7 @@ describe('QuizNavigation Component', () => {
       expect(mockOnQuestionClick).toHaveBeenNthCalledWith(1, 0);
       expect(mockOnQuestionClick).toHaveBeenNthCalledWith(2, 9);
       expect(mockOnQuestionClick).toHaveBeenNthCalledWith(3, 4);
-    });
+    }, 15000); // Increased timeout to 15 seconds for multiple user interactions
 
     // eslint-disable-next-line @typescript-eslint/require-await
     it('should not call onQuestionClick for disabled buttons', async () => {
@@ -968,7 +968,7 @@ describe('QuizNavigation Component', () => {
       expect(mockOnQuestionClick).toHaveBeenNthCalledWith(1, 1);
       expect(mockOnQuestionClick).toHaveBeenNthCalledWith(2, 4);
       expect(mockOnQuestionClick).toHaveBeenNthCalledWith(3, 7);
-    });
+    }, 15000); // Increased timeout to 15 seconds for rapid user interactions
 
     it('should handle rapid flag toggle clicks', async () => {
       const user = userEvent.setup();

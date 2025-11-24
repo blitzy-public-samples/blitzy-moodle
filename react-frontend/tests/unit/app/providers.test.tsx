@@ -26,7 +26,8 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, waitFor, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React, { useState } from 'react';
+import type React from 'react';
+import { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '@mui/material/styles';
@@ -89,13 +90,13 @@ function TestReduxDispatchComponent(): React.ReactElement {
 function TestReactQueryComponent(): React.ReactElement {
   const { data, isLoading, error } = useQuery({
     queryKey: ['test-query'],
-    queryFn: async () => {
+    queryFn: () => {
       return { message: 'Test Data' };
     },
   });
 
-  if (isLoading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error.message}</div>;
+  if (isLoading) {return <div>Loading...</div>;}
+  if (error) {return <div>Error: {error.message}</div>;}
 
   return <div>Query Data: {data?.message}</div>;
 }
@@ -158,7 +159,7 @@ function TestMultiContextComponent(): React.ReactElement {
   const theme = useTheme();
   const { data } = useQuery({
     queryKey: ['multi-context-test'],
-    queryFn: async () => ({ value: 'test' }),
+    queryFn: () => ({ value: 'test' }),
   });
 
   return (
@@ -335,14 +336,14 @@ describe('AppProviders Component', () => {
       function ErrorQueryComponent(): React.ReactElement {
         const { error, isLoading } = useQuery({
           queryKey: ['error-query'],
-          queryFn: async () => {
+          queryFn: () => {
             throw new Error('Query failed');
           },
           retry: 0, // Don't retry for this test
         });
 
-        if (isLoading) return <div>Loading...</div>;
-        if (error) return <div>Query Error: {error.message}</div>;
+        if (isLoading) {return <div>Loading...</div>;}
+        if (error) {return <div>Query Error: {error.message}</div>;}
 
         return <div>Success</div>;
       }
@@ -581,7 +582,7 @@ describe('AppProviders Component', () => {
       expect(() => {
         render(
           <AppProviders>
-            <>Fragment Child</>
+            Fragment Child
           </AppProviders>
         );
       }).not.toThrow();
@@ -677,7 +678,7 @@ describe('AppProviders Component', () => {
 
         const { data } = useQuery({
           queryKey: ['integration-test'],
-          queryFn: async () => ({ value: 'Integration Data' }),
+          queryFn: () => ({ value: 'Integration Data' }),
         });
 
         const handleClick = (): void => {

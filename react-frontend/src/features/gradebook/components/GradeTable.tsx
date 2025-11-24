@@ -30,7 +30,10 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import React, { useState, useMemo, useCallback } from 'react';
+import type React from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import type {
+  SelectChangeEvent} from '@mui/material';
 import {
   Box,
   Typography,
@@ -49,17 +52,18 @@ import {
   Skeleton,
   Avatar,
   Drawer,
-  SelectChangeEvent,
   Card,
   CardContent,
 } from '@mui/material';
-import {
-  DataGrid,
+import type {
   GridColDef,
   GridRowSelectionModel,
-  GridToolbar,
   GridValueGetterParams,
   GridRenderCellParams,
+  GridRowParams} from '@mui/x-data-grid';
+import {
+  DataGrid,
+  GridToolbar
 } from '@mui/x-data-grid';
 import {
   Feedback as FeedbackIcon,
@@ -85,6 +89,13 @@ interface Student {
   lastname: string;
   email?: string;
   profileimage?: string;
+}
+
+/**
+ * Type guard to check if a grade is of type Grade (has userid and itemid)
+ */
+function isGrade(grade: GradeSummary | Grade): grade is Grade {
+  return 'userid' in grade && 'itemid' in grade;
 }
 
 /**
@@ -244,14 +255,15 @@ export function GradeTable({
     const map: Record<number, Record<number, GradeSummary>> = {};
     grades.forEach(grade => {
       // In teacher view, grades should be Grade[] with userid and itemid
-      const gradeWithIds = grade as any; // Type assertion since we know this is Grade[] in teacher view
-      if (gradeWithIds.userid && gradeWithIds.itemid) {
-        if (!map[gradeWithIds.userid]) {
-          map[gradeWithIds.userid] = {};
+      if (isGrade(grade)) {
+        // Use the narrowed type directly without intermediate variables
+        const { userid, itemid } = grade;
+        if (!map[userid]) {
+          map[userid] = {};
         }
-        const userMap = map[gradeWithIds.userid];
+        const userMap = map[userid];
         if (userMap) {
-          userMap[gradeWithIds.itemid] = grade;
+          userMap[itemid] = grade;
         }
       }
     });
@@ -273,7 +285,7 @@ export function GradeTable({
       lastname: student.lastname,
       email: student.email,
       profileimage: student.profileimage,
-      grades: gradesMap[student.id] || {},
+      grades: gradesMap[student.id] ?? {},
     }));
   }, [students, gradesMap, isStudentView]);
 
@@ -307,11 +319,11 @@ export function GradeTable({
     gradeItem: GradeItem,
     grade: GradeSummary | undefined
   ) => {
-    if (readOnly) return; // No editing in student view
+    if (readOnly) {return;} // No editing in student view
 
     setSelectedStudent(student);
     setSelectedGradeItem(gradeItem);
-    setSelectedGrade(grade || null);
+    setSelectedGrade(grade ?? null);
     setEditDialogOpen(true);
   }, [readOnly]);
 
@@ -328,9 +340,9 @@ export function GradeTable({
   /**
    * Handle row click to open detail drawer
    */
-  const handleRowClick = useCallback((params: any) => {
-    // Only open detail drawer if a grade cell wasn't clicked
-    if (!students || !params.field.startsWith('gradeitem_')) {
+  const handleRowClick = useCallback((params: GridRowParams) => {
+    // Open detail drawer for the first grade of the clicked student
+    if (!students) {
       return;
     }
     const student = students.find(s => s.id === params.id);
@@ -372,18 +384,18 @@ export function GradeTable({
    * Handle export to CSV
    */
   const handleExportCSV = useCallback(() => {
-    if (!gradeItems) return;
+    if (!gradeItems) {return;}
     
     const csvData = filteredRows.map(row => {
-      const rowData: Record<string, any> = {
+      const rowData: Record<string, string | number> = {
         'Student Name': formatUserName(row.firstname, row.lastname),
-        'Email': row.email || '',
+        'Email': row.email ?? '',
       };
       
       gradeItems.forEach(item => {
         const grade = row.grades[item.id];
-        const itemName = item.itemname || `Grade Item ${item.id}`;
-        rowData[itemName] = grade?.grade?.toFixed(2) || '';
+        const itemName = item.itemname ?? `Grade Item ${item.id}`;
+        rowData[itemName] = grade?.grade?.toFixed(2) ?? '';
       });
       
       return rowData;
@@ -407,7 +419,7 @@ export function GradeTable({
    * Handle bulk action button click
    */
   const handleBulkAction = useCallback(async (action: string) => {
-    if (!onBulkAction || rowSelectionModel.length === 0) return;
+    if (!onBulkAction || rowSelectionModel.length === 0) {return;}
 
     try {
       const selectedIds = rowSelectionModel as number[];
@@ -415,7 +427,7 @@ export function GradeTable({
       toast.success(`Bulk ${action} completed successfully`);
       setRowSelectionModel([]);
       // Invalidate queries to refresh data
-      queryClient.invalidateQueries({ queryKey: ['grades'] });
+      await queryClient.invalidateQueries({ queryKey: ['grades'] });
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Bulk action failed';
       setErrorMessage(errorMsg);
@@ -463,7 +475,7 @@ export function GradeTable({
     },
     onSuccess: () => {
       // Invalidate and refetch
-      queryClient.invalidateQueries({ queryKey: ['grades'] });
+      void queryClient.invalidateQueries({ queryKey: ['grades'] });
       toast.success('Grade updated successfully');
       handleCloseEditDialog();
     },
@@ -473,7 +485,12 @@ export function GradeTable({
    * Handle grade submission from edit form
    */
   const handleGradeSubmit = useCallback(async (updatedGrade: Partial<Grade>) => {
-    updateGradeMutation.mutate(updatedGrade);
+    return new Promise<void>((resolve, reject) => {
+      updateGradeMutation.mutate(updatedGrade, {
+        onSuccess: () => resolve(),
+        onError: (error) => reject(error),
+      });
+    });
   }, [updateGradeMutation]);
 
   // ============================================================================
@@ -484,9 +501,9 @@ export function GradeTable({
    * Get color for grade cell based on percentage
    */
   const getGradeColor = (percentage: number | null | undefined): string => {
-    if (percentage === null || percentage === undefined) return 'inherit';
-    if (percentage >= 80) return 'success.main'; // Green
-    if (percentage >= 60) return 'warning.main'; // Yellow
+    if (percentage === null || percentage === undefined) {return 'inherit';}
+    if (percentage >= 80) {return 'success.main';} // Green
+    if (percentage >= 60) {return 'warning.main';} // Yellow
     return 'error.main'; // Red
   };
 
@@ -556,7 +573,7 @@ export function GradeTable({
 
       cols.push({
         field: `gradeitem_${item.id}`,
-        headerName: item.itemname || `Grade Item ${item.id}`,
+        headerName: item.itemname ?? `Grade Item ${item.id}`,
         width: 150,
         sortable: true,
         filterable: true,
@@ -568,7 +585,7 @@ export function GradeTable({
         renderCell: (params: GridRenderCellParams<GradeRow>) => {
           const grade = params.row.grades[item.id];
           
-          if (!grade || grade.grade === null || grade.grade === undefined) {
+          if (!grade?.grade && grade?.grade !== 0) {
             return (
               <Box
                 onClick={() => handleGradeCellClick(params.row, item, grade)}
@@ -586,7 +603,7 @@ export function GradeTable({
             );
           }
 
-          const percentage = grade.percentage;
+          const {percentage} = grade;
           const hasFeedback = Boolean(grade.feedback);
 
           return (
@@ -624,7 +641,7 @@ export function GradeTable({
               </Stack>
               
               {hasFeedback && (
-                <Tooltip title={grade.feedback || ''}>
+                <Tooltip title={grade.feedback ?? ''}>
                   <FeedbackIcon fontSize="small" color="info" />
                 </Tooltip>
               )}
@@ -697,8 +714,8 @@ export function GradeTable({
         {/* Grade Items List */}
         {loading ? (
           <Stack spacing={2}>
-            {Array.from({ length: 5 }).map((_, index) => (
-              <Skeleton key={index} variant="rectangular" height={100} />
+            {Array.from({ length: 5 }, (_, i) => `grade-skeleton-${Date.now()}-${i}`).map((key) => (
+              <Skeleton key={key} variant="rectangular" height={100} />
             ))}
           </Stack>
         ) : (
@@ -903,8 +920,8 @@ export function GradeTable({
           // Loading skeleton
           <Stack spacing={1}>
             <Skeleton variant="rectangular" height={56} />
-            {Array.from({ length: 10 }).map((_, index) => (
-              <Skeleton key={index} variant="rectangular" height={52} />
+            {Array.from({ length: 10 }, (_, i) => `table-skeleton-${Date.now()}-${i}`).map((key) => (
+              <Skeleton key={key} variant="rectangular" height={52} />
             ))}
           </Stack>
         ) : (

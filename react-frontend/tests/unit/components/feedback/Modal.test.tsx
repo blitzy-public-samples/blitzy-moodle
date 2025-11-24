@@ -21,7 +21,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import React, { useState } from 'react';
+import type React from 'react';
+import { useState } from 'react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '../../../helpers/render';
 import userEvent from '@testing-library/user-event';
@@ -103,7 +104,7 @@ describe('Modal Component', () => {
 
   describe('Basic Rendering', () => {
     test('renders modal when open=true', () => {
-      render(<ModalWrapper initialOpen={true} />);
+      render(<ModalWrapper initialOpen />);
 
       // Assert Dialog is visible with role
       const dialog = screen.getByRole('dialog');
@@ -194,7 +195,7 @@ describe('Modal Component', () => {
     });
 
     test('renders fullScreen', () => {
-      render(<ModalWrapper fullScreen={true} />);
+      render(<ModalWrapper fullScreen />);
 
       const dialog = screen.getByRole('dialog');
       expect(dialog).toBeInTheDocument();
@@ -202,7 +203,7 @@ describe('Modal Component', () => {
     });
 
     test('fullWidth applies correctly', () => {
-      render(<ModalWrapper fullWidth={true} />);
+      render(<ModalWrapper fullWidth />);
 
       const dialog = screen.getByRole('dialog');
       expect(dialog).toBeInTheDocument();
@@ -274,7 +275,7 @@ describe('Modal Component', () => {
 
     test('prevents backdrop close when disableBackdropClick=true', async () => {
       const onCloseMock = vi.fn();
-      render(<ModalWrapper onClose={onCloseMock} disableBackdropClick={true} />);
+      render(<ModalWrapper onClose={onCloseMock} disableBackdropClick />);
 
       const dialog = screen.getByRole('dialog');
       const backdrop = dialog.parentElement;
@@ -316,7 +317,7 @@ describe('Modal Component', () => {
 
     test('prevents Escape close when disableEscapeKeyDown=true', async () => {
       const onCloseMock = vi.fn();
-      render(<ModalWrapper onClose={onCloseMock} disableEscapeKeyDown={true} />);
+      render(<ModalWrapper onClose={onCloseMock} disableEscapeKeyDown />);
 
       // Press Escape key
       await user.keyboard('{Escape}');
@@ -386,7 +387,7 @@ describe('Modal Component', () => {
         { label: 'Cancel', onClick: vi.fn() },
       ];
 
-      render(<ModalWrapper actions={actions} loading={true} />);
+      render(<ModalWrapper actions={actions} loading />);
 
       const saveButton = screen.getByRole('button', { name: /save/i });
       const cancelButton = screen.getByRole('button', { name: /cancel/i });
@@ -416,7 +417,7 @@ describe('Modal Component', () => {
 
   describe('Loading State', () => {
     test('shows loading spinner when loading=true', () => {
-      render(<ModalWrapper loading={true} />);
+      render(<ModalWrapper loading />);
 
       // Assert LoadingSpinner is present
       // LoadingSpinner renders a CircularProgress with specific test id or role
@@ -430,7 +431,7 @@ describe('Modal Component', () => {
         { label: 'Cancel', onClick: vi.fn() },
       ];
 
-      render(<ModalWrapper actions={actions} loading={true} />);
+      render(<ModalWrapper actions={actions} loading />);
 
       const buttons = screen.getAllByRole('button');
       // All action buttons should be disabled during loading
@@ -443,7 +444,7 @@ describe('Modal Component', () => {
 
     test('prevents close during loading', async () => {
       const onCloseMock = vi.fn();
-      render(<ModalWrapper onClose={onCloseMock} loading={true} />);
+      render(<ModalWrapper onClose={onCloseMock} loading />);
 
       // Try to close via Escape key
       await user.keyboard('{Escape}');
@@ -455,7 +456,7 @@ describe('Modal Component', () => {
     });
 
     test('loading overlay covers entire dialog', () => {
-      render(<ModalWrapper loading={true} />);
+      render(<ModalWrapper loading />);
 
       const spinner = screen.getByRole('progressbar');
       expect(spinner).toBeInTheDocument();
@@ -494,7 +495,7 @@ describe('Modal Component', () => {
         { label: 'OK', onClick: vi.fn() },
       ];
 
-      render(<ModalWrapper actions={actions} dividers={true} />);
+      render(<ModalWrapper actions={actions} dividers />);
 
       const dialog = screen.getByRole('dialog');
       const dividers = within(dialog).queryAllByRole('separator');
@@ -652,7 +653,7 @@ describe('Modal Component', () => {
 
   describe('Integration', () => {
     test('works with form submission', async () => {
-      const onSubmitMock = vi.fn((e) => e.preventDefault());
+      const onSubmitMock = vi.fn((e: React.FormEvent<HTMLFormElement>) => e.preventDefault());
 
       function FormModal() {
         const [open, setOpen] = useState(true);
@@ -882,7 +883,7 @@ describe('Modal Component', () => {
 
     test('handles undefined title gracefully', () => {
       render(
-        <Modal open={true} onClose={vi.fn()}>
+        <Modal open onClose={vi.fn()}>
           <p>Content without title</p>
         </Modal>
       );

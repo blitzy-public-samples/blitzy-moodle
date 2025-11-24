@@ -37,8 +37,8 @@ export interface ToastProps {
   message: string | ReactNode;
   /** Severity level determining color scheme and icon */
   severity: ToastSeverity;
-  /** Auto-hide duration in milliseconds (default: 6000ms / 6 seconds) */
-  autoHideDuration?: number;
+  /** Auto-hide duration in milliseconds (default: 6000ms / 6 seconds). Set to null to disable auto-hide. */
+  autoHideDuration?: number | null;
   /** Callback fired when toast should close */
   onClose: () => void;
   /** Screen position for toast (default: top-right) */

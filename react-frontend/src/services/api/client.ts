@@ -49,7 +49,8 @@
  * @module services/api/client
  */
 
-import axios, { AxiosInstance, CreateAxiosDefaults } from 'axios';
+import type { AxiosInstance, AxiosError, CreateAxiosDefaults } from 'axios';
+import axios from 'axios';
 import { setupInterceptors } from './interceptors';
 import { API_BASE_URL } from './endpoints';
 
@@ -79,7 +80,7 @@ const baseURL: string = (import.meta.env.VITE_API_BASE_URL as string | undefined
  * this timeout if needed for long-running operations (e.g., file uploads).
  */
 const timeout: number = (import.meta.env.VITE_API_TIMEOUT as string | undefined)
-  ? parseInt(import.meta.env.VITE_API_TIMEOUT as string, 10)
+  ? parseInt(import.meta.env.VITE_API_TIMEOUT, 10)
   : 30000;
 
 /**
@@ -225,17 +226,20 @@ if (isDevelopment) {
   // Request logging interceptor
   apiClient.interceptors.request.use(
     (config) => {
+      // eslint-disable-next-line no-console
       console.log('🚀 API Request:', {
         method: config.method?.toUpperCase(),
         url: config.url,
         baseURL: config.baseURL,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         params: config.params,
         // Only log data for non-GET requests to avoid clutter
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         ...(config.method?.toUpperCase() !== 'GET' && { data: config.data }),
       });
       return config;
     },
-    (error) => {
+    (error: AxiosError) => {
       console.error('❌ Request Error:', error);
       return Promise.reject(error);
     }
@@ -244,11 +248,13 @@ if (isDevelopment) {
   // Response logging interceptor
   apiClient.interceptors.response.use(
     (response) => {
+      // eslint-disable-next-line no-console
       console.log('✅ API Response:', {
         status: response.status,
         statusText: response.statusText,
         url: response.config.url,
         // Only log first 100 chars of data to avoid console overflow
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         data:
           typeof response.data === 'string'
             ? response.data.substring(0, 100) + (response.data.length > 100 ? '...' : '')
@@ -256,7 +262,7 @@ if (isDevelopment) {
       });
       return response;
     },
-    (error) => {
+    (error: AxiosError) => {
       console.error('❌ Response Error:', {
         status: error.response?.status,
         statusText: error.response?.statusText,

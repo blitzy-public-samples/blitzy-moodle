@@ -23,7 +23,10 @@
  * @module features/activities/glossary/components
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import type React from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import type {
+  SelectChangeEvent} from '@mui/material';
 import {
   Box,
   Card,
@@ -40,8 +43,7 @@ import {
   Button,
   IconButton,
   Skeleton,
-  InputAdornment,
-  SelectChangeEvent,
+  InputAdornment
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -286,7 +288,7 @@ export function EntryList({
       return plainText;
     }
     
-    return plainText.substring(0, maxLength).trim() + '...';
+    return `${plainText.substring(0, maxLength).trim()  }...`;
   };
 
   /**
@@ -316,6 +318,7 @@ export function EntryList({
         {/* Entry cards skeleton */}
         <Grid container spacing={2}>
           {Array.from({ length: 6 }).map((_, index) => (
+            // eslint-disable-next-line react/no-array-index-key
             <Grid item xs={12} sm={6} md={4} key={index}>
               <Card>
                 <CardContent>

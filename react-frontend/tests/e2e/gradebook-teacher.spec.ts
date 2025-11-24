@@ -10,12 +10,14 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { 
-  GradebookPage, 
+import type { 
   GradeItem, 
   GradeCategory, 
   BulkGradeEntry, 
   GradeHistoryRecord 
+} from './pages/GradebookPage';
+import { 
+  GradebookPage 
 } from './pages/GradebookPage';
 import { 
   loginAsTeacher, 
@@ -23,8 +25,9 @@ import {
   clearAuthenticationState 
 } from './utils/auth';
 import * as fs from 'fs';
-import { 
-  Course,
+import type { 
+  Course} from './fixtures/courses';
+import {
   getCourseWithActivities 
 } from './fixtures/courses';
 import { 
@@ -42,7 +45,7 @@ import {
 test.describe('Teacher Gradebook E2E Tests', () => {
   let gradebookPage: GradebookPage;
   let testCourse: Course;
-  let originalGrades: Map<string, number | string | null> = new Map();
+  const originalGrades: Map<string, number | string | null> = new Map();
 
   /**
    * Setup: Login as teacher and prepare test environment
@@ -68,8 +71,15 @@ test.describe('Teacher Gradebook E2E Tests', () => {
     await gradebookPage.waitForGradebook();
     
     // Store original grades for all students
-    const grades = await gradebookPage.getGrades();
-    grades.forEach((gradeData: any) => {
+    // Define the shape of grade data entries for storage
+    interface GradeDataEntry {
+      studentId: string;
+      gradeItemId: string;
+      grade: number | string | null;
+    }
+    
+    const grades = await gradebookPage.getGrades() as unknown as GradeDataEntry[];
+    grades.forEach((gradeData: GradeDataEntry) => {
       originalGrades.set(
         `${gradeData.studentId}_${gradeData.gradeItemId}`,
         gradeData.grade
@@ -221,9 +231,9 @@ test.describe('Teacher Gradebook E2E Tests', () => {
     
     const itemId = String(testGradeItem3.id);
     const bulkGrades: BulkGradeEntry[] = [
-      { studentId: String(testStudent.id), itemId: itemId, grade: 90.0 },
-      { studentId: String(testStudent2.id), itemId: itemId, grade: 85.0 },
-      { studentId: String(testStudent3.id), itemId: itemId, grade: 92.5 }
+      { studentId: String(testStudent.id), itemId, grade: 90.0 },
+      { studentId: String(testStudent2.id), itemId, grade: 85.0 },
+      { studentId: String(testStudent3.id), itemId, grade: 92.5 }
     ];
     
     // Perform bulk grade entry
@@ -328,7 +338,7 @@ test.describe('Teacher Gradebook E2E Tests', () => {
     expect(courseTotal.maxGrade).toBeGreaterThan(0);
     
     // Verify the course total is calculated (should be > 0 if grades entered)
-    const totalGrade = typeof courseTotal.grade === 'number' ? courseTotal.grade : parseFloat(courseTotal.grade as string);
+    const totalGrade = typeof courseTotal.grade === 'number' ? courseTotal.grade : parseFloat(courseTotal.grade);
     expect(totalGrade).toBeGreaterThan(0);
     
     // Verify calculation matches internal consistency check
@@ -359,7 +369,7 @@ test.describe('Teacher Gradebook E2E Tests', () => {
     // Switch to student view and get calculated total before override
     await gradebookPage.switchToStudent(studentId);
     let courseTotal = await gradebookPage.getCourseTotal();
-    const calculatedTotal = typeof courseTotal.grade === 'number' ? courseTotal.grade : parseFloat(courseTotal.grade as string);
+    const calculatedTotal = typeof courseTotal.grade === 'number' ? courseTotal.grade : parseFloat(courseTotal.grade);
     
     // Override with higher grade (using direct Playwright locators as POM doesn't have override method)
     const overrideGrade = 95.0;
@@ -370,7 +380,7 @@ test.describe('Teacher Gradebook E2E Tests', () => {
     
     // Verify override takes precedence
     courseTotal = await gradebookPage.getCourseTotal();
-    const newTotal = typeof courseTotal.grade === 'number' ? courseTotal.grade : parseFloat(courseTotal.grade as string);
+    const newTotal = typeof courseTotal.grade === 'number' ? courseTotal.grade : parseFloat(courseTotal.grade);
     
     expect(newTotal).toBe(overrideGrade);
     expect(newTotal).not.toBe(calculatedTotal);
@@ -399,7 +409,7 @@ test.describe('Teacher Gradebook E2E Tests', () => {
     expect(filePath).toBeDefined();
     
     // Read file content
-    const fileContent = fs.readFileSync(filePath!, 'utf-8');
+    const fileContent = fs.readFileSync(filePath, 'utf-8');
     
     // Verify CSV contains expected data
     expect(fileContent).toContain(testStudent.firstname);
@@ -652,7 +662,7 @@ test.describe('Teacher Gradebook E2E Tests', () => {
       // Verify percentage is calculated correctly
       const gradeValue = typeof courseTotal.grade === 'number' ? courseTotal.grade : parseFloat(String(courseTotal.grade));
       const expectedPercentage = (gradeValue / courseTotal.maxGrade) * 100;
-      expect(Math.abs(courseTotal.percentage! - expectedPercentage)).toBeLessThan(0.1);
+      expect(Math.abs(courseTotal.percentage - expectedPercentage)).toBeLessThan(0.1);
     }
   });
 

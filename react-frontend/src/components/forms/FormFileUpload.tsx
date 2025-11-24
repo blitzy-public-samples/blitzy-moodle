@@ -472,33 +472,28 @@ export function FormFileUpload({
           }
         }
 
-        newFilesWithMetadata.push({
+        const fileMetadata: FileWithMetadata = {
           file,
           id: fileId,
           preview,
           uploaded: false,
-        });
+        };
 
         // If uploadUrl is provided, upload the file immediately
         if (uploadUrl) {
           try {
             await uploadFile(file, uploadUrl);
-            // Update file metadata to mark as uploaded
-            setFilesWithMetadata(prev =>
-              prev.map(f =>
-                f.id === fileId ? { ...f, uploaded: true, uploadProgress: 100 } : f
-              )
-            );
+            // Mark file as uploaded
+            fileMetadata.uploaded = true;
+            fileMetadata.uploadProgress = 100;
           } catch (error) {
-            // Update file metadata with error
+            // Store error message
             const errorMessage = error instanceof Error ? error.message : 'Upload failed';
-            setFilesWithMetadata(prev =>
-              prev.map(f =>
-                f.id === fileId ? { ...f, error: errorMessage } : f
-              )
-            );
+            fileMetadata.error = errorMessage;
           }
         }
+
+        newFilesWithMetadata.push(fileMetadata);
       }
 
       // Update state with new files
@@ -788,7 +783,7 @@ export function FormFileUpload({
 
             {/* Error message */}
             {fieldError && (
-              <FormHelperText error sx={{ mt: 1 }}>
+              <FormHelperText error sx={{ mt: 1 }} role="alert">
                 {fieldError.message}
               </FormHelperText>
             )}

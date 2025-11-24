@@ -574,7 +574,8 @@ describe('Card Component', () => {
       await user.click(cardActionArea);
 
       expect(handleClick).toHaveBeenCalledWith(expect.any(Object));
-      expect(handleClick.mock.calls[0][0]).toHaveProperty('type');
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      expect(handleClick.mock.calls?.[0]?.[0]).toHaveProperty('type');
     });
 
     it('non-clickable card does not have click handler', () => {

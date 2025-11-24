@@ -382,7 +382,7 @@ test.describe('Authentication E2E Tests', () => {
       return {
         ok: response.ok,
         status: response.status,
-        text: text
+        text
       };
     }, token);
 
@@ -662,7 +662,7 @@ test.describe('Authentication E2E Tests', () => {
       return {
         status: response.status,
         headers: Object.fromEntries(response.headers.entries()),
-        text: text
+        text
       };
     });
 
@@ -693,7 +693,7 @@ test.describe('Authentication E2E Tests', () => {
       const text = await response.text();
       return {
         status: response.status,
-        text: text
+        text
       };
     }, expiredToken);
 

@@ -480,7 +480,9 @@ export function QuestionRenderer({
    * Based on public/mod/feedback/item/info/lib.php
    */
   const renderInfo = () => {
-    const content = (presentation.info?.content && presentation.info.content.trim()) || label;
+    // Using || intentionally to fall back to label if content is empty string after trim
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    const content = (presentation.info?.content?.trim()) || label;
     
     return (
       <Box
