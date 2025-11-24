@@ -18,7 +18,7 @@ console.log('[Setup] Loading test setup file...');
 import '@testing-library/jest-dom';
 import './helpers/customMatchers';
 import { cleanup } from '@testing-library/react';
-import { beforeAll, afterAll, afterEach, vi } from 'vitest';
+import { beforeAll, afterAll, afterEach, vi, expect } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
 
 // Import MSW server setup from mocks directory
@@ -27,6 +27,21 @@ import { QueryClient } from '@tanstack/react-query';
 import { server } from './mocks/server';
 
 console.log('[Setup] Test setup file loaded, applying mocks...');
+
+/**
+ * NOTE: React.useId() Mock Strategy
+ * 
+ * MUI components use React.useId() internally, which generates sequential IDs.
+ * This creates snapshot inconsistencies between individual and full-suite test runs.
+ * 
+ * After extensive attempts to mock React.useId() globally (which caused various issues),
+ * the solution is to regenerate snapshots in the context where they'll be verified (full suite).
+ * 
+ * To regenerate snapshots for FormDatePicker:
+ * 1. Delete the snapshot file
+ * 2. Run: npm test -- FormDatePicker -u --run
+ * 3. This creates snapshots with the current test context's IDs
+ */
 
 /**
  * MSW Server Lifecycle Management
@@ -64,18 +79,30 @@ afterEach(() => {
  */
 
 // Mock window.matchMedia for responsive design and media query testing
+// MUI DatePicker uses (pointer: fine) to detect desktop vs mobile
+// Return matches: true for desktop queries to ensure calendar button renders
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: vi.fn((query: string) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: vi.fn(), // Deprecated
-    removeListener: vi.fn(), // Deprecated
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn(() => false),
-  })),
+  value: vi.fn((query: string) => {
+    // Desktop environment: pointer: fine (mouse), hover: hover, min-width queries
+    const isDesktopQuery = 
+      query.includes('pointer: fine') || 
+      query.includes('pointer:fine') ||
+      query.includes('hover: hover') ||
+      query.includes('hover:hover') ||
+      query.includes('min-width');
+    
+    return {
+      matches: isDesktopQuery,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(), // Deprecated
+      removeListener: vi.fn(), // Deprecated
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(() => false),
+    };
+  }),
 });
 
 // Mock IntersectionObserver for lazy loading and visibility detection
