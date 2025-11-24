@@ -19,7 +19,7 @@ import React from 'react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { Button } from '@mui/material';
-import { CheckCircle, Info, Warning, Error as ErrorIcon } from '@mui/icons-material';
+import { CheckCircle } from '@mui/icons-material';
 
 // Component under test
 import { Alert } from '@/components/feedback/Alert';
@@ -632,7 +632,8 @@ describe('Alert Component', () => {
 
       const alert = screen.getByRole('alert');
       expect(alert).toBeInTheDocument();
-      expect(alert).toHaveTextContent(longMessage);
+      // Trim whitespace for comparison as browsers normalize trailing spaces
+      expect(alert.textContent?.trim()).toBe(longMessage.trim());
     });
 
     test('renders multiple alerts without interference', () => {
@@ -716,8 +717,9 @@ describe('Alert Component', () => {
         <Alert severity="success" message="Initial message" />
       );
 
-      const initialAlert = screen.getByRole('alert');
-      const initialMessage = screen.getByText('Initial message');
+      // Verify initial render
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+      expect(screen.getByText('Initial message')).toBeInTheDocument();
 
       // Re-render with same props
       rerender(<Alert severity="success" message="Initial message" />);
