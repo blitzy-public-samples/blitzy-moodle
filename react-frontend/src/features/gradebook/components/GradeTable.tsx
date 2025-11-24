@@ -36,7 +36,6 @@ import {
   Typography,
   Chip,
   Tooltip,
-  IconButton,
   Dialog,
   Button,
   Stack,
@@ -51,6 +50,8 @@ import {
   Avatar,
   Drawer,
   SelectChangeEvent,
+  Card,
+  CardContent,
 } from '@mui/material';
 import {
   DataGrid,
@@ -62,22 +63,18 @@ import {
 } from '@mui/x-data-grid';
 import {
   Feedback as FeedbackIcon,
-  Check as CheckIcon,
-  Close as CloseIcon,
-  Warning as WarningIcon,
   Info as InfoIcon,
   Download as DownloadIcon,
-  MoreVert as MoreVertIcon,
 } from '@mui/icons-material';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import Papa from 'papaparse';
 
 import type { GradeSummary, GradeItem, Grade } from '../types/grade.types';
-import { GradeEditForm } from './GradeEditForm';
-import { GradeDetail } from './GradeDetail';
+import GradeEditForm from './GradeEditForm';
+import GradeDetail from './GradeDetail';
 import { useToast } from '@/hooks/useToast';
-import { useDebounce } from '@/hooks/useDebounce';
-import { formatUserName } from '@/utils/formatters';
+import useDebounce from '@/hooks/useDebounce';
+import { formatUserName, formatGrade } from '@/utils/formatters';
 
 /**
  * Student information interface
@@ -100,6 +97,15 @@ interface GradeRow extends Student {
 
 /**
  * Props for GradeTable component
+ * 
+ * Supports two modes:
+ * 1. Student view (readOnly=true): Display single student's grades as a simple list
+ *    - grades: GradeSummary[] (one per grade item)
+ *    - students/gradeItems: Not required
+ * 2. Teacher view (readOnly=false): Display multi-student grid  
+ *    - grades: Grade[] with userid and itemid
+ *    - students: Required
+ *    - gradeItems: Required
  */
 export interface GradeTableProps {
   /**
@@ -108,20 +114,21 @@ export interface GradeTableProps {
   grades: GradeSummary[];
 
   /**
-   * Array of student objects for the course
+   * Array of student objects for the course (required for teacher view)
    */
-  students: Student[];
+  students?: Student[];
 
   /**
-   * Array of grade item definitions (defines columns)
+   * Array of grade item definitions (defines columns, required for teacher view)
    */
-  gradeItems: GradeItem[];
+  gradeItems?: GradeItem[];
 
   /**
    * Whether the table is in read-only mode (student view)
    * When false, enables inline editing and bulk operations (teacher view)
+   * @default true
    */
-  readOnly: boolean;
+  readOnly?: boolean;
 
   /**
    * Callback for grade updates (teacher view only)
@@ -140,6 +147,27 @@ export interface GradeTableProps {
    * Whether data is currently loading
    */
   loading?: boolean;
+
+  /**
+   * Optional callback for viewing grade history (student view)
+   */
+  onViewHistory?: (gradeId: number) => void;
+
+  /**
+   * Whether to show hidden grades (student view)
+   */
+  showHidden?: boolean;
+
+  /**
+   * Optional course total summary (student view)
+   */
+  courseTotal?: {
+    grade: number | null;
+    percentage: number | null;
+    lettergrade: string | null;
+    range: string;
+    maxGrade: number;
+  };
 }
 
 /**
@@ -151,11 +179,25 @@ export function GradeTable({
   grades,
   students,
   gradeItems,
-  readOnly,
+  readOnly = true,
   onGradeUpdate,
   onBulkAction,
   loading = false,
+  onViewHistory,
+  showHidden = false,
+  courseTotal,
 }: GradeTableProps) {
+  // ============================================================================
+  // Mode Detection
+  // ============================================================================
+
+  /**
+   * Determine if we're in student view (simple list) or teacher view (multi-student grid)
+   * Student view: readOnly=true, no students/gradeItems arrays
+   * Teacher view: readOnly=false, has students and gradeItems arrays
+   */
+  const isStudentView = readOnly && (!students || students.length === 0) && (!gradeItems || gradeItems.length === 0);
+
   // ============================================================================
   // State Management
   // ============================================================================
@@ -193,23 +235,38 @@ export function GradeTable({
   /**
    * Transform grades array into a structure keyed by student ID and grade item ID
    * for efficient lookup: { studentId: { gradeItemId: GradeSummary } }
+   * TEACHER VIEW ONLY
    */
   const gradesMap = useMemo(() => {
+    if (isStudentView) {
+      return {};
+    }
     const map: Record<number, Record<number, GradeSummary>> = {};
     grades.forEach(grade => {
-      if (!map[grade.userid]) {
-        map[grade.userid] = {};
+      // In teacher view, grades should be Grade[] with userid and itemid
+      const gradeWithIds = grade as any; // Type assertion since we know this is Grade[] in teacher view
+      if (gradeWithIds.userid && gradeWithIds.itemid) {
+        if (!map[gradeWithIds.userid]) {
+          map[gradeWithIds.userid] = {};
+        }
+        const userMap = map[gradeWithIds.userid];
+        if (userMap) {
+          userMap[gradeWithIds.itemid] = grade;
+        }
       }
-      map[grade.userid][grade.itemid] = grade;
     });
     return map;
-  }, [grades]);
+  }, [grades, isStudentView]);
 
   /**
    * Create table rows by combining student info with their grades
    * Each row represents a student with all their grades
+   * TEACHER VIEW ONLY
    */
   const rows: GradeRow[] = useMemo(() => {
+    if (isStudentView || !students) {
+      return [];
+    }
     return students.map(student => ({
       id: student.id,
       firstname: student.firstname,
@@ -218,12 +275,16 @@ export function GradeTable({
       profileimage: student.profileimage,
       grades: gradesMap[student.id] || {},
     }));
-  }, [students, gradesMap]);
+  }, [students, gradesMap, isStudentView]);
 
   /**
    * Filter rows based on search term
+   * TEACHER VIEW ONLY
    */
   const filteredRows = useMemo(() => {
+    if (isStudentView) {
+      return [];
+    }
     if (!debouncedSearchTerm) {
       return rows;
     }
@@ -232,7 +293,7 @@ export function GradeTable({
       const fullName = formatUserName(row.firstname, row.lastname).toLowerCase();
       return fullName.includes(searchLower) || row.email?.toLowerCase().includes(searchLower);
     });
-  }, [rows, debouncedSearchTerm]);
+  }, [rows, debouncedSearchTerm, isStudentView]);
 
   // ============================================================================
   // Event Handlers
@@ -269,10 +330,14 @@ export function GradeTable({
    */
   const handleRowClick = useCallback((params: any) => {
     // Only open detail drawer if a grade cell wasn't clicked
-    if (!params.field.startsWith('gradeitem_')) {
-      const student = students.find(s => s.id === params.id);
-      if (student && gradesMap[student.id]) {
-        const firstGrade = Object.values(gradesMap[student.id])[0];
+    if (!students || !params.field.startsWith('gradeitem_')) {
+      return;
+    }
+    const student = students.find(s => s.id === params.id);
+    if (student && gradesMap[student.id]) {
+      const userGrades = gradesMap[student.id];
+      if (userGrades) {
+        const firstGrade = Object.values(userGrades)[0];
         if (firstGrade) {
           setSelectedGradeForDetail(firstGrade);
           setDetailDrawerOpen(true);
@@ -307,6 +372,8 @@ export function GradeTable({
    * Handle export to CSV
    */
   const handleExportCSV = useCallback(() => {
+    if (!gradeItems) return;
+    
     const csvData = filteredRows.map(row => {
       const rowData: Record<string, any> = {
         'Student Name': formatUserName(row.firstname, row.lastname),
@@ -315,7 +382,8 @@ export function GradeTable({
       
       gradeItems.forEach(item => {
         const grade = row.grades[item.id];
-        rowData[item.itemname] = grade?.grade?.toFixed(2) || '';
+        const itemName = item.itemname || `Grade Item ${item.id}`;
+        rowData[itemName] = grade?.grade?.toFixed(2) || '';
       });
       
       return rowData;
@@ -370,7 +438,7 @@ export function GradeTable({
       }
       await onGradeUpdate(updatedGrade);
     },
-    onMutate: async (updatedGrade) => {
+    onMutate: async (_updatedGrade) => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['grades'] });
 
@@ -383,7 +451,7 @@ export function GradeTable({
 
       return { previousGrades };
     },
-    onError: (error, updatedGrade, context) => {
+    onError: (error, _updatedGrade, context) => {
       // Revert to previous value on error
       if (context?.previousGrades) {
         queryClient.setQueryData(['grades'], context.previousGrades);
@@ -423,17 +491,38 @@ export function GradeTable({
   };
 
   /**
+   * Format grade value based on grade type
+   */
+  const formatGradeByType = (grade: number, gradeType: string): string => {
+    switch (gradeType) {
+      case 'percentage':
+        return `${grade.toFixed(1)}%`;
+      case 'scale':
+        return grade.toString(); // Scale values are already formatted
+      case 'letter':
+        return grade.toString(); // Letter grades are already formatted
+      case 'decimal':
+      default:
+        return grade.toFixed(2);
+    }
+  };
+
+  /**
    * Build dynamic columns from grade items
+   * TEACHER VIEW ONLY
    */
   const columns: GridColDef<GradeRow>[] = useMemo(() => {
+    if (isStudentView || !gradeItems) {
+      return [];
+    }
+    
     const cols: GridColDef<GradeRow>[] = [];
 
-    // Student name column (pinned left)
+    // Student name column
     cols.push({
       field: 'fullname',
       headerName: 'Student',
       width: 200,
-      pinned: 'left',
       sortable: true,
       filterable: true,
       valueGetter: (params: GridValueGetterParams<GradeRow>) => 
@@ -467,7 +556,7 @@ export function GradeTable({
 
       cols.push({
         field: `gradeitem_${item.id}`,
-        headerName: item.itemname,
+        headerName: item.itemname || `Grade Item ${item.id}`,
         width: 150,
         sortable: true,
         filterable: true,
@@ -546,12 +635,190 @@ export function GradeTable({
     });
 
     return cols;
-  }, [gradeItems, readOnly, gradeItemFilter, handleGradeCellClick]);
+  }, [gradeItems, readOnly, gradeItemFilter, handleGradeCellClick, isStudentView]);
 
   // ============================================================================
   // Render
   // ============================================================================
 
+  /**
+   * Render Student View - Simple list of grades for a single student
+   */
+  if (isStudentView) {
+    return (
+      <Box sx={{ width: '100%' }}>
+        {/* Course Total Summary */}
+        {courseTotal && (
+          <Card sx={{ mb: 3 }}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Course Total
+              </Typography>
+              <Stack direction="row" spacing={3} alignItems="center">
+                <Box>
+                  <Typography variant="body2" color="text.secondary">
+                    Grade
+                  </Typography>
+                  <Typography variant="h4" sx={{ color: getGradeColor(courseTotal.percentage) }}>
+                    {courseTotal.grade !== null ? formatGradeByType(courseTotal.grade, 'decimal') : '-'}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="body2" color="text.secondary">
+                    Percentage
+                  </Typography>
+                  <Typography variant="h4" sx={{ color: getGradeColor(courseTotal.percentage) }}>
+                    {courseTotal.percentage !== null ? `${courseTotal.percentage.toFixed(1)}%` : '-'}
+                  </Typography>
+                </Box>
+                {courseTotal.lettergrade && (
+                  <Box>
+                    <Typography variant="body2" color="text.secondary">
+                      Letter Grade
+                    </Typography>
+                    <Typography variant="h4">
+                      {courseTotal.lettergrade}
+                    </Typography>
+                  </Box>
+                )}
+                <Box>
+                  <Typography variant="body2" color="text.secondary">
+                    Range
+                  </Typography>
+                  <Typography variant="body1">
+                    {courseTotal.range}
+                  </Typography>
+                </Box>
+              </Stack>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Grade Items List */}
+        {loading ? (
+          <Stack spacing={2}>
+            {Array.from({ length: 5 }).map((_, index) => (
+              <Skeleton key={index} variant="rectangular" height={100} />
+            ))}
+          </Stack>
+        ) : (
+          <Stack spacing={2}>
+            {grades
+              .filter(grade => showHidden || !grade.hidden)
+              .map((grade) => (
+                <Card key={grade.id} variant="outlined">
+                  <CardContent>
+                    <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="h6" gutterBottom>
+                          {grade.itemname}
+                        </Typography>
+                        {grade.category && (
+                          <Typography variant="body2" color="text.secondary" gutterBottom>
+                            {grade.category}
+                          </Typography>
+                        )}
+                      </Box>
+                      <Box sx={{ textAlign: 'right', minWidth: 120 }}>
+                        <Typography 
+                          variant="h5" 
+                          sx={{ 
+                            color: getGradeColor(grade.percentage),
+                            fontWeight: 600
+                          }}
+                        >
+                          {grade.grade !== null ? formatGrade(grade.grade, grade.grademax, 1) : '-'}
+                        </Typography>
+                        {grade.percentage !== null && (
+                          <Typography variant="body2" color="text.secondary">
+                            {grade.percentage.toFixed(1)}%
+                          </Typography>
+                        )}
+                        <Typography variant="caption" color="text.secondary">
+                          {grade.grademin} - {grade.grademax}
+                        </Typography>
+                      </Box>
+                    </Stack>
+
+                    {/* Feedback Section */}
+                    {grade.feedback && (
+                      <Box sx={{ mt: 2, pt: 2, borderTop: 1, borderColor: 'divider' }}>
+                        <Typography variant="subtitle2" gutterBottom>
+                          Feedback
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {grade.feedback}
+                        </Typography>
+                      </Box>
+                    )}
+
+                    {/* Grade Status Badges */}
+                    <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                      {grade.locked && (
+                        <Chip 
+                          label="Locked"
+                          color="default"
+                          size="small"
+                        />
+                      )}
+                      {grade.overridden && (
+                        <Chip 
+                          label="Overridden"
+                          color="info"
+                          size="small"
+                        />
+                      )}
+                      {grade.excluded && (
+                        <Chip 
+                          label="Excluded"
+                          color="warning"
+                          size="small"
+                        />
+                      )}
+                      {grade.grade !== null && (
+                        <Chip 
+                          label="Graded"
+                          color="success"
+                          size="small"
+                        />
+                      )}
+                    </Box>
+
+                    {/* View History Button */}
+                    {onViewHistory && (
+                      <Box sx={{ mt: 2 }}>
+                        <Button
+                          variant="text"
+                          size="small"
+                          onClick={() => onViewHistory(grade.id)}
+                          startIcon={<InfoIcon />}
+                        >
+                          View History
+                        </Button>
+                      </Box>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+
+            {grades.length === 0 && (
+              <Card>
+                <CardContent>
+                  <Typography variant="body1" color="text.secondary" align="center">
+                    No grades available yet
+                  </Typography>
+                </CardContent>
+              </Card>
+            )}
+          </Stack>
+        )}
+      </Box>
+    );
+  }
+
+  /**
+   * Render Teacher View - Multi-student DataGrid
+   */
   return (
     <Box sx={{ width: '100%' }}>
       {/* Custom Toolbar */}
@@ -587,7 +854,7 @@ export function GradeTable({
             onChange={handleGradeItemFilterChange}
           >
             <MenuItem value="">All grade items</MenuItem>
-            {gradeItems.map(item => (
+            {gradeItems?.map(item => (
               <MenuItem key={item.id} value={item.id}>
                 {item.itemname}
               </MenuItem>
@@ -700,9 +967,14 @@ export function GradeTable({
         >
           {selectedStudent && selectedGradeItem && (
             <GradeEditForm
-              student={selectedStudent}
               gradeItem={selectedGradeItem}
-              initialGrade={selectedGrade || undefined}
+              initialValues={selectedGrade ? {
+                id: selectedGrade.id,
+                userid: selectedStudent.id,
+                itemid: selectedGradeItem.id,
+                finalgrade: selectedGrade.grade,
+                feedback: selectedGrade.feedback,
+              } : undefined}
               onSubmit={handleGradeSubmit}
               onCancel={handleCloseEditDialog}
             />
@@ -721,8 +993,23 @@ export function GradeTable({
       >
         {selectedGradeForDetail && (
           <GradeDetail
-            grade={selectedGradeForDetail}
-            onClose={handleCloseDetailDrawer}
+            gradeItem={{
+              id: selectedGradeForDetail.id,
+              name: selectedGradeForDetail.itemname,
+              finalgrade: selectedGradeForDetail.grade,
+              grademax: selectedGradeForDetail.grademax,
+              feedback: selectedGradeForDetail.feedback,
+              submissionStatus: selectedGradeForDetail.grade !== null ? 'graded' : 'pending',
+              modificationHistory: [],
+              overridden: selectedGradeForDetail.overridden,
+              excluded: selectedGradeForDetail.excluded,
+              hidden: selectedGradeForDetail.hidden,
+              locked: selectedGradeForDetail.locked,
+              locktime: 0,
+              gradetype: 1, // VALUE type
+              scaleid: null,
+            }}
+            loading={false}
           />
         )}
       </Drawer>
