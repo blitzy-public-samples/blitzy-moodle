@@ -31,10 +31,11 @@ import type React from 'react';
 import type { Control, FieldError, FieldValues, Path } from 'react-hook-form';
 import { Controller } from 'react-hook-form';
 import { DatePicker, TimePicker, DateTimePicker, LocalizationProvider } from '@mui/x-date-pickers';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFnsV3';
 import type { TextFieldProps } from '@mui/material';
-import { FormControl, FormHelperText } from '@mui/material';
-import { format, parse, isValid, isBefore, isAfter, startOfDay, endOfDay } from 'date-fns';
+import { FormControl } from '@mui/material';
+import { format, parse, isValid, isBefore, isAfter, startOfDay, endOfDay, formatISO } from 'date-fns';
+import type { Locale } from 'date-fns';
 
 /**
  * Props interface for FormDatePicker component
@@ -113,6 +114,29 @@ export interface FormDatePickerProps<TFieldValues extends FieldValues = FieldVal
    * @default 'date'
    */
   mode?: 'date' | 'time' | 'datetime';
+
+  /**
+   * Display format for the date/time in the input field
+   * Uses date-fns format tokens (e.g., 'MM/dd/yyyy', 'HH:mm', 'dd/MM/yyyy HH:mm')
+   * @default 'MM/dd/yyyy' for date mode, 'HH:mm' for time mode
+   */
+  format?: string;
+
+  /**
+   * Output format for the form value
+   * - 'date': Returns Date object (default)
+   * - 'iso': Returns ISO 8601 string
+   * - 'string': Returns formatted string using display format
+   * @default 'date'
+   */
+  outputFormat?: 'date' | 'iso' | 'string';
+
+  /**
+   * Locale for date formatting and calendar localization
+   * Uses date-fns locale objects (e.g., enUS, es, fr)
+   * @default enUS
+   */
+  locale?: Locale;
 }
 
 /**
@@ -137,7 +161,31 @@ export function FormDatePicker<TFieldValues extends FieldValues = FieldValues>({
   views,
   helperText,
   mode = 'date',
+  format: customFormat,
+  outputFormat = 'date',
+  locale,
 }: FormDatePickerProps<TFieldValues>): React.ReactElement {
+  /**
+   * Determines the display format based on mode and custom format
+   */
+  const getDisplayFormat = (): string => {
+    if (customFormat) {
+      return customFormat;
+    }
+    
+    switch (mode) {
+      case 'time':
+        return 'HH:mm';
+      case 'datetime':
+        return 'MM/dd/yyyy HH:mm';
+      case 'date':
+      default:
+        return 'MM/dd/yyyy';
+    }
+  };
+
+  const displayFormat = getDisplayFormat();
+
   /**
    * Validates that a date is within the allowed range
    *
@@ -234,6 +282,7 @@ export function FormDatePicker<TFieldValues extends FieldValues = FieldValues>({
       disablePast,
       disableFuture,
       shouldDisableDate,
+      format: displayFormat,
       slotProps: {
         textField: {
           required,
@@ -242,11 +291,29 @@ export function FormDatePicker<TFieldValues extends FieldValues = FieldValues>({
           fullWidth: true,
           onBlur: field.onBlur,
           // Accessibility attributes
-          'aria-label': label,
+          // Note: We set aria-label on the input element through inputProps
+          // to ensure the accessible name matches the label
+          inputProps: {
+            'aria-label': label,
+          },
           'aria-required': required,
           'aria-invalid': Boolean(error),
           'aria-describedby': error ? `${name}-error` : helperText ? `${name}-helper` : undefined,
         } as TextFieldProps,
+        openPickerButton: {
+          'aria-label': `Choose ${label.toLowerCase()}`,
+        },
+        dialog: {
+          'aria-label': `${label} picker dialog`,
+        },
+        actionBar: {
+          // Enable action buttons in the calendar dialog
+          // 'clear' button for clearing the selection
+          // 'cancel' button for closing without changes
+          // 'accept' button for confirming the selection
+          // 'today' button for quickly selecting today's date
+          actions: ['clear', 'cancel', 'accept', 'today'] as Array<'clear' | 'cancel' | 'accept' | 'today'>,
+        },
       },
     };
 
@@ -272,15 +339,15 @@ export function FormDatePicker<TFieldValues extends FieldValues = FieldValues>({
   };
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDateFns}>
+    <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={locale}>
       <FormControl fullWidth error={false}>
         <Controller
           name={name}
           control={control}
           rules={{
             required: required ? `${label} is required` : false,
-            validate: (value: Date | null) => {
-              // Skip validation if field is not required and value is null
+            validate: (value: Date | string | null) => {
+              // Skip validation if field is not required and value is null/undefined/empty
               if (!required && !value) {
                 return true;
               }
@@ -290,23 +357,38 @@ export function FormDatePicker<TFieldValues extends FieldValues = FieldValues>({
                 return `${label} is required`;
               }
 
+              // Convert value to Date object for validation
+              // Handle different output formats: Date object, ISO string, or formatted string
+              let dateToValidate: Date | null = null;
+              if (value instanceof Date) {
+                dateToValidate = value;
+              } else if (typeof value === 'string') {
+                // Try parsing as ISO format first
+                if (value.includes('T') || value.includes('Z')) {
+                  dateToValidate = new Date(value);
+                } else {
+                  // Parse using display format
+                  dateToValidate = parse(value, displayFormat, new Date());
+                }
+              }
+
               // Validate that date is valid
-              if (value && !isValid(value)) {
+              if (dateToValidate && !isValid(dateToValidate)) {
                 return 'Invalid date format';
               }
 
               // Validate date is in allowed range
-              if (value && !isDateInRange(value)) {
-                if (minDate && isBefore(value, startOfDay(minDate))) {
+              if (dateToValidate && !isDateInRange(dateToValidate)) {
+                if (minDate && isBefore(dateToValidate, startOfDay(minDate))) {
                   return `Date must be on or after ${format(minDate, 'PP')}`;
                 }
-                if (maxDate && isAfter(value, endOfDay(maxDate))) {
+                if (maxDate && isAfter(dateToValidate, endOfDay(maxDate))) {
                   return `Date must be on or before ${format(maxDate, 'PP')}`;
                 }
-                if (disablePast && isBefore(value, startOfDay(new Date()))) {
+                if (disablePast && isBefore(dateToValidate, startOfDay(new Date()))) {
                   return 'Past dates are not allowed';
                 }
-                if (disableFuture && isAfter(value, endOfDay(new Date()))) {
+                if (disableFuture && isAfter(dateToValidate, endOfDay(new Date()))) {
                   return 'Future dates are not allowed';
                 }
                 return 'Invalid date selected';
@@ -325,11 +407,8 @@ export function FormDatePicker<TFieldValues extends FieldValues = FieldValues>({
                 : rawValue
                   ? parse(
                       String(rawValue),
-                      mode === 'time'
-                        ? 'HH:mm:ss'
-                        : mode === 'datetime'
-                          ? "yyyy-MM-dd'T'HH:mm:ss"
-                          : 'yyyy-MM-dd',
+                      // Try to parse ISO format first, then custom format
+                      String(rawValue).includes('T') ? "yyyy-MM-dd'T'HH:mm:ss" : displayFormat,
                       new Date()
                     )
                   : null;
@@ -341,9 +420,19 @@ export function FormDatePicker<TFieldValues extends FieldValues = FieldValues>({
                 return;
               }
 
-              // Store Date object directly in form state
-              // React Hook Form handles serialization if needed
-              field.onChange(date);
+              // Convert to specified output format
+              switch (outputFormat) {
+                case 'iso':
+                  field.onChange(formatISO(date));
+                  break;
+                case 'string':
+                  field.onChange(format(date, displayFormat, locale ? { locale } : undefined));
+                  break;
+                case 'date':
+                default:
+                  field.onChange(date);
+                  break;
+              }
             };
 
             return renderPicker(
@@ -356,11 +445,6 @@ export function FormDatePicker<TFieldValues extends FieldValues = FieldValues>({
             );
           }}
         />
-
-        {/* Additional helper text for non-error states */}
-        {!required && helperText && (
-          <FormHelperText id={`${name}-helper`}>{helperText}</FormHelperText>
-        )}
       </FormControl>
     </LocalizationProvider>
   );
