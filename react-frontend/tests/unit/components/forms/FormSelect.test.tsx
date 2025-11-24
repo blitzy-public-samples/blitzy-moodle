@@ -18,13 +18,13 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, within, fireEvent } from '@tests/helpers/render';
+import { render, screen, waitFor } from '@tests/helpers/render';
 import userEvent from '@testing-library/user-event';
 import { useForm, FormProvider } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import React from 'react';
-import type { SelectOption } from '@/components/forms/FormSelect';
+import FormSelect, { type SelectOption } from '@/components/forms/FormSelect';
 
 /**
  * Test helper: Creates a wrapper component with React Hook Form context
