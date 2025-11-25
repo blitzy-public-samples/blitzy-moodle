@@ -282,35 +282,35 @@ const menuItems = [
     label: 'Gradebook',
     icon: <Assessment />,
     path: '/gradebook',
-    roles: ['teacher', 'admin'], // Teachers and admins only
+    roles: ['student', 'editingteacher', 'teacher', 'manager'], // Students, teachers and admins
   },
   {
     id: 'admin',
     label: 'Administration',
     icon: <AdminPanelSettings />,
     path: '/admin',
-    roles: ['admin'], // Admins only
+    roles: ['manager'], // Site administrators/managers only
     children: [
       {
         id: 'admin-users',
         label: 'User Management',
         icon: <AdminPanelSettings />,
         path: '/admin/users',
-        roles: ['admin'],
+        roles: ['manager'],
       },
       {
         id: 'admin-courses',
         label: 'Course Management',
         icon: <AdminPanelSettings />,
         path: '/admin/courses',
-        roles: ['admin'],
+        roles: ['manager'],
       },
       {
         id: 'admin-settings',
         label: 'System Settings',
         icon: <AdminPanelSettings />,
         path: '/admin/settings',
-        roles: ['admin'],
+        roles: ['manager'],
       },
     ],
   },

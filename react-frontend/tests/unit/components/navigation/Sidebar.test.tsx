@@ -62,9 +62,9 @@ vi.mock('react-router-dom', async () => {
  * Mock MUI useMediaQuery hook
  * 
  * Controls responsive behavior in tests without changing window dimensions.
- * Default: desktop viewport (md+)
+ * Default: desktop viewport (md+), so theme.breakpoints.down('md') returns false
  */
-let mockUseMediaQuery = vi.fn(() => true); // Default: desktop
+let mockUseMediaQuery = vi.fn(() => false); // Default: desktop (isMobile = false)
 vi.mock('@mui/material', async () => {
   const actual = await vi.importActual('@mui/material');
   return {
@@ -82,7 +82,7 @@ describe('Sidebar', () => {
   beforeEach(() => {
     mockDispatch.mockClear();
     mockNavigate.mockClear();
-    mockUseMediaQuery = vi.fn(() => true); // Reset to desktop
+    mockUseMediaQuery = vi.fn(() => false); // Reset to desktop (isMobile = false)
   });
 
   // Cleanup after each test
@@ -305,7 +305,7 @@ describe('Sidebar', () => {
 
   it('renders temporary drawer on mobile', () => {
     // Mock mobile viewport (below md)
-    mockUseMediaQuery = vi.fn(() => false);
+    mockUseMediaQuery = vi.fn(() => true); // Mobile: isMobile = true
     
     const { container } = render(<Sidebar />, {
       initialState: {
@@ -327,7 +327,7 @@ describe('Sidebar', () => {
     const user = userEvent.setup();
     
     // Mock mobile viewport
-    mockUseMediaQuery = vi.fn(() => false);
+    mockUseMediaQuery = vi.fn(() => true); // Mobile: isMobile = true
     
     const { container } = render(<Sidebar />, {
       initialState: {
@@ -358,7 +358,7 @@ describe('Sidebar', () => {
 
   it('syncs open state with Redux', () => {
     // Mock mobile viewport for temporary drawer
-    mockUseMediaQuery = vi.fn(() => false);
+    mockUseMediaQuery = vi.fn(() => true); // Mobile: isMobile = true
     
     // Test with drawer closed
     const { container: containerClosed } = render(<Sidebar />, {
