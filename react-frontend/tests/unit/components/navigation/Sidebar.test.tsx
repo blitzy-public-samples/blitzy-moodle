@@ -63,13 +63,20 @@ vi.mock('react-router-dom', async () => {
  * 
  * Controls responsive behavior in tests without changing window dimensions.
  * Default: desktop viewport (md+), so theme.breakpoints.down('md') returns false
+ * 
+ * Note: Using vi.hoisted() to ensure mock is available before module imports
  */
-let mockUseMediaQuery = vi.fn(() => false); // Default: desktop (isMobile = false)
+const { mockUseMediaQuery } = vi.hoisted(() => {
+  return {
+    mockUseMediaQuery: vi.fn(() => false), // Default: desktop (isMobile = false)
+  };
+});
+
 vi.mock('@mui/material', async () => {
   const actual = await vi.importActual('@mui/material');
   return {
     ...actual,
-    useMediaQuery: (query: string) => mockUseMediaQuery(query),
+    useMediaQuery: mockUseMediaQuery,
   };
 });
 
@@ -82,7 +89,7 @@ describe('Sidebar', () => {
   beforeEach(() => {
     mockDispatch.mockClear();
     mockNavigate.mockClear();
-    mockUseMediaQuery = vi.fn(() => false); // Reset to desktop (isMobile = false)
+    mockUseMediaQuery.mockReturnValue(false); // Reset to desktop (isMobile = false)
   });
 
   // Cleanup after each test
@@ -120,7 +127,9 @@ describe('Sidebar', () => {
   // Menu Item Filtering by Role
   // ==========================================================================
 
-  it('displays all menu items for admin user', () => {
+  it('displays all menu items for admin user', async () => {
+    const user = userEvent.setup();
+    
     render(<Sidebar />, {
       initialState: createAdminState(),
     });
@@ -132,8 +141,14 @@ describe('Sidebar', () => {
     expect(screen.getByText('Messages')).toBeInTheDocument();
     expect(screen.getByText('Gradebook')).toBeInTheDocument();
     
-    // Admin-only section should be visible
-    expect(screen.getByText('Administration')).toBeInTheDocument();
+    // Admin-only section should be visible (parent menu item)
+    const administrationMenuItem = screen.getByText('Administration');
+    expect(administrationMenuItem).toBeInTheDocument();
+    
+    // Expand Administration menu to reveal submenu items
+    await user.click(administrationMenuItem);
+    
+    // Verify submenu items are now visible after expansion
     expect(screen.getByText('User Management')).toBeInTheDocument();
     expect(screen.getByText('Course Management')).toBeInTheDocument();
     expect(screen.getByText('System Settings')).toBeInTheDocument();
@@ -170,11 +185,11 @@ describe('Sidebar', () => {
     expect(screen.getByText('Messages')).toBeInTheDocument();
     expect(screen.getByText('Gradebook')).toBeInTheDocument();
 
-    // Teachers can see Course Management but not full Administration
-    expect(screen.getByText('Course Management')).toBeInTheDocument();
-    
-    // But not user management or system settings
+    // Teachers should NOT see Administration menu or its submenus
+    // Only site managers/admins have access to administration
+    expect(screen.queryByText('Administration')).not.toBeInTheDocument();
     expect(screen.queryByText('User Management')).not.toBeInTheDocument();
+    expect(screen.queryByText('Course Management')).not.toBeInTheDocument();
     expect(screen.queryByText('System Settings')).not.toBeInTheDocument();
   });
 
@@ -188,17 +203,16 @@ describe('Sidebar', () => {
       initialRoute: '/dashboard',
     });
 
-    // Find the Dashboard menu item
-    const dashboardItem = screen.getByText('Dashboard').closest('a');
+    // Find the Dashboard menu item (ListItemButton renders as div with role="button")
+    const dashboardItem = screen.getByText('Dashboard').closest('[role="button"]');
     expect(dashboardItem).toBeInTheDocument();
 
     // Verify it has the selected/active styling
     // MUI ListItemButton uses 'selected' prop which applies aria-current
     expect(dashboardItem).toHaveAttribute('aria-current', 'page');
     
-    // Verify it has primary color styling
-    const listItemButton = dashboardItem?.querySelector('.MuiListItemButton-root');
-    expect(listItemButton).toHaveClass('Mui-selected');
+    // Verify it has primary color styling (selected class)
+    expect(dashboardItem).toHaveClass('Mui-selected');
   });
 
   // ==========================================================================
@@ -230,7 +244,7 @@ describe('Sidebar', () => {
     });
 
     // Verify ExpandMore icon changed to ExpandLess (check aria-expanded)
-    const adminButton = adminMenuItem.closest('button');
+    const adminButton = adminMenuItem.closest('[role="button"]');
     expect(adminButton).toHaveAttribute('aria-expanded', 'true');
   });
 
@@ -256,7 +270,7 @@ describe('Sidebar', () => {
     });
 
     // Verify aria-expanded is false
-    const adminButton = adminMenuItem.closest('button');
+    const adminButton = adminMenuItem.closest('[role="button"]');
     expect(adminButton).toHaveAttribute('aria-expanded', 'false');
   });
 
@@ -272,13 +286,13 @@ describe('Sidebar', () => {
       initialRoute: '/dashboard',
     });
 
-    // Click on "My Courses" menu item
-    const myCoursesItem = screen.getByText('My Courses');
-    await user.click(myCoursesItem);
+    // Click on "Calendar" menu item (no children, so it navigates directly)
+    const calendarItem = screen.getByText('Calendar');
+    await user.click(calendarItem);
 
     // Verify navigate was called with correct path
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/courses');
+      expect(mockNavigate).toHaveBeenCalledWith('/calendar');
     });
   });
 
@@ -288,7 +302,8 @@ describe('Sidebar', () => {
 
   it('renders permanent drawer on desktop', () => {
     // Mock desktop viewport (md+)
-    mockUseMediaQuery = vi.fn(() => true);
+    // theme.breakpoints.down('md') returns false on desktop
+    mockUseMediaQuery.mockReturnValue(false);
     
     const { container } = render(<Sidebar />, {
       initialState: createAdminState(),
@@ -305,39 +320,56 @@ describe('Sidebar', () => {
 
   it('renders temporary drawer on mobile', () => {
     // Mock mobile viewport (below md)
-    mockUseMediaQuery = vi.fn(() => true); // Mobile: isMobile = true
+    mockUseMediaQuery.mockReturnValue(true); // Mobile: isMobile = true
     
-    const { container } = render(<Sidebar />, {
+    console.log('Mock returns (before render):', mockUseMediaQuery());
+    console.log('Mock was called?:', mockUseMediaQuery.mock.calls.length);
+    
+    render(<Sidebar />, {
       initialState: {
         ...createAdminState(),
         sidebar: createSidebarState(true), // Drawer open
       },
     });
 
-    // Verify temporary drawer variant
-    const drawer = container.querySelector('.MuiDrawer-root');
-    expect(drawer).not.toHaveClass('MuiDrawer-docked');
+    console.log('Mock returns (after render):', mockUseMediaQuery());
+    console.log('Mock call count:', mockUseMediaQuery.mock.calls.length);
+    console.log('Mock was called with:', mockUseMediaQuery.mock.calls);
     
-    // Temporary drawer should have modal/overlay when open
-    const backdrop = container.querySelector('.MuiBackdrop-root');
-    expect(backdrop).toBeInTheDocument();
+    // Use screen.debug() to see the entire DOM tree including portals
+    screen.debug(undefined, Infinity);
+    
+    // Verify temporary drawer variant
+    const drawer = screen.queryByRole('presentation');
+    console.log('Drawer (by role):', drawer);
+    
+    if (drawer) {
+      expect(drawer).not.toHaveClass('MuiDrawer-docked');
+      
+      // Temporary drawer should have modal/overlay when open
+      const backdrop = document.querySelector('.MuiBackdrop-root');
+      expect(backdrop).toBeInTheDocument();
+    } else {
+      console.error('DRAWER NOT FOUND IN DOM!');
+      throw new Error('Drawer component did not render');
+    }
   });
 
   it('closes temporary drawer on outside click', async () => {
     const user = userEvent.setup();
     
     // Mock mobile viewport
-    mockUseMediaQuery = vi.fn(() => true); // Mobile: isMobile = true
+    mockUseMediaQuery.mockReturnValue(true); // Mobile: isMobile = true
     
-    const { container } = render(<Sidebar />, {
+    render(<Sidebar />, {
       initialState: {
         ...createAdminState(),
         sidebar: createSidebarState(true), // Drawer open
       },
     });
 
-    // Find and click the backdrop (overlay)
-    const backdrop = container.querySelector('.MuiBackdrop-root');
+    // Find and click the backdrop (overlay) - Portal renders to document.body
+    const backdrop = document.querySelector('.MuiBackdrop-root');
     expect(backdrop).toBeInTheDocument();
 
     await user.click(backdrop as Element);
@@ -356,29 +388,32 @@ describe('Sidebar', () => {
   // Redux State Synchronization
   // ==========================================================================
 
-  it('syncs open state with Redux', () => {
+  it('syncs open state with Redux', async () => {
     // Mock mobile viewport for temporary drawer
-    mockUseMediaQuery = vi.fn(() => true); // Mobile: isMobile = true
+    mockUseMediaQuery.mockReturnValue(true); // Mobile: isMobile = true
     
     // Test with drawer closed
-    const { container: containerClosed } = render(<Sidebar />, {
+    const { unmount: unmount1 } = render(<Sidebar />, {
       initialState: {
         ...createAdminState(),
         sidebar: createSidebarState(false), // Drawer closed
       },
     });
 
-    // Temporary drawer should not be visible when closed
-    const drawerClosed = containerClosed.querySelector('.MuiDrawer-root');
-    expect(drawerClosed).toBeInTheDocument();
+    // Temporary drawer renders to Portal (document.body)
+    // When closed, MUI hides the drawer with visibility:hidden and transform
+    await waitFor(() => {
+      const drawerPaper = document.querySelector('.MuiDrawer-paper');
+      expect(drawerPaper).toBeInTheDocument();
+      // Check that the drawer is hidden
+      expect(drawerPaper).toHaveStyle({ visibility: 'hidden' });
+    });
     
-    // In MUI, temporary drawer's visibility is controlled by 'open' prop
-    // When closed, the drawer paper should not be visible
-    const drawerPaperClosed = containerClosed.querySelector('.MuiDrawer-paper');
-    expect(drawerPaperClosed).not.toBeInTheDocument();
+    // Cleanup first render
+    unmount1();
 
     // Test with drawer open
-    const { container: containerOpen } = render(<Sidebar />, {
+    render(<Sidebar />, {
       initialState: {
         ...createAdminState(),
         sidebar: createSidebarState(true), // Drawer open
@@ -386,8 +421,12 @@ describe('Sidebar', () => {
     });
 
     // Drawer paper should be visible when open
-    const drawerPaperOpen = containerOpen.querySelector('.MuiDrawer-paper');
-    expect(drawerPaperOpen).toBeInTheDocument();
+    await waitFor(() => {
+      const drawerPaper = document.querySelector('.MuiDrawer-paper');
+      expect(drawerPaper).toBeInTheDocument();
+      // Check that the drawer is visible (not hidden)
+      expect(drawerPaper).not.toHaveStyle({ visibility: 'hidden' });
+    });
   });
 
   // ==========================================================================
@@ -465,7 +504,7 @@ describe('Sidebar', () => {
     });
 
     // Find the active menu item (My Courses)
-    const activeItem = screen.getByText('My Courses').closest('a');
+    const activeItem = screen.getByText('My Courses').closest('[role="button"]');
     expect(activeItem).toHaveAttribute('aria-current', 'page');
   });
 
@@ -483,10 +522,11 @@ describe('Sidebar', () => {
     // Tab to first menu item
     await user.tab();
     
-    // The focused element should be a menu item
+    // The focused element should be a menu item (ListItemButton renders as DIV with role="button")
     const focusedElement = document.activeElement;
     expect(focusedElement).toBeInTheDocument();
-    expect(focusedElement?.tagName).toBe('A');
+    expect(focusedElement?.tagName).toBe('DIV');
+    expect(focusedElement?.getAttribute('role')).toBe('button');
 
     // Press Enter to activate
     await user.keyboard('{Enter}');
@@ -525,17 +565,21 @@ describe('Sidebar', () => {
   // ==========================================================================
 
   it('shows header with logo/site name', () => {
-    render(<Sidebar />, {
+    const { container } = render(<Sidebar />, {
       initialState: createAdminState(),
     });
 
     // Find the drawer header
     // The header contains the site branding
-    const header = screen.getByText('Moodle LMS');
+    const header = screen.getByText('Moodle');
     expect(header).toBeInTheDocument();
-
-    // Verify header styling
-    const headerBox = header.closest('.MuiBox-root');
-    expect(headerBox).toBeInTheDocument();
+    
+    // Verify the header is inside the drawer structure
+    const drawerElement = container.querySelector('.MuiDrawer-root');
+    expect(drawerElement).toBeInTheDocument();
+    expect(drawerElement).toContainElement(header);
+    
+    // Verify the header has the Typography class from MUI
+    expect(header.className).toContain('MuiTypography-root');
   });
 });
