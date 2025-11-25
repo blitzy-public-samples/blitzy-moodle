@@ -605,9 +605,9 @@ describe('PostForm Component', () => {
         await Promise.resolve();
       });
       
-      // Fast-forward 30 seconds to trigger auto-save
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(30000);
+      // Fast-forward 30 seconds to trigger auto-save (using synchronous version)
+      act(() => {
+        vi.advanceTimersByTime(30000);
       });
 
       // Check expectation immediately - no waitFor needed with fake timers
@@ -626,9 +626,9 @@ describe('PostForm Component', () => {
         await Promise.resolve();
       });
 
-      // Fast-forward 30 seconds with empty content
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(30000);
+      // Fast-forward 30 seconds with empty content (using synchronous version)
+      act(() => {
+        vi.advanceTimersByTime(30000);
       });
 
       expect(mockSaveDraft).not.toHaveBeenCalled();

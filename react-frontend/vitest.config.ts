@@ -131,12 +131,16 @@ export default defineConfig({
     },
     
     // Enable concurrent test execution for faster runs
-    // Use single-threaded mode to avoid DataCloneError with axios instances
+    // Use single-forked mode to avoid DataCloneError with axios instances and prevent zombie processes
     // Axios instances contain functions (transformRequest, etc.) that cannot be serialized between threads
-    pool: 'threads',
+    // Using forks instead of threads for better process cleanup
+    pool: 'forks',
     poolOptions: {
-      threads: {
-        singleThread: true
+      forks: {
+        // Disable singleFork to prevent resource accumulation across test files
+        // Each test file will run in its own isolated fork process
+        singleFork: false,
+        isolate: true
       }
     },
     

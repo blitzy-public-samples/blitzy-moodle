@@ -13,7 +13,6 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import type { Mock } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import { render, userEvent } from '../../../helpers/render';
 import {
@@ -379,8 +378,9 @@ describe('Sidebar', () => {
       expect(mockDispatch).toHaveBeenCalled();
       
       // Verify the dispatched action is closeSidebar
-      const dispatchedAction = mockDispatch.mock.calls[0][0];
-      expect(dispatchedAction.type).toBe('sidebar/closeSidebar');
+      expect(mockDispatch).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'sidebar/closeSidebar' })
+      );
     });
   });
 

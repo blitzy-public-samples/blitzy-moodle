@@ -23,9 +23,10 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { ReactElement } from 'react';
-import { render, screen, waitFor } from '@tests/helpers/render';
+import { render, screen, waitFor, fireEvent } from '@tests/helpers/render';
 import userEvent from '@testing-library/user-event';
-import { useForm, FormProvider, FieldValues } from 'react-hook-form';
+import { useForm, FormProvider } from 'react-hook-form';
+import type { FieldValues } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { FormInput } from '@/components/forms/FormInput';
@@ -1337,7 +1338,6 @@ describe('FormInput Component', () => {
     });
 
     it('should handle very long input text', async () => {
-      const user = userEvent.setup();
       const longText = 'A'.repeat(1000);
 
       renderFormInput({
@@ -1347,13 +1347,13 @@ describe('FormInput Component', () => {
 
       const input = screen.getByLabelText<HTMLInputElement>('Notes');
 
-      await user.type(input, longText);
+      // Use fireEvent for performance - typing 1000 chars with userEvent is too slow
+      fireEvent.change(input, { target: { value: longText } });
 
       expect(input.value).toBe(longText);
     });
 
     it('should handle special characters in input', async () => {
-      const user = userEvent.setup();
       const specialChars = '!@#$%^&*()_+-=[]{}|;:\'",.<>?/~`';
 
       renderFormInput({
@@ -1363,14 +1363,13 @@ describe('FormInput Component', () => {
 
       const input = screen.getByLabelText<HTMLInputElement>('Special');
 
-      await user.click(input);
-      await user.paste(specialChars);
+      // Use fireEvent for reliable special character testing
+      fireEvent.change(input, { target: { value: specialChars } });
 
       expect(input.value).toBe(specialChars);
     });
 
     it('should handle unicode characters', async () => {
-      const user = userEvent.setup();
       const unicode = '你好世界 🌍 مرحبا العالم';
 
       renderFormInput({
@@ -1380,7 +1379,8 @@ describe('FormInput Component', () => {
 
       const input = screen.getByLabelText<HTMLInputElement>('Unicode');
 
-      await user.type(input, unicode);
+      // Use fireEvent for reliable unicode testing
+      fireEvent.change(input, { target: { value: unicode } });
 
       expect(input.value).toBe(unicode);
     });

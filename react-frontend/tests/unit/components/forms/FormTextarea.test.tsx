@@ -768,8 +768,7 @@ describe('FormTextarea', () => {
         </FormWrapper>
       );
 
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- getByRole returns HTMLElement, need HTMLTextAreaElement
       const textarea = screen.getByRole('textbox', { name: /text/i }) as HTMLTextAreaElement;
       await user.click(textarea);
       
@@ -929,8 +928,7 @@ describe('FormTextarea', () => {
         </FormWrapper>
       );
 
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- getByRole returns HTMLElement, need HTMLTextAreaElement
       const textarea = screen.getByRole('textbox', { name: /strict limit/i }) as HTMLTextAreaElement;
       await user.type(textarea, 'a'.repeat(15));
 
@@ -972,8 +970,7 @@ describe('FormTextarea', () => {
         </FormWrapper>
       );
 
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- getByRole returns HTMLElement, need HTMLTextAreaElement
       const textarea = screen.getByRole('textbox', { name: /expandable/i }) as HTMLTextAreaElement;
 
       // Add many lines
@@ -1012,8 +1009,7 @@ describe('FormTextarea', () => {
         </FormWrapper>
       );
 
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- getByRole returns HTMLElement, need HTMLTextAreaElement
       const textarea = screen.getByRole('textbox', { name: /maximum/i }) as HTMLTextAreaElement;
       
       // Add more lines than maxRows
@@ -1171,8 +1167,7 @@ describe('FormTextarea', () => {
         </FormWrapper>
       );
 
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- getByRole returns HTMLElement, need HTMLTextAreaElement
       const textarea = screen.getByRole('textbox', { name: /long content/i }) as HTMLTextAreaElement;
       const longText = Array(30).fill('Line of text').join('\n');
       

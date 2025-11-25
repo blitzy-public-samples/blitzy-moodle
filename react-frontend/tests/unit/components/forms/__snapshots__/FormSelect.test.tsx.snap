@@ -15,7 +15,7 @@ exports[`FormSelect Component > Snapshot Tests > should match snapshot for basic
     class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary MuiInputBase-formControl css-rqgi7p-MuiInputBase-root-MuiOutlinedInput-root-MuiSelect-root"
   >
     <div
-      aria-controls=":rd2:"
+      aria-controls=":r34:"
       aria-expanded="false"
       aria-haspopup="listbox"
       aria-invalid="false"
@@ -82,7 +82,7 @@ exports[`FormSelect Component > Snapshot Tests > should match snapshot for disab
     class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary Mui-disabled MuiInputBase-formControl css-rqgi7p-MuiInputBase-root-MuiOutlinedInput-root-MuiSelect-root"
   >
     <div
-      aria-controls=":rdd:"
+      aria-controls=":r3f:"
       aria-disabled="true"
       aria-expanded="false"
       aria-haspopup="listbox"
@@ -158,7 +158,7 @@ exports[`FormSelect Component > Snapshot Tests > should match snapshot for error
       class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary Mui-error MuiInputBase-formControl css-rqgi7p-MuiInputBase-root-MuiOutlinedInput-root-MuiSelect-root"
     >
       <div
-        aria-controls=":rdb:"
+        aria-controls=":r3d:"
         aria-describedby="role-helper"
         aria-expanded="false"
         aria-haspopup="listbox"
@@ -241,7 +241,7 @@ exports[`FormSelect Component > Snapshot Tests > should match snapshot for group
     class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary MuiInputBase-formControl css-rqgi7p-MuiInputBase-root-MuiOutlinedInput-root-MuiSelect-root"
   >
     <div
-      aria-controls=":rd6:"
+      aria-controls=":r38:"
       aria-expanded="false"
       aria-haspopup="listbox"
       aria-invalid="false"
@@ -308,7 +308,7 @@ exports[`FormSelect Component > Snapshot Tests > should match snapshot for multi
     class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary MuiInputBase-formControl css-rqgi7p-MuiInputBase-root-MuiOutlinedInput-root-MuiSelect-root"
   >
     <div
-      aria-controls=":rd4:"
+      aria-controls=":r36:"
       aria-expanded="false"
       aria-haspopup="listbox"
       aria-invalid="false"
@@ -387,8 +387,8 @@ exports[`FormSelect Component > Snapshot Tests > should match snapshot for searc
     <label
       class="MuiFormLabel-root MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-sizeMedium MuiInputLabel-outlined MuiFormLabel-colorPrimary MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-sizeMedium MuiInputLabel-outlined css-tw4ao8-MuiFormLabel-root-MuiInputLabel-root"
       data-shrink="false"
-      for=":rd8:"
-      id=":rd8:-label"
+      for=":r3a:"
+      id=":r3a:-label"
     >
       Country
     </label>
@@ -404,7 +404,7 @@ exports[`FormSelect Component > Snapshot Tests > should match snapshot for searc
         autocapitalize="none"
         autocomplete="off"
         class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputAdornedEnd MuiAutocomplete-input MuiAutocomplete-inputFocused css-nxo287-MuiInputBase-input-MuiOutlinedInput-input"
-        id=":rd8:"
+        id=":r3a:"
         placeholder="Search..."
         role="combobox"
         spellcheck="false"

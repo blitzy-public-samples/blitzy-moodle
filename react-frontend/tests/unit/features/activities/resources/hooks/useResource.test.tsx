@@ -241,19 +241,30 @@ describe('useResource hook', () => {
   });
 
   describe('loading states', () => {
-    // eslint-disable-next-line @typescript-eslint/require-await
     it('should show loading state during fetch', async () => {
-      vi.mocked(apiClient.get).mockImplementation(
-        () => new Promise((resolve) => setTimeout(resolve, 100))
-      );
+      // Create a promise that will resolve after 100ms
+      let resolvePromise: (value: unknown) => void;
+      const delayedPromise = new Promise((resolve) => {
+        resolvePromise = resolve;
+        setTimeout(() => resolve({ data: createApiResponse(mockResourceFile) }), 100);
+      });
+      
+      vi.mocked(apiClient.get).mockReturnValue(delayedPromise);
 
-      const { result } = renderHook(() => useResource(1), {
+      const { result, unmount } = renderHook(() => useResource(1), {
         wrapper: createWrapper(),
       });
 
       expect(result.current.isLoading).toBe(true);
       expect(result.current.isPending).toBe(true);
       expect(result.current.data).toBeUndefined();
+
+      // Wait for the promise to resolve to clean up the timer
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+      
+      unmount();
     });
 
     it('should show loading as false after successful fetch', async () => {
