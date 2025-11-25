@@ -99,6 +99,75 @@ export interface ChoiceResults {
 }
 
 /**
+ * User interface matching ChoiceResults component expectations.
+ * Represents a user who responded to a choice activity.
+ * 
+ * Based on User interface from react-frontend/src/features/activities/choice/components/ChoiceResults.tsx
+ */
+export interface ChoiceUser {
+  /** User ID */
+  id: number;
+  /** User's first name */
+  firstname: string;
+  /** User's last name */
+  lastname: string;
+  /** Alt text for user profile picture */
+  imagealt: string;
+  /** User profile picture URL or identifier */
+  picture: string;
+  /** Answer/response ID for this user's choice */
+  answerid: number;
+}
+
+/**
+ * Option result data matching ChoiceResults component expectations.
+ * Contains the option text, users who selected it, and limit information.
+ * 
+ * Based on OptionResult interface from react-frontend/src/features/activities/choice/components/ChoiceResults.tsx
+ */
+export interface ChoiceOptionResult {
+  /** Display text for the option */
+  text: string;
+  /** Array of users who selected this option */
+  user: ChoiceUser[];
+  /** Maximum number of answers allowed for this option (0 = unlimited) */
+  maxanswer: number;
+  /** Number of users who selected this option */
+  numberofuser?: number;
+}
+
+/**
+ * Extended results data structure matching ChoiceResults component props.
+ * Contains all information needed to render the results component.
+ * 
+ * Based on ChoiceResultsDataExtended interface from react-frontend/src/features/activities/choice/components/ChoiceResults.tsx
+ */
+export interface ChoiceResultsDataExtended {
+  /** Name of the choice activity */
+  name: string;
+  /** Whether to publish names (true) or show anonymous results (false) */
+  publish: boolean;
+  /** Map of option ID to option result data */
+  options: { [optionid: number]: ChoiceOptionResult };
+  /** Whether to show "Not answered" column */
+  showunanswered: boolean;
+  /** Whether answer limits are enabled */
+  limitanswers: boolean;
+  /** Whether to show available spaces */
+  showavailable: boolean;
+  /** Whether current user can view responses */
+  viewresponsecapability: boolean;
+  /** Whether current user can delete responses */
+  deleterepsonsecapability: boolean;
+  /** Course module ID for the choice activity */
+  coursemoduleid: number;
+  /** Total number of users who participated */
+  numberofuser?: number;
+  /** Course ID for user profile links */
+  courseid?: number;
+}
+
+/**
  * Factory function to create a mock Choice activity instance.
  * 
  * Generates a realistic Choice entity with all database fields populated
@@ -276,6 +345,115 @@ export function createMockChoiceResults(overrides: Partial<ChoiceResults> = {}):
     publish: CHOICE_PUBLISH_ANONYMOUS,
     showresults: CHOICE_SHOWRESULTS_AFTER_ANSWER,
     allowmultiple: false,
+    ...overrides,
+  };
+}
+
+/**
+ * Factory function to create a mock user for choice results.
+ * 
+ * Generates a realistic user object with all fields needed for displaying
+ * user responses in the ChoiceResults component.
+ * 
+ * @param overrides - Partial ChoiceUser object to override default values
+ * @returns Complete ChoiceUser object with all required fields
+ * 
+ * @example
+ * const user = createMockChoiceUser({ firstname: 'John', lastname: 'Doe' });
+ */
+export function createMockChoiceUser(overrides: Partial<ChoiceUser> = {}): ChoiceUser {
+  const id = overrides.id ?? 1;
+  return {
+    id,
+    firstname: 'Test',
+    lastname: 'User',
+    imagealt: 'Test User',
+    picture: 'https://example.com/avatar.jpg',
+    answerid: 1,
+    ...overrides,
+  };
+}
+
+/**
+ * Factory function to create a mock option result for ChoiceResults component.
+ * 
+ * Generates an option result with users and response data matching the
+ * structure expected by the ChoiceResults component.
+ * 
+ * @param overrides - Partial ChoiceOptionResult object to override default values
+ * @returns Complete ChoiceOptionResult object with all required fields
+ * 
+ * @example
+ * const option = createMockChoiceOptionResult({
+ *   text: 'Option A',
+ *   user: [createMockChoiceUser({ firstname: 'Alice' })],
+ *   numberofuser: 1
+ * });
+ */
+export function createMockChoiceOptionResult(
+  overrides: Partial<ChoiceOptionResult> = {}
+): ChoiceOptionResult {
+  return {
+    text: 'Option',
+    user: [],
+    maxanswer: 0,
+    numberofuser: 0,
+    ...overrides,
+  };
+}
+
+/**
+ * Factory function to create complete mock results data for ChoiceResults component.
+ * 
+ * Generates the complete data structure expected by the ChoiceResults component,
+ * including all required fields and sensible defaults for testing.
+ * 
+ * @param overrides - Partial ChoiceResultsDataExtended object to override default values
+ * @returns Complete ChoiceResultsDataExtended object with all required fields
+ * 
+ * @example
+ * // Create basic results with two options
+ * const results = createMockChoiceResultsDataExtended({
+ *   name: 'Test Choice',
+ *   publish: true,
+ *   options: {
+ *     1: createMockChoiceOptionResult({ text: 'Yes', numberofuser: 5 }),
+ *     2: createMockChoiceOptionResult({ text: 'No', numberofuser: 3 })
+ *   }
+ * });
+ * 
+ * @example
+ * // Create results with users
+ * const results = createMockChoiceResultsDataExtended({
+ *   name: 'Survey',
+ *   publish: true,
+ *   options: {
+ *     1: createMockChoiceOptionResult({
+ *       text: 'Option A',
+ *       user: [
+ *         createMockChoiceUser({ id: 1, firstname: 'Alice' }),
+ *         createMockChoiceUser({ id: 2, firstname: 'Bob' })
+ *       ],
+ *       numberofuser: 2
+ *     })
+ *   }
+ * });
+ */
+export function createMockChoiceResultsDataExtended(
+  overrides: Partial<ChoiceResultsDataExtended> = {}
+): ChoiceResultsDataExtended {
+  return {
+    name: 'Test Choice Activity',
+    publish: false,
+    options: {},
+    showunanswered: false,
+    limitanswers: false,
+    showavailable: false,
+    viewresponsecapability: true,
+    deleterepsonsecapability: true,
+    coursemoduleid: 1,
+    numberofuser: 0,
+    courseid: 1,
     ...overrides,
   };
 }
