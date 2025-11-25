@@ -105,6 +105,8 @@ export interface ChoiceResultsDataExtended {
   deleterepsonsecapability: boolean;
   /** Course module ID for the choice activity */
   coursemoduleid: number;
+  /** Session key for form submission security */
+  sesskey: string;
   /** Total number of users who participated */
   numberofuser?: number;
   /** Course ID for user profile links */
@@ -177,6 +179,7 @@ const ChoiceResults: React.FC<ChoiceResultsProps> = ({
     viewresponsecapability,
     deleterepsonsecapability,
     coursemoduleid,
+    sesskey,
     numberofuser = 0,
     courseid = 0,
   } = results;
@@ -460,6 +463,7 @@ const ChoiceResults: React.FC<ChoiceResultsProps> = ({
           {/* Hidden form inputs for sesskey, id, mode (lines 146-148) */}
           {canModify && (
             <>
+              <input type="hidden" name="sesskey" value={sesskey} />
               <input type="hidden" name="id" value={coursemoduleid} />
               <input type="hidden" name="mode" value="overview" />
             </>
@@ -509,7 +513,7 @@ const ChoiceResults: React.FC<ChoiceResultsProps> = ({
                           <Typography variant="subtitle1">{headerTitle}</Typography>
 
                           {/* Select-all checkbox for this option (lines 199-216) */}
-                          {canModify && (
+                          {canModify && optionId !== 0 && (
                             <Checkbox
                               size="small"
                               checked={
@@ -529,7 +533,9 @@ const ChoiceResults: React.FC<ChoiceResultsProps> = ({
                                 )
                               }
                               onChange={() => handleSelectAllForOption(optionId)}
-                              aria-label={`Select all responses for ${headerTitle}`}
+                              inputProps={{
+                                'aria-label': `Select all responses for ${headerTitle}`,
+                              }}
                             />
                           )}
                         </Box>
@@ -557,7 +563,9 @@ const ChoiceResults: React.FC<ChoiceResultsProps> = ({
                     return (
                       <TableCell key={optionId} align="center">
                         <Box>
-                          <Typography variant="body1">{userCount}</Typography>
+                          <Typography variant="body1">
+                            {userCount} {userCount === 1 ? 'user' : 'users'}
+                          </Typography>
 
                           {/* Show limit information (lines 222-225) */}
                           {limitanswers && showavailable && option.maxanswer > 0 && (
@@ -608,13 +616,15 @@ const ChoiceResults: React.FC<ChoiceResultsProps> = ({
                                   }}
                                 >
                                   {/* Checkbox for bulk actions (lines 262-281) */}
-                                  {canModify && (
+                                  {canModify && optionId !== 0 && (
                                     <Checkbox
                                       size="small"
                                       checked={isChecked}
                                       onChange={() => handleToggleResponse(user.answerid)}
                                       sx={{ mr: 1 }}
-                                      aria-label={`Select ${fullName}`}
+                                      inputProps={{
+                                        'aria-label': `Select ${fullName}`,
+                                      }}
                                     />
                                   )}
 
@@ -637,7 +647,7 @@ const ChoiceResults: React.FC<ChoiceResultsProps> = ({
                                       <Box
                                         component="img"
                                         src={user.picture}
-                                        alt={user.imagealt || fullName}
+                                        alt=""
                                         sx={{
                                           width: 24,
                                           height: 24,
@@ -688,56 +698,59 @@ const ChoiceResults: React.FC<ChoiceResultsProps> = ({
                 {isAllSelected ? 'Deselect All' : 'Select All'}
               </Button>
 
-              {/* Delete selected button (lines 317) */}
-              <Button
-                variant="contained"
-                color="error"
-                size="small"
-                startIcon={<Delete />}
-                onClick={handleDeleteSelected}
-                disabled={totalSelected === 0 || isDeleting}
-                data-testid="delete-selected-button"
-              >
-                Delete Selected ({totalSelected})
-              </Button>
-
-              {/* Move to option selector (lines 318-334) */}
-              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                <FormControl size="small" sx={{ minWidth: 200 }} disabled={totalSelected === 0}>
-                  <InputLabel id="move-option-label">Move to option</InputLabel>
-                  <Select
-                    labelId="move-option-label"
-                    value={selectedOptionForMove}
-                    label="Move to option"
-                    onChange={(e) => setSelectedOptionForMove(e.target.value as number | '')}
+              {/* Delete and Move buttons - only visible when responses are selected */}
+              {totalSelected > 0 && (
+                <>
+                  {/* Delete selected button (lines 317) */}
+                  <Button
+                    variant="contained"
+                    color="error"
+                    size="small"
+                    startIcon={<Delete />}
+                    onClick={handleDeleteSelected}
+                    disabled={isDeleting}
+                    data-testid="delete-selected-button"
                   >
-                    <MenuItem value="">
-                      <em>Choose action</em>
-                    </MenuItem>
-                    {sortedOptionIds
-                      .filter((id) => id > 0) // Exclude "Not answered" option
-                      .map((optionId) => (
-                        <MenuItem key={optionId} value={optionId}>
-                          {options[optionId]?.text ?? `Option ${optionId}`}
-                        </MenuItem>
-                      ))}
-                  </Select>
-                </FormControl>
+                    Delete Selected ({totalSelected})
+                  </Button>
 
-                <Button
-                  variant="contained"
-                  color="primary"
-                  size="small"
-                  startIcon={<DriveFileMove />}
-                  onClick={handleModifySelected}
-                  disabled={
-                    totalSelected === 0 || !selectedOptionForMove || isModifying
-                  }
-                  data-testid="move-selected-button"
-                >
-                  Move
-                </Button>
-              </Box>
+                  {/* Move to option selector (lines 318-334) */}
+                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                    <FormControl size="small" sx={{ minWidth: 200 }}>
+                      <InputLabel id="move-option-label">Move to option</InputLabel>
+                      <Select
+                        labelId="move-option-label"
+                        value={selectedOptionForMove}
+                        label="Move to option"
+                        onChange={(e) => setSelectedOptionForMove(e.target.value as number | '')}
+                      >
+                        <MenuItem value="">
+                          <em>Choose action</em>
+                        </MenuItem>
+                        {sortedOptionIds
+                          .filter((id) => id > 0) // Exclude "Not answered" option
+                          .map((optionId) => (
+                            <MenuItem key={optionId} value={optionId}>
+                              {options[optionId]?.text ?? `Option ${optionId}`}
+                            </MenuItem>
+                          ))}
+                      </Select>
+                    </FormControl>
+
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      size="small"
+                      startIcon={<DriveFileMove />}
+                      onClick={handleModifySelected}
+                      disabled={!selectedOptionForMove || isModifying}
+                      data-testid="move-selected-button"
+                    >
+                      Move
+                    </Button>
+                  </Box>
+                </>
+              )}
             </Box>
           )}
         </Box>
