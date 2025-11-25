@@ -10,8 +10,11 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { run, type AxeResults } from 'axe-core';
-import { render, screen, waitFor, within } from '@/tests/helpers/render';
+import { axe, toHaveNoViolations } from 'jest-axe';
+import { render, screen, waitFor, within } from '@tests/helpers/render';
+
+// Extend expect with jest-axe matchers
+expect.extend(toHaveNoViolations);
 import userEvent from '@testing-library/user-event';
 import ChoiceResults, {
   type ChoiceResultsDataExtended,
@@ -19,7 +22,6 @@ import ChoiceResults, {
   type User,
 } from '@/features/activities/choice/components/ChoiceResults';
 import ChoiceChart from '@/features/activities/choice/components/ChoiceChart';
-import { createMockUser } from '@/tests/helpers/mockData';
 
 // Mock the ChoiceChart component to isolate testing
 vi.mock('@/features/activities/choice/components/ChoiceChart', () => ({
@@ -48,13 +50,14 @@ vi.mock('@/features/activities/choice/hooks/useModifyResponses', () => ({
  * @returns Complete User object with all required fields
  */
 function createMockChoiceUser(overrides: Partial<User> = {}): User {
+  const id = overrides.id ?? 1;
   return {
-    id: 1,
+    id,
     firstname: 'John',
     lastname: 'Doe',
     imagealt: 'John Doe',
     picture: 'https://example.com/avatar.jpg',
-    answerid: 101,
+    answerid: 100 + id, // Generate unique answerid based on user id
     ...overrides,
   };
 }
@@ -94,6 +97,7 @@ function createMockChoiceResults(
     viewresponsecapability: true,
     deleterepsonsecapability: true,
     coursemoduleid: 123,
+    sesskey: 'test-session-key-123',
     numberofuser: 0,
     courseid: 456,
     ...overrides,
@@ -112,29 +116,42 @@ describe('ChoiceResults Component', () => {
 
   describe('1. Basic Rendering Tests', () => {
     it('should render without crashing', () => {
-      const results = createMockChoiceResults();
+      const results = createMockChoiceResults({
+        options: {
+          '1': createMockOptionResult({ text: 'Option A', user: [createMockChoiceUser({ id: 1 })] }),
+        },
+      });
       render(<ChoiceResults results={results} displayLayout="vertical" />);
-      expect(screen.getByText('Test Choice Activity')).toBeInTheDocument();
+      expect(screen.getByText(/Test Choice Activity/)).toBeInTheDocument();
     });
 
     it('should display the choice name from results.name', () => {
-      const results = createMockChoiceResults({ name: 'My Choice' });
+      const results = createMockChoiceResults({
+        name: 'My Choice',
+        options: {
+          '1': createMockOptionResult({ text: 'Option A', user: [createMockChoiceUser({ id: 1 })] }),
+        },
+      });
       render(<ChoiceResults results={results} displayLayout="vertical" />);
-      expect(screen.getByText('My Choice')).toBeInTheDocument();
+      expect(screen.getByText(/My Choice/)).toBeInTheDocument();
     });
 
     it('should apply proper layout based on displayLayout prop', () => {
-      const results = createMockChoiceResults();
+      const results = createMockChoiceResults({
+        options: {
+          '1': createMockOptionResult({ text: 'Option A', user: [createMockChoiceUser({ id: 1 })] }),
+        },
+      });
       const { rerender } = render(
         <ChoiceResults results={results} displayLayout="vertical" />
       );
       
       // Initial render with vertical layout
-      expect(screen.getByText('Test Choice Activity')).toBeInTheDocument();
+      expect(screen.getByText(/Test Choice Activity/)).toBeInTheDocument();
       
       // Re-render with horizontal layout
       rerender(<ChoiceResults results={results} displayLayout="horizontal" />);
-      expect(screen.getByText('Test Choice Activity')).toBeInTheDocument();
+      expect(screen.getByText(/Test Choice Activity/)).toBeInTheDocument();
     });
   });
 
@@ -279,18 +296,22 @@ describe('ChoiceResults Component', () => {
       render(<ChoiceResults results={results} displayLayout="vertical" />);
       
       const table = screen.getByRole('table');
-      expect(within(table).getByRole('rowgroup')).toBeInTheDocument();
+      // Table should have 2 rowgroups: thead and tbody
+      const rowgroups = within(table).getAllByRole('rowgroup');
+      expect(rowgroups).toHaveLength(2);
     });
 
     it('should display option names as column headers', () => {
       const option1 = createMockOptionResult({
         text: 'Red',
-        user: [],
+        user: [createMockChoiceUser({ id: 1 })],
+        numberofuser: 1,
       });
       
       const option2 = createMockOptionResult({
         text: 'Blue',
-        user: [],
+        user: [createMockChoiceUser({ id: 2 })],
+        numberofuser: 1,
       });
       
       const results = createMockChoiceResults({
@@ -321,13 +342,14 @@ describe('ChoiceResults Component', () => {
       
       const userLink = screen.getByRole('link', { name: /Jane Doe/i });
       expect(userLink).toBeInTheDocument();
-      expect(userLink).toHaveAttribute('href', '/user/profile.php?id=42&course=456');
+      expect(userLink).toHaveAttribute('href', '/user/view.php?id=42&course=456');
     });
 
     it('should use TableContainer for scrolling', () => {
       const option1 = createMockOptionResult({
         text: 'Option A',
-        user: [],
+        user: [createMockChoiceUser({ id: 1 })],
+        numberofuser: 1,
       });
       
       const results = createMockChoiceResults({
@@ -462,7 +484,7 @@ describe('ChoiceResults Component', () => {
       render(<ChoiceResults results={results} displayLayout="vertical" />);
       
       // Should show limit information
-      expect(screen.getByText(/limit/i)).toBeInTheDocument();
+      expect(screen.getByText('Limit: 5')).toBeInTheDocument();
     });
   });
 
@@ -504,7 +526,7 @@ describe('ChoiceResults Component', () => {
       render(<ChoiceResults results={results} displayLayout="vertical" />);
       
       const link = screen.getByRole('link', { name: /Test User/i });
-      expect(link).toHaveAttribute('href', '/user/profile.php?id=99&course=456');
+      expect(link).toHaveAttribute('href', '/user/view.php?id=99&course=456');
     });
 
     it('should have checkbox with value as response attemptid', async () => {
@@ -548,7 +570,7 @@ describe('ChoiceResults Component', () => {
       
       // Find and click the checkbox
       const checkboxes = screen.getAllByRole('checkbox');
-      await user.click(checkboxes[checkboxes.length - 1]);
+      await user.click(checkboxes[checkboxes.length - 1]!);
       
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /delete selected/i })).toBeInTheDocument();
@@ -687,14 +709,29 @@ describe('ChoiceResults Component', () => {
 
   describe('9. "Not Answered" Column Tests', () => {
     it('should show column when showunanswered is true', () => {
+      // Regular option with users (so hasResponses is true)
       const option1 = createMockOptionResult({
         text: 'Option A',
-        user: [],
+        user: [createMockChoiceUser({ id: 1 })],
+        numberofuser: 1,
+      });
+      
+      // Special "Not answered" option (id=0) with users who haven't answered
+      const notAnsweredOption = createMockOptionResult({
+        text: 'Not answered', // This will be shown as "Not answered" in the component
+        user: [
+          createMockChoiceUser({ id: 2, firstname: 'Jane', lastname: 'Smith' }),
+          createMockChoiceUser({ id: 3, firstname: 'Bob', lastname: 'Jones' }),
+        ],
+        numberofuser: 2,
       });
       
       const results = createMockChoiceResults({
         publish: true,
-        options: { 1: option1 },
+        options: { 
+          1: option1,
+          0: notAnsweredOption, // id=0 is the "Not answered" option
+        },
         showunanswered: true,
       });
 
@@ -704,20 +741,144 @@ describe('ChoiceResults Component', () => {
     });
 
     it('should hide column when showunanswered is false', () => {
+      // Regular option with users (so hasResponses is true)
       const option1 = createMockOptionResult({
         text: 'Option A',
-        user: [],
+        user: [createMockChoiceUser({ id: 1 })],
+        numberofuser: 1,
+      });
+      
+      // Special "Not answered" option (id=0) with users who haven't answered
+      const notAnsweredOption = createMockOptionResult({
+        text: 'Not answered',
+        user: [
+          createMockChoiceUser({ id: 2, firstname: 'Jane', lastname: 'Smith' }),
+        ],
+        numberofuser: 1,
       });
       
       const results = createMockChoiceResults({
         publish: true,
-        options: { 1: option1 },
-        showunanswered: false,
+        options: { 
+          1: option1,
+          0: notAnsweredOption, // id=0 is the "Not answered" option
+        },
+        showunanswered: false, // Set to false to hide the column
       });
 
       render(<ChoiceResults results={results} displayLayout="vertical" />);
       
       expect(screen.queryByText(/not answered/i)).not.toBeInTheDocument();
+    });
+
+    it('should list users who have not responded', () => {
+      // Regular option with users
+      const option1 = createMockOptionResult({
+        text: 'Option A',
+        user: [createMockChoiceUser({ id: 1, firstname: 'John', lastname: 'Doe' })],
+        numberofuser: 1,
+      });
+      
+      // Special "Not answered" option with users who haven't answered
+      const notAnsweredOption = createMockOptionResult({
+        text: 'Not answered',
+        user: [
+          createMockChoiceUser({ id: 2, firstname: 'Jane', lastname: 'Smith' }),
+          createMockChoiceUser({ id: 3, firstname: 'Bob', lastname: 'Jones' }),
+        ],
+        numberofuser: 2,
+      });
+      
+      const results = createMockChoiceResults({
+        publish: true,
+        options: { 
+          1: option1,
+          0: notAnsweredOption,
+        },
+        showunanswered: true,
+      });
+
+      render(<ChoiceResults results={results} displayLayout="vertical" />);
+      
+      // Verify users in "Not answered" column are listed
+      expect(screen.getByText('Jane Smith')).toBeInTheDocument();
+      expect(screen.getByText('Bob Jones')).toBeInTheDocument();
+    });
+
+    it('should show count of unanswered users', () => {
+      // Regular option with users
+      const option1 = createMockOptionResult({
+        text: 'Option A',
+        user: [createMockChoiceUser({ id: 1 })],
+        numberofuser: 1,
+      });
+      
+      // Special "Not answered" option with 3 users
+      const notAnsweredOption = createMockOptionResult({
+        text: 'Not answered',
+        user: [
+          createMockChoiceUser({ id: 2 }),
+          createMockChoiceUser({ id: 3 }),
+          createMockChoiceUser({ id: 4 }),
+        ],
+        numberofuser: 3,
+      });
+      
+      const results = createMockChoiceResults({
+        publish: true,
+        options: { 
+          1: option1,
+          0: notAnsweredOption,
+        },
+        showunanswered: true,
+      });
+
+      render(<ChoiceResults results={results} displayLayout="vertical" />);
+      
+      // The component should show "3 users" in the count row
+      expect(screen.getByText('3 users')).toBeInTheDocument();
+    });
+
+    it('should not show checkboxes in "Not answered" column', () => {
+      // Regular option with users and capabilities enabled
+      const option1 = createMockOptionResult({
+        text: 'Option A',
+        user: [createMockChoiceUser({ id: 1, answerid: 101 })],
+        numberofuser: 1,
+      });
+      
+      // Special "Not answered" option
+      const notAnsweredOption = createMockOptionResult({
+        text: 'Not answered',
+        user: [
+          createMockChoiceUser({ id: 2, firstname: 'Jane', lastname: 'Smith', answerid: 102 }),
+        ],
+        numberofuser: 1,
+      });
+      
+      const results = createMockChoiceResults({
+        publish: true,
+        options: { 
+          1: option1,
+          0: notAnsweredOption,
+        },
+        showunanswered: true,
+        viewresponsecapability: true,
+        deleterepsonsecapability: true,
+      });
+
+      render(<ChoiceResults results={results} displayLayout="vertical" />);
+      
+      // Find the "Not answered" header
+      const notAnsweredHeader = screen.getByText('Not answered');
+      expect(notAnsweredHeader).toBeInTheDocument();
+      
+      // The "Not answered" column should not have a checkbox in the header
+      // (There should be 1 checkbox for Option A header, but none for "Not answered")
+      const allCheckboxes = screen.getAllByRole('checkbox');
+      // Should have: 1 for Option A header + 1 for John Doe individual checkbox
+      // Should NOT have checkbox for Jane Smith (in "Not answered" column)
+      expect(allCheckboxes).toHaveLength(2);
     });
   });
 
@@ -739,7 +900,7 @@ describe('ChoiceResults Component', () => {
 
       render(<ChoiceResults results={results} displayLayout="vertical" />);
       
-      expect(screen.getByText(/limit/i)).toBeInTheDocument();
+      expect(screen.getByText('Limit: 10')).toBeInTheDocument();
     });
 
     it('should hide limit when limitanswers is false', () => {
@@ -785,7 +946,7 @@ describe('ChoiceResults Component', () => {
       
       // Find the "Select All" checkbox (typically the first one)
       const checkboxes = screen.getAllByRole('checkbox');
-      await user.click(checkboxes[0]);
+      await user.click(checkboxes[0]!);
       
       await waitFor(() => {
         // After clicking select all, action buttons should appear
@@ -816,13 +977,13 @@ describe('ChoiceResults Component', () => {
       const checkboxes = screen.getAllByRole('checkbox');
       
       // Select all
-      await user.click(checkboxes[0]);
+      await user.click(checkboxes[0]!);
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /delete selected/i })).toBeInTheDocument();
       });
       
       // Deselect all
-      await user.click(checkboxes[0]);
+      await user.click(checkboxes[0]!);
       await waitFor(() => {
         expect(screen.queryByRole('button', { name: /delete selected/i })).not.toBeInTheDocument();
       });
@@ -932,7 +1093,7 @@ describe('ChoiceResults Component', () => {
       
       // Select a response
       const checkboxes = screen.getAllByRole('checkbox');
-      await user.click(checkboxes[checkboxes.length - 1]);
+      await user.click(checkboxes[checkboxes.length - 1]!);
       
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /delete selected/i })).toBeInTheDocument();
@@ -967,7 +1128,7 @@ describe('ChoiceResults Component', () => {
       
       // Select a response
       const checkboxes = screen.getAllByRole('checkbox');
-      await user.click(checkboxes[checkboxes.length - 1]);
+      await user.click(checkboxes[checkboxes.length - 1]!);
       
       await waitFor(() => {
         // Should have both delete and move buttons
@@ -1010,8 +1171,8 @@ describe('ChoiceResults Component', () => {
         <ChoiceResults results={results} displayLayout="vertical" />
       );
       
-      const axeResults: AxeResults = await run(container);
-      expect(axeResults.violations).toHaveLength(0);
+      const axeResults = await axe(container);
+      expect(axeResults).toHaveNoViolations();
     });
 
     it('should pass axe accessibility checks for named mode', async () => {
@@ -1021,17 +1182,17 @@ describe('ChoiceResults Component', () => {
         numberofuser: 1,
       });
       
-      const results = createMockChoiceResults({
+      const resultsData = createMockChoiceResults({
         publish: true,
         options: { 1: option1 },
       });
 
       const { container } = render(
-        <ChoiceResults results={results} displayLayout="vertical" />
+        <ChoiceResults results={resultsData} displayLayout="vertical" />
       );
       
-      const axeResults: AxeResults = await run(container);
-      expect(axeResults.violations).toHaveLength(0);
+      const axeResults = await axe(container);
+      expect(axeResults).toHaveNoViolations();
     });
   });
 
