@@ -12,10 +12,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import userEvent from '@testing-library/user-event';
-import { useForm, FormProvider, Control } from 'react-hook-form';
+import type { Control } from 'react-hook-form';
+import { useForm, FormProvider } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import React from 'react';
+import type React from 'react';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFnsV3';
 import { 
@@ -44,12 +45,12 @@ interface FormWrapperProps {
   onSubmit?: (data: unknown) => void;
 }
 
-const FormWrapper: React.FC<FormWrapperProps> = ({ 
+function FormWrapper({ 
   children, 
   defaultValues = {}, 
   schema,
   onSubmit = vi.fn()
-}) => {
+}: FormWrapperProps) {
   const methods = useForm({
     defaultValues,
     resolver: schema ? zodResolver(schema) : undefined,
@@ -66,7 +67,7 @@ const FormWrapper: React.FC<FormWrapperProps> = ({
       </FormProvider>
     </LocalizationProvider>
   );
-};
+}
 
 describe('FormDatePicker Component', () => {
   let user: ReturnType<typeof userEvent.setup>;
@@ -208,7 +209,8 @@ describe('FormDatePicker Component', () => {
 
       await waitFor(() => {
         expect(onSubmit).toHaveBeenCalled();
-        const submittedData = onSubmit.mock.calls[0][0];
+        const calls = onSubmit.mock.calls as Array<[{ dueDate: Date }]>;
+        const submittedData = calls[0][0];
         expect(submittedData.dueDate).toBeInstanceOf(Date);
       });
     });
@@ -271,7 +273,8 @@ describe('FormDatePicker Component', () => {
 
       await waitFor(() => {
         expect(onSubmit).toHaveBeenCalled();
-        const submittedData = onSubmit.mock.calls[0][0];
+        const calls = onSubmit.mock.calls as Array<[{ eventDate: string }]>;
+        const submittedData = calls[0][0];
         expect(typeof submittedData.eventDate).toBe('string');
         expect(submittedData.eventDate).toMatch(/^\d{4}-\d{2}-\d{2}T/);
       });
@@ -1433,7 +1436,7 @@ describe('FormDatePicker Component', () => {
       expect(input).toBeDisabled();
     });
 
-    it('should not open calendar when disabled', async () => {
+    it('should not open calendar when disabled', () => {
       render(
         <FormWrapper defaultValues={{ disabledCalendar: null }}>
           {(control) => (
@@ -1698,6 +1701,21 @@ describe('FormDatePicker Component', () => {
   });
 
   describe('Mobile Responsive Layout', () => {
+    let originalInnerWidth: number;
+    let originalInnerHeight: number;
+
+    beforeEach(() => {
+      // Save original viewport dimensions
+      originalInnerWidth = global.innerWidth;
+      originalInnerHeight = global.innerHeight;
+    });
+
+    afterEach(() => {
+      // Restore original viewport dimensions to avoid polluting other tests
+      global.innerWidth = originalInnerWidth;
+      global.innerHeight = originalInnerHeight;
+    });
+
     it('should render mobile-optimized calendar on small screens', () => {
       // Mock mobile viewport
       global.innerWidth = 375;
@@ -1891,7 +1909,7 @@ describe('FormDatePicker Component', () => {
     });
 
     it('should render disabled state with correct attributes', () => {
-      const { container } = render(
+      render(
         <FormWrapper defaultValues={{ structureDisabled: null }}>
           {(control) => (
             <FormDatePicker
