@@ -110,6 +110,11 @@ export interface AlertComponentProps {
    * Additional class name for custom styling
    */
   className?: string;
+
+  /**
+   * Test ID for component testing
+   */
+  'data-testid'?: string;
 }
 
 /**
@@ -129,6 +134,7 @@ export function Alert({
   icon,
   sx,
   className,
+  'data-testid': dataTestId,
 }: AlertComponentProps): JSX.Element {
   // State to control alert visibility when closeable
   const [open, setOpen] = useState<boolean>(true);
@@ -213,7 +219,7 @@ export function Alert({
   return (
     <Collapse in={open} timeout={300} unmountOnExit>
       <MuiAlert
-        data-testid={`alert-${severity}`}
+        data-testid={dataTestId ?? `alert-${severity}`}
         severity={severity}
         variant={variant}
         icon={icon}

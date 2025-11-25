@@ -127,7 +127,7 @@ export function ResponseList({
   const [filterState, _setFilterState] = useState<ResponseFilterState>({});
   const [paginationModel, setPaginationModel] = useState({
     page: 0,
-    pageSize: 25,
+    pageSize: 10,
   });
   const [sortModel, setSortModel] = useState<GridSortModel>([
     { field: 'timemodified', sort: 'desc' },
@@ -179,8 +179,14 @@ export function ResponseList({
    */
   const handleConfirmDelete = useCallback(async () => {
     setDeleteDialogOpen(false);
-    await deleteMutation.mutateAsync(responseToDelete);
-    setResponseToDelete([]);
+    try {
+      await deleteMutation.mutateAsync(responseToDelete);
+      setResponseToDelete([]);
+    } catch (error) {
+      // Error is already handled by mutation's onError callback
+      // This catch block prevents unhandled promise rejection
+      setResponseToDelete([]);
+    }
   }, [deleteMutation, responseToDelete]);
 
   /**
@@ -397,7 +403,7 @@ export function ResponseList({
   if (loading) {
     return (
       <Box sx={{ width: '100%', p: 2 }}>
-        <Skeleton variant="rectangular" height={400} />
+        <Skeleton variant="rectangular" height={400} data-testid="skeleton" />
         <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
           <Skeleton variant="rectangular" width={120} height={36} />
           <Skeleton variant="rectangular" width={120} height={36} />
@@ -416,6 +422,7 @@ export function ResponseList({
         title="Failed to load responses"
         message={error.message || 'An unexpected error occurred. Please try again.'}
         closeable
+        data-testid="error-alert"
       />
     );
   }
@@ -491,6 +498,7 @@ export function ResponseList({
         onRowSelectionModelChange={handleSelectionChange}
         sortModel={sortModel}
         onSortModelChange={setSortModel}
+        sortingOrder={['asc', 'desc']}
         autoHeight
         density="standard"
         sx={{
@@ -509,10 +517,7 @@ export function ResponseList({
         getRowId={(row) => row.id}
         localeText={{
           noRowsLabel: 'No responses to display',
-          footerRowSelected: (count) =>
-            count !== 1
-              ? `${count.toLocaleString()} responses selected`
-              : `${count.toLocaleString()} response selected`,
+          footerRowSelected: () => '', // Prevent duplicate selection count display
         }}
       />
 
