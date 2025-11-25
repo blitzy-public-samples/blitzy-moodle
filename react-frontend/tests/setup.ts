@@ -18,7 +18,7 @@ console.log('[Setup] Loading test setup file...');
 import '@testing-library/jest-dom';
 import './helpers/customMatchers';
 import { cleanup } from '@testing-library/react';
-import { beforeAll, afterAll, afterEach, vi, expect } from 'vitest';
+import { beforeAll, afterAll, afterEach, vi } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
 
 // Import MSW server setup from mocks directory
