@@ -642,7 +642,7 @@ describe('ResponseList Component', () => {
       expect(pageSize).toBeInTheDocument();
     });
 
-    it('displays current page with default 25 rows per page', () => {
+    it('displays current page with default 10 rows per page', () => {
       const manyResponses = Array.from({ length: 50 }, (_, i) =>
         createMockResponse({ id: i + 1, userName: `User ${i + 1}` })
       );
@@ -656,8 +656,8 @@ describe('ResponseList Component', () => {
         />
       );
 
-      // Check pagination display (1-25 of 50)
-      expect(screen.getByText(/1–25 of 50/)).toBeInTheDocument();
+      // Check pagination display (1-10 of 50) - component default is pageSize: 10
+      expect(screen.getByText(/1–10 of 50/)).toBeInTheDocument();
     });
 
     it('navigates to next page when next button is clicked', async () => {
@@ -678,8 +678,9 @@ describe('ResponseList Component', () => {
       const nextButton = screen.getByRole('button', { name: /next page/i });
       await user.click(nextButton);
 
+      // With pageSize: 10, page 2 shows rows 11-20
       await waitFor(() => {
-        expect(screen.getByText(/26–50 of 50/)).toBeInTheDocument();
+        expect(screen.getByText(/11–20 of 50/)).toBeInTheDocument();
       });
     });
   });
@@ -1418,9 +1419,9 @@ describe('ResponseList Component', () => {
       const nextButton = screen.getByRole('button', { name: /next page/i });
       await user.click(nextButton);
 
-      // Wait for page 2 to load before navigating back (pageSize is 25, so page 2 starts at User 26)
+      // Wait for page 2 to load before navigating back (pageSize is 10, so page 2 starts at User 11)
       await waitFor(() => {
-        expect(screen.getByText('User 26')).toBeInTheDocument();
+        expect(screen.getByText('User 11')).toBeInTheDocument();
       });
 
       // Navigate back to first page
