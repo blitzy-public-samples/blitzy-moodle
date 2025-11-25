@@ -286,7 +286,7 @@ describe('ResponseList Component', () => {
     });
 
     it('should display Avatar with user initials when no image', () => {
-      const responses = [createMockResponse({ userName: 'Jane Smith', userImageUrl: undefined })];
+      const responses = [createMockResponse({ userName: 'Jane Smith', userAvatar: undefined })];
       renderResponseList({ responses });
 
       // Avatar should show initials JS
@@ -956,7 +956,7 @@ describe('ResponseList Component', () => {
     it('should handle anonymous responses without user images', () => {
       const responses = [createMockResponse({ 
         userName: 'Anonymous',
-        userImageUrl: undefined,
+        userAvatar: undefined,
         anonymous_response: 1,
         userid: 0,
         random_response: 123

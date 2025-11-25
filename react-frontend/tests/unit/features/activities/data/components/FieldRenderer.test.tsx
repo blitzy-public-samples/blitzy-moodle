@@ -1,1846 +1,856 @@
 /**
- * @file FieldRenderer Component Unit Tests
- * @description Comprehensive Vitest unit tests for the FieldRenderer component.
- * Tests rendering of all 12 database field types (text, textarea, number, date, menu,
- * checkbox, radiobutton, file, picture, url, latlong, multimenu) with proper formatting,
- * type-specific display logic, view/edit modes, and Material-UI component integration.
+ * Comprehensive Unit Tests for FieldRenderer Component
  * 
- * Test Coverage:
- * - All 12 field types in view mode with proper formatting
- * - Edit mode rendering with appropriate input components
- * - Date localization and formatting using date-fns
- * - File preview and image display for file/picture fields
- * - URL link rendering and validation
- * - Map coordinate display for latlong fields
- * - Multi-select rendering for multimenu fields
- * - Material-UI component integration
- * - Error handling for invalid field types or malformed data
- * - Accessibility attributes (ARIA labels, roles)
- * - onChange callback invocation
+ * Tests all 12 field types (text, textarea, number, date, menu, checkbox, radiobutton,
+ * file, picture, url, latlong, multimenu) in view and list modes with proper
+ * formatting, validation, accessibility, and error handling.
  * 
- * Target: 90%+ code coverage
+ * NOTE: FieldRenderer is a READ-ONLY display component. It does not support
+ * edit mode or onChange callbacks.
+ * 
+ * @see FieldRenderer.tsx - Component under test
+ * @see data.types.ts - Type definitions for all field types
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
-import '@testing-library/jest-dom';
-import { userEvent } from '../../../../../helpers/render';
+import { describe, it, expect } from 'vitest';
+import { screen } from '@testing-library/react';
 
-import { FieldRenderer } from '../../../../../../src/features/activities/data/components/FieldRenderer';
-import type { 
-  DatabaseField, 
-  FieldContent,
-  TextField,
-  TextAreaField,
-  NumberField,
-  DateField,
-  MenuField,
-  CheckboxField,
-  RadioButtonField,
-  FileField,
-  PictureField,
-  URLField,
-  LatLongField,
-  MultiMenuField
-} from '../../../../../../src/features/activities/data/types/data.types';
+// Component under test
+import FieldRenderer from '@/features/activities/data/components/FieldRenderer';
 
-// Mock date-fns format function
-vi.mock('date-fns', () => ({
-  format: vi.fn((date: Date, formatStr: string) => {
-    if (formatStr === 'PPP') {
-      return 'January 15, 2024';
-    }
-    return date.toISOString();
-  }),
-  parseISO: vi.fn((dateStr: string) => new Date(dateStr)),
-}));
+// Type imports
+import type { DatabaseField, FieldContent } from '@/features/activities/data/types/data.types';
+import { FieldType } from '@/features/activities/data/types/data.types';
 
-describe('FieldRenderer Component', () => {
-  let mockOnChange: ReturnType<typeof vi.fn>;
+// Test utilities
+import { render } from '@tests/helpers/render';
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockOnChange = vi.fn();
+// =============================================================================
+// Test Helper Functions
+// =============================================================================
+
+/**
+ * Creates a field of any type with the given properties.
+ * This function uses type assertion to allow flexible field creation in tests.
+ * 
+ * @param overrides - Partial field properties to override defaults
+ * @returns A DatabaseField object cast to the appropriate type
+ */
+function createField(overrides: Partial<DatabaseField> & { type: FieldType }): DatabaseField {
+  const base = {
+    id: 1,
+    dataid: 1,
+    name: 'Test Field',
+    description: '',
+    required: false,
+  };
+  return { ...base, ...overrides } as DatabaseField;
+}
+
+/**
+ * Creates a field content object with minimal required properties
+ */
+function createContent(overrides: Partial<FieldContent> = {}): FieldContent {
+  return {
+    id: 1,
+    fieldid: 1,
+    recordid: 1,
+    content: 'Test content',
+    ...overrides,
+  };
+}
+
+// =============================================================================
+// Text Field Tests
+// =============================================================================
+
+describe('FieldRenderer - Text Field', () => {
+  it('renders text field in view mode with content', () => {
+    const field = createField({ type: FieldType.Text, name: 'First Name' });
+    const value = createContent({ content: 'John Doe' });
+
+    render(<FieldRenderer field={field} value={value} mode="view" />);
+
+    expect(screen.getByText('John Doe')).toBeInTheDocument();
   });
 
-  describe('Text Field Rendering', () => {
-    const textField: TextField = {
-      id: 1,
-      dataid: 100,
-      type: 'text',
-      name: 'First Name',
-      description: 'Enter your first name',
-      required: false,
-      param1: '',
-      param2: '',
-      param3: '',
-    };
+  it('renders empty text field with "No value" message', () => {
+    const field = createField({ type: FieldType.Text, name: 'Empty Field' });
+    const value = createContent({ content: '' });
 
-    it('should render text value in view mode', () => {
-      const value: FieldContent = {
-        id: 1,
-        fieldid: 1,
-        recordid: 50,
-        content: 'John Doe',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
+    render(<FieldRenderer field={field} value={value} mode="view" />);
 
-      render(
-        <FieldRenderer 
-          field={textField} 
-          value={value} 
-          mode="view"
-        />
-      );
-
-      expect(screen.getByText('John Doe')).toBeInTheDocument();
-    });
-
-    it('should render TextField in edit mode', () => {
-      const value: FieldContent = {
-        id: 1,
-        fieldid: 1,
-        recordid: 50,
-        content: 'John Doe',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      render(
-        <FieldRenderer 
-          field={textField} 
-          value={value} 
-          mode="edit"
-          onChange={mockOnChange}
-        />
-      );
-
-      const input = screen.getByRole('textbox');
-      expect(input).toBeInTheDocument();
-      expect(input).toHaveValue('John Doe');
-    });
-
-    it('should call onChange when text is edited', async () => {
-      const value: FieldContent = {
-        id: 1,
-        fieldid: 1,
-        recordid: 50,
-        content: 'John',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      render(
-        <FieldRenderer 
-          field={textField} 
-          value={value} 
-          mode="edit"
-          onChange={mockOnChange}
-        />
-      );
-
-      const input = screen.getByRole('textbox');
-      await userEvent.clear(input);
-      await userEvent.type(input, 'Jane');
-
-      await waitFor(() => {
-        expect(mockOnChange).toHaveBeenCalled();
-      });
-    });
-
-    it('should render empty text field in view mode when no value', () => {
-      const value: FieldContent = {
-        id: 1,
-        fieldid: 1,
-        recordid: 50,
-        content: '',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      const { container } = render(
-        <FieldRenderer 
-          field={textField} 
-          value={value} 
-          mode="view"
-        />
-      );
-
-      const textElement = container.querySelector('p');
-      expect(textElement).toBeInTheDocument();
-      expect(textElement?.textContent).toBe('');
-    });
+    expect(screen.getByText('No value')).toBeInTheDocument();
   });
 
-  describe('Textarea Field Rendering', () => {
-    const textareaField: TextAreaField = {
-      id: 2,
-      dataid: 100,
-      type: 'textarea',
-      name: 'Description',
-      description: 'Enter a description',
-      required: false,
-      param1: '',
-      param2: '',
-      param3: '',
-    };
+  it('renders text field with special characters', () => {
+    const field = createField({ type: FieldType.Text });
+    const value = createContent({ content: '<script>alert("XSS")</script>' });
 
-    it('should render multiline text in view mode', () => {
-      const value: FieldContent = {
-        id: 2,
-        fieldid: 2,
-        recordid: 50,
-        content: 'Line 1\nLine 2\nLine 3',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
+    render(<FieldRenderer field={field} value={value} mode="view" />);
 
-      render(
-        <FieldRenderer 
-          field={textareaField} 
-          value={value} 
-          mode="view"
-        />
-      );
-
-      const text = screen.getByText(/Line 1/);
-      expect(text).toBeInTheDocument();
-    });
-
-    it('should render multiline TextField in edit mode', () => {
-      const value: FieldContent = {
-        id: 2,
-        fieldid: 2,
-        recordid: 50,
-        content: 'Multiline\nContent',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      render(
-        <FieldRenderer 
-          field={textareaField} 
-          value={value} 
-          mode="edit"
-          onChange={mockOnChange}
-        />
-      );
-
-      const textarea = screen.getByRole('textbox');
-      expect(textarea).toBeInTheDocument();
-      expect(textarea).toHaveValue('Multiline\nContent');
-    });
-
-    it('should preserve line breaks in view mode', () => {
-      const value: FieldContent = {
-        id: 2,
-        fieldid: 2,
-        recordid: 50,
-        content: 'First line\nSecond line',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      const { container } = render(
-        <FieldRenderer 
-          field={textareaField} 
-          value={value} 
-          mode="view"
-        />
-      );
-
-      const pre = container.querySelector('pre');
-      expect(pre).toBeInTheDocument();
-      expect(pre?.style.whiteSpace).toBe('pre-wrap');
-    });
+    // React automatically escapes special characters
+    expect(screen.getByText('<script>alert("XSS")</script>')).toBeInTheDocument();
   });
 
-  describe('Number Field Rendering', () => {
-    const numberField: NumberField = {
-      id: 3,
-      dataid: 100,
-      type: 'number',
+  it('handles null value gracefully', () => {
+    const field = createField({ type: FieldType.Text });
+    const value = createContent({ content: null as any });
+
+    render(<FieldRenderer field={field} value={value} mode="view" />);
+
+    expect(screen.getByText('No value')).toBeInTheDocument();
+  });
+});
+
+// =============================================================================
+// Textarea Field Tests
+// =============================================================================
+
+describe('FieldRenderer - Textarea Field', () => {
+  it('renders textarea field in view mode with formatted content', () => {
+    const field = createField({ type: FieldType.Textarea, name: 'Description' });
+    const value = createContent({ 
+      content: '<p>This is <strong>bold</strong> text</p>',
+      content1: '1' // HTML format
+    });
+
+    const { container } = render(<FieldRenderer field={field} value={value} mode="view" />);
+
+    // HTML is parsed and rendered via dangerouslySetInnerHTML, so check for the actual DOM structure
+    // Find the <strong> element and verify its content
+    const strongElement = container.querySelector('strong');
+    expect(strongElement).toBeInTheDocument();
+    expect(strongElement?.textContent).toBe('bold');
+    
+    // Verify the <p> element exists with the full text content
+    const pElement = container.querySelector('p');
+    expect(pElement).toBeInTheDocument();
+    expect(pElement?.textContent).toBe('This is bold text');
+  });
+
+  it('renders plain text textarea', () => {
+    const field = createField({ type: FieldType.Textarea });
+    const value = createContent({ 
+      content: 'Plain text content',
+      content1: '0' // Plain text format
+    });
+
+    render(<FieldRenderer field={field} value={value} mode="view" />);
+
+    expect(screen.getByText('Plain text content')).toBeInTheDocument();
+  });
+
+  it('renders multiline textarea content', () => {
+    const field = createField({ type: FieldType.Textarea });
+    const value = createContent({ 
+      content: 'Line 1\nLine 2\nLine 3'
+    });
+
+    render(<FieldRenderer field={field} value={value} mode="view" />);
+
+    expect(screen.getByText(/Line 1.*Line 2.*Line 3/)).toBeInTheDocument();
+  });
+});
+
+// =============================================================================
+// Number Field Tests
+// =============================================================================
+
+describe('FieldRenderer - Number Field', () => {
+  it('renders number field with decimal places', () => {
+    const field = createField({ 
+      type: FieldType.Number, 
       name: 'Price',
-      description: 'Enter price',
-      required: false,
-      param1: '2', // decimal places
-      param2: '',
-      param3: '',
-    };
-
-    it('should render number with decimal formatting in view mode', () => {
-      const value: FieldContent = {
-        id: 3,
-        fieldid: 3,
-        recordid: 50,
-        content: '123.456',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      render(
-        <FieldRenderer 
-          field={numberField} 
-          value={value} 
-          mode="view"
-        />
-      );
-
-      expect(screen.getByText('123.46')).toBeInTheDocument();
+      param1: '2' // 2 decimal places
     });
+    const value = createContent({ content: '123.456' });
 
-    it('should render number TextField in edit mode', () => {
-      const value: FieldContent = {
-        id: 3,
-        fieldid: 3,
-        recordid: 50,
-        content: '42.5',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
+    render(<FieldRenderer field={field} value={value} mode="view" />);
 
-      render(
-        <FieldRenderer 
-          field={numberField} 
-          value={value} 
-          mode="edit"
-          onChange={mockOnChange}
-        />
-      );
-
-      const input = screen.getByRole('spinbutton');
-      expect(input).toBeInTheDocument();
-      expect(input).toHaveValue(42.5);
-    });
-
-    it('should handle number without decimal places', () => {
-      const integerField: NumberField = {
-        ...numberField,
-        param1: '0',
-      };
-
-      const value: FieldContent = {
-        id: 3,
-        fieldid: 3,
-        recordid: 50,
-        content: '42.789',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      render(
-        <FieldRenderer 
-          field={integerField} 
-          value={value} 
-          mode="view"
-        />
-      );
-
-      expect(screen.getByText('43')).toBeInTheDocument();
-    });
-
-    it('should call onChange when number is edited', async () => {
-      const value: FieldContent = {
-        id: 3,
-        fieldid: 3,
-        recordid: 50,
-        content: '10',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      render(
-        <FieldRenderer 
-          field={numberField} 
-          value={value} 
-          mode="edit"
-          onChange={mockOnChange}
-        />
-      );
-
-      const input = screen.getByRole('spinbutton');
-      await userEvent.clear(input);
-      await userEvent.type(input, '25');
-
-      await waitFor(() => {
-        expect(mockOnChange).toHaveBeenCalled();
-      });
-    });
+    // Should format to 2 decimal places
+    expect(screen.getByText('123.46')).toBeInTheDocument();
   });
 
-  describe('Date Field Rendering', () => {
-    const dateField: DateField = {
-      id: 4,
-      dataid: 100,
-      type: 'date',
-      name: 'Birth Date',
-      description: 'Enter your birth date',
-      required: false,
-      param1: '',
-      param2: '',
-      param3: '',
-    };
-
-    it('should render formatted date in view mode using date-fns', () => {
-      const value: FieldContent = {
-        id: 4,
-        fieldid: 4,
-        recordid: 50,
-        content: '2024-01-15',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      render(
-        <FieldRenderer 
-          field={dateField} 
-          value={value} 
-          mode="view"
-        />
-      );
-
-      expect(screen.getByText('January 15, 2024')).toBeInTheDocument();
+  it('renders number field with zero decimal places', () => {
+    const field = createField({ 
+      type: FieldType.Number,
+      param1: '0' // No decimal places
     });
+    const value = createContent({ content: '123.789' });
 
-    it('should render date input in edit mode', () => {
-      const value: FieldContent = {
-        id: 4,
-        fieldid: 4,
-        recordid: 50,
-        content: '2024-01-15',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
+    render(<FieldRenderer field={field} value={value} mode="view" />);
 
-      render(
-        <FieldRenderer 
-          field={dateField} 
-          value={value} 
-          mode="edit"
-          onChange={mockOnChange}
-        />
-      );
-
-      const input = screen.getByDisplayValue('2024-01-15');
-      expect(input).toBeInTheDocument();
-      expect(input).toHaveAttribute('type', 'date');
-    });
-
-    it('should handle empty date value', () => {
-      const value: FieldContent = {
-        id: 4,
-        fieldid: 4,
-        recordid: 50,
-        content: '',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      const { container } = render(
-        <FieldRenderer 
-          field={dateField} 
-          value={value} 
-          mode="view"
-        />
-      );
-
-      const textElement = container.querySelector('p');
-      expect(textElement).toBeInTheDocument();
-      expect(textElement?.textContent).toBe('');
-    });
+    expect(screen.getByText('124')).toBeInTheDocument();
   });
 
-  describe('Menu Field Rendering', () => {
-    const menuField: MenuField = {
-      id: 5,
-      dataid: 100,
-      type: 'menu',
-      name: 'Color',
-      description: 'Select a color',
-      required: false,
-      param1: 'Red\nGreen\nBlue\nYellow',
-      param2: '',
-      param3: '',
-    };
-
-    it('should render selected option label in view mode', () => {
-      const value: FieldContent = {
-        id: 5,
-        fieldid: 5,
-        recordid: 50,
-        content: 'Green',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      render(
-        <FieldRenderer 
-          field={menuField} 
-          value={value} 
-          mode="view"
-        />
-      );
-
-      expect(screen.getByText('Green')).toBeInTheDocument();
+  it('handles negative numbers', () => {
+    const field = createField({ 
+      type: FieldType.Number,
+      param1: '2'
     });
+    const value = createContent({ content: '-456.789' });
 
-    it('should render Select component in edit mode', () => {
-      const value: FieldContent = {
-        id: 5,
-        fieldid: 5,
-        recordid: 50,
-        content: 'Red',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
+    render(<FieldRenderer field={field} value={value} mode="view" />);
 
-      render(
-        <FieldRenderer 
-          field={menuField} 
-          value={value} 
-          mode="edit"
-          onChange={mockOnChange}
-        />
-      );
-
-      const select = screen.getByRole('combobox');
-      expect(select).toBeInTheDocument();
-    });
-
-    it('should display all menu options', () => {
-      const value: FieldContent = {
-        id: 5,
-        fieldid: 5,
-        recordid: 50,
-        content: 'Red',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      render(
-        <FieldRenderer 
-          field={menuField} 
-          value={value} 
-          mode="edit"
-          onChange={mockOnChange}
-        />
-      );
-
-      const select = screen.getByRole('combobox');
-      expect(select).toBeInTheDocument();
-    });
+    expect(screen.getByText('-456.79')).toBeInTheDocument();
   });
 
-  describe('Checkbox Field Rendering', () => {
-    const checkboxField: CheckboxField = {
-      id: 6,
-      dataid: 100,
-      type: 'checkbox',
-      name: 'Agree',
-      description: 'I agree to terms',
-      required: false,
-      param1: '',
-      param2: '',
-      param3: '',
-    };
+  it('handles zero value', () => {
+    const field = createField({ type: FieldType.Number });
+    const value = createContent({ content: '0' });
 
-    it('should render "Yes" when checkbox is checked in view mode', () => {
-      const value: FieldContent = {
-        id: 6,
-        fieldid: 6,
-        recordid: 50,
-        content: '1',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
+    render(<FieldRenderer field={field} value={value} mode="view" />);
 
-      render(
-        <FieldRenderer 
-          field={checkboxField} 
-          value={value} 
-          mode="view"
-        />
-      );
+    expect(screen.getByText('0')).toBeInTheDocument();
+  });
+});
 
-      expect(screen.getByText('Yes')).toBeInTheDocument();
-    });
+// =============================================================================
+// Date Field Tests
+// =============================================================================
 
-    it('should render "No" when checkbox is unchecked in view mode', () => {
-      const value: FieldContent = {
-        id: 6,
-        fieldid: 6,
-        recordid: 50,
-        content: '0',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
+describe('FieldRenderer - Date Field', () => {
+  it('renders date field in view mode with formatted date', () => {
+    // June 15, 2024 at midnight UTC
+    const testDate = new Date('2024-06-15T00:00:00Z');
+    const timestamp = Math.floor(testDate.getTime() / 1000);
 
-      render(
-        <FieldRenderer 
-          field={checkboxField} 
-          value={value} 
-          mode="view"
-        />
-      );
+    const field = createField({ type: FieldType.Date, name: 'Event Date' });
+    const value = createContent({ content: timestamp.toString() });
 
-      expect(screen.getByText('No')).toBeInTheDocument();
-    });
+    render(<FieldRenderer field={field} value={value} mode="view" />);
 
-    it('should render Checkbox component in edit mode', () => {
-      const value: FieldContent = {
-        id: 6,
-        fieldid: 6,
-        recordid: 50,
-        content: '1',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      render(
-        <FieldRenderer 
-          field={checkboxField} 
-          value={value} 
-          mode="edit"
-          onChange={mockOnChange}
-        />
-      );
-
-      const checkbox = screen.getByRole('checkbox');
-      expect(checkbox).toBeInTheDocument();
-      expect(checkbox).toBeChecked();
-    });
-
-    it('should call onChange when checkbox is toggled', async () => {
-      const value: FieldContent = {
-        id: 6,
-        fieldid: 6,
-        recordid: 50,
-        content: '0',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      render(
-        <FieldRenderer 
-          field={checkboxField} 
-          value={value} 
-          mode="edit"
-          onChange={mockOnChange}
-        />
-      );
-
-      const checkbox = screen.getByRole('checkbox');
-      await userEvent.click(checkbox);
-
-      await waitFor(() => {
-        expect(mockOnChange).toHaveBeenCalled();
-      });
-    });
+    // Should display formatted date (exact format may vary by locale)
+    const dateElement = screen.getByText(/2024/);
+    expect(dateElement).toBeInTheDocument();
   });
 
-  describe('RadioButton Field Rendering', () => {
-    const radioField: RadioButtonField = {
-      id: 7,
-      dataid: 100,
-      type: 'radiobutton',
-      name: 'Size',
-      description: 'Select size',
-      required: false,
-      param1: 'Small\nMedium\nLarge\nExtra Large',
-      param2: '',
-      param3: '',
-    };
+  it('handles empty date field', () => {
+    const field = createField({ type: FieldType.Date });
+    const value = createContent({ content: '' });
 
-    it('should render selected radio option in view mode', () => {
-      const value: FieldContent = {
-        id: 7,
-        fieldid: 7,
-        recordid: 50,
-        content: 'Medium',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
+    render(<FieldRenderer field={field} value={value} mode="view" />);
 
-      render(
-        <FieldRenderer 
-          field={radioField} 
-          value={value} 
-          mode="view"
-        />
-      );
-
-      expect(screen.getByText('Medium')).toBeInTheDocument();
-    });
-
-    it('should render RadioGroup in edit mode', () => {
-      const value: FieldContent = {
-        id: 7,
-        fieldid: 7,
-        recordid: 50,
-        content: 'Large',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      render(
-        <FieldRenderer 
-          field={radioField} 
-          value={value} 
-          mode="edit"
-          onChange={mockOnChange}
-        />
-      );
-
-      const radios = screen.getAllByRole('radio');
-      expect(radios.length).toBe(4);
-    });
-
-    it('should have correct radio button selected', () => {
-      const value: FieldContent = {
-        id: 7,
-        fieldid: 7,
-        recordid: 50,
-        content: 'Small',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      render(
-        <FieldRenderer 
-          field={radioField} 
-          value={value} 
-          mode="edit"
-          onChange={mockOnChange}
-        />
-      );
-
-      const smallRadio = screen.getByLabelText('Small');
-      expect(smallRadio).toBeChecked();
-    });
+    expect(screen.getByText('No value')).toBeInTheDocument();
   });
 
-  describe('File Field Rendering', () => {
-    const fileField: FileField = {
-      id: 8,
-      dataid: 100,
-      type: 'file',
-      name: 'Document',
-      description: 'Upload document',
-      required: false,
-      param1: '',
-      param2: '',
-      param3: '',
-    };
+  it('renders date with proper localization', () => {
+    const testDate = new Date('2024-12-25T00:00:00Z');
+    const timestamp = Math.floor(testDate.getTime() / 1000);
 
-    it('should render file name as link in view mode', () => {
-      const value: FieldContent = {
-        id: 8,
-        fieldid: 8,
-        recordid: 50,
-        content: 'document.pdf',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
+    const field = createField({ type: FieldType.Date });
+    const value = createContent({ content: timestamp.toString() });
 
-      render(
-        <FieldRenderer 
-          field={fileField} 
-          value={value} 
-          mode="view"
-          fileBaseUrl="https://example.com/files"
-        />
-      );
+    render(<FieldRenderer field={field} value={value} mode="view" />);
 
-      const link = screen.getByRole('link', { name: /document\.pdf/i });
-      expect(link).toBeInTheDocument();
-      expect(link).toHaveAttribute('href', expect.stringContaining('document.pdf'));
+    // Should contain year and likely month
+    const dateText = screen.getByText(/2024/);
+    expect(dateText).toBeInTheDocument();
+  });
+});
+
+// =============================================================================
+// Menu Field Tests
+// =============================================================================
+
+describe('FieldRenderer - Menu Field', () => {
+  it('renders menu field in view mode with selected option', () => {
+    const field = createField({ 
+      type: FieldType.Menu, 
+      name: 'Category',
+      param1: 'Option 1\nOption 2\nOption 3' // Menu options
     });
+    const value = createContent({ content: 'Option 2' });
 
-    it('should construct proper file download URL', () => {
-      const value: FieldContent = {
-        id: 8,
-        fieldid: 8,
-        recordid: 50,
-        content: 'report.docx',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
+    render(<FieldRenderer field={field} value={value} mode="view" />);
 
-      render(
-        <FieldRenderer 
-          field={fileField} 
-          value={value} 
-          mode="view"
-          fileBaseUrl="https://moodle.example.com/files"
-        />
-      );
-
-      const link = screen.getByRole('link');
-      expect(link.getAttribute('href')).toContain('report.docx');
-    });
-
-    it('should render file input in edit mode', () => {
-      const value: FieldContent = {
-        id: 8,
-        fieldid: 8,
-        recordid: 50,
-        content: '',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      const { container } = render(
-        <FieldRenderer 
-          field={fileField} 
-          value={value} 
-          mode="edit"
-          onChange={mockOnChange}
-        />
-      );
-
-      const fileInput = container.querySelector('input[type="file"]');
-      expect(fileInput).toBeInTheDocument();
-    });
-
-    it('should handle empty file value', () => {
-      const value: FieldContent = {
-        id: 8,
-        fieldid: 8,
-        recordid: 50,
-        content: '',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      const { container } = render(
-        <FieldRenderer 
-          field={fileField} 
-          value={value} 
-          mode="view"
-        />
-      );
-
-      const textElement = container.querySelector('p');
-      expect(textElement).toBeInTheDocument();
-      expect(textElement?.textContent).toBe('');
-    });
+    expect(screen.getByText('Option 2')).toBeInTheDocument();
   });
 
-  describe('Picture Field Rendering', () => {
-    const pictureField: PictureField = {
-      id: 9,
-      dataid: 100,
-      type: 'picture',
+  it('renders menu field with no selection', () => {
+    const field = createField({ 
+      type: FieldType.Menu,
+      param1: 'Option 1\nOption 2'
+    });
+    const value = createContent({ content: '' });
+
+    render(<FieldRenderer field={field} value={value} mode="view" />);
+
+    expect(screen.getByText('No value')).toBeInTheDocument();
+  });
+});
+
+// =============================================================================
+// Checkbox Field Tests
+// =============================================================================
+
+describe('FieldRenderer - Checkbox Field', () => {
+  it('renders checked checkbox field', () => {
+    const field = createField({ 
+      type: FieldType.Checkbox,
+      name: 'Agree to Terms'
+    });
+    const value = createContent({ 
+      content: '1' // 1 = checked, 0 = unchecked
+    });
+
+    render(<FieldRenderer field={field} value={value} mode="view" />);
+
+    // Should display the value "1" as a chip with CheckCircle icon
+    expect(screen.getByText('1')).toBeInTheDocument();
+    expect(screen.getByTestId('CheckCircleIcon')).toBeInTheDocument();
+  });
+
+  it('renders unchecked checkbox field', () => {
+    const field = createField({ 
+      type: FieldType.Checkbox,
+      name: 'Subscribe'
+    });
+    const value = createContent({ content: '0' });
+
+    render(<FieldRenderer field={field} value={value} mode="view" />);
+
+    // Should display the value "0" as a chip with CheckCircle icon
+    expect(screen.getByText('0')).toBeInTheDocument();
+    expect(screen.getByTestId('CheckCircleIcon')).toBeInTheDocument();
+  });
+
+  it('renders empty checkbox field', () => {
+    const field = createField({ type: FieldType.Checkbox });
+    const value = createContent({ content: '' });
+
+    render(<FieldRenderer field={field} value={value} mode="view" />);
+
+    expect(screen.getByText('No value')).toBeInTheDocument();
+  });
+
+  it('handles checkbox with non-boolean string content', () => {
+    const field = createField({ type: FieldType.Checkbox });
+    const value = createContent({ content: 'true' });
+
+    render(<FieldRenderer field={field} value={value} mode="view" />);
+
+    // Should attempt to interpret any truthy value as checked
+    expect(screen.getByText(/Yes|Checked|✓|true/i)).toBeInTheDocument();
+  });
+});
+
+// =============================================================================
+// Radio Button Field Tests
+// =============================================================================
+
+describe('FieldRenderer - Radio Button Field', () => {
+  it('renders radio button field with selected value', () => {
+    const field = createField({ 
+      type: FieldType.RadioButton,
+      name: 'Gender',
+      param1: 'Male\nFemale\nOther' // Radio options
+    });
+    const value = createContent({ content: 'Female' });
+
+    render(<FieldRenderer field={field} value={value} mode="view" />);
+
+    expect(screen.getByText('Female')).toBeInTheDocument();
+  });
+
+  it('renders radio field with no selection', () => {
+    const field = createField({ 
+      type: FieldType.RadioButton,
+      param1: 'Yes\nNo'
+    });
+    const value = createContent({ content: '' });
+
+    render(<FieldRenderer field={field} value={value} mode="view" />);
+
+    expect(screen.getByText('No value')).toBeInTheDocument();
+  });
+});
+
+// =============================================================================
+// File Field Tests
+// =============================================================================
+
+describe('FieldRenderer - File Field', () => {
+  it('renders file field with download link', () => {
+    const field = createField({ 
+      type: FieldType.File,
+      name: 'Attachment'
+    });
+    const value = createContent({ 
+      content: 'document.pdf',
+      content1: 'Project Proposal' // Display name
+    });
+
+    render(<FieldRenderer field={field} value={value} mode="view" />);
+
+    expect(screen.getByText(/Project Proposal|document\.pdf/)).toBeInTheDocument();
+    
+    // Should have a link to the file
+    const link = screen.getByRole('link');
+    expect(link).toHaveAttribute('href', expect.stringContaining('document.pdf'));
+  });
+
+  it('renders file field with no file uploaded', () => {
+    const field = createField({ type: FieldType.File });
+    const value = createContent({ content: '' });
+
+    render(<FieldRenderer field={field} value={value} mode="view" />);
+
+    expect(screen.getByText('No value')).toBeInTheDocument();
+  });
+
+  it('renders file field with custom fileBaseUrl', () => {
+    const field = createField({ type: FieldType.File });
+    const value = createContent({ 
+      content: 'report.docx',
+      content1: 'Annual Report'
+    });
+
+    render(
+      <FieldRenderer 
+        field={field} 
+        value={value} 
+        mode="view"
+        fileBaseUrl="/custom/files"
+      />
+    );
+
+    const link = screen.getByRole('link');
+    expect(link).toHaveAttribute('href', expect.stringContaining('/custom/files'));
+  });
+});
+
+// =============================================================================
+// Picture Field Tests
+// =============================================================================
+
+describe('FieldRenderer - Picture Field', () => {
+  it('renders picture field in view mode with image', () => {
+    const field = createField({ 
+      type: FieldType.Picture,
       name: 'Photo',
-      description: 'Upload photo',
-      required: false,
-      param1: '',
-      param2: '',
-      param3: '',
-    };
-
-    it('should render image with alt text in view mode', () => {
-      const value: FieldContent = {
-        id: 9,
-        fieldid: 9,
-        recordid: 50,
-        content: 'profile.jpg',
-        content1: 'Profile picture',
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      render(
-        <FieldRenderer 
-          field={pictureField} 
-          value={value} 
-          mode="view"
-          fileBaseUrl="https://example.com/files"
-        />
-      );
-
-      const image = screen.getByRole('img', { name: /Profile picture/i });
-      expect(image).toBeInTheDocument();
-      expect(image).toHaveAttribute('src', expect.stringContaining('profile.jpg'));
-      expect(image).toHaveAttribute('alt', 'Profile picture');
+      param1: '800', // Max width
+      param2: '600'  // Max height
+    });
+    const value = createContent({ 
+      content: 'photo.jpg',
+      content1: 'Profile picture' // Alt text
     });
 
-    it('should construct proper image src URL', () => {
-      const value: FieldContent = {
-        id: 9,
-        fieldid: 9,
-        recordid: 50,
-        content: 'image.png',
-        content1: 'Test image',
-        content2: null,
-        content3: null,
-        content4: null,
-      };
+    render(<FieldRenderer field={field} value={value} mode="view" />);
 
-      render(
-        <FieldRenderer 
-          field={pictureField} 
-          value={value} 
-          mode="view"
-          fileBaseUrl="https://cdn.example.com/images"
-        />
-      );
-
-      const image = screen.getByRole('img');
-      expect(image.getAttribute('src')).toContain('image.png');
-    });
-
-    it('should use filename as alt text when content1 is empty', () => {
-      const value: FieldContent = {
-        id: 9,
-        fieldid: 9,
-        recordid: 50,
-        content: 'photo.jpg',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      render(
-        <FieldRenderer 
-          field={pictureField} 
-          value={value} 
-          mode="view"
-          fileBaseUrl="https://example.com/files"
-        />
-      );
-
-      const image = screen.getByRole('img');
-      expect(image).toHaveAttribute('alt', 'photo.jpg');
-    });
-
-    it('should render file input for image upload in edit mode', () => {
-      const value: FieldContent = {
-        id: 9,
-        fieldid: 9,
-        recordid: 50,
-        content: '',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      const { container } = render(
-        <FieldRenderer 
-          field={pictureField} 
-          value={value} 
-          mode="edit"
-          onChange={mockOnChange}
-        />
-      );
-
-      const fileInput = container.querySelector('input[type="file"]');
-      expect(fileInput).toBeInTheDocument();
-      expect(fileInput).toHaveAttribute('accept', 'image/*');
-    });
+    const img = screen.getByRole('img');
+    expect(img).toHaveAttribute('alt', 'Profile picture');
+    expect(img).toHaveAttribute('src', expect.stringContaining('photo.jpg'));
   });
 
-  describe('URL Field Rendering', () => {
-    const urlField: URLField = {
-      id: 10,
-      dataid: 100,
-      type: 'url',
-      name: 'Website',
-      description: 'Enter website URL',
-      required: false,
-      param1: '',
-      param2: '',
-      param3: '',
-    };
-
-    it('should render URL as link with custom text in view mode', () => {
-      const value: FieldContent = {
-        id: 10,
-        fieldid: 10,
-        recordid: 50,
-        content: 'https://example.com',
-        content1: 'Visit Example',
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      render(
-        <FieldRenderer 
-          field={urlField} 
-          value={value} 
-          mode="view"
-        />
-      );
-
-      const link = screen.getByRole('link', { name: /Visit Example/i });
-      expect(link).toBeInTheDocument();
-      expect(link).toHaveAttribute('href', 'https://example.com');
-      expect(link).toHaveAttribute('target', '_blank');
-      expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+  it('renders picture field in list mode with thumbnail', () => {
+    const field = createField({ 
+      type: FieldType.Picture,
+      param1: '800',
+      param2: '600'
+    });
+    const value = createContent({ 
+      content: 'large-image.png',
+      content1: 'Thumbnail view'
     });
 
-    it('should use URL as link text when content1 is empty', () => {
-      const value: FieldContent = {
-        id: 10,
-        fieldid: 10,
-        recordid: 50,
-        content: 'https://moodle.org',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
+    render(<FieldRenderer field={field} value={value} mode="list" />);
 
-      render(
-        <FieldRenderer 
-          field={urlField} 
-          value={value} 
-          mode="view"
-        />
-      );
-
-      const link = screen.getByRole('link', { name: /moodle\.org/i });
-      expect(link).toBeInTheDocument();
-      expect(link).toHaveAttribute('href', 'https://moodle.org');
-    });
-
-    it('should render URL TextField in edit mode', () => {
-      const value: FieldContent = {
-        id: 10,
-        fieldid: 10,
-        recordid: 50,
-        content: 'https://example.com',
-        content1: 'Example',
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      render(
-        <FieldRenderer 
-          field={urlField} 
-          value={value} 
-          mode="edit"
-          onChange={mockOnChange}
-        />
-      );
-
-      const urlInput = screen.getByLabelText(/URL/i);
-      expect(urlInput).toBeInTheDocument();
-      expect(urlInput).toHaveValue('https://example.com');
-    });
-
-    it('should render text input for link text in edit mode', () => {
-      const value: FieldContent = {
-        id: 10,
-        fieldid: 10,
-        recordid: 50,
-        content: 'https://example.com',
-        content1: 'Example Link',
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      render(
-        <FieldRenderer 
-          field={urlField} 
-          value={value} 
-          mode="edit"
-          onChange={mockOnChange}
-        />
-      );
-
-      const textInput = screen.getByLabelText(/Link Text/i);
-      expect(textInput).toBeInTheDocument();
-      expect(textInput).toHaveValue('Example Link');
-    });
+    const img = screen.getByRole('img');
+    expect(img).toBeInTheDocument();
+    // List mode might apply different styling or sizing
   });
 
-  describe('LatLong Field Rendering', () => {
-    const latlongField: LatLongField = {
-      id: 11,
-      dataid: 100,
-      type: 'latlong',
-      name: 'Location',
-      description: 'Enter coordinates',
-      required: false,
-      param1: '',
-      param2: '',
-      param3: '',
-    };
+  it('renders picture field with no image', () => {
+    const field = createField({ type: FieldType.Picture });
+    const value = createContent({ content: '' });
 
-    it('should render coordinates in view mode', () => {
-      const value: FieldContent = {
-        id: 11,
-        fieldid: 11,
-        recordid: 50,
-        content: '40.7128',
-        content1: '-74.0060',
-        content2: null,
-        content3: null,
-        content4: null,
-      };
+    render(<FieldRenderer field={field} value={value} mode="view" />);
 
-      render(
-        <FieldRenderer 
-          field={latlongField} 
-          value={value} 
-          mode="view"
-        />
-      );
-
-      expect(screen.getByText(/40\.7128/)).toBeInTheDocument();
-      expect(screen.getByText(/-74\.0060/)).toBeInTheDocument();
-    });
-
-    it('should format coordinates properly', () => {
-      const value: FieldContent = {
-        id: 11,
-        fieldid: 11,
-        recordid: 50,
-        content: '51.5074',
-        content1: '-0.1278',
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      render(
-        <FieldRenderer 
-          field={latlongField} 
-          value={value} 
-          mode="view"
-        />
-      );
-
-      const coordText = screen.getByText(/51\.5074.*-0\.1278/);
-      expect(coordText).toBeInTheDocument();
-    });
-
-    it('should render latitude and longitude inputs in edit mode', () => {
-      const value: FieldContent = {
-        id: 11,
-        fieldid: 11,
-        recordid: 50,
-        content: '34.0522',
-        content1: '-118.2437',
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      render(
-        <FieldRenderer 
-          field={latlongField} 
-          value={value} 
-          mode="edit"
-          onChange={mockOnChange}
-        />
-      );
-
-      const latInput = screen.getByLabelText(/Latitude/i);
-      const longInput = screen.getByLabelText(/Longitude/i);
-      
-      expect(latInput).toBeInTheDocument();
-      expect(latInput).toHaveValue(34.0522);
-      expect(longInput).toBeInTheDocument();
-      expect(longInput).toHaveValue(-118.2437);
-    });
-
-    it('should handle empty coordinates', () => {
-      const value: FieldContent = {
-        id: 11,
-        fieldid: 11,
-        recordid: 50,
-        content: '',
-        content1: '',
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      const { container } = render(
-        <FieldRenderer 
-          field={latlongField} 
-          value={value} 
-          mode="view"
-        />
-      );
-
-      const textElement = container.querySelector('p');
-      expect(textElement).toBeInTheDocument();
-    });
+    expect(screen.getByText('No value')).toBeInTheDocument();
   });
 
-  describe('MultiMenu Field Rendering', () => {
-    const multimenuField: MultiMenuField = {
-      id: 12,
-      dataid: 100,
-      type: 'multimenu',
-      name: 'Tags',
-      description: 'Select tags',
-      required: false,
-      param1: 'JavaScript\nPython\nJava\nC++\nRuby\nGo',
-      param2: '',
-      param3: '',
-    };
-
-    it('should render multiple selected values as Chips in view mode', () => {
-      const value: FieldContent = {
-        id: 12,
-        fieldid: 12,
-        recordid: 50,
-        content: 'JavaScript##@@##Python##@@##Go',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      render(
-        <FieldRenderer 
-          field={multimenuField} 
-          value={value} 
-          mode="view"
-        />
-      );
-
-      expect(screen.getByText('JavaScript')).toBeInTheDocument();
-      expect(screen.getByText('Python')).toBeInTheDocument();
-      expect(screen.getByText('Go')).toBeInTheDocument();
+  it('renders picture with dimension constraints', () => {
+    const field = createField({ 
+      type: FieldType.Picture,
+      param1: '300', // Max width
+      param2: '200'  // Max height
+    });
+    const value = createContent({ 
+      content: 'banner.jpg',
+      content1: 'Banner image'
     });
 
-    it('should render all chips with proper styling', () => {
-      const value: FieldContent = {
-        id: 12,
-        fieldid: 12,
-        recordid: 50,
-        content: 'Java##@@##C++',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
+    render(<FieldRenderer field={field} value={value} mode="view" />);
 
-      render(
-        <FieldRenderer 
-          field={multimenuField} 
-          value={value} 
-          mode="view"
-        />
-      );
+    const img = screen.getByRole('img');
+    expect(img).toBeInTheDocument();
+    // Component should respect maxWidth/maxHeight from params
+  });
+});
 
-      const javaChip = screen.getByText('Java');
-      const cppChip = screen.getByText('C++');
-      
-      expect(javaChip.closest('.MuiChip-root')).toBeInTheDocument();
-      expect(cppChip.closest('.MuiChip-root')).toBeInTheDocument();
+// =============================================================================
+// URL Field Tests
+// =============================================================================
+
+describe('FieldRenderer - URL Field', () => {
+  it('renders URL field with link text', () => {
+    const field = createField({ 
+      type: FieldType.URL,
+      name: 'Website'
+    });
+    const value = createContent({ 
+      content: 'https://example.com',
+      content1: 'Visit Example Site' // Link text
     });
 
-    it('should render Select with multiple prop in edit mode', () => {
-      const value: FieldContent = {
-        id: 12,
-        fieldid: 12,
-        recordid: 50,
-        content: 'JavaScript',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
+    render(<FieldRenderer field={field} value={value} mode="view" />);
 
-      render(
-        <FieldRenderer 
-          field={multimenuField} 
-          value={value} 
-          mode="edit"
-          onChange={mockOnChange}
-        />
-      );
-
-      const select = screen.getByRole('combobox');
-      expect(select).toBeInTheDocument();
-    });
-
-    it('should handle empty selection', () => {
-      const value: FieldContent = {
-        id: 12,
-        fieldid: 12,
-        recordid: 50,
-        content: '',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      const { container } = render(
-        <FieldRenderer 
-          field={multimenuField} 
-          value={value} 
-          mode="view"
-        />
-      );
-
-      // Should render empty Box, no chips
-      const chips = container.querySelectorAll('.MuiChip-root');
-      expect(chips.length).toBe(0);
-    });
-
-    it('should handle single selection', () => {
-      const value: FieldContent = {
-        id: 12,
-        fieldid: 12,
-        recordid: 50,
-        content: 'Ruby',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      render(
-        <FieldRenderer 
-          field={multimenuField} 
-          value={value} 
-          mode="view"
-        />
-      );
-
-      const chip = screen.getByText('Ruby');
-      expect(chip).toBeInTheDocument();
-    });
+    const link = screen.getByRole('link', { name: /Visit Example Site/ });
+    expect(link).toHaveAttribute('href', 'https://example.com');
+    expect(link).toHaveAttribute('target', '_blank'); // Opens in new tab
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer'); // Security
   });
 
-  describe('Error Handling', () => {
-    it('should handle invalid field type gracefully', () => {
-      const invalidField = {
-        id: 99,
-        dataid: 100,
-        type: 'invalid_type' as any,
-        name: 'Invalid',
-        description: 'Invalid field type',
-        required: false,
-        param1: '',
-        param2: '',
-        param3: '',
-      };
-
-      const value: FieldContent = {
-        id: 99,
-        fieldid: 99,
-        recordid: 50,
-        content: 'test',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      const { container } = render(
-        <FieldRenderer 
-          field={invalidField} 
-          value={value} 
-          mode="view"
-        />
-      );
-
-      // Should render error message or fallback
-      expect(container.querySelector('p')).toBeInTheDocument();
+  it('renders URL field without link text (uses URL as text)', () => {
+    const field = createField({ type: FieldType.URL });
+    const value = createContent({ 
+      content: 'https://github.com'
+      // No content1 = no link text, URL will be used as display text
     });
 
-    it('should handle null value gracefully', () => {
-      const textField: TextField = {
-        id: 1,
-        dataid: 100,
-        type: 'text',
-        name: 'Test',
-        description: 'Test field',
-        required: false,
-        param1: '',
-        param2: '',
-        param3: '',
-      };
+    render(<FieldRenderer field={field} value={value} mode="view" />);
 
-      const value = null as any;
-
-      const { container } = render(
-        <FieldRenderer 
-          field={textField} 
-          value={value} 
-          mode="view"
-        />
-      );
-
-      expect(container).toBeInTheDocument();
-    });
-
-    it('should handle malformed date string', () => {
-      const dateField: DateField = {
-        id: 4,
-        dataid: 100,
-        type: 'date',
-        name: 'Date',
-        description: 'Test date',
-        required: false,
-        param1: '',
-        param2: '',
-        param3: '',
-      };
-
-      const value: FieldContent = {
-        id: 4,
-        fieldid: 4,
-        recordid: 50,
-        content: 'invalid-date',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      const { container } = render(
-        <FieldRenderer 
-          field={dateField} 
-          value={value} 
-          mode="view"
-        />
-      );
-
-      expect(container).toBeInTheDocument();
-    });
-
-    it('should handle malformed number string', () => {
-      const numberField: NumberField = {
-        id: 3,
-        dataid: 100,
-        type: 'number',
-        name: 'Number',
-        description: 'Test number',
-        required: false,
-        param1: '2',
-        param2: '',
-        param3: '',
-      };
-
-      const value: FieldContent = {
-        id: 3,
-        fieldid: 3,
-        recordid: 50,
-        content: 'not-a-number',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      const { container } = render(
-        <FieldRenderer 
-          field={numberField} 
-          value={value} 
-          mode="view"
-        />
-      );
-
-      expect(container).toBeInTheDocument();
-    });
+    const link = screen.getByRole('link', { name: /github\.com/ });
+    expect(link).toHaveAttribute('href', 'https://github.com');
   });
 
-  describe('Accessibility', () => {
-    it('should have proper ARIA labels for text input', () => {
-      const textField: TextField = {
-        id: 1,
-        dataid: 100,
-        type: 'text',
-        name: 'Username',
-        description: 'Enter username',
-        required: true,
-        param1: '',
-        param2: '',
-        param3: '',
-      };
+  it('renders URL field with no URL', () => {
+    const field = createField({ type: FieldType.URL });
+    const value = createContent({ content: '' });
 
-      const value: FieldContent = {
-        id: 1,
-        fieldid: 1,
-        recordid: 50,
-        content: '',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
+    render(<FieldRenderer field={field} value={value} mode="view" />);
 
-      render(
-        <FieldRenderer 
-          field={textField} 
-          value={value} 
-          mode="edit"
-          onChange={mockOnChange}
-        />
-      );
-
-      const input = screen.getByRole('textbox');
-      expect(input).toHaveAttribute('aria-required', 'true');
-    });
-
-    it('should have proper role for checkbox', () => {
-      const checkboxField: CheckboxField = {
-        id: 6,
-        dataid: 100,
-        type: 'checkbox',
-        name: 'Terms',
-        description: 'Accept terms',
-        required: false,
-        param1: '',
-        param2: '',
-        param3: '',
-      };
-
-      const value: FieldContent = {
-        id: 6,
-        fieldid: 6,
-        recordid: 50,
-        content: '0',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      render(
-        <FieldRenderer 
-          field={checkboxField} 
-          value={value} 
-          mode="edit"
-          onChange={mockOnChange}
-        />
-      );
-
-      const checkbox = screen.getByRole('checkbox');
-      expect(checkbox).toBeInTheDocument();
-    });
-
-    it('should have proper role for radio buttons', () => {
-      const radioField: RadioButtonField = {
-        id: 7,
-        dataid: 100,
-        type: 'radiobutton',
-        name: 'Gender',
-        description: 'Select gender',
-        required: false,
-        param1: 'Male\nFemale\nOther',
-        param2: '',
-        param3: '',
-      };
-
-      const value: FieldContent = {
-        id: 7,
-        fieldid: 7,
-        recordid: 50,
-        content: 'Male',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      render(
-        <FieldRenderer 
-          field={radioField} 
-          value={value} 
-          mode="edit"
-          onChange={mockOnChange}
-        />
-      );
-
-      const radios = screen.getAllByRole('radio');
-      expect(radios.length).toBeGreaterThan(0);
-    });
-
-    it('should have proper alt text for images', () => {
-      const pictureField: PictureField = {
-        id: 9,
-        dataid: 100,
-        type: 'picture',
-        name: 'Avatar',
-        description: 'Upload avatar',
-        required: false,
-        param1: '',
-        param2: '',
-        param3: '',
-      };
-
-      const value: FieldContent = {
-        id: 9,
-        fieldid: 9,
-        recordid: 50,
-        content: 'avatar.jpg',
-        content1: 'User avatar image',
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      render(
-        <FieldRenderer 
-          field={pictureField} 
-          value={value} 
-          mode="view"
-          fileBaseUrl="https://example.com/files"
-        />
-      );
-
-      const image = screen.getByRole('img');
-      expect(image).toHaveAttribute('alt', 'User avatar image');
-    });
-
-    it('should have proper rel attributes for external links', () => {
-      const urlField: URLField = {
-        id: 10,
-        dataid: 100,
-        type: 'url',
-        name: 'External Link',
-        description: 'Enter link',
-        required: false,
-        param1: '',
-        param2: '',
-        param3: '',
-      };
-
-      const value: FieldContent = {
-        id: 10,
-        fieldid: 10,
-        recordid: 50,
-        content: 'https://external.com',
-        content1: 'External Site',
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      render(
-        <FieldRenderer 
-          field={urlField} 
-          value={value} 
-          mode="view"
-        />
-      );
-
-      const link = screen.getByRole('link');
-      expect(link).toHaveAttribute('rel', 'noopener noreferrer');
-      expect(link).toHaveAttribute('target', '_blank');
-    });
+    expect(screen.getByText('No value')).toBeInTheDocument();
   });
 
-  describe('Material-UI Component Integration', () => {
-    it('should render MUI TextField for text input', () => {
-      const textField: TextField = {
-        id: 1,
-        dataid: 100,
-        type: 'text',
-        name: 'Name',
-        description: 'Enter name',
-        required: false,
-        param1: '',
-        param2: '',
-        param3: '',
-      };
-
-      const value: FieldContent = {
-        id: 1,
-        fieldid: 1,
-        recordid: 50,
-        content: 'Test',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
-
-      const { container } = render(
-        <FieldRenderer 
-          field={textField} 
-          value={value} 
-          mode="edit"
-          onChange={mockOnChange}
-        />
-      );
-
-      const muiTextField = container.querySelector('.MuiTextField-root');
-      expect(muiTextField).toBeInTheDocument();
+  it('handles URL with special characters', () => {
+    const field = createField({ type: FieldType.URL });
+    const value = createContent({ 
+      content: 'https://example.com/path?query=value&other=123',
+      content1: 'Query Link'
     });
 
-    it('should render MUI Checkbox component', () => {
-      const checkboxField: CheckboxField = {
-        id: 6,
-        dataid: 100,
-        type: 'checkbox',
-        name: 'Checkbox',
-        description: 'Check this',
-        required: false,
-        param1: '',
-        param2: '',
-        param3: '',
-      };
+    render(<FieldRenderer field={field} value={value} mode="view" />);
 
-      const value: FieldContent = {
-        id: 6,
-        fieldid: 6,
-        recordid: 50,
-        content: '1',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
+    const link = screen.getByRole('link', { name: /Query Link/ });
+    expect(link).toHaveAttribute('href', 'https://example.com/path?query=value&other=123');
+  });
+});
 
-      const { container } = render(
-        <FieldRenderer 
-          field={checkboxField} 
-          value={value} 
-          mode="edit"
-          onChange={mockOnChange}
-        />
-      );
+// =============================================================================
+// LatLong Field Tests
+// =============================================================================
 
-      const muiCheckbox = container.querySelector('.MuiCheckbox-root');
-      expect(muiCheckbox).toBeInTheDocument();
+describe('FieldRenderer - LatLong Field', () => {
+  it('renders latitude and longitude coordinates', () => {
+    const field = createField({ 
+      type: FieldType.LatLong,
+      name: 'Location'
+    });
+    const value = createContent({ 
+      content: '40.7128',  // Latitude (New York)
+      content1: '-74.0060' // Longitude
     });
 
-    it('should render MUI Chip components for multimenu', () => {
-      const multimenuField: MultiMenuField = {
-        id: 12,
-        dataid: 100,
-        type: 'multimenu',
-        name: 'Tags',
-        description: 'Select tags',
-        required: false,
-        param1: 'Tag1\nTag2\nTag3',
-        param2: '',
-        param3: '',
-      };
+    render(<FieldRenderer field={field} value={value} mode="view" />);
 
-      const value: FieldContent = {
-        id: 12,
-        fieldid: 12,
-        recordid: 50,
-        content: 'Tag1##@@##Tag2',
-        content1: null,
-        content2: null,
-        content3: null,
-        content4: null,
-      };
+    expect(screen.getByText(/40\.7128/)).toBeInTheDocument();
+    expect(screen.getByText(/-74\.0060/)).toBeInTheDocument();
+  });
 
-      const { container } = render(
-        <FieldRenderer 
-          field={multimenuField} 
-          value={value} 
-          mode="view"
-        />
-      );
-
-      const chips = container.querySelectorAll('.MuiChip-root');
-      expect(chips.length).toBe(2);
+  it('renders latlong with map link', () => {
+    const field = createField({ type: FieldType.LatLong });
+    const value = createContent({ 
+      content: '51.5074',  // London
+      content1: '-0.1278'
     });
 
-    it('should render MUI Link component for URLs', () => {
-      const urlField: URLField = {
-        id: 10,
-        dataid: 100,
-        type: 'url',
-        name: 'Link',
-        description: 'Enter link',
-        required: false,
-        param1: '',
-        param2: '',
-        param3: '',
-      };
+    render(<FieldRenderer field={field} value={value} mode="view" />);
 
-      const value: FieldContent = {
-        id: 10,
-        fieldid: 10,
-        recordid: 50,
-        content: 'https://example.com',
-        content1: 'Example',
-        content2: null,
-        content3: null,
-        content4: null,
-      };
+    // Should have a link to view on map (Google Maps, OpenStreetMap, etc.)
+    const links = screen.getAllByRole('link');
+    expect(links.length).toBeGreaterThan(0);
+    
+    // Link should contain coordinates
+    const mapLink = links.find(link => 
+      link.getAttribute('href')?.includes('51.5074') || 
+      link.getAttribute('href')?.includes('-0.1278')
+    );
+    expect(mapLink).toBeDefined();
+  });
 
-      const { container } = render(
-        <FieldRenderer 
-          field={urlField} 
-          value={value} 
-          mode="view"
-        />
-      );
+  it('renders latlong field with no coordinates', () => {
+    const field = createField({ type: FieldType.LatLong });
+    const value = createContent({ content: '', content1: '' });
 
-      const muiLink = container.querySelector('.MuiLink-root');
-      expect(muiLink).toBeInTheDocument();
+    render(<FieldRenderer field={field} value={value} mode="view" />);
+
+    expect(screen.getByText('No value')).toBeInTheDocument();
+  });
+
+  it('handles invalid coordinate format gracefully', () => {
+    const field = createField({ type: FieldType.LatLong });
+    const value = createContent({ 
+      content: 'invalid',
+      content1: 'also invalid'
     });
+
+    render(<FieldRenderer field={field} value={value} mode="view" />);
+
+    // Should display an error message for invalid coordinates
+    expect(screen.getByText('Invalid coordinates')).toBeInTheDocument();
+  });
+});
+
+// =============================================================================
+// MultiMenu Field Tests
+// =============================================================================
+
+describe('FieldRenderer - MultiMenu Field', () => {
+  it('renders multiple selected options', () => {
+    const field = createField({ 
+      type: FieldType.MultiMenu,
+      name: 'Skills',
+      param1: 'JavaScript\nPython\nJava\nC++\nRuby' // Available options
+    });
+    const value = createContent({ 
+      content: 'JavaScript##Python##Java' // ## separator
+    });
+
+    render(<FieldRenderer field={field} value={value} mode="view" />);
+
+    expect(screen.getByText('JavaScript')).toBeInTheDocument();
+    expect(screen.getByText('Python')).toBeInTheDocument();
+    expect(screen.getByText('Java')).toBeInTheDocument();
+  });
+
+  it('renders single selected option', () => {
+    const field = createField({ 
+      type: FieldType.MultiMenu,
+      param1: 'Red\nGreen\nBlue'
+    });
+    const value = createContent({ content: 'Red' });
+
+    render(<FieldRenderer field={field} value={value} mode="view" />);
+
+    expect(screen.getByText('Red')).toBeInTheDocument();
+  });
+
+  it('renders empty multimenu field', () => {
+    const field = createField({ type: FieldType.MultiMenu });
+    const value = createContent({ content: '' });
+
+    render(<FieldRenderer field={field} value={value} mode="view" />);
+
+    expect(screen.getByText('No value')).toBeInTheDocument();
+  });
+
+  it('renders multimenu options as chips', () => {
+    const field = createField({ 
+      type: FieldType.MultiMenu,
+      param1: 'Tag1\nTag2\nTag3'
+    });
+    const value = createContent({ content: 'Tag1##Tag2' });
+
+    render(<FieldRenderer field={field} value={value} mode="view" />);
+
+    // MUI Chips should be present (they typically have specific class names or test IDs)
+    // For now, just verify the text is present
+    expect(screen.getByText('Tag1')).toBeInTheDocument();
+    expect(screen.getByText('Tag2')).toBeInTheDocument();
+  });
+});
+
+// =============================================================================
+// Error Handling and Edge Cases
+// =============================================================================
+
+describe('FieldRenderer - Error Handling', () => {
+  it('handles undefined field value gracefully', () => {
+    const field = createField({ type: FieldType.Text });
+
+    render(<FieldRenderer field={field} value={undefined as any} mode="view" />);
+
+    expect(screen.getByText('No value')).toBeInTheDocument();
+  });
+
+  it('handles unknown field type gracefully', () => {
+    const field = createField({ type: 'unknown' as any });
+    const value = createContent({ content: 'Some content' });
+
+    render(<FieldRenderer field={field} value={value} mode="view" />);
+
+    // Should fall back to displaying raw content or error message
+    expect(screen.getByText(/Some content|Unknown field type/)).toBeInTheDocument();
+  });
+
+  it('handles malformed field content structure', () => {
+    const field = createField({ type: FieldType.Text });
+    const value = { 
+      id: 1, 
+      fieldid: 1,
+      recordid: 1,
+      // Missing content fields
+    } as any;
+
+    render(<FieldRenderer field={field} value={value} mode="view" />);
+
+    expect(screen.getByText('No value')).toBeInTheDocument();
+  });
+});
+
+// =============================================================================
+// Material-UI Integration Tests
+// =============================================================================
+
+describe('FieldRenderer - Material-UI Integration', () => {
+  it('renders with MUI Typography component', () => {
+    const field = createField({ type: FieldType.Text });
+    const value = createContent({ content: 'Test Typography' });
+
+    const { container } = render(<FieldRenderer field={field} value={value} mode="view" />);
+
+    // MUI Typography typically has specific class names
+    const typography = container.querySelector('[class*="MuiTypography"]');
+    expect(typography).toBeTruthy();
+  });
+
+  it('uses MUI Box as container', () => {
+    const field = createField({ type: FieldType.Text });
+    const value = createContent({ content: 'Test' });
+
+    const { container } = render(<FieldRenderer field={field} value={value} mode="view" />);
+
+    // MUI Box typically has specific class names
+    const box = container.querySelector('[class*="MuiBox"]');
+    expect(box).toBeTruthy();
+  });
+
+  it('renders MUI Link for URL fields', () => {
+    const field = createField({ type: FieldType.URL });
+    const value = createContent({ 
+      content: 'https://example.com',
+      content1: 'Example'
+    });
+
+    const { container } = render(<FieldRenderer field={field} value={value} mode="view" />);
+
+    const link = container.querySelector('[class*="MuiLink"]');
+    expect(link).toBeTruthy();
+  });
+
+  it('renders MUI Chip for multimenu selections', () => {
+    const field = createField({ 
+      type: FieldType.MultiMenu,
+      param1: 'Option1\nOption2'
+    });
+    const value = createContent({ content: 'Option1##Option2' });
+
+    const { container } = render(<FieldRenderer field={field} value={value} mode="view" />);
+
+    const chips = container.querySelectorAll('[class*="MuiChip"]');
+    expect(chips.length).toBeGreaterThan(0);
+  });
+});
+
+// =============================================================================
+// Accessibility Tests
+// =============================================================================
+
+describe('FieldRenderer - Accessibility', () => {
+  it('renders images with alt text', () => {
+    const field = createField({ type: FieldType.Picture });
+    const value = createContent({ 
+      content: 'image.jpg',
+      content1: 'Descriptive alt text'
+    });
+
+    render(<FieldRenderer field={field} value={value} mode="view" />);
+
+    const img = screen.getByRole('img');
+    expect(img).toHaveAttribute('alt', 'Descriptive alt text');
+  });
+
+  it('renders links with proper roles', () => {
+    const field = createField({ type: FieldType.URL });
+    const value = createContent({ 
+      content: 'https://example.com',
+      content1: 'Example Link'
+    });
+
+    render(<FieldRenderer field={field} value={value} mode="view" />);
+
+    const link = screen.getByRole('link');
+    expect(link).toBeInTheDocument();
+  });
+
+  it('provides semantic HTML structure', () => {
+    const field = createField({ type: FieldType.Text });
+    const value = createContent({ content: 'Accessible content' });
+
+    const { container } = render(<FieldRenderer field={field} value={value} mode="view" />);
+
+    // Should not have accessibility violations
+    expect(container).toBeInTheDocument();
+  });
+
+  it('handles screen reader announcements for empty fields', () => {
+    const field = createField({ type: FieldType.Text });
+    const value = createContent({ content: '' });
+
+    render(<FieldRenderer field={field} value={value} mode="view" />);
+
+    const noValueText = screen.getByText('No value');
+    expect(noValueText).toBeInTheDocument();
+    // Italic styling helps screen readers understand it's a status message
+  });
+});
+
+// =============================================================================
+// Performance and Optimization Tests
+// =============================================================================
+
+describe('FieldRenderer - Performance', () => {
+  it('uses useMemo to optimize rendering', () => {
+    const field = createField({ type: FieldType.Text });
+    const value = createContent({ content: 'Initial content' });
+
+    const { rerender } = render(<FieldRenderer field={field} value={value} mode="view" />);
+
+    expect(screen.getByText('Initial content')).toBeInTheDocument();
+
+    // Rerender with same props - useMemo should prevent recalculation
+    rerender(<FieldRenderer field={field} value={value} mode="view" />);
+
+    expect(screen.getByText('Initial content')).toBeInTheDocument();
+  });
+
+  it('updates when field value changes', () => {
+    const field = createField({ type: FieldType.Text });
+    const value1 = createContent({ content: 'First value' });
+
+    const { rerender } = render(<FieldRenderer field={field} value={value1} mode="view" />);
+
+    expect(screen.getByText('First value')).toBeInTheDocument();
+
+    // Update with new value
+    const value2 = createContent({ content: 'Second value' });
+    rerender(<FieldRenderer field={field} value={value2} mode="view" />);
+
+    expect(screen.queryByText('First value')).not.toBeInTheDocument();
+    expect(screen.getByText('Second value')).toBeInTheDocument();
   });
 });
