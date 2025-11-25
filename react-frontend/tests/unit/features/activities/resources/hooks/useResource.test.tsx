@@ -243,9 +243,7 @@ describe('useResource hook', () => {
   describe('loading states', () => {
     it('should show loading state during fetch', async () => {
       // Create a promise that will resolve after 100ms
-      let resolvePromise: (value: unknown) => void;
       const delayedPromise = new Promise((resolve) => {
-        resolvePromise = resolve;
         setTimeout(() => resolve({ data: createApiResponse(mockResourceFile) }), 100);
       });
       
