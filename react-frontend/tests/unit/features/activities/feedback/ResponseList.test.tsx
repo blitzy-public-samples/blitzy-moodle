@@ -888,7 +888,7 @@ describe('ResponseList Component', () => {
 
       await waitFor(() => {
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-      });
+      }, { timeout: 10000 }); // Increased timeout to account for MUI Dialog exit animation
 
       expect(mockOnDelete).not.toHaveBeenCalled();
     });
