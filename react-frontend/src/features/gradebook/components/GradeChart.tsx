@@ -190,13 +190,16 @@ function GradeChart({
     }
 
     // For regular grade chart, use grade summary data directly
-    return grades.map((grade) => ({
-      itemname: grade.itemname,
-      grade: grade.grade,
-      percentage: grade.percentage,
-      average: grade.average,
-      lettergrade: grade.lettergrade,
-    }));
+    // Filter out grades with null percentages (no valid grade data to display)
+    return grades
+      .filter((grade) => grade.percentage !== null && grade.percentage !== undefined)
+      .map((grade) => ({
+        itemname: grade.itemname,
+        grade: grade.grade,
+        percentage: grade.percentage,
+        average: grade.average,
+        lettergrade: grade.lettergrade,
+      }));
   }, [grades, dataKey]);
 
   // Determine appropriate data keys based on chart data structure
