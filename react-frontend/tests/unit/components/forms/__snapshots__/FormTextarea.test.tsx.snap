@@ -1,0 +1,244 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`FormTextarea > Snapshot Tests > matches snapshot for default state 1`] = `
+<form>
+  <div
+    class="MuiFormControl-root MuiFormControl-fullWidth MuiTextField-root css-dbnhlx-MuiFormControl-root-MuiTextField-root"
+  >
+    <label
+      class="MuiFormLabel-root MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-sizeMedium MuiInputLabel-outlined MuiFormLabel-colorPrimary MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-sizeMedium MuiInputLabel-outlined css-tw4ao8-MuiFormLabel-root-MuiInputLabel-root"
+      data-shrink="false"
+      for=":rh2:"
+      id=":rh2:-label"
+    >
+      Default Textarea
+    </label>
+    <div
+      class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary MuiInputBase-fullWidth MuiInputBase-formControl MuiInputBase-multiline css-4wcw33-MuiInputBase-root-MuiOutlinedInput-root"
+    >
+      <textarea
+        aria-describedby="default-helper-text"
+        aria-invalid="false"
+        aria-label="Default Textarea"
+        aria-required="false"
+        class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputMultiline css-1sqnrkk-MuiInputBase-input-MuiOutlinedInput-input"
+        id=":rh2:"
+        name="default"
+        rows="3"
+        style="height: 0px; overflow: hidden;"
+      />
+      <textarea
+        aria-hidden="true"
+        class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputMultiline css-1sqnrkk-MuiInputBase-input-MuiOutlinedInput-input"
+        readonly=""
+        style="visibility: hidden; position: absolute; overflow: hidden; height: 0px; top: 0px; left: 0px; transform: translateZ(0); padding-top: 0px; padding-bottom: 0px; width: 100%;"
+        tabindex="-1"
+      />
+      <fieldset
+        aria-hidden="true"
+        class="MuiOutlinedInput-notchedOutline css-r01yff-MuiNotchedOutlined-root-MuiOutlinedInput-notchedOutline"
+      >
+        <legend
+          class="css-njhac4-MuiNotchedOutlined-root"
+        >
+          <span>
+            Default Textarea
+          </span>
+        </legend>
+      </fieldset>
+    </div>
+    <p
+      class="MuiFormHelperText-root MuiFormHelperText-sizeMedium MuiFormHelperText-contained css-s17tjz-MuiFormHelperText-root"
+      id="default-helper-text"
+    >
+      Helper text
+    </p>
+  </div>
+  <button
+    type="submit"
+  >
+    Submit
+  </button>
+</form>
+`;
+
+exports[`FormTextarea > Snapshot Tests > matches snapshot for disabled state 1`] = `
+<form>
+  <div
+    class="MuiFormControl-root MuiFormControl-fullWidth MuiTextField-root css-dbnhlx-MuiFormControl-root-MuiTextField-root"
+  >
+    <label
+      class="MuiFormLabel-root MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-sizeMedium MuiInputLabel-outlined MuiFormLabel-colorPrimary Mui-disabled MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-sizeMedium MuiInputLabel-outlined css-tw4ao8-MuiFormLabel-root-MuiInputLabel-root"
+      data-shrink="false"
+      for=":rh6:"
+      id=":rh6:-label"
+    >
+      Disabled
+    </label>
+    <div
+      class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary Mui-disabled MuiInputBase-fullWidth MuiInputBase-formControl MuiInputBase-multiline css-4wcw33-MuiInputBase-root-MuiOutlinedInput-root"
+    >
+      <textarea
+        aria-invalid="false"
+        aria-label="Disabled"
+        aria-required="false"
+        class="MuiInputBase-input MuiOutlinedInput-input Mui-disabled MuiInputBase-inputMultiline css-1sqnrkk-MuiInputBase-input-MuiOutlinedInput-input"
+        disabled=""
+        id=":rh6:"
+        name="disabled"
+        rows="3"
+        style="height: 0px; overflow: hidden;"
+      />
+      <textarea
+        aria-hidden="true"
+        class="MuiInputBase-input MuiOutlinedInput-input Mui-disabled MuiInputBase-inputMultiline css-1sqnrkk-MuiInputBase-input-MuiOutlinedInput-input"
+        readonly=""
+        style="visibility: hidden; position: absolute; overflow: hidden; height: 0px; top: 0px; left: 0px; transform: translateZ(0); padding-top: 0px; padding-bottom: 0px; width: 100%;"
+        tabindex="-1"
+      />
+      <fieldset
+        aria-hidden="true"
+        class="MuiOutlinedInput-notchedOutline css-r01yff-MuiNotchedOutlined-root-MuiOutlinedInput-notchedOutline"
+      >
+        <legend
+          class="css-njhac4-MuiNotchedOutlined-root"
+        >
+          <span>
+            Disabled
+          </span>
+        </legend>
+      </fieldset>
+    </div>
+  </div>
+  <button
+    type="submit"
+  >
+    Submit
+  </button>
+</form>
+`;
+
+exports[`FormTextarea > Snapshot Tests > matches snapshot for error state 1`] = `
+<form>
+  <div
+    class="MuiFormControl-root MuiFormControl-fullWidth MuiTextField-root css-dbnhlx-MuiFormControl-root-MuiTextField-root"
+  >
+    <label
+      class="MuiFormLabel-root MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-sizeMedium MuiInputLabel-outlined MuiFormLabel-colorPrimary Mui-error MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-sizeMedium MuiInputLabel-outlined css-tw4ao8-MuiFormLabel-root-MuiInputLabel-root"
+      data-shrink="false"
+      for=":rh4:"
+      id=":rh4:-label"
+    >
+      Field
+    </label>
+    <div
+      class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary Mui-error MuiInputBase-fullWidth MuiInputBase-formControl MuiInputBase-multiline css-4wcw33-MuiInputBase-root-MuiOutlinedInput-root"
+    >
+      <textarea
+        aria-describedby="field-helper-text"
+        aria-invalid="true"
+        aria-label="Field"
+        aria-required="false"
+        class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputMultiline css-1sqnrkk-MuiInputBase-input-MuiOutlinedInput-input"
+        id=":rh4:"
+        name="field"
+        rows="3"
+        style="height: 0px; overflow: hidden;"
+      />
+      <textarea
+        aria-hidden="true"
+        class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputMultiline css-1sqnrkk-MuiInputBase-input-MuiOutlinedInput-input"
+        readonly=""
+        style="visibility: hidden; position: absolute; overflow: hidden; height: 0px; top: 0px; left: 0px; transform: translateZ(0); padding-top: 0px; padding-bottom: 0px; width: 100%;"
+        tabindex="-1"
+      />
+      <fieldset
+        aria-hidden="true"
+        class="MuiOutlinedInput-notchedOutline css-r01yff-MuiNotchedOutlined-root-MuiOutlinedInput-notchedOutline"
+      >
+        <legend
+          class="css-njhac4-MuiNotchedOutlined-root"
+        >
+          <span>
+            Field
+          </span>
+        </legend>
+      </fieldset>
+    </div>
+    <p
+      class="MuiFormHelperText-root Mui-error MuiFormHelperText-sizeMedium MuiFormHelperText-contained css-s17tjz-MuiFormHelperText-root"
+      id="field-helper-text"
+    >
+      Required
+    </p>
+  </div>
+  <button
+    type="submit"
+  >
+    Submit
+  </button>
+</form>
+`;
+
+exports[`FormTextarea > Snapshot Tests > matches snapshot with character count 1`] = `
+<form>
+  <div
+    class="MuiFormControl-root MuiFormControl-fullWidth MuiTextField-root css-dbnhlx-MuiFormControl-root-MuiTextField-root"
+  >
+    <label
+      class="MuiFormLabel-root MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-sizeMedium MuiInputLabel-outlined MuiFormLabel-colorPrimary MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-sizeMedium MuiInputLabel-outlined css-tw4ao8-MuiFormLabel-root-MuiInputLabel-root"
+      data-shrink="false"
+      for=":rh8:"
+      id=":rh8:-label"
+    >
+      Limited
+    </label>
+    <div
+      class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary MuiInputBase-fullWidth MuiInputBase-formControl MuiInputBase-multiline css-4wcw33-MuiInputBase-root-MuiOutlinedInput-root"
+    >
+      <textarea
+        aria-describedby="limited-helper-text"
+        aria-invalid="false"
+        aria-label="Limited"
+        aria-required="false"
+        class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputMultiline css-1sqnrkk-MuiInputBase-input-MuiOutlinedInput-input"
+        id=":rh8:"
+        maxlength="100"
+        name="limited"
+        rows="3"
+        style="height: 0px; overflow: hidden;"
+      />
+      <textarea
+        aria-hidden="true"
+        class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputMultiline css-1sqnrkk-MuiInputBase-input-MuiOutlinedInput-input"
+        readonly=""
+        style="visibility: hidden; position: absolute; overflow: hidden; height: 0px; top: 0px; left: 0px; transform: translateZ(0); padding-top: 0px; padding-bottom: 0px; width: 100%;"
+        tabindex="-1"
+      />
+      <fieldset
+        aria-hidden="true"
+        class="MuiOutlinedInput-notchedOutline css-r01yff-MuiNotchedOutlined-root-MuiOutlinedInput-notchedOutline"
+      >
+        <legend
+          class="css-njhac4-MuiNotchedOutlined-root"
+        >
+          <span>
+            Limited
+          </span>
+        </legend>
+      </fieldset>
+    </div>
+    <p
+      class="MuiFormHelperText-root MuiFormHelperText-sizeMedium MuiFormHelperText-contained css-s17tjz-MuiFormHelperText-root"
+      id="limited-helper-text"
+    >
+      0 / 100
+    </p>
+  </div>
+  <button
+    type="submit"
+  >
+    Submit
+  </button>
+</form>
+`;

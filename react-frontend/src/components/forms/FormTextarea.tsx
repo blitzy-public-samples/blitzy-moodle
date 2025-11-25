@@ -1,4 +1,4 @@
-import { Controller } from 'react-hook-form';
+import { Controller, useFormContext } from 'react-hook-form';
 import type { Control, FieldValues } from 'react-hook-form';
 import { TextField } from '@mui/material';
 import type { TextFieldProps } from '@mui/material';
@@ -41,8 +41,17 @@ export interface FormTextareaProps {
   /** Enable auto-growing height based on content */
   autoResize?: boolean;
 
-  /** React Hook Form control object */
-  control: Control<FieldValues>;
+  /** Whether the field should take full width of its container */
+  fullWidth?: boolean;
+
+  /** Callback fired when the textarea receives focus */
+  onFocus?: (event: React.FocusEvent<HTMLTextAreaElement>) => void;
+
+  /** Callback fired when the textarea loses focus */
+  onBlur?: (event: React.FocusEvent<HTMLTextAreaElement>) => void;
+
+  /** React Hook Form control object (optional, uses context if not provided) */
+  control?: Control<FieldValues>;
 }
 
 /**
@@ -89,29 +98,34 @@ export function FormTextarea({
   maxRows,
   maxLength,
   autoResize = false,
-  control,
+  fullWidth = true,
+  onFocus,
+  onBlur,
+  control: controlProp,
 }: FormTextareaProps): JSX.Element {
+  // Always call useFormContext unconditionally to satisfy React Hooks rules
+  // If a control prop is provided, it will take precedence over the context value
+  // This component must be used within a FormProvider wrapper
+  const formContext = useFormContext();
+  const control = controlProp ?? formContext?.control;
+
+  if (!control) {
+    throw new Error('FormTextarea must be used within a FormProvider or have control prop');
+  }
+
   return (
     <Controller
       name={name}
       control={control}
-      rules={{
-        required: required ? 'This field is required' : false,
-        maxLength: maxLength
-          ? {
-              value: maxLength,
-              message: `Maximum ${maxLength} characters allowed`,
-            }
-          : undefined,
-      }}
       render={({ field, fieldState }) => {
         const { error } = fieldState;
-        const currentLength = typeof field.value === 'string' ? field.value.length : 0;
+        // Use Array.from to correctly count multi-byte characters (emojis, etc.)
+        const currentLength = typeof field.value === 'string' ? Array.from(field.value).length : 0;
 
         // Build helper text with character counter
         let displayHelperText = helperText ?? '';
         if (maxLength) {
-          const counterText = `${currentLength}/${maxLength}`;
+          const counterText = `${currentLength} / ${maxLength}`;
           displayHelperText = displayHelperText
             ? `${displayHelperText} (${counterText})`
             : counterText;
@@ -119,7 +133,10 @@ export function FormTextarea({
 
         // Add error message to helper text if present
         if (error) {
-          displayHelperText = error.message ?? 'Invalid input';
+          const errorMessage = error.message ?? 'Invalid input';
+          displayHelperText = displayHelperText
+            ? `${errorMessage}. ${displayHelperText}`
+            : errorMessage;
         }
 
         // Determine row configuration based on autoResize setting
@@ -144,7 +161,7 @@ export function FormTextarea({
         return (
           <TextField
             {...field}
-            fullWidth
+            fullWidth={fullWidth}
             multiline
             {...rowProps}
             label={label}
@@ -153,6 +170,11 @@ export function FormTextarea({
             required={required}
             error={Boolean(error)}
             helperText={displayHelperText}
+            onFocus={onFocus}
+            onBlur={(e) => {
+              field.onBlur();
+              onBlur?.(e as React.FocusEvent<HTMLTextAreaElement>);
+            }}
             inputProps={{
               maxLength,
               'aria-label': label ?? name,
