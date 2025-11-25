@@ -477,9 +477,12 @@ describe('ResponseList Component', () => {
 
       await user.click(headerCheckbox!);
 
-      // All row checkboxes should be checked
-      checkboxes.slice(1).forEach((checkbox) => {
-        expect(checkbox).toBeChecked();
+      // Wait for all row checkboxes to be checked (state propagation in DataGrid)
+      await waitFor(() => {
+        const updatedCheckboxes = screen.getAllByRole('checkbox');
+        updatedCheckboxes.slice(1).forEach((checkbox) => {
+          expect(checkbox).toBeChecked();
+        });
       });
     });
 
