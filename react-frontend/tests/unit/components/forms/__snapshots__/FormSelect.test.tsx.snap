@@ -1,0 +1,455 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`FormSelect Component > Snapshot Tests > should match snapshot for basic select 1`] = `
+<div
+  class="MuiFormControl-root MuiFormControl-fullWidth css-q8hpuo-MuiFormControl-root"
+>
+  <label
+    class="MuiFormLabel-root MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-sizeMedium MuiInputLabel-outlined MuiFormLabel-colorPrimary MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-sizeMedium MuiInputLabel-outlined css-tw4ao8-MuiFormLabel-root-MuiInputLabel-root"
+    data-shrink="false"
+    id="role-label"
+  >
+    User Role
+  </label>
+  <div
+    class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary MuiInputBase-formControl css-rqgi7p-MuiInputBase-root-MuiOutlinedInput-root-MuiSelect-root"
+  >
+    <div
+      aria-controls=":rd2:"
+      aria-expanded="false"
+      aria-haspopup="listbox"
+      aria-invalid="false"
+      aria-labelledby="role-label role"
+      aria-required="false"
+      class="MuiSelect-select MuiSelect-outlined MuiInputBase-input MuiOutlinedInput-input css-1sbp17s-MuiSelect-select-MuiInputBase-input-MuiOutlinedInput-input"
+      id="role"
+      role="combobox"
+      tabindex="0"
+    >
+      <span
+        class="notranslate"
+      >
+        ​
+      </span>
+    </div>
+    <input
+      aria-hidden="true"
+      aria-invalid="false"
+      class="MuiSelect-nativeInput css-yf8vq0-MuiSelect-nativeInput"
+      name="role"
+      tabindex="-1"
+      value=""
+    />
+    <svg
+      aria-hidden="true"
+      class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium MuiSelect-icon MuiSelect-iconOutlined css-1rejtkv-MuiSvgIcon-root-MuiSelect-icon"
+      data-testid="ArrowDropDownIcon"
+      focusable="false"
+      viewBox="0 0 24 24"
+    >
+      <path
+        d="M7 10l5 5 5-5z"
+      />
+    </svg>
+    <fieldset
+      aria-hidden="true"
+      class="MuiOutlinedInput-notchedOutline css-r01yff-MuiNotchedOutlined-root-MuiOutlinedInput-notchedOutline"
+    >
+      <legend
+        class="css-njhac4-MuiNotchedOutlined-root"
+      >
+        <span>
+          User Role
+        </span>
+      </legend>
+    </fieldset>
+  </div>
+</div>
+`;
+
+exports[`FormSelect Component > Snapshot Tests > should match snapshot for disabled state 1`] = `
+<div
+  class="MuiFormControl-root MuiFormControl-fullWidth css-q8hpuo-MuiFormControl-root"
+>
+  <label
+    class="MuiFormLabel-root MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-sizeMedium MuiInputLabel-outlined MuiFormLabel-colorPrimary Mui-disabled MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-sizeMedium MuiInputLabel-outlined css-tw4ao8-MuiFormLabel-root-MuiInputLabel-root"
+    data-shrink="false"
+    id="role-label"
+  >
+    User Role
+  </label>
+  <div
+    class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary Mui-disabled MuiInputBase-formControl css-rqgi7p-MuiInputBase-root-MuiOutlinedInput-root-MuiSelect-root"
+  >
+    <div
+      aria-controls=":rdd:"
+      aria-disabled="true"
+      aria-expanded="false"
+      aria-haspopup="listbox"
+      aria-invalid="false"
+      aria-labelledby="role-label role"
+      aria-required="false"
+      class="MuiSelect-select MuiSelect-outlined Mui-disabled MuiInputBase-input MuiOutlinedInput-input Mui-disabled css-1sbp17s-MuiSelect-select-MuiInputBase-input-MuiOutlinedInput-input"
+      id="role"
+      role="combobox"
+    >
+      <span
+        class="notranslate"
+      >
+        ​
+      </span>
+    </div>
+    <input
+      aria-hidden="true"
+      aria-invalid="false"
+      class="MuiSelect-nativeInput css-yf8vq0-MuiSelect-nativeInput"
+      disabled=""
+      name="role"
+      tabindex="-1"
+      value=""
+    />
+    <svg
+      aria-hidden="true"
+      class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium MuiSelect-icon MuiSelect-iconOutlined Mui-disabled css-1rejtkv-MuiSvgIcon-root-MuiSelect-icon"
+      data-testid="ArrowDropDownIcon"
+      focusable="false"
+      viewBox="0 0 24 24"
+    >
+      <path
+        d="M7 10l5 5 5-5z"
+      />
+    </svg>
+    <fieldset
+      aria-hidden="true"
+      class="MuiOutlinedInput-notchedOutline css-r01yff-MuiNotchedOutlined-root-MuiOutlinedInput-notchedOutline"
+    >
+      <legend
+        class="css-njhac4-MuiNotchedOutlined-root"
+      >
+        <span>
+          User Role
+        </span>
+      </legend>
+    </fieldset>
+  </div>
+</div>
+`;
+
+exports[`FormSelect Component > Snapshot Tests > should match snapshot for error state 1`] = `
+<form>
+  <div
+    class="MuiFormControl-root MuiFormControl-fullWidth css-q8hpuo-MuiFormControl-root"
+  >
+    <label
+      class="MuiFormLabel-root MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-sizeMedium MuiInputLabel-outlined MuiFormLabel-colorPrimary Mui-error Mui-required MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-sizeMedium MuiInputLabel-outlined css-tw4ao8-MuiFormLabel-root-MuiInputLabel-root"
+      data-shrink="false"
+      id="role-label"
+    >
+      User Role
+      <span
+        aria-hidden="true"
+        class="MuiFormLabel-asterisk MuiInputLabel-asterisk Mui-error css-1wx4po6-MuiFormLabel-asterisk"
+      >
+         
+        *
+      </span>
+    </label>
+    <div
+      class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary Mui-error MuiInputBase-formControl css-rqgi7p-MuiInputBase-root-MuiOutlinedInput-root-MuiSelect-root"
+    >
+      <div
+        aria-controls=":rdb:"
+        aria-describedby="role-helper"
+        aria-expanded="false"
+        aria-haspopup="listbox"
+        aria-invalid="true"
+        aria-labelledby="role-label role"
+        aria-required="true"
+        class="MuiSelect-select MuiSelect-outlined Mui-error MuiInputBase-input MuiOutlinedInput-input css-1sbp17s-MuiSelect-select-MuiInputBase-input-MuiOutlinedInput-input"
+        id="role"
+        role="combobox"
+        tabindex="0"
+      >
+        <span
+          class="notranslate"
+        >
+          ​
+        </span>
+      </div>
+      <input
+        aria-hidden="true"
+        aria-invalid="true"
+        class="MuiSelect-nativeInput css-yf8vq0-MuiSelect-nativeInput"
+        name="role"
+        required=""
+        tabindex="-1"
+        value=""
+      />
+      <svg
+        aria-hidden="true"
+        class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium MuiSelect-icon MuiSelect-iconOutlined css-1rejtkv-MuiSvgIcon-root-MuiSelect-icon"
+        data-testid="ArrowDropDownIcon"
+        focusable="false"
+        viewBox="0 0 24 24"
+      >
+        <path
+          d="M7 10l5 5 5-5z"
+        />
+      </svg>
+      <fieldset
+        aria-hidden="true"
+        class="MuiOutlinedInput-notchedOutline css-r01yff-MuiNotchedOutlined-root-MuiOutlinedInput-notchedOutline"
+      >
+        <legend
+          class="css-njhac4-MuiNotchedOutlined-root"
+        >
+          <span>
+            User Role
+             
+            *
+          </span>
+        </legend>
+      </fieldset>
+    </div>
+    <p
+      class="MuiFormHelperText-root Mui-error MuiFormHelperText-sizeMedium MuiFormHelperText-contained Mui-required css-s17tjz-MuiFormHelperText-root"
+      id="role-helper"
+    >
+      Required
+    </p>
+  </div>
+  <button
+    type="submit"
+  >
+    Submit
+  </button>
+</form>
+`;
+
+exports[`FormSelect Component > Snapshot Tests > should match snapshot for grouped options 1`] = `
+<div
+  class="MuiFormControl-root MuiFormControl-fullWidth css-q8hpuo-MuiFormControl-root"
+>
+  <label
+    class="MuiFormLabel-root MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-sizeMedium MuiInputLabel-outlined MuiFormLabel-colorPrimary MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-sizeMedium MuiInputLabel-outlined css-tw4ao8-MuiFormLabel-root-MuiInputLabel-root"
+    data-shrink="false"
+    id="course-label"
+  >
+    Select Course
+  </label>
+  <div
+    class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary MuiInputBase-formControl css-rqgi7p-MuiInputBase-root-MuiOutlinedInput-root-MuiSelect-root"
+  >
+    <div
+      aria-controls=":rd6:"
+      aria-expanded="false"
+      aria-haspopup="listbox"
+      aria-invalid="false"
+      aria-labelledby="course-label course"
+      aria-required="false"
+      class="MuiSelect-select MuiSelect-outlined MuiInputBase-input MuiOutlinedInput-input css-1sbp17s-MuiSelect-select-MuiInputBase-input-MuiOutlinedInput-input"
+      id="course"
+      role="combobox"
+      tabindex="0"
+    >
+      <span
+        class="notranslate"
+      >
+        ​
+      </span>
+    </div>
+    <input
+      aria-hidden="true"
+      aria-invalid="false"
+      class="MuiSelect-nativeInput css-yf8vq0-MuiSelect-nativeInput"
+      name="course"
+      tabindex="-1"
+      value=""
+    />
+    <svg
+      aria-hidden="true"
+      class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium MuiSelect-icon MuiSelect-iconOutlined css-1rejtkv-MuiSvgIcon-root-MuiSelect-icon"
+      data-testid="ArrowDropDownIcon"
+      focusable="false"
+      viewBox="0 0 24 24"
+    >
+      <path
+        d="M7 10l5 5 5-5z"
+      />
+    </svg>
+    <fieldset
+      aria-hidden="true"
+      class="MuiOutlinedInput-notchedOutline css-r01yff-MuiNotchedOutlined-root-MuiOutlinedInput-notchedOutline"
+    >
+      <legend
+        class="css-njhac4-MuiNotchedOutlined-root"
+      >
+        <span>
+          Select Course
+        </span>
+      </legend>
+    </fieldset>
+  </div>
+</div>
+`;
+
+exports[`FormSelect Component > Snapshot Tests > should match snapshot for multiple select with chips 1`] = `
+<div
+  class="MuiFormControl-root MuiFormControl-fullWidth css-q8hpuo-MuiFormControl-root"
+>
+  <label
+    class="MuiFormLabel-root MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeMedium MuiInputLabel-outlined MuiFormLabel-colorPrimary MuiFormLabel-filled MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeMedium MuiInputLabel-outlined css-duqowz-MuiFormLabel-root-MuiInputLabel-root"
+    data-shrink="true"
+    id="roles-label"
+  >
+    User Roles
+  </label>
+  <div
+    class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary MuiInputBase-formControl css-rqgi7p-MuiInputBase-root-MuiOutlinedInput-root-MuiSelect-root"
+  >
+    <div
+      aria-controls=":rd4:"
+      aria-expanded="false"
+      aria-haspopup="listbox"
+      aria-invalid="false"
+      aria-labelledby="roles-label roles"
+      aria-required="false"
+      class="MuiSelect-select MuiSelect-outlined MuiSelect-multiple MuiInputBase-input MuiOutlinedInput-input css-1sbp17s-MuiSelect-select-MuiInputBase-input-MuiOutlinedInput-input"
+      id="roles"
+      role="combobox"
+      tabindex="0"
+    >
+      <div
+        style="display: flex; flex-wrap: wrap; gap: 4px;"
+      >
+        <div
+          class="MuiChip-root MuiChip-filled MuiChip-sizeSmall MuiChip-colorDefault MuiChip-filledDefault css-1ui9wf6-MuiChip-root"
+        >
+          <span
+            class="MuiChip-label MuiChip-labelSmall css-t3ycia-MuiChip-label"
+          >
+            Student
+          </span>
+        </div>
+        <div
+          class="MuiChip-root MuiChip-filled MuiChip-sizeSmall MuiChip-colorDefault MuiChip-filledDefault css-1ui9wf6-MuiChip-root"
+        >
+          <span
+            class="MuiChip-label MuiChip-labelSmall css-t3ycia-MuiChip-label"
+          >
+            Teacher
+          </span>
+        </div>
+      </div>
+    </div>
+    <input
+      aria-hidden="true"
+      aria-invalid="false"
+      class="MuiSelect-nativeInput css-yf8vq0-MuiSelect-nativeInput"
+      name="roles"
+      tabindex="-1"
+      value="student,teacher"
+    />
+    <svg
+      aria-hidden="true"
+      class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium MuiSelect-icon MuiSelect-iconOutlined css-1rejtkv-MuiSvgIcon-root-MuiSelect-icon"
+      data-testid="ArrowDropDownIcon"
+      focusable="false"
+      viewBox="0 0 24 24"
+    >
+      <path
+        d="M7 10l5 5 5-5z"
+      />
+    </svg>
+    <fieldset
+      aria-hidden="true"
+      class="MuiOutlinedInput-notchedOutline css-r01yff-MuiNotchedOutlined-root-MuiOutlinedInput-notchedOutline"
+    >
+      <legend
+        class="css-sl37lx-MuiNotchedOutlined-root"
+      >
+        <span>
+          User Roles
+        </span>
+      </legend>
+    </fieldset>
+  </div>
+</div>
+`;
+
+exports[`FormSelect Component > Snapshot Tests > should match snapshot for searchable select 1`] = `
+<div
+  class="MuiAutocomplete-root MuiAutocomplete-hasPopupIcon css-ka7ti6-MuiAutocomplete-root"
+>
+  <div
+    class="MuiFormControl-root MuiFormControl-fullWidth MuiTextField-root css-dbnhlx-MuiFormControl-root-MuiTextField-root"
+  >
+    <label
+      class="MuiFormLabel-root MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-sizeMedium MuiInputLabel-outlined MuiFormLabel-colorPrimary MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-sizeMedium MuiInputLabel-outlined css-tw4ao8-MuiFormLabel-root-MuiInputLabel-root"
+      data-shrink="false"
+      for=":rd8:"
+      id=":rd8:-label"
+    >
+      Country
+    </label>
+    <div
+      class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary MuiInputBase-fullWidth MuiInputBase-formControl MuiInputBase-adornedEnd MuiAutocomplete-inputRoot css-lbin5f-MuiInputBase-root-MuiOutlinedInput-root"
+    >
+      <input
+        aria-autocomplete="list"
+        aria-expanded="false"
+        aria-invalid="false"
+        aria-label="Country"
+        aria-required="false"
+        autocapitalize="none"
+        autocomplete="off"
+        class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputAdornedEnd MuiAutocomplete-input MuiAutocomplete-inputFocused css-nxo287-MuiInputBase-input-MuiOutlinedInput-input"
+        id=":rd8:"
+        placeholder="Search..."
+        role="combobox"
+        spellcheck="false"
+        type="text"
+        value=""
+      />
+      <div
+        class="MuiAutocomplete-endAdornment css-p1olib-MuiAutocomplete-endAdornment"
+      >
+        <button
+          aria-label="Open"
+          class="MuiButtonBase-root MuiIconButton-root MuiIconButton-sizeMedium MuiAutocomplete-popupIndicator css-1caqjh4-MuiButtonBase-root-MuiIconButton-root-MuiAutocomplete-popupIndicator"
+          tabindex="-1"
+          title="Open"
+          type="button"
+        >
+          <svg
+            aria-hidden="true"
+            class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-1jxdcj3-MuiSvgIcon-root"
+            data-testid="ArrowDropDownIcon"
+            focusable="false"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M7 10l5 5 5-5z"
+            />
+          </svg>
+          <span
+            class="MuiTouchRipple-root css-8je8zh-MuiTouchRipple-root"
+          />
+        </button>
+      </div>
+      <fieldset
+        aria-hidden="true"
+        class="MuiOutlinedInput-notchedOutline css-r01yff-MuiNotchedOutlined-root-MuiOutlinedInput-notchedOutline"
+      >
+        <legend
+          class="css-njhac4-MuiNotchedOutlined-root"
+        >
+          <span>
+            Country
+          </span>
+        </legend>
+      </fieldset>
+    </div>
+  </div>
+</div>
+`;
