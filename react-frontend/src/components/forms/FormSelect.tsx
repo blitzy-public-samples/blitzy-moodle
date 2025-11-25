@@ -340,9 +340,6 @@ export function FormSelect<TFieldValues extends FieldValues = FieldValues>({
       name={name}
       control={control}
       defaultValue={(multiple ? [] : '') as PathValue<TFieldValues, Path<TFieldValues>>}
-      rules={{
-        required: required ? `${label} is required` : false,
-      }}
       render={({ field, fieldState }) => {
         return searchable
           ? renderSearchableSelect(field, fieldState)
