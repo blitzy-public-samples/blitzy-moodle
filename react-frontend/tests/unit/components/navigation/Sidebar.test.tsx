@@ -15,13 +15,13 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { Mock } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
-import { render, userEvent } from '../../helpers/render';
+import { render, userEvent } from '../../../helpers/render';
 import {
   createStudentState,
   createTeacherState,
   createAdminState,
   createSidebarState,
-} from '../../helpers/mockStore';
+} from '../../../helpers/mockStore';
 import Sidebar, { DRAWER_WIDTH } from '@/components/navigation/Sidebar';
 
 // ============================================================================
