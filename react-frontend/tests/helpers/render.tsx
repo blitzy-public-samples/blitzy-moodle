@@ -82,6 +82,8 @@ export interface EnhancedRenderResult extends RenderResult {
   queryClient: QueryClient;
   /** Router history for navigation assertions */
   history: string[];
+  /** User event instance for realistic user interactions */
+  user: ReturnType<typeof userEvent.setup>;
 }
 
 /**
@@ -263,6 +265,9 @@ export function render(
     themeInstance = theme;
   }
 
+  // Create user event instance for realistic user interactions
+  const user = userEvent.setup();
+
   // Create wrapper with all providers
   function Wrapper({ children }: { children: ReactNode }) {
   return <AllTheProviders
@@ -293,6 +298,7 @@ export function render(
     store: storeInstance,
     queryClient: queryClientInstance,
     history: [initialRoute, ...routes],
+    user,
   };
 }
 
