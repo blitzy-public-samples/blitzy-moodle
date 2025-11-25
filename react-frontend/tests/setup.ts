@@ -18,8 +18,12 @@ console.log('[Setup] Loading test setup file...');
 import '@testing-library/jest-dom';
 import './helpers/customMatchers';
 import { cleanup } from '@testing-library/react';
-import { beforeAll, afterAll, afterEach, vi } from 'vitest';
+import { beforeAll, afterAll, afterEach, vi, expect } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
+import { toHaveNoViolations } from 'vitest-axe/dist/matchers';
+
+// Manually extend expect with vitest-axe matcher (workaround for empty extend-expect.js in v0.1.0)
+expect.extend({ toHaveNoViolations });
 
 // Import MSW server setup from mocks directory
 // Note: This assumes ./mocks/server.ts exists with server export

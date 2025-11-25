@@ -62,6 +62,8 @@ interface ChoiceOptionsProps {
   initialSelection: number | number[];
   /** Callback function when choice is submitted */
   onSubmit: (answer: number | number[]) => Promise<void>;
+  /** Optional callback function when user removes their choice */
+  onRemove?: () => void | Promise<void>;
   /** Optional display layout orientation */
   displayLayout?: 'horizontal' | 'vertical';
 }
@@ -83,6 +85,7 @@ function ChoiceOptions({
   previewOnly,
   initialSelection,
   onSubmit,
+  onRemove,
   displayLayout = 'vertical',
 }: ChoiceOptionsProps) {
   // Local state for loading indicator during submission
@@ -145,7 +148,8 @@ function ChoiceOptions({
 
     // Check if option is full (disabled or at max capacity)
     const isFull =
-      (option.disabled ?? false) || (limitAnswers && option.countanswers >= option.maxanswers);
+      (option.disabled ?? false) ||
+      (limitAnswers && option.maxanswers > 0 && option.countanswers >= option.maxanswers);
 
     if (isFull) {
       labelText += ' (Full)';
@@ -199,16 +203,16 @@ function ChoiceOptions({
           name="answer"
           control={control}
           rules={{
-            required: 'You must select at least one option',
+            required: 'You must choose an option',
             validate: (value) => {
               if (allowMultiple) {
                 return (
                   (Array.isArray(value) && value.length > 0) ||
-                  'You must select at least one option'
+                  'You must choose an option'
                 );
               }
               return (
-                (typeof value === 'number' && value > 0) || 'You must select at least one option'
+                (typeof value === 'number' && value > 0) || 'You must choose an option'
               );
             },
           }}
@@ -309,7 +313,7 @@ function ChoiceOptions({
 
         {/* Display validation error message */}
         {errors.answer && (
-          <Typography variant="body2" color="error">
+          <Typography variant="body2" color="error" role="alert">
             {errors.answer.message}
           </Typography>
         )}
@@ -344,8 +348,10 @@ function ChoiceOptions({
                 href="#"
                 onClick={(e) => {
                   e.preventDefault();
-                  // The actual remove action would be handled by parent component
-                  // This would typically call a different callback prop like onRemove
+                  // Call the onRemove callback if provided
+                  if (onRemove) {
+                    onRemove();
+                  }
                 }}
                 underline="hover"
                 sx={{ ml: 1 }}

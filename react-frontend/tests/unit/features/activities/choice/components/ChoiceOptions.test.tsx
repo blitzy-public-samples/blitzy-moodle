@@ -7,12 +7,11 @@
  * @jest-environment jsdom
  */
 
-import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, userEvent, fireEvent, within } from '@/tests/helpers/render';
-import { run as runAxe } from 'axe-core';
-import { ChoiceOptions } from '@/features/activities/choice/components/ChoiceOptions';
-import { createMockChoiceOption } from '@/tests/unit/features/activities/choice/mocks/choiceMocks';
+import { render, screen, waitFor, userEvent } from '@tests/helpers/render';
+import { axe } from 'vitest-axe';
+import ChoiceOptions from '@/features/activities/choice/components/ChoiceOptions';
+import { createMockChoiceOption } from '@tests/unit/features/activities/choice/mocks/choiceMocks';
 import type { ChoiceOptionForDisplay } from '@/features/activities/choice/types/choice.types';
 
 /**
@@ -26,17 +25,17 @@ function createMockOptionForDisplay(
     choiceid: 1,
     text: 'Test Option',
     maxanswers: 0,
-    countanswers: 0,
     ...overrides,
   });
 
   return {
     ...baseOption,
+    countanswers: ('countanswers' in overrides ? overrides.countanswers : 0) as number,
     displaylayout: false,
     checked: false,
     disabled: false,
     ...overrides,
-  };
+  } as ChoiceOptionForDisplay;
 }
 
 describe('ChoiceOptions', () => {
@@ -69,7 +68,8 @@ describe('ChoiceOptions', () => {
     showAvailable: false,
     allowUpdate: false,
     previewOnly: false,
-    hasCapability: true,
+    hascapability: true,
+    initialSelection: 0 as number | number[],
     onSubmit: vi.fn(),
     onRemove: vi.fn(),
   };
@@ -140,7 +140,10 @@ describe('ChoiceOptions', () => {
 
       const radios = screen.getAllByRole('radio') as HTMLInputElement[];
       radios.forEach((radio, index) => {
-        expect(radio.value).toBe(mockOptions[index].id.toString());
+        const option = mockOptions[index];
+        if (option) {
+          expect(radio.value).toBe(option.id.toString());
+        }
       });
     });
 
@@ -167,12 +170,7 @@ describe('ChoiceOptions', () => {
     });
 
     it('initial selection set from props', () => {
-      const optionsWithChecked = mockOptions.map((opt, idx) => ({
-        ...opt,
-        checked: idx === 1, // Second option checked
-      }));
-
-      render(<ChoiceOptions {...defaultProps} options={optionsWithChecked} allowMultiple={false} />);
+      render(<ChoiceOptions {...defaultProps} initialSelection={2} allowMultiple={false} />);
 
       const radio2 = screen.getByLabelText('Option 2') as HTMLInputElement;
       expect(radio2).toBeChecked();
@@ -202,7 +200,10 @@ describe('ChoiceOptions', () => {
 
       const radios = screen.getAllByRole('radio') as HTMLInputElement[];
       radios.forEach((radio, index) => {
-        expect(radio.value).toBe(mockOptions[index].id.toString());
+        const option = mockOptions[index];
+        if (option) {
+          expect(radio.value).toBe(option.id.toString());
+        }
       });
     });
 
@@ -241,12 +242,7 @@ describe('ChoiceOptions', () => {
     });
 
     it('initial selections set from props', () => {
-      const optionsWithChecked = mockOptions.map((opt, idx) => ({
-        ...opt,
-        checked: idx === 0 || idx === 2, // First and third checked
-      }));
-
-      render(<ChoiceOptions {...defaultProps} options={optionsWithChecked} allowMultiple={true} />);
+      render(<ChoiceOptions {...defaultProps} initialSelection={[1, 3]} allowMultiple={true} />);
 
       const checkbox1 = screen.getByLabelText('Option 1') as HTMLInputElement;
       const checkbox2 = screen.getByLabelText('Option 2') as HTMLInputElement;
@@ -285,7 +281,10 @@ describe('ChoiceOptions', () => {
 
       const checkboxes = screen.getAllByRole('checkbox') as HTMLInputElement[];
       checkboxes.forEach((checkbox, index) => {
-        expect(checkbox.value).toBe(mockOptions[index].id.toString());
+        const option = mockOptions[index];
+        if (option) {
+          expect(checkbox.value).toBe(option.id.toString());
+        }
       });
     });
   });
@@ -370,7 +369,7 @@ describe('ChoiceOptions', () => {
 
   describe('Submit Button Behavior Tests', () => {
     it('button enabled when hasCapability is true and options available', () => {
-      render(<ChoiceOptions {...defaultProps} hasCapability={true} />);
+      render(<ChoiceOptions {...defaultProps} hascapability={true} />);
 
       const submitButton = screen.getByRole('button', { name: /save my choice/i });
       expect(submitButton).toBeInTheDocument();
@@ -391,7 +390,7 @@ describe('ChoiceOptions', () => {
     });
 
     it('button has variant="contained" color="primary"', () => {
-      const { container } = render(<ChoiceOptions {...defaultProps} />);
+      render(<ChoiceOptions {...defaultProps} />);
 
       const submitButton = screen.getByRole('button', { name: /save my choice/i });
       expect(submitButton).toHaveClass('MuiButton-containedPrimary');
@@ -551,7 +550,8 @@ describe('ChoiceOptions', () => {
 
       render(<ChoiceOptions {...defaultProps} options={disabledOptions} allowMultiple={false} />);
 
-      const radio2 = screen.getByLabelText('Option 2') as HTMLInputElement;
+      // When disabled is true, the label includes " (Full)" suffix
+      const radio2 = screen.getByLabelText('Option 2 (Full)') as HTMLInputElement;
       expect(radio2).toBeDisabled();
     });
 
@@ -608,17 +608,22 @@ describe('ChoiceOptions', () => {
       expect(submitButton).not.toBeInTheDocument();
     });
 
-    it('form cannot be submitted when disabled', async () => {
-      const user = userEvent.setup();
+    it('form cannot be submitted when disabled', () => {
       const mockOnSubmit = vi.fn();
 
       render(<ChoiceOptions {...defaultProps} previewOnly={true} onSubmit={mockOnSubmit} allowMultiple={false} />);
 
-      // Try to interact with disabled radio
+      // Verify all radios are disabled
       const radio1 = screen.getByLabelText('Option 1') as HTMLInputElement;
-      await user.click(radio1);
-
+      const radio2 = screen.getByLabelText('Option 2') as HTMLInputElement;
+      
+      expect(radio1).toBeDisabled();
+      expect(radio2).toBeDisabled();
       expect(radio1).not.toBeChecked();
+      expect(radio2).not.toBeChecked();
+
+      // Verify submit button is not present in preview mode
+      expect(screen.queryByRole('button', { name: /save my choice/i })).not.toBeInTheDocument();
       expect(mockOnSubmit).not.toHaveBeenCalled();
     });
   });
@@ -804,12 +809,8 @@ describe('ChoiceOptions', () => {
     });
 
     it('programmatic value setting works', () => {
-      const optionsWithChecked = mockOptions.map((opt, idx) => ({
-        ...opt,
-        checked: idx === 2,
-      }));
-
-      render(<ChoiceOptions {...defaultProps} options={optionsWithChecked} allowMultiple={false} />);
+      // Component initializes from initialSelection prop, not from checked property
+      render(<ChoiceOptions {...defaultProps} allowMultiple={false} initialSelection={3} />);
 
       const radio3 = screen.getByLabelText('Option 3') as HTMLInputElement;
       expect(radio3).toBeChecked();
@@ -981,8 +982,8 @@ describe('ChoiceOptions', () => {
     it('runs accessibility checks with axe', async () => {
       const { container } = render(<ChoiceOptions {...defaultProps} />);
 
-      const results = await runAxe(container);
-      expect(results.violations).toHaveLength(0);
+      const results = await axe(container);
+      expect(results).toHaveNoViolations();
     });
   });
 
@@ -995,7 +996,7 @@ describe('ChoiceOptions', () => {
     });
 
     it('handles single option', () => {
-      const singleOption = [mockOptions[0]];
+      const singleOption = [mockOptions[0]!];
 
       render(<ChoiceOptions {...defaultProps} options={singleOption} allowMultiple={false} />);
 
