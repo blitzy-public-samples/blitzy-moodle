@@ -1337,7 +1337,7 @@ describe('FormInput Component', () => {
       expect(input.value).toBe('');
     });
 
-    it('should handle very long input text', async () => {
+    it('should handle very long input text', () => {
       const longText = 'A'.repeat(1000);
 
       renderFormInput({
@@ -1353,7 +1353,7 @@ describe('FormInput Component', () => {
       expect(input.value).toBe(longText);
     });
 
-    it('should handle special characters in input', async () => {
+    it('should handle special characters in input', () => {
       const specialChars = '!@#$%^&*()_+-=[]{}|;:\'",.<>?/~`';
 
       renderFormInput({
@@ -1369,7 +1369,7 @@ describe('FormInput Component', () => {
       expect(input.value).toBe(specialChars);
     });
 
-    it('should handle unicode characters', async () => {
+    it('should handle unicode characters', () => {
       const unicode = '你好世界 🌍 مرحبا العالم';
 
       renderFormInput({
