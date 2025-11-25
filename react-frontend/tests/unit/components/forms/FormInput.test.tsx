@@ -23,9 +23,9 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { ReactElement } from 'react';
-import { render, screen, waitFor } from '@/tests/helpers/render';
+import { render, screen, waitFor } from '@tests/helpers/render';
 import userEvent from '@testing-library/user-event';
-import { useForm, FormProvider } from 'react-hook-form';
+import { useForm, FormProvider, FieldValues } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { FormInput } from '@/components/forms/FormInput';
@@ -39,7 +39,7 @@ import { Person as PersonIcon, Email as EmailIcon } from '@mui/icons-material';
 interface TestFormWrapperProps {
   children: ReactElement;
   defaultValues?: Record<string, unknown>;
-  validationSchema?: z.ZodObject<unknown>;
+  validationSchema?: z.ZodObject<z.ZodRawShape>;
   onSubmit?: (data: unknown) => void;
 }
 
@@ -52,7 +52,7 @@ function TestFormWrapper({
   const methods = useForm({
     defaultValues,
     resolver: validationSchema ? zodResolver(validationSchema) : undefined,
-    mode: 'onChange',
+    mode: 'all',
   });
 
   return (
@@ -71,15 +71,15 @@ function renderFormInput(
   props: Omit<FormInputProps, 'control'>,
   options?: {
     defaultValues?: Record<string, unknown>;
-    validationSchema?: z.ZodObject<unknown>;
+    validationSchema?: z.ZodObject<z.ZodRawShape>;
     onSubmit?: (data: unknown) => void;
   }
 ) {
-  const FormInputWithWrapper = () => {
+  function FormInputWithWrapper() {
     const { control } = useForm({
       defaultValues: options?.defaultValues || { [props.name]: '' },
       resolver: options?.validationSchema ? zodResolver(options.validationSchema) : undefined,
-      mode: 'onChange',
+      mode: 'all',
     });
 
     return (
@@ -91,7 +91,7 @@ function renderFormInput(
         <FormInput {...props} control={control} />
       </TestFormWrapper>
     );
-  };
+  }
 
   return render(<FormInputWithWrapper />);
 }
@@ -115,7 +115,7 @@ describe('FormInput Component', () => {
         type: 'text',
       });
 
-      const input = screen.getByLabelText('Username') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Username');
       expect(input).toBeInTheDocument();
       expect(input.type).toBe('text');
       expect(input).toHaveAttribute('name', 'username');
@@ -128,7 +128,7 @@ describe('FormInput Component', () => {
         type: 'email',
       });
 
-      const input = screen.getByLabelText('Email Address') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Email Address');
       expect(input).toBeInTheDocument();
       expect(input.type).toBe('email');
       expect(input).toHaveAttribute('inputmode', 'email');
@@ -141,7 +141,7 @@ describe('FormInput Component', () => {
         type: 'password',
       });
 
-      const input = screen.getByLabelText('Password') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Password');
       expect(input).toBeInTheDocument();
       expect(input.type).toBe('password');
     });
@@ -153,7 +153,7 @@ describe('FormInput Component', () => {
         type: 'number',
       });
 
-      const input = screen.getByLabelText('Age') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Age');
       expect(input).toBeInTheDocument();
       expect(input.type).toBe('number');
       expect(input).toHaveAttribute('inputmode', 'numeric');
@@ -166,7 +166,7 @@ describe('FormInput Component', () => {
         type: 'url',
       });
 
-      const input = screen.getByLabelText('Website') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Website');
       expect(input).toBeInTheDocument();
       expect(input.type).toBe('url');
       expect(input).toHaveAttribute('inputmode', 'url');
@@ -179,7 +179,7 @@ describe('FormInput Component', () => {
         type: 'tel',
       });
 
-      const input = screen.getByLabelText('Phone Number') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Phone Number');
       expect(input).toBeInTheDocument();
       expect(input.type).toBe('tel');
       expect(input).toHaveAttribute('inputmode', 'tel');
@@ -193,7 +193,7 @@ describe('FormInput Component', () => {
         inputMode: 'search',
       });
 
-      const input = screen.getByLabelText('Search') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Search');
       expect(input).toHaveAttribute('inputmode', 'search');
     });
   });
@@ -206,7 +206,7 @@ describe('FormInput Component', () => {
         label: 'Username',
       });
 
-      const input = screen.getByLabelText('Username') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Username');
 
       await user.type(input, 'john_doe');
 
@@ -228,7 +228,7 @@ describe('FormInput Component', () => {
         }
       );
 
-      const input = screen.getByLabelText('Username') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Username');
       await user.type(input, 'john_doe');
 
       const form = screen.getByTestId('test-form');
@@ -250,7 +250,7 @@ describe('FormInput Component', () => {
         }
       );
 
-      const input = screen.getByLabelText('Username') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Username');
       expect(input.value).toBe('initial_value');
     });
 
@@ -266,7 +266,7 @@ describe('FormInput Component', () => {
         }
       );
 
-      const input = screen.getByLabelText('Username') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Username');
       expect(input.value).toBe('existing_value');
 
       await user.clear(input);
@@ -281,7 +281,7 @@ describe('FormInput Component', () => {
         label: 'Search',
       });
 
-      const input = screen.getByLabelText('Search') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Search');
 
       await user.type(input, 'abc');
       await user.clear(input);
@@ -310,7 +310,7 @@ describe('FormInput Component', () => {
         }
       );
 
-      const input = screen.getByLabelText('Username') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Username');
 
       // Trigger validation by focusing and blurring
       await user.click(input);
@@ -339,7 +339,7 @@ describe('FormInput Component', () => {
         }
       );
 
-      const input = screen.getByLabelText('Email') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Email');
 
       await user.type(input, 'invalid-email');
       await user.tab();
@@ -367,7 +367,7 @@ describe('FormInput Component', () => {
         }
       );
 
-      const input = screen.getByLabelText('Password') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Password');
 
       await user.type(input, 'short');
       await user.tab();
@@ -394,7 +394,7 @@ describe('FormInput Component', () => {
         }
       );
 
-      const input = screen.getByLabelText('Username') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Username');
 
       await user.type(input, 'this_is_a_very_long_username_that_exceeds_limit');
       await user.tab();
@@ -424,7 +424,7 @@ describe('FormInput Component', () => {
         }
       );
 
-      const input = screen.getByLabelText('Phone Number') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Phone Number');
 
       await user.type(input, '1234567890');
       await user.tab();
@@ -453,7 +453,7 @@ describe('FormInput Component', () => {
         }
       );
 
-      const input = screen.getByLabelText('Website') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Website');
 
       await user.type(input, 'invalid-url');
       await user.tab();
@@ -487,7 +487,7 @@ describe('FormInput Component', () => {
         }
       );
 
-      const input = screen.getByLabelText('Course Name') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Course Name');
 
       await user.type(input, 'Test Course');
       await user.tab();
@@ -515,7 +515,7 @@ describe('FormInput Component', () => {
         }
       );
 
-      const input = screen.getByLabelText('Email') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Email');
 
       // Enter invalid email
       await user.type(input, 'invalid');
@@ -543,7 +543,7 @@ describe('FormInput Component', () => {
         label: 'Username',
       });
 
-      const input = screen.getByLabelText('Username');
+      const input = screen.getByLabelText<HTMLInputElement>('Username');
       expect(input).toHaveAttribute('aria-label', 'Username');
     });
 
@@ -554,7 +554,7 @@ describe('FormInput Component', () => {
         required: true,
       });
 
-      const input = screen.getByLabelText('Email Address');
+      const input = screen.getByLabelText<HTMLInputElement>('Email Address');
       expect(input).toHaveAttribute('aria-required', 'true');
     });
 
@@ -576,7 +576,7 @@ describe('FormInput Component', () => {
         }
       );
 
-      const input = screen.getByLabelText('Email') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Email');
 
       await user.type(input, 'invalid');
       await user.tab();
@@ -603,7 +603,7 @@ describe('FormInput Component', () => {
         }
       );
 
-      const input = screen.getByLabelText('Username') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Username');
 
       await user.click(input);
       await user.tab();
@@ -620,7 +620,7 @@ describe('FormInput Component', () => {
         helperText: 'Enter your unique username',
       });
 
-      const input = screen.getByLabelText('Username');
+      const input = screen.getByLabelText<HTMLInputElement>('Username');
       expect(input).toHaveAttribute('aria-describedby', 'username-helper-text');
     });
 
@@ -631,7 +631,7 @@ describe('FormInput Component', () => {
         label: 'Field 1',
       });
 
-      const input = screen.getByLabelText('Field 1');
+      const input = screen.getByLabelText<HTMLInputElement>('Field 1');
 
       await user.tab();
 
@@ -645,7 +645,7 @@ describe('FormInput Component', () => {
         label: 'Field 1',
       });
 
-      const input = screen.getByLabelText('Field 1');
+      const input = screen.getByLabelText<HTMLInputElement>('Field 1');
 
       await user.click(input);
       expect(input).toHaveFocus();
@@ -673,7 +673,7 @@ describe('FormInput Component', () => {
         }
       );
 
-      const input = screen.getByLabelText('Email') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Email');
 
       await user.type(input, 'invalid');
       await user.tab();
@@ -692,11 +692,11 @@ describe('FormInput Component', () => {
         type: 'password',
       });
 
-      const input = screen.getByLabelText('Password') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Password');
       await user.click(input);
       expect(input).toHaveFocus();
 
-      const toggleButton = screen.getByLabelText('Show password');
+      const toggleButton = screen.getByLabelText<HTMLInputElement>('Show password');
       await user.click(toggleButton);
 
       // Input should still be focused after toggle
@@ -712,7 +712,7 @@ describe('FormInput Component', () => {
         label: 'Message',
       });
 
-      const input = screen.getByLabelText('Message') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Message');
 
       await user.type(input, 'Hello World!');
 
@@ -731,7 +731,7 @@ describe('FormInput Component', () => {
         }
       );
 
-      const input = screen.getByLabelText('Username') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Username');
       expect(input.value).toBe('existing');
 
       await user.clear(input);
@@ -746,7 +746,7 @@ describe('FormInput Component', () => {
         label: 'Notes',
       });
 
-      const input = screen.getByLabelText('Notes') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Notes');
 
       await user.click(input);
       await user.paste('Pasted content from clipboard');
@@ -761,7 +761,7 @@ describe('FormInput Component', () => {
         label: 'Field',
       });
 
-      const input = screen.getByLabelText('Field');
+      const input = screen.getByLabelText<HTMLInputElement>('Field');
 
       await user.click(input);
 
@@ -775,7 +775,7 @@ describe('FormInput Component', () => {
         label: 'Field',
       });
 
-      const input = screen.getByLabelText('Field');
+      const input = screen.getByLabelText<HTMLInputElement>('Field');
 
       await user.click(input);
       expect(input).toHaveFocus();
@@ -787,17 +787,26 @@ describe('FormInput Component', () => {
 
     it('should handle tab navigation between fields', async () => {
       const user = userEvent.setup();
-      const { container } = render(
-        <TestFormWrapper>
-          <>
-            <FormInput name="field1" label="Field 1" control={{} as never} />
-            <FormInput name="field2" label="Field 2" control={{} as never} />
-          </>
-        </TestFormWrapper>
-      );
+      
+      function TestMultipleFieldsForm() {
+        const { control } = useForm<FieldValues>({
+          defaultValues: { field1: '', field2: '' },
+        });
+        
+        return (
+          <TestFormWrapper>
+            <>
+              <FormInput name="field1" label="Field 1" control={control} />
+              <FormInput name="field2" label="Field 2" control={control} />
+            </>
+          </TestFormWrapper>
+        );
+      }
+      
+      render(<TestMultipleFieldsForm />);
 
-      const field1 = screen.getByLabelText('Field 1');
-      const field2 = screen.getByLabelText('Field 2');
+      const field1 = screen.getByLabelText<HTMLInputElement>('Field 1');
+      const field2 = screen.getByLabelText<HTMLInputElement>('Field 2');
 
       await user.tab();
       expect(field1).toHaveFocus();
@@ -818,7 +827,7 @@ describe('FormInput Component', () => {
         }
       );
 
-      const input = screen.getByLabelText('Text') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Text');
 
       await user.click(input);
       await user.keyboard('{Control>}a{/Control}');
@@ -835,9 +844,9 @@ describe('FormInput Component', () => {
         label: 'Search',
       });
 
-      const input = screen.getByLabelText('Search') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Search');
 
-      await user.type(input, 'quicktyping', { delay: 1 });
+      await user.type(input, 'quicktyping');
 
       expect(input.value).toBe('quicktyping');
     });
@@ -851,7 +860,7 @@ describe('FormInput Component', () => {
         type: 'password',
       });
 
-      const toggleButton = screen.getByLabelText('Show password');
+      const toggleButton = screen.getByLabelText<HTMLInputElement>('Show password');
       expect(toggleButton).toBeInTheDocument();
     });
 
@@ -863,17 +872,17 @@ describe('FormInput Component', () => {
         type: 'password',
       });
 
-      const input = screen.getByLabelText('Password') as HTMLInputElement;
-      const toggleButton = screen.getByLabelText('Show password');
+      const input = screen.getByLabelText<HTMLInputElement>('Password');
+      const toggleButton = screen.getByLabelText<HTMLInputElement>('Show password');
 
       expect(input.type).toBe('password');
 
       await user.click(toggleButton);
 
       expect(input.type).toBe('text');
-      expect(screen.getByLabelText('Hide password')).toBeInTheDocument();
+      expect(screen.getByLabelText<HTMLInputElement>('Hide password')).toBeInTheDocument();
 
-      await user.click(screen.getByLabelText('Hide password'));
+      await user.click(screen.getByLabelText<HTMLInputElement>('Hide password'));
 
       expect(input.type).toBe('password');
     });
@@ -885,7 +894,7 @@ describe('FormInput Component', () => {
         type: 'password',
       });
 
-      const toggleButton = screen.getByLabelText('Show password');
+      const toggleButton = screen.getByLabelText<HTMLInputElement>('Show password');
       const visibilityIcon = toggleButton.querySelector('svg');
       expect(visibilityIcon).toBeInTheDocument();
     });
@@ -898,10 +907,10 @@ describe('FormInput Component', () => {
         type: 'password',
       });
 
-      const toggleButton = screen.getByLabelText('Show password');
+      const toggleButton = screen.getByLabelText<HTMLInputElement>('Show password');
       await user.click(toggleButton);
 
-      const visibilityOffIcon = screen.getByLabelText('Hide password').querySelector('svg');
+      const visibilityOffIcon = screen.getByLabelText<HTMLInputElement>('Hide password').querySelector('svg');
       expect(visibilityOffIcon).toBeInTheDocument();
     });
 
@@ -923,12 +932,12 @@ describe('FormInput Component', () => {
         type: 'password',
       });
 
-      const input = screen.getByLabelText('Password') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Password');
       await user.type(input, 'secret123');
 
       expect(input.value).toBe('secret123');
 
-      const toggleButton = screen.getByLabelText('Show password');
+      const toggleButton = screen.getByLabelText<HTMLInputElement>('Show password');
       await user.click(toggleButton);
 
       expect(input.value).toBe('secret123');
@@ -979,7 +988,7 @@ describe('FormInput Component', () => {
       });
 
       expect(screen.getByTestId('custom-icon')).toBeInTheDocument();
-      expect(screen.getByLabelText('Show password')).toBeInTheDocument();
+      expect(screen.getByLabelText<HTMLInputElement>('Show password')).toBeInTheDocument();
     });
   });
 
@@ -991,7 +1000,7 @@ describe('FormInput Component', () => {
         disabled: true,
       });
 
-      const input = screen.getByLabelText('Field') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Field');
       expect(input).toBeDisabled();
     });
 
@@ -1003,7 +1012,7 @@ describe('FormInput Component', () => {
         disabled: true,
       });
 
-      const input = screen.getByLabelText('Field') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Field');
 
       await user.type(input, 'test');
 
@@ -1017,7 +1026,7 @@ describe('FormInput Component', () => {
         disabled: true,
       });
 
-      const input = screen.getByLabelText('Field');
+      const input = screen.getByLabelText<HTMLInputElement>('Field');
       expect(input).toHaveAttribute('disabled');
     });
   });
@@ -1040,7 +1049,7 @@ describe('FormInput Component', () => {
         placeholder: 'Type to search...',
       });
 
-      const input = screen.getByLabelText('Search') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Search');
       expect(input.placeholder).toBe('Type to search...');
     });
 
@@ -1065,7 +1074,7 @@ describe('FormInput Component', () => {
 
       expect(screen.getByText('Enter your email address')).toBeInTheDocument();
 
-      const input = screen.getByLabelText('Email') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Email');
       await user.type(input, 'invalid');
       await user.tab();
 
@@ -1085,7 +1094,7 @@ describe('FormInput Component', () => {
         maxLength: 10,
       });
 
-      const input = screen.getByLabelText('Username') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Username');
 
       await user.type(input, 'this_is_way_too_long');
 
@@ -1100,7 +1109,7 @@ describe('FormInput Component', () => {
         maxLength: 20,
       });
 
-      const input = screen.getByLabelText('Username') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Username');
       expect(input).toHaveAttribute('maxlength', '20');
     });
   });
@@ -1114,7 +1123,7 @@ describe('FormInput Component', () => {
         autoComplete: 'email',
       });
 
-      const input = screen.getByLabelText('Email');
+      const input = screen.getByLabelText<HTMLInputElement>('Email');
       expect(input).toHaveAttribute('autocomplete', 'email');
     });
 
@@ -1126,7 +1135,7 @@ describe('FormInput Component', () => {
         autoComplete: 'current-password',
       });
 
-      const input = screen.getByLabelText('Password');
+      const input = screen.getByLabelText<HTMLInputElement>('Password');
       expect(input).toHaveAttribute('autocomplete', 'current-password');
     });
 
@@ -1137,7 +1146,7 @@ describe('FormInput Component', () => {
         autoComplete: 'username',
       });
 
-      const input = screen.getByLabelText('Username');
+      const input = screen.getByLabelText<HTMLInputElement>('Username');
       expect(input).toHaveAttribute('autocomplete', 'username');
     });
 
@@ -1149,7 +1158,7 @@ describe('FormInput Component', () => {
         autoComplete: 'tel',
       });
 
-      const input = screen.getByLabelText('Phone');
+      const input = screen.getByLabelText<HTMLInputElement>('Phone');
       expect(input).toHaveAttribute('autocomplete', 'tel');
     });
   });
@@ -1173,7 +1182,7 @@ describe('FormInput Component', () => {
         }
       );
 
-      const input = screen.getByLabelText('Email') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Email');
 
       await user.type(input, 'invalid');
       await user.tab();
@@ -1201,7 +1210,7 @@ describe('FormInput Component', () => {
         }
       );
 
-      const input = screen.getByLabelText('Email') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Email');
 
       // Enter invalid email
       await user.type(input, 'invalid');
@@ -1230,7 +1239,7 @@ describe('FormInput Component', () => {
         pattern: '\\d{5}',
       });
 
-      const input = screen.getByLabelText('ZIP Code') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('ZIP Code');
       expect(input).toHaveAttribute('pattern', '\\d{5}');
     });
   });
@@ -1243,7 +1252,7 @@ describe('FormInput Component', () => {
         autoFocus: true,
       });
 
-      const input = screen.getByLabelText('Search');
+      const input = screen.getByLabelText<HTMLInputElement>('Search');
       expect(input).toHaveFocus();
     });
 
@@ -1253,7 +1262,7 @@ describe('FormInput Component', () => {
         label: 'Field',
       });
 
-      const input = screen.getByLabelText('Field');
+      const input = screen.getByLabelText<HTMLInputElement>('Field');
       expect(input).not.toHaveFocus();
     });
   });
@@ -1266,7 +1275,7 @@ describe('FormInput Component', () => {
         required: true,
       });
 
-      const input = screen.getByLabelText('Email');
+      const input = screen.getByLabelText<HTMLInputElement>('Email');
       expect(input).toBeRequired();
     });
 
@@ -1276,7 +1285,7 @@ describe('FormInput Component', () => {
         label: 'Email',
       });
 
-      const input = screen.getByLabelText('Email');
+      const input = screen.getByLabelText<HTMLInputElement>('Email');
       expect(input).not.toBeRequired();
     });
   });
@@ -1293,7 +1302,7 @@ describe('FormInput Component', () => {
         }
       );
 
-      const input = screen.getByLabelText('Field') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Field');
       expect(input.value).toBe('');
     });
 
@@ -1308,7 +1317,7 @@ describe('FormInput Component', () => {
         }
       );
 
-      const input = screen.getByLabelText('Field') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Field');
       expect(input.value).toBe('');
     });
 
@@ -1323,7 +1332,7 @@ describe('FormInput Component', () => {
         }
       );
 
-      const input = screen.getByLabelText('Field') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Field');
       expect(input.value).toBe('');
     });
 
@@ -1336,7 +1345,7 @@ describe('FormInput Component', () => {
         label: 'Notes',
       });
 
-      const input = screen.getByLabelText('Notes') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Notes');
 
       await user.type(input, longText);
 
@@ -1352,9 +1361,10 @@ describe('FormInput Component', () => {
         label: 'Special',
       });
 
-      const input = screen.getByLabelText('Special') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Special');
 
-      await user.type(input, specialChars);
+      await user.click(input);
+      await user.paste(specialChars);
 
       expect(input.value).toBe(specialChars);
     });
@@ -1368,7 +1378,7 @@ describe('FormInput Component', () => {
         label: 'Unicode',
       });
 
-      const input = screen.getByLabelText('Unicode') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Unicode');
 
       await user.type(input, unicode);
 
@@ -1394,7 +1404,7 @@ describe('FormInput Component', () => {
         variant: 'filled',
       });
 
-      const input = screen.getByLabelText('Field');
+      const input = screen.getByLabelText<HTMLInputElement>('Field');
       expect(input).toBeInTheDocument();
     });
 
@@ -1415,7 +1425,7 @@ describe('FormInput Component', () => {
         size: 'small',
       });
 
-      const input = screen.getByLabelText('Field');
+      const input = screen.getByLabelText<HTMLInputElement>('Field');
       expect(input).toBeInTheDocument();
     });
 

@@ -210,7 +210,8 @@ describe('FormDatePicker Component', () => {
       await waitFor(() => {
         expect(onSubmit).toHaveBeenCalled();
         const calls = onSubmit.mock.calls as Array<[{ dueDate: Date }]>;
-        const submittedData = calls[0][0];
+        expect(calls[0]).toBeDefined();
+        const submittedData = calls[0]![0];
         expect(submittedData.dueDate).toBeInstanceOf(Date);
       });
     });
@@ -274,7 +275,8 @@ describe('FormDatePicker Component', () => {
       await waitFor(() => {
         expect(onSubmit).toHaveBeenCalled();
         const calls = onSubmit.mock.calls as Array<[{ eventDate: string }]>;
-        const submittedData = calls[0][0];
+        expect(calls[0]).toBeDefined();
+        const submittedData = calls[0]![0];
         expect(typeof submittedData.eventDate).toBe('string');
         expect(submittedData.eventDate).toMatch(/^\d{4}-\d{2}-\d{2}T/);
       });
