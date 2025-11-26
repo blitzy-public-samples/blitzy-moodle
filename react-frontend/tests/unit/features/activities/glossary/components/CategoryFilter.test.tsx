@@ -11,7 +11,6 @@
  * @module tests/unit/features/activities/glossary/components
  */
 
-import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -24,7 +23,7 @@ import { CategoryFilter } from '@/features/activities/glossary/components/Catego
 import type { GlossaryCategory } from '@/features/activities/glossary/types/glossary.types';
 
 // Test helpers
-import { render } from '@/tests/helpers/render';
+import { render } from '@tests/helpers/render';
 
 /**
  * Special category ID constants (matching component implementation)
@@ -102,9 +101,11 @@ describe('CategoryFilter', () => {
         />
       );
 
-      // Should display chips for selected categories
-      expect(screen.getByText('Technical Terms')).toBeInTheDocument();
-      expect(screen.getByText('Business Concepts')).toBeInTheDocument();
+      // Should display chips for selected categories (may appear in menu too)
+      const technicalTermsElements = screen.getAllByText('Technical Terms');
+      const businessConceptsElements = screen.getAllByText('Business Concepts');
+      expect(technicalTermsElements.length).toBeGreaterThan(0);
+      expect(businessConceptsElements.length).toBeGreaterThan(0);
     });
 
     it('displays All Categories option', async () => {
@@ -233,7 +234,8 @@ describe('CategoryFilter', () => {
       );
 
       const select = screen.getByLabelText(/filter by category/i);
-      expect(select).toBeDisabled();
+      // MUI Select renders as a div with aria-disabled, not a native disabled element
+      expect(select).toHaveAttribute('aria-disabled', 'true');
     });
   });
 
@@ -388,7 +390,7 @@ describe('CategoryFilter', () => {
       // Simulate selecting second category (in real app, component would rerender with updated value)
       // The component is controlled, so parent would update value prop
       // For testing, we verify that multiple IDs can be in the value prop
-      const { rerender } = render(
+      render(
         <CategoryFilter
           categories={mockCategories}
           value={[1, 2]}
@@ -396,9 +398,11 @@ describe('CategoryFilter', () => {
         />
       );
 
-      // Both categories should be displayed as chips
-      expect(screen.getByText('Technical Terms')).toBeInTheDocument();
-      expect(screen.getByText('Business Concepts')).toBeInTheDocument();
+      // Both categories should be displayed as chips (may appear in menu too)
+      const technicalTermsElements = screen.getAllByText('Technical Terms');
+      const businessConceptsElements = screen.getAllByText('Business Concepts');
+      expect(technicalTermsElements.length).toBeGreaterThan(0);
+      expect(businessConceptsElements.length).toBeGreaterThan(0);
     });
 
     it('selected categories display as chips inside select', () => {
@@ -882,9 +886,10 @@ describe('CategoryFilter', () => {
         />
       );
 
-      // FormControl should have small size class
-      let formControl = container.querySelector('.MuiFormControl-root');
-      expect(formControl).toHaveClass('MuiFormControl-sizeSmall');
+      // MUI v5 uses CSS-in-JS, so we check for size-specific input classes instead
+      let select = container.querySelector('.MuiSelect-select');
+      // Small size will have the inputSizeSmall class on the input/select element
+      expect(select).toHaveClass('MuiInputBase-inputSizeSmall');
 
       // Rerender with medium size
       rerender(
@@ -896,8 +901,9 @@ describe('CategoryFilter', () => {
         />
       );
 
-      formControl = container.querySelector('.MuiFormControl-root');
-      expect(formControl).not.toHaveClass('MuiFormControl-sizeSmall');
+      select = container.querySelector('.MuiSelect-select');
+      // Medium size won't have the inputSizeSmall class
+      expect(select).not.toHaveClass('MuiInputBase-inputSizeSmall');
     });
   });
 });

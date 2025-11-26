@@ -128,9 +128,21 @@ export function CategoryFilter({
       ? selectedValue.split(',').map(Number)
       : selectedValue;
 
-    // If "All Categories" is selected, clear other selections
-    if (selectedIds.includes(CATEGORY_ALL)) {
+    // Check if "All Categories" was just clicked
+    const allCategoriesJustClicked = selectedIds.includes(CATEGORY_ALL) && !value.includes(CATEGORY_ALL);
+    
+    // If "All Categories" was just clicked, clear other selections
+    if (allCategoriesJustClicked) {
       onChange([CATEGORY_ALL]);
+      return;
+    }
+
+    // If "All Categories" was previously selected and user clicked another option,
+    // remove "All Categories" from the selection
+    if (value.includes(CATEGORY_ALL) && selectedIds.includes(CATEGORY_ALL) && selectedIds.length > 1) {
+      // Filter out CATEGORY_ALL, keeping only the newly selected categories
+      const filteredIds = selectedIds.filter(id => id !== CATEGORY_ALL);
+      onChange(filteredIds);
       return;
     }
 
