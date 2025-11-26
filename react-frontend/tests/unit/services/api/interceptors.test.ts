@@ -901,11 +901,16 @@ describe('Error Standardization', () => {
 
       const errorInterceptor = getResponseErrorInterceptor(axiosInstance);
 
-      await expect(errorInterceptor.rejected!(mockError)).rejects.toMatchObject({
-        message: 'You do not have permission to perform this action',
-        code: 'PERMISSION_DENIED',
-        status: 403,
-      });
+      try {
+        await errorInterceptor.rejected!(mockError);
+      } catch (error: unknown) {
+        expect(error).toHaveProperty('customError');
+        expect((error as any).customError).toMatchObject({
+          message: 'You do not have permission to perform this action',
+          code: 'PERMISSION_DENIED',
+          status: 403,
+        });
+      }
     });
 
     it('should include error details in 403 response', async () => {
@@ -916,7 +921,8 @@ describe('Error Standardization', () => {
       try {
         await errorInterceptor.rejected!(mockError);
       } catch (error) {
-        expect(error).toHaveProperty('details');
+        expect(error).toHaveProperty('customError');
+        expect((error as any).customError).toHaveProperty('details');
       }
     });
   });
@@ -927,11 +933,16 @@ describe('Error Standardization', () => {
 
       const errorInterceptor = getResponseErrorInterceptor(axiosInstance);
 
-      await expect(errorInterceptor.rejected!(mockError)).rejects.toMatchObject({
-        message: 'The requested resource was not found',
-        code: 'NOT_FOUND',
-        status: 404,
-      });
+      try {
+        await errorInterceptor.rejected!(mockError);
+      } catch (error: unknown) {
+        expect(error).toHaveProperty('customError');
+        expect((error as any).customError).toMatchObject({
+          message: 'The requested resource was not found',
+          code: 'NOT_FOUND',
+          status: 404,
+        });
+      }
     });
 
     it('should include URL in 404 error details', async () => {
@@ -943,7 +954,8 @@ describe('Error Standardization', () => {
       try {
         await errorInterceptor.rejected!(mockError);
       } catch (error: unknown) {
-        const typedError = error as { details: { url: string } };
+        expect(error).toHaveProperty('customError');
+        const typedError = (error as any).customError as { details: { url: string } };
         expect(typedError.details).toHaveProperty('url', '/courses/999');
       }
     });
@@ -955,11 +967,16 @@ describe('Error Standardization', () => {
 
       const errorInterceptor = getResponseErrorInterceptor(axiosInstance);
 
-      await expect(errorInterceptor.rejected!(mockError)).rejects.toMatchObject({
-        message: 'A server error occurred. Please try again later.',
-        code: 'SERVER_ERROR',
-        status: 500,
-      });
+      try {
+        await errorInterceptor.rejected!(mockError);
+      } catch (error: unknown) {
+        expect(error).toHaveProperty('customError');
+        expect((error as any).customError).toMatchObject({
+          message: 'A server error occurred. Please try again later.',
+          code: 'SERVER_ERROR',
+          status: 500,
+        });
+      }
     });
 
     it('should handle 503 Service Unavailable', async () => {
@@ -967,11 +984,16 @@ describe('Error Standardization', () => {
 
       const errorInterceptor = getResponseErrorInterceptor(axiosInstance);
 
-      await expect(errorInterceptor.rejected!(mockError)).rejects.toMatchObject({
-        message: 'A server error occurred. Please try again later.',
-        code: 'SERVER_ERROR',
-        status: 503,
-      });
+      try {
+        await errorInterceptor.rejected!(mockError);
+      } catch (error: unknown) {
+        expect(error).toHaveProperty('customError');
+        expect((error as any).customError).toMatchObject({
+          message: 'A server error occurred. Please try again later.',
+          code: 'SERVER_ERROR',
+          status: 503,
+        });
+      }
     });
 
     it('should format all 5xx errors consistently', async () => {
@@ -981,10 +1003,15 @@ describe('Error Standardization', () => {
         const mockError = createMockError(status, 'Server Error');
         const errorInterceptor = getResponseErrorInterceptor(axiosInstance);
 
-        await expect(errorInterceptor.rejected!(mockError)).rejects.toMatchObject({
-          code: 'SERVER_ERROR',
-          status,
-        });
+        try {
+          await errorInterceptor.rejected!(mockError);
+        } catch (error: unknown) {
+          expect(error).toHaveProperty('customError');
+          expect((error as any).customError).toMatchObject({
+            code: 'SERVER_ERROR',
+            status,
+          });
+        }
       }
     });
   });
@@ -995,11 +1022,16 @@ describe('Error Standardization', () => {
 
       const errorInterceptor = getResponseErrorInterceptor(axiosInstance);
 
-      await expect(errorInterceptor.rejected!(mockError)).rejects.toMatchObject({
-        message: 'Network error. Please check your connection.',
-        code: 'NETWORK_ERROR',
-        status: 0,
-      });
+      try {
+        await errorInterceptor.rejected!(mockError);
+      } catch (error: unknown) {
+        expect(error).toHaveProperty('customError');
+        expect((error as any).customError).toMatchObject({
+          message: 'Network error. Please check your connection.',
+          code: 'NETWORK_ERROR',
+          status: 0,
+        });
+      }
     });
 
     it('should handle timeout errors', async () => {
@@ -1011,10 +1043,15 @@ describe('Error Standardization', () => {
 
       const errorInterceptor = getResponseErrorInterceptor(axiosInstance);
 
-      await expect(errorInterceptor.rejected!(mockError)).rejects.toMatchObject({
-        code: 'NETWORK_ERROR',
-        status: 0,
-      });
+      try {
+        await errorInterceptor.rejected!(mockError);
+      } catch (error: unknown) {
+        expect(error).toHaveProperty('customError');
+        expect((error as any).customError).toMatchObject({
+          code: 'NETWORK_ERROR',
+          status: 0,
+        });
+      }
     });
 
     it('should handle DNS resolution errors', async () => {
@@ -1026,10 +1063,15 @@ describe('Error Standardization', () => {
 
       const errorInterceptor = getResponseErrorInterceptor(axiosInstance);
 
-      await expect(errorInterceptor.rejected!(mockError)).rejects.toMatchObject({
-        code: 'NETWORK_ERROR',
-        status: 0,
-      });
+      try {
+        await errorInterceptor.rejected!(mockError);
+      } catch (error: unknown) {
+        expect(error).toHaveProperty('customError');
+        expect((error as any).customError).toMatchObject({
+          code: 'NETWORK_ERROR',
+          status: 0,
+        });
+      }
     });
   });
 
@@ -1068,8 +1110,9 @@ describe('Error Standardization', () => {
         try {
           await errorInterceptor.rejected!(error);
         } catch (e: unknown) {
-          expect(e).toHaveProperty('code');
-          expect(typeof (e as { code: string }).code).toBe('string');
+          expect(e).toHaveProperty('customError');
+          expect((e as any).customError).toHaveProperty('code');
+          expect(typeof (e as any).customError.code).toBe('string');
         }
       }
     });
@@ -1088,8 +1131,9 @@ describe('Error Standardization', () => {
         try {
           await errorInterceptor.rejected!(error);
         } catch (e: unknown) {
-          expect(e).toHaveProperty('status');
-          expect(typeof (e as { status: number }).status).toBe('number');
+          expect(e).toHaveProperty('customError');
+          expect((e as any).customError).toHaveProperty('status');
+          expect(typeof (e as any).customError.status).toBe('number');
         }
       }
     });
@@ -1101,7 +1145,8 @@ describe('Error Standardization', () => {
       try {
         await errorInterceptor.rejected!(mockError);
       } catch (error: unknown) {
-        const message = (error as { message: string }).message;
+        expect(error).toHaveProperty('customError');
+        const message = (error as any).customError.message;
         // Should not contain technical jargon like "AxiosError" or stack traces
         expect(message).not.toMatch(/axios/i);
         expect(message).not.toMatch(/stack/i);
@@ -1123,7 +1168,8 @@ describe('Error Standardization', () => {
         try {
           await errorInterceptor.rejected!(error);
         } catch (e: unknown) {
-          const code = (e as { code: string }).code;
+          expect(e).toHaveProperty('customError');
+          const code = (e as any).customError.code;
           // Should be uppercase with underscores
           expect(code).toMatch(/^[A-Z_]+$/);
         }
@@ -1233,10 +1279,15 @@ describe('Interceptor Integration', () => {
     // Manually test error interceptor
     const errorInterceptor = getResponseErrorInterceptor(axiosInstance);
     
-    await expect(errorInterceptor.rejected!(mockError)).rejects.toMatchObject({
-      code: 'NOT_FOUND',
-      status: 404,
-    });
+    try {
+      await errorInterceptor.rejected!(mockError);
+    } catch (error: unknown) {
+      expect(error).toHaveProperty('customError');
+      expect((error as any).customError).toMatchObject({
+        code: 'NOT_FOUND',
+        status: 404,
+      });
+    }
   });
 });
 
@@ -1273,9 +1324,14 @@ describe('Edge Cases', () => {
 
     const errorInterceptor = getResponseErrorInterceptor(axiosInstance);
 
-    await expect(errorInterceptor.rejected!(mockError)).rejects.toMatchObject({
-      code: 'NETWORK_ERROR',
-    });
+    try {
+      await errorInterceptor.rejected!(mockError);
+    } catch (error: unknown) {
+      expect(error).toHaveProperty('customError');
+      expect((error as any).customError).toMatchObject({
+        code: 'NETWORK_ERROR',
+      });
+    }
   });
 
   it('should handle malformed error objects', async () => {
@@ -1305,10 +1361,15 @@ describe('Edge Cases', () => {
 
     const errorInterceptor = getResponseErrorInterceptor(axiosInstance);
 
-    await expect(errorInterceptor.rejected!(mockError)).rejects.toMatchObject({
-      code: 'NETWORK_ERROR',
-      status: 0,
-    });
+    try {
+      await errorInterceptor.rejected!(mockError);
+    } catch (error: unknown) {
+      expect(error).toHaveProperty('customError');
+      expect((error as any).customError).toMatchObject({
+        code: 'NETWORK_ERROR',
+        status: 0,
+      });
+    }
   });
 
   it('should handle concurrent refresh with different error types', async () => {

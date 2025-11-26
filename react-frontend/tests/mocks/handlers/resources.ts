@@ -14,7 +14,6 @@
  */
 
 import { http, HttpResponse } from 'msw';
-import type { Resource } from '@/features/activities/resources/types/resource.types';
 import { ResourceDisplayType } from '@/features/activities/resources/types/resource.types';
 import { createMockResourceFile } from '@tests/helpers/mockData';
 

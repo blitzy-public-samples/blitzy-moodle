@@ -8,17 +8,16 @@
  * @module tests/unit/features/activities/resources/components/ResourceView.test
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse, delay } from 'msw';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { format } from 'date-fns';
+
 
 import { render } from '@tests/helpers/render';
 import ResourceView from '@/features/activities/resources/components/ResourceView';
-import { createMockResource, createMockResourceFile } from '@tests/helpers/mockData';
-import type { Resource } from '@/features/activities/resources/types/resource.types';
+import { createMockResourceFile } from '@tests/helpers/mockData';
 import { server } from '@tests/mocks/server';
 
 // Reset handlers and mocks after each test

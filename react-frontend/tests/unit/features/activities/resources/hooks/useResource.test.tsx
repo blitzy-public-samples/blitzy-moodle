@@ -159,6 +159,28 @@ const createWrapper = () => {
   return Wrapper;
 };
 
+// Test wrapper for retry logic tests with retry enabled
+const createRetryWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: 2, // Enable retries for retry logic tests
+        retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
+        gcTime: 0,
+      },
+      mutations: {
+        retry: false,
+      },
+    },
+  });
+
+  function Wrapper({ children }: { children: ReactNode }) {
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  }
+  
+  return Wrapper;
+};
+
 describe('useResource hook', () => {
   let queryClient: QueryClient;
 
@@ -201,7 +223,7 @@ describe('useResource hook', () => {
       expect(result.current.data).toEqual(mockResourceFile);
       expect(result.current.isLoading).toBe(false);
       expect(result.current.isError).toBe(false);
-      expect(apiClient.get).toHaveBeenCalledWith('/api/v1/resources/1');
+      expect(apiClient.get).toHaveBeenCalledWith('/resources/1');
       expect(apiClient.get).toHaveBeenCalledTimes(1);
     });
 
@@ -215,7 +237,7 @@ describe('useResource hook', () => {
       });
 
       await waitFor(() => {
-        expect(apiClient.get).toHaveBeenCalledWith('/api/v1/resources/42');
+        expect(apiClient.get).toHaveBeenCalledWith('/resources/42');
       });
     });
 
@@ -514,7 +536,7 @@ describe('useResource hook', () => {
         });
 
       const { result } = renderHook(() => useResource(1), {
-        wrapper: createWrapper(),
+        wrapper: createRetryWrapper(),
       });
 
       await waitFor(() => {
@@ -549,7 +571,7 @@ describe('useResourceFiles hook', () => {
       expect(result.current.data).toEqual(mockResourceFile);
       expect(result.current.data?.files).toHaveLength(1);
       expect(result.current.data?.files[0]?.filename).toBe('document.pdf');
-      expect(apiClient.get).toHaveBeenCalledWith('/api/v1/resources/1/files');
+      expect(apiClient.get).toHaveBeenCalledWith('/resources/1/files');
     });
 
     it('should return file array with proper structure', async () => {
@@ -628,7 +650,7 @@ describe('useResourcePage hook', () => {
 
       expect(result.current.data).toEqual(mockResourcePage);
       expect(result.current.data?.content).toContain('<h1>Page Content</h1>');
-      expect(apiClient.get).toHaveBeenCalledWith('/api/v1/resources/pages/2');
+      expect(apiClient.get).toHaveBeenCalledWith('/resources/pages/2');
     });
 
     it('should return HTML content with proper format', async () => {
@@ -743,7 +765,7 @@ describe('useResourceUrl hook', () => {
 
       expect(result.current.data).toEqual(mockResourceUrl);
       expect(result.current.data?.externalurl).toBe('https://example.com');
-      expect(apiClient.get).toHaveBeenCalledWith('/api/v1/resources/urls/3');
+      expect(apiClient.get).toHaveBeenCalledWith('/resources/urls/3');
     });
 
     it('should return external URL with validation data', async () => {
@@ -819,7 +841,7 @@ describe('useResourceFolder hook', () => {
 
       expect(result.current.data).toEqual(mockResourceFolder);
       expect(result.current.data?.files).toHaveLength(2);
-      expect(apiClient.get).toHaveBeenCalledWith('/api/v1/resources/folders/4');
+      expect(apiClient.get).toHaveBeenCalledWith('/resources/folders/4');
     });
 
     it('should return nested file structure', async () => {
@@ -918,7 +940,7 @@ describe('useTrackResourceView mutation hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(apiClient.post).toHaveBeenCalledWith('/api/v1/resources/1/view');
+      expect(apiClient.post).toHaveBeenCalledWith('/resources/1/view');
       expect(result.current.data).toEqual(trackingResponse);
     });
 
@@ -934,7 +956,7 @@ describe('useTrackResourceView mutation hook', () => {
       result.current.mutate(42);
 
       await waitFor(() => {
-        expect(apiClient.post).toHaveBeenCalledWith('/api/v1/resources/42/view');
+        expect(apiClient.post).toHaveBeenCalledWith('/resources/42/view');
       });
     });
   });
@@ -1098,7 +1120,7 @@ describe('useTrackResourceDownload mutation hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(apiClient.post).toHaveBeenCalledWith('/api/v1/resources/1/download');
+      expect(apiClient.post).toHaveBeenCalledWith('/resources/1/download');
       expect(result.current.data).toEqual(trackingResponse);
     });
 
@@ -1114,7 +1136,7 @@ describe('useTrackResourceDownload mutation hook', () => {
       result.current.mutate(10);
 
       await waitFor(() => {
-        expect(apiClient.post).toHaveBeenCalledWith('/api/v1/resources/10/download');
+        expect(apiClient.post).toHaveBeenCalledWith('/resources/10/download');
       });
     });
   });
@@ -1287,7 +1309,7 @@ describe('React Query configuration', () => {
         });
 
       const { result } = renderHook(() => useResource(1), {
-        wrapper: createWrapper(),
+        wrapper: createRetryWrapper(),
       });
 
       await waitFor(() => {
