@@ -14,9 +14,9 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, within } from '@/tests/helpers/render';
+import { render, screen } from '../../../../helpers/render';
 import '@testing-library/jest-dom';
-import { ChapterContent } from '@/features/activities/book/components/ChapterContent';
+import ChapterContent from '@/features/activities/book/components/ChapterContent';
 import type { Chapter, Tag } from '@/features/activities/book/types/book.types';
 
 // Mock DOMPurify
@@ -55,6 +55,10 @@ describe('ChapterContent', () => {
       timecreated: 1672531200,
       timemodified: 1672531200,
       importsrc: '',
+      parent: null,
+      number: '1',
+      prev: null,
+      next: null,
     };
 
     // Create mock subchapter
@@ -70,6 +74,10 @@ describe('ChapterContent', () => {
       timecreated: 1672531200,
       timemodified: 1672531200,
       importsrc: '',
+      parent: 1,
+      number: '1.1',
+      prev: null,
+      next: null,
     };
 
     // Create mock hidden chapter
@@ -85,6 +93,10 @@ describe('ChapterContent', () => {
       timecreated: 1672531200,
       timemodified: 1672531200,
       importsrc: '',
+      parent: null,
+      number: 'x',
+      prev: null,
+      next: null,
     };
 
     // Create mock chapter with embedded media
@@ -105,6 +117,10 @@ describe('ChapterContent', () => {
       timecreated: 1672531200,
       timemodified: 1672531200,
       importsrc: '',
+      parent: null,
+      number: '2',
+      prev: null,
+      next: null,
     };
 
     // Create mock chapter with tags
@@ -120,6 +136,10 @@ describe('ChapterContent', () => {
       timecreated: 1672531200,
       timemodified: 1672531200,
       importsrc: '',
+      parent: null,
+      number: '3',
+      prev: null,
+      next: null,
     };
 
     // Create mock tags
@@ -128,21 +148,11 @@ describe('ChapterContent', () => {
         id: 1,
         name: 'testing',
         displayname: 'Testing',
-        rawname: 'testing',
-        isstandard: 1,
-        tagcollid: 1,
-        taginstanceid: 100,
-        taginstancecontextid: 50,
       },
       {
         id: 2,
         name: 'unit-tests',
         displayname: 'Unit Tests',
-        rawname: 'unit-tests',
-        isstandard: 1,
-        tagcollid: 1,
-        taginstanceid: 101,
-        taginstancecontextid: 50,
       },
     ];
 
@@ -374,7 +384,7 @@ describe('ChapterContent', () => {
     });
 
     it('applies dimmed styling to hidden chapter content', () => {
-      render(
+      const { container } = render(
         <ChapterContent
           chapter={mockHiddenChapter}
           customTitles={false}
@@ -382,9 +392,11 @@ describe('ChapterContent', () => {
         />
       );
 
-      // Find the container Box with dimmed styling
-      const contentContainer = screen.getByText('This chapter is hidden from students.').closest('div');
-      expect(contentContainer).toHaveClass('dimmed_text');
+      // Find the main container Box which should have opacity: 0.6
+      const mainBox = container.querySelector('.generalbox.book_content');
+      expect(mainBox).toBeInTheDocument();
+      // Component applies opacity: 0.6 via sx prop when chapter.hidden is true
+      expect(mainBox).toHaveStyle({ opacity: '0.6' });
     });
 
     it('applies opacity 0.6 to hidden chapter container', () => {
@@ -465,7 +477,7 @@ describe('ChapterContent', () => {
     });
 
     it('renders embedded videos with correct attributes', () => {
-      render(
+      const { container } = render(
         <ChapterContent
           chapter={mockChapterWithMedia}
           customTitles={false}
@@ -473,12 +485,11 @@ describe('ChapterContent', () => {
         />
       );
 
-      const video = screen.getByRole('region', { name: /video/i }) || 
-                    document.querySelector('video');
+      // Find the video element directly in the container
+      const video = container.querySelector('video');
       expect(video).toBeInTheDocument();
-      if (video) {
-        expect(video.tagName).toBe('VIDEO');
-      }
+      expect(video).toHaveAttribute('src', 'https://example.com/pluginfile.php/123/mod_book/chapter/1/video.mp4');
+      expect(video).toHaveAttribute('controls');
     });
 
     it('renders iframes for embedded content', () => {
@@ -554,21 +565,11 @@ describe('ChapterContent', () => {
           id: 3,
           name: 'advanced',
           displayname: 'Advanced Topics',
-          rawname: 'advanced',
-          isstandard: 1,
-          tagcollid: 1,
-          taginstanceid: 102,
-          taginstancecontextid: 50,
         },
         {
           id: 4,
           name: 'beginner',
           displayname: '', // Empty displayname should fall back to name
-          rawname: 'beginner',
-          isstandard: 1,
-          tagcollid: 1,
-          taginstanceid: 103,
-          taginstancecontextid: 50,
         },
       ];
 
@@ -759,7 +760,6 @@ describe('ChapterContent', () => {
       );
 
       // Content should have proper styling classes
-      const contentBox = container.querySelector('[class*="book_content"]');
       // Component should render properly even if specific class not found
       expect(container.querySelector('.MuiBox-root')).toBeInTheDocument();
     });
