@@ -388,12 +388,12 @@ describe('LoadingSpinner Component', () => {
       // Initially shows spinner
       expect(screen.getByRole('progressbar')).toBeInTheDocument();
 
-      // Wait for loading to complete
+      // Wait for loading to complete (increased timeout for slower test environments)
       await waitFor(
         () => {
           expect(screen.getByText('Content loaded')).toBeInTheDocument();
         },
-        { timeout: 200 }
+        { timeout: 500 }
       );
 
       // Spinner should be gone

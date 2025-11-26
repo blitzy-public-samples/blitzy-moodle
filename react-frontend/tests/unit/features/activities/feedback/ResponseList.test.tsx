@@ -759,9 +759,12 @@ describe('ResponseList Component', () => {
 
       await user.click(headerCheckbox);
 
-      // All checkboxes should be checked
-      checkboxes.forEach(checkbox => {
-        expect(checkbox).toBeChecked();
+      // Wait for all checkboxes to be checked (MUI DataGrid state propagation)
+      await waitFor(() => {
+        const updatedCheckboxes = screen.getAllByRole('checkbox');
+        updatedCheckboxes.forEach(checkbox => {
+          expect(checkbox).toBeChecked();
+        });
       });
     });
 

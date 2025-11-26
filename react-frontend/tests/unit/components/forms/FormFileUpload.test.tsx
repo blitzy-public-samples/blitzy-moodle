@@ -1912,6 +1912,10 @@ describe('FormFileUpload - Snapshot Tests', () => {
       expect(screen.getByText('file1.txt')).toBeInTheDocument();
     });
 
+    // Additional wait to ensure MUI TouchRipple components have fully rendered
+    // This prevents flaky snapshots due to async ripple rendering
+    await new Promise(resolve => setTimeout(resolve, 100));
+
     expect(container.firstChild).toMatchSnapshot();
   });
 

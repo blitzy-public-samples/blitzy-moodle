@@ -463,7 +463,10 @@ describe('ResponseList Component', () => {
 
       await user.click(firstRowCheckbox!);
 
-      expect(firstRowCheckbox).toBeChecked();
+      // Wait for the checkbox state to update (MUI state propagation)
+      await waitFor(() => {
+        expect(firstRowCheckbox).toBeChecked();
+      });
     });
 
     it('should select all rows when header checkbox is clicked', async () => {
@@ -702,8 +705,10 @@ describe('ResponseList Component', () => {
       const nextButton = screen.getByRole('button', { name: /next page/i });
       await user.click(nextButton);
 
-      // Should be on page 2
-      expect(screen.getByText(/11–20 of 25/i)).toBeInTheDocument();
+      // Wait for pagination to update (MUI DataGrid async state)
+      await waitFor(() => {
+        expect(screen.getByText(/11–20 of 25/i)).toBeInTheDocument();
+      });
     });
 
     it('should change page size', async () => {
