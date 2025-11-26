@@ -36,10 +36,30 @@ import { FolderBrowser, type FolderBrowserProps } from '../../../../../../src/fe
 
 // Types
 import type { Folder } from '../../../../../../src/features/activities/resources/types/resource.types';
-import type { FolderNode } from '../../../../../../src/features/activities/resources/hooks/useResource';
 
 // Mock server setup
 import { server } from '../../../../../setup';
+
+/**
+ * FolderNode type definition (local to test file)
+ * Matches the structure from useResource hook for type-safe mock data
+ */
+interface FolderNode {
+  id: string;
+  name: string;
+  isFolder: boolean;
+  isRoot?: boolean;
+  path: string;
+  children?: FolderNode[];
+  file?: {
+    filename: string;
+    filepath: string;
+    filesize: number;
+    mimetype: string;
+    timemodified: number;
+    url: string;
+  };
+}
 
 /**
  * Helper function to create mock folder tree data structure
