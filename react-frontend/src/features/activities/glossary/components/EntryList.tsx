@@ -57,7 +57,7 @@ import type { GlossaryEntry } from '../types/glossary.types';
 import { stripHtml } from '@/utils/string';
 import { formatRelativeTime } from '@/utils/date';
 import useDebounce from '@/hooks/useDebounce';
-import { usePermissions } from '@/hooks/usePermissions';
+import { usePermissions } from '@/features/auth/hooks/usePermissions';
 
 // ============================================================================
 // Type Definitions
@@ -150,7 +150,7 @@ export function EntryList({
   onSearchChange,
   onSortChange,
   onAddEntry,
-  glossaryId: _glossaryId,
+  glossaryId,
 }: EntryListProps): JSX.Element {
   // ============================================================================
   // State Management
@@ -170,7 +170,10 @@ export function EntryList({
   // Check if user has capability to write/add entries
   // Reference: public/mod/glossary/lib.php - glossary_user_can_post()
   const { hasCapability } = usePermissions();
-  const canAddEntry = hasCapability('mod/glossary:write');
+  
+  const canAddEntry = glossaryId 
+    ? hasCapability('mod/glossary:write', { type: 'module', contextId: glossaryId })
+    : false;
 
   // ============================================================================
   // Effects

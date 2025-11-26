@@ -225,10 +225,18 @@ export function render(
     storeInstance = customStore;
   } else if (initialState || authenticated) {
     // Build initial state with auth if needed
+    const user = customUser || createMockUser();
+    console.log('[render helper] Creating auth state with user:', {
+      id: user.id,
+      capabilitiesCount: user.capabilities?.length,
+      capabilities: user.capabilities,
+      customUserProvided: !!customUser
+    });
+    
     const authState = authenticated
       ? {
           auth: {
-            user: customUser || createMockUser(),
+            user,
             isAuthenticated: true,
             tokens: {
               accessToken: 'mock-jwt-token',
@@ -246,6 +254,11 @@ export function render(
     storeInstance = createMockStore({
       ...authState,
       ...initialState,
+    });
+    console.log('[render helper] Store created. Auth state:', {
+      userId: storeInstance.getState().auth?.user?.id,
+      capabilities: storeInstance.getState().auth?.user?.capabilities,
+      isAuthenticated: storeInstance.getState().auth?.isAuthenticated
     });
   } else {
     storeInstance = createMockStore(initialState);

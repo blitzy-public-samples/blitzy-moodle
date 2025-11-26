@@ -44,6 +44,17 @@ import type { Conversation } from '@/features/messaging/types/message.types';
 import type { Question } from '@/features/activities/quizzes/types/quiz.types';
 import { QuestionState } from '@/features/activities/quizzes/types/quiz.types';
 import type { Resource } from '@/features/activities/resources/types/resource.types';
+import type {
+  Glossary,
+  GlossaryEntry,
+  GlossaryTag,
+  GlossaryAttachment,
+} from '@/features/activities/glossary/types/glossary.types';
+import { 
+  GlossaryDisplayFormat,
+  GlossaryBrowseMode,
+  TextFormat,
+} from '@/features/activities/glossary/types/glossary.types';
 
 /**
  * Generates a random mock ID for test entities.
@@ -996,5 +1007,184 @@ export function createMockResource(
     revision: overrides.revision ?? 1,
     timemodified: overrides.timemodified ?? generateMockDate(-1),
     timecreated: overrides.timecreated ?? generateMockDate(-30),
+  };
+}
+
+/**
+ * Creates a mock glossary tag with realistic default values.
+ * Represents a tag associated with a glossary entry.
+ * 
+ * @param {Partial<GlossaryTag>} overrides - Properties to override
+ * @returns {GlossaryTag} Complete glossary tag entity
+ * 
+ * @example
+ * ```typescript
+ * const tag = createMockGlossaryTag();
+ * const customTag = createMockGlossaryTag({ name: 'Important', rawname: 'important' });
+ * ```
+ */
+export function createMockGlossaryTag(overrides: Partial<GlossaryTag> = {}): GlossaryTag {
+  const id = overrides.id ?? generateMockId();
+  const name = overrides.name ?? `Tag ${id}`;
+  const rawname = overrides.rawname ?? name.toLowerCase().replace(/\s+/g, '-');
+
+  return {
+    id,
+    name,
+    rawname,
+    isstandard: overrides.isstandard ?? false,
+    tagcollid: overrides.tagcollid ?? 1,
+    taginstanceid: overrides.taginstanceid ?? generateMockId(),
+    taginstancecontextid: overrides.taginstancecontextid ?? 1,
+    itemid: overrides.itemid ?? generateMockId(),
+    ordering: overrides.ordering ?? 0,
+    flag: overrides.flag ?? 0,
+  };
+}
+
+/**
+ * Creates a mock glossary attachment with realistic default values.
+ * Represents a file attachment for a glossary entry.
+ * 
+ * @param {Partial<GlossaryAttachment>} overrides - Properties to override
+ * @returns {GlossaryAttachment} Complete glossary attachment entity
+ * 
+ * @example
+ * ```typescript
+ * const attachment = createMockGlossaryAttachment();
+ * const pdfAttachment = createMockGlossaryAttachment({ 
+ *   filename: 'document.pdf', 
+ *   mimetype: 'application/pdf' 
+ * });
+ * ```
+ */
+export function createMockGlossaryAttachment(
+  overrides: Partial<GlossaryAttachment> = {}
+): GlossaryAttachment {
+  const filename = overrides.filename ?? 'attachment.txt';
+
+  return {
+    filename,
+    filepath: overrides.filepath ?? '/',
+    filesize: overrides.filesize ?? 1024,
+    fileurl: overrides.fileurl ?? `https://example.com/files/${filename}`,
+    mimetype: overrides.mimetype ?? 'text/plain',
+    timemodified: overrides.timemodified ?? generateMockDate(-1),
+  };
+}
+
+/**
+ * Creates a mock glossary entry with realistic default values.
+ * Represents a single entry in a glossary with concept and definition.
+ * 
+ * @param {Partial<GlossaryEntry>} overrides - Properties to override
+ * @returns {GlossaryEntry} Complete glossary entry entity
+ * 
+ * @example
+ * ```typescript
+ * const entry = createMockGlossaryEntry();
+ * const customEntry = createMockGlossaryEntry({ 
+ *   concept: 'Algorithm', 
+ *   definition: 'A step-by-step procedure for calculations' 
+ * });
+ * const entryWithAuthor = createMockGlossaryEntry({ 
+ *   userid: 42,
+ *   userfullname: 'Jane Doe',
+ *   userpictureurl: 'https://example.com/jane.jpg'
+ * });
+ * ```
+ */
+export function createMockGlossaryEntry(overrides: Partial<GlossaryEntry> = {}): GlossaryEntry {
+  const id = overrides.id ?? generateMockId();
+  const concept = overrides.concept ?? `Concept ${id}`;
+  const definition = overrides.definition ?? `This is the definition for ${concept}.`;
+  const userid = overrides.userid ?? generateMockId();
+
+  return {
+    id,
+    glossaryid: overrides.glossaryid ?? generateMockId(),
+    userid,
+    userfullname: overrides.userfullname ?? `User ${userid}`,
+    userpictureurl: overrides.userpictureurl ?? `https://example.com/avatar/${userid}.jpg`,
+    concept,
+    definition,
+    definitionformat: overrides.definitionformat ?? 1,
+    definitiontrust: overrides.definitiontrust ?? false,
+    attachment: overrides.attachment ?? false,
+    attachments: overrides.attachments ?? [],
+    definitioninlinefiles: overrides.definitioninlinefiles ?? [],
+    usedynalink: overrides.usedynalink ?? true,
+    casesensitive: overrides.casesensitive ?? false,
+    fullmatch: overrides.fullmatch ?? false,
+    approved: overrides.approved ?? true,
+    teacherentry: overrides.teacherentry ?? false,
+    sourceglossaryid: overrides.sourceglossaryid ?? 0,
+    categoryid: overrides.categoryid ?? 0,
+    categoryname: overrides.categoryname ?? '',
+    tags: overrides.tags ?? [],
+    timecreated: overrides.timecreated ?? generateMockDate(-7),
+    timemodified: overrides.timemodified ?? generateMockDate(-1),
+  };
+}
+
+/**
+ * Creates a mock glossary with realistic default values.
+ * Represents a glossary activity in a course with configuration settings.
+ * 
+ * @param {Partial<Glossary>} overrides - Properties to override
+ * @returns {Glossary} Complete glossary entity
+ * 
+ * @example
+ * ```typescript
+ * const glossary = createMockGlossary();
+ * const courseGlossary = createMockGlossary({ 
+ *   course: 42, 
+ *   name: 'Computer Science Terms',
+ *   allowduplicatedentries: true 
+ * });
+ * const mainGlossary = createMockGlossary({ mainglossary: true, globalglossary: true });
+ * ```
+ */
+export function createMockGlossary(overrides: Partial<Glossary> = {}): Glossary {
+  const id = overrides.id ?? generateMockId();
+  const name = overrides.name ?? `Glossary ${id}`;
+
+  return {
+    id,
+    course: overrides.course ?? generateMockId(),
+    coursemodule: overrides.coursemodule ?? generateMockId(),
+    name,
+    intro: overrides.intro ?? `This is a glossary for ${name}.`,
+    introformat: overrides.introformat ?? TextFormat.HTML,
+    displayformat: overrides.displayformat ?? GlossaryDisplayFormat.DICTIONARY,
+    allowduplicatedentries: overrides.allowduplicatedentries ?? false,
+    mainglossary: overrides.mainglossary ?? false,
+    showspecial: overrides.showspecial ?? true,
+    showalphabet: overrides.showalphabet ?? true,
+    showall: overrides.showall ?? true,
+    allowcomments: overrides.allowcomments ?? false,
+    allowprintview: overrides.allowprintview ?? true,
+    usedynalink: overrides.usedynalink ?? true,
+    defaultapproval: overrides.defaultapproval ?? true,
+    approvaldisplayformat: overrides.approvaldisplayformat ?? 'default',
+    globalglossary: overrides.globalglossary ?? false,
+    entbypage: overrides.entbypage ?? 10,
+    editalways: overrides.editalways ?? false,
+    rsstype: overrides.rsstype ?? 0,
+    rssarticles: overrides.rssarticles ?? 0,
+    assessed: overrides.assessed ?? 0,
+    assesstimestart: overrides.assesstimestart ?? 0,
+    assesstimefinish: overrides.assesstimefinish ?? 0,
+    scale: overrides.scale ?? 0,
+    timecreated: overrides.timecreated ?? generateMockDate(-30),
+    timemodified: overrides.timemodified ?? generateMockDate(-1),
+    completionentries: overrides.completionentries ?? 0,
+    canaddentry: overrides.canaddentry ?? true,
+    browsemodes: overrides.browsemodes ?? [
+      GlossaryBrowseMode.LETTER,
+      GlossaryBrowseMode.CAT,
+      GlossaryBrowseMode.DATE,
+      GlossaryBrowseMode.AUTHOR,
+    ],
   };
 }
