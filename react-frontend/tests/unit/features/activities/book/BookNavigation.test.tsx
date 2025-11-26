@@ -22,9 +22,9 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { userEvent } from '@/tests/helpers/render';
+import { userEvent } from '@tests/helpers/render';
 import BookNavigation from '@/features/activities/book/components/BookNavigation';
 import type { Chapter } from '@/features/activities/book/types/book.types';
 
@@ -50,6 +50,9 @@ const createMockChapter = (overrides: Partial<Chapter> = {}): Chapter => ({
   timemodified: Date.now(),
   importsrc: '',
   parent: null,
+  number: null,
+  prev: null,
+  next: null,
   ...overrides,
 });
 
@@ -132,7 +135,7 @@ describe('BookNavigation Component', () => {
     });
 
     it('should render Previous button with NavigateBefore icon', () => {
-      const { container } = render(
+      render(
         <BookNavigation
           currentChapterId={3}
           chapters={mockChapters}
@@ -147,7 +150,7 @@ describe('BookNavigation Component', () => {
     });
 
     it('should render Next button with NavigateNext icon', () => {
-      const { container } = render(
+      render(
         <BookNavigation
           currentChapterId={3}
           chapters={mockChapters}
@@ -230,8 +233,6 @@ describe('BookNavigation Component', () => {
     });
 
     it('should not call onNavigate when disabled Previous button clicked', async () => {
-      const user = userEvent.setup();
-
       render(
         <BookNavigation
           currentChapterId={1}
@@ -241,14 +242,16 @@ describe('BookNavigation Component', () => {
       );
 
       const previousButton = screen.getByRole('button', { name: /previous/i });
-      await user.click(previousButton);
-
+      
+      // Assert button is disabled
+      expect(previousButton).toBeDisabled();
+      
+      // Use fireEvent to force click on disabled button and verify no navigation
+      fireEvent.click(previousButton);
       expect(mockOnNavigate).not.toHaveBeenCalled();
     });
 
     it('should not call onNavigate when disabled Next button clicked', async () => {
-      const user = userEvent.setup();
-
       render(
         <BookNavigation
           currentChapterId={5}
@@ -258,8 +261,12 @@ describe('BookNavigation Component', () => {
       );
 
       const nextButton = screen.getByRole('button', { name: /next/i });
-      await user.click(nextButton);
-
+      
+      // Assert button is disabled
+      expect(nextButton).toBeDisabled();
+      
+      // Use fireEvent to force click on disabled button and verify no navigation
+      fireEvent.click(nextButton);
       expect(mockOnNavigate).not.toHaveBeenCalled();
     });
 
@@ -806,7 +813,6 @@ describe('BookNavigation Component', () => {
       );
 
       const navContainer = container.querySelector('#mod_book-chaptersnavigation');
-      const styles = window.getComputedStyle(navContainer!);
 
       // MUI Box with sx prop creates inline styles
       expect(navContainer).toBeInTheDocument();
