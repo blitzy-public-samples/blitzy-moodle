@@ -45,6 +45,16 @@ import { createMockUser } from './mockData';
 import { AuthStatus, type User } from '@/features/auth/types/auth.types';
 
 /**
+ * Extend globalThis with test utilities.
+ * This declaration allows asyncUtils helpers (e.g., waitForLoadingToFinish) to access
+ * the query client instance set in the custom render function.
+ */
+declare global {
+  // eslint-disable-next-line no-var
+  var __queryClient__: QueryClient | undefined;
+}
+
+/**
  * Extended render options for custom render function.
  * Provides configuration for all application providers.
  */
@@ -255,6 +265,9 @@ export function render(
 
   // Create or use provided query client
   const queryClientInstance = customQueryClient || createTestQueryClient();
+
+  // Set query client globally for async utilities (e.g., waitForLoadingToFinish)
+  globalThis.__queryClient__ = queryClientInstance;
 
   // Determine theme instance
   let themeInstance: Theme;
