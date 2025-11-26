@@ -305,7 +305,9 @@ export default function ResourceView({ resourceId }: ResourceViewProps): JSX.Ele
           severity="error"
           title="Unable to Load Resource"
           message={
-            error?.message ?? 'The requested resource could not be loaded. Please try again later.'
+            (error as any)?.customError?.message ?? 
+            error?.message ?? 
+            'The requested resource could not be loaded. Please try again later.'
           }
           closeable={false}
         />

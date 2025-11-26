@@ -112,6 +112,12 @@ export { feedbackHandlers } from './feedback';
  */
 export { h5pHandlers } from './h5p';
 
+/**
+ * MSW handlers for resource activity API endpoints.
+ * Includes resource file details, display options, and file access management.
+ */
+export { resourcesHandlers } from './resources';
+
 // ============================================================================
 // Assessment & Grading
 // ============================================================================
@@ -168,6 +174,7 @@ import { forumsHandlers } from './forums';
 import { choicesHandlers } from './choices';
 import { feedbackHandlers } from './feedback';
 import { h5pHandlers } from './h5p';
+import { resourcesHandlers } from './resources';
 import { gradesHandlers } from './grades';
 import { messagesHandlers } from './messages';
 import { filesHandlers } from './files';
@@ -184,7 +191,7 @@ import { adminHandlers } from './admin';
  * 1. Authentication & Authorization
  * 2. User Management
  * 3. Course Management
- * 4. Learning Activities (Assignments, Quizzes, Forums, Choices, Feedback, H5P)
+ * 4. Learning Activities (Assignments, Quizzes, Forums, Choices, Feedback, H5P, Resources)
  * 5. Assessment & Grading
  * 6. Communication (Messages, Notifications)
  * 7. File Management
@@ -202,6 +209,7 @@ export const handlers: RequestHandler[] = [
   ...choicesHandlers,
   ...feedbackHandlers,
   ...h5pHandlers,
+  ...resourcesHandlers,
   ...gradesHandlers,
   ...messagesHandlers,
   ...filesHandlers,

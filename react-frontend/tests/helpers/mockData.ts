@@ -1011,6 +1011,57 @@ export function createMockResource(
 }
 
 /**
+ * Creates a mock resource file for testing ResourceView component.
+ * This matches the ResourceFile interface from useResource hook, which uses 'files' instead of 'contentfiles'.
+ * 
+ * @param {Partial<any>} overrides - Properties to override
+ * @returns {any} Mock resource file object matching hook's ResourceFile interface
+ * 
+ * @example
+ * ```typescript
+ * const resource = createMockResourceFile({ id: 1, name: 'My PDF' });
+ * const pdfResource = createMockResourceFile({ 
+ *   id: 2, 
+ *   files: [{ filename: 'document.pdf', mimetype: 'application/pdf', filesize: 1024000 }]
+ * });
+ * ```
+ */
+export function createMockResourceFile(overrides: any = {}): any {
+  const id = overrides.id ?? generateMockId();
+  const defaultFile = {
+    filename: 'sample-document.pdf',
+    filepath: '/',
+    filesize: 2457600,
+    url: `https://moodle.example.com/pluginfile.php/123/mod_resource/content/1/sample-document.pdf`,
+    timemodified: generateMockDate(-1),
+    mimetype: 'application/pdf',
+  };
+
+  const baseResource = {
+    type: 'resource',
+    id,
+    coursemodule: overrides.coursemodule ?? generateMockId(),
+    course: overrides.course ?? generateMockId(),
+    name: overrides.name ?? `Resource ${id}`,
+    intro: overrides.intro ?? 'This is a test resource.',
+    introformat: overrides.introformat ?? 1,
+    timemodified: overrides.timemodified ?? generateMockDate(-1),
+    files: overrides.files ?? [defaultFile],
+    display: overrides.display ?? 0,
+    displayoptions: overrides.displayoptions ?? '',
+    viewcount: overrides.viewcount ?? 0,
+    downloadcount: overrides.downloadcount ?? 0,
+  };
+
+  // Add tobemigrated if specified in overrides
+  if ('tobemigrated' in overrides) {
+    return { ...baseResource, tobemigrated: overrides.tobemigrated };
+  }
+
+  return baseResource;
+}
+
+/**
  * Creates a mock glossary tag with realistic default values.
  * Represents a tag associated with a glossary entry.
  * 

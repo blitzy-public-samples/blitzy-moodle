@@ -11,6 +11,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { UseQueryResult, UseMutationResult } from '@tanstack/react-query';
 import { apiClient } from '@/services/api/client';
+import { RESOURCE_ENDPOINTS } from '@/services/api/endpoints';
 
 /**
  * TypeScript interfaces for resource data structures
@@ -162,15 +163,16 @@ export function useResource(id?: number): UseQueryResult<Resource, Error> {
   return useQuery<Resource, Error>({
     queryKey: resourceKeys.detail(id ?? 0),
     queryFn: async () => {
-      const response = await apiClient.get<ApiResponse<Resource>>(`/api/v1/resources/${id}`);
+      const response = await apiClient.get<ApiResponse<Resource>>(RESOURCE_ENDPOINTS.DETAIL(id!));
       return response.data.data;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
     refetchOnWindowFocus: true,
     enabled: !!id && id > 0,
-    retry: 2,
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    // Inherit retry behavior from QueryClient configuration:
+    // - In production: uses default QueryClient retry config (typically 3 retries)
+    // - In tests: uses test QueryClient retry: false for predictable, fast failure
   });
 }
 
@@ -194,7 +196,7 @@ export function useResourceFiles(id?: number): UseQueryResult<ResourceFile, Erro
     queryKey: resourceKeys.files(id ?? 0),
     queryFn: async () => {
       const response = await apiClient.get<ApiResponse<ResourceFile>>(
-        `/api/v1/resources/${id}/files`
+        RESOURCE_ENDPOINTS.FILES(id!)
       );
       return response.data.data;
     },
@@ -227,7 +229,7 @@ export function useResourcePage(id?: number): UseQueryResult<ResourcePage, Error
     queryKey: resourceKeys.page(id ?? 0),
     queryFn: async () => {
       const response = await apiClient.get<ApiResponse<ResourcePage>>(
-        `/api/v1/resources/pages/${id}`
+        RESOURCE_ENDPOINTS.PAGES(id!)
       );
       return response.data.data;
     },
@@ -260,7 +262,7 @@ export function useResourceUrl(id?: number): UseQueryResult<ResourceUrl, Error> 
     queryKey: resourceKeys.url(id ?? 0),
     queryFn: async () => {
       const response = await apiClient.get<ApiResponse<ResourceUrl>>(
-        `/api/v1/resources/urls/${id}`
+        RESOURCE_ENDPOINTS.URLS(id!)
       );
       return response.data.data;
     },
@@ -293,7 +295,7 @@ export function useResourceFolder(id?: number): UseQueryResult<ResourceFolder, E
     queryKey: resourceKeys.folder(id ?? 0),
     queryFn: async () => {
       const response = await apiClient.get<ApiResponse<ResourceFolder>>(
-        `/api/v1/resources/folders/${id}`
+        RESOURCE_ENDPOINTS.FOLDERS(id!)
       );
       return response.data.data;
     },
@@ -334,7 +336,7 @@ export function useTrackResourceView(): UseMutationResult<
   return useMutation<TrackingResponse, Error, number>({
     mutationFn: async (resourceId: number) => {
       const response = await apiClient.post<ApiResponse<TrackingResponse>>(
-        `/api/v1/resources/${resourceId}/view`
+        `/resources/${resourceId}/view`
       );
       return response.data.data;
     },
@@ -390,7 +392,7 @@ export function useTrackResourceDownload(): UseMutationResult<
   return useMutation<TrackingResponse, Error, number>({
     mutationFn: async (resourceId: number) => {
       const response = await apiClient.post<ApiResponse<TrackingResponse>>(
-        `/api/v1/resources/${resourceId}/download`
+        `/resources/${resourceId}/download`
       );
       return response.data.data;
     },

@@ -454,7 +454,10 @@ function createOnResponseError(axiosInstance: AxiosInstance) {
   // ============================================================================
 
   if (error.response?.status === 403) {
-    const permissionError = {
+    // Attach custom properties to the original AxiosError to preserve Error prototype
+    // This ensures React Query properly recognizes it as an error while providing
+    // custom error information for the UI layer
+    (error as any).customError = {
       message: 'You do not have permission to perform this action',
       code: 'PERMISSION_DENIED',
       status: 403,
@@ -465,7 +468,7 @@ function createOnResponseError(axiosInstance: AxiosInstance) {
       console.warn('[Interceptor] Permission denied:', error.config?.url);
     }
 
-    return Promise.reject(permissionError);
+    return Promise.reject(error);
   }
 
   // ============================================================================
@@ -473,7 +476,8 @@ function createOnResponseError(axiosInstance: AxiosInstance) {
   // ============================================================================
 
   if (error.response?.status === 404) {
-    const notFoundError = {
+    // Attach custom properties to the original AxiosError to preserve Error prototype
+    (error as any).customError = {
       message: 'The requested resource was not found',
       code: 'NOT_FOUND',
       status: 404,
@@ -486,7 +490,7 @@ function createOnResponseError(axiosInstance: AxiosInstance) {
       console.warn('[Interceptor] Resource not found:', error.config?.url);
     }
 
-    return Promise.reject(notFoundError);
+    return Promise.reject(error);
   }
 
   // ============================================================================
@@ -494,7 +498,8 @@ function createOnResponseError(axiosInstance: AxiosInstance) {
   // ============================================================================
 
   if (error.response && error.response.status >= 500) {
-    const serverError = {
+    // Attach custom properties to the original AxiosError to preserve Error prototype
+    (error as any).customError = {
       message: 'A server error occurred. Please try again later.',
       code: 'SERVER_ERROR',
       status: error.response.status,
@@ -505,7 +510,7 @@ function createOnResponseError(axiosInstance: AxiosInstance) {
       console.error('[Interceptor] Server error:', error.response.status, error.config?.url);
     }
 
-    return Promise.reject(serverError);
+    return Promise.reject(error);
   }
 
   // ============================================================================
@@ -513,7 +518,8 @@ function createOnResponseError(axiosInstance: AxiosInstance) {
   // ============================================================================
 
   if (!error.response) {
-    const networkError = {
+    // Attach custom properties to the original AxiosError to preserve Error prototype
+    (error as any).customError = {
       message: 'Network error. Please check your connection.',
       code: 'NETWORK_ERROR',
       status: 0,
@@ -526,7 +532,7 @@ function createOnResponseError(axiosInstance: AxiosInstance) {
       console.error('[Interceptor] Network error:', error.message);
     }
 
-    return Promise.reject(networkError);
+    return Promise.reject(error);
   }
 
   // ============================================================================
@@ -536,7 +542,8 @@ function createOnResponseError(axiosInstance: AxiosInstance) {
   // Type cast to ApiErrorResponse to safely access error properties
   const responseData = error.response?.data as ApiErrorResponse | undefined;
   
-  const defaultError = {
+  // Attach custom properties to the original AxiosError to preserve Error prototype
+  (error as any).customError = {
     message: responseData?.error?.message ?? error.message ?? 'An unexpected error occurred',
     code: responseData?.error?.code ?? 'UNKNOWN_ERROR',
     status: error.response?.status ?? 0,
@@ -547,7 +554,7 @@ function createOnResponseError(axiosInstance: AxiosInstance) {
     console.error('[Interceptor] Unhandled error:', error.response?.status, error.config?.url);
   }
 
-  return Promise.reject(defaultError);
+  return Promise.reject(error);
   };
 }
 
