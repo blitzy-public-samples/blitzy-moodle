@@ -16,7 +16,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, within } from '@/tests/helpers/render';
+import { render, screen, fireEvent } from '@tests/helpers/render';
 import '@testing-library/jest-dom';
 
 // Component under test
@@ -53,7 +53,12 @@ function createMockChapter(
     hidden: options.hidden ?? 0,
     timecreated: Date.now() / 1000,
     timemodified: Date.now() / 1000,
-    importsrc: null,
+    importsrc: '',
+    // Computed navigation properties (set to defaults for testing)
+    parent: null,
+    number: null,
+    prev: null,
+    next: null,
   };
 }
 
@@ -505,7 +510,7 @@ describe('ChapterList Component', () => {
       ];
       const book = createMockBook(BookNumbering.NUMBERS);
 
-      const { container } = render(
+      render(
         <ChapterList
           chapters={chapters}
           currentChapterId={null}
@@ -703,7 +708,7 @@ describe('ChapterList Component', () => {
       expect(hiddenChapter).toBeInTheDocument();
       
       // Hidden chapters should have disabled text color
-      expect(hiddenChapter).toHaveStyle({ color: expect.any(String) });
+      expect(hiddenChapter).toHaveStyle({ color: 'rgba(0, 0, 0, 0.38)' });
     });
 
     it('should hide hidden subchapters when canViewHidden is false', () => {

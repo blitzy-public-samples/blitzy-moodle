@@ -25,6 +25,7 @@ import {
   ListItem,
   ListItemButton,
   ListItemText,
+  Typography,
 } from '@mui/material';
 import type { Chapter, Book } from '../types/book.types';
 
@@ -138,8 +139,7 @@ function ChapterList({
         return;
       }
 
-      const isHidden = Boolean(ch.hidden);
-      const isDimmed = isHidden && canViewHidden;
+      let isHidden = Boolean(ch.hidden);
       let displayNumber = '';
       const level = ch.subchapter ? 1 : 0;
 
@@ -165,24 +165,27 @@ function ChapterList({
         const parentChapter = chapterParentMap.get(ch.id);
         const isParentHidden = parentChapter?.hidden;
 
-        if (!isHidden) {
+        // If parent is hidden, treat subchapter as hidden regardless of its own flag
+        if (isParentHidden) {
+          isHidden = true; // Treat as hidden when parent is hidden
+          if (book.numbering === 1) {
+            displayNumber = 'x.x';
+          }
+        } else if (!isHidden) {
+          // Visible subchapter under visible parent
           subchapterNumber++;
 
           if (book.numbering === 1) {
             // BookNumbering.NUMBERS
-            // Use 'x' as parent number if parent is hidden, otherwise use chapterNumber
-            const parentNumber = isParentHidden ? 'x' : chapterNumber;
-            displayNumber = `${parentNumber}.${subchapterNumber}`;
+            displayNumber = `${chapterNumber}.${subchapterNumber}`;
           }
         } else if (book.numbering === 1) {
-          // Hidden subchapter with numbered display
-          if (isParentHidden) {
-            displayNumber = 'x.x';
-          } else {
-            displayNumber = `${chapterNumber}.x`;
-          }
+          // Hidden subchapter under visible parent with numbered display
+          displayNumber = `${chapterNumber}.x`;
         }
       }
+
+      const isDimmed = isHidden && canViewHidden;
 
       processed.push({
         chapter: ch,
@@ -229,6 +232,7 @@ function ChapterList({
     return (
       <ListItem
         key={chapter.id}
+        component="li"
         disablePadding
         sx={{
           pl: level * 3, // Indent subchapters
@@ -237,17 +241,20 @@ function ChapterList({
       >
         {isCurrentChapter ? (
           // Current chapter - render as non-clickable, bold text
-          <ListItemText
-            primary={chapterTitle}
-            primaryTypographyProps={{
+          <Typography
+            component="div"
+            style={{
               fontWeight: 'bold',
-              color: isDimmed ? 'text.disabled' : 'text.primary',
-              sx: {
-                py: 1,
-                px: 2,
-              },
+              ...(isDimmed && { color: 'rgba(0, 0, 0, 0.38)' }),
             }}
-          />
+            sx={{
+              py: 1,
+              px: 2,
+              ...(!isDimmed && { color: 'text.primary' }),
+            }}
+          >
+            {chapterTitle}
+          </Typography>
         ) : (
           // Other chapters - render as clickable buttons
           <ListItemButton
@@ -259,16 +266,17 @@ function ChapterList({
               px: 2,
             }}
           >
-            <ListItemText
-              primary={chapterTitle}
-              primaryTypographyProps={{
-                color: isDimmed ? 'text.disabled' : 'text.primary',
-                sx: {
-                  textDecoration: 'none',
-                },
-              }}
+            <Typography
+              component="span"
               title={chapter.title} // Tooltip with unescaped title
-            />
+              style={isDimmed ? { color: 'rgba(0, 0, 0, 0.38)' } : undefined}
+              sx={{
+                ...(!isDimmed && { color: 'text.primary' }),
+                textDecoration: 'none',
+              }}
+            >
+              {chapterTitle}
+            </Typography>
           </ListItemButton>
         )}
       </ListItem>
@@ -280,59 +288,130 @@ function ChapterList({
    *
    * This creates a nested list structure where:
    * - Main chapters are direct children of the root list
-   * - Subchapters are nested under their parent chapter
+   * - Subchapters are nested under their parent chapter INSIDE the parent's ListItem
    *
-   * The structure mirrors the ul/li nesting in book_get_toc()
+   * The structure creates proper ul > li > ul nesting
    */
   const renderChapterHierarchy = (): React.ReactNode => {
-    const currentMainChapterItems: React.ReactNode[] = [];
-    let subchapterElements: React.ReactNode[] = [];
-    let inSubchapterGroup = false;
-    let currentParentChapterId: number | null = null;
+    const result: React.ReactNode[] = [];
+    let i = 0;
 
-    processedChapters.forEach((processedChapter, index) => {
+    while (i < processedChapters.length) {
+      const processedChapter = processedChapters[i];
+      if (!processedChapter) {
+        i++;
+        continue;
+      }
       const { level, chapter } = processedChapter;
 
       if (level === 0) {
-        // Main chapter
+        // Main chapter - collect its subchapters
+        const subchapterElements: React.ReactNode[] = [];
+        let j = i + 1;
 
-        // If we were processing subchapters, close that group
-        if (inSubchapterGroup && subchapterElements.length > 0 && currentParentChapterId !== null) {
-          currentMainChapterItems.push(
-            <List key={`sub-${currentParentChapterId}`} disablePadding sx={{ pl: 2 }}>
-              {subchapterElements}
-            </List>
-          );
-          subchapterElements = [];
-          inSubchapterGroup = false;
+        // Find all consecutive subchapters
+        while (j < processedChapters.length) {
+          const subchapter = processedChapters[j];
+          if (!subchapter || subchapter.level === 0) break;
+          subchapterElements.push(renderChapter(subchapter, j));
+          j++;
         }
 
-        // Add the main chapter
-        currentMainChapterItems.push(renderChapter(processedChapter, index));
+        // Render main chapter with nested subchapters inside the same ListItem
+        result.push(
+          <ListItem
+            key={chapter.id}
+            component="li"
+            disablePadding
+            sx={{
+              display: 'block',
+            }}
+          >
+            {renderChapterContent(processedChapter)}
+            {subchapterElements.length > 0 && (
+              <List component="ul" disablePadding sx={{ pl: 2 }}>
+                {subchapterElements}
+              </List>
+            )}
+          </ListItem>
+        );
 
-        // Start a new subchapter group with this main chapter as parent
-        inSubchapterGroup = true;
-        currentParentChapterId = chapter.id;
+        i = j; // Skip past the subchapters we just processed
       } else {
-        // Subchapter
-        subchapterElements.push(renderChapter(processedChapter, index));
-      }
-    });
+        // Orphan subchapter (no parent) - render in a nested list
+        const orphanSubchapters: React.ReactNode[] = [];
+        while (i < processedChapters.length) {
+          const orphan = processedChapters[i];
+          if (!orphan || orphan.level === 0) break;
+          orphanSubchapters.push(renderChapter(orphan, i));
+          i++;
+        }
 
-    // Close any remaining subchapter group
-    if (inSubchapterGroup && subchapterElements.length > 0) {
-      currentMainChapterItems.push(
-        <List
-          key="sub-final"
-          disablePadding
-          sx={{ pl: 2 }}
-        >
-          {subchapterElements}
-        </List>
-      );
+        result.push(
+          <List key="orphans" component="ul" disablePadding sx={{ pl: 2 }}>
+            {orphanSubchapters}
+          </List>
+        );
+      }
     }
 
-    return currentMainChapterItems;
+    return result;
+  };
+
+  /**
+   * Render just the chapter content (without the wrapping ListItem)
+   */
+  const renderChapterContent = (
+    processedChapter: ProcessedChapter
+  ): React.ReactNode => {
+    const { chapter, displayNumber, isDimmed } = processedChapter;
+    const isCurrentChapter = chapter.id === currentChapterId;
+    const chapterTitle = `${displayNumber} ${chapter.title}`.trim();
+
+    if (isCurrentChapter) {
+      // Current chapter - render as non-clickable, bold text
+      return (
+        <Typography
+          component="div"
+          style={{
+            fontWeight: 'bold',
+            ...(isDimmed && { color: 'rgba(0, 0, 0, 0.38)' }),
+          }}
+          sx={{
+            py: 1,
+            px: 2,
+            ...(!isDimmed && { color: 'text.primary' }),
+          }}
+        >
+          {chapterTitle}
+        </Typography>
+      );
+    } else {
+      // Other chapters - render as clickable buttons
+      return (
+        <ListItemButton
+          component="button"
+          onClick={() => onChapterClick(chapter.id)}
+          selected={false}
+          sx={{
+            py: 1,
+            px: 2,
+          }}
+        >
+          <Typography
+            component="span"
+            title={chapter.title} // Tooltip with unescaped title
+            style={isDimmed ? { color: 'rgba(0, 0, 0, 0.38)' } : undefined}
+            sx={{
+              ...(!isDimmed && { color: 'text.primary' }),
+              textDecoration: 'none',
+            }}
+          >
+            {chapterTitle}
+          </Typography>
+        </ListItemButton>
+      );
+    }
   };
 
   // Empty state handling - check processedChapters instead of chapters
@@ -358,7 +437,7 @@ function ChapterList({
   return (
     <Box className={getTocClassName()}>
       <List
-        component="nav"
+        component="ul"
         aria-label="Book chapters"
         disablePadding
         sx={{
