@@ -20,12 +20,11 @@
  * - Edge cases: invalid phase numbers, phase 0, phases beyond CLOSED
  */
 
-import React from 'react';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { screen } from '@testing-library/react';
-import { render } from '@/tests/helpers/render';
+import { render } from '@tests/helpers/render';
 import PhaseIndicator from '@/features/activities/workshop/components/PhaseIndicator';
-import { createMockWorkshop, WORKSHOP_PHASE } from './test-utils';
+import { createMockWorkshop } from './test-utils';
 import { WorkshopPhase } from '@/features/activities/workshop/types/workshop.types';
 
 describe('PhaseIndicator Component', () => {
@@ -49,7 +48,7 @@ describe('PhaseIndicator Component', () => {
       render(
         <PhaseIndicator
           currentPhase={mockWorkshop.phase}
-          showDescriptions={true}
+          showDescriptions
         />
       );
 
@@ -139,7 +138,7 @@ describe('PhaseIndicator Component', () => {
       render(
         <PhaseIndicator
           currentPhase={mockWorkshop.phase}
-          showDescriptions={true}
+          showDescriptions
         />
       );
 
@@ -186,7 +185,7 @@ describe('PhaseIndicator Component', () => {
       render(
         <PhaseIndicator
           currentPhase={mockWorkshop.phase}
-          showDescriptions={true}
+          showDescriptions
         />
       );
 
@@ -233,7 +232,7 @@ describe('PhaseIndicator Component', () => {
       render(
         <PhaseIndicator
           currentPhase={mockWorkshop.phase}
-          showDescriptions={true}
+          showDescriptions
         />
       );
 
@@ -274,7 +273,7 @@ describe('PhaseIndicator Component', () => {
       render(
         <PhaseIndicator
           currentPhase={mockWorkshop.phase}
-          showDescriptions={true}
+          showDescriptions
         />
       );
 
@@ -807,7 +806,7 @@ describe('PhaseIndicator Component', () => {
         render(
           <PhaseIndicator
             currentPhase={mockWorkshop.phase}
-            showDescriptions={true}
+            showDescriptions
             orientation="vertical"
           />
         );

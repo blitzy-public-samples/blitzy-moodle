@@ -136,7 +136,11 @@ function PhaseStepIcon(props: {
   const { active = false, completed = false, icon } = props;
 
   return (
-    <PhaseIconRoot ownerState={{ completed, active }}>
+    <PhaseIconRoot 
+      ownerState={{ completed, active }}
+      data-testid="phase-icon-container"
+      className="PhaseIconRoot"
+    >
       {icon}
     </PhaseIconRoot>
   );
