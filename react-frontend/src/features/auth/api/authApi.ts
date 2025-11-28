@@ -35,7 +35,54 @@
 import type { AxiosResponse } from 'axios';
 import { apiClient } from '@/services/api/client';
 import type { JwtTokens } from '@/types/api';
-import type { User } from '@/types/entities';
+import type { User } from '../types/auth.types';
+
+/**
+ * Re-export User as AuthUser for use in authentication contexts
+ *
+ * This provides a semantic alias that makes it clear when a User type
+ * is being used specifically in authentication operations.
+ */
+export type AuthUser = User;
+
+// ============================================================================
+// Query Key Constants
+// ============================================================================
+
+/**
+ * React Query key for current user data
+ *
+ * Used for cache management, invalidation, and optimistic updates.
+ * Export this constant to ensure consistent key usage across the app.
+ *
+ * @example
+ * ```typescript
+ * // In useAuth hook
+ * const { data: user } = useQuery({
+ *   queryKey: CURRENT_USER_QUERY_KEY,
+ *   queryFn: getCurrentUser
+ * });
+ *
+ * // To invalidate after logout
+ * queryClient.removeQueries({ queryKey: CURRENT_USER_QUERY_KEY });
+ * ```
+ */
+export const CURRENT_USER_QUERY_KEY = ['auth', 'currentUser'] as const;
+
+/**
+ * React Query key for login mutations
+ */
+export const LOGIN_MUTATION_KEY = ['auth', 'login'] as const;
+
+/**
+ * React Query key for logout mutations
+ */
+export const LOGOUT_MUTATION_KEY = ['auth', 'logout'] as const;
+
+/**
+ * React Query key for token refresh mutations
+ */
+export const REFRESH_TOKEN_MUTATION_KEY = ['auth', 'refresh'] as const;
 
 // ============================================================================
 // API Endpoint Constants
@@ -252,21 +299,6 @@ export interface ApiError {
    * additional context for debugging.
    */
   details?: Record<string, unknown>;
-}
-
-/**
- * Type guard to check if a response contains an error
- *
- * @param response - API response to check
- * @returns true if response indicates an error
- */
-function isErrorResponse(response: unknown): response is { success: false; error: ApiError } {
-  return (
-    typeof response === 'object' &&
-    response !== null &&
-    'success' in response &&
-    (response as { success: boolean }).success === false
-  );
 }
 
 // ============================================================================

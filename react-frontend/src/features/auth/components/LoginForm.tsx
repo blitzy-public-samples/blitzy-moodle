@@ -20,7 +20,7 @@ import {
   Checkbox,
   CircularProgress,
 } from '@mui/material';
-import { useLoginMutation, type LoginResponse } from '../api/authApi';
+import { useAuth, type LoginResponse } from '../hooks/useAuth';
 import type { LoginCredentials } from '../types/auth.types';
 
 // ============================================================================
@@ -91,10 +91,10 @@ export function LoginForm({
   const [validationError, setValidationError] = useState<string | null>(null);
 
   // ============================================================================
-  // Mutations
+  // Auth Hook
   // ============================================================================
 
-  const { mutate: loginUser, isPending, error: loginError } = useLoginMutation();
+  const { login, isLoginLoading: isPending, error: loginError } = useAuth();
 
   // ============================================================================
   // Handlers
@@ -103,7 +103,7 @@ export function LoginForm({
   /**
    * Handle form submission
    */
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     // Clear previous validation errors
@@ -127,21 +127,20 @@ export function LoginForm({
       rememberUsername,
     };
 
-    // Submit login request
-    loginUser(credentials, {
-      onSuccess: (response) => {
-        // Only call onSuccess if user and tokens are present
-        if (response.user && response.tokens) {
-          onSuccess?.({ user: response.user, tokens: response.tokens });
-        } else {
-          console.error('[LoginForm] Response missing user or tokens, not calling parent onSuccess');
-        }
-      },
-      onError: (error) => {
-        console.error('[LoginForm] Mutation onError called:', error);
-        onError?.(error);
-      },
-    });
+    try {
+      // Submit login request using the useAuth hook
+      const response = await login(credentials.username, credentials.password);
+      
+      // Only call onSuccess if user and tokens are present
+      if (response.user && response.tokens) {
+        onSuccess?.({ user: response.user, tokens: response.tokens });
+      } else {
+        console.error('[LoginForm] Response missing user or tokens, not calling parent onSuccess');
+      }
+    } catch (error) {
+      console.error('[LoginForm] Login error:', error);
+      onError?.(error as Error);
+    }
   };
 
   /**
