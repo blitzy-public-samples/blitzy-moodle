@@ -26,6 +26,97 @@ import {
 } from '@mui/material';
 import DOMPurify from 'dompurify';
 
+/**
+ * Trusted iframe domains allowlist
+ * Only iframes from these domains will be allowed in sanitized content
+ * Equivalent to Moodle's $CFG->allowediframeurs
+ */
+const TRUSTED_IFRAME_DOMAINS = [
+  'youtube.com',
+  'www.youtube.com',
+  'youtu.be',
+  'player.vimeo.com',
+  'vimeo.com',
+  'www.vimeo.com',
+  'dailymotion.com',
+  'www.dailymotion.com',
+  'slideshare.net',
+  'www.slideshare.net',
+  'ted.com',
+  'www.ted.com',
+  'embed.ted.com',
+  'h5p.org',
+  'www.h5p.org',
+  'soundcloud.com',
+  'w.soundcloud.com',
+  'player.bilibili.com',
+  'maps.google.com',
+  'www.google.com',
+  'docs.google.com',
+  'drive.google.com',
+  'gist.github.com',
+  'codepen.io',
+  'jsfiddle.net',
+  'codesandbox.io',
+  'figma.com',
+  'www.figma.com',
+  'miro.com',
+  'padlet.com',
+  'kahoot.it',
+  'prezi.com',
+  'canva.com',
+  'mentimeter.com',
+  'www.mentimeter.com',
+  'flip.com',
+  'nearpod.com',
+  'peardeck.com',
+  'educaplay.com',
+];
+
+/**
+ * Check if iframe src URL is from a trusted domain
+ * @param src - The iframe src URL to validate
+ * @returns true if the domain is trusted, false otherwise
+ */
+function isIframeSrcTrusted(src: string): boolean {
+  if (!src) return false;
+  
+  try {
+    const url = new URL(src);
+    const hostname = url.hostname.toLowerCase();
+    
+    // Check if hostname matches or ends with a trusted domain
+    return TRUSTED_IFRAME_DOMAINS.some(domain => {
+      const lowerDomain = domain.toLowerCase();
+      return hostname === lowerDomain || hostname.endsWith('.' + lowerDomain);
+    });
+  } catch {
+    // Invalid URL - not trusted
+    return false;
+  }
+}
+
+/**
+ * Configure DOMPurify hooks for iframe src validation
+ * This is called once during module initialization
+ */
+function configureDOMPurifyHooks(): void {
+  // Add hook to filter iframe src attributes
+  DOMPurify.addHook('uponSanitizeElement', (node) => {
+    // Type guard: ensure node is an Element before accessing Element-specific properties
+    if (node instanceof Element && node.tagName === 'IFRAME') {
+      const src = node.getAttribute('src');
+      if (src && !isIframeSrcTrusted(src)) {
+        // Remove untrusted iframes entirely
+        node.remove();
+      }
+    }
+  });
+}
+
+// Initialize DOMPurify hooks
+configureDOMPurifyHooks();
+
 // Internal imports
 import { useResourcePage } from '../hooks/useResource';
 import { Alert } from '@/components/feedback/Alert';
@@ -211,15 +302,17 @@ function PageRenderer({
         // HTML format: sanitize with DOMPurify
         processedContent = DOMPurify.sanitize(processedContent, {
           ALLOWED_TAGS: [
+            // Safe structural elements
             'a', 'abbr', 'acronym', 'address', 'area', 'article', 'aside',
             'audio', 'b', 'bdi', 'bdo', 'blockquote', 'br', 'button', 'canvas',
             'caption', 'cite', 'code', 'col', 'colgroup', 'data', 'datalist',
             'dd', 'del', 'details', 'dfn', 'dialog', 'div', 'dl', 'dt', 'em',
-            'embed', 'fieldset', 'figcaption', 'figure', 'footer', 'form',
+            // Note: 'embed' and 'object' are intentionally excluded for security
+            'fieldset', 'figcaption', 'figure', 'footer', 'form',
             'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'header', 'hr', 'i', 'iframe',
             'img', 'input', 'ins', 'kbd', 'label', 'legend', 'li', 'main',
-            'map', 'mark', 'meter', 'nav', 'object', 'ol', 'optgroup', 'option',
-            'output', 'p', 'param', 'picture', 'pre', 'progress', 'q', 'rp',
+            'map', 'mark', 'meter', 'nav', 'ol', 'optgroup', 'option',
+            'output', 'p', 'picture', 'pre', 'progress', 'q', 'rp',
             'rt', 'ruby', 's', 'samp', 'section', 'select', 'small', 'source',
             'span', 'strong', 'sub', 'summary', 'sup', 'table', 'tbody', 'td',
             'template', 'textarea', 'tfoot', 'th', 'thead', 'time', 'tr', 'track',
@@ -227,8 +320,9 @@ function PageRenderer({
           ],
           ALLOWED_ATTR: [
             'alt', 'aria-*', 'class', 'colspan', 'controls', 'data-*', 'datetime',
-            'dir', 'height', 'href', 'id', 'lang', 'loading', 'role', 'rowspan',
-            'src', 'srcset', 'style', 'target', 'title', 'type', 'width'
+            'dir', 'for', 'height', 'href', 'id', 'lang', 'loading', 'name',
+            'placeholder', 'role', 'rowspan', 'src', 'srcset', 'style', 'target',
+            'title', 'type', 'value', 'width'
           ],
           ALLOW_DATA_ATTR: true,
           ALLOW_ARIA_ATTR: true,
