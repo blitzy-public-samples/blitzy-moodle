@@ -363,14 +363,35 @@ export const mockData = {
  * ```
  */
 export const mockHandlers = {
-  // Individual handler arrays by feature
+  // Individual handler arrays by feature - Authentication & Authorization
   authHandlers: handlersModule.authHandlers,
+  
+  // User Management
   usersHandlers: handlersModule.usersHandlers,
+  
+  // Course Management
   coursesHandlers: handlersModule.coursesHandlers,
+  
+  // Learning Activities
   assignmentsHandlers: handlersModule.assignmentsHandlers,
   quizzesHandlers: handlersModule.quizzesHandlers,
+  forumsHandlers: handlersModule.forumsHandlers,
+  choicesHandlers: handlersModule.choicesHandlers,
+  feedbackHandlers: handlersModule.feedbackHandlers,
+  h5pHandlers: handlersModule.h5pHandlers,
+  resourcesHandlers: handlersModule.resourcesHandlers,
+  
+  // Assessment & Grading
   gradesHandlers: handlersModule.gradesHandlers,
+  
+  // Communication
   messagesHandlers: handlersModule.messagesHandlers,
+  
+  // File Management
+  filesHandlers: handlersModule.filesHandlers,
+  
+  // Administration
+  adminHandlers: handlersModule.adminHandlers,
 
   // Unified handler collection (all handlers combined)
   handlers: handlersModule.handlers,
@@ -432,34 +453,6 @@ export const testUtils = {
 // ============================================================================
 // Type Exports
 // ============================================================================
-
-/**
- * Re-export type definitions for TypeScript support.
- *
- * These types are useful when you need to type function parameters
- * or component props that interact with the test utilities.
- *
- * @example
- * ```typescript
- * import type { RootState, AppStore, ExtendedRenderOptions } from '@/tests/mocks';
- *
- * function customRender(
- *   ui: React.ReactElement,
- *   options: ExtendedRenderOptions
- * ): { store: AppStore } {
- *   // Custom rendering logic
- * }
- *
- * const preloadedState: Partial<RootState> = {
- *   auth: {
- *     user: null,
- *     isAuthenticated: false,
- *     tokens: null,
- *     isLoading: false,
- *     error: null,
- *     status: 'idle',
- *   }
- * };
- * ```
- */
-export type { AppStore, RootState, ExtendedRenderOptions } from './utils';
+// Note: Type exports (AppStore, RootState, ExtendedRenderOptions) are included
+// in the main test utility exports section above (lines 211-213) to avoid
+// duplicate identifier errors.
