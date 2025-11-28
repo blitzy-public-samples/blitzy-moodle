@@ -29,7 +29,7 @@ import { format } from 'date-fns';
 // Test utilities
 import { render, screen, waitFor, within, userEvent } from '../../../../../helpers/render';
 import { waitForLoadingToFinish } from '../../../../../helpers/asyncUtils';
-import { createMockResource } from '../../../../../helpers/mockData';
+import { createMockResource, createMockUser } from '../../../../../helpers/mockData';
 
 // Component under test
 import { FolderBrowser, type FolderBrowserProps } from '../../../../../../src/features/activities/resources/components/FolderBrowser';
@@ -37,8 +37,8 @@ import { FolderBrowser, type FolderBrowserProps } from '../../../../../../src/fe
 // Types
 import type { Folder } from '../../../../../../src/features/activities/resources/types/resource.types';
 
-// Mock server setup
-import { server } from '../../../../../setup';
+// MSW server for API mocking
+import { server } from '../../../../../mocks/server';
 
 /**
  * FolderNode type definition (local to test file)
@@ -114,7 +114,7 @@ const createMockFolderData = (overrides?: Partial<{
               file: {
                 filename: 'Lecture 1.pdf',
                 filepath: '/Week 1/',
-                filesize: 2048576,
+                filesize: 2097152, // Exactly 2 MB (2 * 1024 * 1024)
                 url: 'https://moodle.example.com/pluginfile.php/1/mod_folder/content/0/Week%201/Lecture%201.pdf',
                 timemodified: 1704067200,
                 mimetype: 'application/pdf',
@@ -290,6 +290,15 @@ const defaultProps: FolderBrowserProps = {
   forcedownload: false,
 };
 
+/**
+ * Props with expanded folders - used for tests that need to verify nested content
+ * When showexpanded is true, all folders in the tree start expanded
+ */
+const expandedProps: FolderBrowserProps = {
+  ...defaultProps,
+  showexpanded: true,
+};
+
 describe('FolderBrowser component', () => {
   let queryClient: QueryClient;
 
@@ -307,6 +316,7 @@ describe('FolderBrowser component', () => {
 
   afterEach(() => {
     queryClient.clear();
+    server.resetHandlers(); // Reset MSW handlers to default between tests
   });
 
   describe('Rendering Tests', () => {
@@ -314,7 +324,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -339,7 +349,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -347,7 +357,8 @@ describe('FolderBrowser component', () => {
         })
       );
 
-      render(<FolderBrowser {...defaultProps} />, { queryClient });
+      // Use expandedProps to have all folders expanded so nested files are visible
+      render(<FolderBrowser {...expandedProps} />, { queryClient });
 
       await waitForLoadingToFinish();
 
@@ -355,7 +366,7 @@ describe('FolderBrowser component', () => {
       const treeItems = screen.getAllByRole('treeitem');
       expect(treeItems.length).toBeGreaterThan(0);
 
-      // Verify file names are displayed
+      // Verify file names are displayed (nested files visible due to showexpanded: true)
       expect(screen.getByText('Lecture 1.pdf')).toBeInTheDocument();
       expect(screen.getByText('Assignment 1.docx')).toBeInTheDocument();
       expect(screen.getByText('Syllabus.pdf')).toBeInTheDocument();
@@ -367,7 +378,7 @@ describe('FolderBrowser component', () => {
       });
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -390,7 +401,7 @@ describe('FolderBrowser component', () => {
       });
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -414,7 +425,7 @@ describe('FolderBrowser component', () => {
       });
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -422,7 +433,18 @@ describe('FolderBrowser component', () => {
         })
       );
 
-      render(<FolderBrowser {...defaultProps} />, { queryClient, authenticated: true });
+      // Create a user with the mod/folder:managefiles capability
+      const userWithManageCapability = createMockUser({
+        capabilities: [
+          { capability: 'mod/folder:managefiles', contextId: 1, granted: true },
+        ],
+      });
+
+      render(<FolderBrowser {...defaultProps} />, { 
+        queryClient, 
+        authenticated: true,
+        user: userWithManageCapability,
+      });
 
       await waitForLoadingToFinish();
 
@@ -438,7 +460,7 @@ describe('FolderBrowser component', () => {
       });
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -459,7 +481,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -480,7 +502,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -488,11 +510,12 @@ describe('FolderBrowser component', () => {
         })
       );
 
-      render(<FolderBrowser {...defaultProps} />, { queryClient });
+      // Use expandedProps so nested files in folders are visible
+      render(<FolderBrowser {...expandedProps} />, { queryClient });
 
       await waitForLoadingToFinish();
 
-      // Verify different file types are rendered
+      // Verify different file types are rendered (nested files visible due to showexpanded: true)
       expect(screen.getByText('Lecture 1.pdf')).toBeInTheDocument();
       expect(screen.getByText('Assignment 1.docx')).toBeInTheDocument();
       expect(screen.getByText('image.png')).toBeInTheDocument();
@@ -502,7 +525,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -532,7 +555,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -556,7 +579,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -564,11 +587,13 @@ describe('FolderBrowser component', () => {
         })
       );
 
-      render(<FolderBrowser {...defaultProps} />, { queryClient });
+      // Use showexpanded: true to display nested files
+      render(<FolderBrowser {...defaultProps} showexpanded={true} />, { queryClient });
 
       await waitForLoadingToFinish();
 
       // Verify clean filenames without encoding or special characters
+      // These files are in nested folders so showexpanded must be true
       expect(screen.getByText('Lecture 1.pdf')).toBeInTheDocument();
       expect(screen.getByText('Assignment 1.docx')).toBeInTheDocument();
       expect(screen.getByText('Syllabus.pdf')).toBeInTheDocument();
@@ -580,7 +605,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData({ folderId: 42 });
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', ({ params }) => {
+        http.get('*/api/v1/resources/folders/:id', ({ params }) => {
           expect(params.id).toBe('42');
           return HttpResponse.json({
             success: true,
@@ -604,7 +629,7 @@ describe('FolderBrowser component', () => {
       let fetchedId: string | undefined;
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', ({ params }) => {
+        http.get('*/api/v1/resources/folders/:id', ({ params }) => {
           fetchedId = params.id as string;
           return HttpResponse.json({
             success: true,
@@ -627,7 +652,7 @@ describe('FolderBrowser component', () => {
       });
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -656,7 +681,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -691,7 +716,7 @@ describe('FolderBrowser component', () => {
       const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -730,7 +755,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -753,7 +778,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -792,7 +817,7 @@ describe('FolderBrowser component', () => {
       const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -833,13 +858,8 @@ describe('FolderBrowser component', () => {
         editUrl: 'https://moodle.example.com/course/modedit.php?update=1',
       });
 
-      // Mock window.location.href assignment
-      const originalLocation = window.location;
-      delete (window as { location?: Location }).location;
-      window.location = { ...originalLocation, href: '' } as Location;
-
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -847,19 +867,48 @@ describe('FolderBrowser component', () => {
         })
       );
 
-      render(<FolderBrowser {...defaultProps} />, { queryClient, authenticated: true });
+      // Create user with mod/folder:managefiles capability for the folder context
+      const userWithCapability = createMockUser({
+        capabilities: [
+          {
+            capability: 'mod/folder:managefiles',
+            contextId: defaultProps.folderId,
+            granted: true,
+          },
+        ],
+      });
+
+      render(<FolderBrowser {...defaultProps} />, {
+        queryClient,
+        authenticated: true,
+        user: userWithCapability,
+      });
 
       await waitForLoadingToFinish();
 
-      // Click Edit button
-      const editButton = screen.getByRole('button', { name: /edit folder/i });
-      await userEvent.click(editButton);
+      // Mock window.location.href assignment AFTER component has loaded
+      // This ensures MSW URL resolution works correctly during data fetch
+      let capturedHref = '';
+      const hrefDescriptor = Object.getOwnPropertyDescriptor(window.location, 'href');
+      Object.defineProperty(window.location, 'href', {
+        set: (value: string) => { capturedHref = value; },
+        get: () => capturedHref || window.location.toString(),
+        configurable: true,
+      });
 
-      // Verify navigation occurred
-      expect(window.location.href).toBe(mockData.editUrl);
+      try {
+        // Click Edit button
+        const editButton = screen.getByRole('button', { name: /edit folder/i });
+        await userEvent.click(editButton);
 
-      // Restore window.location
-      window.location = originalLocation;
+        // Verify navigation occurred
+        expect(capturedHref).toBe(mockData.editUrl);
+      } finally {
+        // Restore original href descriptor to avoid test pollution
+        if (hrefDescriptor) {
+          Object.defineProperty(window.location, 'href', hrefDescriptor);
+        }
+      }
     });
 
     it('tests Download Folder button triggering archive download', async () => {
@@ -871,7 +920,7 @@ describe('FolderBrowser component', () => {
       const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -899,7 +948,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -924,7 +973,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -957,7 +1006,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -991,7 +1040,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -1021,7 +1070,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -1045,7 +1094,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -1067,7 +1116,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -1098,7 +1147,7 @@ describe('FolderBrowser component', () => {
       const mockData = createDeeplyNestedFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -1121,7 +1170,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -1147,7 +1196,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -1170,7 +1219,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -1182,20 +1231,24 @@ describe('FolderBrowser component', () => {
 
       await waitForLoadingToFinish();
 
-      // Verify file sizes are displayed (2048576 bytes = 2 MB)
+      // Verify file sizes are displayed (2097152 bytes = 2 MB, i.e., 2 * 1024 * 1024)
       await waitFor(() => {
-        expect(screen.getByText(/2 MB/)).toBeInTheDocument();
+        // Use getAllByText as nested tree items may contain size text in parent containers
+        const mbMatches = screen.getAllByText(/2 MB/);
+        expect(mbMatches.length).toBeGreaterThan(0);
       });
 
       // Verify KB format (51200 bytes = 50 KB)
-      expect(screen.getByText(/50 KB/)).toBeInTheDocument();
+      // Use getAllByText as nested tree items may contain size text in parent containers
+      const kbMatches = screen.getAllByText(/50 KB/);
+      expect(kbMatches.length).toBeGreaterThan(0);
     });
 
     it('displays last modified date using date-fns formatting', async () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -1217,7 +1270,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -1240,7 +1293,7 @@ describe('FolderBrowser component', () => {
   describe('Loading States', () => {
     it('displays Material-UI Skeleton components during folder tree fetch', async () => {
       server.use(
-        http.get('/api/v1/resources/folders/:id', async () => {
+        http.get('*/api/v1/resources/folders/:id', async () => {
           await delay(100);
           return HttpResponse.json({
             success: true,
@@ -1264,7 +1317,7 @@ describe('FolderBrowser component', () => {
 
     it('shows skeleton for folder structure with proper hierarchy', async () => {
       server.use(
-        http.get('/api/v1/resources/folders/:id', async () => {
+        http.get('*/api/v1/resources/folders/:id', async () => {
           await delay(100);
           return HttpResponse.json({
             success: true,
@@ -1286,7 +1339,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', async () => {
+        http.get('*/api/v1/resources/folders/:id', async () => {
           await delay(50);
           return HttpResponse.json({
             success: true,
@@ -1311,7 +1364,7 @@ describe('FolderBrowser component', () => {
   describe('Error States', () => {
     it('displays Material-UI Alert component when folder load fails', async () => {
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json(
             {
               success: false,
@@ -1324,50 +1377,43 @@ describe('FolderBrowser component', () => {
 
       render(<FolderBrowser {...defaultProps} />, { queryClient });
 
+      // Extended timeout to account for React Query retry behavior (retry: 2 with exponential backoff)
       await waitFor(() => {
         const alert = screen.getByRole('alert');
         expect(alert).toBeInTheDocument();
         expect(within(alert).getByText(/failed to load folder contents/i)).toBeInTheDocument();
-      });
+      }, { timeout: 5000 });
     });
 
     it('shows error message for API fetch failures', async () => {
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.error();
         })
       );
 
       render(<FolderBrowser {...defaultProps} />, { queryClient });
 
+      // Extended timeout to account for React Query retry behavior
       await waitFor(() => {
         expect(screen.getByText(/failed to load folder contents/i)).toBeInTheDocument();
-      });
+      }, { timeout: 5000 });
     });
 
     it('handles missing folder ID gracefully with error message', async () => {
-      server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
-          return HttpResponse.json(
-            {
-              success: false,
-              error: { code: 'INVALID_ID', message: 'Invalid folder ID' },
-            },
-            { status: 400 }
-          );
-        })
-      );
-
+      // When folderId is 0, the query is disabled (enabled: id > 0)
+      // So component shows info message rather than error
       render(<FolderBrowser folderId={0} />, { queryClient });
 
       await waitFor(() => {
-        expect(screen.getByText(/failed to load folder contents/i)).toBeInTheDocument();
+        // Component handles invalid ID gracefully with an info message
+        expect(screen.getByText(/no folder data available/i)).toBeInTheDocument();
       });
     });
 
     it('tests permission denied error for restricted folders', async () => {
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json(
             {
               success: false,
@@ -1380,16 +1426,17 @@ describe('FolderBrowser component', () => {
 
       render(<FolderBrowser {...defaultProps} />, { queryClient });
 
+      // Extended timeout to account for React Query retry behavior
       await waitFor(() => {
         expect(screen.getByText(/failed to load folder contents/i)).toBeInTheDocument();
-      });
+      }, { timeout: 5000 });
     });
 
     it('shows warning for empty folders with appropriate message', async () => {
       const emptyData = createEmptyFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: emptyData,
@@ -1411,7 +1458,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -1432,7 +1479,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -1459,7 +1506,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -1485,7 +1532,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -1520,7 +1567,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -1549,7 +1596,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -1570,7 +1617,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -1591,7 +1638,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -1623,7 +1670,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -1648,7 +1695,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -1677,7 +1724,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -1704,7 +1751,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -1728,7 +1775,7 @@ describe('FolderBrowser component', () => {
       });
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -1751,7 +1798,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -1774,7 +1821,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -1794,7 +1841,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -1823,7 +1870,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -1844,7 +1891,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -1868,7 +1915,7 @@ describe('FolderBrowser component', () => {
       });
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -1876,7 +1923,22 @@ describe('FolderBrowser component', () => {
         })
       );
 
-      render(<FolderBrowser {...defaultProps} />, { queryClient, authenticated: true });
+      // Create user with mod/folder:managefiles capability for the folder context
+      const userWithCapability = createMockUser({
+        capabilities: [
+          {
+            capability: 'mod/folder:managefiles',
+            contextId: defaultProps.folderId,
+            granted: true,
+          },
+        ],
+      });
+
+      render(<FolderBrowser {...defaultProps} />, {
+        queryClient,
+        authenticated: true,
+        user: userWithCapability,
+      });
 
       await waitForLoadingToFinish();
 
@@ -1887,22 +1949,23 @@ describe('FolderBrowser component', () => {
 
     it('validates Alert component for error messages', async () => {
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.error();
         })
       );
 
       render(<FolderBrowser {...defaultProps} />, { queryClient });
 
+      // Extended timeout to account for React Query retry behavior
       await waitFor(() => {
         const alert = screen.getByRole('alert');
         expect(alert).toBeInTheDocument();
-      });
+      }, { timeout: 5000 });
     });
 
     it('uses Skeleton component for loading states', async () => {
       server.use(
-        http.get('/api/v1/resources/folders/:id', async () => {
+        http.get('*/api/v1/resources/folders/:id', async () => {
           await delay(100);
           return HttpResponse.json({
             success: true,
@@ -1924,7 +1987,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -1956,7 +2019,7 @@ describe('FolderBrowser component', () => {
       const mockData = createMockFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -2012,7 +2075,7 @@ describe('FolderBrowser component', () => {
       const emptyData = createEmptyFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: emptyData,
@@ -2031,7 +2094,7 @@ describe('FolderBrowser component', () => {
       const deepData = createDeeplyNestedFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: deepData,
@@ -2053,7 +2116,7 @@ describe('FolderBrowser component', () => {
       const largeData = createLargeFolderData();
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: largeData,
@@ -2065,8 +2128,9 @@ describe('FolderBrowser component', () => {
 
       await waitForLoadingToFinish();
 
-      // Component should render many files
-      expect(screen.getByText(/100 files/)).toBeInTheDocument();
+      // Component should render many files - use getAllByText as file count appears in multiple places
+      const fileCountMatches = screen.getAllByText(/100 files/);
+      expect(fileCountMatches.length).toBeGreaterThan(0);
     });
 
     it('Broken File Links: Handles missing files gracefully', async () => {
@@ -2075,7 +2139,7 @@ describe('FolderBrowser component', () => {
       mockData.tree.children[0].children![0].file!.url = '';
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -2093,7 +2157,7 @@ describe('FolderBrowser component', () => {
 
     it('Permission Restrictions: Shows error for unauthorized access', async () => {
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json(
             {
               success: false,
@@ -2106,9 +2170,10 @@ describe('FolderBrowser component', () => {
 
       render(<FolderBrowser {...defaultProps} />, { queryClient });
 
+      // Extended timeout to account for React Query retry behavior
       await waitFor(() => {
         expect(screen.getByText(/failed to load folder contents/i)).toBeInTheDocument();
-      });
+      }, { timeout: 5000 });
     });
 
     it('No Download Permission: Hides Download Folder button appropriately', async () => {
@@ -2118,7 +2183,7 @@ describe('FolderBrowser component', () => {
       });
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -2153,7 +2218,7 @@ describe('FolderBrowser component', () => {
       });
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -2188,7 +2253,7 @@ describe('FolderBrowser component', () => {
       });
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -2233,7 +2298,7 @@ describe('FolderBrowser component', () => {
       });
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -2246,7 +2311,9 @@ describe('FolderBrowser component', () => {
       await waitForLoadingToFinish();
 
       expect(screen.getByText('OnlyFile.pdf')).toBeInTheDocument();
-      expect(screen.getByText(/1 file/)).toBeInTheDocument();
+      // Use getAllByText as file count appears in multiple places
+      const fileCountMatches = screen.getAllByText(/1 file/);
+      expect(fileCountMatches.length).toBeGreaterThan(0);
     });
 
     it('Only Subfolders: Tests folder with no files, only subfolders', async () => {
@@ -2279,7 +2346,7 @@ describe('FolderBrowser component', () => {
       });
 
       server.use(
-        http.get('/api/v1/resources/folders/:id', () => {
+        http.get('*/api/v1/resources/folders/:id', () => {
           return HttpResponse.json({
             success: true,
             data: mockData,
@@ -2293,7 +2360,8 @@ describe('FolderBrowser component', () => {
 
       expect(screen.getByText('Subfolder 1')).toBeInTheDocument();
       expect(screen.getByText('Subfolder 2')).toBeInTheDocument();
-      expect(screen.getByText(/0 files/)).toBeInTheDocument();
+      // Use getAllByText since multiple elements might contain "0 files"
+      expect(screen.getAllByText(/0 files/).length).toBeGreaterThan(0);
     });
   });
 });

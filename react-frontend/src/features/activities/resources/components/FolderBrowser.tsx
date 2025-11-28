@@ -425,8 +425,8 @@ export const FolderBrowser: React.FC<FolderBrowserProps> = ({
     );
   }
   
-  // No data state
-  if (!folderData || !filteredTree) {
+  // No folder data state (API returned nothing)
+  if (!folderData) {
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="info" message="No folder data available." />
@@ -434,7 +434,7 @@ export const FolderBrowser: React.FC<FolderBrowserProps> = ({
     );
   }
   
-  // Empty search results
+  // Empty search results - check this BEFORE general !filteredTree check
   if (debouncedSearchQuery && !filteredTree) {
     return (
       <Box sx={{ p: 3 }}>
@@ -456,6 +456,15 @@ export const FolderBrowser: React.FC<FolderBrowserProps> = ({
           severity="info" 
           message={`No files or folders match your search query "${debouncedSearchQuery}".`}
         />
+      </Box>
+    );
+  }
+  
+  // Fallback check: no filtered tree data (shouldn't happen but guard against it)
+  if (!filteredTree) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="info" message="No folder data available." />
       </Box>
     );
   }
@@ -486,7 +495,7 @@ export const FolderBrowser: React.FC<FolderBrowserProps> = ({
           }}
         >
           <Stack direction="row" spacing={1}>
-            {folderData.canManageFiles && hasCapability('mod/folder:managefiles') && folderData.editUrl && (
+            {folderData.canManageFiles && hasCapability('mod/folder:managefiles', folderId) && folderData.editUrl && (
               <Button
                 variant="outlined"
                 startIcon={<EditIcon />}
