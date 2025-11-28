@@ -50,7 +50,14 @@ const getProgressColor = (percentage: number): 'error' | 'warning' | 'success' =
  * @returns Formatted display name
  */
 const formatActivityType = (type: string): string => {
-  return type
+  // Handle ALL_CAPS strings: if the entire string is uppercase, convert to lowercase first
+  // to avoid inserting spaces between every letter (e.g., 'QUIZ' -> 'Quiz' not 'Q U I Z')
+  let processed = type;
+  if (type === type.toUpperCase() && type.length > 1 && !/[a-z]/.test(type)) {
+    processed = type.toLowerCase();
+  }
+  
+  return processed
     .replace(/([A-Z])/g, ' $1')
     .replace(/_/g, ' ')
     .trim()

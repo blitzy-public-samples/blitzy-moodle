@@ -11,10 +11,10 @@
  * @see Section 0.4 Transformation Mapping - Course Feature Components
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import userEvent from '@testing-library/user-event';
 
-import { render, screen, waitFor } from '@/tests/helpers/render';
+import { render, screen, waitFor } from '@tests/helpers/render';
 import CourseProgress, {
   type ActivityBreakdownItem,
   type CourseProgressProps,
@@ -48,10 +48,16 @@ const createMockActivityBreakdown = (
   ];
 
   if (overrides.length > 0) {
-    return overrides.map((override, index) => ({
-      ...defaultBreakdown[index % defaultBreakdown.length],
-      ...override,
-    }));
+    return overrides.map((override, index) => {
+      // Safe access with fallback to first item (always exists since array has 3 items)
+      const baseIndex = index % defaultBreakdown.length;
+      const base: ActivityBreakdownItem = defaultBreakdown[baseIndex]!;
+      return {
+        type: override.type ?? base.type,
+        completed: override.completed ?? base.completed,
+        total: override.total ?? base.total,
+      };
+    });
   }
 
   return defaultBreakdown;
