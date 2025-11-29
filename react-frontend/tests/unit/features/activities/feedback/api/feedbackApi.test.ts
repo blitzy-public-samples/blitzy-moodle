@@ -31,6 +31,8 @@ import {
   type FeedbackSubmissionResult,
   type FeedbackStatus,
   type AnalysisOptions,
+  type FeedbackUserResponses,
+  type SaveProgressResult,
 } from '@/features/activities/feedback/api/feedbackApi';
 import type { ApiResponse } from '@/types/api';
 import type {
@@ -168,12 +170,12 @@ const mockFeedbackAnalysis: FeedbackAnalysis = {
 };
 
 const mockFeedbackStatus: FeedbackStatus = {
-  isCompleted: false,
-  attemptCount: 0,
-  allowMultiple: false,
   isOpen: true,
-  timeOpen: 0,
-  timeClose: 0,
+  canComplete: true,
+  canSubmit: true,
+  isSubmitted: false,
+  isAnonymous: false,
+  multipleSubmit: false,
 };
 
 const mockFeedbackResponses: FeedbackCompleted[] = [
@@ -188,10 +190,21 @@ const mockFeedbackResponses: FeedbackCompleted[] = [
   },
 ];
 
+const mockUserResponses: FeedbackUserResponses[] = [
+  {
+    completedId: 1,
+    timemodified: 1640000000,
+    courseid: 10,
+    values: {
+      1: 5,
+      2: 'Great course content',
+    },
+  },
+];
+
 const mockSubmissionResult: FeedbackSubmissionResult = {
   success: true,
   completedId: 2,
-  timeModified: 1640000000,
   message: 'Feedback submitted successfully',
 };
 
@@ -451,13 +464,14 @@ describe('Feedback API Client', () => {
 
       await submitFeedbackResponse(feedbackId, validResponses);
 
-      expect(requestBody).toEqual(validResponses);
+      // API wraps responses in a 'responses' property
+      expect(requestBody).toEqual({ responses: validResponses });
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      expect(requestBody[1]).toBe('4');
+      expect(requestBody.responses[1]).toBe('4');
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      expect(requestBody[2]).toBe('Great content and well-structured');
+      expect(requestBody.responses[2]).toBe('Great content and well-structured');
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      expect(requestBody[3]).toBe('Yes');
+      expect(requestBody.responses[3]).toBe('Yes');
     });
 
     it('should handle validation errors for incomplete responses', async () => {
@@ -661,7 +675,7 @@ describe('Feedback API Client', () => {
 
     it('should support filtering by group parameter', async () => {
       const options: AnalysisOptions = {
-        groupId: 5,
+        groupid: 5,
       };
 
       let requestUrl: string = '';
@@ -678,12 +692,12 @@ describe('Feedback API Client', () => {
 
       await getFeedbackAnalysis(feedbackId, options);
 
-      expect(requestUrl).toContain('groupId=5');
+      expect(requestUrl).toContain('groupid=5');
     });
 
     it('should support filtering by course parameter', async () => {
       const options: AnalysisOptions = {
-        courseId: 10,
+        courseid: 10,
       };
 
       let requestUrl: string = '';
@@ -700,7 +714,7 @@ describe('Feedback API Client', () => {
 
       await getFeedbackAnalysis(feedbackId, options);
 
-      expect(requestUrl).toContain('courseId=10');
+      expect(requestUrl).toContain('courseid=10');
     });
 
     it('should handle empty analysis (no responses yet)', async () => {
@@ -789,8 +803,8 @@ describe('Feedback API Client', () => {
     it('should indicate completion state (completed/incomplete)', async () => {
       const completedStatus: FeedbackStatus = {
         ...mockFeedbackStatus,
-        isCompleted: true,
-        attemptCount: 1,
+        isSubmitted: true,
+        completedId: 1,
       };
 
       server.use(
@@ -804,8 +818,8 @@ describe('Feedback API Client', () => {
 
       const response = await getFeedbackStatus(feedbackId);
 
-      expect(response.data.isCompleted).toBe(true);
-      expect(response.data.attemptCount).toBe(1);
+      expect(response.data.isSubmitted).toBe(true);
+      expect(response.data.completedId).toBe(1);
     });
 
     it('should handle anonymous feedback status', async () => {
@@ -830,9 +844,9 @@ describe('Feedback API Client', () => {
     it('should support multiple completion status', async () => {
       const multipleSubmitStatus: FeedbackStatus = {
         ...mockFeedbackStatus,
-        allowMultiple: true,
-        isCompleted: true,
-        attemptCount: 2,
+        multipleSubmit: true,
+        isSubmitted: true,
+        completedId: 2,
       };
 
       server.use(
@@ -846,16 +860,16 @@ describe('Feedback API Client', () => {
 
       const response = await getFeedbackStatus(feedbackId);
 
-      expect(response.data.allowMultiple).toBe(true);
-      expect(response.data.isCompleted).toBe(true);
-      expect(response.data.attemptCount).toBe(2);
+      expect(response.data.multipleSubmit).toBe(true);
+      expect(response.data.isSubmitted).toBe(true);
+      expect(response.data.completedId).toBe(2);
     });
 
     it('should include response metadata (submission timestamp, attempt number)', async () => {
       const statusWithMetadata: FeedbackStatus = {
         ...mockFeedbackStatus,
-        isCompleted: true,
-        attemptCount: 1,
+        isSubmitted: true,
+        completedId: 1,
       };
 
       server.use(
@@ -873,8 +887,8 @@ describe('Feedback API Client', () => {
 
       const response = await getFeedbackStatus(feedbackId);
 
-      expect(response.data.isCompleted).toBe(true);
-      expect(response.data.attemptCount).toBe(1);
+      expect(response.data.isSubmitted).toBe(true);
+      expect(response.data.completedId).toBe(1);
       expect(response.meta).toHaveProperty('submissionTimestamp');
       expect(response.meta).toHaveProperty('attemptNumber');
     });
@@ -967,11 +981,7 @@ describe('Feedback API Client', () => {
         http.get(`*${API_BASE_URL}/feedback/${feedbackId}/responses`, () => {
           return HttpResponse.json({
             success: true,
-            data: {
-              responses: mockFeedbackResponses,
-              total: mockFeedbackResponses.length,
-              hasMore: false,
-            },
+            data: mockUserResponses,
           });
         })
       );
@@ -979,8 +989,8 @@ describe('Feedback API Client', () => {
       const response = await getFeedbackResponses(feedbackId);
 
       expect(response.success).toBe(true);
-      expect(response.data.responses).toHaveLength(1);
-      expect(response.data.responses[0]).toEqual(mockFeedbackResponses[0]);
+      expect(response.data).toHaveLength(1);
+      expect(response.data[0]).toEqual(mockUserResponses[0]);
     });
 
     it('should return responses for current user only', async () => {
@@ -988,11 +998,7 @@ describe('Feedback API Client', () => {
         http.get(`*${API_BASE_URL}/feedback/${feedbackId}/responses`, () => {
           return HttpResponse.json({
             success: true,
-            data: {
-              responses: mockFeedbackResponses,
-              total: mockFeedbackResponses.length,
-              hasMore: false,
-            },
+            data: mockUserResponses,
           });
         })
       );
@@ -1000,9 +1006,9 @@ describe('Feedback API Client', () => {
       const response = await getFeedbackResponses(feedbackId);
 
       // All responses should belong to current user (implicit from backend)
-      expect(response.data.responses).toHaveLength(1);
-      expect(response.data.responses[0]!.id).toBe(1);
-      expect(response.data.responses[0]!.feedback).toBe(1);
+      expect(response.data).toHaveLength(1);
+      expect(response.data[0]!.completedId).toBe(1);
+      expect(response.data[0]!.courseid).toBe(10);
     });
 
     it('should handle empty response history', async () => {
@@ -1010,11 +1016,7 @@ describe('Feedback API Client', () => {
         http.get(`*${API_BASE_URL}/feedback/${feedbackId}/responses`, () => {
           return HttpResponse.json({
             success: true,
-            data: {
-              responses: [],
-              total: 0,
-              hasMore: false,
-            },
+            data: [],
           });
         })
       );
@@ -1022,28 +1024,28 @@ describe('Feedback API Client', () => {
       const response = await getFeedbackResponses(feedbackId);
 
       expect(response.success).toBe(true);
-      expect(response.data.responses).toHaveLength(0);
+      expect(response.data).toHaveLength(0);
     });
 
     it('should include completed and in-progress submissions', async () => {
-      const mixedResponses: FeedbackCompleted[] = [
+      const mixedUserResponses: FeedbackUserResponses[] = [
         {
-          id: 1,
-          feedback: 1,
-          userid: 1,
+          completedId: 1,
           timemodified: 1640000000,
-          random_response: 0,
-          anonymous_response: 0,
           courseid: 10,
+          values: {
+            1: 4,
+            2: 'First submission',
+          },
         },
         {
-          id: 2,
-          feedback: 1,
-          userid: 1,
+          completedId: 2,
           timemodified: 1640010000,
-          random_response: 0,
-          anonymous_response: 0,
           courseid: 10,
+          values: {
+            1: 5,
+            2: 'Second submission',
+          },
         },
       ];
 
@@ -1051,20 +1053,16 @@ describe('Feedback API Client', () => {
         http.get(`*${API_BASE_URL}/feedback/${feedbackId}/responses`, () => {
           return HttpResponse.json({
             success: true,
-            data: {
-              responses: mixedResponses,
-              total: mixedResponses.length,
-              hasMore: false,
-            },
+            data: mixedUserResponses,
           });
         })
       );
 
       const response = await getFeedbackResponses(feedbackId);
 
-      expect(response.data.responses).toHaveLength(2);
-      expect(response.data.responses[0]!.id).toBe(1);
-      expect(response.data.responses[1]!.id).toBe(2);
+      expect(response.data).toHaveLength(2);
+      expect(response.data[0]!.completedId).toBe(1);
+      expect(response.data[1]!.completedId).toBe(2);
     });
 
     it('should handle permission error for viewing reports capability', async () => {
@@ -1103,9 +1101,10 @@ describe('Feedback API Client', () => {
           return HttpResponse.json({
             success: true,
             data: {
-              saved: true,
-              completedId: 0, // In-progress ID
-              resumePage: 1,
+              success: true,
+              completedTmpId: 0, // In-progress ID
+              currentPage: 1,
+              totalPages: 3,
             },
           });
         })
@@ -1114,8 +1113,8 @@ describe('Feedback API Client', () => {
       const response = await saveProgress(feedbackId, partialResponses);
 
       expect(response.success).toBe(true);
-      expect(response.data.saved).toBe(true);
-      expect(response.data.resumePage).toBe(1);
+      expect(response.data.success).toBe(true);
+      expect(response.data.currentPage).toBe(1);
     });
 
     it('should allow resuming from saved page', async () => {
@@ -1124,9 +1123,10 @@ describe('Feedback API Client', () => {
           return HttpResponse.json({
             success: true,
             data: {
-              saved: true,
-              completedId: 0,
-              resumePage: 2,
+              success: true,
+              completedTmpId: 0,
+              currentPage: 2,
+              totalPages: 3,
               savedValues: partialResponses,
             },
           });
@@ -1135,7 +1135,7 @@ describe('Feedback API Client', () => {
 
       const response = await saveProgress(feedbackId, partialResponses);
 
-      expect(response.data.resumePage).toBe(2);
+      expect(response.data.currentPage).toBe(2);
       expect(response.data.savedValues).toEqual(partialResponses);
     });
   });
@@ -1294,8 +1294,8 @@ describe('Feedback API Client', () => {
     it('should validate union types for different response states', async () => {
       // Test different status states
       const statuses: FeedbackStatus[] = [
-        { ...mockFeedbackStatus, isCompleted: false, attemptCount: 0, lastCompleted: undefined },
-        { ...mockFeedbackStatus, isCompleted: true, attemptCount: 1, lastCompleted: mockFeedbackResponses[0] },
+        { ...mockFeedbackStatus, isSubmitted: false, completedId: undefined },
+        { ...mockFeedbackStatus, isSubmitted: true, completedId: 1 },
       ];
 
       for (const status of statuses) {
@@ -1311,13 +1311,13 @@ describe('Feedback API Client', () => {
         const response = await getFeedbackStatus(1);
         
         // TypeScript should handle union type correctly
-        if (response.data.isCompleted) {
-          expect(response.data.lastCompleted).toBeDefined();
-          if (response.data.lastCompleted) {
-            expect(typeof response.data.lastCompleted.id).toBe('number');
+        if (response.data.isSubmitted) {
+          expect(response.data.completedId).toBeDefined();
+          if (response.data.completedId) {
+            expect(typeof response.data.completedId).toBe('number');
           }
         } else {
-          expect(response.data.lastCompleted).toBeUndefined();
+          expect(response.data.completedId).toBeUndefined();
         }
       }
     });
@@ -1329,6 +1329,12 @@ describe('Feedback API Client', () => {
       const analysis: FeedbackAnalysis = mockFeedbackAnalysis;
       const status: FeedbackStatus = mockFeedbackStatus;
       const responses: FeedbackCompleted[] = mockFeedbackResponses;
+      const saveResult: SaveProgressResult = {
+        success: true,
+        completedTmpId: 0,
+        currentPage: 1,
+        totalPages: 3,
+      };
 
       // All variables are explicitly typed
       expect(feedback).toBeDefined();
@@ -1336,6 +1342,7 @@ describe('Feedback API Client', () => {
       expect(analysis).toBeDefined();
       expect(status).toBeDefined();
       expect(responses).toBeDefined();
+      expect(saveResult).toBeDefined();
     });
   });
 
