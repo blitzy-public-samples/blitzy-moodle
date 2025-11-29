@@ -40,9 +40,6 @@ import {
   useQuery,
   useMutation,
   useQueryClient,
-  type UseQueryOptions,
-  type UseMutationOptions,
-  type QueryKey,
 } from '@tanstack/react-query';
 
 import { apiClient } from '@/services/api/client';
@@ -161,8 +158,32 @@ const DEFAULT_STALE_TIME = 5 * 60 * 1000;
 /** Default refetch interval for recordings (5 minutes) */
 const DEFAULT_REFETCH_INTERVAL = 5 * 60 * 1000;
 
-/** Maximum recordings to fetch if pagination threshold exceeded */
-const PAGINATION_THRESHOLD = 100;
+// ============================================================================
+// Mutation Context Types
+// ============================================================================
+
+/**
+ * Context type for publish/unpublish/update mutation rollbacks
+ */
+interface RecordingMutationContext {
+  previousRecordings: BBBRecording[] | undefined;
+}
+
+/**
+ * Context type for delete mutation rollback (includes all queries data)
+ */
+interface DeleteRecordingMutationContext {
+  previousRecordings: BBBRecording[] | undefined;
+  allQueriesData: [readonly unknown[], BBBRecording[] | undefined][];
+}
+
+/**
+ * Context type for bulk delete mutation rollback
+ */
+interface BulkDeleteMutationContext {
+  previousRecordings: BBBRecording[] | undefined;
+  deletedCount: number;
+}
 
 // ============================================================================
 // useBBBRecordings Hook
@@ -274,7 +295,7 @@ export function usePublishBBBRecording(instanceId: number) {
   const queryClient = useQueryClient();
   const { success, error: showError } = useToast();
 
-  return useMutation<BBBRecording, Error, PublishRecordingParams>({
+  return useMutation<BBBRecording, Error, PublishRecordingParams, RecordingMutationContext>({
     mutationFn: async ({ recordingId }): Promise<BBBRecording> => {
       const response = await apiClient.post<RecordingOperationResponse>(
         `/bigbluebuttonbn/recordings/${recordingId}/publish`
@@ -366,7 +387,7 @@ export function useUnpublishBBBRecording(instanceId: number) {
   const queryClient = useQueryClient();
   const { success, error: showError } = useToast();
 
-  return useMutation<BBBRecording, Error, PublishRecordingParams>({
+  return useMutation<BBBRecording, Error, PublishRecordingParams, RecordingMutationContext>({
     mutationFn: async ({ recordingId }): Promise<BBBRecording> => {
       const response = await apiClient.post<RecordingOperationResponse>(
         `/bigbluebuttonbn/recordings/${recordingId}/unpublish`
@@ -466,7 +487,7 @@ export function useDeleteBBBRecording(instanceId: number) {
   const queryClient = useQueryClient();
   const { success, error: showError, warning } = useToast();
 
-  return useMutation<void, Error, DeleteRecordingParams>({
+  return useMutation<void, Error, DeleteRecordingParams, DeleteRecordingMutationContext>({
     mutationFn: async ({ recordingId }): Promise<void> => {
       const response = await apiClient.delete<{ success: boolean; error?: string }>(
         `/bigbluebuttonbn/recordings/${recordingId}`
@@ -503,7 +524,7 @@ export function useDeleteBBBRecording(instanceId: number) {
     },
 
     // Rollback on error with user notification
-    onError: (err, { recordingId }, context) => {
+    onError: (err, _variables, context) => {
       // Restore previous data
       if (context?.previousRecordings) {
         queryClient.setQueryData(
@@ -569,7 +590,7 @@ export function useUpdateBBBRecordingMetadata(instanceId: number) {
   const queryClient = useQueryClient();
   const { success, error: showError } = useToast();
 
-  return useMutation<BBBRecording, Error, UpdateRecordingMetadataParams>({
+  return useMutation<BBBRecording, Error, UpdateRecordingMetadataParams, RecordingMutationContext>({
     mutationFn: async ({
       recordingId,
       name,
@@ -683,7 +704,7 @@ export function useBulkPublishBBBRecordings(instanceId: number) {
   const queryClient = useQueryClient();
   const { success, error: showError } = useToast();
 
-  return useMutation<BBBRecording[], Error, BulkPublishParams>({
+  return useMutation<BBBRecording[], Error, BulkPublishParams, RecordingMutationContext>({
     mutationFn: async ({ recordingIds }): Promise<BBBRecording[]> => {
       const response = await apiClient.post<{
         success: boolean;
@@ -757,7 +778,7 @@ export function useBulkUnpublishBBBRecordings(instanceId: number) {
   const queryClient = useQueryClient();
   const { success, error: showError } = useToast();
 
-  return useMutation<BBBRecording[], Error, BulkPublishParams>({
+  return useMutation<BBBRecording[], Error, BulkPublishParams, RecordingMutationContext>({
     mutationFn: async ({ recordingIds }): Promise<BBBRecording[]> => {
       const response = await apiClient.post<{
         success: boolean;
@@ -839,7 +860,7 @@ export function useBulkDeleteBBBRecordings(instanceId: number) {
   const queryClient = useQueryClient();
   const { success, error: showError, warning } = useToast();
 
-  return useMutation<void, Error, BulkDeleteParams>({
+  return useMutation<void, Error, BulkDeleteParams, BulkDeleteMutationContext>({
     mutationFn: async ({ recordingIds }): Promise<void> => {
       const response = await apiClient.post<{
         success: boolean;
