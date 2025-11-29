@@ -229,6 +229,9 @@ describe('ProfileView Component', () => {
       login: vi.fn(),
       logout: vi.fn(),
       isLoading: false,
+      error: null,
+      isLoginLoading: false,
+      isLogoutLoading: false,
     });
   });
 
@@ -484,6 +487,9 @@ describe('ProfileView Component', () => {
         login: vi.fn(),
         logout: vi.fn(),
         isLoading: false,
+        error: null,
+        isLoginLoading: false,
+        isLogoutLoading: false,
       });
 
       render(<ProfileView userId={mockCurrentUser.id} />);
@@ -507,6 +513,9 @@ describe('ProfileView Component', () => {
         login: vi.fn(),
         logout: vi.fn(),
         isLoading: false,
+        error: null,
+        isLoginLoading: false,
+        isLogoutLoading: false,
         hasCapability: vi.fn().mockReturnValue(true), // Grant edit permission
       } as any);
 
@@ -530,6 +539,9 @@ describe('ProfileView Component', () => {
         login: vi.fn(),
         logout: vi.fn(),
         isLoading: false,
+        error: null,
+        isLoginLoading: false,
+        isLogoutLoading: false,
         hasCapability: vi.fn().mockReturnValue(false), // Deny edit permission
       } as any);
 
@@ -552,6 +564,9 @@ describe('ProfileView Component', () => {
         login: vi.fn(),
         logout: vi.fn(),
         isLoading: false,
+        error: null,
+        isLoginLoading: false,
+        isLogoutLoading: false,
       });
 
       render(<ProfileView userId={mockValidUser.id} />);
@@ -764,6 +779,9 @@ describe('ProfileView Component', () => {
         login: vi.fn(),
         logout: vi.fn(),
         isLoading: false,
+        error: null,
+        isLoginLoading: false,
+        isLogoutLoading: false,
       });
 
       render(<ProfileView userId={mockCurrentUser.id} />);
@@ -785,6 +803,9 @@ describe('ProfileView Component', () => {
         login: vi.fn(),
         logout: vi.fn(),
         isLoading: false,
+        error: null,
+        isLoginLoading: false,
+        isLogoutLoading: false,
       });
 
       render(<ProfileView userId={mockCurrentUser.id} />);

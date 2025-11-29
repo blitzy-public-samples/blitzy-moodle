@@ -271,6 +271,9 @@ describe('DiscussionThread', () => {
       login: vi.fn(),
       logout: vi.fn(),
       isLoading: false,
+      error: null,
+      isLoginLoading: false,
+      isLogoutLoading: false,
     });
   });
 
@@ -956,6 +959,9 @@ describe('DiscussionThread', () => {
         login: vi.fn(),
         logout: vi.fn(),
         isLoading: false,
+        error: null,
+        isLoginLoading: false,
+        isLogoutLoading: false,
       });
     });
 
@@ -1031,6 +1037,9 @@ describe('DiscussionThread', () => {
         login: vi.fn(),
         logout: vi.fn(),
         isLoading: false,
+        error: null,
+        isLoginLoading: false,
+        isLogoutLoading: false,
       });
 
       const discussion = createMockDiscussion();
@@ -1065,6 +1074,9 @@ describe('DiscussionThread', () => {
         login: vi.fn(),
         logout: vi.fn(),
         isLoading: false,
+        error: null,
+        isLoginLoading: false,
+        isLogoutLoading: false,
       });
 
       const discussion = createMockDiscussion();
@@ -1100,6 +1112,9 @@ describe('DiscussionThread', () => {
         login: vi.fn(),
         logout: vi.fn(),
         isLoading: false,
+        error: null,
+        isLoginLoading: false,
+        isLogoutLoading: false,
       });
 
       const discussion = createMockDiscussion();
