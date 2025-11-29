@@ -55,7 +55,6 @@ import type { UseQueryResult } from '@tanstack/react-query';
 import apiClient from '@/services/api/client';
 import type { ApiResponse } from '@/types/api';
 import type {
-  ChoiceOption as BaseChoiceOption,
   DisplayMode,
   ShowResultsMode,
   PublishMode,
