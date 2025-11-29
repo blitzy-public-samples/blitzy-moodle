@@ -22,11 +22,9 @@ import type { ApiResponse } from '@/types/api';
 import type {
   LtiTool,
   LtiToolType,
-  LtiLaunchData,
   LtiGradeResult,
-  LtiTypesConfig,
-  LtiToolSettings,
-  LtiToolProxy,
+} from '../types/lti.types';
+import {
   LtiVersion,
   LtiToolState,
   LaunchContainer,
