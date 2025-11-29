@@ -20,7 +20,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import type React from 'react';
 
 import { FormTextarea } from '@/components/forms/FormTextarea';
-import { render, screen, waitFor, within } from '@tests/helpers/render';
+import { render, screen, waitFor, within, fireEvent } from '@tests/helpers/render';
 
 /**
  * Test wrapper component providing FormProvider context
@@ -973,9 +973,10 @@ describe('FormTextarea', () => {
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- getByRole returns HTMLElement, need HTMLTextAreaElement
       const textarea = screen.getByRole('textbox', { name: /expandable/i }) as HTMLTextAreaElement;
 
-      // Add many lines
+      // Add many lines - use fireEvent.change instead of user.type to avoid timeout
+      // when typing 195+ characters in JSDOM environment
       const manyLines = Array(15).fill('Line of text').join('\n');
-      await user.type(textarea, manyLines);
+      fireEvent.change(textarea, { target: { value: manyLines } });
 
       // Height should increase (Material-UI handles this internally)
       expect(textarea.value.split('\n').length).toBeGreaterThan(2);
@@ -1012,9 +1013,10 @@ describe('FormTextarea', () => {
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- getByRole returns HTMLElement, need HTMLTextAreaElement
       const textarea = screen.getByRole('textbox', { name: /maximum/i }) as HTMLTextAreaElement;
       
-      // Add more lines than maxRows
+      // Add more lines than maxRows - use fireEvent.change to avoid timeout
+      // when typing many characters in JSDOM environment
       const manyLines = Array(10).fill('Line').join('\n');
-      await user.type(textarea, manyLines);
+      fireEvent.change(textarea, { target: { value: manyLines } });
 
       // Note: JSDOM doesn't support layout calculations (scrollHeight/clientHeight always 0)
       // Instead, verify that content is present and exceeds typical maxRows height
