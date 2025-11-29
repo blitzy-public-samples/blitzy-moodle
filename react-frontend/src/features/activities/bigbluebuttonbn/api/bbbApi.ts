@@ -41,7 +41,6 @@ import { apiClient } from '@/services/api/client';
 import type { ApiResponse } from '@/types/api';
 import type {
   BBBInstance,
-  BBBMeeting,
   BBBRecording,
   BBBRoomStatus,
   BBBJoinOptions,
@@ -137,26 +136,6 @@ interface EndMeetingResponse {
   ended: boolean;
   /** Message describing the result */
   message: string;
-}
-
-/**
- * Request payload for publishing a recording.
- */
-interface PublishRecordingRequest {
-  /** Recording ID to publish/unpublish */
-  recordingId: number;
-  /** Whether to publish (true) or unpublish (false) */
-  published: boolean;
-}
-
-/**
- * Request payload for importing a recording.
- */
-interface ImportRecordingRequest {
-  /** Source recording ID to import */
-  sourceRecordingId: number;
-  /** Target BBB instance ID to import into */
-  targetInstanceId: number;
 }
 
 /**
@@ -638,24 +617,30 @@ export function useBBBRecordings(
 export function useJoinBBBMeeting(
   instanceId: number,
   options?: Omit<
-    UseMutationOptions<JoinMeetingResponse, Error, Partial<BBBJoinOptions>>,
+    UseMutationOptions<JoinMeetingResponse, Error, Partial<BBBJoinOptions>, undefined>,
     'mutationFn'
   >
 ) {
   const queryClient = useQueryClient();
 
-  return useMutation<JoinMeetingResponse, Error, Partial<BBBJoinOptions>>({
+  return useMutation<JoinMeetingResponse, Error, Partial<BBBJoinOptions>, undefined>({
     mutationFn: (joinOptions) => joinBBBMeeting(instanceId, joinOptions),
-    onSuccess: (data, variables, context) => {
+    onSuccess: (data, variables, onMutateResult, mutationContext) => {
       // Invalidate status query to reflect new participant
       void queryClient.invalidateQueries({
         queryKey: bbbQueryKeys.status(instanceId),
       });
 
       // Call user's onSuccess if provided
-      options?.onSuccess?.(data, variables, context);
+      if (options?.onSuccess) {
+        options.onSuccess(data, variables, onMutateResult, mutationContext);
+      }
     },
-    ...options,
+    onError: options?.onError,
+    onSettled: options?.onSettled,
+    retry: options?.retry,
+    retryDelay: options?.retryDelay,
+    meta: options?.meta,
   });
 }
 
@@ -692,24 +677,30 @@ export function useJoinBBBMeeting(
 export function useCreateBBBMeeting(
   instanceId: number,
   options?: Omit<
-    UseMutationOptions<CreateMeetingResponse, Error, void>,
+    UseMutationOptions<CreateMeetingResponse, Error, void, undefined>,
     'mutationFn'
   >
 ) {
   const queryClient = useQueryClient();
 
-  return useMutation<CreateMeetingResponse, Error, void>({
+  return useMutation<CreateMeetingResponse, Error, void, undefined>({
     mutationFn: () => createBBBMeeting(instanceId),
-    onSuccess: (data, variables, context) => {
+    onSuccess: (data, variables, onMutateResult, mutationContext) => {
       // Invalidate status query to show meeting is now running
       void queryClient.invalidateQueries({
         queryKey: bbbQueryKeys.status(instanceId),
       });
 
       // Call user's onSuccess if provided
-      options?.onSuccess?.(data, variables, context);
+      if (options?.onSuccess) {
+        options.onSuccess(data, variables, onMutateResult, mutationContext);
+      }
     },
-    ...options,
+    onError: options?.onError,
+    onSettled: options?.onSettled,
+    retry: options?.retry,
+    retryDelay: options?.retryDelay,
+    meta: options?.meta,
   });
 }
 
@@ -751,15 +742,15 @@ export function useCreateBBBMeeting(
 export function useEndBBBMeeting(
   instanceId: number,
   options?: Omit<
-    UseMutationOptions<EndMeetingResponse, Error, void>,
+    UseMutationOptions<EndMeetingResponse, Error, void, undefined>,
     'mutationFn'
   >
 ) {
   const queryClient = useQueryClient();
 
-  return useMutation<EndMeetingResponse, Error, void>({
+  return useMutation<EndMeetingResponse, Error, void, undefined>({
     mutationFn: () => endBBBMeeting(instanceId),
-    onSuccess: (data, variables, context) => {
+    onSuccess: (data, variables, onMutateResult, mutationContext) => {
       // Invalidate status query to show meeting has ended
       void queryClient.invalidateQueries({
         queryKey: bbbQueryKeys.status(instanceId),
@@ -771,9 +762,15 @@ export function useEndBBBMeeting(
       });
 
       // Call user's onSuccess if provided
-      options?.onSuccess?.(data, variables, context);
+      if (options?.onSuccess) {
+        options.onSuccess(data, variables, onMutateResult, mutationContext);
+      }
     },
-    ...options,
+    onError: options?.onError,
+    onSettled: options?.onSettled,
+    retry: options?.retry,
+    retryDelay: options?.retryDelay,
+    meta: options?.meta,
   });
 }
 
@@ -837,16 +834,24 @@ export type RecordingAction =
  * }
  * ```
  */
+/**
+ * Context type for recording management mutation.
+ * Used for optimistic updates and rollback on error.
+ */
+interface ManageRecordingContext {
+  previousRecordings: BBBRecording[] | undefined;
+}
+
 export function useManageRecording(
   instanceId: number,
   options?: Omit<
-    UseMutationOptions<RecordingOperationResponse, Error, RecordingAction>,
-    'mutationFn'
+    UseMutationOptions<RecordingOperationResponse, Error, RecordingAction, ManageRecordingContext>,
+    'mutationFn' | 'onMutate'
   >
 ) {
   const queryClient = useQueryClient();
 
-  return useMutation<RecordingOperationResponse, Error, RecordingAction>({
+  return useMutation<RecordingOperationResponse, Error, RecordingAction, ManageRecordingContext>({
     mutationFn: async (action) => {
       switch (action.type) {
         case 'publish':
@@ -862,7 +867,7 @@ export function useManageRecording(
           throw new Error('Unknown recording action');
       }
     },
-    onMutate: async (action) => {
+    onMutate: async (action): Promise<ManageRecordingContext> => {
       // Cancel any outgoing refetches to prevent overwriting optimistic update
       await queryClient.cancelQueries({
         queryKey: bbbQueryKeys.instanceRecordings(instanceId),
@@ -897,19 +902,21 @@ export function useManageRecording(
 
       return { previousRecordings };
     },
-    onError: (error, action, context) => {
-      // Rollback on error
-      if (context?.previousRecordings) {
+    onError: (error, action, onMutateResult, mutationContext) => {
+      // Rollback on error (onMutateResult contains previousRecordings from onMutate)
+      if (onMutateResult?.previousRecordings) {
         queryClient.setQueryData(
           bbbQueryKeys.instanceRecordings(instanceId),
-          context.previousRecordings
+          onMutateResult.previousRecordings
         );
       }
 
       // Call user's onError if provided
-      options?.onError?.(error, action, context);
+      if (options?.onError) {
+        options.onError(error, action, onMutateResult, mutationContext);
+      }
     },
-    onSuccess: (data, action, context) => {
+    onSuccess: (data, action, onMutateResult, mutationContext) => {
       // Invalidate recordings cache to ensure fresh data
       void queryClient.invalidateQueries({
         queryKey: bbbQueryKeys.instanceRecordings(instanceId),
@@ -923,7 +930,9 @@ export function useManageRecording(
       }
 
       // Call user's onSuccess if provided
-      options?.onSuccess?.(data, action, context);
+      if (options?.onSuccess) {
+        options.onSuccess(data, action, onMutateResult, mutationContext);
+      }
     },
     onSettled: () => {
       // Always refetch after mutation settles
@@ -931,7 +940,9 @@ export function useManageRecording(
         queryKey: bbbQueryKeys.instanceRecordings(instanceId),
       });
     },
-    ...options,
+    retry: options?.retry,
+    retryDelay: options?.retryDelay,
+    meta: options?.meta,
   });
 }
 
