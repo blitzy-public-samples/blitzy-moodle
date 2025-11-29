@@ -247,7 +247,7 @@ export function useBBBRecordings(
       const response = await apiClient.get<RecordingsResponse>(endpoint);
 
       if (!response.data.success) {
-        throw new Error(response.data.error || 'Failed to fetch recordings');
+        throw new Error(response.data.error ?? 'Failed to fetch recordings');
       }
 
       return response.data.data.recordings;
@@ -302,7 +302,7 @@ export function usePublishBBBRecording(instanceId: number) {
       );
 
       if (!response.data.success) {
-        throw new Error(response.data.error || 'Failed to publish recording');
+        throw new Error(response.data.error ?? 'Failed to publish recording');
       }
 
       return response.data.data.recording;
@@ -353,7 +353,7 @@ export function usePublishBBBRecording(instanceId: number) {
 
     // Always refetch after mutation settles
     onSettled: () => {
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: bbbRecordingsKeys.list(instanceId),
       });
     },
@@ -394,7 +394,7 @@ export function useUnpublishBBBRecording(instanceId: number) {
       );
 
       if (!response.data.success) {
-        throw new Error(response.data.error || 'Failed to unpublish recording');
+        throw new Error(response.data.error ?? 'Failed to unpublish recording');
       }
 
       return response.data.data.recording;
@@ -441,7 +441,7 @@ export function useUnpublishBBBRecording(instanceId: number) {
 
     // Always refetch after mutation settles
     onSettled: () => {
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: bbbRecordingsKeys.list(instanceId),
       });
     },
@@ -494,7 +494,7 @@ export function useDeleteBBBRecording(instanceId: number) {
       );
 
       if (!response.data.success) {
-        throw new Error(response.data.error || 'Failed to delete recording');
+        throw new Error(response.data.error ?? 'Failed to delete recording');
       }
     },
 
@@ -553,7 +553,7 @@ export function useDeleteBBBRecording(instanceId: number) {
 
     // Always refetch after mutation settles
     onSettled: () => {
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: bbbRecordingsKeys.list(instanceId),
       });
     },
@@ -611,7 +611,7 @@ export function useUpdateBBBRecordingMetadata(instanceId: number) {
 
       if (!response.data.success) {
         throw new Error(
-          response.data.error || 'Failed to update recording metadata'
+          response.data.error ?? 'Failed to update recording metadata'
         );
       }
 
@@ -663,7 +663,7 @@ export function useUpdateBBBRecordingMetadata(instanceId: number) {
 
     // Always refetch after mutation settles
     onSettled: () => {
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: bbbRecordingsKeys.list(instanceId),
       });
     },
@@ -715,7 +715,7 @@ export function useBulkPublishBBBRecordings(instanceId: number) {
       });
 
       if (!response.data.success) {
-        throw new Error(response.data.error || 'Failed to publish recordings');
+        throw new Error(response.data.error ?? 'Failed to publish recordings');
       }
 
       return response.data.data.recordings;
@@ -759,7 +759,7 @@ export function useBulkPublishBBBRecordings(instanceId: number) {
     },
 
     onSettled: () => {
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: bbbRecordingsKeys.list(instanceId),
       });
     },
@@ -789,7 +789,7 @@ export function useBulkUnpublishBBBRecordings(instanceId: number) {
       });
 
       if (!response.data.success) {
-        throw new Error(response.data.error || 'Failed to unpublish recordings');
+        throw new Error(response.data.error ?? 'Failed to unpublish recordings');
       }
 
       return response.data.data.recordings;
@@ -832,7 +832,7 @@ export function useBulkUnpublishBBBRecordings(instanceId: number) {
     },
 
     onSettled: () => {
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: bbbRecordingsKeys.list(instanceId),
       });
     },
@@ -870,7 +870,7 @@ export function useBulkDeleteBBBRecordings(instanceId: number) {
       });
 
       if (!response.data.success) {
-        throw new Error(response.data.error || 'Failed to delete recordings');
+        throw new Error(response.data.error ?? 'Failed to delete recordings');
       }
     },
 
@@ -910,7 +910,7 @@ export function useBulkDeleteBBBRecordings(instanceId: number) {
     },
 
     onSettled: () => {
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: bbbRecordingsKeys.list(instanceId),
       });
     },

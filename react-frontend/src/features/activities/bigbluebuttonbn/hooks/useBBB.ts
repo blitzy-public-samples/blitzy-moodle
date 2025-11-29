@@ -25,7 +25,6 @@ import {
   useQueryClient,
   type UseQueryResult,
   type UseMutationResult,
-  type QueryKey,
 } from '@tanstack/react-query';
 import apiClient from '@/services/api/client';
 import type {
