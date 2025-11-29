@@ -973,18 +973,21 @@ export function useComments(contextId?: number) {
 }
 
 // ============================================================================
-// Re-export Types for Convenience
+// Type exports summary
 // ============================================================================
-
-// Export response data types for use in components
-export type {
-  CalendarWidgetData,
-  UpcomingEventsData,
-  TimelineData,
-  CourseOverviewData,
-  RecentActivityData,
-  OnlineUsersData,
-  BadgesData,
-  CommentsData,
-  WidgetConfigUpdate,
-};
+//
+// The following types are exported from this module and available for use
+// in consuming components:
+//
+// Response Data Types (defined in this module):
+// - CalendarWidgetData: Month view calendar data with events
+// - UpcomingEventsData: Upcoming calendar events
+// - TimelineData: Timeline items with preferences
+// - CourseOverviewData: Course cards with progress
+// - RecentActivityData: Recent activity items
+// - OnlineUsersData: Active users list
+// - BadgesData: User badges
+// - CommentsData: Recent comments
+// - WidgetConfigUpdate: Widget configuration update request
+//
+// These types are already exported at their definition points above.
