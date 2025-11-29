@@ -756,7 +756,7 @@ export async function getResults(
   const params: Record<string, unknown> = {};
   
   if (attemptIds && attemptIds.length > 0) {
-    attemptIds.forEach((id, index) => {
+    attemptIds.forEach((id) => {
       validateAttemptId(id);
     });
     params.attemptids = attemptIds;

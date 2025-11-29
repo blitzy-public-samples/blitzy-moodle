@@ -420,3 +420,67 @@ export interface H5PReportData {
     message: string;
   }>;
 }
+
+// ============================================================================
+// Global Settings and User Attempts
+// ============================================================================
+
+/**
+ * Global H5P settings for content embedding and state management
+ * These settings apply across all H5P activities in the Moodle instance
+ * 
+ * @see mod_h5pactivity_external::get_h5pactivities_by_courses return structure
+ */
+export interface H5PGlobalSettings {
+  /** Whether save state functionality is enabled for H5P content */
+  enablesavestate: boolean;
+  /** Frequency in seconds for automatic state saving (0 = disabled) */
+  savestatefreq: number;
+}
+
+/**
+ * User attempts data for a specific user in an H5P activity
+ * Groups all attempts by a single user with scoring information
+ * 
+ * @see mod_h5pactivity_external::get_user_attempts return structure
+ */
+export interface H5PUserAttempts {
+  /** User ID who made the attempts */
+  userid: UserId;
+  /** User's first name */
+  firstname: string;
+  /** User's last name */
+  lastname: string;
+  /** User's full display name */
+  fullname: string;
+  /** User's profile picture URL (if available) */
+  profileimageurl?: string;
+  /** Number of attempts made by this user */
+  attemptcount: number;
+  /** The scored/graded attempt information (based on grade method) */
+  scored?: H5PScoredAttempt;
+  /** All attempts made by this user */
+  attempts: H5PAttempt[];
+}
+
+/**
+ * Scored attempt information
+ * Represents the attempt that counts toward the user's grade
+ * based on the activity's grade method setting
+ * 
+ * @see mod_h5pactivity\local\manager::GRADEMETHOD_* constants
+ */
+export interface H5PScoredAttempt {
+  /** Display title indicating the grade method (e.g., "Highest attempt") */
+  title: string;
+  /** Grade method name/description */
+  grademethod: string;
+  /** ID of the attempt that was scored */
+  attemptid: number;
+  /** Raw score of the scored attempt */
+  rawscore?: number;
+  /** Maximum possible score */
+  maxscore?: number;
+  /** Scaled grade (0-1) */
+  scaled?: number;
+}
