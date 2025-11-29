@@ -84,7 +84,7 @@ export function CourseCatalogPage() {
     page: currentPage,
     perPage: coursesPerPage,
     search: searchQuery || undefined,
-    categoryid: categoryId,
+    categoryId: categoryId,
     sort: sortBy,
     order: sortOrder,
   };
@@ -156,10 +156,10 @@ export function CourseCatalogPage() {
   );
 
   // Extract data from response
-  const courses = data?.data ?? [];
+  const courses = data?.data?.items ?? [];
   const pagination = data?.meta?.pagination;
   const totalPages = pagination?.totalPages ?? 1;
-  const totalCourses = pagination?.total ?? 0;
+  const totalCourses = pagination?.total ?? data?.data?.total ?? 0;
 
   // Determine grid columns based on view mode
   const gridColumns = viewMode === 'grid' ? { xs: 12, sm: 6, md: 4, lg: 3 } : { xs: 12 };
