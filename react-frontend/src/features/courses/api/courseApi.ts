@@ -38,6 +38,7 @@
  */
 
 import { apiClient } from '@/services/api/client';
+import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import type { ApiResponse, PaginatedResponse } from '@/types/api';
 import type { Course, CourseModule } from '@/types/entities';
 import type { CategoryId } from '@/types/common';
@@ -64,6 +65,69 @@ const ENDPOINTS = {
   /** GET - Get course contents (sections, activities, resources) */
   CONTENTS: (id: number): string => `/courses/${id}/contents`,
 } as const;
+
+// ============================================================================
+// Course List Item Interface
+// ============================================================================
+
+/**
+ * CourseListItem represents a course as returned in course catalog lists
+ *
+ * This interface is designed for display in course cards and lists.
+ * It includes additional computed properties like category name and enrollment count
+ * that are not part of the base Course entity.
+ *
+ * @example
+ * ```typescript
+ * const course: CourseListItem = {
+ *   id: 42,
+ *   fullname: 'Introduction to TypeScript',
+ *   shortname: 'TS101',
+ *   summary: '<p>Learn TypeScript fundamentals</p>',
+ *   categoryid: 5,
+ *   categoryname: 'Programming',
+ *   startdate: 1704067200,
+ *   enddate: 1717200000,
+ *   visible: 1,
+ *   enrolledusers: 150,
+ *   imageurl: 'https://example.com/course.jpg',
+ *   hasprogress: true,
+ *   progress: 45
+ * };
+ * ```
+ */
+export interface CourseListItem {
+  /** Unique course identifier */
+  id: number;
+  /** Full course name displayed on course pages */
+  fullname: string;
+  /** Short course name/code used in navigation and reports */
+  shortname: string;
+  /** Course summary/description (HTML content) */
+  summary: string;
+  /** Category ID where the course belongs */
+  categoryid: CategoryId;
+  /** Human-readable category name for display */
+  categoryname: string;
+  /** Course start date (Unix timestamp) */
+  startdate: number;
+  /** Course end date (Unix timestamp, 0 if no end date) */
+  enddate: number;
+  /** Course visibility (0=hidden, 1=visible) */
+  visible: number;
+  /** Number of enrolled users */
+  enrolledusers: number;
+  /** URL to course image/thumbnail */
+  imageurl?: string;
+  /** Whether progress tracking is enabled */
+  hasprogress?: boolean;
+  /** User's progress percentage (0-100) */
+  progress?: number;
+  /** Course format (topics, weeks, social, singleactivity, etc.) */
+  format?: string;
+  /** Course language */
+  lang?: string;
+}
 
 // ============================================================================
 // Input/Output Interfaces
@@ -247,7 +311,7 @@ export interface CourseListParams {
   /** Search query string to filter courses */
   search?: string;
   /** Sort field */
-  sort?: 'fullname' | 'shortname' | 'startdate' | 'timecreated';
+  sort?: 'fullname' | 'shortname' | 'startdate' | 'timecreated' | 'enrolledusers';
   /** Sort order */
   order?: 'asc' | 'desc';
 }
@@ -697,4 +761,157 @@ export async function getCourseContents(
   );
 
   return response.data;
+}
+
+// ============================================================================
+// React Query Hooks
+// ============================================================================
+
+/**
+ * Query keys for course-related queries
+ * Used for cache invalidation and query deduplication
+ */
+export const courseQueryKeys = {
+  /** Base key for all course queries */
+  all: ['courses'] as const,
+  /** Key for course list queries */
+  lists: () => [...courseQueryKeys.all, 'list'] as const,
+  /** Key for filtered course list */
+  list: (params: CourseListParams) => [...courseQueryKeys.lists(), params] as const,
+  /** Key for single course details */
+  details: () => [...courseQueryKeys.all, 'detail'] as const,
+  /** Key for specific course detail */
+  detail: (id: number) => [...courseQueryKeys.details(), id] as const,
+  /** Key for course contents */
+  contents: (id: number) => [...courseQueryKeys.detail(id), 'contents'] as const,
+};
+
+/**
+ * Hook to fetch paginated list of courses using React Query
+ *
+ * Provides automatic caching, background refetching, and error handling.
+ * Wraps the getCourses() API function with React Query's useQuery.
+ *
+ * @param params - Optional query parameters for filtering and pagination
+ * @returns React Query result with courses data, loading state, and error state
+ *
+ * @example
+ * ```typescript
+ * function CourseList() {
+ *   const { data, isLoading, error } = useCourses({
+ *     page: 1,
+ *     perPage: 20,
+ *     categoryId: 5,
+ *     search: 'typescript'
+ *   });
+ *
+ *   if (isLoading) return <Loading />;
+ *   if (error) return <Error message={error.message} />;
+ *
+ *   return (
+ *     <ul>
+ *       {data?.data.items.map(course => (
+ *         <li key={course.id}>{course.fullname}</li>
+ *       ))}
+ *     </ul>
+ *   );
+ * }
+ * ```
+ */
+export function useCourses(
+  params: CourseListParams = {}
+): UseQueryResult<PaginatedResponse<CourseListItem>, Error> {
+  return useQuery({
+    queryKey: courseQueryKeys.list(params),
+    queryFn: async () => {
+      // Convert CourseListParams to the format expected by getCourses
+      const apiParams: CourseListParams = {
+        page: params.page,
+        perPage: params.perPage,
+        categoryId: params.categoryId,
+        search: params.search,
+        sort: params.sort,
+        order: params.order,
+      };
+      
+      // Note: getCourses returns PaginatedResponse<Course> but we type this as
+      // PaginatedResponse<CourseListItem> since the API actually returns items
+      // with the extended CourseListItem properties
+      const response = await getCourses(apiParams);
+      return response as unknown as PaginatedResponse<CourseListItem>;
+    },
+    staleTime: 5 * 60 * 1000, // Consider data stale after 5 minutes
+    gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
+  });
+}
+
+/**
+ * Hook to fetch single course details using React Query
+ *
+ * @param id - Course ID to fetch
+ * @param options - Optional query options
+ * @returns React Query result with course details
+ *
+ * @example
+ * ```typescript
+ * function CourseDetail({ courseId }: { courseId: number }) {
+ *   const { data, isLoading, error } = useCourse(courseId);
+ *
+ *   if (isLoading) return <Loading />;
+ *   if (error) return <Error message={error.message} />;
+ *
+ *   return <h1>{data?.data.fullname}</h1>;
+ * }
+ * ```
+ */
+export function useCourse(
+  id: number,
+  options: { enabled?: boolean } = {}
+): UseQueryResult<ApiResponse<Course>, Error> {
+  return useQuery({
+    queryKey: courseQueryKeys.detail(id),
+    queryFn: () => getCourse(id),
+    enabled: options.enabled !== false && id > 0,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook to fetch course contents using React Query
+ *
+ * @param courseId - Course ID to fetch contents for
+ * @param contentOptions - Optional content filtering options
+ * @param queryOptions - Optional query options
+ * @returns React Query result with course contents
+ *
+ * @example
+ * ```typescript
+ * function CourseSections({ courseId }: { courseId: number }) {
+ *   const { data, isLoading } = useCourseContents(courseId);
+ *
+ *   if (isLoading) return <Loading />;
+ *
+ *   return (
+ *     <div>
+ *       {data?.data.map(section => (
+ *         <Section key={section.id} {...section} />
+ *       ))}
+ *     </div>
+ *   );
+ * }
+ * ```
+ */
+export function useCourseContents(
+  courseId: number,
+  contentOptions: ContentOptions = {},
+  queryOptions: { enabled?: boolean } = {}
+): UseQueryResult<ApiResponse<CourseContent[]>, Error> {
+  return useQuery({
+    queryKey: courseQueryKeys.contents(courseId),
+    queryFn: () => getCourseContents(courseId, contentOptions),
+    enabled: queryOptions.enabled !== false && courseId > 0,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+  });
 }
