@@ -45,7 +45,6 @@ import type {
   GlossaryEntry,
   GlossaryCategory,
   GlossaryComment,
-  GlossaryRating,
   GlossaryAttachment,
   GlossaryFilters,
   CreateEntryInput,
