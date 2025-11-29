@@ -652,6 +652,81 @@ export async function getAvailabilityStatus(
 }
 
 // ============================================================================
+// HOOK-COMPATIBLE WRAPPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Options for fetching choice results with user response data
+ * Compatible with the useChoiceResults hook parameter expectations
+ */
+export interface GetChoiceResultsOptions {
+  /** Optional group ID to filter responses by group */
+  groupId?: number;
+  /** Whether to include responses from inactive users (default: false) */
+  includeinactive?: boolean;
+}
+
+/**
+ * Retrieves detailed choice results with user response data
+ *
+ * This is a hook-compatible wrapper around getResponseData that provides
+ * the parameter interface expected by the useChoiceResults hook.
+ *
+ * Makes a GET request to /api/v1/choices/{id}/response-data to fetch
+ * comprehensive results including user responses with full details,
+ * group memberships, selected options, and response timestamps.
+ *
+ * Backend Reference: Wraps choice_get_response_data() and
+ * choice_get_all_responses() from public/mod/choice/lib.php.
+ *
+ * @param choiceId - The ID of the choice activity
+ * @param options - Optional filtering options
+ * @param options.groupId - Optional group ID to filter responses
+ * @param options.includeinactive - Whether to include inactive users (default: false)
+ * @returns Promise resolving to choice results response with user data
+ * @throws ChoiceApiError if results cannot be retrieved
+ *
+ * @example
+ * ```typescript
+ * // Fetch all results (active users only)
+ * const results = await getChoiceResults(42);
+ *
+ * // Fetch results including inactive users
+ * const results = await getChoiceResults(42, { includeinactive: true });
+ *
+ * // Fetch results for a specific group
+ * const groupResults = await getChoiceResults(42, { groupId: 5 });
+ *
+ * // Use with React Query
+ * const { data } = useQuery({
+ *   queryKey: ['choice-results', choiceId, groupId],
+ *   queryFn: () => getChoiceResults(choiceId, { groupId })
+ * });
+ * ```
+ */
+export async function getChoiceResults(
+  choiceId: number,
+  options?: GetChoiceResultsOptions
+): Promise<ChoiceResultsResponse> {
+  // Transform includeinactive to onlyActive (inverse logic)
+  // includeinactive=true means onlyActive=false
+  // includeinactive=false (or undefined) means onlyActive=true
+  const transformedOptions: GetResponseDataOptions = {};
+
+  if (options?.groupId !== undefined) {
+    transformedOptions.groupId = options.groupId;
+  }
+
+  if (options?.includeinactive !== undefined) {
+    // Invert the logic: includeinactive is the opposite of onlyActive
+    transformedOptions.onlyActive = !options.includeinactive;
+  }
+
+  // Use the existing getResponseData function
+  return getResponseData(choiceId, transformedOptions);
+}
+
+// ============================================================================
 // RE-EXPORTS FOR CONVENIENCE
 // ============================================================================
 
