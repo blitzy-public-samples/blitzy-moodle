@@ -17,7 +17,6 @@
  */
 
 import apiClient from '@/services/api/client';
-import type { ListParams } from '@/types/api';
 import type {
   Database,
   DatabaseRecord,
@@ -30,7 +29,6 @@ import type {
   DatabasePermissions,
 } from '@/features/activities/data/types/data.types';
 import type { CourseId } from '@/types/common';
-import type { QueryKey } from '@tanstack/react-query';
 
 // ============================================================================
 // Constants
@@ -39,7 +37,7 @@ import type { QueryKey } from '@tanstack/react-query';
 /**
  * Base API path for database activity endpoints
  */
-const DATA_API_BASE = '/api/v1/data';
+const DATA_API_BASE = '/data';
 
 /**
  * Default pagination settings for record listings
@@ -64,63 +62,68 @@ const DEFAULT_PAGE_SIZE = 20;
  * });
  * ```
  */
+/**
+ * Base query key for all data module queries
+ */
+const DATA_QUERY_BASE = ['data'] as const;
+
 export const dataQueryKeys = {
   /** Base key for all data module queries */
-  all: ['data'] as const,
+  all: DATA_QUERY_BASE,
 
   /** Key for all database instance queries */
-  databases: () => [...dataQueryKeys.all, 'databases'] as const,
+  databases: (): readonly unknown[] => [...DATA_QUERY_BASE, 'databases'] as const,
 
   /** Key for databases in a specific course */
-  databasesByCourse: (courseId: CourseId) =>
-    [...dataQueryKeys.databases(), 'course', courseId] as const,
+  databasesByCourse: (courseId: CourseId): readonly unknown[] =>
+    [...DATA_QUERY_BASE, 'databases', 'course', courseId] as const,
 
   /** Key for a specific database instance */
-  database: (databaseId: number) =>
-    [...dataQueryKeys.databases(), databaseId] as const,
+  database: (databaseId: number): readonly unknown[] =>
+    [...DATA_QUERY_BASE, 'databases', databaseId] as const,
 
   /** Key for database access information */
-  databaseAccess: (databaseId: number) =>
-    [...dataQueryKeys.database(databaseId), 'access'] as const,
+  databaseAccess: (databaseId: number): readonly unknown[] =>
+    [...DATA_QUERY_BASE, 'databases', databaseId, 'access'] as const,
 
   /** Key for all record queries */
-  records: () => [...dataQueryKeys.all, 'records'] as const,
+  records: (): readonly unknown[] => [...DATA_QUERY_BASE, 'records'] as const,
 
   /** Key for records in a specific database */
-  recordsByDatabase: (databaseId: number, params?: SearchCriteria) =>
-    [...dataQueryKeys.records(), 'database', databaseId, params] as const,
+  recordsByDatabase: (databaseId: number, params?: SearchCriteria): readonly unknown[] =>
+    [...DATA_QUERY_BASE, 'records', 'database', databaseId, params] as const,
 
   /** Key for a specific record */
-  record: (databaseId: number, recordId: number) =>
-    [...dataQueryKeys.records(), databaseId, recordId] as const,
+  record: (databaseId: number, recordId: number): readonly unknown[] =>
+    [...DATA_QUERY_BASE, 'records', databaseId, recordId] as const,
 
   /** Key for all field queries */
-  fields: () => [...dataQueryKeys.all, 'fields'] as const,
+  fields: (): readonly unknown[] => [...DATA_QUERY_BASE, 'fields'] as const,
 
   /** Key for fields in a specific database */
-  fieldsByDatabase: (databaseId: number) =>
-    [...dataQueryKeys.fields(), 'database', databaseId] as const,
+  fieldsByDatabase: (databaseId: number): readonly unknown[] =>
+    [...DATA_QUERY_BASE, 'fields', 'database', databaseId] as const,
 
   /** Key for a specific field */
-  field: (databaseId: number, fieldId: number) =>
-    [...dataQueryKeys.fields(), databaseId, fieldId] as const,
+  field: (databaseId: number, fieldId: number): readonly unknown[] =>
+    [...DATA_QUERY_BASE, 'fields', databaseId, fieldId] as const,
 
   /** Key for search queries */
-  search: (databaseId: number, criteria: SearchCriteria) =>
-    [...dataQueryKeys.all, 'search', databaseId, criteria] as const,
+  search: (databaseId: number, criteria: SearchCriteria): readonly unknown[] =>
+    [...DATA_QUERY_BASE, 'search', databaseId, criteria] as const,
 
   /** Key for template queries */
-  templates: (databaseId: number) =>
-    [...dataQueryKeys.database(databaseId), 'templates'] as const,
+  templates: (databaseId: number): readonly unknown[] =>
+    [...DATA_QUERY_BASE, 'databases', databaseId, 'templates'] as const,
 
   /** Key for a specific template */
-  template: (databaseId: number, templateType: TemplateType) =>
-    [...dataQueryKeys.templates(databaseId), templateType] as const,
+  template: (databaseId: number, templateType: TemplateType): readonly unknown[] =>
+    [...DATA_QUERY_BASE, 'databases', databaseId, 'templates', templateType] as const,
 
   /** Key for file queries */
-  files: (databaseId: number, recordId: number) =>
-    [...dataQueryKeys.record(databaseId, recordId), 'files'] as const,
-} satisfies Record<string, (...args: never[]) => QueryKey>;
+  files: (databaseId: number, recordId: number): readonly unknown[] =>
+    [...DATA_QUERY_BASE, 'records', databaseId, recordId, 'files'] as const,
+};
 
 // ============================================================================
 // Type Definitions for API Requests/Responses
@@ -1068,6 +1071,9 @@ export async function updateTemplate(
   }
   if (!templateType) {
     throw new Error('Template type is required');
+  }
+  if (content === undefined || content === null || content === '') {
+    throw new Error('Template content is required');
   }
 
   await apiClient.put(
