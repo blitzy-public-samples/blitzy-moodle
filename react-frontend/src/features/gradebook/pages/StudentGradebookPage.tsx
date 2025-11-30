@@ -54,11 +54,11 @@ import {
   School as SchoolIcon,
   BarChart as ChartIcon,
 } from '@mui/icons-material';
-import { useCourseGrades } from '../api/gradebookApi';
+import { useStudentCourseGrades } from '../hooks/useGrades';
+import type { GradeSummary } from '../types/grade.types';
 import { GradeTable } from '../components/GradeTable';
 import { GradeChart } from '../components/GradeChart';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import type { GradeSummary } from '../types/grade.types';
 
 /**
  * StudentGradebookPage component
@@ -99,7 +99,7 @@ export function StudentGradebookPage() {
     isLoading,
     isError,
     error,
-  } = useCourseGrades(parseInt(courseId ?? '0', 10));
+  } = useStudentCourseGrades(parseInt(courseId ?? '0', 10), user?.id);
 
   // Calculate course total
   const courseTotal = useMemo(() => {

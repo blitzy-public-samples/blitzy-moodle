@@ -14,7 +14,7 @@
  * Architecture Notes:
  * - This file contains pure API client functions (no React Query hooks)
  * - React Query hooks are implemented in useGrades.ts which imports from this file
- * - All functions return Promise<ApiResponse<T>> for consistent typing
+ * - All functions return Promise<ApiResult<T>> for consistent typing (ApiResponse<T> on success, ErrorResponse on error)
  * - Error handling transforms HTTP errors into user-friendly ApiError responses
  *
  * Backend Functions Wrapped:
@@ -28,12 +28,13 @@
  */
 
 import apiClient from '@/services/api/client';
-import type { ApiResponse } from '@/types/api';
+import type { ApiResponse, ApiResult } from '@/types/api';
+import type { ErrorResponse } from '@/types/errors';
+import { ApiErrorCode } from '@/types/errors';
 import type {
   Grade,
   GradeItem,
   GradeCategory,
-  GradeSummary,
 } from '../types/grade.types';
 
 // ============================================================================
@@ -290,6 +291,10 @@ export interface GradeReportSummary {
   failingCount?: number;
   /** Course total grade */
   courseTotal?: number | null;
+  /** Course name (available in user reports) */
+  courseName?: string;
+  /** User's final letter grade for the course */
+  letterGrade?: string | null;
 }
 
 /**
@@ -341,7 +346,7 @@ export interface ExportResponse {
 export async function getCourseGrades(
   courseId: number,
   userIds?: number[]
-): Promise<ApiResponse<CourseGrades>> {
+): Promise<ApiResult<CourseGrades>> {
   try {
     // Build query parameters
     const params: Record<string, string | number> = {};
@@ -388,7 +393,7 @@ export async function getCourseGrades(
 export async function getUserGrades(
   userId: number,
   courseIds?: number[]
-): Promise<ApiResponse<UserGrades>> {
+): Promise<ApiResult<UserGrades>> {
   try {
     // Build query parameters
     const params: Record<string, string | number> = {};
@@ -439,7 +444,7 @@ export async function getUserGrades(
  */
 export async function getGradeItems(
   options: GetGradeItemsOptions = {}
-): Promise<ApiResponse<GradeItem[]>> {
+): Promise<ApiResult<GradeItem[]>> {
   try {
     // Build query parameters from options
     const params: Record<string, string | number | boolean> = {};
@@ -494,7 +499,7 @@ export async function getGradeItems(
 export async function updateGradeItem(
   itemId: number,
   data: UpdateGradeItemInput
-): Promise<ApiResponse<GradeItem>> {
+): Promise<ApiResult<GradeItem>> {
   try {
     const response = await apiClient.put<ApiResponse<GradeItem>>(
       `/gradebook/items/${itemId}`,
@@ -537,7 +542,7 @@ export async function updateGradeItem(
  */
 export async function getGradeCategories(
   courseId: number
-): Promise<ApiResponse<GradeCategory[]>> {
+): Promise<ApiResult<GradeCategory[]>> {
   try {
     const response = await apiClient.get<ApiResponse<GradeCategory[]>>(
       '/gradebook/categories',
@@ -581,7 +586,7 @@ export async function updateGrade(
   gradeId: number,
   grade: number | null,
   feedback?: string
-): Promise<ApiResponse<Grade>> {
+): Promise<ApiResult<Grade>> {
   try {
     const requestData: {
       grade: number | null;
@@ -641,7 +646,7 @@ export async function exportGrades(
   courseId: number,
   format: 'csv' | 'xlsx' | 'ods' | 'txt',
   options?: ExportOptions
-): Promise<ApiResponse<ExportResponse>> {
+): Promise<ApiResult<ExportResponse>> {
   try {
     // Build query parameters
     const params: Record<string, string | number | boolean> = {
@@ -712,7 +717,7 @@ export async function getGradeReport(
   courseId: number,
   userId?: number,
   reportType: 'user' | 'grader' | 'overview' = 'user'
-): Promise<ApiResponse<GradeReport>> {
+): Promise<ApiResult<GradeReport>> {
   try {
     // Build query parameters
     const params: Record<string, string | number> = {
@@ -751,6 +756,8 @@ interface GradebookErrorDetails {
   apiCode?: string;
   /** Field-specific validation errors */
   fieldErrors?: Record<string, string>;
+  /** Index signature for compatibility with Record<string, unknown> */
+  [key: string]: unknown;
 }
 
 /**
@@ -765,12 +772,12 @@ interface GradebookErrorDetails {
  *
  * @param error - The caught error object
  * @param fallbackMessage - Default message if error cannot be categorized
- * @returns ApiResponse with success: false and error details
+ * @returns ErrorResponse with success: false and error details
  */
 function handleGradebookError(
   error: unknown,
   fallbackMessage: string
-): ApiResponse<never> {
+): ErrorResponse {
   // Type guard for axios-like error structure
   const isAxiosError = (err: unknown): err is {
     response?: {
@@ -789,14 +796,14 @@ function handleGradebookError(
     return typeof err === 'object' && err !== null && 'response' in err;
   };
 
-  // If the error is already an ApiResponse error, return it
+  // If the error is already an ErrorResponse, return it
   if (
     typeof error === 'object' &&
     error !== null &&
     'success' in error &&
     (error as { success: boolean }).success === false
   ) {
-    return error as ApiResponse<never>;
+    return error as ErrorResponse;
   }
 
   // Handle axios errors
@@ -806,10 +813,17 @@ function handleGradebookError(
 
     // Use API error message if available
     if (apiError?.message) {
+      // Convert API error code to ApiErrorCode enum, falling back to status-based code
+      const errorCode = apiError.code
+        ? (Object.values(ApiErrorCode).includes(apiError.code as ApiErrorCode)
+            ? (apiError.code as ApiErrorCode)
+            : getErrorCodeFromStatus(status))
+        : getErrorCodeFromStatus(status);
+
       return {
         success: false,
         error: {
-          code: apiError.code || getErrorCodeFromStatus(status),
+          code: errorCode,
           message: apiError.message,
           details: apiError.details as Record<string, unknown> | undefined,
         },
@@ -844,7 +858,7 @@ function handleGradebookError(
   return {
     success: false,
     error: {
-      code: 'UNKNOWN_ERROR',
+      code: ApiErrorCode.SERVER_ERROR,
       message,
     },
   };
@@ -891,28 +905,28 @@ function getErrorMessageFromStatus(
  * @param status - HTTP status code
  * @returns Error code string
  */
-function getErrorCodeFromStatus(status: number | undefined): string {
+function getErrorCodeFromStatus(status: number | undefined): ApiErrorCode {
   switch (status) {
     case 400:
-      return 'VALIDATION_ERROR';
+      return ApiErrorCode.VALIDATION_ERROR;
     case 401:
-      return 'UNAUTHORIZED';
+      return ApiErrorCode.AUTHENTICATION_FAILED;
     case 403:
-      return 'PERMISSION_DENIED';
+      return ApiErrorCode.PERMISSION_DENIED;
     case 404:
-      return 'NOT_FOUND';
+      return ApiErrorCode.NOT_FOUND;
     case 409:
-      return 'CONFLICT';
+      return ApiErrorCode.CONFLICT;
     case 422:
-      return 'INVALID_GRADE';
+      return ApiErrorCode.VALIDATION_ERROR;
     case 500:
-      return 'SERVER_ERROR';
+      return ApiErrorCode.SERVER_ERROR;
     case 502:
     case 503:
     case 504:
-      return 'SERVICE_UNAVAILABLE';
+      return ApiErrorCode.NETWORK_ERROR;
     default:
-      return 'UNKNOWN_ERROR';
+      return ApiErrorCode.SERVER_ERROR;
   }
 }
 
@@ -921,29 +935,26 @@ function getErrorCodeFromStatus(status: number | undefined): string {
 // ============================================================================
 
 /**
- * Type guard to check if ApiResponse is successful
+ * Type guard to check if ApiResult is a successful ApiResponse
  *
- * @param response - API response to check
+ * @param response - API result to check
  * @returns True if response is successful, false otherwise
  */
 export function isSuccessResponse<T>(
-  response: ApiResponse<T>
-): response is { success: true; data: T; meta?: unknown } {
+  response: ApiResult<T>
+): response is ApiResponse<T> {
   return response.success === true;
 }
 
 /**
- * Type guard to check if ApiResponse is an error
+ * Type guard to check if ApiResult is an ErrorResponse
  *
- * @param response - API response to check
+ * @param response - API result to check
  * @returns True if response is an error, false otherwise
  */
 export function isErrorResponse<T>(
-  response: ApiResponse<T>
-): response is {
-  success: false;
-  error: { code: string; message: string; details?: Record<string, unknown> };
-} {
+  response: ApiResult<T>
+): response is ErrorResponse {
   return response.success === false;
 }
 
@@ -953,11 +964,11 @@ export function isErrorResponse<T>(
  * Utility function to unwrap successful responses and throw on errors.
  * Useful for React Query where errors should be thrown.
  *
- * @param response - API response
+ * @param response - API result (success or error)
  * @returns Data from successful response
  * @throws Error if response is not successful
  */
-export function unwrapResponse<T>(response: ApiResponse<T>): T {
+export function unwrapResponse<T>(response: ApiResult<T>): T {
   if (isSuccessResponse(response)) {
     return response.data;
   }
