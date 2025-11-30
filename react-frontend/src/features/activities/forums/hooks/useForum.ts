@@ -262,7 +262,8 @@ export function useForum(forumId: number, options: UseForumOptions = {}): UseFor
       if (subscribed) {
         return await unsubscribeForum(forumId);
       }
-      return await subscribeForum(forumId);
+      // subscribeForum requires (forumId, subscribe: boolean)
+      return await subscribeForum(forumId, true);
     },
     // Optimistic update: immediately update subscription state
     onMutate: async (subscribed) => {
@@ -339,7 +340,10 @@ export function useForum(forumId: number, options: UseForumOptions = {}): UseFor
   const pinDiscussionMutation = useMutation({
     mutationFn: (discussionId: number) => pinDiscussionApi(discussionId),
     onSuccess: (response) => {
-      // Update discussion in cache
+      // Update discussion in cache if discussion is returned
+      if (!response.discussion) return;
+      const updatedDiscussion = response.discussion;
+      
       const discussionsData = queryClient.getQueryData<PaginatedResponse<Discussion>>(
         forumKeys.discussions(forumId, discussionOptions)
       );
@@ -349,7 +353,7 @@ export function useForum(forumId: number, options: UseForumOptions = {}): UseFor
           data: {
             ...discussionsData.data,
             items: discussionsData.data.items.map((d) =>
-              d.id === response.discussion.id ? response.discussion : d
+              d.id === updatedDiscussion.id ? updatedDiscussion : d
             ),
           },
         };
@@ -364,7 +368,10 @@ export function useForum(forumId: number, options: UseForumOptions = {}): UseFor
   const unpinDiscussionMutation = useMutation({
     mutationFn: (discussionId: number) => unpinDiscussionApi(discussionId),
     onSuccess: (response) => {
-      // Update discussion in cache
+      // Update discussion in cache if discussion is returned
+      if (!response.discussion) return;
+      const updatedDiscussion = response.discussion;
+      
       const discussionsData = queryClient.getQueryData<PaginatedResponse<Discussion>>(
         forumKeys.discussions(forumId, discussionOptions)
       );
@@ -374,7 +381,7 @@ export function useForum(forumId: number, options: UseForumOptions = {}): UseFor
           data: {
             ...discussionsData.data,
             items: discussionsData.data.items.map((d) =>
-              d.id === response.discussion.id ? response.discussion : d
+              d.id === updatedDiscussion.id ? updatedDiscussion : d
             ),
           },
         };
@@ -389,7 +396,10 @@ export function useForum(forumId: number, options: UseForumOptions = {}): UseFor
   const lockDiscussionMutation = useMutation({
     mutationFn: (discussionId: number) => lockDiscussionApi(discussionId),
     onSuccess: (response) => {
-      // Update discussion in cache
+      // Update discussion in cache if discussion is returned
+      if (!response.discussion) return;
+      const updatedDiscussion = response.discussion;
+      
       const discussionsData = queryClient.getQueryData<PaginatedResponse<Discussion>>(
         forumKeys.discussions(forumId, discussionOptions)
       );
@@ -399,7 +409,7 @@ export function useForum(forumId: number, options: UseForumOptions = {}): UseFor
           data: {
             ...discussionsData.data,
             items: discussionsData.data.items.map((d) =>
-              d.id === response.discussion.id ? response.discussion : d
+              d.id === updatedDiscussion.id ? updatedDiscussion : d
             ),
           },
         };
@@ -414,7 +424,10 @@ export function useForum(forumId: number, options: UseForumOptions = {}): UseFor
   const unlockDiscussionMutation = useMutation({
     mutationFn: (discussionId: number) => unlockDiscussionApi(discussionId),
     onSuccess: (response) => {
-      // Update discussion in cache
+      // Update discussion in cache if discussion is returned
+      if (!response.discussion) return;
+      const updatedDiscussion = response.discussion;
+      
       const discussionsData = queryClient.getQueryData<PaginatedResponse<Discussion>>(
         forumKeys.discussions(forumId, discussionOptions)
       );
@@ -424,7 +437,7 @@ export function useForum(forumId: number, options: UseForumOptions = {}): UseFor
           data: {
             ...discussionsData.data,
             items: discussionsData.data.items.map((d) =>
-              d.id === response.discussion.id ? response.discussion : d
+              d.id === updatedDiscussion.id ? updatedDiscussion : d
             ),
           },
         };
@@ -507,8 +520,9 @@ export function useForum(forumId: number, options: UseForumOptions = {}): UseFor
    * Prefetch next page of discussions for improved UX
    */
   const prefetchNextPage = useCallback(() => {
-    if (discussionsQuery.data?.meta?.pagination) {
-      const { page, totalPages } = discussionsQuery.data.meta.pagination;
+    // Pagination properties are directly on meta, not nested under meta.pagination
+    if (discussionsQuery.data?.meta) {
+      const { page, totalPages } = discussionsQuery.data.meta;
       if (page < totalPages) {
         const nextPageOptions = {
           ...discussionOptions,
@@ -520,7 +534,7 @@ export function useForum(forumId: number, options: UseForumOptions = {}): UseFor
         });
       }
     }
-  }, [discussionsQuery.data?.meta?.pagination, discussionOptions, forumId, queryClient]);
+  }, [discussionsQuery.data?.meta, discussionOptions, forumId, queryClient]);
 
   /**
    * Refetch forum data
@@ -546,7 +560,15 @@ export function useForum(forumId: number, options: UseForumOptions = {}): UseFor
 
     // Discussions data
     discussions: discussionsQuery.data?.data.items,
-    pagination: discussionsQuery.data?.meta.pagination,
+    // Pagination properties: page/perPage/totalPages from meta, total from data
+    pagination: discussionsQuery.data?.meta
+      ? {
+          page: discussionsQuery.data.meta.page,
+          perPage: discussionsQuery.data.meta.perPage,
+          total: discussionsQuery.data.data.total,
+          totalPages: discussionsQuery.data.meta.totalPages,
+        }
+      : undefined,
 
     // Mutation states
     isSubscribing: subscriptionMutation.isPending,
@@ -563,7 +585,7 @@ export function useForum(forumId: number, options: UseForumOptions = {}): UseFor
     unpinDiscussion,
     lockDiscussion,
     unlockDiscussion,
-    prefetchNextPage: discussionsQuery.data?.meta?.pagination ? prefetchNextPage : undefined,
+    prefetchNextPage: discussionsQuery.data?.meta ? prefetchNextPage : undefined,
     refetch,
   };
 }

@@ -43,6 +43,7 @@ import {
   moveDiscussion,
   splitDiscussion,
   reportPost,
+  transformApiPostsToCanonical,
 } from '../api/forumApi';
 import type {
   DiscussionWithPosts,
@@ -203,6 +204,10 @@ function constructDiscussionDetail(
       numParticipants: uniqueAuthors.size,
       numReplies: (data.posts?.length ?? 1) - 1, // Subtract starter post
       subscribed: data.subscribed ?? false, // Use API-provided subscription status or default to false
+      // Time-based scheduling fields (defaults as not scheduled)
+      timestart: 0, // No scheduled start time
+      timeend: 0, // No scheduled end time
+      timelocked: 0, // Not time-locked
     };
   }
 
@@ -370,6 +375,8 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
     onSuccess: (newData, _parentPostId) => {
       // Append new replies to the flat posts array in the cache
       // The hierarchy will be automatically rebuilt on next render
+      // Note: fetchPostReplies returns ApiPost[], transform to canonical Post[]
+      const canonicalPosts = transformApiPostsToCanonical(newData);
       queryClient.setQueryData<DiscussionWithPosts>(discussionKeys.detail(discussionId), (old) => {
         if (!old) {
           return old;
@@ -377,7 +384,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
 
         return {
           ...old,
-          posts: [...old.posts, ...newData.replies],
+          posts: [...old.posts, ...canonicalPosts],
         };
       });
     },
@@ -829,7 +836,8 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
    * Split discussion into separate thread (moderator action)
    */
   const splitDiscussionMutation = useMutation({
-    mutationFn: (postId: number) => splitDiscussion(discussionId, postId),
+    mutationFn: ({ postId, newSubject }: { postId: number; newSubject: string }) =>
+      splitDiscussion(discussionId, postId, newSubject),
     onSuccess: (data) => {
       void queryClient.invalidateQueries({ queryKey: discussionKeys.all });
       options?.onSplitSuccess?.(data);

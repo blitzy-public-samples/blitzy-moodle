@@ -34,7 +34,21 @@
  */
 
 import { apiClient } from '@/services/api/client';
-import type { CreateDiscussionData } from '../types/forum.types';
+import type {
+  CreateDiscussionData,
+  CreatePostData,
+  UpdatePostData,
+  Post,
+  DiscussionEnriched,
+  Forum,
+} from '../types/forum.types';
+
+// Import enums as values (not type-only) since they're used as runtime values
+import {
+  ForumType,
+  ForumSubscriptionMode,
+  ForumTrackingType,
+} from '../types/forum.types';
 import type { PaginationParams } from '@/types/common';
 
 // ============================================================================
@@ -44,8 +58,9 @@ import type { PaginationParams } from '@/types/common';
 /**
  * Forum entity returned from API
  * Maps to mod_forum database table and forum entity class
+ * Named 'ApiForum' to avoid conflict with canonical Forum type in forum.types.ts
  */
-export interface Forum {
+export interface ApiForum {
   /** Forum ID (primary key) */
   id: number;
   /** Forum name/title */
@@ -90,13 +105,16 @@ export interface Forum {
   discussionCount: number;
   /** Total number of posts */
   postCount: number;
+  /** Number of participants */
+  participants: number;
 }
 
 /**
  * Discussion entity returned from API
  * Enriched with user info and counts for display
+ * Named 'ApiDiscussion' to avoid conflict with canonical Discussion type in forum.types.ts
  */
-export interface Discussion {
+export interface ApiDiscussion {
   /** Discussion ID */
   id: number;
   /** Discussion name/subject */
@@ -134,8 +152,9 @@ export interface Discussion {
 /**
  * Post entity returned from API
  * Represents a single post within a discussion
+ * Named 'ApiPost' to avoid conflict with canonical Post type in forum.types.ts
  */
-export interface Post {
+export interface ApiPost {
   /** Post ID */
   id: number;
   /** Discussion ID this post belongs to */
@@ -165,7 +184,7 @@ export interface Post {
   /** Whether post has child replies */
   haschildren: boolean;
   /** Nested child posts (if threaded display) */
-  children: Post[];
+  children: ApiPost[];
   /** Whether current user can edit this post */
   canEdit: boolean;
   /** Whether current user can delete this post */
@@ -192,6 +211,228 @@ export interface PostAttachment {
   url: string;
 }
 
+// ============================================================================
+// TRANSFORMATION FUNCTIONS
+// ============================================================================
+
+/**
+ * Transform an API post to the canonical Post type
+ * Maps API field names to the Moodle entity field names used in forum.types.ts
+ *
+ * @param apiPost - The post returned from the API
+ * @returns Post in canonical format
+ */
+function transformApiPostToCanonical(apiPost: ApiPost): Post {
+  return {
+    id: apiPost.id,
+    discussionid: apiPost.discussionid,
+    parentid: apiPost.parent, // API uses 'parent', canonical uses 'parentid'
+    authorid: apiPost.userid, // API uses 'userid', canonical uses 'authorid'
+    timecreated: apiPost.created, // API uses 'created', canonical uses 'timecreated'
+    timemodified: apiPost.modified, // API uses 'modified', canonical uses 'timemodified'
+    subject: apiPost.subject,
+    message: apiPost.message,
+    messageformat: apiPost.messageformat,
+    hasattachments: apiPost.hasattachments,
+    // Default values for fields not provided by API
+    mailed: true, // Assume mailed since it's visible
+    messagetrust: false,
+    totalscore: 0,
+    mailnow: false,
+    deleted: false,
+    privatereplyto: 0,
+    wordcount: apiPost.message.split(/\s+/).filter(Boolean).length,
+    charcount: apiPost.message.length,
+  };
+}
+
+/**
+ * Transform an array of API posts to canonical Post array
+ * Also handles nested children recursively
+ *
+ * @param apiPosts - Array of posts from API
+ * @returns Array of posts in canonical format
+ */
+export function transformApiPostsToCanonical(apiPosts: ApiPost[]): Post[] {
+  return apiPosts.map(transformApiPostToCanonical);
+}
+
+/**
+ * Extended Post type with display properties
+ * Used internally for API responses that include extra display data
+ */
+export interface PostWithDisplayInfo extends Post {
+  /** Full name of post author */
+  userFullName?: string;
+  /** URL to author's profile picture */
+  userPictureUrl?: string | null;
+  /** Whether post has child replies */
+  haschildren?: boolean;
+  /** Nested child posts (if threaded display) */
+  children?: PostWithDisplayInfo[];
+  /** Whether current user can edit this post */
+  canEdit?: boolean;
+  /** Whether current user can delete this post */
+  canDelete?: boolean;
+  /** Whether current user can reply to this post */
+  canReply?: boolean;
+  /** Whether this post is unread */
+  unread?: boolean;
+  /** Array of attachment info */
+  attachments?: PostAttachment[];
+}
+
+/**
+ * Transform an API post to PostWithDisplayInfo
+ * Preserves both canonical fields and display-specific fields
+ *
+ * @param apiPost - The post returned from the API
+ * @returns PostWithDisplayInfo with all display properties
+ */
+function transformApiPostToDisplayInfo(apiPost: ApiPost): PostWithDisplayInfo {
+  const canonicalPost = transformApiPostToCanonical(apiPost);
+  return {
+    ...canonicalPost,
+    userFullName: apiPost.userFullName,
+    userPictureUrl: apiPost.userPictureUrl,
+    haschildren: apiPost.haschildren,
+    children: apiPost.children?.map(transformApiPostToDisplayInfo) ?? [],
+    canEdit: apiPost.canEdit,
+    canDelete: apiPost.canDelete,
+    canReply: apiPost.canReply,
+    unread: apiPost.unread,
+    attachments: apiPost.attachments,
+  };
+}
+
+/**
+ * Transform array of API posts to PostWithDisplayInfo array
+ *
+ * @param apiPosts - Array of posts from API
+ * @returns Array of posts with display info
+ */
+export function transformApiPostsToDisplayInfo(apiPosts: ApiPost[]): PostWithDisplayInfo[] {
+  return apiPosts.map(transformApiPostToDisplayInfo);
+}
+
+/**
+ * Map API subscription mode number to canonical ForumSubscriptionMode enum
+ * ForumSubscriptionMode is an enum with numeric values: CHOOSE=0, FORCE=1, INITIAL=2, DISALLOW=3
+ */
+function mapSubscriptionMode(mode: number): ForumSubscriptionMode {
+  // API uses 0=choose, 1=force, 2=initial, 3=disallow - same as enum
+  const validModes = [
+    ForumSubscriptionMode.CHOOSE,
+    ForumSubscriptionMode.FORCE,
+    ForumSubscriptionMode.INITIAL,
+    ForumSubscriptionMode.DISALLOW,
+  ];
+  if (validModes.includes(mode)) {
+    return mode as ForumSubscriptionMode;
+  }
+  return ForumSubscriptionMode.CHOOSE; // Default fallback
+}
+
+/**
+ * Map API tracking type number to canonical ForumTrackingType enum
+ * ForumTrackingType is an enum with numeric values: OFF=0, OPTIONAL=1, FORCED=2
+ */
+function mapTrackingType(type: number): ForumTrackingType {
+  // API uses 0=off, 1=optional, 2=forced - same as enum
+  const validTypes = [
+    ForumTrackingType.OFF,
+    ForumTrackingType.OPTIONAL,
+    ForumTrackingType.FORCED,
+  ];
+  if (validTypes.includes(type)) {
+    return type as ForumTrackingType;
+  }
+  return ForumTrackingType.OFF; // Default fallback
+}
+
+/**
+ * Map API forum type string to canonical ForumType enum
+ * ForumType is an enum with string values like 'general', 'single', etc.
+ */
+function mapForumType(type: string): ForumType {
+  // Mapping from API string to ForumType enum value
+  const typeMap: Record<string, ForumType> = {
+    'general': ForumType.GENERAL,
+    'single': ForumType.SINGLE,
+    'eachuser': ForumType.EACHUSER,
+    'qanda': ForumType.QANDA,
+    'blog': ForumType.BLOG,
+    'news': ForumType.NEWS,
+    'social': ForumType.SOCIAL,
+  };
+  return typeMap[type] ?? ForumType.GENERAL; // Default fallback
+}
+
+/**
+ * Transform an API forum to the canonical Forum type
+ * Maps API field names and values to the Moodle entity structure
+ *
+ * @param apiForum - The forum returned from the API
+ * @returns Forum in canonical format with default values for missing fields
+ */
+function transformApiForumToCanonical(apiForum: ApiForum): Forum {
+  return {
+    id: apiForum.id,
+    courseid: apiForum.courseId, // API uses courseId, canonical uses courseid
+    type: mapForumType(apiForum.type),
+    name: apiForum.name,
+    intro: apiForum.intro,
+    introformat: apiForum.introformat,
+    // Assessment fields - default to 0 (disabled) since API doesn't provide
+    assessed: 0,
+    assesstimestart: 0,
+    assesstimefinish: 0,
+    scale: 0,
+    // Grade fields - default to 0
+    gradeforum: 0,
+    gradeforumnotify: false,
+    // Attachment limits from API
+    maxbytes: apiForum.maxBytes,
+    maxattachments: apiForum.maxAttachments,
+    // Subscription and tracking settings
+    forcesubscribe: mapSubscriptionMode(apiForum.subscriptionMode),
+    trackingtype: mapTrackingType(apiForum.trackingType),
+    // RSS settings - default to 0 (disabled)
+    rsstype: 0,
+    rssarticles: 0,
+    // Timestamps
+    timemodified: Date.now() / 1000, // Use current time as fallback
+    // Posting limits - default to 0 (unlimited)
+    warnafter: 0,
+    blockafter: 0,
+    blockperiod: 0,
+    // Completion settings - default to 0 (disabled)
+    completiondiscussions: 0,
+    completionreplies: 0,
+    completionposts: 0,
+    // Display settings from API
+    displaywordcount: true,
+    lockdiscussionafter: apiForum.lockDiscussionAfter,
+    duedate: apiForum.dueDate,
+    cutoffdate: apiForum.cutOffDate,
+    // User-specific context fields (defaults for API which may not include these)
+    // These should be populated from user context when available
+    subscribed: apiForum.subscribed ?? false,
+    canSubscribe: apiForum.canSubscribe ?? true,
+    canAddDiscussion: apiForum.canAddDiscussion ?? true,
+    canModerate: apiForum.canModerate ?? false,
+    // Statistics fields - defaults, should be populated from separate API calls if needed
+    unreadCount: apiForum.unreadCount ?? 0,
+    discussionCount: apiForum.discussionCount ?? 0,
+    postCount: apiForum.postCount ?? 0,
+    participants: apiForum.participants ?? 0,
+  };
+}
+
+// ============================================================================
+// FETCH PARAMETERS
+// ============================================================================
+
 /**
  * Parameters for fetching discussions list
  * Extends pagination with forum-specific options
@@ -199,8 +440,10 @@ export interface PostAttachment {
 export interface DiscussionFetchParams extends Partial<PaginationParams> {
   /** Search query string */
   search?: string;
-  /** Sort order (1=oldest first, -1=newest first) */
-  sortOrder?: number;
+  /** Sort field */
+  sortBy?: 'date' | 'replies' | 'author';
+  /** Sort order ('asc' ascending, 'desc' descending) */
+  sortOrder?: 'asc' | 'desc';
   /** Filter type */
   filter?: 'all' | 'unread' | 'pinned';
   /** Group ID filter */
@@ -208,34 +451,24 @@ export interface DiscussionFetchParams extends Partial<PaginationParams> {
 }
 
 /**
- * Data for creating a new post/reply
+ * Re-export CreatePostData and UpdatePostData from forum.types.ts for backward compatibility
+ * These are the canonical types used across the module
  */
-export interface CreatePostData {
-  /** Post subject (optional for replies) */
-  subject?: string;
-  /** Post message content */
-  message: string;
-  /** Parent post ID for nested replies */
-  parent?: number;
-  /** Whether this is a private reply */
-  privatereply?: boolean;
-  /** File attachments */
-  attachments?: File[];
-}
+export type { CreatePostData, UpdatePostData } from '../types/forum.types';
 
 /**
- * Data for updating an existing post
+ * Re-export canonical types from forum.types.ts for consumers
+ * that need the Moodle-aligned entity types
  */
-export interface UpdatePostData {
-  /** Updated subject */
-  subject?: string;
-  /** Updated message content */
-  message: string;
-  /** New attachments to add */
-  attachments?: File[];
-  /** Attachment IDs to remove */
-  removeAttachments?: number[];
-}
+export type {
+  Forum,
+  Discussion,
+  Post,
+  Author,
+  DiscussionDetail,
+  DiscussionEnriched,
+  PostResponse,
+} from '../types/forum.types';
 
 /**
  * Standard API response envelope
@@ -263,18 +496,42 @@ interface ApiResponse<T> {
 }
 
 /**
- * Paginated response for discussions list
+ * Paginated discussions response from API
+ * 
+ * The response structure matches what frontend components expect:
+ * - `data.items` contains the array of discussions
+ * - `data.total` contains the total count
+ * - Additional pagination metadata is in `meta`
  */
 export interface PaginatedDiscussionsResponse {
-  /** Array of discussions */
-  discussions: Discussion[];
-  /** Total count of discussions */
+  /** Data container with items and total for component compatibility */
+  data: {
+    /** Array of discussions (aliased as items for component compatibility) */
+    items: DiscussionEnriched[];
+    /** Total count of discussions */
+    total: number;
+  };
+  /** Pagination metadata */
+  meta: {
+    /** Current page number */
+    page: number;
+    /** Items per page */
+    perPage: number;
+    /** Total number of pages */
+    totalPages: number;
+    /** Whether there are more pages */
+    hasMore: boolean;
+  };
+  // Legacy properties for backward compatibility with older components
+  /** Array of discussions (legacy - use data.items instead) */
+  discussions: DiscussionEnriched[];
+  /** Total count of discussions (legacy - use data.total instead) */
   total: number;
-  /** Current page number */
+  /** Current page number (legacy) */
   page: number;
-  /** Items per page */
+  /** Items per page (legacy) */
   perPage: number;
-  /** Total number of pages */
+  /** Total number of pages (legacy) */
   totalPages: number;
 }
 
@@ -302,14 +559,18 @@ export interface MarkReadResponse {
 
 /**
  * Post mutation response (create/update)
+ * Extends canonical Post with the mutated data plus success/error info
+ * 
+ * Note: We use `statusMessage` instead of `message` since Post already has a required
+ * `message` field for the post content.
  */
-export interface PostMutationResponse {
-  /** Created or updated post */
-  post: Post;
-  /** Discussion ID */
+export interface PostMutationResponse extends Post {
+  /** Discussion ID (alias for discussionid) */
   discussionId: number;
-  /** Success message */
-  message: string;
+  /** Success/status message from the API (not to be confused with post content) */
+  statusMessage?: string;
+  /** The raw API post object (for advanced use) */
+  _apiPost?: ApiPost;
 }
 
 /**
@@ -317,9 +578,75 @@ export interface PostMutationResponse {
  */
 export interface DiscussionResponse {
   /** Created discussion */
-  discussion: Discussion;
+  discussion: ApiDiscussion;
   /** Success message */
   message: string;
+}
+
+/**
+ * Moderation action response (pin, unpin, lock, unlock, move, split)
+ */
+export interface ModerationResponse {
+  /** Whether the action was successful */
+  success: boolean;
+  /** Success or error message */
+  message: string;
+  /** ID of the affected discussion */
+  discussionId: number;
+  /** The discussion object (for optimistic updates) */
+  discussion?: ApiDiscussion;
+  /** Updated state after moderation (e.g., isPinned, isLocked) */
+  state?: {
+    pinned?: boolean;
+    locked?: boolean;
+    forumId?: number;
+    newDiscussionId?: number;
+  };
+}
+
+/**
+ * Report post response
+ */
+export interface ReportResponse {
+  /** Whether the report was submitted successfully */
+  success: boolean;
+  /** Confirmation message */
+  message: string;
+  /** Report ID for tracking */
+  reportId: number;
+  /** Status of the report (pending, reviewed, resolved) */
+  status: 'pending' | 'reviewed' | 'resolved';
+}
+
+/**
+ * Discussion with its posts for combined fetching
+ * Uses canonical Post type for consistency with the rest of the module
+ */
+export interface DiscussionWithPosts {
+  /** Discussion details (enriched API format) */
+  discussion: ApiDiscussion;
+  /** Array of posts in the discussion (canonical format) */
+  posts: Post[];
+  /** Total number of posts */
+  totalPosts: number;
+  /** Whether there are more posts to load */
+  hasMore: boolean;
+  /** Current page (for pagination) */
+  currentPage: number;
+  /** Cursor for next page (for cursor-based pagination) */
+  nextCursor?: string;
+  /** Whether user is subscribed to this discussion */
+  subscribed?: boolean;
+}
+
+/**
+ * Data for locking/unlocking a discussion
+ */
+export interface LockDiscussionData {
+  /** Discussion ID to lock/unlock */
+  discussionId: number;
+  /** Reason for locking (optional) */
+  reason?: string;
 }
 
 // ============================================================================
@@ -431,8 +758,10 @@ function handleApiError(error: unknown): Error {
  */
 export async function fetchForum(id: number): Promise<Forum> {
   try {
-    const response = await apiClient.get<ApiResponse<Forum>>(`/forums/${id}`);
-    return extractData(response);
+    const response = await apiClient.get<ApiResponse<ApiForum>>(`/forums/${id}`);
+    const apiForum = extractData(response);
+    // Transform the API response to the canonical Forum type
+    return transformApiForumToCanonical(apiForum);
   } catch (error) {
     throw handleApiError(error);
   }
@@ -498,12 +827,92 @@ export async function fetchDiscussions(
     if (params?.groupid !== undefined) {
       queryParams.groupid = params.groupid;
     }
+    // Map sortBy from component format to API format
+    if (params?.sortBy !== undefined) {
+      queryParams.sortBy = params.sortBy;
+    }
 
-    const response = await apiClient.get<ApiResponse<PaginatedDiscussionsResponse>>(
+    // API may return different formats depending on version, so we handle both
+    const response = await apiClient.get<ApiResponse<{
+      discussions?: DiscussionEnriched[];
+      data?: DiscussionEnriched[] | { items: DiscussionEnriched[]; total: number };
+      items?: DiscussionEnriched[];
+      total?: number;
+      page?: number;
+      perPage?: number;
+      totalPages?: number;
+      hasMore?: boolean;
+      meta?: {
+        total?: number;
+        page?: number;
+        perPage?: number;
+        totalPages?: number;
+        hasMore?: boolean;
+      };
+    }>>(
       `/forums/${forumId}/discussions`,
       { params: queryParams }
     );
-    return extractData(response);
+    
+    const rawData = extractData(response);
+    
+    // Normalize the response to the expected format
+    // API may return discussions in different properties
+    let discussions: DiscussionEnriched[];
+    let total: number;
+    let page: number;
+    let perPage: number;
+    let totalPages: number;
+    let hasMore: boolean;
+    
+    // Check various possible response formats from the API
+    if (Array.isArray(rawData.data)) {
+      // Format: { data: Discussion[], meta: {...} }
+      discussions = rawData.data;
+      total = rawData.meta?.total ?? rawData.total ?? discussions.length;
+    } else if (rawData.data && 'items' in rawData.data) {
+      // Format: { data: { items: Discussion[], total: number }, meta: {...} }
+      discussions = rawData.data.items;
+      total = rawData.data.total;
+    } else if (rawData.discussions) {
+      // Format: { discussions: Discussion[], total: number, ... }
+      discussions = rawData.discussions;
+      total = rawData.total ?? discussions.length;
+    } else if (rawData.items) {
+      // Format: { items: Discussion[], total: number, ... }
+      discussions = rawData.items;
+      total = rawData.total ?? discussions.length;
+    } else {
+      // Fallback: assume rawData is the discussions array
+      discussions = [];
+      total = 0;
+    }
+    
+    // Extract pagination info
+    page = rawData.meta?.page ?? rawData.page ?? params?.page ?? 1;
+    perPage = rawData.meta?.perPage ?? rawData.perPage ?? params?.perPage ?? 20;
+    totalPages = rawData.meta?.totalPages ?? rawData.totalPages ?? Math.ceil(total / perPage);
+    hasMore = rawData.meta?.hasMore ?? rawData.hasMore ?? (page < totalPages);
+    
+    // Construct the normalized response
+    return {
+      data: {
+        items: discussions,
+        total,
+      },
+      meta: {
+        page,
+        perPage,
+        totalPages,
+        hasMore,
+      },
+      // Legacy properties
+      discussions,
+      total,
+      page,
+      perPage,
+      totalPages,
+    };
   } catch (error) {
     throw handleApiError(error);
   }
@@ -591,26 +1000,22 @@ export async function createDiscussion(
  *
  * Retrieves all posts in a discussion with threaded structure support.
  * Posts are returned with parent-child relationships, user info, and permissions.
+ * Also returns discussion metadata for combined fetching.
  * 
  * Based on public/mod/forum/discuss.php lines 43-49 which retrieve discussion and posts.
  *
  * @param discussionId - Discussion ID
- * @returns Promise resolving to array of posts
+ * @returns Promise resolving to DiscussionWithPosts containing posts, discussion info, and pagination
  * @throws Error if discussion not found (404) or access denied (403)
  * 
  * @example
  * ```typescript
  * // Basic usage
- * const posts = await fetchPosts(456);
- * posts.forEach(post => console.log(post.subject, post.message));
+ * const result = await fetchPosts(456);
+ * result.posts.forEach(post => console.log(post.subject, post.message));
  * 
- * // Access nested replies
- * const posts = await fetchPosts(456);
- * posts.forEach(post => {
- *   if (post.haschildren) {
- *     post.children.forEach(reply => console.log(reply.subject));
- *   }
- * });
+ * // Access discussion and pagination info
+ * console.log(result.discussion.name, result.hasMore);
  * 
  * // With React Query
  * const { data, isLoading } = useQuery({
@@ -619,13 +1024,33 @@ export async function createDiscussion(
  * });
  * ```
  */
-export async function fetchPosts(discussionId: number): Promise<Post[]> {
+export async function fetchPosts(discussionId: number): Promise<DiscussionWithPosts> {
   try {
-    const response = await apiClient.get<ApiResponse<{ posts: Post[] }>>(
+    // API returns discussion metadata along with posts
+    const response = await apiClient.get<ApiResponse<{
+      discussion: ApiDiscussion;
+      posts: ApiPost[];
+      totalPosts: number;
+      hasMore: boolean;
+      nextCursor?: string;
+      subscribed?: boolean;
+    }>>(
       `/forums/discussions/${discussionId}/posts`
     );
     const data = extractData(response);
-    return data.posts;
+    
+    // Transform API posts to canonical Post type
+    const transformedPosts = data.posts.map(transformApiPostToCanonical);
+    
+    return {
+      discussion: data.discussion,
+      posts: transformedPosts,
+      totalPosts: data.totalPosts ?? data.posts.length,
+      hasMore: data.hasMore ?? false,
+      currentPage: 1,
+      nextCursor: data.nextCursor,
+      subscribed: data.subscribed,
+    };
   } catch (error) {
     throw handleApiError(error);
   }
@@ -667,32 +1092,38 @@ export async function fetchPosts(discussionId: number): Promise<Post[]> {
  * ```
  */
 export async function createPost(
-  discussionId: number,
   data: CreatePostData
 ): Promise<PostMutationResponse> {
+  // Extract discussionId from data - required for posting to a discussion
+  const { discussionId, parentPostId, subject, message, subscribe, attachments } = data;
+  
+  if (!discussionId) {
+    throw new Error('discussionId is required to create a post');
+  }
+  
   try {
     // Use FormData for file upload support
     const formData = new FormData();
-    formData.append('message', data.message);
+    formData.append('message', message);
 
     // Add subject if provided
-    if (data.subject !== undefined && data.subject.trim() !== '') {
-      formData.append('subject', data.subject);
+    if (subject !== undefined && subject.trim() !== '') {
+      formData.append('subject', subject);
     }
 
     // Add parent post ID for nested replies
-    if (data.parent !== undefined) {
-      formData.append('parent', String(data.parent));
+    if (parentPostId !== undefined) {
+      formData.append('parent', String(parentPostId));
     }
 
-    // Add private reply flag
-    if (data.privatereply !== undefined) {
-      formData.append('privatereply', data.privatereply ? '1' : '0');
+    // Add subscription preference
+    if (subscribe !== undefined) {
+      formData.append('subscribe', subscribe ? '1' : '0');
     }
 
     // Add file attachments
-    if (data.attachments && data.attachments.length > 0) {
-      data.attachments.forEach((file, index) => {
+    if (attachments && attachments.length > 0) {
+      attachments.forEach((file, index) => {
         formData.append(`attachments[${index}]`, file);
       });
     }
@@ -752,29 +1183,40 @@ export async function createPost(
  * ```
  */
 export async function updatePost(
-  postId: number,
   data: UpdatePostData
 ): Promise<PostMutationResponse> {
+  // Extract postId from data - required for identifying the post to update
+  const { postId, subject, message, attachments, removeAttachments, version } = data;
+  
+  if (!postId) {
+    throw new Error('postId is required to update a post');
+  }
+  
   try {
     // Use FormData for file upload support
     const formData = new FormData();
-    formData.append('message', data.message);
+    formData.append('message', message);
 
     // Add subject if provided
-    if (data.subject !== undefined) {
-      formData.append('subject', data.subject);
+    if (subject !== undefined) {
+      formData.append('subject', subject);
     }
 
     // Add new file attachments
-    if (data.attachments && data.attachments.length > 0) {
-      data.attachments.forEach((file, index) => {
+    if (attachments && attachments.length > 0) {
+      attachments.forEach((file, index) => {
         formData.append(`attachments[${index}]`, file);
       });
     }
 
     // Add attachment IDs to remove
-    if (data.removeAttachments && data.removeAttachments.length > 0) {
-      formData.append('removeAttachments', JSON.stringify(data.removeAttachments));
+    if (removeAttachments && removeAttachments.length > 0) {
+      formData.append('removeAttachments', JSON.stringify(removeAttachments));
+    }
+    
+    // Add version for concurrent edit detection
+    if (version !== undefined) {
+      formData.append('version', String(version));
     }
 
     const response = await apiClient.put<ApiResponse<PostMutationResponse>>(
@@ -818,9 +1260,21 @@ export async function updatePost(
  * });
  * ```
  */
-export async function deletePost(postId: number): Promise<{ message: string }> {
+/**
+ * Delete response indicating whether the post was soft or hard deleted
+ */
+export interface DeletePostResponse {
+  /** Success message */
+  message: string;
+  /** True if the post was soft deleted (marked as deleted but preserved) */
+  softDeleted?: boolean;
+  /** True if the post was hard deleted (permanently removed) */
+  hardDeleted?: boolean;
+}
+
+export async function deletePost(postId: number): Promise<DeletePostResponse> {
   try {
-    const response = await apiClient.delete<ApiResponse<{ message: string }>>(
+    const response = await apiClient.delete<ApiResponse<DeletePostResponse>>(
       `/forums/posts/${postId}`
     );
     return extractData(response);
@@ -968,3 +1422,431 @@ export const forumKeys = {
   /** Key for discussion posts */
   posts: (discussionId: number) => ['discussions', discussionId, 'posts'] as const,
 } as const;
+
+// ============================================================================
+// FUNCTION ALIASES FOR BACKWARD COMPATIBILITY
+// ============================================================================
+
+/**
+ * Alias for fetchForum - gets forum details by ID
+ * @see fetchForum
+ */
+export const getForum = fetchForum;
+
+/**
+ * Alias for fetchDiscussions - gets discussions list for a forum
+ * @see fetchDiscussions
+ */
+export const getDiscussions = fetchDiscussions;
+
+/**
+ * Alias for fetchPosts - gets posts for a discussion
+ * @see fetchPosts
+ */
+export const getDiscussionPosts = fetchPosts;
+
+/**
+ * Alias for markRead - marks a discussion as read
+ * @see markRead
+ */
+export const markDiscussionRead = markRead;
+
+// ============================================================================
+// ADDITIONAL API FUNCTIONS
+// ============================================================================
+
+/**
+ * Fetch more posts for pagination (cursor-based)
+ * 
+ * Retrieves additional posts for a discussion beyond the initial page.
+ * Used for infinite scroll or "load more" patterns.
+ * Supports cursor-based pagination for efficient scrolling.
+ *
+ * @param discussionId - Discussion ID to fetch posts from
+ * @param cursor - Cursor string for the next page (optional for first page)
+ * @returns Promise resolving to DiscussionWithPosts with posts and pagination info
+ */
+export async function fetchMorePosts(
+  discussionId: number,
+  cursor?: string
+): Promise<DiscussionWithPosts> {
+  try {
+    // Build params - support cursor-based pagination
+    const params: Record<string, string | number> = {};
+    if (cursor) {
+      // If cursor looks like a number, treat as page number (backward compatibility)
+      if (/^\d+$/.test(cursor)) {
+        params.page = parseInt(cursor, 10);
+      } else {
+        // Otherwise it's a cursor string
+        params.cursor = cursor;
+      }
+    }
+    
+    const response = await apiClient.get<ApiResponse<{
+      discussion: ApiDiscussion;
+      posts: ApiPost[];
+      totalPosts: number;
+      hasMore: boolean;
+      nextCursor?: string;
+      currentPage?: number;
+      subscribed?: boolean;
+    }>>(
+      `/forums/discussions/${discussionId}/posts`,
+      { params }
+    );
+    const data = extractData(response);
+    
+    return {
+      discussion: data.discussion,
+      posts: data.posts.map(transformApiPostToCanonical),
+      totalPosts: data.totalPosts ?? data.posts.length,
+      hasMore: data.hasMore ?? false,
+      currentPage: data.currentPage ?? 1,
+      nextCursor: data.nextCursor,
+      subscribed: data.subscribed,
+    };
+  } catch (error) {
+    throw handleApiError(error);
+  }
+}
+
+/**
+ * Fetch replies to a specific post
+ *
+ * Retrieves direct child posts (replies) for a given post.
+ * Used for lazy loading nested replies.
+ *
+ * @param postId - Parent post ID to fetch replies for
+ * @returns Promise resolving to array of reply posts
+ */
+export async function fetchPostReplies(postId: number): Promise<ApiPost[]> {
+  try {
+    const response = await apiClient.get<ApiResponse<ApiPost[]>>(
+      `/forums/posts/${postId}/replies`
+    );
+    return extractData(response);
+  } catch (error) {
+    throw handleApiError(error);
+  }
+}
+
+/**
+ * Unsubscribe from a forum
+ *
+ * Removes user's subscription to a forum, stopping email notifications
+ * for new discussions and posts.
+ *
+ * @param forumId - Forum ID to unsubscribe from
+ * @returns Promise resolving to subscription response
+ */
+export async function unsubscribeForum(forumId: number): Promise<SubscriptionResponse> {
+  try {
+    const response = await apiClient.post<ApiResponse<SubscriptionResponse>>(
+      `/forums/${forumId}/subscribe`,
+      { subscribe: false }
+    );
+    return extractData(response);
+  } catch (error) {
+    throw handleApiError(error);
+  }
+}
+
+/**
+ * Subscribe to a discussion
+ *
+ * Subscribes the user to a specific discussion for notifications.
+ * Different from forum-level subscription.
+ *
+ * @param discussionId - Discussion ID to subscribe to
+ * @returns Promise resolving to subscription response
+ */
+export async function subscribeDiscussion(discussionId: number): Promise<SubscriptionResponse> {
+  try {
+    const response = await apiClient.post<ApiResponse<SubscriptionResponse>>(
+      `/forums/discussions/${discussionId}/subscribe`,
+      { subscribe: true }
+    );
+    return extractData(response);
+  } catch (error) {
+    throw handleApiError(error);
+  }
+}
+
+/**
+ * Unsubscribe from a discussion
+ *
+ * Removes user's subscription to a specific discussion.
+ *
+ * @param discussionId - Discussion ID to unsubscribe from
+ * @returns Promise resolving to subscription response
+ */
+export async function unsubscribeDiscussion(discussionId: number): Promise<SubscriptionResponse> {
+  try {
+    const response = await apiClient.post<ApiResponse<SubscriptionResponse>>(
+      `/forums/discussions/${discussionId}/subscribe`,
+      { subscribe: false }
+    );
+    return extractData(response);
+  } catch (error) {
+    throw handleApiError(error);
+  }
+}
+
+/**
+ * Mark all discussions in a forum as read
+ *
+ * Marks all posts in all discussions within a forum as read for the current user.
+ *
+ * @param forumId - Forum ID to mark as read
+ * @returns Promise resolving to mark read response
+ */
+export async function markForumRead(forumId: number): Promise<MarkReadResponse> {
+  try {
+    const response = await apiClient.post<ApiResponse<MarkReadResponse>>(
+      `/forums/${forumId}/read`
+    );
+    return extractData(response);
+  } catch (error) {
+    throw handleApiError(error);
+  }
+}
+
+/**
+ * Pin a discussion
+ *
+ * Pins a discussion to the top of the forum. Requires moderator permissions.
+ *
+ * @param discussionId - Discussion ID to pin
+ * @returns Promise resolving to moderation response
+ */
+export async function pinDiscussion(discussionId: number): Promise<ModerationResponse> {
+  try {
+    const response = await apiClient.post<ApiResponse<ModerationResponse>>(
+      `/forums/discussions/${discussionId}/pin`
+    );
+    return extractData(response);
+  } catch (error) {
+    throw handleApiError(error);
+  }
+}
+
+/**
+ * Unpin a discussion
+ *
+ * Removes pin status from a discussion. Requires moderator permissions.
+ *
+ * @param discussionId - Discussion ID to unpin
+ * @returns Promise resolving to moderation response
+ */
+export async function unpinDiscussion(discussionId: number): Promise<ModerationResponse> {
+  try {
+    const response = await apiClient.post<ApiResponse<ModerationResponse>>(
+      `/forums/discussions/${discussionId}/unpin`
+    );
+    return extractData(response);
+  } catch (error) {
+    throw handleApiError(error);
+  }
+}
+
+/**
+ * Lock a discussion
+ *
+ * Locks a discussion preventing further replies. Requires moderator permissions.
+ *
+ * @param discussionIdOrData - Discussion ID or lock data object
+ * @param reason - Optional reason for locking (when first arg is number)
+ * @returns Promise resolving to moderation response
+ */
+export async function lockDiscussion(
+  discussionIdOrData: number | LockDiscussionData,
+  reason?: string
+): Promise<ModerationResponse> {
+  try {
+    // Support both number and LockDiscussionData
+    const discussionId = typeof discussionIdOrData === 'number' 
+      ? discussionIdOrData 
+      : discussionIdOrData.discussionId;
+    const lockReason = typeof discussionIdOrData === 'number'
+      ? reason
+      : discussionIdOrData.reason;
+
+    const response = await apiClient.post<ApiResponse<ModerationResponse>>(
+      `/forums/discussions/${discussionId}/lock`,
+      lockReason ? { reason: lockReason } : {}
+    );
+    return extractData(response);
+  } catch (error) {
+    throw handleApiError(error);
+  }
+}
+
+/**
+ * Unlock a discussion
+ *
+ * Unlocks a previously locked discussion. Requires moderator permissions.
+ *
+ * @param discussionId - Discussion ID to unlock
+ * @returns Promise resolving to moderation response
+ */
+export async function unlockDiscussion(discussionId: number): Promise<ModerationResponse> {
+  try {
+    const response = await apiClient.post<ApiResponse<ModerationResponse>>(
+      `/forums/discussions/${discussionId}/unlock`
+    );
+    return extractData(response);
+  } catch (error) {
+    throw handleApiError(error);
+  }
+}
+
+/**
+ * Move a discussion to another forum
+ *
+ * Moves a discussion from one forum to another. Requires moderator permissions.
+ *
+ * @param discussionId - Discussion ID to move
+ * @param targetForumId - Target forum ID
+ * @returns Promise resolving to moderation response
+ */
+export async function moveDiscussion(
+  discussionId: number,
+  targetForumId: number
+): Promise<ModerationResponse> {
+  try {
+    const response = await apiClient.post<ApiResponse<ModerationResponse>>(
+      `/forums/discussions/${discussionId}/move`,
+      { targetForumId }
+    );
+    return extractData(response);
+  } catch (error) {
+    throw handleApiError(error);
+  }
+}
+
+/**
+ * Split a discussion at a specific post
+ *
+ * Creates a new discussion starting from a specific post.
+ * Requires moderator permissions.
+ *
+ * @param discussionId - Original discussion ID
+ * @param postId - Post ID to start the new discussion from
+ * @param newSubject - Subject for the new discussion
+ * @returns Promise resolving to moderation response with new discussion ID
+ */
+export async function splitDiscussion(
+  discussionId: number,
+  postId: number,
+  newSubject: string
+): Promise<ModerationResponse> {
+  try {
+    const response = await apiClient.post<ApiResponse<ModerationResponse>>(
+      `/forums/discussions/${discussionId}/split`,
+      { postId, newSubject }
+    );
+    return extractData(response);
+  } catch (error) {
+    throw handleApiError(error);
+  }
+}
+
+/**
+ * Report a post for moderation
+ *
+ * Submits a report for a post to be reviewed by moderators.
+ *
+ * @param postId - Post ID to report
+ * @param reason - Reason for reporting
+ * @returns Promise resolving to report response
+ */
+export async function reportPost(postId: number, reason: string): Promise<ReportResponse> {
+  try {
+    const response = await apiClient.post<ApiResponse<ReportResponse>>(
+      `/forums/posts/${postId}/report`,
+      { reason }
+    );
+    return extractData(response);
+  } catch (error) {
+    throw handleApiError(error);
+  }
+}
+
+/**
+ * Delete a discussion
+ *
+ * Permanently removes a discussion and all its posts.
+ * Requires moderator or discussion owner permissions.
+ *
+ * @param discussionId - Discussion ID to delete
+ * @returns Promise resolving to delete response
+ */
+export async function deleteDiscussion(discussionId: number): Promise<{ success: boolean; message: string }> {
+  try {
+    const response = await apiClient.delete<ApiResponse<{ success: boolean; message: string }>>(
+      `/forums/discussions/${discussionId}`
+    );
+    return extractData(response);
+  } catch (error) {
+    throw handleApiError(error);
+  }
+}
+
+/**
+ * Bulk delete multiple discussions
+ *
+ * Permanently removes multiple discussions at once.
+ * Requires moderator permissions.
+ *
+ * @param discussionIds - Array of discussion IDs to delete
+ * @returns Promise resolving to bulk operation response
+ */
+export async function bulkDeleteDiscussions(
+  discussionIds: number[]
+): Promise<{ success: boolean; deletedCount: number; failedIds: number[]; message: string }> {
+  try {
+    const response = await apiClient.post<ApiResponse<{
+      success: boolean;
+      deletedCount: number;
+      failedIds: number[];
+      message: string;
+    }>>(
+      '/forums/discussions/bulk-delete',
+      { discussionIds }
+    );
+    return extractData(response);
+  } catch (error) {
+    throw handleApiError(error);
+  }
+}
+
+/**
+ * Bulk move multiple discussions to another forum
+ *
+ * Moves multiple discussions to a target forum at once.
+ * Requires moderator permissions.
+ *
+ * @param discussionIds - Array of discussion IDs to move
+ * @param targetForumId - Target forum ID to move discussions to
+ * @returns Promise resolving to bulk operation response
+ */
+export async function bulkMoveDiscussions(
+  discussionIds: number[],
+  targetForumId: number
+): Promise<{ success: boolean; movedCount: number; failedIds: number[]; message: string }> {
+  try {
+    const response = await apiClient.post<ApiResponse<{
+      success: boolean;
+      movedCount: number;
+      failedIds: number[];
+      message: string;
+    }>>(
+      '/forums/discussions/bulk-move',
+      { discussionIds, targetForumId }
+    );
+    return extractData(response);
+  } catch (error) {
+    throw handleApiError(error);
+  }
+}

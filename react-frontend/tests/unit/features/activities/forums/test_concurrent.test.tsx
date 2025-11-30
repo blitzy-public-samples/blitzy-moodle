@@ -2,9 +2,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as forumApi from '../../../../../src/features/activities/forums/api/forumApi';
-import type { PostResponse } from '../../../../../src/features/activities/forums/api/forumApi';
+import type { PostResponse, ApiDiscussion } from '../../../../../src/features/activities/forums/api/forumApi';
 import { useDiscussion } from '../../../../../src/features/activities/forums/hooks/useDiscussion';
-import type { DiscussionPost, DiscussionDetail, Author } from '../../../../../src/features/activities/forums/types/forum.types';
+import type { DiscussionPost, Post } from '../../../../../src/features/activities/forums/types/forum.types';
 
 // Mock the API
 vi.mock('../../../../../src/features/activities/forums/api/forumApi');
@@ -20,45 +20,31 @@ const countPostsInHierarchy = (posts: DiscussionPost[]): number => {
   return count;
 };
 
-const createMockAuthor = (overrides: Partial<Author> = {}): Author => ({
+// Creates ApiDiscussion objects matching the API response structure
+const createMockApiDiscussion = (overrides: Partial<ApiDiscussion> = {}): ApiDiscussion => ({
   id: 1,
-  pictureitemid: 0,
-  firstname: 'Test',
-  lastname: 'User',
-  fullname: 'Test User',
-  email: 'test@example.com',
-  deleted: false,
-  ...overrides,
-});
-
-const createMockDiscussion = (overrides: Partial<DiscussionDetail> = {}): DiscussionDetail => ({
-  id: 1,
-  courseid: 1,
-  forumid: 1,
   name: 'Test Discussion',
-  firstpostid: 1,
+  message: 'This is the first post message',
   userid: 1,
-  groupid: 0,
-  assessed: false,
+  userFullName: 'Test User',
+  userPictureUrl: null,
   timemodified: Math.floor(Date.now() / 1000),
-  usermodified: 1,
-  timestart: 0,
-  timeend: 0,
+  locked: false,
   pinned: false,
-  timelocked: 0,
-  author: createMockAuthor(),
+  replies: 0,
+  unreadCount: 0,
+  forumid: 1,
+  courseid: 1,
+  firstpostid: 1,
+  groupid: 0,
   created: Math.floor(Date.now() / 1000),
-  numViews: 0,
-  numParticipants: 1,
-  numReplies: 0,
-  subscribed: false,
   ...overrides,
 });
 
-const createMockApiPost = (overrides = {}): PostResponse => ({
+// Creates canonical Post objects (for use in DiscussionWithPosts.posts)
+const createMockPost = (overrides: Partial<Post> = {}): Post => ({
   id: 1,
   discussionid: 1,
-  discussionId: 1, // PostResponse requires both discussionid and discussionId
   parentid: 0,
   authorid: 1,
   timecreated: Math.floor(Date.now() / 1000),
@@ -75,6 +61,13 @@ const createMockApiPost = (overrides = {}): PostResponse => ({
   privatereplyto: 0,
   wordcount: 2,
   charcount: 12,
+  ...overrides,
+});
+
+// Creates PostResponse objects (for API mutations)
+const createMockApiPost = (overrides: Partial<PostResponse> = {}): PostResponse => ({
+  ...createMockPost(),
+  discussionId: 1, // PostResponse requires discussionId as well
   ...overrides,
 });
 
@@ -122,14 +115,17 @@ describe('Concurrent Reply Test', () => {
 
   it('should handle concurrent reply creation from multiple users', async () => {
     const discussionId = 100;
-    const mockDiscussion = createMockDiscussion({ id: discussionId });
-    const initialPosts = [createMockApiPost({ id: 1, discussionid: discussionId, parentid: 0 })];
+    const mockDiscussion = createMockApiDiscussion({ id: discussionId });
+    const initialPosts = [createMockPost({ id: 1, discussionid: discussionId, parentid: 0 })];
 
     // Simulate concurrent creation
     // Use simple mockResolvedValue like the passing test
     vi.mocked(forumApi.getDiscussionPosts).mockResolvedValue({
       discussion: mockDiscussion,
       posts: initialPosts,
+      totalPosts: 1,
+      hasMore: false,
+      currentPage: 1,
     });
 
     // Set up delayed API response to observe optimistic update

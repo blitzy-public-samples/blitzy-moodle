@@ -261,6 +261,8 @@ export interface Discussion {
   pinned: boolean;
   /** Timestamp when discussion was locked (0 if not locked) */
   timelocked: number;
+  /** Whether the discussion is locked (API boolean flag) */
+  locked?: boolean;
 }
 
 /**

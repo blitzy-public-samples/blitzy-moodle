@@ -20,6 +20,7 @@ import { server } from '../../../../mocks/server';
 
 // Import the forumApi module (adjust path based on actual location)
 import * as forumApi from '@/features/activities/forums/api/forumApi';
+import type { PaginatedDiscussionsResponse, ApiForum } from '@/features/activities/forums/api/forumApi';
 import type { 
   Forum, 
   Post, // Added for baseline mock handler
@@ -27,12 +28,10 @@ import type {
   CreateDiscussionData,
   CreatePostData,
   UpdatePostData,
-  SubscriptionPreferences,
   DiscussionEnriched,
   PostResponse
 } from '@/features/activities/forums/types/forum.types';
 import { ForumType } from '@/features/activities/forums/types/forum.types';
-import type { PaginatedResponse } from '@/types/api';
 
 /* eslint-disable @typescript-eslint/unbound-method */
 
@@ -69,10 +68,38 @@ const mockForum: Forum = {
   completiondiscussions: 0,
   completionreplies: 0,
   completionposts: 0,
-  displaywordcount: false,
+  // Note: transformApiForumToCanonical defaults displaywordcount to true
+  displaywordcount: true,
   lockdiscussionafter: 0,
   duedate: 0,
   cutoffdate: 0,
+  subscribed: false,
+  canSubscribe: true,
+  canAddDiscussion: true,
+  canModerate: false,
+  unreadCount: 0,
+  discussionCount: 5,
+  postCount: 25,
+  participants: 10
+};
+
+// Mock ApiForum object - the format returned by the actual API (camelCase)
+const mockApiForum: ApiForum = {
+  id: 1,
+  courseId: 10,
+  name: 'General Discussion Forum',
+  intro: 'Welcome to the general discussion forum',
+  introformat: 1,
+  type: 'general',
+  cmId: 100,
+  displayMode: 1,
+  subscriptionMode: 0,
+  trackingType: 1,
+  maxBytes: 512000,
+  maxAttachments: 5,
+  lockDiscussionAfter: 0,
+  dueDate: 0,
+  cutOffDate: 0,
   subscribed: false,
   canSubscribe: true,
   canAddDiscussion: true,
@@ -217,7 +244,7 @@ const handlers = [
     
     return HttpResponse.json({
       success: true,
-      data: mockForum
+      data: mockApiForum
     });
   }),
 
@@ -369,8 +396,9 @@ const handlers = [
     const formData = await request.formData();
     
     // Extract fields from FormData
+    // Note: The API sends parent post ID as 'parent', not 'parentId'
     const message = formData.get('message') as string;
-    const parentIdStr = formData.get('parentId') as string | null;
+    const parentIdStr = formData.get('parent') as string | null;
     const parentId = parentIdStr ? parseInt(parentIdStr) : 0;
     
     const newPost = {
@@ -486,26 +514,29 @@ const handlers = [
 
   // POST subscribe to forum
   http.post(`*${API_BASE_URL}/forums/:id/subscribe`, async ({ request }) => {
-    // Handle optional preferences in body
+    // Check the body to determine subscribe or unsubscribe action
+    let subscribe = true; // Default to subscribe if no body or error
     try {
-      const body = await request.text();
-      if (body) {
-        JSON.parse(body) as Record<string, unknown>;
+      const body = await request.json() as { subscribe?: boolean };
+      if (typeof body.subscribe === 'boolean') {
+        subscribe = body.subscribe;
       }
-    } catch (e) {
-      // Empty body or invalid JSON - use default empty object
+    } catch {
+      // Empty body or invalid JSON - default to subscribe action
     }
     
     return HttpResponse.json({
       success: true,
       data: {
-        subscribed: true,
-        message: 'Successfully subscribed to forum'
+        subscribed: subscribe,
+        message: subscribe 
+          ? 'Successfully subscribed to forum' 
+          : 'Successfully unsubscribed from forum'
       }
     });
   }),
 
-  // POST unsubscribe from forum
+  // POST unsubscribe from forum (separate endpoint - kept for compatibility)
   http.post(`*${API_BASE_URL}/forums/:id/unsubscribe`, () => {
     return HttpResponse.json({
       success: true,
@@ -516,18 +547,31 @@ const handlers = [
     });
   }),
 
-  // POST subscribe to discussion
-  http.post(`*${API_BASE_URL}/forums/discussions/:id/subscribe`, () => {
+  // POST subscribe to discussion (handles both subscribe and unsubscribe via body)
+  http.post(`*${API_BASE_URL}/forums/discussions/:id/subscribe`, async ({ request }) => {
+    // Check the body to determine subscribe or unsubscribe action
+    let subscribe = true; // Default to subscribe if no body or error
+    try {
+      const body = await request.json() as { subscribe?: boolean };
+      if (typeof body.subscribe === 'boolean') {
+        subscribe = body.subscribe;
+      }
+    } catch {
+      // Empty body or invalid JSON - default to subscribe action
+    }
+    
     return HttpResponse.json({
       success: true,
       data: {
-        subscribed: true,
-        message: 'Successfully subscribed to discussion'
+        subscribed: subscribe,
+        message: subscribe 
+          ? 'Successfully subscribed to discussion' 
+          : 'Successfully unsubscribed from discussion'
       }
     });
   }),
 
-  // POST unsubscribe from discussion
+  // POST unsubscribe from discussion (separate endpoint - kept for compatibility)
   http.post(`*${API_BASE_URL}/forums/discussions/:id/unsubscribe`, () => {
     return HttpResponse.json({
       success: true,
@@ -555,6 +599,7 @@ const handlers = [
   // POST pin discussion
   http.post(`*${API_BASE_URL}/forums/discussions/:id/pin`, ({ params }) => {
     const { id } = params;
+    const discussionId = parseInt(id as string);
     
     if (id === '403') {
       return HttpResponse.json({
@@ -566,25 +611,31 @@ const handlers = [
       }, { status: 403 });
     }
     
-    // Fixed: Return full discussion object per ModerationResponse interface
+    // Fixed: Return ModerationResponse structure with ApiDiscussion shape
     return HttpResponse.json({
       success: true,
       data: {
+        success: true,
+        message: 'Discussion pinned successfully',
+        discussionId: discussionId,
         discussion: {
-          id: parseInt(id as string),
-          courseid: 10,
-          forumid: 5,
+          id: discussionId,
           name: 'Test Discussion',
-          firstpostid: 100,
+          message: 'Test message content',
           userid: 5,
-          timemodified: Date.now() / 1000,
-          timestart: 0,
-          timeend: 0,
-          pinned: true, // Fixed: Set to true for pin action
-          timelocked: 0,
+          userFullName: 'Test User',
+          userPictureUrl: null,
+          timemodified: Math.floor(Date.now() / 1000),
+          locked: false,  // Use boolean locked (not timelocked)
+          pinned: true,
+          replies: 0,
+          unreadCount: 0,
+          forumid: 5,
+          courseid: 10,
+          firstpostid: 100,
           groupid: -1
         },
-        message: 'Discussion pinned successfully'
+        state: { pinned: true }
       }
     });
   }),
@@ -592,26 +643,33 @@ const handlers = [
   // POST unpin discussion
   http.post(`*${API_BASE_URL}/forums/discussions/:id/unpin`, ({ params }) => {
     const { id } = params;
+    const discussionId = parseInt(id as string);
     
-    // Fixed: Return full discussion object per ModerationResponse interface
+    // Fixed: Return ModerationResponse structure with ApiDiscussion shape
     return HttpResponse.json({
       success: true,
       data: {
+        success: true,
+        message: 'Discussion unpinned successfully',
+        discussionId: discussionId,
         discussion: {
-          id: parseInt(id as string),
-          courseid: 10,
-          forumid: 5,
+          id: discussionId,
           name: 'Test Discussion',
-          firstpostid: 100,
+          message: 'Test message content',
           userid: 5,
-          timemodified: Date.now() / 1000,
-          timestart: 0,
-          timeend: 0,
-          pinned: false, // Fixed: Set to false for unpin action
-          timelocked: 0,
+          userFullName: 'Test User',
+          userPictureUrl: null,
+          timemodified: Math.floor(Date.now() / 1000),
+          locked: false,  // Use boolean locked (not timelocked)
+          pinned: false,
+          replies: 0,
+          unreadCount: 0,
+          forumid: 5,
+          courseid: 10,
+          firstpostid: 100,
           groupid: -1
         },
-        message: 'Discussion unpinned successfully'
+        state: { pinned: false }
       }
     });
   }),
@@ -619,25 +677,33 @@ const handlers = [
   // POST lock discussion
   http.post(`*${API_BASE_URL}/forums/discussions/:id/lock`, ({ params }) => {
     const { id } = params;
+    const discussionId = parseInt(id as string);
     
+    // Fixed: Return ModerationResponse structure with ApiDiscussion shape
     return HttpResponse.json({
       success: true,
       data: {
+        success: true,
+        message: 'Discussion locked successfully',
+        discussionId: discussionId,
         discussion: {
-          id: parseInt(id as string),
-          courseid: 10,
-          forumid: 5,
+          id: discussionId,
           name: 'Test Discussion',
-          firstpostid: 100,
+          message: 'Test message content',
           userid: 5,
-          timemodified: Date.now() / 1000,
-          timestart: 0,
-          timeend: 0,
+          userFullName: 'Test User',
+          userPictureUrl: null,
+          timemodified: Math.floor(Date.now() / 1000),
+          locked: true,  // Use boolean locked (not timelocked)
           pinned: false,
-          timelocked: Date.now() / 1000,
+          replies: 0,
+          unreadCount: 0,
+          forumid: 5,
+          courseid: 10,
+          firstpostid: 100,
           groupid: -1
         },
-        message: 'Discussion locked successfully'
+        state: { locked: true }
       }
     });
   }),
@@ -645,25 +711,33 @@ const handlers = [
   // POST unlock discussion
   http.post(`*${API_BASE_URL}/forums/discussions/:id/unlock`, ({ params }) => {
     const { id } = params;
+    const discussionId = parseInt(id as string);
     
+    // Fixed: Return ModerationResponse structure with ApiDiscussion shape
     return HttpResponse.json({
       success: true,
       data: {
+        success: true,
+        message: 'Discussion unlocked successfully',
+        discussionId: discussionId,
         discussion: {
-          id: parseInt(id as string),
-          courseid: 10,
-          forumid: 5,
+          id: discussionId,
           name: 'Test Discussion',
-          firstpostid: 100,
+          message: 'Test message content',
           userid: 5,
-          timemodified: Date.now() / 1000,
-          timestart: 0,
-          timeend: 0,
+          userFullName: 'Test User',
+          userPictureUrl: null,
+          timemodified: Math.floor(Date.now() / 1000),
+          locked: false,  // Use boolean locked (not timelocked)
           pinned: false,
-          timelocked: 0,
+          replies: 0,
+          unreadCount: 0,
+          forumid: 5,
+          courseid: 10,
+          firstpostid: 100,
           groupid: -1
         },
-        message: 'Discussion unlocked successfully'
+        state: { locked: false }
       }
     });
   }),
@@ -710,9 +784,15 @@ describe('forumApi', () => {
     it('should fetch forum successfully with valid ID', async () => {
       const result = await forumApi.getForum(1);
       
-      expect(result).toEqual(mockForum);
+      // Compare without timemodified since the API transformation uses Date.now()
+      const { timemodified: _resultTime, ...resultWithoutTime } = result;
+      const { timemodified: _mockTime, ...mockWithoutTime } = mockForum;
+      
+      expect(resultWithoutTime).toEqual(mockWithoutTime);
       expect(result.id).toBe(1);
       expect(result.name).toBe('General Discussion Forum');
+      // Verify timemodified is a reasonable number
+      expect(result.timemodified).toBeGreaterThan(0);
     });
 
     it('should include JWT token in Authorization header', async () => {
@@ -723,7 +803,7 @@ describe('forumApi', () => {
           capturedHeaders = request.headers;
           return HttpResponse.json({
             success: true,
-            data: mockForum
+            data: mockApiForum
           });
         })
       );
@@ -758,12 +838,12 @@ describe('forumApi', () => {
 
   describe('getDiscussions', () => {
     it('should fetch discussion list with default options', async () => {
-      const result: PaginatedResponse<DiscussionEnriched> = await forumApi.getDiscussions(1);
+      const result: PaginatedDiscussionsResponse = await forumApi.getDiscussions(1);
       
       expect(result.data.items).toHaveLength(2);
       expect(result.data.items[0]!.name).toBe('First Discussion');
-      expect(result.meta.pagination.page).toBe(1);
-      expect(result.meta.pagination.perPage).toBe(20);
+      expect(result.meta.page).toBe(1);
+      expect(result.meta.perPage).toBe(20);
     });
 
     it('should support pagination with page and perPage parameters', async () => {
@@ -772,10 +852,10 @@ describe('forumApi', () => {
         perPage: 1
       };
       
-      const result: PaginatedResponse<DiscussionEnriched> = await forumApi.getDiscussions(1, options);
+      const result: PaginatedDiscussionsResponse = await forumApi.getDiscussions(1, options);
       
-      expect(result.meta.pagination.page).toBe(2);
-      expect(result.meta.pagination.perPage).toBe(1);
+      expect(result.meta.page).toBe(2);
+      expect(result.meta.perPage).toBe(1);
       expect(result.data.items).toHaveLength(1);
     });
 
@@ -784,7 +864,7 @@ describe('forumApi', () => {
         sortBy: 'date'
       };
       
-      const result: PaginatedResponse<DiscussionEnriched> = await forumApi.getDiscussions(1, options);
+      const result: PaginatedDiscussionsResponse = await forumApi.getDiscussions(1, options);
       
       expect(result.data.items).toBeDefined();
       expect(Array.isArray(result.data.items)).toBe(true);
@@ -795,7 +875,7 @@ describe('forumApi', () => {
         sortBy: 'replies'
       };
       
-      const result: PaginatedResponse<DiscussionEnriched> = await forumApi.getDiscussions(1, options);
+      const result: PaginatedDiscussionsResponse = await forumApi.getDiscussions(1, options);
       
       // Verify sorted by replies (descending)
       if (result.data.items.length > 1) {
@@ -830,7 +910,7 @@ describe('forumApi', () => {
         filter: 'unread'
       };
       
-      const result: PaginatedResponse<DiscussionEnriched> = await forumApi.getDiscussions(1, options);
+      const result: PaginatedDiscussionsResponse = await forumApi.getDiscussions(1, options);
       
       // Only discussions with unread posts
       result.data.items.forEach((discussion: DiscussionEnriched) => {
@@ -843,7 +923,7 @@ describe('forumApi', () => {
         filter: 'pinned'
       };
       
-      const result: PaginatedResponse<DiscussionEnriched> = await forumApi.getDiscussions(1, options);
+      const result: PaginatedDiscussionsResponse = await forumApi.getDiscussions(1, options);
       
       // Only pinned discussions
       result.data.items.forEach((discussion: DiscussionEnriched) => {
@@ -855,9 +935,8 @@ describe('forumApi', () => {
       const result = await forumApi.getDiscussions(1);
       
       expect(result.meta).toBeDefined();
-      expect(result.meta.pagination).toBeDefined();
-      expect(result.meta.pagination.total).toBeDefined();
-      expect(result.meta.pagination.totalPages).toBeDefined();
+      expect(result.data.total).toBeDefined();
+      expect(result.meta.totalPages).toBeDefined();
     });
 
     it('should handle empty discussion list', async () => {
@@ -865,14 +944,15 @@ describe('forumApi', () => {
         http.get(`*${API_BASE_URL}/forums/:id/discussions`, () => {
           return HttpResponse.json({
             success: true,
-            data: [],
+            data: {
+              items: [],
+              total: 0,
+            },
             meta: {
-              pagination: {
-                page: 1,
-                perPage: 20,
-                total: 0,
-                totalPages: 0
-              }
+              page: 1,
+              perPage: 20,
+              totalPages: 0,
+              hasMore: false,
             }
           });
         })
@@ -880,8 +960,8 @@ describe('forumApi', () => {
       
       const result = await forumApi.getDiscussions(1);
       
-      expect(result.data).toHaveLength(0);
-      expect(result.meta.pagination.total).toBe(0);
+      expect(result.data.items).toHaveLength(0);
+      expect(result.data.total).toBe(0);
     });
   });
 
@@ -1039,21 +1119,24 @@ describe('forumApi', () => {
       expect(result.parentid).toBe(1); // Fixed: Use lowercase property name
     });
 
-    it('should include message and parentId in request body', async () => {
+    it('should include message and parent in request body', async () => {
       let capturedFormData: FormData | undefined;
       
       server.use(
         http.post(`*${API_BASE_URL}/forums/discussions/:id/posts`, async ({ request }) => {
           capturedFormData = await request.formData();
+          // Note: API sends parent post ID as 'parent', not 'parentId'
+          const parentStr = capturedFormData.get('parent') as string | null;
+          const parentId = parentStr ? parseInt(parentStr) : 0;
           return HttpResponse.json({
             success: true,
             data: {
               id: 1000,
-              discussionid: Number(capturedFormData.get('discussionId')), // Fixed: lowercase property
+              discussionid: 100, // Hardcoded since discussionId is in the URL, not form data
               subject: String(capturedFormData.get('subject') || ''),
               message: String(capturedFormData.get('message')),
-              parentid: Number(capturedFormData.get('parentId') || 0), // Fixed: lowercase property
-              userid: 1, // Fixed: lowercase property
+              parentid: parentId, // Use 'parent' from form data
+              userid: 1,
               created: Math.floor(Date.now() / 1000),
               modified: Math.floor(Date.now() / 1000),
               attachment: false,
@@ -1074,7 +1157,8 @@ describe('forumApi', () => {
       
       expect(capturedFormData).toBeDefined();
       expect(capturedFormData!.get('message')).toBe('Reply message');
-      expect(capturedFormData!.get('parentId')).toBe('5');
+      // Note: The API sends parent post ID as 'parent', not 'parentId'
+      expect(capturedFormData!.get('parent')).toBe('5');
     });
 
     it('should handle inline reply (nested)', async () => {
@@ -1259,40 +1343,41 @@ describe('forumApi', () => {
 
   describe('subscribeForum', () => {
     it('should subscribe to forum successfully', async () => {
-      const result = await forumApi.subscribeForum(1);
+      const result = await forumApi.subscribeForum(1, true);
       
       expect(result.subscribed).toBe(true);
       expect(result.message).toBe('Successfully subscribed to forum');
     });
 
-    it('should include subscription preferences in request body', async () => {
-      let capturedBody: any;
+    it('should use correct endpoint based on subscribe parameter', async () => {
+      let capturedEndpoint = '';
       
       server.use(
-        http.post(`*${API_BASE_URL}/forums/:id/subscribe`, async ({ request }) => {
-          capturedBody = await request.json();
+        http.post(`*${API_BASE_URL}/forums/:id/subscribe`, async () => {
+          capturedEndpoint = '/subscribe';
           return HttpResponse.json({
             success: true,
             data: { subscribed: true, message: 'Successfully subscribed to forum' }
           });
+        }),
+        http.post(`*${API_BASE_URL}/forums/:id/unsubscribe`, async () => {
+          capturedEndpoint = '/unsubscribe';
+          return HttpResponse.json({
+            success: true,
+            data: { subscribed: false, message: 'Successfully unsubscribed from forum' }
+          });
         })
       );
       
-      const preferences: SubscriptionPreferences = {
-        emailNotifications: true,
-        emailDigest: false
-      };
+      await forumApi.subscribeForum(1, true);
+      expect(capturedEndpoint).toBe('/subscribe');
       
-      await forumApi.subscribeForum(1, preferences);
-      
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      expect(capturedBody.emailNotifications).toBe(true);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      expect(capturedBody.emailDigest).toBe(false);
+      await forumApi.subscribeForum(1, false);
+      expect(capturedEndpoint).toBe('/unsubscribe');
     });
 
     it('should return updated subscription status', async () => {
-      const result = await forumApi.subscribeForum(1);
+      const result = await forumApi.subscribeForum(1, true);
       
       expect(result.subscribed).toBe(true);
     });
@@ -1351,8 +1436,8 @@ describe('forumApi', () => {
     it('should pin discussion as moderator', async () => {
       const result = await forumApi.pinDiscussion(1);
       
-      expect(result.discussion.id).toBe(1);
-      expect(result.discussion.pinned).toBe(true);
+      expect(result.discussionId).toBe(1);
+      expect(result.discussion?.pinned).toBe(true);
     });
 
     it('should throw 403 error for non-moderator', async () => {
@@ -1364,8 +1449,8 @@ describe('forumApi', () => {
     it('should unpin discussion', async () => {
       const result = await forumApi.unpinDiscussion(1);
       
-      expect(result.discussion.id).toBe(1);
-      expect(result.discussion.pinned).toBe(false);
+      expect(result.discussionId).toBe(1);
+      expect(result.discussion?.pinned).toBe(false);
     });
   });
 
@@ -1373,8 +1458,8 @@ describe('forumApi', () => {
     it('should lock discussion to prevent replies', async () => {
       const result = await forumApi.lockDiscussion(1);
       
-      expect(result.discussion.id).toBe(1);
-      expect(result.discussion.timelocked).toBeGreaterThan(0);
+      expect(result.discussionId).toBe(1);
+      expect(result.discussion?.locked).toBe(true);
     });
   });
 
@@ -1382,8 +1467,8 @@ describe('forumApi', () => {
     it('should unlock discussion', async () => {
       const result = await forumApi.unlockDiscussion(1);
       
-      expect(result.discussion.id).toBe(1);
-      expect(result.discussion.timelocked).toBe(0);
+      expect(result.discussionId).toBe(1);
+      expect(result.discussion?.locked).toBe(false);
     });
   });
 
@@ -1545,7 +1630,7 @@ describe('forumApi', () => {
           capturedHeaders = request.headers;
           return HttpResponse.json({
             success: true,
-            data: mockForum
+            data: mockApiForum
           });
         })
       );
@@ -1642,7 +1727,7 @@ describe('forumApi', () => {
           
           return HttpResponse.json({
             success: true,
-            data: mockForum
+            data: mockApiForum
           });
         })
       );

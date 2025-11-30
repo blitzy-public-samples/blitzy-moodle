@@ -1167,11 +1167,15 @@ const pinDiscussionHandler = http.post('*/api/v1/forums/discussions/:id/pin', as
   };
   saveDiscussions(MOCK_DISCUSSIONS);
   
+  // Return ModerationResponse format
   return HttpResponse.json({
     success: true,
     data: {
+      success: true,
+      message: 'Discussion pinned successfully',
+      discussionId: id,
       discussion: MOCK_DISCUSSIONS[id],
-      message: 'Discussion pinned successfully'
+      state: { pinned: true }
     }
   });
 });
@@ -1208,11 +1212,15 @@ const unpinDiscussionHandler = http.post('*/api/v1/forums/discussions/:id/unpin'
   };
   saveDiscussions(MOCK_DISCUSSIONS);
   
+  // Return ModerationResponse format
   return HttpResponse.json({
     success: true,
     data: {
+      success: true,
+      message: 'Discussion unpinned successfully',
+      discussionId: id,
       discussion: MOCK_DISCUSSIONS[id],
-      message: 'Discussion unpinned successfully'
+      state: { pinned: false }
     }
   });
 });
@@ -1249,11 +1257,15 @@ const lockDiscussionHandler = http.post('*/api/v1/forums/discussions/:id/lock', 
   };
   saveDiscussions(MOCK_DISCUSSIONS);
   
+  // Return ModerationResponse format
   return HttpResponse.json({
     success: true,
     data: {
+      success: true,
+      message: 'Discussion locked successfully',
+      discussionId: id,
       discussion: MOCK_DISCUSSIONS[id],
-      message: 'Discussion locked successfully'
+      state: { locked: true }
     }
   });
 });
@@ -1290,11 +1302,15 @@ const unlockDiscussionHandler = http.post('*/api/v1/forums/discussions/:id/unloc
   };
   saveDiscussions(MOCK_DISCUSSIONS);
   
+  // Return ModerationResponse format
   return HttpResponse.json({
     success: true,
     data: {
+      success: true,
+      message: 'Discussion unlocked successfully',
+      discussionId: id,
       discussion: MOCK_DISCUSSIONS[id],
-      message: 'Discussion unlocked successfully'
+      state: { locked: false }
     }
   });
 });
