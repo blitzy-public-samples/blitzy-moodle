@@ -1062,11 +1062,11 @@ export function useStartQuizAttempt(): UseMutationResult<
       createQuizAttempt(quizId, { preview, forcenew }),
     onSuccess: (_data, variables) => {
       // Invalidate quiz details to refresh attempt counts
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: quizQueryKeys.detail(variables.quizId),
       });
       // Invalidate user attempts list
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: quizQueryKeys.attempts(variables.quizId),
       });
     },
@@ -1133,21 +1133,21 @@ export function useSubmitQuizAttempt(): UseMutationResult<
       // Invalidate relevant queries after submission
       if (variables.request.finishAttempt) {
         // Final submission - invalidate all quiz-related queries
-        queryClient.invalidateQueries({
+        void queryClient.invalidateQueries({
           queryKey: quizQueryKeys.detail(variables.quizId),
         });
-        queryClient.invalidateQueries({
+        void queryClient.invalidateQueries({
           queryKey: quizQueryKeys.attempts(variables.quizId),
         });
-        queryClient.invalidateQueries({
+        void queryClient.invalidateQueries({
           queryKey: quizQueryKeys.results(variables.request.attemptId),
         });
-        queryClient.invalidateQueries({
+        void queryClient.invalidateQueries({
           queryKey: quizQueryKeys.review(variables.request.attemptId),
         });
       } else {
         // Auto-save - invalidate summary to show updated state
-        queryClient.invalidateQueries({
+        void queryClient.invalidateQueries({
           queryKey: quizQueryKeys.summary(variables.request.attemptId),
         });
       }

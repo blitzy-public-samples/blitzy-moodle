@@ -76,12 +76,13 @@ import {
 } from '@tanstack/react-query';
 import apiClient from '@/services/api/client';
 import { useToast } from '@/hooks/useToast';
-import type {
-  Setting,
-  SettingValue,
-  SettingUpdate,
-  SettingsError,
-  SettingsSection,
+import {
+  SettingType,
+  type Setting,
+  type SettingValue,
+  type SettingUpdate,
+  type SettingsError,
+  type SettingsSection,
 } from '@/features/admin/settings/types/settings.types';
 
 // ============================================================================
@@ -326,7 +327,7 @@ async function batchUpdateSettingsApi(
  * @returns Promise resolving when reset is complete
  */
 async function resetSettingApi(name: string): Promise<void> {
-  const response = await apiClient.delete(`/admin/settings/${encodeURIComponent(name)}`);
+  const response = await apiClient.delete<{ success: boolean }>(`/admin/settings/${encodeURIComponent(name)}`);
 
   if (!response.data.success) {
     throw new Error('Failed to reset setting');
@@ -359,9 +360,9 @@ function validateSettingValue(setting: Setting | undefined, value: SettingValue)
 
   // Type-specific validation
   switch (setting.type) {
-    case 'text':
-    case 'textarea':
-    case 'password':
+    case SettingType.TEXT:
+    case SettingType.TEXTAREA:
+    case SettingType.PASSWORD: {
       if (typeof value !== 'string') {
         return false;
       }
@@ -371,8 +372,9 @@ function validateSettingValue(setting: Setting | undefined, value: SettingValue)
         return false;
       }
       break;
+    }
 
-    case 'number':
+    case SettingType.NUMBER: {
       if (typeof value !== 'number' || isNaN(value)) {
         return false;
       }
@@ -384,14 +386,15 @@ function validateSettingValue(setting: Setting | undefined, value: SettingValue)
         return false;
       }
       break;
+    }
 
-    case 'checkbox':
+    case SettingType.CHECKBOX:
       if (typeof value !== 'boolean') {
         return false;
       }
       break;
 
-    case 'email':
+    case SettingType.EMAIL: {
       if (typeof value !== 'string') {
         return false;
       }
@@ -401,8 +404,9 @@ function validateSettingValue(setting: Setting | undefined, value: SettingValue)
         return false;
       }
       break;
+    }
 
-    case 'url':
+    case SettingType.URL:
       if (typeof value !== 'string') {
         return false;
       }
@@ -416,20 +420,20 @@ function validateSettingValue(setting: Setting | undefined, value: SettingValue)
       }
       break;
 
-    case 'select':
+    case SettingType.SELECT:
       if (typeof value !== 'string' && typeof value !== 'number') {
         return false;
       }
       break;
 
-    case 'multicheckbox':
-    case 'multiselect':
+    case SettingType.MULTICHECKBOX:
+    case SettingType.MULTISELECT:
       if (!Array.isArray(value)) {
         return false;
       }
       break;
 
-    case 'color':
+    case SettingType.COLOR: {
       if (typeof value !== 'string') {
         return false;
       }
@@ -439,8 +443,9 @@ function validateSettingValue(setting: Setting | undefined, value: SettingValue)
         return false;
       }
       break;
+    }
 
-    case 'duration':
+    case SettingType.DURATION:
       if (
         typeof value !== 'object' ||
         value === null ||
@@ -451,7 +456,7 @@ function validateSettingValue(setting: Setting | undefined, value: SettingValue)
       }
       break;
 
-    case 'time':
+    case SettingType.TIME: {
       if (typeof value !== 'string') {
         return false;
       }
@@ -461,10 +466,11 @@ function validateSettingValue(setting: Setting | undefined, value: SettingValue)
         return false;
       }
       break;
+    }
 
     // Display-only types (heading, description) don't need validation
-    case 'heading':
-    case 'description':
+    case SettingType.HEADING:
+    case SettingType.DESCRIPTION:
       return true;
 
     default:
@@ -628,7 +634,7 @@ export function useSettings(options: UseSettingsOptions = {}): SettingsHookRetur
       queryClient.setQueryData<Setting[]>(
         section ? settingsQueryKeys.section(section) : settingsQueryKeys.allSettings(),
         (old) => {
-          if (!old) return old;
+          if (!old) {return old;}
           return old.map((s) => (s.name === name ? { ...s, value } : s)) as Setting[];
         }
       );
@@ -651,7 +657,7 @@ export function useSettings(options: UseSettingsOptions = {}): SettingsHookRetur
 
     // On success, invalidate and refetch
     onSuccess: () => {
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: section ? settingsQueryKeys.section(section) : settingsQueryKeys.all,
       });
       toast.success('Setting updated successfully');
@@ -693,7 +699,7 @@ export function useSettings(options: UseSettingsOptions = {}): SettingsHookRetur
       queryClient.setQueryData<Setting[]>(
         section ? settingsQueryKeys.section(section) : settingsQueryKeys.allSettings(),
         (old) => {
-          if (!old) return old;
+          if (!old) {return old;}
           return old.map((s) => {
             const update = updates.find((u) => u.name === s.name);
             return update ? { ...s, value: update.value } : s;
@@ -719,7 +725,7 @@ export function useSettings(options: UseSettingsOptions = {}): SettingsHookRetur
 
     // On success, invalidate all affected section caches
     onSuccess: (result) => {
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: settingsQueryKeys.all,
       });
 
@@ -747,7 +753,7 @@ export function useSettings(options: UseSettingsOptions = {}): SettingsHookRetur
 
       onSuccess: (_data, { section: sec }) => {
         // Invalidate cache to refetch and show default value
-        queryClient.invalidateQueries({
+        void queryClient.invalidateQueries({
           queryKey: sec ? settingsQueryKeys.section(sec) : settingsQueryKeys.all,
         });
         toast.success('Setting reset to default value');
@@ -773,7 +779,7 @@ export function useSettings(options: UseSettingsOptions = {}): SettingsHookRetur
    */
   const settingsBySection = useMemo<Record<string, Setting[]>>(() => {
     const settings = settingsQuery.data;
-    if (!settings) return {};
+    if (!settings) {return {};}
 
     const grouped: Record<string, Setting[]> = {};
 
@@ -836,7 +842,7 @@ export function useSettings(options: UseSettingsOptions = {}): SettingsHookRetur
   const getSetting = useCallback(
     (name: string, filterSection?: string): Setting | undefined => {
       const settings = settingsQuery.data;
-      if (!settings) return undefined;
+      if (!settings) {return undefined;}
 
       const setting = settings.find((s) => s.name === name);
 

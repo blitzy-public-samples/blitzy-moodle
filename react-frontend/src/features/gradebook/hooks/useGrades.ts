@@ -361,7 +361,7 @@ export function useUpdateGradeItem(): UseMutationResult<
     },
     onSuccess: () => {
       // Invalidate all grade-related queries to refresh data
-      queryClient.invalidateQueries({ queryKey: gradebookKeys.all });
+      void queryClient.invalidateQueries({ queryKey: gradebookKeys.all });
     },
   });
 }
@@ -404,7 +404,7 @@ export function useUpdateGrade(): UseMutationResult<
     },
     onSuccess: () => {
       // Invalidate grade queries to refresh data
-      queryClient.invalidateQueries({ queryKey: gradebookKeys.all });
+      void queryClient.invalidateQueries({ queryKey: gradebookKeys.all });
     },
   });
 }
@@ -560,11 +560,11 @@ export function useStudentCourseGrades(
           let aggregationstatus: AggregationStatus = AggregationStatus.UNKNOWN;
           if (row.aggregationstatus) {
             const statusStr = String(row.aggregationstatus).toLowerCase();
-            if (statusStr === 'dropped') aggregationstatus = AggregationStatus.DROPPED;
-            else if (statusStr === 'novalue') aggregationstatus = AggregationStatus.NOVALUE;
-            else if (statusStr === 'used') aggregationstatus = AggregationStatus.USED;
-            else if (statusStr === 'extra') aggregationstatus = AggregationStatus.EXTRA;
-            else if (statusStr === 'excluded') aggregationstatus = AggregationStatus.EXCLUDED;
+            if (statusStr === 'dropped') {aggregationstatus = AggregationStatus.DROPPED;}
+            else if (statusStr === 'novalue') {aggregationstatus = AggregationStatus.NOVALUE;}
+            else if (statusStr === 'used') {aggregationstatus = AggregationStatus.USED;}
+            else if (statusStr === 'extra') {aggregationstatus = AggregationStatus.EXTRA;}
+            else if (statusStr === 'excluded') {aggregationstatus = AggregationStatus.EXCLUDED;}
           }
           
           return {

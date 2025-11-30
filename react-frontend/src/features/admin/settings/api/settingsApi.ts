@@ -610,9 +610,10 @@ export function convertSettingValue(setting: Setting, value: string): SettingVal
     case 'checkbox':
       return value === 'true' || value === '1' || value === 'yes';
 
-    case 'number':
+    case 'number': {
       const num = parseFloat(value);
       return Number.isNaN(num) ? 0 : num;
+    }
 
     case 'text':
     case 'textarea':

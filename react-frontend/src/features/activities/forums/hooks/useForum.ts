@@ -341,7 +341,7 @@ export function useForum(forumId: number, options: UseForumOptions = {}): UseFor
     mutationFn: (discussionId: number) => pinDiscussionApi(discussionId),
     onSuccess: (response) => {
       // Update discussion in cache if discussion is returned
-      if (!response.discussion) return;
+      if (!response.discussion) {return;}
       const updatedDiscussion = response.discussion;
       
       const discussionsData = queryClient.getQueryData<PaginatedResponse<Discussion>>(
@@ -369,7 +369,7 @@ export function useForum(forumId: number, options: UseForumOptions = {}): UseFor
     mutationFn: (discussionId: number) => unpinDiscussionApi(discussionId),
     onSuccess: (response) => {
       // Update discussion in cache if discussion is returned
-      if (!response.discussion) return;
+      if (!response.discussion) {return;}
       const updatedDiscussion = response.discussion;
       
       const discussionsData = queryClient.getQueryData<PaginatedResponse<Discussion>>(
@@ -397,7 +397,7 @@ export function useForum(forumId: number, options: UseForumOptions = {}): UseFor
     mutationFn: (discussionId: number) => lockDiscussionApi(discussionId),
     onSuccess: (response) => {
       // Update discussion in cache if discussion is returned
-      if (!response.discussion) return;
+      if (!response.discussion) {return;}
       const updatedDiscussion = response.discussion;
       
       const discussionsData = queryClient.getQueryData<PaginatedResponse<Discussion>>(
@@ -425,7 +425,7 @@ export function useForum(forumId: number, options: UseForumOptions = {}): UseFor
     mutationFn: (discussionId: number) => unlockDiscussionApi(discussionId),
     onSuccess: (response) => {
       // Update discussion in cache if discussion is returned
-      if (!response.discussion) return;
+      if (!response.discussion) {return;}
       const updatedDiscussion = response.discussion;
       
       const discussionsData = queryClient.getQueryData<PaginatedResponse<Discussion>>(

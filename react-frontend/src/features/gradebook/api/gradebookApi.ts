@@ -825,7 +825,7 @@ function handleGradebookError(
         error: {
           code: errorCode,
           message: apiError.message,
-          details: apiError.details as Record<string, unknown> | undefined,
+          details: apiError.details,
         },
       };
     }

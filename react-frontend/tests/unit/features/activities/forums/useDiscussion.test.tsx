@@ -25,7 +25,7 @@ import type { Post, DiscussionPost, PostResponse, CreatePostData, UpdatePostData
 
 // Mock the forum API module but preserve utility functions that are used internally
 vi.mock('@/features/activities/forums/api/forumApi', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/features/activities/forums/api/forumApi')>();
+  const actual = await importOriginal<typeof forumApi>();
   return {
     ...actual,
     // Mock API functions (these make network calls)
@@ -1263,7 +1263,7 @@ describe('useDiscussion Hook', () => {
       vi.mocked(forumApi.pinDiscussion).mockResolvedValue({ 
         success: true,
         message: 'Discussion pinned successfully',
-        discussionId: discussionId,
+        discussionId,
         discussion: { ...mockDiscussion, pinned: true },
       });
 
@@ -1315,7 +1315,7 @@ describe('useDiscussion Hook', () => {
       vi.mocked(forumApi.unpinDiscussion).mockResolvedValue({ 
         success: true,
         message: 'Discussion unpinned successfully',
-        discussionId: discussionId,
+        discussionId,
         discussion: { ...mockDiscussion, pinned: false },
       });
 
@@ -1367,7 +1367,7 @@ describe('useDiscussion Hook', () => {
       vi.mocked(forumApi.lockDiscussion).mockResolvedValue({ 
         success: true,
         message: 'Discussion locked successfully',
-        discussionId: discussionId,
+        discussionId,
         discussion: { ...mockDiscussion, locked: true },
       });
 
@@ -1392,7 +1392,7 @@ describe('useDiscussion Hook', () => {
         expect(onLockSuccess).toHaveBeenCalledWith({ 
           success: true,
           message: 'Discussion locked successfully',
-          discussionId: discussionId,
+          discussionId,
           // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           discussion: expect.objectContaining({ locked: true }),
         });
@@ -1418,7 +1418,7 @@ describe('useDiscussion Hook', () => {
       vi.mocked(forumApi.unlockDiscussion).mockResolvedValue({ 
         success: true,
         message: 'Discussion unlocked successfully',
-        discussionId: discussionId,
+        discussionId,
         discussion: { ...mockDiscussion, locked: false },
       });
 
@@ -1443,7 +1443,7 @@ describe('useDiscussion Hook', () => {
         expect(onUnlockSuccess).toHaveBeenCalledWith({ 
           success: true,
           message: 'Discussion unlocked successfully',
-          discussionId: discussionId,
+          discussionId,
           // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           discussion: expect.objectContaining({ locked: false }),
         });
@@ -1470,7 +1470,7 @@ describe('useDiscussion Hook', () => {
       vi.mocked(forumApi.moveDiscussion).mockResolvedValue({ 
         success: true,
         message: 'Discussion moved successfully',
-        discussionId: discussionId,
+        discussionId,
         discussion: { ...mockDiscussion, forumid: targetForumId },
       });
 

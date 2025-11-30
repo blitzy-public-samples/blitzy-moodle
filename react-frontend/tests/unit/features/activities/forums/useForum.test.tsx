@@ -776,8 +776,8 @@ describe('useForum', () => {
       });
 
       // Verify cache is populated - compare without timemodified since it's dynamic
-      const cachedData = queryClient.getQueryData(['forums', 1]) as Record<string, unknown> | undefined;
-      const { timemodified: _cachedTime, ...cachedWithoutTime } = cachedData || {};
+      const cachedData = queryClient.getQueryData(['forums', 1]);
+      const { timemodified: _cachedTime, ...cachedWithoutTime } = (cachedData as Record<string, unknown>) ?? {};
       const { timemodified: _mockTime, ...mockWithoutTime } = getMockForumData();
       expect(cachedWithoutTime).toEqual(mockWithoutTime);
     });
@@ -950,8 +950,9 @@ describe('useForum', () => {
       });
 
       // Compare without timemodified since it's dynamic
-      const receivedArg = onSuccess.mock.calls[0][0] as Record<string, unknown>;
-      const { timemodified: _receivedTime, ...receivedWithoutTime } = receivedArg || {};
+      // We already verified onSuccess was called, so calls[0] exists
+      const receivedArg = (onSuccess.mock.calls as Array<[Record<string, unknown>]>)[0]?.[0] ?? {};
+      const { timemodified: _receivedTime, ...receivedWithoutTime } = receivedArg;
       const { timemodified: _mockTime, ...mockWithoutTime } = getMockForumData();
       expect(receivedWithoutTime).toEqual(mockWithoutTime);
     });

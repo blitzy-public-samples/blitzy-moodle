@@ -285,7 +285,7 @@ function extractStatusCode(error: unknown): number | undefined {
     typeof (error as { response: unknown }).response === 'object' &&
     (error as { response: { status?: unknown } }).response !== null
   ) {
-    const status = (error as { response: { status?: unknown } }).response.status;
+    const { status } = (error as { response: { status?: unknown } }).response;
     if (typeof status === 'number') {
       return status;
     }

@@ -701,13 +701,13 @@ function handleApiError(error: unknown): Error {
       case 401:
         return new Error('You must be logged in to perform this action');
       case 403:
-        return new Error(apiError?.message || 'You do not have permission to perform this action');
+        return new Error(apiError?.message ?? 'You do not have permission to perform this action');
       case 404:
-        return new Error(apiError?.message || 'The requested resource was not found');
+        return new Error(apiError?.message ?? 'The requested resource was not found');
       case 409:
-        return new Error(apiError?.message || 'A conflict occurred. Please refresh and try again');
+        return new Error(apiError?.message ?? 'A conflict occurred. Please refresh and try again');
       case 422:
-        return new Error(apiError?.message || 'Invalid data provided');
+        return new Error(apiError?.message ?? 'Invalid data provided');
       case 429:
         return new Error('Too many requests. Please wait a moment and try again');
       case 500:
@@ -715,7 +715,7 @@ function handleApiError(error: unknown): Error {
       case 503:
         return new Error('A server error occurred. Please try again later');
       default:
-        return new Error(apiError?.message || axiosError.message || 'An unexpected error occurred');
+        return new Error(apiError?.message ?? axiosError.message ?? 'An unexpected error occurred');
     }
   }
 
@@ -860,10 +860,6 @@ export async function fetchDiscussions(
     // API may return discussions in different properties
     let discussions: DiscussionEnriched[];
     let total: number;
-    let page: number;
-    let perPage: number;
-    let totalPages: number;
-    let hasMore: boolean;
     
     // Check various possible response formats from the API
     if (Array.isArray(rawData.data)) {
@@ -872,11 +868,10 @@ export async function fetchDiscussions(
       total = rawData.meta?.total ?? rawData.total ?? discussions.length;
     } else if (rawData.data && 'items' in rawData.data) {
       // Format: { data: { items: Discussion[], total: number }, meta: {...} }
-      discussions = rawData.data.items;
-      total = rawData.data.total;
+      ({ items: discussions, total } = rawData.data);
     } else if (rawData.discussions) {
       // Format: { discussions: Discussion[], total: number, ... }
-      discussions = rawData.discussions;
+      ({ discussions } = rawData);
       total = rawData.total ?? discussions.length;
     } else if (rawData.items) {
       // Format: { items: Discussion[], total: number, ... }
@@ -889,10 +884,10 @@ export async function fetchDiscussions(
     }
     
     // Extract pagination info
-    page = rawData.meta?.page ?? rawData.page ?? params?.page ?? 1;
-    perPage = rawData.meta?.perPage ?? rawData.perPage ?? params?.perPage ?? 20;
-    totalPages = rawData.meta?.totalPages ?? rawData.totalPages ?? Math.ceil(total / perPage);
-    hasMore = rawData.meta?.hasMore ?? rawData.hasMore ?? (page < totalPages);
+    const page = rawData.meta?.page ?? rawData.page ?? params?.page ?? 1;
+    const perPage = rawData.meta?.perPage ?? rawData.perPage ?? params?.perPage ?? 20;
+    const totalPages = rawData.meta?.totalPages ?? rawData.totalPages ?? Math.ceil(total / perPage);
+    const hasMore = rawData.meta?.hasMore ?? rawData.hasMore ?? (page < totalPages);
     
     // Construct the normalized response
     return {

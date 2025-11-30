@@ -617,7 +617,7 @@ const handlers = [
       data: {
         success: true,
         message: 'Discussion pinned successfully',
-        discussionId: discussionId,
+        discussionId,
         discussion: {
           id: discussionId,
           name: 'Test Discussion',
@@ -651,7 +651,7 @@ const handlers = [
       data: {
         success: true,
         message: 'Discussion unpinned successfully',
-        discussionId: discussionId,
+        discussionId,
         discussion: {
           id: discussionId,
           name: 'Test Discussion',
@@ -685,7 +685,7 @@ const handlers = [
       data: {
         success: true,
         message: 'Discussion locked successfully',
-        discussionId: discussionId,
+        discussionId,
         discussion: {
           id: discussionId,
           name: 'Test Discussion',
@@ -719,7 +719,7 @@ const handlers = [
       data: {
         success: true,
         message: 'Discussion unlocked successfully',
-        discussionId: discussionId,
+        discussionId,
         discussion: {
           id: discussionId,
           name: 'Test Discussion',
@@ -1353,14 +1353,14 @@ describe('forumApi', () => {
       let capturedEndpoint = '';
       
       server.use(
-        http.post(`*${API_BASE_URL}/forums/:id/subscribe`, async () => {
+        http.post(`*${API_BASE_URL}/forums/:id/subscribe`, () => {
           capturedEndpoint = '/subscribe';
           return HttpResponse.json({
             success: true,
             data: { subscribed: true, message: 'Successfully subscribed to forum' }
           });
         }),
-        http.post(`*${API_BASE_URL}/forums/:id/unsubscribe`, async () => {
+        http.post(`*${API_BASE_URL}/forums/:id/unsubscribe`, () => {
           capturedEndpoint = '/unsubscribe';
           return HttpResponse.json({
             success: true,
