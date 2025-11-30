@@ -75,7 +75,7 @@ const getMockForumData = () => ({
   trackingtype: 1,
   rsstype: 0,
   rssarticles: 0,
-  // timemodified: dynamic - tests must check separately
+  timemodified: 1705405800,  // 2024-01-16T14:30:00Z - fixed for test predictability
   warnafter: 0,
   blockafter: 0,
   blockperiod: 0,
