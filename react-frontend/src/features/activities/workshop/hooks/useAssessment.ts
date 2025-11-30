@@ -458,7 +458,7 @@ export function useCreateAssessment(workshopId: number): UseCreateAssessmentResu
     CreateAssessmentData
   > = useMutation({
     mutationFn: (data: CreateAssessmentData) => createAssessment(workshopId, data),
-    onSuccess: (result, variables) => {
+    onSuccess: (_result, variables) => {
       // Invalidate workshop assessments list
       void queryClient.invalidateQueries({
         queryKey: assessmentKeys.workshop(workshopId),
@@ -536,7 +536,7 @@ export interface UseUpdateAssessmentResult {
  *
  *   return (
  *     <form onSubmit={handleSubmit}>
- *       {/* Form fields */}
+ *       // Form fields go here
  *       <Button type="submit" disabled={isLoading}>Save Assessment</Button>
  *     </form>
  *   );
