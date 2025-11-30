@@ -958,7 +958,7 @@ describe('FormTextarea', () => {
   });
 
   describe('Auto-Resize Functionality', () => {
-    it('expands height as content increases', async () => {
+    it('expands height as content increases', () => {
       render(
         <FormWrapper>
           <FormTextarea
@@ -999,7 +999,7 @@ describe('FormTextarea', () => {
       expect(textarea).toBeInTheDocument();
     });
 
-    it('respects maxRows constraint with scrolling', async () => {
+    it('respects maxRows constraint with scrolling', () => {
       render(
         <FormWrapper>
           <FormTextarea

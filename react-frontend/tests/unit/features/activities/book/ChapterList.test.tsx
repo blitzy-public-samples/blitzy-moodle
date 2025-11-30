@@ -270,7 +270,7 @@ describe('ChapterList Component', () => {
           currentChapterId={null}
           book={book}
           onChapterClick={mockOnChapterClick}
-          canViewHidden={true}
+          canViewHidden
         />
       );
 
@@ -294,7 +294,7 @@ describe('ChapterList Component', () => {
           currentChapterId={null}
           book={book}
           onChapterClick={mockOnChapterClick}
-          canViewHidden={true}
+          canViewHidden
         />
       );
 
@@ -318,7 +318,7 @@ describe('ChapterList Component', () => {
           currentChapterId={null}
           book={book}
           onChapterClick={mockOnChapterClick}
-          canViewHidden={true}
+          canViewHidden
         />
       );
 
@@ -700,7 +700,7 @@ describe('ChapterList Component', () => {
           currentChapterId={null}
           book={book}
           onChapterClick={mockOnChapterClick}
-          canViewHidden={true}
+          canViewHidden
         />
       );
 
@@ -748,7 +748,7 @@ describe('ChapterList Component', () => {
           currentChapterId={null}
           book={book}
           onChapterClick={mockOnChapterClick}
-          canViewHidden={true}
+          canViewHidden
         />
       );
 
@@ -770,7 +770,7 @@ describe('ChapterList Component', () => {
           currentChapterId={null}
           book={book}
           onChapterClick={mockOnChapterClick}
-          canViewHidden={true}
+          canViewHidden
         />
       );
 
@@ -876,7 +876,7 @@ describe('ChapterList Component', () => {
           currentChapterId={null}
           book={book}
           onChapterClick={mockOnChapterClick}
-          canViewHidden={true}
+          canViewHidden
         />
       );
 
@@ -1150,7 +1150,7 @@ describe('ChapterList Component', () => {
           currentChapterId={4}
           book={book}
           onChapterClick={mockOnChapterClick}
-          canViewHidden={true}
+          canViewHidden
         />
       );
 
@@ -1232,7 +1232,7 @@ describe('ChapterList Component', () => {
           currentChapterId={null}
           book={book}
           onChapterClick={mockOnChapterClick}
-          canViewHidden={true}
+          canViewHidden
         />
       );
 

@@ -1133,7 +1133,7 @@ describe('PageRenderer component', () => {
 
       // Check that dangerous CSS is removed
       const styledDiv = container.querySelector('div');
-      if (styledDiv && styledDiv.getAttribute('style')) {
+      if (styledDiv?.getAttribute('style')) {
         expect(styledDiv.getAttribute('style')).not.toContain('javascript:');
         expect(styledDiv.getAttribute('style')).not.toContain('expression');
       }
@@ -1884,7 +1884,7 @@ describe('PageRenderer component', () => {
 
       // Component should accept optional showIntroduction prop
       render(
-        <PageRenderer pageId={1} showIntroduction={true} />
+        <PageRenderer pageId={1} showIntroduction />
       );
 
       await waitForLoadingToFinish();
@@ -2277,7 +2277,7 @@ describe('PageRenderer component', () => {
 
     it('Large Content: Tests performance with very long content (>100KB)', async () => {
       // Generate large content (approximately 100KB)
-      const largeParagraph = '<p>' + 'Lorem ipsum dolor sit amet. '.repeat(500) + '</p>';
+      const largeParagraph = `<p>${  'Lorem ipsum dolor sit amet. '.repeat(500)  }</p>`;
       const largeContent = largeParagraph.repeat(20);
 
       const mockPage = createMockPage({
@@ -2578,7 +2578,7 @@ function hello() {
     });
 
     it('Deeply nested HTML: Handles deeply nested elements', async () => {
-      const deeplyNested = '<div>'.repeat(20) + 'Deep content' + '</div>'.repeat(20);
+      const deeplyNested = `${'<div>'.repeat(20)  }Deep content${  '</div>'.repeat(20)}`;
       const mockPage = createMockPage({
         content: deeplyNested,
       });

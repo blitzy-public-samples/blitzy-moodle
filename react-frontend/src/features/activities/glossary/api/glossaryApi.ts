@@ -156,15 +156,15 @@ export async function getEntries(
   };
 
   if (filters) {
-    if (filters.browseMode) params.mode = filters.browseMode;
-    if (filters.letter) params.letter = filters.letter;
-    if (filters.categoryId) params.categoryid = filters.categoryId;
-    if (filters.userId) params.userid = filters.userId;
-    if (filters.approved !== undefined) params.approved = filters.approved ? 1 : 0;
-    if (filters.sortBy) params.sortby = filters.sortBy;
-    if (filters.sortOrder) params.sortorder = filters.sortOrder;
-    if (filters.page !== undefined) params.page = filters.page;
-    if (filters.perPage !== undefined) params.perpage = filters.perPage;
+    if (filters.browseMode) {params.mode = filters.browseMode;}
+    if (filters.letter) {params.letter = filters.letter;}
+    if (filters.categoryId) {params.categoryid = filters.categoryId;}
+    if (filters.userId) {params.userid = filters.userId;}
+    if (filters.approved !== undefined) {params.approved = filters.approved ? 1 : 0;}
+    if (filters.sortBy) {params.sortby = filters.sortBy;}
+    if (filters.sortOrder) {params.sortorder = filters.sortOrder;}
+    if (filters.page !== undefined) {params.page = filters.page;}
+    if (filters.perPage !== undefined) {params.perpage = filters.perPage;}
   }
 
   const response = await apiClient.get<
@@ -217,10 +217,10 @@ export async function searchEntries(
   };
 
   if (options) {
-    if (options.sortBy) params.sortby = options.sortBy;
-    if (options.sortOrder) params.sortorder = options.sortOrder;
-    if (options.page !== undefined) params.page = options.page;
-    if (options.perPage !== undefined) params.perpage = options.perPage;
+    if (options.sortBy) {params.sortby = options.sortBy;}
+    if (options.sortOrder) {params.sortorder = options.sortOrder;}
+    if (options.page !== undefined) {params.page = options.page;}
+    if (options.perPage !== undefined) {params.perpage = options.perPage;}
   }
 
   const response = await apiClient.get<

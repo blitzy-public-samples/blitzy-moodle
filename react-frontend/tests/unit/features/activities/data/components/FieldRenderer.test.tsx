@@ -95,7 +95,7 @@ describe('FieldRenderer - Text Field', () => {
 
   it('handles null value gracefully', () => {
     const field = createField({ type: FieldType.Text });
-    const value = createContent({ content: null as any });
+    const value = createContent({ content: undefined });
 
     render(<FieldRenderer field={field} value={value} mode="view" />);
 
@@ -681,14 +681,17 @@ describe('FieldRenderer - MultiMenu Field', () => {
 describe('FieldRenderer - Error Handling', () => {
   it('handles undefined field value gracefully', () => {
     const field = createField({ type: FieldType.Text });
+    // Test with undefined content property (simulating missing/undefined value)
+    const valueWithoutContent = createContent({ content: undefined });
 
-    render(<FieldRenderer field={field} value={undefined as any} mode="view" />);
+    render(<FieldRenderer field={field} value={valueWithoutContent} mode="view" />);
 
     expect(screen.getByText('No value')).toBeInTheDocument();
   });
 
   it('handles unknown field type gracefully', () => {
-    const field = createField({ type: 'unknown' as any });
+    // Use unknown then cast to the expected type to test runtime handling of invalid types
+    const field = createField({ type: 'unknown' as unknown as FieldType });
     const value = createContent({ content: 'Some content' });
 
     render(<FieldRenderer field={field} value={value} mode="view" />);
@@ -699,12 +702,13 @@ describe('FieldRenderer - Error Handling', () => {
 
   it('handles malformed field content structure', () => {
     const field = createField({ type: FieldType.Text });
-    const value = { 
+    // Create a minimal FieldContent object with no content property
+    const value: FieldContent = { 
       id: 1, 
       fieldid: 1,
       recordid: 1,
-      // Missing content fields
-    } as any;
+      // content intentionally omitted to test handling of missing content
+    };
 
     render(<FieldRenderer field={field} value={value} mode="view" />);
 

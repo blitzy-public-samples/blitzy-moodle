@@ -18,6 +18,88 @@ import { ResourceDisplayType } from '@/features/activities/resources/types/resou
 import { createMockResourceFile } from '@tests/helpers/mockData';
 
 // ============================================================================
+// Mock Data Types
+// ============================================================================
+
+/**
+ * Minimal type for mock resource file entries
+ * Used for type safety in mock data lookups
+ */
+interface MockResourceFileEntry {
+  filename: string;
+  filepath: string;
+  filesize: number;
+  url: string;
+  timemodified: number;
+  mimetype: string;
+}
+
+/**
+ * Minimal type for mock resource entries
+ * Used for type safety in mock data lookups
+ */
+interface MockResourceEntry {
+  type: string;
+  id: number;
+  coursemodule: number;
+  course: number;
+  name: string;
+  intro: string;
+  introformat: number;
+  timemodified: number;
+  files: MockResourceFileEntry[];
+  display: number;
+  displayoptions: string;
+  viewcount: number;
+  downloadcount: number;
+  tobemigrated?: number;
+  legacyfiles?: number;
+  legacyfileslast?: number;
+}
+
+/**
+ * Minimal type for folder file entries
+ * Used for type safety in mock folder data lookups
+ */
+interface MockFolderFile {
+  filename: string;
+  filepath: string;
+  filesize: number;
+  mimetype: string;
+  timemodified: number;
+  url: string;
+}
+
+/**
+ * Minimal type for mock folder entries
+ * Used for type safety in mock data lookups
+ */
+interface MockFolderEntry {
+  id: number;
+  coursemodule: number;
+  course: number;
+  name: string;
+  intro: string;
+  introformat: number;
+  introfiles: unknown[];
+  section: number;
+  visible: number;
+  groupmode: number;
+  groupingid: number;
+  type: string;
+  revision: number;
+  display: number;
+  showexpanded: number;
+  showdownloadfolder: number;
+  canManageFiles: boolean;
+  canDownload: boolean;
+  archiveUrl: string;
+  editUrl: string;
+  files: MockFolderFile[];
+  tree: unknown;
+}
+
+// ============================================================================
 // Mock Data
 // ============================================================================
 
@@ -25,7 +107,7 @@ import { createMockResourceFile } from '@tests/helpers/mockData';
  * Default mock resource data for testing
  * Uses createMockResourceFile factory for consistent data structure matching ResourceFile interface
  */
-const mockResourceData: Record<number, any> = {
+const mockResourceData: Record<number, MockResourceEntry> = {
   1: createMockResourceFile({
     id: 1,
     name: 'Course Syllabus PDF',
@@ -279,7 +361,7 @@ const mockResourceData: Record<number, any> = {
  * Mock folder data for testing FolderBrowser component
  * Includes various folder structures: empty, nested, large, with special characters
  */
-const mockFolderData: Record<number, any> = {
+const mockFolderData: Record<number, MockFolderEntry> = {
   // Basic folder with files and subfolders
   1: {
     id: 1,
@@ -509,6 +591,7 @@ const mockFolderData: Record<number, any> = {
     showdownloadfolder: 0,
     canManageFiles: true,
     canDownload: false,
+    archiveUrl: 'https://moodle.example.com/pluginfile.php/102/mod_folder/download_folder/0/folder.zip',
     editUrl: '/course/modedit.php?update=102',
     files: [],
     tree: {
@@ -542,6 +625,7 @@ const mockFolderData: Record<number, any> = {
     canManageFiles: false,
     canDownload: true,
     archiveUrl: 'https://moodle.example.com/pluginfile.php/103/mod_folder/download_folder/0/folder.zip',
+    editUrl: '/course/modedit.php?update=103',
     files: [
       {
         filename: 'deepfile.txt',

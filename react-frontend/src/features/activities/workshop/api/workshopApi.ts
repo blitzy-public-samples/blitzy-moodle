@@ -580,13 +580,13 @@ export function useCreateSubmission(): UseMutationResult<
     mutationFn: createSubmission,
     onSuccess: (_data, variables) => {
       // Invalidate related queries to trigger refetch
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: workshopQueryKeys.submissions(variables.workshopId),
       });
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: workshopQueryKeys.detail(variables.workshopId),
       });
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: workshopQueryKeys.userPlan(variables.workshopId),
       });
     },
@@ -628,13 +628,13 @@ export function useDeleteSubmission(): UseMutationResult<
     mutationFn: ({ submissionId }) => deleteSubmission(submissionId),
     onSuccess: (_, variables) => {
       // Invalidate related queries
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: workshopQueryKeys.submissions(variables.workshopId),
       });
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: workshopQueryKeys.detail(variables.workshopId),
       });
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: workshopQueryKeys.userPlan(variables.workshopId),
       });
     },
@@ -728,16 +728,16 @@ export function useCreateAssessment(): UseMutationResult<
       createAssessment({ submissionId, formData }),
     onSuccess: (_, variables) => {
       // Invalidate related queries
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: workshopQueryKeys.assessments(variables.submissionId),
       });
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: workshopQueryKeys.workshopAssessments(variables.workshopId),
       });
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: workshopQueryKeys.submissions(variables.workshopId),
       });
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: workshopQueryKeys.userPlan(variables.workshopId),
       });
     },
@@ -780,19 +780,19 @@ export function useSwitchWorkshopPhase(): UseMutationResult<
     mutationFn: switchWorkshopPhase,
     onSuccess: (_, variables) => {
       // Invalidate all workshop-related queries
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: workshopQueryKeys.detail(variables.workshopId),
       });
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: workshopQueryKeys.userPlan(variables.workshopId),
       });
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: workshopQueryKeys.submissions(variables.workshopId),
       });
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: workshopQueryKeys.workshopAssessments(variables.workshopId),
       });
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: workshopQueryKeys.grades(variables.workshopId),
       });
     },
@@ -839,13 +839,13 @@ export function useAllocateReviewers(): UseMutationResult<
     mutationFn: allocateReviewers,
     onSuccess: (_, variables) => {
       // Invalidate related queries
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: workshopQueryKeys.submissions(variables.workshopId),
       });
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: workshopQueryKeys.workshopAssessments(variables.workshopId),
       });
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: workshopQueryKeys.userPlan(variables.workshopId),
       });
     },
@@ -924,10 +924,10 @@ export function useUpdateWorkshopGrade(): UseMutationResult<
     mutationFn: updateWorkshopGrade,
     onSuccess: (_, variables) => {
       // Invalidate related queries
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: workshopQueryKeys.grades(variables.workshopId),
       });
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: workshopQueryKeys.submissions(variables.workshopId),
       });
     },
@@ -954,10 +954,10 @@ export function useUpdateSubmission(): UseMutationResult<
     mutationFn: ({ submissionId, ...data }) =>
       updateSubmission({ submissionId, ...data }),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: workshopQueryKeys.submissions(variables.workshopId),
       });
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: workshopQueryKeys.detail(variables.workshopId),
       });
     },
@@ -980,13 +980,13 @@ export function useUpdateAssessment(): UseMutationResult<
     mutationFn: ({ assessmentId, formData }) =>
       updateAssessment(assessmentId, formData),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: workshopQueryKeys.assessments(variables.submissionId),
       });
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: workshopQueryKeys.workshopAssessments(variables.workshopId),
       });
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: workshopQueryKeys.userPlan(variables.workshopId),
       });
     },

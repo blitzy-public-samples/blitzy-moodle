@@ -22,6 +22,40 @@ import type { GradeSummary } from '@/features/gradebook/types/grade.types';
 import { AggregationStatus } from '@/features/gradebook/types/grade.types';
 
 // ============================================================================
+// TYPES FOR MOCKS
+// ============================================================================
+
+/**
+ * Props for mocked Recharts Bar/Line/Area components
+ */
+interface MockChartElementProps {
+  dataKey: string;
+  fill?: string;
+  stroke?: string;
+}
+
+/**
+ * Structure of chart data items as stored in data-chart-data attribute
+ */
+interface ChartDataItem {
+  itemname: string;
+  percentage: number;
+  lettergrade?: string;
+  grade?: number;
+  [key: string]: unknown;
+}
+
+/**
+ * Helper function to parse chart data from DOM attribute with proper typing
+ * @param element - DOM element with data-chart-data attribute
+ * @returns Typed array of chart data items
+ */
+function parseChartData(element: HTMLElement): ChartDataItem[] {
+  const chartDataStr = element.getAttribute('data-chart-data');
+  return JSON.parse(chartDataStr || '[]') as ChartDataItem[];
+}
+
+// ============================================================================
 // MOCKS
 // ============================================================================
 
@@ -52,9 +86,9 @@ vi.mock('recharts', () => ({
   CartesianGrid: vi.fn(() => <div data-testid="cartesian-grid" />),
   Tooltip: vi.fn(() => <div data-testid="tooltip" />),
   Legend: vi.fn(() => <div data-testid="legend" />),
-  Bar: vi.fn(({ dataKey, fill }) => <div data-testid="bar" data-key={dataKey} data-fill={fill} />),
-  Line: vi.fn(({ dataKey, stroke }) => <div data-testid="line" data-key={dataKey} data-stroke={stroke} />),
-  Area: vi.fn(({ dataKey, fill }) => <div data-testid="area" data-key={dataKey} data-fill={fill} />),
+  Bar: vi.fn(({ dataKey, fill }: MockChartElementProps) => <div data-testid="bar" data-key={dataKey} data-fill={fill} />),
+  Line: vi.fn(({ dataKey, stroke }: MockChartElementProps) => <div data-testid="line" data-key={dataKey} data-stroke={stroke} />),
+  Area: vi.fn(({ dataKey, fill }: MockChartElementProps) => <div data-testid="area" data-key={dataKey} data-fill={fill} />),
 }));
 
 // ============================================================================
@@ -128,7 +162,7 @@ function createGradeDistribution(count: number): GradeSummary[] {
       itemname: `Assignment ${i + 1}`,
       grade: gradeValue,
       percentage: gradeValue,
-      lettergrade: lettergrade,
+      lettergrade,
       category: i % 3 === 0 ? 'Assignments' : i % 3 === 1 ? 'Quizzes' : 'Exams',
     }));
   }
@@ -201,8 +235,7 @@ describe('GradeChart Component', () => {
       );
       
       const chart = screen.getByTestId('bar-chart');
-      const chartDataStr = chart.getAttribute('data-chart-data');
-      const chartData = JSON.parse(chartDataStr || '[]');
+      const chartData = parseChartData(chart);
       
       // Data should be grouped into grade ranges (distribution)
       expect(chartData.length).toBeGreaterThan(0);
@@ -300,15 +333,14 @@ describe('GradeChart Component', () => {
       );
       
       const chart = screen.getByTestId('bar-chart');
-      const chartDataStr = chart.getAttribute('data-chart-data');
-      const chartData = JSON.parse(chartDataStr || '[]');
+      const chartData = parseChartData(chart);
       
       // Should have one item per grade
       expect(chartData.length).toBe(6);
-      expect(chartData.every((item: any) => 'itemname' in item && 'percentage' in item)).toBe(true);
+      expect(chartData.every((item) => 'itemname' in item && 'percentage' in item)).toBe(true);
       
       // Verify percentages are preserved
-      const percentages = chartData.map((item: any) => item.percentage);
+      const percentages = chartData.map((item) => item.percentage);
       expect(percentages).toContain(45);
       expect(percentages).toContain(48);
       expect(percentages).toContain(55);
@@ -333,14 +365,13 @@ describe('GradeChart Component', () => {
       );
       
       const chart = screen.getByTestId('bar-chart');
-      const chartDataStr = chart.getAttribute('data-chart-data');
-      const chartData = JSON.parse(chartDataStr || '[]');
+      const chartData = parseChartData(chart);
       
       // All grades should be displayed individually
       expect(chartData.length).toBe(3);
       
       // Verify edge case values are preserved
-      const percentages = chartData.map((item: any) => item.percentage);
+      const percentages = chartData.map((item) => item.percentage);
       expect(percentages).toContain(0);
       expect(percentages).toContain(50);
       expect(percentages).toContain(100);
@@ -362,13 +393,12 @@ describe('GradeChart Component', () => {
       );
       
       const chart = screen.getByTestId('bar-chart');
-      const chartDataStr = chart.getAttribute('data-chart-data');
-      const chartData = JSON.parse(chartDataStr || '[]');
+      const chartData = parseChartData(chart);
       
       // Only non-null grades should be displayed (component filters out null percentages)
       expect(chartData.length).toBe(1);
-      expect(chartData[0].percentage).toBe(75);
-      expect(chartData[0].itemname).toBe('Valid Grade');
+      expect(chartData[0]?.percentage).toBe(75);
+      expect(chartData[0]?.itemname).toBe('Valid Grade');
     });
   });
   
@@ -648,14 +678,13 @@ describe('GradeChart Component', () => {
       );
       
       const chart = screen.getByTestId('bar-chart');
-      const chartDataStr = chart.getAttribute('data-chart-data');
-      const chartData = JSON.parse(chartDataStr || '[]');
+      const chartData = parseChartData(chart);
       
       // Should render all individual grade items
       expect(chartData.length).toBe(grades.length);
       
       // Verify each item has expected properties
-      chartData.forEach((item: any) => {
+      chartData.forEach((item) => {
         expect(item.itemname).toBeDefined();
         expect(item.percentage).toBeDefined();
         expect(typeof item.percentage).toBe('number');
@@ -679,15 +708,14 @@ describe('GradeChart Component', () => {
       );
       
       const chart = screen.getByTestId('bar-chart');
-      const chartDataStr = chart.getAttribute('data-chart-data');
-      const chartData = JSON.parse(chartDataStr || '[]');
+      const chartData = parseChartData(chart);
       
       // Should display all individual grades
       expect(chartData.length).toBe(10);
       
       // Count grades by percentage (failing vs passing)
-      const failingGrades = chartData.filter((item: any) => item.percentage < 50).length;
-      const passingGrades = chartData.filter((item: any) => item.percentage >= 50).length;
+      const failingGrades = chartData.filter((item) => item.percentage < 50).length;
+      const passingGrades = chartData.filter((item) => item.percentage >= 50).length;
       
       expect(failingGrades).toBe(3);
       expect(passingGrades).toBe(7);
@@ -707,14 +735,13 @@ describe('GradeChart Component', () => {
       );
       
       const chart = screen.getByTestId('bar-chart');
-      const chartDataStr = chart.getAttribute('data-chart-data');
-      const chartData = JSON.parse(chartDataStr || '[]');
+      const chartData = parseChartData(chart);
       
       // All individual grades should be displayed
       expect(chartData.length).toBe(10);
       
       // All grades should have the same percentage
-      const allSamePercentage = chartData.every((item: any) => item.percentage === 75);
+      const allSamePercentage = chartData.every((item) => item.percentage === 75);
       expect(allSamePercentage).toBe(true);
     });
   });
@@ -767,8 +794,7 @@ describe('GradeChart Component', () => {
       );
       
       let chart = screen.getByTestId('bar-chart');
-      let chartDataStr = chart.getAttribute('data-chart-data');
-      let initialData = JSON.parse(chartDataStr || '[]');
+      const initialData = parseChartData(chart);
       
       // Update grades
       rerender(
@@ -780,8 +806,7 @@ describe('GradeChart Component', () => {
       );
       
       chart = screen.getByTestId('bar-chart');
-      chartDataStr = chart.getAttribute('data-chart-data');
-      let updatedData = JSON.parse(chartDataStr || '[]');
+      const updatedData = parseChartData(chart);
       
       // Data should reflect the new grades (count of grade items)
       const initialTotal = initialData.length;
@@ -848,14 +873,13 @@ describe('GradeChart Component', () => {
       );
       
       const chart = screen.getByTestId('bar-chart');
-      const chartDataStr = chart.getAttribute('data-chart-data');
-      const chartData = JSON.parse(chartDataStr || '[]');
+      const chartData = parseChartData(chart);
       
       // Should have all individual grade items
       expect(chartData.length).toBe(10);
       
       // All items should have percentage data
-      expect(chartData.every((item: any) => typeof item.percentage === 'number')).toBe(true);
+      expect(chartData.every((item) => typeof item.percentage === 'number')).toBe(true);
     });
     
     it('should display chart with title, axes, and data elements', () => {

@@ -197,7 +197,7 @@ describe('ChapterContent', () => {
       render(
         <ChapterContent
           chapter={mockMainChapter}
-          customTitles={true}
+          customTitles
           chapters={mockChapterArray}
         />
       );
@@ -256,7 +256,7 @@ describe('ChapterContent', () => {
     });
 
     it('renders very long content without truncation', () => {
-      const longContent = '<p>' + 'Lorem ipsum dolor sit amet. '.repeat(200) + '</p>';
+      const longContent = `<p>${  'Lorem ipsum dolor sit amet. '.repeat(200)  }</p>`;
       const longChapter: Chapter = {
         ...mockMainChapter,
         content: longContent,

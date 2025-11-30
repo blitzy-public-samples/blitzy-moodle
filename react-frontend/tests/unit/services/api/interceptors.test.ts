@@ -33,6 +33,7 @@ import type {
 } from 'axios';
 import axios, { AxiosHeaders } from 'axios';
 import { setupInterceptors } from '@/services/api/interceptors';
+import { hasCustomError, type CustomError } from '@/types/errors';
 
 // ============================================================================
 // Type Extensions
@@ -44,6 +45,18 @@ import { setupInterceptors } from '@/services/api/interceptors';
  */
 interface AxiosRequestConfigWithRetry extends InternalAxiosRequestConfig {
   _retry?: boolean;
+}
+
+/**
+ * Helper to safely extract customError from caught error
+ * @param error - The caught error value
+ * @returns The customError object or null if not present
+ */
+function getCustomError(error: unknown): CustomError | null {
+  if (hasCustomError(error)) {
+    return error.customError ?? null;
+  }
+  return null;
 }
 
 // ============================================================================
@@ -905,7 +918,7 @@ describe('Error Standardization', () => {
         await errorInterceptor.rejected!(mockError);
       } catch (error: unknown) {
         expect(error).toHaveProperty('customError');
-        expect((error as any).customError).toMatchObject({
+        expect(getCustomError(error)).toMatchObject({
           message: 'You do not have permission to perform this action',
           code: 'PERMISSION_DENIED',
           status: 403,
@@ -922,7 +935,7 @@ describe('Error Standardization', () => {
         await errorInterceptor.rejected!(mockError);
       } catch (error) {
         expect(error).toHaveProperty('customError');
-        expect((error as any).customError).toHaveProperty('details');
+        expect(getCustomError(error)).toHaveProperty('details');
       }
     });
   });
@@ -937,7 +950,7 @@ describe('Error Standardization', () => {
         await errorInterceptor.rejected!(mockError);
       } catch (error: unknown) {
         expect(error).toHaveProperty('customError');
-        expect((error as any).customError).toMatchObject({
+        expect(getCustomError(error)).toMatchObject({
           message: 'The requested resource was not found',
           code: 'NOT_FOUND',
           status: 404,
@@ -955,7 +968,7 @@ describe('Error Standardization', () => {
         await errorInterceptor.rejected!(mockError);
       } catch (error: unknown) {
         expect(error).toHaveProperty('customError');
-        const typedError = (error as any).customError as { details: { url: string } };
+        const typedError = getCustomError(error) as { details: { url: string } };
         expect(typedError.details).toHaveProperty('url', '/courses/999');
       }
     });
@@ -971,7 +984,7 @@ describe('Error Standardization', () => {
         await errorInterceptor.rejected!(mockError);
       } catch (error: unknown) {
         expect(error).toHaveProperty('customError');
-        expect((error as any).customError).toMatchObject({
+        expect(getCustomError(error)).toMatchObject({
           message: 'A server error occurred. Please try again later.',
           code: 'SERVER_ERROR',
           status: 500,
@@ -988,7 +1001,7 @@ describe('Error Standardization', () => {
         await errorInterceptor.rejected!(mockError);
       } catch (error: unknown) {
         expect(error).toHaveProperty('customError');
-        expect((error as any).customError).toMatchObject({
+        expect(getCustomError(error)).toMatchObject({
           message: 'A server error occurred. Please try again later.',
           code: 'SERVER_ERROR',
           status: 503,
@@ -1007,7 +1020,7 @@ describe('Error Standardization', () => {
           await errorInterceptor.rejected!(mockError);
         } catch (error: unknown) {
           expect(error).toHaveProperty('customError');
-          expect((error as any).customError).toMatchObject({
+          expect(getCustomError(error)).toMatchObject({
             code: 'SERVER_ERROR',
             status,
           });
@@ -1026,7 +1039,7 @@ describe('Error Standardization', () => {
         await errorInterceptor.rejected!(mockError);
       } catch (error: unknown) {
         expect(error).toHaveProperty('customError');
-        expect((error as any).customError).toMatchObject({
+        expect(getCustomError(error)).toMatchObject({
           message: 'Network error. Please check your connection.',
           code: 'NETWORK_ERROR',
           status: 0,
@@ -1047,7 +1060,7 @@ describe('Error Standardization', () => {
         await errorInterceptor.rejected!(mockError);
       } catch (error: unknown) {
         expect(error).toHaveProperty('customError');
-        expect((error as any).customError).toMatchObject({
+        expect(getCustomError(error)).toMatchObject({
           code: 'NETWORK_ERROR',
           status: 0,
         });
@@ -1067,7 +1080,7 @@ describe('Error Standardization', () => {
         await errorInterceptor.rejected!(mockError);
       } catch (error: unknown) {
         expect(error).toHaveProperty('customError');
-        expect((error as any).customError).toMatchObject({
+        expect(getCustomError(error)).toMatchObject({
           code: 'NETWORK_ERROR',
           status: 0,
         });
@@ -1111,8 +1124,9 @@ describe('Error Standardization', () => {
           await errorInterceptor.rejected!(error);
         } catch (e: unknown) {
           expect(e).toHaveProperty('customError');
-          expect((e as any).customError).toHaveProperty('code');
-          expect(typeof (e as any).customError.code).toBe('string');
+          const customError = getCustomError(e);
+          expect(customError).toHaveProperty('code');
+          expect(typeof customError?.code).toBe('string');
         }
       }
     });
@@ -1132,8 +1146,9 @@ describe('Error Standardization', () => {
           await errorInterceptor.rejected!(error);
         } catch (e: unknown) {
           expect(e).toHaveProperty('customError');
-          expect((e as any).customError).toHaveProperty('status');
-          expect(typeof (e as any).customError.status).toBe('number');
+          const customError = getCustomError(e);
+          expect(customError).toHaveProperty('status');
+          expect(typeof customError?.status).toBe('number');
         }
       }
     });
@@ -1146,7 +1161,8 @@ describe('Error Standardization', () => {
         await errorInterceptor.rejected!(mockError);
       } catch (error: unknown) {
         expect(error).toHaveProperty('customError');
-        const message = (error as any).customError.message;
+        const customError = getCustomError(error);
+        const message = customError?.message ?? '';
         // Should not contain technical jargon like "AxiosError" or stack traces
         expect(message).not.toMatch(/axios/i);
         expect(message).not.toMatch(/stack/i);
@@ -1169,7 +1185,8 @@ describe('Error Standardization', () => {
           await errorInterceptor.rejected!(error);
         } catch (e: unknown) {
           expect(e).toHaveProperty('customError');
-          const code = (e as any).customError.code;
+          const customError = getCustomError(e);
+          const code = customError?.code ?? '';
           // Should be uppercase with underscores
           expect(code).toMatch(/^[A-Z_]+$/);
         }
@@ -1283,7 +1300,7 @@ describe('Interceptor Integration', () => {
       await errorInterceptor.rejected!(mockError);
     } catch (error: unknown) {
       expect(error).toHaveProperty('customError');
-      expect((error as any).customError).toMatchObject({
+      expect(getCustomError(error)).toMatchObject({
         code: 'NOT_FOUND',
         status: 404,
       });
@@ -1328,7 +1345,7 @@ describe('Edge Cases', () => {
       await errorInterceptor.rejected!(mockError);
     } catch (error: unknown) {
       expect(error).toHaveProperty('customError');
-      expect((error as any).customError).toMatchObject({
+      expect(getCustomError(error)).toMatchObject({
         code: 'NETWORK_ERROR',
       });
     }
@@ -1365,7 +1382,7 @@ describe('Edge Cases', () => {
       await errorInterceptor.rejected!(mockError);
     } catch (error: unknown) {
       expect(error).toHaveProperty('customError');
-      expect((error as any).customError).toMatchObject({
+      expect(getCustomError(error)).toMatchObject({
         code: 'NETWORK_ERROR',
         status: 0,
       });

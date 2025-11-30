@@ -60,7 +60,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -80,7 +80,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -99,7 +99,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -120,7 +120,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -142,7 +142,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -163,7 +163,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -183,7 +183,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -207,7 +207,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -225,7 +225,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -244,7 +244,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -268,7 +268,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -290,7 +290,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="vertical"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -312,7 +312,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="vertical"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -335,7 +335,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="vertical"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -352,7 +352,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="vertical"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -370,7 +370,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="vertical"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -393,7 +393,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -415,7 +415,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -436,7 +436,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -456,7 +456,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -474,7 +474,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -497,7 +497,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -532,7 +532,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -562,7 +562,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -585,7 +585,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -609,7 +609,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -631,7 +631,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -650,7 +650,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"  // This should be overridden on mobile
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -677,7 +677,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -705,7 +705,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -723,7 +723,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -751,7 +751,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -767,7 +767,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -785,7 +785,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -806,7 +806,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -824,7 +824,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -842,7 +842,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -869,7 +869,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -894,7 +894,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -928,7 +928,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -961,7 +961,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -986,7 +986,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -1012,7 +1012,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -1030,7 +1030,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -1051,7 +1051,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -1071,7 +1071,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -1095,7 +1095,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -1118,7 +1118,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -1140,7 +1140,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -1168,7 +1168,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -1191,7 +1191,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -1209,7 +1209,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -1226,7 +1226,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -1246,7 +1246,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -1275,7 +1275,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="vertical"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -1292,7 +1292,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 
@@ -1315,7 +1315,7 @@ describe('ChoiceChart', () => {
         <ChoiceChart
           options={options}
           displayLayout="horizontal"
-          showPercentages={true}
+          showPercentages
         />
       );
 

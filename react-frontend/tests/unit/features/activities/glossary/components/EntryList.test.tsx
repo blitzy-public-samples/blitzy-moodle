@@ -234,7 +234,7 @@ describe('EntryList Component', () => {
       render(
         <EntryList
           {...defaultProps}
-          loading={true}
+          loading
           entries={[]}
         />
       );
@@ -847,7 +847,7 @@ describe('EntryList Component', () => {
       render(
         <EntryList
           {...defaultProps}
-          loading={true}
+          loading
           entries={[]}
         />
       );
@@ -861,7 +861,7 @@ describe('EntryList Component', () => {
       render(
         <EntryList
           {...defaultProps}
-          loading={true}
+          loading
           entries={[]}
           pagination={createMockPagination({ limit: 6 })}
         />
@@ -876,7 +876,7 @@ describe('EntryList Component', () => {
       render(
         <EntryList
           {...defaultProps}
-          loading={true}
+          loading
           entries={defaultProps.entries}
         />
       );
@@ -891,7 +891,7 @@ describe('EntryList Component', () => {
       const { rerender } = render(
         <EntryList
           {...defaultProps}
-          loading={true}
+          loading
           entries={[]}
         />
       );
@@ -928,7 +928,7 @@ describe('EntryList Component', () => {
       // Perform search
       const searchInput = screen.getByPlaceholderText('Search entries...');
       await user.type(searchInput, 'test');
-      await act(async () => {
+      act(() => {
         vi.advanceTimersByTime(500);
       });
 
@@ -939,7 +939,7 @@ describe('EntryList Component', () => {
       const sortSelect = screen.getByLabelText('Sort by');
       await user.click(sortSelect);
       // Advance timers to allow MUI to render the dropdown options
-      await act(async () => {
+      act(() => {
         vi.advanceTimersByTime(100);
       });
       const updateOption = screen.getByRole('option', { name: 'Date Modified' });

@@ -163,7 +163,9 @@ export function useResource(id?: number): UseQueryResult<Resource, Error> {
   return useQuery<Resource, Error>({
     queryKey: resourceKeys.detail(id ?? 0),
     queryFn: async () => {
-      const response = await apiClient.get<ApiResponse<Resource>>(RESOURCE_ENDPOINTS.DETAIL(id!));
+      // id is guaranteed to be defined when queryFn runs due to enabled: !!id && id > 0
+      const resourceId = id ?? 0;
+      const response = await apiClient.get<ApiResponse<Resource>>(RESOURCE_ENDPOINTS.DETAIL(resourceId));
       return response.data.data;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -195,8 +197,10 @@ export function useResourceFiles(id?: number): UseQueryResult<ResourceFile, Erro
   return useQuery<ResourceFile, Error>({
     queryKey: resourceKeys.files(id ?? 0),
     queryFn: async () => {
+      // id is guaranteed to be defined when queryFn runs due to enabled: !!id && id > 0
+      const resourceId = id ?? 0;
       const response = await apiClient.get<ApiResponse<ResourceFile>>(
-        RESOURCE_ENDPOINTS.FILES(id!)
+        RESOURCE_ENDPOINTS.FILES(resourceId)
       );
       return response.data.data;
     },
@@ -228,8 +232,10 @@ export function useResourcePage(id?: number): UseQueryResult<ResourcePage, Error
   return useQuery<ResourcePage, Error>({
     queryKey: resourceKeys.page(id ?? 0),
     queryFn: async () => {
+      // id is guaranteed to be defined when queryFn runs due to enabled: !!id && id > 0
+      const resourceId = id ?? 0;
       const response = await apiClient.get<ApiResponse<ResourcePage>>(
-        RESOURCE_ENDPOINTS.PAGES(id!)
+        RESOURCE_ENDPOINTS.PAGES(resourceId)
       );
       return response.data.data;
     },
@@ -261,8 +267,10 @@ export function useResourceUrl(id?: number): UseQueryResult<ResourceUrl, Error> 
   return useQuery<ResourceUrl, Error>({
     queryKey: resourceKeys.url(id ?? 0),
     queryFn: async () => {
+      // id is guaranteed to be defined when queryFn runs due to enabled: !!id && id > 0
+      const resourceId = id ?? 0;
       const response = await apiClient.get<ApiResponse<ResourceUrl>>(
-        RESOURCE_ENDPOINTS.URLS(id!)
+        RESOURCE_ENDPOINTS.URLS(resourceId)
       );
       return response.data.data;
     },
@@ -294,8 +302,10 @@ export function useResourceFolder(id?: number): UseQueryResult<ResourceFolder, E
   return useQuery<ResourceFolder, Error>({
     queryKey: resourceKeys.folder(id ?? 0),
     queryFn: async () => {
+      // id is guaranteed to be defined when queryFn runs due to enabled: !!id && id > 0
+      const resourceId = id ?? 0;
       const response = await apiClient.get<ApiResponse<ResourceFolder>>(
-        RESOURCE_ENDPOINTS.FOLDERS(id!)
+        RESOURCE_ENDPOINTS.FOLDERS(resourceId)
       );
       return response.data.data;
     },

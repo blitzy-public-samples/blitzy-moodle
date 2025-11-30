@@ -169,10 +169,10 @@ export function EntryList({
 
   // Check if user has capability to write/add entries
   // Reference: public/mod/glossary/lib.php - glossary_user_can_post()
-  const { hasCapability } = usePermissions();
+  const permissions = usePermissions();
   
   const canAddEntry = glossaryId 
-    ? hasCapability('mod/glossary:write', { type: 'module', contextId: glossaryId })
+    ? permissions.hasCapability('mod/glossary:write', { type: 'module', contextId: glossaryId })
     : false;
 
   // ============================================================================

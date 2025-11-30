@@ -519,8 +519,8 @@ export async function getRecords(
   }
 
   const queryParams: Record<string, unknown> = {
-    page: params?.page || 1,
-    perpage: params?.perPage || DEFAULT_PAGE_SIZE,
+    page: params?.page ?? 1,
+    perpage: params?.perPage ?? DEFAULT_PAGE_SIZE,
   };
 
   if (params?.sort) {
@@ -538,8 +538,8 @@ export async function getRecords(
   });
 
   const { entries, totalcount } = response.data.data;
-  const page = params?.page || 1;
-  const perPage = params?.perPage || DEFAULT_PAGE_SIZE;
+  const page = params?.page ?? 1;
+  const perPage = params?.perPage ?? DEFAULT_PAGE_SIZE;
 
   return {
     records: entries.map((entry) => ({
@@ -636,7 +636,7 @@ export async function createRecord(
       groupid: groupId,
       data: data.map((item) => ({
         fieldid: item.fieldid,
-        subfield: item.subfield || '',
+        subfield: item.subfield ?? '',
         value: item.value,
       })),
     }
@@ -682,7 +682,7 @@ export async function updateRecord(params: UpdateRecordParams): Promise<void> {
   await apiClient.put(`${DATA_API_BASE}/databases/${databaseId}/entries/${recordId}`, {
     data: data.map((item) => ({
       fieldid: item.fieldid,
-      subfield: item.subfield || '',
+      subfield: item.subfield ?? '',
       value: item.value,
     })),
   });
@@ -952,8 +952,8 @@ export async function searchRecords(
     throw new Error('Invalid database ID provided');
   }
 
-  const page = criteria.page || 1;
-  const perPage = criteria.perPage || DEFAULT_PAGE_SIZE;
+  const page = criteria.page ?? 1;
+  const perPage = criteria.perPage ?? DEFAULT_PAGE_SIZE;
 
   const requestBody: Record<string, unknown> = {
     databaseid: databaseId,
@@ -1291,8 +1291,8 @@ export async function exportRecords(
     `${DATA_API_BASE}/databases/${databaseId}/export`,
     {
       format,
-      fieldids: fieldIds || [],
-      recordids: recordIds || [],
+      fieldids: fieldIds ?? [],
+      recordids: recordIds ?? [],
     }
   );
 

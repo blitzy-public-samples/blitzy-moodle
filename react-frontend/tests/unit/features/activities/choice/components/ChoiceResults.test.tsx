@@ -529,7 +529,7 @@ describe('ChoiceResults Component', () => {
       expect(link).toHaveAttribute('href', '/user/view.php?id=99&course=456');
     });
 
-    it('should have checkbox with value as response attemptid', async () => {
+    it('should have checkbox with value as response attemptid', () => {
       const option1 = createMockOptionResult({
         text: 'Option A',
         user: [createMockChoiceUser({ id: 1, answerid: 201 })],

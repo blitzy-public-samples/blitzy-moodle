@@ -232,7 +232,7 @@ describe('BookNavigation Component', () => {
       expect(mockOnNavigate).toHaveBeenCalledWith(4); // Chapter ID 4 (next of chapter 3)
     });
 
-    it('should not call onNavigate when disabled Previous button clicked', async () => {
+    it('should not call onNavigate when disabled Previous button clicked', () => {
       render(
         <BookNavigation
           currentChapterId={1}
@@ -251,7 +251,7 @@ describe('BookNavigation Component', () => {
       expect(mockOnNavigate).not.toHaveBeenCalled();
     });
 
-    it('should not call onNavigate when disabled Next button clicked', async () => {
+    it('should not call onNavigate when disabled Next button clicked', () => {
       render(
         <BookNavigation
           currentChapterId={5}

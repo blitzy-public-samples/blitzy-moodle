@@ -47,7 +47,7 @@ import type {
   RecordWithContents,
 } from '@/features/activities/data/api/dataApi';
 
-/* eslint-disable @typescript-eslint/unbound-method */
+ 
 
 // Mock API base URL
 const API_BASE_URL = 'http://localhost:8000/api/v1';
@@ -586,7 +586,7 @@ const handlers = [
   }),
 
   // PUT update field
-  http.put(`*${API_BASE_URL}/data/databases/:dbId/fields/:fieldId`, async ({ params, request: _request }) => {
+  http.put(`*${API_BASE_URL}/data/databases/:dbId/fields/:fieldId`, ({ params }) => {
     const { fieldId } = params;
 
     if (fieldId === '404') {
@@ -743,7 +743,7 @@ const handlers = [
   // POST upload file
   http.post(
     `*${API_BASE_URL}/data/databases/:dbId/entries/:recordId/files`,
-    async ({ request: _request, params }) => {
+    ({ params }) => {
       const { recordId } = params;
 
       if (recordId === '404') {
@@ -845,15 +845,13 @@ const handlers = [
     return HttpResponse.json({
       success: true,
       data: {
-        downloadurl: `/pluginfile.php/export/${id}.${body.format}`,
+        downloadurl: `/pluginfile.php/export/${String(id)}.${body.format}`,
       },
     });
   }),
 
   // POST import records
-  http.post(`*${API_BASE_URL}/data/databases/:id/import`, async ({ request: _request, params }) => {
-    const { id: _id } = params;
-
+  http.post(`*${API_BASE_URL}/data/databases/:id/import`, () => {
     return HttpResponse.json({
       success: true,
       data: {
@@ -864,7 +862,7 @@ const handlers = [
   }),
 
   // POST rate record
-  http.post(`*${API_BASE_URL}/data/databases/:dbId/entries/:recordId/rate`, async ({ params }) => {
+  http.post(`*${API_BASE_URL}/data/databases/:dbId/entries/:recordId/rate`, ({ params }) => {
     const { recordId } = params;
 
     if (recordId === '404') {

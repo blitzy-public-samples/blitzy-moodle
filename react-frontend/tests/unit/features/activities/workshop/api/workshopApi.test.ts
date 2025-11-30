@@ -30,7 +30,7 @@ import type {
 } from '@/features/activities/workshop/types';
 import { WorkshopPhase, ExamplesMode } from '@/features/activities/workshop/types';
 
-/* eslint-disable @typescript-eslint/unbound-method */
+ 
 
 // Mock API base URL
 const API_BASE_URL = 'http://localhost:8000/api/v1';
@@ -748,9 +748,12 @@ function createWrapper() {
     },
   });
 
-  return function Wrapper({ children }: { children: React.ReactNode }) {
+  // Return a wrapper component for testing with React Query
+  function TestQueryClientWrapper({ children }: { children: React.ReactNode }): React.ReactElement {
     return React.createElement(QueryClientProvider, { client: queryClient }, children);
-  };
+  }
+  TestQueryClientWrapper.displayName = 'TestQueryClientWrapper';
+  return TestQueryClientWrapper;
 }
 
 // ============================================================================
@@ -832,7 +835,7 @@ describe('workshopApi', () => {
       await waitFor(() => expect(result.current.isError).toBe(true));
     });
 
-    it('should not fetch when workshop ID is 0', async () => {
+    it('should not fetch when workshop ID is 0', () => {
       const { result } = renderHook(() => workshopApi.useWorkshop(0), {
         wrapper: createWrapper(),
       });
@@ -840,7 +843,7 @@ describe('workshopApi', () => {
       expect(result.current.fetchStatus).toBe('idle');
     });
 
-    it('should respect enabled option', async () => {
+    it('should respect enabled option', () => {
       const { result } = renderHook(() => workshopApi.useWorkshop(1, { enabled: false }), {
         wrapper: createWrapper(),
       });

@@ -1111,7 +1111,7 @@ describe('CourseProgress', () => {
       expect(screen.queryByTestId('course-progress-details')).not.toBeInTheDocument();
 
       rerender(
-        <CourseProgress {...defaultProps} showDetails={true} activityBreakdown={breakdown} />
+        <CourseProgress {...defaultProps} showDetails activityBreakdown={breakdown} />
       );
 
       expect(screen.getByTestId('course-progress-details')).toBeInTheDocument();

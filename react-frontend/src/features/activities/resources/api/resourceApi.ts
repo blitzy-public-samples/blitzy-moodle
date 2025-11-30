@@ -159,7 +159,7 @@ function handleApiError(
 
   // Handle HTTP status codes without error envelope
   if (error.response) {
-    const status = error.response.status;
+    const {status} = error.response;
 
     switch (status) {
       case 400:

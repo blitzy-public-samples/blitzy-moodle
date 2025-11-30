@@ -458,3 +458,66 @@ export function isAuthenticationError(
     )
   );
 }
+
+// ============================================================================
+// Custom Error Interface for Interceptors
+// ============================================================================
+
+/**
+ * Custom error information attached to AxiosError objects by interceptors
+ *
+ * The API interceptors attach this custom error object to provide
+ * user-friendly error messages and structured error information
+ * for UI components to display.
+ *
+ * @property message - User-friendly error message
+ * @property code - Error code string for programmatic handling
+ * @property status - HTTP status code
+ * @property details - Additional error context (optional)
+ */
+export interface CustomError {
+  /** User-friendly error message */
+  message: string;
+
+  /** Error code for programmatic handling */
+  code: string;
+
+  /** HTTP status code */
+  status: number;
+
+  /** Additional error context */
+  details?: unknown;
+}
+
+/**
+ * Interface for errors that may have a customError property
+ *
+ * Used for type narrowing when handling errors from the API client.
+ * The customError property is attached by interceptors.
+ */
+export interface ErrorWithCustomError extends Error {
+  customError?: CustomError;
+}
+
+/**
+ * Type guard to check if an error has a customError property
+ *
+ * @param error - Unknown error object
+ * @returns true if error has a customError property
+ *
+ * @example
+ * ```typescript
+ * if (hasCustomError(error)) {
+ *   console.log('Custom error message:', error.customError.message);
+ * }
+ * ```
+ */
+export function hasCustomError(error: unknown): error is ErrorWithCustomError {
+  return (
+    error !== null &&
+    typeof error === 'object' &&
+    'customError' in error &&
+    typeof (error as ErrorWithCustomError).customError === 'object' &&
+    (error as ErrorWithCustomError).customError !== null
+  );
+}

@@ -312,7 +312,7 @@ function ChapterList({
         // Find all consecutive subchapters
         while (j < processedChapters.length) {
           const subchapter = processedChapters[j];
-          if (!subchapter || subchapter.level === 0) break;
+          if (!subchapter || subchapter.level === 0) {break;}
           subchapterElements.push(renderChapter(subchapter, j));
           j++;
         }
@@ -342,7 +342,7 @@ function ChapterList({
         const orphanSubchapters: React.ReactNode[] = [];
         while (i < processedChapters.length) {
           const orphan = processedChapters[i];
-          if (!orphan || orphan.level === 0) break;
+          if (!orphan || orphan.level === 0) {break;}
           orphanSubchapters.push(renderChapter(orphan, i));
           i++;
         }
@@ -386,7 +386,7 @@ function ChapterList({
           {chapterTitle}
         </Typography>
       );
-    } else {
+    } 
       // Other chapters - render as clickable buttons
       return (
         <ListItemButton
@@ -411,7 +411,7 @@ function ChapterList({
           </Typography>
         </ListItemButton>
       );
-    }
+    
   };
 
   // Empty state handling - check processedChapters instead of chapters

@@ -23,6 +23,7 @@ import { createMockUser } from '@tests/helpers/mockData';
 import UserMenu from '@/components/navigation/UserMenu';
 import { logout } from '@/features/auth/store/authSlice';
 import * as storeHooks from '@/app/store';
+import type { AppDispatch } from '@/app/store';
 
 // ============================================================================
 // Mock Setup
@@ -67,7 +68,8 @@ describe('UserMenu', () => {
     mockDispatch = vi.fn();
 
     // Mock useAppDispatch to return our mock dispatch
-    vi.spyOn(storeHooks, 'useAppDispatch').mockReturnValue(mockDispatch as any);
+    // Cast through unknown to AppDispatch since mock functions don't exactly match dispatch types
+    vi.spyOn(storeHooks, 'useAppDispatch').mockReturnValue(mockDispatch as unknown as AppDispatch);
   });
 
   /**

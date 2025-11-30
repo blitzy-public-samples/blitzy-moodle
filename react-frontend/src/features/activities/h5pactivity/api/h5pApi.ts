@@ -340,11 +340,11 @@ export function parseDisplayOptions(displayoptions: number): H5PDisplayOptions {
  */
 export function buildDisplayOptions(options: Partial<H5PDisplayOptions>): number {
   let bitmask = 0;
-  if (options.frame) bitmask |= 1;
-  if (options.download) bitmask |= 2;
-  if (options.embed) bitmask |= 4;
-  if (options.copyright) bitmask |= 8;
-  if (options.about) bitmask |= 16;
+  if (options.frame) {bitmask |= 1;}
+  if (options.download) {bitmask |= 2;}
+  if (options.embed) {bitmask |= 4;}
+  if (options.copyright) {bitmask |= 8;}
+  if (options.about) {bitmask |= 16;}
   return bitmask;
 }
 

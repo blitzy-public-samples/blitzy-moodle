@@ -350,7 +350,7 @@ function ChoiceOptions({
                   e.preventDefault();
                   // Call the onRemove callback if provided
                   if (onRemove) {
-                    onRemove();
+                    void onRemove();
                   }
                 }}
                 underline="hover"

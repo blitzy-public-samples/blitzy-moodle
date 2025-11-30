@@ -79,7 +79,7 @@ const TRUSTED_IFRAME_DOMAINS = [
  * @returns true if the domain is trusted, false otherwise
  */
 function isIframeSrcTrusted(src: string): boolean {
-  if (!src) return false;
+  if (!src) {return false;}
   
   try {
     const url = new URL(src);
@@ -88,7 +88,7 @@ function isIframeSrcTrusted(src: string): boolean {
     // Check if hostname matches or ends with a trusted domain
     return TRUSTED_IFRAME_DOMAINS.some(domain => {
       const lowerDomain = domain.toLowerCase();
-      return hostname === lowerDomain || hostname.endsWith('.' + lowerDomain);
+      return hostname === lowerDomain || hostname.endsWith(`.${  lowerDomain}`);
     });
   } catch {
     // Invalid URL - not trusted

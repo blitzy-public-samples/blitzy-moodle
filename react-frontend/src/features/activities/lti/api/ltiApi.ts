@@ -25,9 +25,10 @@ import type {
   LtiGradeResult,
 } from '../types/lti.types';
 import {
+  LaunchContainer} from '../types/lti.types';
+import type {
   LtiVersion,
-  LtiToolState,
-  LaunchContainer,
+  LtiToolState
 } from '../types/lti.types';
 
 // ============================================================================
@@ -831,7 +832,7 @@ export function submitLtiLaunchForm(
  * @returns Window features string or undefined
  */
 export function getLtiWindowFeatures(launchData: LtiLaunchDataResponse): string | undefined {
-  if (launchData.launchContainer !== 4) {
+  if (launchData.launchContainer !== LaunchContainer.WINDOW) {
     // Not a WINDOW launch
     return undefined;
   }
@@ -848,15 +849,15 @@ export function getLtiWindowFeatures(launchData: LtiLaunchDataResponse): string 
  */
 export function getLtiLaunchTarget(launchContainer: LaunchContainer, ltiId: number): string {
   switch (launchContainer) {
-    case 1: // DEFAULT - typically iframe
+    case LaunchContainer.DEFAULT:
       return `lti-frame-${ltiId}`;
-    case 2: // EMBED
+    case LaunchContainer.EMBED:
       return `lti-embed-${ltiId}`;
-    case 3: // EMBED_NO_BLOCKS
+    case LaunchContainer.EMBED_NO_BLOCKS:
       return `lti-embed-${ltiId}`;
-    case 4: // WINDOW
+    case LaunchContainer.WINDOW:
       return '_blank';
-    case 5: // REPLACE_MOODLE_WINDOW
+    case LaunchContainer.REPLACE_MOODLE_WINDOW:
       return '_self';
     default:
       return `lti-frame-${ltiId}`;

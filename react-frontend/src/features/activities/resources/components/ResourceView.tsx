@@ -62,6 +62,7 @@ import { useResource } from '@/features/activities/resources/hooks/useResource';
 import type { DisplayOptions } from '@/features/activities/resources/types/resource.types';
 import { LoadingSpinner } from '@/components/feedback/LoadingSpinner';
 import { Alert } from '@/components/feedback/Alert';
+import { hasCustomError } from '@/types/errors';
 
 /**
  * Props interface for ResourceView component
@@ -299,16 +300,17 @@ export default function ResourceView({ resourceId }: ResourceViewProps): JSX.Ele
   // Error state - display alert for fetch failures
   // Similar to error handling in view.php (e.g., throw new moodle_exception)
   if (isError || !resource) {
+    // Use type guard to safely access customError if present
+    const errorMessage = hasCustomError(error)
+      ? error.customError?.message
+      : error?.message ?? 'The requested resource could not be loaded. Please try again later.';
+
     return (
       <Box sx={{ p: 3 }}>
         <Alert
           severity="error"
           title="Unable to Load Resource"
-          message={
-            (error as any)?.customError?.message ?? 
-            error?.message ?? 
-            'The requested resource could not be loaded. Please try again later.'
-          }
+          message={errorMessage}
           closeable={false}
         />
       </Box>

@@ -512,7 +512,7 @@ export function useBBBMeetingStatus(
     enabled: id > 0,
     // Enable polling when meeting is running
     refetchInterval: (query) => {
-      const data = query.state.data;
+      const {data} = query.state;
       // Poll every 5 seconds when meeting is running
       if (data?.statusRunning) {
         return 5000;

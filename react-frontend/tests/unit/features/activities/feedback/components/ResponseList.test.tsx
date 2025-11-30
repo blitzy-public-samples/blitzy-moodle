@@ -101,14 +101,14 @@ function createMockResponses(count: number): ResponseWithDetails[] {
  * Test suite for ResponseList component
  */
 describe('ResponseList Component', () => {
-  // Mock functions
-  let mockOnDelete: ReturnType<typeof vi.fn>;
+  // Mock functions - using explicit mock function type
+  let mockOnDelete: ReturnType<typeof vi.fn<[number[]], Promise<void>>>;
   let mockOnViewDetails: ReturnType<typeof vi.fn>;
   let queryClient: QueryClient;
 
   // Setup before each test
   beforeEach(() => {
-    mockOnDelete = vi.fn().mockResolvedValue(undefined);
+    mockOnDelete = vi.fn<[number[]], Promise<void>>().mockResolvedValue(undefined);
     mockOnViewDetails = vi.fn();
     queryClient = new QueryClient({
       defaultOptions: {
@@ -141,7 +141,7 @@ describe('ResponseList Component', () => {
       canDelete = true,
       loading = false,
       error = null,
-      onDelete = mockOnDelete as (ids: number[]) => Promise<void>,
+      onDelete = mockOnDelete,
       onViewDetails = mockOnViewDetails,
     } = props;
 

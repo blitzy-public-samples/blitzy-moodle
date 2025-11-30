@@ -63,7 +63,7 @@ function useCurrentUser() {
       // Check if error has ApiError structure with status property
       if (error && typeof error === 'object' && 'status' in error) {
         const apiError = error as unknown as ApiError;
-        if (apiError.status === 401) return false;
+        if (apiError.status === 401) {return false;}
       }
       return failureCount < 3;
     },
@@ -268,7 +268,7 @@ export const useAuth = (): UseAuthReturn => {
   // Extract error from query or mutation
   const error: ApiError | null = 
     (queryError as ApiError | null) ?? 
-    (loginMutation.error as ApiError | null) ?? 
+    (loginMutation.error) ?? 
     null;
 
   return {

@@ -215,7 +215,7 @@ function handleChoiceApiError(error: unknown): ChoiceApiError {
       const errorInfo = responseData.error as { code?: string; message?: string; details?: Record<string, unknown> };
 
       const errorCode = errorInfo.code as ChoiceApiErrorCode | undefined;
-      const errorMessage = errorInfo.message || 'An error occurred';
+      const errorMessage = errorInfo.message ?? 'An error occurred';
 
       // Map known Moodle choice error strings to error codes
       if (errorCode) {
@@ -228,22 +228,22 @@ function handleChoiceApiError(error: unknown): ChoiceApiError {
       const message = responseData.message.toLowerCase();
 
       if (message.includes('at least one option')) {
-        return createChoiceError('atleastoneoption', responseData.message as string);
+        return createChoiceError('atleastoneoption', responseData.message);
       }
       if (message.includes('multiple') && message.includes('not allowed')) {
-        return createChoiceError('multiplenotallowederror', responseData.message as string);
+        return createChoiceError('multiplenotallowederror', responseData.message);
       }
       if (message.includes('cannot submit')) {
-        return createChoiceError('cannotsubmit', responseData.message as string);
+        return createChoiceError('cannotsubmit', responseData.message);
       }
       if (message.includes('exceeded') || message.includes('full')) {
-        return createChoiceError('choicesexceeded', responseData.message as string);
+        return createChoiceError('choicesexceeded', responseData.message);
       }
       if (message.includes('not open') || message.includes('not yet')) {
-        return createChoiceError('notopenyet', responseData.message as string);
+        return createChoiceError('notopenyet', responseData.message);
       }
       if (message.includes('expired') || message.includes('closed')) {
-        return createChoiceError('expired', responseData.message as string);
+        return createChoiceError('expired', responseData.message);
       }
     }
   }

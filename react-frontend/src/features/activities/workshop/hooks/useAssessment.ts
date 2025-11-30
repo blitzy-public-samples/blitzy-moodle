@@ -825,7 +825,7 @@ export function isAssessmentComplete(
   if (requiredDimensionIds && requiredDimensionIds.length > 0) {
     return requiredDimensionIds.every((requiredId) => {
       const dimension = dimensions.find((d) => d.dimensionid === requiredId);
-      return dimension && dimension.grade !== null && dimension.grade !== undefined;
+      return dimension?.grade !== null && dimension?.grade !== undefined;
     });
   }
 

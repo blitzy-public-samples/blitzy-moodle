@@ -70,6 +70,27 @@ declare module 'axios' {
      */
     _requestStartTime?: number;
   }
+
+  /**
+   * Extend AxiosError to include customError property
+   * This property is attached by error interceptors to provide
+   * user-friendly error information for UI components
+   */
+  interface AxiosError {
+    /**
+     * Custom error information attached by interceptors
+     */
+    customError?: {
+      /** User-friendly error message */
+      message: string;
+      /** Error code for programmatic handling */
+      code: string;
+      /** HTTP status code */
+      status: number;
+      /** Additional error context */
+      details?: unknown;
+    };
+  }
 }
 
 /**
@@ -457,7 +478,7 @@ function createOnResponseError(axiosInstance: AxiosInstance) {
     // Attach custom properties to the original AxiosError to preserve Error prototype
     // This ensures React Query properly recognizes it as an error while providing
     // custom error information for the UI layer
-    (error as any).customError = {
+    error.customError = {
       message: 'You do not have permission to perform this action',
       code: 'PERMISSION_DENIED',
       status: 403,
@@ -477,7 +498,7 @@ function createOnResponseError(axiosInstance: AxiosInstance) {
 
   if (error.response?.status === 404) {
     // Attach custom properties to the original AxiosError to preserve Error prototype
-    (error as any).customError = {
+    error.customError = {
       message: 'The requested resource was not found',
       code: 'NOT_FOUND',
       status: 404,
@@ -499,7 +520,7 @@ function createOnResponseError(axiosInstance: AxiosInstance) {
 
   if (error.response && error.response.status >= 500) {
     // Attach custom properties to the original AxiosError to preserve Error prototype
-    (error as any).customError = {
+    error.customError = {
       message: 'A server error occurred. Please try again later.',
       code: 'SERVER_ERROR',
       status: error.response.status,
@@ -519,7 +540,7 @@ function createOnResponseError(axiosInstance: AxiosInstance) {
 
   if (!error.response) {
     // Attach custom properties to the original AxiosError to preserve Error prototype
-    (error as any).customError = {
+    error.customError = {
       message: 'Network error. Please check your connection.',
       code: 'NETWORK_ERROR',
       status: 0,
@@ -543,7 +564,7 @@ function createOnResponseError(axiosInstance: AxiosInstance) {
   const responseData = error.response?.data as ApiErrorResponse | undefined;
   
   // Attach custom properties to the original AxiosError to preserve Error prototype
-  (error as any).customError = {
+  error.customError = {
     message: responseData?.error?.message ?? error.message ?? 'An unexpected error occurred',
     code: responseData?.error?.code ?? 'UNKNOWN_ERROR',
     status: error.response?.status ?? 0,

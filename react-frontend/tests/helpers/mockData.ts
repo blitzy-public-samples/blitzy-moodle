@@ -57,6 +57,47 @@ import {
 } from '@/features/activities/glossary/types/glossary.types';
 
 /**
+ * Mock resource file structure for testing
+ * This matches the simplified structure used by test components
+ */
+interface MockResourceFile {
+  filename: string;
+  filepath: string;
+  filesize: number;
+  url: string;
+  timemodified: number;
+  mimetype: string;
+}
+
+/**
+ * Mock resource structure for testing ResourceView component
+ * This matches the simplified structure used by useResource hook
+ */
+interface MockResource {
+  type: string;
+  id: number;
+  coursemodule: number;
+  course: number;
+  name: string;
+  intro: string;
+  introformat: number;
+  timemodified: number;
+  files: MockResourceFile[];
+  display: number;
+  displayoptions: string;
+  viewcount: number;
+  downloadcount: number;
+  tobemigrated?: number;
+  legacyfiles?: number;
+  legacyfileslast?: number;
+}
+
+/**
+ * Partial type for mock resource overrides
+ */
+type MockResourceOverrides = Partial<MockResource & { files: MockResourceFile[] }>;
+
+/**
  * Generates a random mock ID for test entities.
  * Uses a large random number to avoid collisions in test data.
  * 
@@ -1026,9 +1067,9 @@ export function createMockResource(
  * });
  * ```
  */
-export function createMockResourceFile(overrides: any = {}): any {
+export function createMockResourceFile(overrides: MockResourceOverrides = {}): MockResource {
   const id = overrides.id ?? generateMockId();
-  const defaultFile = {
+  const defaultFile: MockResourceFile = {
     filename: 'sample-document.pdf',
     filepath: '/',
     filesize: 2457600,
@@ -1037,7 +1078,7 @@ export function createMockResourceFile(overrides: any = {}): any {
     mimetype: 'application/pdf',
   };
 
-  const baseResource = {
+  const baseResource: MockResource = {
     type: 'resource',
     id,
     coursemodule: overrides.coursemodule ?? generateMockId(),
@@ -1054,7 +1095,7 @@ export function createMockResourceFile(overrides: any = {}): any {
   };
 
   // Add tobemigrated if specified in overrides
-  if ('tobemigrated' in overrides) {
+  if ('tobemigrated' in overrides && overrides.tobemigrated !== undefined) {
     return { ...baseResource, tobemigrated: overrides.tobemigrated };
   }
 

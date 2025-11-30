@@ -382,7 +382,7 @@ describe('FolderBrowser component', () => {
         })
       );
 
-      render(<FolderBrowser {...defaultProps} showdescription={true} />, { queryClient });
+      render(<FolderBrowser {...defaultProps} showdescription />, { queryClient });
 
       await waitForLoadingToFinish();
 
@@ -584,7 +584,7 @@ describe('FolderBrowser component', () => {
       );
 
       // Use showexpanded: true to display nested files
-      render(<FolderBrowser {...defaultProps} showexpanded={true} />, { queryClient });
+      render(<FolderBrowser {...defaultProps} showexpanded />, { queryClient });
 
       await waitForLoadingToFinish();
 
@@ -657,7 +657,7 @@ describe('FolderBrowser component', () => {
       );
 
       const { rerender } = render(
-        <FolderBrowser {...defaultProps} showdescription={true} />,
+        <FolderBrowser {...defaultProps} showdescription />,
         { queryClient }
       );
 
@@ -697,7 +697,7 @@ describe('FolderBrowser component', () => {
 
       // Rerender with showexpanded true
       queryClient.clear();
-      rerender(<FolderBrowser {...defaultProps} showexpanded={true} />);
+      rerender(<FolderBrowser {...defaultProps} showexpanded />);
 
       await waitForLoadingToFinish();
 
@@ -720,7 +720,7 @@ describe('FolderBrowser component', () => {
         })
       );
 
-      render(<FolderBrowser {...defaultProps} forcedownload={true} />, { queryClient });
+      render(<FolderBrowser {...defaultProps} forcedownload />, { queryClient });
 
       await waitForLoadingToFinish();
 
@@ -1010,7 +1010,7 @@ describe('FolderBrowser component', () => {
         })
       );
 
-      render(<FolderBrowser {...defaultProps} showexpanded={true} />, { queryClient });
+      render(<FolderBrowser {...defaultProps} showexpanded />, { queryClient });
 
       await waitForLoadingToFinish();
 
@@ -1074,7 +1074,7 @@ describe('FolderBrowser component', () => {
         })
       );
 
-      render(<FolderBrowser {...defaultProps} showexpanded={true} />, { queryClient });
+      render(<FolderBrowser {...defaultProps} showexpanded />, { queryClient });
 
       await waitForLoadingToFinish();
 
@@ -1151,7 +1151,7 @@ describe('FolderBrowser component', () => {
         })
       );
 
-      render(<FolderBrowser {...defaultProps} showexpanded={true} />, { queryClient });
+      render(<FolderBrowser {...defaultProps} showexpanded />, { queryClient });
 
       await waitForLoadingToFinish();
 
@@ -1200,7 +1200,7 @@ describe('FolderBrowser component', () => {
         })
       );
 
-      render(<FolderBrowser {...defaultProps} showexpanded={true} />, { queryClient });
+      render(<FolderBrowser {...defaultProps} showexpanded />, { queryClient });
 
       await waitForLoadingToFinish();
 
@@ -1223,7 +1223,7 @@ describe('FolderBrowser component', () => {
         })
       );
 
-      render(<FolderBrowser {...defaultProps} showexpanded={true} />, { queryClient });
+      render(<FolderBrowser {...defaultProps} showexpanded />, { queryClient });
 
       await waitForLoadingToFinish();
 
@@ -1252,7 +1252,7 @@ describe('FolderBrowser component', () => {
         })
       );
 
-      render(<FolderBrowser {...defaultProps} showexpanded={true} />, { queryClient });
+      render(<FolderBrowser {...defaultProps} showexpanded />, { queryClient });
 
       await waitForLoadingToFinish();
 
@@ -1274,7 +1274,7 @@ describe('FolderBrowser component', () => {
         })
       );
 
-      render(<FolderBrowser {...defaultProps} showexpanded={true} />, { queryClient });
+      render(<FolderBrowser {...defaultProps} showexpanded />, { queryClient });
 
       await waitForLoadingToFinish();
 
@@ -2011,7 +2011,7 @@ describe('FolderBrowser component', () => {
       expect(props.folderId).toBe(1);
     });
 
-    it('tests required props (folderId)', async () => {
+    it('tests required props (folderId)', () => {
       const mockData = createMockFolderData();
 
       server.use(
@@ -2097,7 +2097,7 @@ describe('FolderBrowser component', () => {
         })
       );
 
-      render(<FolderBrowser {...defaultProps} showexpanded={true} />, { queryClient });
+      render(<FolderBrowser {...defaultProps} showexpanded />, { queryClient });
 
       await waitForLoadingToFinish();
 
@@ -2131,7 +2131,7 @@ describe('FolderBrowser component', () => {
     it('Broken File Links: Handles missing files gracefully', async () => {
       const mockData = createMockFolderData();
       // Modify to have null URL - ensure children arrays exist
-      if (mockData.tree.children && mockData.tree.children[0]?.children?.[0]?.file) {
+      if (mockData.tree.children?.[0]?.children?.[0]?.file) {
         mockData.tree.children[0].children[0].file.url = '';
       }
 
@@ -2144,7 +2144,7 @@ describe('FolderBrowser component', () => {
         })
       );
 
-      render(<FolderBrowser {...defaultProps} showexpanded={true} />, { queryClient });
+      render(<FolderBrowser {...defaultProps} showexpanded />, { queryClient });
 
       await waitForLoadingToFinish();
 

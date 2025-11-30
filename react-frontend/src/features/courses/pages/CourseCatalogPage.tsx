@@ -84,7 +84,7 @@ export function CourseCatalogPage() {
     page: currentPage,
     perPage: coursesPerPage,
     search: searchQuery || undefined,
-    categoryId: categoryId,
+    categoryId,
     sort: sortBy,
     order: sortOrder,
   };
