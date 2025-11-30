@@ -34,7 +34,6 @@ import type {
   WorkshopPhase,
   WorkshopUserPlan,
   AllocationResult,
-  DimensionGrade,
   WorkshopAssessmentFormData,
 } from '@/features/activities/workshop/types';
 import type { ApiResponse, ListParams } from '@/types/api';
@@ -142,15 +141,6 @@ interface AllocateReviewersParams {
     excludeSameGroup?: boolean;
     addselfassessment?: boolean;
   };
-}
-
-/**
- * Manual allocation parameters
- */
-interface ManualAllocationParams {
-  workshopId: number;
-  submissionId: number;
-  reviewerId: number;
 }
 
 /**
@@ -588,7 +578,7 @@ export function useCreateSubmission(): UseMutationResult<
 
   return useMutation({
     mutationFn: createSubmission,
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       // Invalidate related queries to trigger refetch
       queryClient.invalidateQueries({
         queryKey: workshopQueryKeys.submissions(variables.workshopId),
