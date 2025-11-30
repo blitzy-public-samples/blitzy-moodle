@@ -580,7 +580,7 @@ export function useLessonTimer(
     retry,
     retryDelay: getRetryDelay,
     // Enable polling if refetchInterval is provided
-    refetchInterval: refetchInterval,
+    refetchInterval,
     // Always refetch timer on focus for accurate time
     refetchOnWindowFocus: true,
     refetchOnMount: true,
