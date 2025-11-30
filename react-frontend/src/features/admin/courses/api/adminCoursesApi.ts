@@ -66,36 +66,6 @@ const ADMIN_COURSES_BASE = '/admin/courses';
 const ADMIN_CATEGORIES_BASE = '/admin/courses/categories';
 
 // ============================================================================
-// Type Definitions for API Responses
-// ============================================================================
-
-/**
- * Response structure for paginated course listings
- */
-interface CoursesListResponse {
-  items: Course[];
-  total: number;
-}
-
-/**
- * Response structure for paginated category listings
- */
-interface CategoriesListResponse {
-  items: CourseCategory[];
-  total: number;
-}
-
-/**
- * Parameters for moving a category to a new parent
- */
-interface MoveCategoryParams {
-  /** The category ID to move */
-  categoryId: CategoryId;
-  /** The new parent category ID (0 for top-level) */
-  newParentId: CategoryId;
-}
-
-// ============================================================================
 // Course CRUD Functions
 // ============================================================================
 
