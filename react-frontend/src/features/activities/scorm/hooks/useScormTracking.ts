@@ -42,7 +42,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { submitTracking } from '../api/scormApi';
 import { scormQueryKeys } from './useScorm';
-import type { ScormTrackingData } from '../types/scorm.types';
+import type { SaveTrackingRequest } from '../types/scorm.types';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -57,6 +57,8 @@ export interface ScormTrackingElement {
   element: string;
   /** Element value as string (SCORM spec requires string values) */
   value: string;
+  /** Timestamp of last modification (Unix timestamp) */
+  timemodified?: number;
 }
 
 /**
@@ -333,7 +335,9 @@ function isValidNavigationRequest(
  */
 function isValidScoreValue(value: string, isScaled = false): boolean {
   const num = parseFloat(value);
-  if (isNaN(num)) return false;
+  if (isNaN(num)) {
+    return false;
+  }
   
   if (isScaled) {
     // Scaled score must be between -1 and 1
@@ -594,16 +598,18 @@ export function formatSessionTime(
  * @returns Time in milliseconds, or 0 if invalid format
  */
 export function parseScormTime(timeString: string): number {
-  if (!timeString) return 0;
+  if (!timeString) {
+    return 0;
+  }
 
   // Try SCORM 1.2 format (HHHH:MM:SS.SS)
   const scorm12Match = timeString.match(
     /^(\d{2,4}):(\d{2}):(\d{2}(?:\.\d{1,2})?)$/
   );
   if (scorm12Match) {
-    const hours = parseInt(scorm12Match[1], 10);
-    const minutes = parseInt(scorm12Match[2], 10);
-    const seconds = parseFloat(scorm12Match[3]);
+    const hours = parseInt(scorm12Match[1] ?? '0', 10);
+    const minutes = parseInt(scorm12Match[2] ?? '0', 10);
+    const seconds = parseFloat(scorm12Match[3] ?? '0');
     return (hours * 3600 + minutes * 60 + seconds) * 1000;
   }
 
@@ -612,12 +618,12 @@ export function parseScormTime(timeString: string): number {
     /^P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?)?$/
   );
   if (iso8601Match) {
-    const years = parseInt(iso8601Match[1] || '0', 10);
-    const months = parseInt(iso8601Match[2] || '0', 10);
-    const days = parseInt(iso8601Match[3] || '0', 10);
-    const hours = parseInt(iso8601Match[4] || '0', 10);
-    const minutes = parseInt(iso8601Match[5] || '0', 10);
-    const seconds = parseFloat(iso8601Match[6] || '0');
+    const years = parseInt(iso8601Match[1] ?? '0', 10);
+    const months = parseInt(iso8601Match[2] ?? '0', 10);
+    const days = parseInt(iso8601Match[3] ?? '0', 10);
+    const hours = parseInt(iso8601Match[4] ?? '0', 10);
+    const minutes = parseInt(iso8601Match[5] ?? '0', 10);
+    const seconds = parseFloat(iso8601Match[6] ?? '0');
 
     // Approximate conversion (assumes 30 days/month, 365 days/year)
     const totalSeconds =
@@ -739,9 +745,10 @@ export default function useScormTracking(): UseScormTrackingReturn {
         );
       }
 
-      // Prepare tracking data payload matching ScormTrackingData interface
-      const trackingData: ScormTrackingData = {
-        scoid,
+      // Prepare tracking data payload matching SaveTrackingRequest interface
+      const trackingData: SaveTrackingRequest = {
+        scormId,
+        scoId: scoid,
         attempt,
         tracks: validatedTracks,
       };
@@ -755,7 +762,7 @@ export default function useScormTracking(): UseScormTrackingReturn {
      * This provides instant feedback to the user
      */
     onMutate: async (params: SaveTrackingParams) => {
-      const { scormId, scoid, attempt, tracks } = params;
+      const { scormId, scoid: _scoid, attempt, tracks } = params;
 
       // Cancel any outgoing refetches to avoid overwriting optimistic update
       await queryClient.cancelQueries({
@@ -772,7 +779,9 @@ export default function useScormTracking(): UseScormTrackingReturn {
       queryClient.setQueryData(
         scormQueryKeys.userData(scormId, attempt),
         (old: Record<string, ScormTrackingElement> | undefined) => {
-          if (!old) return old;
+          if (!old) {
+            return old;
+          }
 
           const updated = { ...old };
           for (const track of tracks) {
