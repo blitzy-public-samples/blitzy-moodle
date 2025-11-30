@@ -926,7 +926,7 @@ export function useNextLessonPage(): UseMutationResult<
         {
           page: data.nextPage,
           answers: data.answers,
-          isQuestion: data.nextPage.qtype > 0,
+          isQuestion: Number(data.nextPage.qtype) > 0,
           canGoBack: true,
           previousPageId: variables.currentPageId,
           navigationOptions: [],
@@ -1041,7 +1041,7 @@ export function useNavigateLessonPage(): UseMutationResult<
         {
           page: data.page,
           answers: data.answers,
-          isQuestion: data.page.qtype > 0,
+          isQuestion: Number(data.page.qtype) > 0,
           canGoBack: true,
           previousPageId: variables.request.currentPageId,
           navigationOptions: [],
@@ -1298,7 +1298,7 @@ export function useRestartLesson(): UseMutationResult<
         {
           page: data.firstPage,
           answers: [],
-          isQuestion: data.firstPage.qtype > 0,
+          isQuestion: Number(data.firstPage.qtype) > 0,
           canGoBack: false,
           previousPageId: null,
           navigationOptions: [],
