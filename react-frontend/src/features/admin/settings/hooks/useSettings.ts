@@ -82,7 +82,6 @@ import type {
   SettingUpdate,
   SettingsError,
   SettingsSection,
-  SettingType,
 } from '@/features/admin/settings/types/settings.types';
 
 // ============================================================================
@@ -625,11 +624,12 @@ export function useSettings(options: UseSettingsOptions = {}): SettingsHookRetur
       );
 
       // Optimistically update cache
+      // Note: Type assertion needed because spreading with new value loses discriminated union narrowing
       queryClient.setQueryData<Setting[]>(
         section ? settingsQueryKeys.section(section) : settingsQueryKeys.allSettings(),
         (old) => {
           if (!old) return old;
-          return old.map((s) => (s.name === name ? { ...s, value } : s));
+          return old.map((s) => (s.name === name ? { ...s, value } : s)) as Setting[];
         }
       );
 
@@ -637,7 +637,7 @@ export function useSettings(options: UseSettingsOptions = {}): SettingsHookRetur
     },
 
     // On error, rollback optimistic update
-    onError: (err, { section: sec }, context) => {
+    onError: (err, _params, context) => {
       if (context?.previousSettings) {
         queryClient.setQueryData(
           section ? settingsQueryKeys.section(section) : settingsQueryKeys.allSettings(),
@@ -689,6 +689,7 @@ export function useSettings(options: UseSettingsOptions = {}): SettingsHookRetur
       );
 
       // Optimistically update all affected settings
+      // Note: Type assertion needed because spreading with new value loses discriminated union narrowing
       queryClient.setQueryData<Setting[]>(
         section ? settingsQueryKeys.section(section) : settingsQueryKeys.allSettings(),
         (old) => {
@@ -696,7 +697,7 @@ export function useSettings(options: UseSettingsOptions = {}): SettingsHookRetur
           return old.map((s) => {
             const update = updates.find((u) => u.name === s.name);
             return update ? { ...s, value: update.value } : s;
-          });
+          }) as Setting[];
         }
       );
 
