@@ -382,7 +382,7 @@ export async function fetchBooksByCoursesIds(courseIds: number[]): Promise<Books
     );
 
     // Validate response structure
-    if (!response.data || !response.data.success || !response.data.data) {
+    if (!response.data?.success || !response.data?.data) {
       throw createBookApiError(
         'INVALID_RESPONSE',
         'Invalid response format from books endpoint',
@@ -431,7 +431,7 @@ export async function fetchBook(bookId: number): Promise<Book> {
     );
 
     // Validate response structure
-    if (!response.data || !response.data.success || !response.data.data) {
+    if (!response.data?.success || !response.data?.data) {
       throw createBookApiError(
         'INVALID_RESPONSE',
         'Invalid response format from book endpoint',
@@ -487,7 +487,7 @@ export async function fetchBookChapters(bookId: number): Promise<Chapter[]> {
     );
 
     // Validate response structure
-    if (!response.data || !response.data.success || !response.data.data) {
+    if (!response.data?.success || !response.data?.data) {
       throw createBookApiError(
         'INVALID_RESPONSE',
         'Invalid response format from chapters endpoint',
@@ -539,7 +539,7 @@ export async function fetchChapter(chapterId: number): Promise<Chapter> {
     );
 
     // Validate response structure
-    if (!response.data || !response.data.success || !response.data.data) {
+    if (!response.data?.success || !response.data?.data) {
       throw createBookApiError(
         'INVALID_RESPONSE',
         'Invalid response format from chapter endpoint',
@@ -595,7 +595,7 @@ export async function fetchBookNavigation(bookId: number): Promise<BookNavigatio
     );
 
     // Validate response structure
-    if (!response.data || !response.data.success || !response.data.data) {
+    if (!response.data?.success || !response.data?.data) {
       throw createBookApiError(
         'INVALID_RESPONSE',
         'Invalid response format from navigation endpoint',
@@ -661,7 +661,7 @@ export async function recordBookView(
     );
 
     // Validate response structure
-    if (!response.data || !response.data.success || !response.data.data) {
+    if (!response.data?.success || !response.data?.data) {
       throw createBookApiError(
         'INVALID_RESPONSE',
         'Invalid response format from view endpoint',
