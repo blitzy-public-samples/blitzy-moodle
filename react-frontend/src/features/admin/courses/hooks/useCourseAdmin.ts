@@ -30,7 +30,6 @@ import type { GridRowSelectionModel } from '@mui/x-data-grid';
 // Internal imports from dependencies
 import type { Course, CourseCategory } from '@/types/entities';
 import type { ApiResponse } from '@/types/api';
-import type { PaginationParams } from '@/types/common';
 import useDebounce from '@/hooks/useDebounce';
 import apiClient from '@/services/api/client';
 import { ADMIN_ENDPOINTS } from '@/services/api/endpoints';
