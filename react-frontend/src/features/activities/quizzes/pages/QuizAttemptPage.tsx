@@ -63,8 +63,8 @@ export function QuizAttemptPage(): React.ReactElement {
   const aid = parseInt(attemptId ?? '0', 10);
 
   // Fetch quiz and questions
-  const { data: quizData, isLoading: isLoadingQuiz } = useQuiz(qid, qid > 0);
-  const { data: questions, isLoading: isLoadingQuestions } = useQuizQuestions(qid, aid, qid > 0 && aid > 0);
+  const { data: quizData, isLoading: isLoadingQuiz } = useQuiz(qid, { enabled: qid > 0 });
+  const { data: questionsData, isLoading: isLoadingQuestions } = useQuizQuestions(qid, aid, 0, { enabled: qid > 0 && aid > 0 });
 
   // Submit mutation
   const submitMutation = useSubmitQuizAttempt();
@@ -98,11 +98,11 @@ export function QuizAttemptPage(): React.ReactElement {
     try {
       await submitMutation.mutateAsync({
         quizId: qid,
-        submission: {
+        request: {
           attemptId: aid,
           answers: answersRef.current,
-          timeup: true,
-          finalize: true, // Final submission due to time expiration
+          finishAttempt: true,
+          timeUp: true,
         },
       });
 
@@ -247,11 +247,11 @@ export function QuizAttemptPage(): React.ReactElement {
     try {
       await submitMutation.mutateAsync({
         quizId: qid,
-        submission: {
+        request: {
           attemptId: aid,
           answers,
-          timeup: false,
-          finalize: true, // Final submission, not auto-save
+          finishAttempt: true,
+          timeUp: false,
         },
       });
 
@@ -287,6 +287,9 @@ export function QuizAttemptPage(): React.ReactElement {
     }));
   };
 
+  // Derive questions array from questionsData
+  const questions = questionsData?.questions;
+
   // Render loading state
   if (isLoadingQuiz || isLoadingQuestions) {
     return (
@@ -298,7 +301,7 @@ export function QuizAttemptPage(): React.ReactElement {
   }
 
   // Render error state
-  if (!quizData || !questions) {
+  if (!quizData || !questionsData || !questions || questions.length === 0) {
     return (
       <Container maxWidth="lg" sx={{ mt: 4 }}>
         <Alert severity="error">Failed to load quiz. Please try again.</Alert>

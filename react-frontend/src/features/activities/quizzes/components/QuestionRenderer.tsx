@@ -82,6 +82,7 @@ export function QuestionRenderer({
    * Render multiple choice question (single answer)
    */
   const renderMultipleChoiceSingle = (): React.ReactElement => {
+    const options = question.options ?? [];
     return (
       <FormControl component="fieldset" fullWidth disabled={disabled}>
         <RadioGroup
@@ -89,7 +90,7 @@ export function QuestionRenderer({
           onChange={handleSingleChoiceChange}
           data-testid="question-options"
         >
-          {question.options.map((option) => (
+          {options.map((option) => (
             <Paper
               key={option.id}
               variant="outlined"
@@ -126,11 +127,12 @@ export function QuestionRenderer({
    */
   const renderMultipleChoiceMultiple = (): React.ReactElement => {
     const currentValue = Array.isArray(value) ? value : [];
+    const options = question.options ?? [];
 
     return (
       <FormControl component="fieldset" fullWidth disabled={disabled}>
         <FormGroup data-testid="question-options">
-          {question.options.map((option) => {
+          {options.map((option) => {
             const optionId = option.id.toString();
             const isChecked = currentValue.includes(optionId);
 
@@ -310,10 +312,10 @@ export function QuestionRenderer({
 
       {/* Question Input */}
       <Box>
-        {question.type === 'multichoice' && question.options.length > 0 && (
+        {question.type === 'multichoice' && (question.options?.length ?? 0) > 0 && (
           renderMultipleChoiceSingle()
         )}
-        {question.type === 'multichoicemulti' && question.options.length > 0 && (
+        {question.type === 'multichoicemulti' && (question.options?.length ?? 0) > 0 && (
           renderMultipleChoiceMultiple()
         )}
         {question.type === 'truefalse' && renderTrueFalse()}

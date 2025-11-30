@@ -66,7 +66,7 @@ export function QuizReviewPage(): React.ReactElement {
   const aid = parseInt(attemptId ?? '0', 10);
 
   // Fetch review data
-  const { data, isLoading, error } = useQuizReview(aid, aid > 0);
+  const { data, isLoading, error } = useQuizReview(aid, { enabled: aid > 0 });
 
   /**
    * Handle question accordion expansion
@@ -152,9 +152,12 @@ export function QuizReviewPage(): React.ReactElement {
     );
   }
 
-  const { attempt, quiz, questions, grade, maxGrade, percentage, feedback } = data;
+  const { attempt, quiz, questions, grade, maxGrade, percentage, overallFeedback } = data;
   const timeTaken = attempt.timefinish ? attempt.timefinish - attempt.timestart : 0;
-  const correctCount = questions.filter((q) => q.isCorrect).length;
+  const correctCount = questions.filter((q) => q.correct).length;
+  // Handle null values for grade and percentage
+  const displayGrade = grade ?? 0;
+  const displayPercentage = percentage ?? 0;
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
@@ -181,16 +184,16 @@ export function QuizReviewPage(): React.ReactElement {
                   <GradeIcon color="primary" sx={{ mr: 1 }} />
                   <Typography variant="h6">Grade</Typography>
                 </Box>
-                <Typography variant="h3" color={getGradeColor(percentage)} data-testid="quiz-grade">
-                  {grade.toFixed(2)}
+                <Typography variant="h3" color={getGradeColor(displayPercentage)} data-testid="quiz-grade">
+                  {displayGrade.toFixed(2)}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  out of {maxGrade} ({percentage.toFixed(1)}%)
+                  out of {maxGrade} ({displayPercentage.toFixed(1)}%)
                 </Typography>
                 <LinearProgress
                   variant="determinate"
-                  value={percentage}
-                  color={getGradeColor(percentage)}
+                  value={displayPercentage}
+                  color={getGradeColor(displayPercentage)}
                   sx={{ mt: 2 }}
                 />
               </CardContent>
@@ -266,12 +269,12 @@ export function QuizReviewPage(): React.ReactElement {
         </Grid>
 
         {/* Overall Feedback */}
-        {feedback && (
+        {overallFeedback && (
           <Alert severity="info" sx={{ mt: 3 }} data-testid="quiz-feedback">
             <Typography variant="subtitle2" gutterBottom>
               Feedback
             </Typography>
-            <div dangerouslySetInnerHTML={{ __html: feedback }} />
+            <div dangerouslySetInnerHTML={{ __html: overallFeedback }} />
           </Alert>
         )}
       </Paper>
@@ -301,7 +304,7 @@ export function QuizReviewPage(): React.ReactElement {
                 }}
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  {question.isCorrect ? (
+                  {question.correct ? (
                     <CorrectIcon color="success" />
                   ) : (
                     <IncorrectIcon color="error" />
@@ -309,9 +312,9 @@ export function QuizReviewPage(): React.ReactElement {
                   <Typography>Question {index + 1}</Typography>
                 </Box>
                 <Chip
-                  label={`${question.mark.toFixed(2)} / ${question.maxMark.toFixed(2)}`}
+                  label={`${(question.mark ?? 0).toFixed(2)} / ${question.maxmark.toFixed(2)}`}
                   size="small"
-                  color={question.isCorrect ? 'success' : 'error'}
+                  color={question.correct ? 'success' : 'error'}
                 />
               </Box>
             </AccordionSummary>
@@ -335,17 +338,17 @@ export function QuizReviewPage(): React.ReactElement {
                 <Box
                   sx={{
                     p: 2,
-                    bgcolor: question.isCorrect ? 'success.50' : 'error.50',
+                    bgcolor: question.correct ? 'success.50' : 'error.50',
                     borderRadius: 1,
                     mb: 2,
                   }}
                   data-testid={`question-${index + 1}-user-answer`}
                 >
-                  {renderAnswer(question.userAnswer)}
+                  {renderAnswer(question.responseSummary)}
                 </Box>
 
                 {/* Correct Answer */}
-                {!question.isCorrect && question.correctAnswer && (
+                {!question.correct && question.rightAnswer && (
                   <>
                     <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
                       Correct Answer
@@ -359,19 +362,19 @@ export function QuizReviewPage(): React.ReactElement {
                       }}
                       data-testid={`question-${index + 1}-correct-answer`}
                     >
-                      {renderAnswer(question.correctAnswer)}
+                      {renderAnswer(question.rightAnswer)}
                     </Box>
                   </>
                 )}
 
                 {/* Feedback */}
-                {question.feedback && (
+                {question.specificFeedback && (
                   <>
                     <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
                       Feedback
                     </Typography>
                     <Alert severity="info" data-testid={`question-${index + 1}-feedback`}>
-                      <div dangerouslySetInnerHTML={{ __html: question.feedback }} />
+                      <div dangerouslySetInnerHTML={{ __html: question.specificFeedback }} />
                     </Alert>
                   </>
                 )}
@@ -382,7 +385,7 @@ export function QuizReviewPage(): React.ReactElement {
                     Mark for this question
                   </Typography>
                   <Typography variant="body2" fontWeight="bold">
-                    {question.mark.toFixed(2)} / {question.maxMark.toFixed(2)}
+                    {(question.mark ?? 0).toFixed(2)} / {question.maxmark.toFixed(2)}
                   </Typography>
                 </Box>
               </Box>

@@ -39,11 +39,17 @@ describe('QuestionRenderer Component', () => {
     return {
       id: 1,
       slot: 1,
+      page: 1,
       type: 'multichoice',
       questiontext: '<p>What is the capital of France?</p>',
       questiontextformat: 1,
       maxmark: 1.0,
+      displaynumber: '1',
       options: [],
+      flagged: false,
+      answered: false,
+      state: 'todo',
+      requiresPrevious: false,
       ...overrides,
     };
   };

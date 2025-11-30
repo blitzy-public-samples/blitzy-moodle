@@ -86,7 +86,7 @@ export function QuizPage(): React.ReactElement {
   const cid = parseInt(courseId ?? '0', 10);
 
   // Fetch quiz data
-  const { data, isLoading, error } = useQuiz(id, id > 0);
+  const { data, isLoading, error } = useQuiz(id, { enabled: id > 0 });
 
   // Start attempt mutation
   const startAttemptMutation = useStartQuizAttempt();
@@ -96,7 +96,7 @@ export function QuizPage(): React.ReactElement {
    */
   const handleStartAttempt = async (): Promise<void> => {
     try {
-      const result = await startAttemptMutation.mutateAsync(id);
+      const result = await startAttemptMutation.mutateAsync({ quizId: id });
       // Navigate to attempt page
       navigate(`/courses/${cid}/quizzes/${id}/attempt/${result.attempt.id}`);
     } catch (err) {
@@ -371,7 +371,7 @@ export function QuizPage(): React.ReactElement {
                           Grade
                         </Typography>
                         <Typography variant="body1" fontWeight="bold">
-                          {formatGrade(attempt.sumgrades)} / {quiz.grade}
+                          {formatGrade(attempt.sumgrades ?? null)} / {quiz.grade}
                         </Typography>
                       </Grid>
                     </Grid>

@@ -18,6 +18,13 @@
  */
 
 import type { AxiosResponse } from 'axios';
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  type UseQueryResult,
+  type UseMutationResult,
+} from '@tanstack/react-query';
 import { apiClient } from '@/services/api/client';
 import { QUIZ_ENDPOINTS } from '@/services/api/endpoints';
 import type { QuizAttempt } from '@/types/entities';
@@ -770,3 +777,422 @@ export type {
   QuizTimer,
   QuestionDisplayOptions,
 };
+
+// ============================================================================
+// Query Keys for React Query Caching
+// ============================================================================
+
+/**
+ * Query keys for quiz-related React Query operations
+ *
+ * These keys ensure proper cache invalidation and data sharing
+ * across components using the same data.
+ */
+export const quizQueryKeys = {
+  /** Base key for all quiz queries */
+  all: ['quizzes'] as const,
+
+  /** Key for single quiz details */
+  detail: (quizId: number) => [...quizQueryKeys.all, 'detail', quizId] as const,
+
+  /** Key for user attempts on a quiz */
+  attempts: (quizId: number) => [...quizQueryKeys.all, 'attempts', quizId] as const,
+
+  /** Key for attempt questions */
+  questions: (quizId: number, attemptId: number, page: number) =>
+    [...quizQueryKeys.all, 'questions', quizId, attemptId, page] as const,
+
+  /** Key for attempt results */
+  results: (attemptId: number) => [...quizQueryKeys.all, 'results', attemptId] as const,
+
+  /** Key for attempt review */
+  review: (attemptId: number) => [...quizQueryKeys.all, 'review', attemptId] as const,
+
+  /** Key for attempt summary */
+  summary: (attemptId: number) => [...quizQueryKeys.all, 'summary', attemptId] as const,
+};
+
+// ============================================================================
+// React Query Hooks
+// ============================================================================
+
+/**
+ * Hook to fetch quiz details using React Query
+ *
+ * Provides automatic caching, refetching, and loading/error states
+ * for quiz details data.
+ *
+ * @param quizId - The quiz ID to fetch
+ * @param options - Optional query options
+ * @returns React Query result with quiz details
+ *
+ * @example
+ * ```typescript
+ * function QuizView({ quizId }: { quizId: number }) {
+ *   const { data, isLoading, error } = useQuiz(quizId);
+ *
+ *   if (isLoading) return <Loading />;
+ *   if (error) return <Error message={error.message} />;
+ *
+ *   return <h1>{data?.quiz.name}</h1>;
+ * }
+ * ```
+ */
+export function useQuiz(
+  quizId: number,
+  options: { enabled?: boolean } = {}
+): UseQueryResult<QuizDetailsResponse, Error> {
+  return useQuery({
+    queryKey: quizQueryKeys.detail(quizId),
+    queryFn: () => fetchQuizDetails(quizId),
+    enabled: options.enabled !== false && quizId > 0,
+    staleTime: 2 * 60 * 1000, // Consider data stale after 2 minutes
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
+  });
+}
+
+/**
+ * Hook to fetch quiz questions for an attempt using React Query
+ *
+ * Provides automatic caching and loading/error states for quiz questions.
+ * Used during active quiz attempts to load question content.
+ *
+ * @param quizId - The quiz ID
+ * @param attemptId - The attempt ID
+ * @param page - The page number (0-indexed)
+ * @param options - Optional query options
+ * @returns React Query result with attempt questions
+ *
+ * @example
+ * ```typescript
+ * function QuizAttempt({ quizId, attemptId }: Props) {
+ *   const [currentPage, setCurrentPage] = useState(0);
+ *   const { data, isLoading } = useQuizQuestions(quizId, attemptId, currentPage);
+ *
+ *   if (isLoading) return <Loading />;
+ *
+ *   return (
+ *     <div>
+ *       {data?.questions.map(q => (
+ *         <Question key={q.id} {...q} />
+ *       ))}
+ *     </div>
+ *   );
+ * }
+ * ```
+ */
+export function useQuizQuestions(
+  quizId: number,
+  attemptId: number,
+  page: number = 0,
+  options: { enabled?: boolean } = {}
+): UseQueryResult<AttemptQuestionsResponse, Error> {
+  return useQuery({
+    queryKey: quizQueryKeys.questions(quizId, attemptId, page),
+    queryFn: () => getAttemptQuestions(quizId, attemptId, page),
+    enabled: options.enabled !== false && quizId > 0 && attemptId > 0,
+    staleTime: 30 * 1000, // Consider data stale after 30 seconds (for timer accuracy)
+    gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
+  });
+}
+
+/**
+ * Hook to fetch quiz review data using React Query
+ *
+ * Provides automatic caching and loading/error states for completed
+ * attempt review data including questions, answers, and feedback.
+ *
+ * @param attemptId - The attempt ID to review
+ * @param options - Optional query options
+ * @returns React Query result with review data
+ *
+ * @example
+ * ```typescript
+ * function QuizReview({ attemptId }: { attemptId: number }) {
+ *   const { data, isLoading, error } = useQuizReview(attemptId);
+ *
+ *   if (isLoading) return <Loading />;
+ *   if (error) return <Error message={error.message} />;
+ *
+ *   return (
+ *     <div>
+ *       <h1>Score: {data?.grade}/{data?.maxGrade}</h1>
+ *       {data?.questions.map(q => (
+ *         <ReviewQuestion key={q.id} {...q} />
+ *       ))}
+ *     </div>
+ *   );
+ * }
+ * ```
+ */
+export function useQuizReview(
+  attemptId: number,
+  options: { enabled?: boolean } = {}
+): UseQueryResult<AttemptReviewResponse, Error> {
+  return useQuery({
+    queryKey: quizQueryKeys.review(attemptId),
+    queryFn: () => getAttemptReview(attemptId),
+    enabled: options.enabled !== false && attemptId > 0,
+    staleTime: 5 * 60 * 1000, // Consider data stale after 5 minutes
+    gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes (review data rarely changes)
+  });
+}
+
+/**
+ * Hook to fetch attempt results using React Query
+ *
+ * Provides automatic caching and loading/error states for attempt
+ * results including grade and overall feedback.
+ *
+ * @param attemptId - The attempt ID
+ * @param options - Optional query options
+ * @returns React Query result with attempt results
+ *
+ * @example
+ * ```typescript
+ * function AttemptResults({ attemptId }: { attemptId: number }) {
+ *   const { data, isLoading } = useAttemptResults(attemptId);
+ *
+ *   if (isLoading) return <Loading />;
+ *
+ *   return (
+ *     <div>
+ *       <h2>Grade: {data?.percentage}%</h2>
+ *       {data?.feedback && <p>{data.feedback}</p>}
+ *     </div>
+ *   );
+ * }
+ * ```
+ */
+export function useAttemptResults(
+  attemptId: number,
+  options: { enabled?: boolean } = {}
+): UseQueryResult<AttemptResultsResponse, Error> {
+  return useQuery({
+    queryKey: quizQueryKeys.results(attemptId),
+    queryFn: () => getAttemptResults(attemptId),
+    enabled: options.enabled !== false && attemptId > 0,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook to fetch attempt summary using React Query
+ *
+ * Provides automatic caching and loading/error states for attempt
+ * summary before final submission.
+ *
+ * @param attemptId - The attempt ID
+ * @param options - Optional query options
+ * @returns React Query result with attempt summary
+ *
+ * @example
+ * ```typescript
+ * function AttemptSummary({ attemptId }: { attemptId: number }) {
+ *   const { data, isLoading } = useAttemptSummary(attemptId);
+ *
+ *   if (isLoading) return <Loading />;
+ *
+ *   return (
+ *     <div>
+ *       <p>Answered: {data?.answered}/{data?.total}</p>
+ *       {data?.warnings.map((w, i) => (
+ *         <Alert key={i} severity="warning">{w}</Alert>
+ *       ))}
+ *     </div>
+ *   );
+ * }
+ * ```
+ */
+export function useAttemptSummary(
+  attemptId: number,
+  options: { enabled?: boolean } = {}
+): UseQueryResult<AttemptSummary, Error> {
+  return useQuery({
+    queryKey: quizQueryKeys.summary(attemptId),
+    queryFn: () => getAttemptSummary(attemptId),
+    enabled: options.enabled !== false && attemptId > 0,
+    staleTime: 30 * 1000, // Consider stale quickly for accurate state
+    gcTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook to start a new quiz attempt using React Query mutation
+ *
+ * Provides mutation functionality with automatic cache invalidation
+ * when a new attempt is created.
+ *
+ * @returns React Query mutation result for creating attempts
+ *
+ * @example
+ * ```typescript
+ * function StartQuizButton({ quizId }: { quizId: number }) {
+ *   const { mutate: startAttempt, isPending, error } = useStartQuizAttempt();
+ *
+ *   const handleStart = () => {
+ *     startAttempt(
+ *       { quizId },
+ *       {
+ *         onSuccess: (data) => {
+ *           navigate(`/quiz/${quizId}/attempt/${data.attempt.id}`);
+ *         },
+ *       }
+ *     );
+ *   };
+ *
+ *   return (
+ *     <Button onClick={handleStart} loading={isPending}>
+ *       Start Quiz
+ *     </Button>
+ *   );
+ * }
+ * ```
+ */
+export function useStartQuizAttempt(): UseMutationResult<
+  CreateAttemptResponse,
+  Error,
+  { quizId: number; preview?: boolean; forcenew?: boolean }
+> {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ quizId, preview, forcenew }) =>
+      createQuizAttempt(quizId, { preview, forcenew }),
+    onSuccess: (_data, variables) => {
+      // Invalidate quiz details to refresh attempt counts
+      queryClient.invalidateQueries({
+        queryKey: quizQueryKeys.detail(variables.quizId),
+      });
+      // Invalidate user attempts list
+      queryClient.invalidateQueries({
+        queryKey: quizQueryKeys.attempts(variables.quizId),
+      });
+    },
+  });
+}
+
+/**
+ * Hook to submit quiz answers using React Query mutation
+ *
+ * Provides mutation functionality for submitting answers during
+ * an attempt. Supports both auto-save and final submission.
+ *
+ * @returns React Query mutation result for submitting answers
+ *
+ * @example
+ * ```typescript
+ * function QuizAttempt({ quizId, attemptId }: Props) {
+ *   const { mutate: submitAnswers, isPending } = useSubmitQuizAttempt();
+ *
+ *   const handleAutoSave = (answers: Record<number, string>) => {
+ *     submitAnswers({
+ *       quizId,
+ *       request: {
+ *         attemptId,
+ *         answers,
+ *         finishAttempt: false,
+ *         currentPage: 0,
+ *       },
+ *     });
+ *   };
+ *
+ *   const handleSubmit = (answers: Record<number, string>) => {
+ *     submitAnswers(
+ *       {
+ *         quizId,
+ *         request: {
+ *           attemptId,
+ *           answers,
+ *           finishAttempt: true,
+ *         },
+ *       },
+ *       {
+ *         onSuccess: (data) => {
+ *           navigate(`/quiz/${quizId}/review/${attemptId}`);
+ *         },
+ *       }
+ *     );
+ *   };
+ *
+ *   return <QuizForm onAutoSave={handleAutoSave} onSubmit={handleSubmit} />;
+ * }
+ * ```
+ */
+export function useSubmitQuizAttempt(): UseMutationResult<
+  SubmitAnswersResponse,
+  Error,
+  { quizId: number; request: SubmitAnswersRequest }
+> {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ quizId, request }) => submitQuizAnswers(quizId, request),
+    onSuccess: (_data, variables) => {
+      // Invalidate relevant queries after submission
+      if (variables.request.finishAttempt) {
+        // Final submission - invalidate all quiz-related queries
+        queryClient.invalidateQueries({
+          queryKey: quizQueryKeys.detail(variables.quizId),
+        });
+        queryClient.invalidateQueries({
+          queryKey: quizQueryKeys.attempts(variables.quizId),
+        });
+        queryClient.invalidateQueries({
+          queryKey: quizQueryKeys.results(variables.request.attemptId),
+        });
+        queryClient.invalidateQueries({
+          queryKey: quizQueryKeys.review(variables.request.attemptId),
+        });
+      } else {
+        // Auto-save - invalidate summary to show updated state
+        queryClient.invalidateQueries({
+          queryKey: quizQueryKeys.summary(variables.request.attemptId),
+        });
+      }
+    },
+  });
+}
+
+/**
+ * Hook to get user's quiz attempts using React Query
+ *
+ * Provides automatic caching and loading/error states for
+ * fetching all attempts by the current user on a quiz.
+ *
+ * @param quizId - The quiz ID
+ * @param options - Optional query options
+ * @returns React Query result with user attempts
+ *
+ * @example
+ * ```typescript
+ * function AttemptsList({ quizId }: { quizId: number }) {
+ *   const { data, isLoading } = useUserAttempts(quizId);
+ *
+ *   if (isLoading) return <Loading />;
+ *
+ *   return (
+ *     <ul>
+ *       {data?.attempts.map(attempt => (
+ *         <li key={attempt.id}>
+ *           Attempt {attempt.attempt}: {attempt.sumgrades}
+ *         </li>
+ *       ))}
+ *     </ul>
+ *   );
+ * }
+ * ```
+ */
+export function useUserAttempts(
+  quizId: number,
+  options: { enabled?: boolean } = {}
+): UseQueryResult<UserAttemptsResponse, Error> {
+  return useQuery({
+    queryKey: quizQueryKeys.attempts(quizId),
+    queryFn: () => getUserAttempts(quizId),
+    enabled: options.enabled !== false && quizId > 0,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+}
