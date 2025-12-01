@@ -48,6 +48,7 @@ import {
   ListItemIcon,
   ListItemText,
 } from '@mui/material';
+import type { AutocompleteChangeReason } from '@mui/material/Autocomplete';
 import {
   Menu as MenuIcon,
   Search as SearchIcon,
@@ -294,8 +295,13 @@ export default function Header({ onMenuClick }: HeaderProps): React.ReactElement
   const [mobileSearchOpen, setMobileSearchOpen] = useState<boolean>(false);
 
   // Redux state
+  // Note: Notification count could come from a notifications slice when implemented
+  // For now, we check if the auth user has an extended property for notifications
   const notificationCount = useAppSelector(
-    (state) => state.auth.user?.unreadNotifications ?? 0
+    (state) => {
+      const user = state.auth.user as (typeof state.auth.user & { unreadNotifications?: number }) | null;
+      return user?.unreadNotifications ?? 0;
+    }
   );
   const themeMode = useAppSelector(
     (state) => 'theme' in state 
@@ -351,30 +357,43 @@ export default function Header({ onMenuClick }: HeaderProps): React.ReactElement
 
   /**
    * Handle search suggestion selection
+   * Handles both SearchSuggestion objects and freeSolo string values
    */
   const handleSuggestionSelect = useCallback(
     (
       _event: React.SyntheticEvent,
-      suggestion: SearchSuggestion | null
+      value: string | SearchSuggestion | null,
+      _reason: AutocompleteChangeReason
     ): void => {
-      if (suggestion?.url) {
-        navigate(suggestion.url);
+      // Handle freeSolo string input (user typed and pressed enter without selecting)
+      if (typeof value === 'string') {
+        if (value.trim()) {
+          navigate(`/search?q=${encodeURIComponent(value.trim())}`);
+          setSearchValue('');
+          setMobileSearchOpen(false);
+        }
+        return;
+      }
+
+      // Handle SearchSuggestion object selection
+      if (value?.url) {
+        navigate(value.url);
         setSearchValue('');
         setMobileSearchOpen(false);
-      } else if (suggestion) {
+      } else if (value) {
         // Navigate based on type and id
-        switch (suggestion.type) {
+        switch (value.type) {
           case 'course':
-            navigate(`/courses/${suggestion.id}`);
+            navigate(`/courses/${value.id}`);
             break;
           case 'user':
-            navigate(`/users/${suggestion.id}`);
+            navigate(`/users/${value.id}`);
             break;
           case 'activity':
-            navigate(`/activities/${suggestion.id}`);
+            navigate(`/activities/${value.id}`);
             break;
           default:
-            navigate(`/search?q=${encodeURIComponent(suggestion.title)}`);
+            navigate(`/search?q=${encodeURIComponent(value.title)}`);
         }
         setSearchValue('');
         setMobileSearchOpen(false);
@@ -481,6 +500,10 @@ export default function Header({ onMenuClick }: HeaderProps): React.ReactElement
           placeholder="Search courses, users, activities..."
           size="small"
           onKeyDown={handleSearchSubmit}
+          inputProps={{
+            ...params.inputProps,
+            'aria-label': 'Search Moodle',
+          }}
           InputProps={{
             ...params.InputProps,
             startAdornment: (
@@ -496,7 +519,6 @@ export default function Header({ onMenuClick }: HeaderProps): React.ReactElement
                 {params.InputProps.endAdornment}
               </>
             ),
-            'aria-label': 'Search Moodle',
           }}
           sx={{
             '& .MuiOutlinedInput-root': {
