@@ -140,28 +140,12 @@ function createMockCourseModule(overrides: Partial<CourseModule> = {}): CourseMo
     added: 1704067200,
     visible: true,
     visibleoncoursepage: true,
-    groupmode: 0,
-    groupingid: 0,
     completion: 1,
-    completionview: 0,
     completionexpected: 0,
-    showdescription: false,
-    availability: null,
     name: 'Assignment 1',
     modname: 'assign',
-    modplural: 'assignments',
-    indent: 0,
-    onclick: '',
-    afterlink: null,
-    customdata: '',
-    noviewlink: false,
     url: '/mod/assign/view.php?id=100',
-    completiondata: {
-      state: 0,
-      timecompleted: 0,
-      overrideby: null,
-      valueused: false,
-    },
+    iconurl: '/theme/boost/pix/mod/assign/monologo.svg',
     ...overrides,
   };
 }
@@ -552,14 +536,14 @@ describe('courseApi', () => {
         sections: [
           {
             id: 1,
+            course: 42,
             section: 0,
             name: 'General',
             visible: true,
             summary: '',
             summaryformat: 1,
             sequence: '100,101,102',
-            hiddenbynumsections: false,
-            availability: null,
+            availability: undefined,
           },
         ],
       });
@@ -571,7 +555,7 @@ describe('courseApi', () => {
 
       expect(result.data.modules).toBeDefined();
       expect(result.data.modules).toHaveLength(1);
-      expect(result.data.modules?.[0].name).toBe('Week 1 Assignment');
+      expect(result.data.modules![0]!.name).toBe('Week 1 Assignment');
       expect(result.data.sections).toBeDefined();
     });
 
@@ -1540,12 +1524,7 @@ describe('courseApi', () => {
       const mockModule = createMockCourseModule({
         id: 100,
         name: 'Assignment 1',
-        completiondata: {
-          state: 1,
-          timecompleted: 1705000000,
-          overrideby: null,
-          valueused: true,
-        },
+        completion: 2, // 2 = automatic completion
       });
       const mockSections = [
         createMockCourseContent({
@@ -1562,12 +1541,16 @@ describe('courseApi', () => {
 
       const result = await getCourseContents(42);
 
-      expect(result.data[0].name).toBe('Week 1');
-      expect(result.data[0].visible).toBe(true);
-      expect(result.data[0].uservisible).toBe(true);
-      expect(result.data[0].modules).toHaveLength(1);
-      expect(result.data[0].modules[0].name).toBe('Assignment 1');
-      expect(result.data[0].modules[0].completiondata?.state).toBe(1);
+      const firstSection = result.data[0];
+      expect(firstSection).toBeDefined();
+      expect(firstSection!.name).toBe('Week 1');
+      expect(firstSection!.visible).toBe(true);
+      expect(firstSection!.uservisible).toBe(true);
+      expect(firstSection!.modules).toHaveLength(1);
+      const firstModule = firstSection!.modules[0];
+      expect(firstModule).toBeDefined();
+      expect(firstModule!.name).toBe('Assignment 1');
+      expect(firstModule!.completion).toBe(2);
     });
 
     it('should verify response matches ApiResponse<CourseContent[]> interface', async () => {
@@ -1762,7 +1745,8 @@ describe('courseApi', () => {
 
       // TypeScript should infer PaginatedResponse<Course>
       const items = result.data.items;
-      const firstItem = items[0];
+      expect(items.length).toBeGreaterThan(0);
+      const firstItem = items[0]!;
 
       // These properties should be accessible with correct types
       expect(typeof firstItem.id).toBe('number');
@@ -1853,13 +1837,15 @@ describe('courseApi', () => {
 
       // TypeScript should infer ApiResponse<CourseContent[]>
       const sections = result.data;
-      const firstSection = sections[0];
+      expect(sections.length).toBeGreaterThan(0);
+      const firstSection = sections[0]!;
 
       expect(typeof firstSection.id).toBe('number');
       expect(typeof firstSection.name).toBe('string');
       expect(Array.isArray(firstSection.modules)).toBe(true);
 
-      const firstModule = firstSection.modules[0];
+      expect(firstSection.modules.length).toBeGreaterThan(0);
+      const firstModule = firstSection.modules[0]!;
       expect(typeof firstModule.id).toBe('number');
       expect(typeof firstModule.name).toBe('string');
     });
@@ -1872,12 +1858,6 @@ describe('courseApi', () => {
   describe('Request Configuration', () => {
     it('should use correct HTTP methods for each operation', async () => {
       const mockCourseResponse = createMockApiResponse(createMockCourse());
-      const mockPaginatedResponse = createMockPaginatedResponse([] as Course[], {
-        page: 1,
-        perPage: 20,
-        total: 0,
-        totalPages: 0,
-      });
       const mockEnrollResponse = createMockApiResponse(createMockEnrollmentResult());
       const mockDeleteResponse = createMockApiResponse(undefined as unknown as void);
 
