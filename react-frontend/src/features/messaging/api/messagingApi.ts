@@ -30,7 +30,6 @@ import type {
   Notification,
   NotificationPreferences,
   ConversationType,
-  ConversationCounts,
   MessageFilters,
   NotificationFilters,
   SendMessageParams,
