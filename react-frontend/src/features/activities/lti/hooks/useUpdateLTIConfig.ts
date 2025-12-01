@@ -432,6 +432,21 @@ function parseApiError(error: unknown): LTIConfigError {
     };
   }
 
+  // If already an LTIConfigError, return as-is
+  if (typeof error === 'object' && error !== null && 'type' in error) {
+    const errorObj = error as LTIConfigError;
+    if (
+      errorObj.type === 'VALIDATION_ERROR' ||
+      errorObj.type === 'PERMISSION_DENIED' ||
+      errorObj.type === 'NOT_FOUND' ||
+      errorObj.type === 'NETWORK_ERROR' ||
+      errorObj.type === 'TOOL_TYPE_NOT_FOUND' ||
+      errorObj.type === 'UNKNOWN_ERROR'
+    ) {
+      return errorObj;
+    }
+  }
+
   // Handle Axios errors
   const axiosError = error as AxiosError<ApiErrorResponse>;
 
@@ -552,16 +567,29 @@ async function updateLTIConfigApi(
   // Client-side validation
   const validationErrors = validateConfigParams(params);
   if (validationErrors.length > 0) {
-    throw new Error(`Validation failed: ${validationErrors.join(' ')}`);
+    // Throw structured error for client-side validation failures
+    const error: LTIConfigError = {
+      type: 'VALIDATION_ERROR',
+      message: validationErrors.join(' '),
+      code: 'CLIENT_VALIDATION_FAILED',
+      details: { validationErrors },
+    };
+    throw error;
   }
 
-  // Make API request
-  const response = await apiClient.put<ApiSuccessResponse<LtiTool>>(
-    `/lti/${ltiId}/config`,
-    params
-  );
+  try {
+    // Make API request
+    const response = await apiClient.put<ApiSuccessResponse<LtiTool>>(
+      `/lti/${ltiId}/config`,
+      params
+    );
 
-  return response.data.data;
+    return response.data.data;
+  } catch (error) {
+    // Parse and rethrow as structured LTIConfigError
+    // This ensures retry logic and error handlers receive properly typed errors
+    throw parseApiError(error);
+  }
 }
 
 // ============================================================================
