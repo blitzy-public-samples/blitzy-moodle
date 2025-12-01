@@ -231,7 +231,7 @@ describe('ProfileView Component', () => {
     // Reset mocks before each test
     vi.clearAllMocks();
     
-    // Default auth state - viewing own profile
+    // Default auth state - viewing own profile (must include all AuthHook properties)
     mockUseAuth.mockReturnValue({
       user: mockAuthCurrentUser,
       isAuthenticated: true,
@@ -241,6 +241,10 @@ describe('ProfileView Component', () => {
       error: null,
       isLoginLoading: false,
       isLogoutLoading: false,
+      checkAuth: vi.fn().mockResolvedValue(true),
+      getUser: vi.fn().mockReturnValue(mockAuthCurrentUser),
+      refreshToken: vi.fn().mockResolvedValue(undefined),
+      clearError: vi.fn(),
     });
   });
 
@@ -502,6 +506,10 @@ describe('ProfileView Component', () => {
         error: null,
         isLoginLoading: false,
         isLogoutLoading: false,
+        checkAuth: vi.fn().mockResolvedValue(true),
+        getUser: vi.fn().mockReturnValue(mockAuthCurrentUser),
+        refreshToken: vi.fn().mockResolvedValue(undefined),
+        clearError: vi.fn(),
       });
 
       render(<ProfileView userId={mockCurrentUser.id} />);
@@ -528,6 +536,10 @@ describe('ProfileView Component', () => {
         error: null,
         isLoginLoading: false,
         isLogoutLoading: false,
+        checkAuth: vi.fn().mockResolvedValue(true),
+        getUser: vi.fn().mockReturnValue(mockAuthCurrentUser),
+        refreshToken: vi.fn().mockResolvedValue(undefined),
+        clearError: vi.fn(),
         hasCapability: vi.fn().mockReturnValue(true), // Grant edit permission
       } as any);
 
@@ -554,6 +566,10 @@ describe('ProfileView Component', () => {
         error: null,
         isLoginLoading: false,
         isLogoutLoading: false,
+        checkAuth: vi.fn().mockResolvedValue(true),
+        getUser: vi.fn().mockReturnValue(mockAuthCurrentUser),
+        refreshToken: vi.fn().mockResolvedValue(undefined),
+        clearError: vi.fn(),
         hasCapability: vi.fn().mockReturnValue(false), // Deny edit permission
       } as any);
 
@@ -579,6 +595,10 @@ describe('ProfileView Component', () => {
         error: null,
         isLoginLoading: false,
         isLogoutLoading: false,
+        checkAuth: vi.fn().mockResolvedValue(false),
+        getUser: vi.fn().mockReturnValue(null),
+        refreshToken: vi.fn().mockResolvedValue(undefined),
+        clearError: vi.fn(),
       });
 
       render(<ProfileView userId={mockValidUser.id} />);
@@ -794,6 +814,10 @@ describe('ProfileView Component', () => {
         error: null,
         isLoginLoading: false,
         isLogoutLoading: false,
+        checkAuth: vi.fn().mockResolvedValue(true),
+        getUser: vi.fn().mockReturnValue(mockAuthCurrentUser),
+        refreshToken: vi.fn().mockResolvedValue(undefined),
+        clearError: vi.fn(),
       });
 
       render(<ProfileView userId={mockCurrentUser.id} />);
@@ -818,6 +842,10 @@ describe('ProfileView Component', () => {
         error: null,
         isLoginLoading: false,
         isLogoutLoading: false,
+        checkAuth: vi.fn().mockResolvedValue(true),
+        getUser: vi.fn().mockReturnValue(mockAuthCurrentUser),
+        refreshToken: vi.fn().mockResolvedValue(undefined),
+        clearError: vi.fn(),
       });
 
       render(<ProfileView userId={mockCurrentUser.id} />);
