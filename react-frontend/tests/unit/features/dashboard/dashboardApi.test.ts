@@ -17,7 +17,7 @@
  * @module tests/unit/features/dashboard/dashboardApi.test
  */
 
-import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
 
@@ -44,32 +44,32 @@ import {
   type CommentsData,
 } from '@/features/dashboard/api/dashboardApi';
 
+// Import enums as values (not types) since they're used at runtime in mock data
+import {
+  DashboardPageType,
+  DashboardVisibility,
+  DashboardPageName,
+  CalendarEventType,
+  TimelineFilter,
+  TimelineSort,
+  ActivityType,
+} from '@/features/dashboard/types/dashboard.types';
+
+// Import interfaces and type aliases as types
 import type {
   DashboardData,
   CourseOverviewPreferences,
   TimelinePreferences,
-  TimelineFilter,
-  TimelineSort,
   CalendarEvent,
-  CalendarEventType,
   TimelineItem,
   CourseOverview,
   RecentActivityItem,
-  ActivityType,
   OnlineUser,
   Badge,
   Comment,
   DashboardUserInfo,
   DashboardPage,
-  DashboardPageType,
-  DashboardVisibility,
-  DashboardPageName,
   RoleCapabilities,
-  Widget,
-  BlockInstance,
-  BlockType,
-  BlockRegion,
-  DashboardPreferences,
   TimelineLimit,
   CourseGrouping,
   CourseSort,
@@ -467,7 +467,8 @@ const mockDashboardData: DashboardData = {
 // MSW Handlers
 // ============================================================================
 
-const API_BASE_URL = '/api/v1';
+// Use wildcard pattern to match any hostname (e.g., http://localhost:8000)
+const API_BASE_URL = '*/api/v1';
 
 const handlers = [
   // User Dashboard endpoint
@@ -510,7 +511,9 @@ const handlers = [
   http.get(`${API_BASE_URL}/blocks/calendar`, ({ request }) => {
     const url = new URL(request.url);
     const courseId = url.searchParams.get('courseid');
-    const categoryId = url.searchParams.get('categoryid');
+    // categoryId captured for potential future filtering
+    const _categoryId = url.searchParams.get('categoryid');
+    void _categoryId; // Suppress unused variable warning
     
     // Filter events by course if provided
     let events = [...mockCalendarEvents];
@@ -1010,15 +1013,14 @@ describe('Dashboard API', () => {
     it('should have proper event structure', async () => {
       const result = await fetchCalendarWidget();
       
-      if (result.events.length > 0) {
-        const event = result.events[0];
-        expect(event.id).toBeDefined();
-        expect(event.name).toBeDefined();
-        expect(event.description).toBeDefined();
-        expect(event.eventtype).toBeDefined();
-        expect(event.timestart).toBeDefined();
-        expect(event.timemodified).toBeDefined();
-      }
+      expect(result.events.length).toBeGreaterThan(0);
+      const event = result.events[0]!;
+      expect(event.id).toBeDefined();
+      expect(event.name).toBeDefined();
+      expect(event.description).toBeDefined();
+      expect(event.eventtype).toBeDefined();
+      expect(event.timestart).toBeDefined();
+      expect(event.timemodified).toBeDefined();
     });
 
     it('should handle unauthorized error', async () => {
@@ -1123,19 +1125,18 @@ describe('Dashboard API', () => {
     it('should have proper timeline item structure', async () => {
       const result = await fetchTimeline();
       
-      if (result.items.length > 0) {
-        const item = result.items[0];
-        expect(item.id).toBeDefined();
-        expect(item.name).toBeDefined();
-        expect(item.course).toBeDefined();
-        expect(item.courseid).toBeDefined();
-        expect(item.activityname).toBeDefined();
-        expect(item.activitytype).toBeDefined();
-        expect(item.duedate).toBeDefined();
-        expect(typeof item.completed).toBe('boolean');
-        expect(typeof item.overdue).toBe('boolean');
-        expect(item.url).toBeDefined();
-      }
+      expect(result.items.length).toBeGreaterThan(0);
+      const item = result.items[0]!;
+      expect(item.id).toBeDefined();
+      expect(item.name).toBeDefined();
+      expect(item.course).toBeDefined();
+      expect(item.courseid).toBeDefined();
+      expect(item.activityname).toBeDefined();
+      expect(item.activitytype).toBeDefined();
+      expect(item.duedate).toBeDefined();
+      expect(typeof item.completed).toBe('boolean');
+      expect(typeof item.overdue).toBe('boolean');
+      expect(item.url).toBeDefined();
     });
 
     it('should handle server error', async () => {
@@ -1217,21 +1218,20 @@ describe('Dashboard API', () => {
     it('should have proper course overview structure', async () => {
       const result = await fetchCourseOverview();
       
-      if (result.courses.length > 0) {
-        const course = result.courses[0];
-        expect(course.id).toBeDefined();
-        expect(course.fullname).toBeDefined();
-        expect(course.shortname).toBeDefined();
-        expect(course.summary).toBeDefined();
-        expect(course.startdate).toBeDefined();
-        expect(course.enddate).toBeDefined();
-        expect(typeof course.visible).toBe('boolean');
-        expect(course.viewurl).toBeDefined();
-        expect(course.courseimage).toBeDefined();
-        expect(typeof course.hasprogress).toBe('boolean');
-        expect(typeof course.isfavourite).toBe('boolean');
-        expect(typeof course.hidden).toBe('boolean');
-      }
+      expect(result.courses.length).toBeGreaterThan(0);
+      const course = result.courses[0]!;
+      expect(course.id).toBeDefined();
+      expect(course.fullname).toBeDefined();
+      expect(course.shortname).toBeDefined();
+      expect(course.summary).toBeDefined();
+      expect(course.startdate).toBeDefined();
+      expect(course.enddate).toBeDefined();
+      expect(typeof course.visible).toBe('boolean');
+      expect(course.viewurl).toBeDefined();
+      expect(course.courseimage).toBeDefined();
+      expect(typeof course.hasprogress).toBe('boolean');
+      expect(typeof course.isfavourite).toBe('boolean');
+      expect(typeof course.hidden).toBe('boolean');
     });
   });
 
@@ -1265,19 +1265,18 @@ describe('Dashboard API', () => {
     it('should have proper activity item structure', async () => {
       const result = await fetchRecentActivity(101);
       
-      if (result.items.length > 0) {
-        const item = result.items[0];
-        expect(item.id).toBeDefined();
-        expect(item.type).toBeDefined();
-        expect(item.user).toBeDefined();
-        expect(item.username).toBeDefined();
-        expect(item.action).toBeDefined();
-        expect(item.resourcename).toBeDefined();
-        expect(item.coursename).toBeDefined();
-        expect(item.courseid).toBeDefined();
-        expect(item.timestamp).toBeDefined();
-        expect(item.description).toBeDefined();
-      }
+      expect(result.items.length).toBeGreaterThan(0);
+      const item = result.items[0]!;
+      expect(item.id).toBeDefined();
+      expect(item.type).toBeDefined();
+      expect(item.user).toBeDefined();
+      expect(item.username).toBeDefined();
+      expect(item.action).toBeDefined();
+      expect(item.resourcename).toBeDefined();
+      expect(item.coursename).toBeDefined();
+      expect(item.courseid).toBeDefined();
+      expect(item.timestamp).toBeDefined();
+      expect(item.description).toBeDefined();
     });
 
     it('should require course ID', async () => {
@@ -1329,18 +1328,17 @@ describe('Dashboard API', () => {
     it('should have proper online user structure', async () => {
       const result = await fetchOnlineUsers();
       
-      if (result.users.length > 0) {
-        const user = result.users[0];
-        expect(user.id).toBeDefined();
-        expect(user.username).toBeDefined();
-        expect(user.firstname).toBeDefined();
-        expect(user.lastname).toBeDefined();
-        expect(user.fullname).toBeDefined();
-        expect(user.profileimageurl).toBeDefined();
-        expect(user.lastaccess).toBeDefined();
-        expect(typeof user.uservisibility).toBe('boolean');
-        expect(typeof user.canmessage).toBe('boolean');
-      }
+      expect(result.users.length).toBeGreaterThan(0);
+      const user = result.users[0]!;
+      expect(user.id).toBeDefined();
+      expect(user.username).toBeDefined();
+      expect(user.firstname).toBeDefined();
+      expect(user.lastname).toBeDefined();
+      expect(user.fullname).toBeDefined();
+      expect(user.profileimageurl).toBeDefined();
+      expect(user.lastaccess).toBeDefined();
+      expect(typeof user.uservisibility).toBe('boolean');
+      expect(typeof user.canmessage).toBe('boolean');
     });
   });
 
@@ -1362,16 +1360,15 @@ describe('Dashboard API', () => {
     it('should have proper badge structure', async () => {
       const result = await fetchBadges(1);
       
-      if (result.badges.length > 0) {
-        const badge = result.badges[0];
-        expect(badge.id).toBeDefined();
-        expect(badge.name).toBeDefined();
-        expect(badge.description).toBeDefined();
-        expect(badge.image).toBeDefined();
-        expect(badge.issuedate).toBeDefined();
-        expect(badge.dateissued).toBeDefined();
-        expect(badge.badgeurl).toBeDefined();
-      }
+      expect(result.badges.length).toBeGreaterThan(0);
+      const badge = result.badges[0]!;
+      expect(badge.id).toBeDefined();
+      expect(badge.name).toBeDefined();
+      expect(badge.description).toBeDefined();
+      expect(badge.image).toBeDefined();
+      expect(badge.issuedate).toBeDefined();
+      expect(badge.dateissued).toBeDefined();
+      expect(badge.badgeurl).toBeDefined();
     });
 
     it('should handle non-existent user', async () => {
@@ -1406,18 +1403,17 @@ describe('Dashboard API', () => {
     it('should have proper comment structure', async () => {
       const result = await fetchComments();
       
-      if (result.comments.length > 0) {
-        const comment = result.comments[0];
-        expect(comment.id).toBeDefined();
-        expect(comment.userid).toBeDefined();
-        expect(comment.username).toBeDefined();
-        expect(comment.content).toBeDefined();
-        expect(comment.contextid).toBeDefined();
-        expect(comment.component).toBeDefined();
-        expect(comment.itemid).toBeDefined();
-        expect(comment.timecreated).toBeDefined();
-        expect(comment.timemodified).toBeDefined();
-      }
+      expect(result.comments.length).toBeGreaterThan(0);
+      const comment = result.comments[0]!;
+      expect(comment.id).toBeDefined();
+      expect(comment.userid).toBeDefined();
+      expect(comment.username).toBeDefined();
+      expect(comment.content).toBeDefined();
+      expect(comment.contextid).toBeDefined();
+      expect(comment.component).toBeDefined();
+      expect(comment.itemid).toBeDefined();
+      expect(comment.timecreated).toBeDefined();
+      expect(comment.timemodified).toBeDefined();
     });
   });
 
