@@ -325,12 +325,12 @@ export function useRateEntry(
       );
 
       // Also invalidate to ensure we have fresh data
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ratingQueryKeys.entry(variables.entryId),
       });
 
       // Invalidate related entry queries that might include rating data
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ['glossary', 'entry', variables.entryId],
         exact: false,
       });
@@ -420,7 +420,7 @@ function calculateOptimisticRating(
   current: RatingStats,
   newRating: number
 ): RatingStats {
-  const { average, count, sum, userRating } = current;
+  const { count, sum, userRating } = current;
 
   // User is updating their existing rating
   if (userRating !== undefined && userRating !== null) {
@@ -590,7 +590,9 @@ function mapErrorMessageToCode(message: string): RatingErrorCode {
  * Maps server error codes to RatingErrorCode values
  */
 function mapServerErrorCode(code: string | undefined): RatingErrorCode {
-  if (!code) return 'UNKNOWN_ERROR';
+  if (!code) {
+    return 'UNKNOWN_ERROR';
+  }
 
   const codeMap: Record<string, RatingErrorCode> = {
     PERMISSION_DENIED: 'PERMISSION_DENIED',
@@ -606,7 +608,7 @@ function mapServerErrorCode(code: string | undefined): RatingErrorCode {
     NETWORK_ERROR: 'NETWORK_ERROR',
   };
 
-  return codeMap[code.toUpperCase()] || 'UNKNOWN_ERROR';
+  return codeMap[code.toUpperCase()] ?? 'UNKNOWN_ERROR';
 }
 
 /**
