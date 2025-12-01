@@ -404,7 +404,7 @@ function paramsToFilters(params: GlossaryEntriesParams): GlossaryFilters {
       'FIRSTNAME': 'author',
       'LASTNAME': 'author',
     };
-    filters.sortBy = sortMapping[params.sortkey] || 'concept';
+    filters.sortBy = sortMapping[params.sortkey] ?? 'concept';
   }
 
   if (params.sortorder) {
@@ -624,12 +624,12 @@ export function useGlossaryEntries(
 
   // Apply default values to params
   const normalizedParams: GlossaryEntriesParams = {
-    mode: params.mode || 'letter',
-    hook: params.hook || 'ALL',
+    mode: params.mode ?? 'letter',
+    hook: params.hook ?? 'ALL',
     offset: params.offset ?? 0,
     limit: params.limit ?? DEFAULT_LIMIT,
     sortkey: params.sortkey,
-    sortorder: params.sortorder || 'asc',
+    sortorder: params.sortorder ?? 'asc',
     fullsearch: params.fullsearch ?? false,
   };
 
@@ -810,12 +810,12 @@ export async function prefetchGlossaryEntries(
   params: GlossaryEntriesParams = {}
 ): Promise<void> {
   const normalizedParams: GlossaryEntriesParams = {
-    mode: params.mode || 'letter',
-    hook: params.hook || 'ALL',
+    mode: params.mode ?? 'letter',
+    hook: params.hook ?? 'ALL',
     offset: params.offset ?? 0,
     limit: params.limit ?? DEFAULT_LIMIT,
     sortkey: params.sortkey,
-    sortorder: params.sortorder || 'asc',
+    sortorder: params.sortorder ?? 'asc',
     fullsearch: params.fullsearch ?? false,
   };
 
