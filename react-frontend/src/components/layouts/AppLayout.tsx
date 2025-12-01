@@ -1,6 +1,6 @@
 import type React from 'react';
 import { Box, Toolbar, Container } from '@mui/material';
-import { Header } from '../navigation/Header';
+import Header from '../navigation/Header';
 
 interface AppLayoutProps {
   children: React.ReactNode;
