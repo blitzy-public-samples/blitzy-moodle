@@ -1,448 +1,622 @@
 /**
- * Profile API Client
+ * Profile API Client Module
  *
- * API client for profile-related operations including fetching user profiles,
- * updating profile information, and managing avatar uploads.
- * All API calls delegate to existing Moodle PHP backend functions.
+ * TypeScript API client providing functions for all profile-related operations including
+ * fetching user profiles, updating profile information, uploading profile avatars, and
+ * managing user preferences. Wraps RESTful API calls to /api/v1/users/* endpoints using
+ * the pre-configured axios HTTP client.
  *
- * Implements comprehensive error handling, retry logic with exponential backoff,
- * request timeout management, and JWT authentication integration.
+ * This module implements standard request/response handling with proper error management
+ * and type safety. All functions call backend endpoints that wrap existing Moodle user
+ * management functions like user_get_user_details(), user_update_user(),
+ * core_user::update_picture(), and useredit_update_user_preference(), maintaining
+ * 100% backward compatibility with existing PHP business logic.
+ *
+ * Architecture Notes:
+ * - Uses shared apiClient from services/api/client with JWT token interceptors
+ * - All API responses follow standard envelope pattern: { success: true, data: T, meta?: {...} }
+ * - Error responses follow: { success: false, error: { code, message, details? } }
+ * - Functions are designed to be used by React Query hooks in the hooks directory
+ *
+ * Backend API Endpoint Mapping:
+ * - GET /api/v1/users/{id} -> wraps user_get_user_details() from public/user/lib.php
+ * - PUT /api/v1/users/{id} -> wraps user_update_user() from public/user/lib.php
+ * - POST /api/v1/users/{id}/avatar -> wraps core_user::update_picture() from public/user/lib.php
+ * - GET /api/v1/users/{id}/preferences -> wraps get_user_preferences() from public/user/externallib.php
+ * - PUT /api/v1/users/{id}/preferences -> wraps useredit_update_user_preference()
+ * - PUT /api/v1/users/{id}/preferences/bulk -> wraps update_user_preferences() from externallib.php
+ * - GET /api/v1/auth/me -> returns current authenticated user from JWT token
+ *
+ * @see public/user/profile.php - Profile view implementation
+ * @see public/user/edit.php - Profile edit implementation
+ * @see public/user/preferences.php - Preference management
+ * @see public/user/externallib.php - Web service functions
+ * @see public/user/lib.php - User library functions
  *
  * @module features/profile/api
  */
 
-import type { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
-import axios from 'axios';
-import authService from '@/services/auth/authService';
+import type { AxiosResponse } from 'axios';
+import apiClient, { extractData } from '@/services/api/client';
+import type { ApiResponse } from '@/types/api';
+import type { User } from '@/types/entities';
 import type {
-  User,
+  UserPreferences,
+  UpdateProfilePayload,
   UpdateProfileData,
   AvatarUploadResponse,
-  UserPreferences,
+  UserPreference,
 } from '../types/profile.types';
 
-/**
- * Standard API response envelope
- */
-interface ApiResponse<T> {
-  success: boolean;
-  data: T;
-  meta?: {
-    pagination?: {
-      page: number;
-      perPage: number;
-      total: number;
-      totalPages: number;
-    };
-  };
-}
+// ============================================================================
+// Type Definitions
+// ============================================================================
 
 /**
- * API Configuration
- */
-const API_BASE_URL = process.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api/v1';
-const REQUEST_TIMEOUT = 30000; // 30 seconds
-const MAX_RETRIES = 3; // 3 retries after initial attempt = 4 total attempts
-const INITIAL_RETRY_DELAY = 1000; // 1 second
-
-/**
- * Create axios instance with default configuration
- */
-const createApiClient = (): AxiosInstance => {
-  const client = axios.create({
-    baseURL: API_BASE_URL,
-    timeout: REQUEST_TIMEOUT,
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
-
-  // Request interceptor to add JWT token
-  client.interceptors.request.use(
-    (config) => {
-      const token = authService.getAccessToken();
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-      return config;
-    },
-    (error) => {
-      return Promise.reject(error);
-    }
-  );
-
-  // Response interceptor to handle token refresh on 401
-  client.interceptors.response.use(
-    (response) => response,
-    async (error: AxiosError) => {
-      const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
-
-      // Handle 401 Unauthorized - attempt token refresh
-      if (error.response?.status === 401 && !originalRequest._retry) {
-        originalRequest._retry = true;
-
-        try {
-          await authService.refreshAccessToken();
-
-          // Retry the original request with new token
-          const token = authService.getAccessToken();
-          if (token && originalRequest.headers) {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
-          }
-
-          return client.request(originalRequest);
-        } catch (refreshError) {
-          // Token refresh failed, reject the original error
-          return Promise.reject(error);
-        }
-      }
-
-      return Promise.reject(error);
-    }
-  );
-
-  return client;
-};
-
-/**
- * Sleep utility for retry delays
- */
-const sleep = (ms: number): Promise<void> => {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-};
-
-/**
- * Retry logic with exponential backoff for 5xx errors
- */
-const retryRequest = async <T>(
-  requestFn: () => Promise<T>,
-  retries: number = MAX_RETRIES
-): Promise<T> => {
-  let lastError: Error | null = null;
-
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      return await requestFn();
-    } catch (error) {
-      lastError = error as Error;
-
-      // Only retry on 5xx server errors
-      if (axios.isAxiosError(error)) {
-        const status = error.response?.status;
-
-        // Don't retry on 4xx client errors
-        if (status && status >= 400 && status < 500) {
-          throw error;
-        }
-
-        // Don't retry if this was the last attempt
-        if (attempt === retries) {
-          throw error;
-        }
-
-        // Calculate exponential backoff delay
-        const delay = INITIAL_RETRY_DELAY * Math.pow(2, attempt);
-        await sleep(delay);
-      } else {
-        // Non-axios errors should not be retried
-        throw error;
-      }
-    }
-  }
-
-  throw lastError;
-};
-
-/**
- * Extract error message from API error response
+ * Profile update request payload interface
  *
- * For 422 validation errors, preserves the full axios error with validation details
- * For other errors, extracts and throws the error message from response
+ * Defines the shape of data sent to PUT /api/v1/users/{id}
+ * Excludes userid which is passed as URL parameter
  */
-const handleApiError = (error: unknown): never => {
-  if (axios.isAxiosError(error) && error.response) {
-    const { status } = error.response;
-    const responseData = error.response.data as { error?: { message?: string } } | undefined;
-    const errorData = responseData?.error;
-
-    // For 422 validation errors, preserve the full axios error with details
-    if (status === 422) {
-      throw error;
-    }
-
-    // For other errors, throw a new Error with the message from the API
-    if (errorData?.message) {
-      throw new Error(errorData.message);
-    }
-  }
-
-  // Re-throw original error if we can't extract a better message
-  throw error;
-};
-
-/**
- * Transform interests from comma-separated string to array if needed
- */
-const transformInterests = (interests: string | string[] | undefined): string[] | undefined => {
-  if (!interests) {
-    return undefined;
-  }
-  if (Array.isArray(interests)) {
-    return interests;
-  }
-  if (typeof interests === 'string') {
-    return interests
-      .split(',')
-      .map((i) => i.trim())
-      .filter((i) => i.length > 0);
-  }
-  return undefined;
-};
-
-/**
- * Raw profile API response interface
- */
-interface RawProfileResponse {
-  id: number;
-  username?: string;
-  firstname?: string;
-  lastname?: string;
-  fullname: string;
-  email?: string;
-  address?: string;
-  phone1?: string;
-  phone2?: string;
-  department?: string;
-  institution?: string;
-  idnumber?: string;
-  interests?: string | string[];
-  firstaccess?: number;
-  lastaccess?: number;
-  auth?: string;
-  suspended?: boolean;
-  confirmed?: boolean;
-  lang?: string;
-  calendartype?: string;
-  theme?: string;
-  timezone?: string;
-  mailformat?: number;
-  maildisplay?: number;
-  maildigest?: number;
-  trackforums?: boolean;
-  autosubscribe?: boolean;
-  description?: string;
-  descriptionformat?: number;
-  city?: string;
-  country?: string;
-  profileimageurlsmall: string;
-  profileimageurl: string;
-  customfields?: unknown[];
-  preferences?: unknown[];
-  roles?: unknown[];
-  firstnamephonetic?: string;
-  lastnamephonetic?: string;
-  middlename?: string;
-  alternatename?: string;
-  imagealt?: string;
+export interface ProfileUpdateRequest extends UpdateProfileData {
+  // Extends UpdateProfileData which contains all updateable fields
 }
 
 /**
- * Transform API response to User type
+ * Preference update request payload interface
+ *
+ * Defines the shape of data sent for individual preference update
  */
-const transformProfileResponse = (data: RawProfileResponse): User => {
-  return {
-    ...data,
-    interests: transformInterests(data.interests),
-    calendartype: data.calendartype as User['calendartype'],
-    customfields: data.customfields as User['customfields'],
-    preferences: data.preferences as User['preferences'],
-    roles: data.roles as User['roles'],
-  };
-};
+export interface PreferenceUpdateRequest {
+  /** Preference name/key to update */
+  name: string;
+  /** New value for the preference */
+  value: string | number | boolean;
+}
+
+/**
+ * Bulk preferences update request payload interface
+ *
+ * Defines the shape of data sent for bulk preference updates
+ */
+export interface BulkPreferencesUpdateRequest {
+  /** Array of preferences to update */
+  preferences: PreferenceUpdateRequest[];
+}
+
+/**
+ * API Error response interface
+ *
+ * Standard error response structure from API
+ */
+export interface ApiError {
+  /** Error code for programmatic handling (e.g., 'PERMISSION_DENIED', 'NOT_FOUND') */
+  code: string;
+  /** Human-readable error message */
+  message: string;
+  /** Additional error details */
+  details?: Record<string, unknown>;
+}
+
+/**
+ * Profile API error class
+ *
+ * Custom error class for profile API operations with additional context
+ */
+export class ProfileApiError extends Error {
+  /** HTTP status code */
+  public readonly status: number;
+  /** API error code */
+  public readonly code: string;
+  /** Additional error details */
+  public readonly details?: Record<string, unknown>;
+
+  constructor(message: string, status: number, code: string, details?: Record<string, unknown>) {
+    super(message);
+    this.name = 'ProfileApiError';
+    this.status = status;
+    this.code = code;
+    this.details = details;
+    Object.setPrototypeOf(this, ProfileApiError.prototype);
+  }
+}
+
+// ============================================================================
+// Error Handling Utilities
+// ============================================================================
+
+/**
+ * Extract and format error from API response
+ *
+ * Handles different error scenarios:
+ * - 400: Validation errors with field-level details
+ * - 401: Unauthorized (expired token, not logged in)
+ * - 403: Permission denied (lacking capability)
+ * - 404: User not found
+ * - 5xx: Server errors
+ *
+ * @param error - The caught error from axios
+ * @throws ProfileApiError with formatted error information
+ */
+function handleApiError(error: unknown): never {
+  // Handle axios errors with response
+  if (error && typeof error === 'object' && 'response' in error) {
+    const axiosError = error as {
+      response?: {
+        status: number;
+        data?: {
+          success: false;
+          error?: ApiError;
+        };
+      };
+      message?: string;
+    };
+
+    if (axiosError.response) {
+      const { status, data } = axiosError.response;
+      const apiError = data?.error;
+
+      // Extract error details from API response
+      const errorMessage = apiError?.message || getDefaultErrorMessage(status);
+      const errorCode = apiError?.code || getDefaultErrorCode(status);
+      const errorDetails = apiError?.details;
+
+      throw new ProfileApiError(errorMessage, status, errorCode, errorDetails);
+    }
+  }
+
+  // Handle network errors
+  if (error && typeof error === 'object' && 'message' in error) {
+    const networkError = error as { message: string };
+    throw new ProfileApiError(
+      networkError.message || 'Network error occurred',
+      0,
+      'NETWORK_ERROR'
+    );
+  }
+
+  // Handle unknown errors
+  throw new ProfileApiError('An unexpected error occurred', 0, 'UNKNOWN_ERROR');
+}
+
+/**
+ * Get default error message based on HTTP status code
+ *
+ * @param status - HTTP status code
+ * @returns Default error message for the status
+ */
+function getDefaultErrorMessage(status: number): string {
+  switch (status) {
+    case 400:
+      return 'Invalid request data';
+    case 401:
+      return 'Authentication required';
+    case 403:
+      return 'You do not have permission to perform this action';
+    case 404:
+      return 'User not found';
+    case 422:
+      return 'Validation failed';
+    case 429:
+      return 'Too many requests. Please try again later';
+    case 500:
+      return 'Internal server error';
+    case 502:
+      return 'Service temporarily unavailable';
+    case 503:
+      return 'Service unavailable';
+    default:
+      return `Request failed with status ${status}`;
+  }
+}
+
+/**
+ * Get default error code based on HTTP status code
+ *
+ * @param status - HTTP status code
+ * @returns Default error code for the status
+ */
+function getDefaultErrorCode(status: number): string {
+  switch (status) {
+    case 400:
+      return 'BAD_REQUEST';
+    case 401:
+      return 'UNAUTHORIZED';
+    case 403:
+      return 'PERMISSION_DENIED';
+    case 404:
+      return 'NOT_FOUND';
+    case 422:
+      return 'VALIDATION_ERROR';
+    case 429:
+      return 'RATE_LIMITED';
+    case 500:
+      return 'INTERNAL_ERROR';
+    default:
+      return 'REQUEST_FAILED';
+  }
+}
+
+// ============================================================================
+// Profile API Functions
+// ============================================================================
 
 /**
  * Get user profile by ID
  *
- * Makes GET request to /api/v1/users/{userId}
- * Includes JWT token authentication
- * Retries on 5xx errors with exponential backoff
+ * Retrieves complete user profile data including id, username, firstname, lastname,
+ * email, profileimageurl, description, country, city, timezone, and all other
+ * profile fields.
  *
- * @param userId - The ID of the user whose profile to fetch
- * @returns Promise resolving to User object
- * @throws Error with message from API response
+ * Backend Implementation:
+ * Calls GET /api/v1/users/{id} which wraps existing user_get_user_details() PHP
+ * function from public/user/lib.php (line 391). The backend performs user_can_view_profile()
+ * permission check (see public/user/profile.php lines 65-76 and 81-96).
+ *
+ * @param userId - The unique identifier of the user whose profile to retrieve
+ * @returns Promise resolving to User object with all profile fields
+ *
+ * @throws ProfileApiError with code 'UNAUTHORIZED' (401) - Not authenticated
+ * @throws ProfileApiError with code 'PERMISSION_DENIED' (403) - Cannot view this profile
+ * @throws ProfileApiError with code 'NOT_FOUND' (404) - User does not exist
+ *
+ * @example
+ * ```typescript
+ * try {
+ *   const user = await getUserProfile(123);
+ *   console.log(user.fullname, user.email);
+ * } catch (error) {
+ *   if (error instanceof ProfileApiError && error.code === 'NOT_FOUND') {
+ *     console.log('User not found');
+ *   }
+ * }
+ * ```
  */
-export async function fetchUserProfile(userId: number): Promise<User> {
-  const client = createApiClient();
-
-  const fetchProfile = async () => {
-    const response = await client.get<ApiResponse<RawProfileResponse>>(`/users/${userId}`);
-    const profile = transformProfileResponse(response.data.data);
-    return profile;
-  };
-
+export async function getUserProfile(userId: number): Promise<User> {
   try {
-    return await retryRequest(fetchProfile);
+    const response: AxiosResponse<ApiResponse<User>> = await apiClient.get(`/users/${userId}`);
+    return extractData(response);
   } catch (error) {
     handleApiError(error);
-    throw error; // TypeScript needs this even though handleApiError never returns
   }
 }
 
 /**
  * Get current authenticated user profile
  *
- * Makes GET request to /api/v1/auth/me
- * Includes JWT token authentication
- * Retries on 5xx errors with exponential backoff
+ * Retrieves the profile of the currently authenticated user based on the JWT token.
+ * This is more efficient than getUserProfile for fetching the current user's data
+ * as it reuses authentication context.
  *
- * @returns Promise resolving to current User object
- * @throws Error with message from API response
+ * Backend Implementation:
+ * Calls GET /api/v1/auth/me which extracts user ID from JWT token and returns
+ * user profile data without requiring explicit user ID parameter.
+ *
+ * @returns Promise resolving to User object for the authenticated user
+ *
+ * @throws ProfileApiError with code 'UNAUTHORIZED' (401) - Not authenticated or token expired
+ *
+ * @example
+ * ```typescript
+ * const currentUser = await getCurrentUserProfile();
+ * console.log(`Welcome, ${currentUser.firstname}!`);
+ * ```
  */
-export async function fetchCurrentUserProfile(): Promise<User> {
-  const client = createApiClient();
-
-  const fetchCurrentUser = async () => {
-    const response = await client.get<ApiResponse<RawProfileResponse>>(`/auth/me`);
-    const profile = transformProfileResponse(response.data.data);
-    return profile;
-  };
-
+export async function getCurrentUserProfile(): Promise<User> {
   try {
-    return await retryRequest(fetchCurrentUser);
+    const response: AxiosResponse<ApiResponse<User>> = await apiClient.get('/auth/me');
+    return extractData(response);
   } catch (error) {
     handleApiError(error);
-    throw error; // TypeScript needs this even though handleApiError never returns
   }
 }
 
 /**
  * Update user profile information
  *
- * Makes PUT request to /api/v1/users/{userId} with JSON payload
- * Includes JWT token authentication
- * Retries on 5xx errors with exponential backoff
+ * Updates the profile information for a user. Only provided fields are updated;
+ * omitted fields retain their current values. The backend validates permissions
+ * using moodle/user:editownprofile (for own profile) or moodle/user:editprofile
+ * (for other users' profiles) capabilities.
  *
- * @param userId - The ID of the user whose profile to update
- * @param data - Profile update data
- * @returns Promise resolving to updated User object
- * @throws Error with message from API response (or full AxiosError for 422 validation errors)
+ * Backend Implementation:
+ * Calls PUT /api/v1/users/{id} which wraps existing user_update_user() PHP function
+ * from public/user/editlib.php. See public/user/edit.php lines 60-62 and 104-121
+ * for capability checks.
+ *
+ * @param payload - Update payload containing userid and fields to update
+ * @returns Promise resolving to updated User object with all profile fields
+ *
+ * @throws ProfileApiError with code 'UNAUTHORIZED' (401) - Not authenticated
+ * @throws ProfileApiError with code 'PERMISSION_DENIED' (403) - Cannot edit this profile
+ * @throws ProfileApiError with code 'NOT_FOUND' (404) - User does not exist
+ * @throws ProfileApiError with code 'VALIDATION_ERROR' (422) - Invalid field values
+ *
+ * @example
+ * ```typescript
+ * const updatedUser = await updateUserProfile({
+ *   userid: 123,
+ *   firstname: 'John',
+ *   lastname: 'Doe',
+ *   city: 'New York',
+ *   country: 'US',
+ *   description: 'Software developer'
+ * });
+ * ```
  */
-export async function updateUserProfile(userId: number, data: UpdateProfileData): Promise<User> {
-  const client = createApiClient();
-
-  const updateProfileRequest = async () => {
-    const response = await client.put<ApiResponse<RawProfileResponse>>(`/users/${userId}`, data);
-    const profile = transformProfileResponse(response.data.data);
-    return profile;
-  };
+export async function updateUserProfile(payload: UpdateProfilePayload): Promise<User> {
+  const { userid, ...updateData } = payload;
 
   try {
-    return await retryRequest(updateProfileRequest);
+    const response: AxiosResponse<ApiResponse<User>> = await apiClient.put(
+      `/users/${userid}`,
+      updateData
+    );
+    return extractData(response);
   } catch (error) {
     handleApiError(error);
-    throw error; // TypeScript needs this even though handleApiError never returns
   }
 }
 
 /**
- * Upload user avatar/profile picture
+ * Upload user profile avatar/picture
  *
- * Makes POST request to /api/v1/files/upload with multipart/form-data
- * Includes JWT token authentication
- * Retries on 5xx errors with exponential backoff
+ * Uploads a new profile picture for a user. The image file is sent as multipart/form-data.
+ * The backend validates file type (jpg, png, gif) and size restrictions, then processes
+ * the image and generates appropriate thumbnail sizes.
  *
- * @param userId - The ID of the user whose avatar to upload
- * @param file - Image file to upload
- * @returns Promise resolving to AvatarUploadResponse object with file metadata
- * @throws Error with message from API response (or full AxiosError for 422 validation errors)
+ * Backend Implementation:
+ * Calls POST /api/v1/users/{id}/avatar which wraps existing core_user::update_picture()
+ * PHP function from public/user/lib.php (lines 441-450). The backend handles image
+ * validation, resizing, and storage.
+ *
+ * @param userId - The unique identifier of the user whose avatar to update
+ * @param file - The image file to upload (File object from file input or drag-drop)
+ * @returns Promise resolving to AvatarUploadResponse with new profileimageurl
+ *
+ * @throws ProfileApiError with code 'UNAUTHORIZED' (401) - Not authenticated
+ * @throws ProfileApiError with code 'PERMISSION_DENIED' (403) - Cannot edit this profile
+ * @throws ProfileApiError with code 'NOT_FOUND' (404) - User does not exist
+ * @throws ProfileApiError with code 'VALIDATION_ERROR' (422) - Invalid file type or size
+ *
+ * @example
+ * ```typescript
+ * const fileInput = document.getElementById('avatar') as HTMLInputElement;
+ * if (fileInput.files?.[0]) {
+ *   const result = await uploadAvatar(123, fileInput.files[0]);
+ *   console.log('New avatar URL:', result.profileimageurl);
+ * }
+ * ```
  */
 export async function uploadAvatar(userId: number, file: File): Promise<AvatarUploadResponse> {
-  const client = createApiClient();
+  const formData = new FormData();
+  formData.append('file', file);
 
-  const uploadAvatarRequest = async () => {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('userId', userId.toString());
-    formData.append('contextType', 'user');
-
-    // Let axios automatically set Content-Type with boundary for FormData
-    const response = await client.post<ApiResponse<AvatarUploadResponse>>(
-      '/files/upload',
+  try {
+    const response: AxiosResponse<ApiResponse<AvatarUploadResponse>> = await apiClient.post(
+      `/users/${userId}/avatar`,
       formData,
       {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
+        // Extended timeout for file uploads
+        timeout: 60000,
       }
     );
-
-    return response.data.data;
-  };
-
-  try {
-    return await retryRequest(uploadAvatarRequest);
+    return extractData(response);
   } catch (error) {
     handleApiError(error);
-    throw error; // TypeScript needs this even though handleApiError never returns
   }
 }
 
 /**
- * Delete user avatar/profile picture
+ * Get all user preferences
  *
- * Makes DELETE request to /api/v1/users/{userId}/avatar
- * Includes JWT token authentication
- * Retries on 5xx errors with exponential backoff
+ * Retrieves all user preferences as key-value pairs including settings for email display,
+ * forum auto-subscribe, editor preferences, notification settings, and other user-specific
+ * configurations.
  *
- * @param userId - The ID of the user whose avatar to delete
- * @returns Promise resolving when avatar is deleted
- * @throws Error with message from API response
+ * Backend Implementation:
+ * Calls GET /api/v1/users/{id}/preferences which wraps existing get_user_preferences()
+ * PHP function from public/user/externallib.php (line 1618). See public/user/preferences.php
+ * lines 32-60 for preference management implementation.
+ *
+ * @param userId - The unique identifier of the user whose preferences to retrieve
+ * @returns Promise resolving to UserPreferences object with key-value pairs
+ *
+ * @throws ProfileApiError with code 'UNAUTHORIZED' (401) - Not authenticated
+ * @throws ProfileApiError with code 'PERMISSION_DENIED' (403) - Cannot view preferences
+ * @throws ProfileApiError with code 'NOT_FOUND' (404) - User does not exist
+ *
+ * @example
+ * ```typescript
+ * const prefs = await getUserPreferences(123);
+ * console.log('Email format:', prefs.mailformat);
+ * console.log('Auto-subscribe:', prefs.autosubscribe);
+ * ```
  */
-export async function deleteAvatar(userId: number): Promise<void> {
-  const client = createApiClient();
-
-  const deleteAvatarRequest = async () => {
-    await client.delete(`/users/${userId}/avatar`);
-  };
-
+export async function getUserPreferences(userId: number): Promise<UserPreferences> {
   try {
-    return await retryRequest(deleteAvatarRequest);
+    const response: AxiosResponse<ApiResponse<UserPreferences>> = await apiClient.get(
+      `/users/${userId}/preferences`
+    );
+    return extractData(response);
   } catch (error) {
     handleApiError(error);
-    throw error; // TypeScript needs this even though handleApiError never returns
   }
 }
 
 /**
- * Update user preferences
+ * Update a single user preference
  *
- * Makes PUT request to /api/v1/users/{userId}/preferences with JSON payload
- * Includes JWT token authentication
- * Retries on 5xx errors with exponential backoff
+ * Updates an individual user preference by name. The backend validates the preference
+ * key to ensure it's a valid preference name before updating.
  *
- * @param userId - The ID of the user whose preferences to update
- * @param preferences - User preferences key-value map
+ * Backend Implementation:
+ * Calls PUT /api/v1/users/{id}/preferences which wraps existing useredit_update_user_preference()
+ * PHP function from public/user/editlib.php. The endpoint accepts a single preference
+ * update in the format { name: string, value: string }.
+ *
+ * @param userId - The unique identifier of the user whose preference to update
+ * @param name - The preference name/key (e.g., 'maildisplay', 'autosubscribe')
+ * @param value - The new value for the preference
  * @returns Promise resolving to updated UserPreferences object
- * @throws Error with message from API response (or full AxiosError for 422 validation errors)
+ *
+ * @throws ProfileApiError with code 'UNAUTHORIZED' (401) - Not authenticated
+ * @throws ProfileApiError with code 'PERMISSION_DENIED' (403) - Cannot edit preferences
+ * @throws ProfileApiError with code 'NOT_FOUND' (404) - User does not exist
+ * @throws ProfileApiError with code 'VALIDATION_ERROR' (422) - Invalid preference key
+ *
+ * @example
+ * ```typescript
+ * await updateUserPreference(123, 'maildisplay', '2');
+ * await updateUserPreference(123, 'autosubscribe', '1');
+ * ```
+ */
+export async function updateUserPreference(
+  userId: number,
+  name: string,
+  value: string | number | boolean
+): Promise<UserPreferences> {
+  try {
+    const response: AxiosResponse<ApiResponse<UserPreferences>> = await apiClient.put(
+      `/users/${userId}/preferences`,
+      { name, value: String(value) }
+    );
+    return extractData(response);
+  } catch (error) {
+    handleApiError(error);
+  }
+}
+
+/**
+ * Update multiple user preferences in bulk
+ *
+ * Updates multiple user preferences in a single request. This is more efficient
+ * than calling updateUserPreference multiple times when updating several preferences.
+ *
+ * Backend Implementation:
+ * Calls PUT /api/v1/users/{id}/preferences/bulk which wraps existing update_user_preferences()
+ * PHP function from public/user/externallib.php (line 396). The endpoint accepts an array
+ * of preference objects with name/value pairs.
+ *
+ * @param userId - The unique identifier of the user whose preferences to update
+ * @param preferences - Partial UserPreferences object with preferences to update
+ * @returns Promise resolving to updated UserPreferences object
+ *
+ * @throws ProfileApiError with code 'UNAUTHORIZED' (401) - Not authenticated
+ * @throws ProfileApiError with code 'PERMISSION_DENIED' (403) - Cannot edit preferences
+ * @throws ProfileApiError with code 'NOT_FOUND' (404) - User does not exist
+ * @throws ProfileApiError with code 'VALIDATION_ERROR' (422) - Invalid preference keys/values
+ *
+ * @example
+ * ```typescript
+ * await updateUserPreferences(123, {
+ *   maildisplay: MailDisplay.COURSE_MEMBERS,
+ *   mailformat: MailFormat.HTML,
+ *   autosubscribe: true,
+ *   lang: 'en'
+ * });
+ * ```
  */
 export async function updateUserPreferences(
   userId: number,
-  preferences: UserPreferences
+  preferences: Partial<UserPreferences>
 ): Promise<UserPreferences> {
-  const client = createApiClient();
-
-  const updatePreferencesRequest = async () => {
-    const response = await client.put<ApiResponse<UserPreferences>>(
-      `/users/${userId}/preferences`,
-      preferences
-    );
-    return response.data.data;
-  };
+  // Convert preferences object to array of { name, value } for API
+  const preferencesArray: UserPreference[] = Object.entries(preferences)
+    .filter(([, value]) => value !== undefined)
+    .map(([name, value]) => ({
+      name,
+      value: String(value),
+    }));
 
   try {
-    return await retryRequest(updatePreferencesRequest);
+    const response: AxiosResponse<ApiResponse<UserPreferences>> = await apiClient.put(
+      `/users/${userId}/preferences/bulk`,
+      { preferences: preferencesArray }
+    );
+    return extractData(response);
   } catch (error) {
     handleApiError(error);
-    throw error; // TypeScript needs this even though handleApiError never returns
   }
 }
+
+// ============================================================================
+// Additional Utility Functions
+// ============================================================================
+
+/**
+ * Delete user profile avatar
+ *
+ * Removes the profile picture for a user, reverting to the default avatar.
+ *
+ * Backend Implementation:
+ * Calls DELETE /api/v1/users/{id}/avatar which removes the stored profile image
+ * and updates the user record to use the default avatar.
+ *
+ * @param userId - The unique identifier of the user whose avatar to delete
+ * @returns Promise resolving when avatar is deleted
+ *
+ * @throws ProfileApiError with code 'UNAUTHORIZED' (401) - Not authenticated
+ * @throws ProfileApiError with code 'PERMISSION_DENIED' (403) - Cannot edit this profile
+ * @throws ProfileApiError with code 'NOT_FOUND' (404) - User does not exist
+ *
+ * @example
+ * ```typescript
+ * await deleteAvatar(123);
+ * console.log('Avatar removed');
+ * ```
+ */
+export async function deleteAvatar(userId: number): Promise<void> {
+  try {
+    await apiClient.delete(`/users/${userId}/avatar`);
+  } catch (error) {
+    handleApiError(error);
+  }
+}
+
+/**
+ * Check if user can edit their own profile
+ *
+ * Utility function to check if the current user has permission to edit
+ * their own profile settings. This is useful for UI conditional rendering.
+ *
+ * @returns Promise resolving to boolean indicating edit permission
+ *
+ * @example
+ * ```typescript
+ * const canEdit = await canEditOwnProfile();
+ * if (canEdit) {
+ *   showEditButton();
+ * }
+ * ```
+ */
+export async function canEditOwnProfile(): Promise<boolean> {
+  try {
+    const response: AxiosResponse<ApiResponse<{ canEdit: boolean }>> = await apiClient.get(
+      '/users/me/capabilities/edit'
+    );
+    return extractData(response).canEdit;
+  } catch {
+    // If the capability check fails, assume no permission
+    return false;
+  }
+}
+
+// ============================================================================
+// Re-exports for Convenience
+// ============================================================================
+
+// Re-export types that consumers of this module may need
+export type {
+  User,
+  UserPreferences,
+  UpdateProfilePayload,
+  UpdateProfileData,
+  AvatarUploadResponse,
+  UserPreference,
+} from '../types/profile.types';
+
+export type { ApiResponse } from '@/types/api';
