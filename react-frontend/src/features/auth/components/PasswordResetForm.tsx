@@ -24,7 +24,8 @@
  * @see public/login/forgot_password_form.php - Original form structure
  */
 
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import type React from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -107,8 +108,8 @@ const passwordResetSchema = z
   .refine(
     (data) => {
       // At least one of username or email must be provided
-      const hasUsername = data.username && data.username.trim().length > 0;
-      const hasEmail = data.email && data.email.trim().length > 0;
+      const hasUsername = (data.username?.trim().length ?? 0) > 0;
+      const hasEmail = (data.email?.trim().length ?? 0) > 0;
       return hasUsername || hasEmail;
     },
     {
@@ -272,10 +273,9 @@ function PasswordResetForm({
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting, touchedFields },
+    formState: { errors, isSubmitting },
     watch,
     reset,
-    setFocus,
   } = useForm<FormData>({
     resolver: zodResolver(passwordResetSchema),
     defaultValues: {
@@ -347,7 +347,7 @@ function PasswordResetForm({
       } else if (error.code === 'VALIDATION_ERROR') {
         message = error.message || 'Please provide a valid username or email address.';
       } else if (error.message) {
-        message = error.message;
+        ({ message } = error);
       }
 
       setErrorMessage(message);
@@ -561,7 +561,7 @@ function PasswordResetForm({
           autoComplete="username"
           disabled={isLoading || isUsernameDisabled}
           error={Boolean(errors.username)}
-          helperText={errors.username?.message || (isUsernameDisabled ? 'Clear email field to search by username' : '')}
+          helperText={errors.username?.message ?? (isUsernameDisabled ? 'Clear email field to search by username' : '')}
           inputRef={usernameInputRef}
           onFocus={() => handleFieldFocus('username')}
           onBlur={handleFieldBlur}
@@ -611,7 +611,7 @@ function PasswordResetForm({
           autoComplete="email"
           disabled={isLoading || isEmailDisabled}
           error={Boolean(errors.email)}
-          helperText={errors.email?.message || (isEmailDisabled ? 'Clear username field to search by email' : '')}
+          helperText={errors.email?.message ?? (isEmailDisabled ? 'Clear username field to search by email' : '')}
           onFocus={() => handleFieldFocus('email')}
           onBlur={handleFieldBlur}
           InputProps={{

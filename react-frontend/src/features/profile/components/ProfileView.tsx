@@ -301,7 +301,7 @@ export function ProfileView({
     return (
       <Box className={className} display="flex" alignItems="center" gap={2} data-layout={layout}>
         <Avatar
-          src={user.profileimageurlsmall || user.profileimageurl}
+          src={user.profileimageurlsmall ?? user.profileimageurl}
           alt={user.fullname}
           sx={{ width: 48, height: 48 }}
           data-testid="profile-avatar"
@@ -533,7 +533,7 @@ export function ProfileView({
               </Typography>
               <Grid container spacing={2}>
                 {user.customfields.map((field, index) => (
-                  <Grid item xs={12} sm={6} key={field.shortname || `customfield-${index}`}>
+                  <Grid item xs={12} sm={6} key={field.shortname ?? `customfield-${index}`}>
                     <Typography variant="body2" color="text.secondary">
                       <strong>{field.name}:</strong> {String(field.value)}
                     </Typography>

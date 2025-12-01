@@ -525,12 +525,12 @@ export default function useCourseAdmin(): UseCourseAdminReturn {
         const newSet = new Set(prev);
         currentPageCourseIds.forEach((id) => newSet.delete(id));
         return newSet;
-      } else {
-        // Select all courses on current page (keeping previous selections)
-        const newSet = new Set(prev);
-        currentPageCourseIds.forEach((id) => newSet.add(id));
-        return newSet;
       }
+
+      // Select all courses on current page (keeping previous selections)
+      const newSet = new Set(prev);
+      currentPageCourseIds.forEach((id) => newSet.add(id));
+      return newSet;
     });
   }, [courses]);
 

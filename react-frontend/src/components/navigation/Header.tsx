@@ -24,7 +24,8 @@
  * @module components/navigation/Header
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import type React from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -267,6 +268,22 @@ function useSearchSuggestions(query: string) {
  * @param props - Component props
  * @returns Header component with AppBar and navigation elements
  */
+
+/**
+ * Custom Paper component for search autocomplete dropdown.
+ * Defined outside the component to prevent recreation on every render.
+ */
+function SearchPaperComponent({
+  children,
+  ...paperProps
+}: React.ComponentProps<typeof Paper>): React.ReactElement {
+  return (
+    <Paper {...paperProps} elevation={8}>
+      {children}
+    </Paper>
+  );
+}
+
 export default function Header({ onMenuClick }: HeaderProps): React.ReactElement {
   // ============================================================================
   // Hooks
@@ -408,9 +425,8 @@ export default function Header({ onMenuClick }: HeaderProps): React.ReactElement
    */
   const handleThemeToggle = useCallback((): void => {
     // Theme toggle action would be dispatched here if themeSlice exists
-    // For now, log to console as placeholder behavior
     // In production, this would dispatch: dispatch(toggleTheme())
-    console.info('Theme toggle requested');
+    // Placeholder: No-op until theme slice is implemented
   }, []);
 
   /**
@@ -557,11 +573,7 @@ export default function Header({ onMenuClick }: HeaderProps): React.ReactElement
           />
         </ListItem>
       )}
-      PaperComponent={({ children, ...paperProps }) => (
-        <Paper {...paperProps} elevation={8}>
-          {children}
-        </Paper>
-      )}
+      PaperComponent={SearchPaperComponent}
       sx={{
         flexGrow: isMobile ? 1 : 0,
       }}

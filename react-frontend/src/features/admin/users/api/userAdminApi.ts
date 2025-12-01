@@ -116,62 +116,57 @@ interface ResendEmailResponse extends ApiResponse<{ sent: boolean; userId: numbe
 export async function getUserList(
   params: UserListQueryParams = {}
 ): Promise<UserListResponse> {
-  try {
-    // Build query parameters object for the API request
-    const queryParams: Record<string, string | number | undefined> = {};
+  // Build query parameters object for the API request
+  const queryParams: Record<string, string | number | undefined> = {};
 
-    // Pagination parameters
-    if (params.page !== undefined) {
-      queryParams.page = params.page;
-    }
-    if (params.perPage !== undefined) {
-      queryParams.perPage = params.perPage;
-    }
-
-    // Sorting parameters
-    if (params.sortBy !== undefined) {
-      queryParams.sortBy = params.sortBy;
-    }
-    if (params.sortOrder !== undefined) {
-      queryParams.sortOrder = params.sortOrder;
-    }
-
-    // Search and filter parameters
-    if (params.search !== undefined && params.search.trim() !== '') {
-      queryParams.search = params.search.trim();
-    }
-    if (params.status !== undefined) {
-      queryParams.status = params.status;
-    }
-    if (params.authMethod !== undefined) {
-      queryParams.authMethod = params.authMethod;
-    }
-    if (params.role !== undefined) {
-      queryParams.role = params.role;
-    }
-
-    // Individual status filters (when not using predefined status filter)
-    if (params.confirmed !== undefined) {
-      queryParams.confirmed = params.confirmed;
-    }
-    if (params.suspended !== undefined) {
-      queryParams.suspended = params.suspended;
-    }
-    if (params.deleted !== undefined) {
-      queryParams.deleted = params.deleted;
-    }
-
-    const response = await apiClient.get<ApiResponse<UserListResponse>>(
-      ADMIN_ENDPOINTS.USERS.LIST,
-      { params: queryParams }
-    );
-
-    // Extract and return the user list response from the API envelope
-    return response.data.data;
-  } catch (error) {
-    // Re-throw error for handling by React Query or calling code
-    throw error;
+  // Pagination parameters
+  if (params.page !== undefined) {
+    queryParams.page = params.page;
   }
+  if (params.perPage !== undefined) {
+    queryParams.perPage = params.perPage;
+  }
+
+  // Sorting parameters
+  if (params.sortBy !== undefined) {
+    queryParams.sortBy = params.sortBy;
+  }
+  if (params.sortOrder !== undefined) {
+    queryParams.sortOrder = params.sortOrder;
+  }
+
+  // Search and filter parameters
+  if (params.search !== undefined && params.search.trim() !== '') {
+    queryParams.search = params.search.trim();
+  }
+  if (params.status !== undefined) {
+    queryParams.status = params.status;
+  }
+  if (params.authMethod !== undefined) {
+    queryParams.authMethod = params.authMethod;
+  }
+  if (params.role !== undefined) {
+    queryParams.role = params.role;
+  }
+
+  // Individual status filters (when not using predefined status filter)
+  if (params.confirmed !== undefined) {
+    queryParams.confirmed = params.confirmed;
+  }
+  if (params.suspended !== undefined) {
+    queryParams.suspended = params.suspended;
+  }
+  if (params.deleted !== undefined) {
+    queryParams.deleted = params.deleted;
+  }
+
+  const response = await apiClient.get<ApiResponse<UserListResponse>>(
+    ADMIN_ENDPOINTS.USERS.LIST,
+    { params: queryParams }
+  );
+
+  // Extract and return the user list response from the API envelope
+  return response.data.data;
 }
 
 // ============================================================================
@@ -194,15 +189,11 @@ export async function getUserList(
  * ```
  */
 export async function getUserById(userId: number): Promise<User> {
-  try {
-    const response = await apiClient.get<UserApiResponse>(
-      ADMIN_ENDPOINTS.USERS.UPDATE(userId)
-    );
+  const response = await apiClient.get<UserApiResponse>(
+    ADMIN_ENDPOINTS.USERS.UPDATE(userId)
+  );
 
-    return response.data.data;
-  } catch (error) {
-    throw error;
-  }
+  return response.data.data;
 }
 
 /**
@@ -231,16 +222,12 @@ export async function getUserById(userId: number): Promise<User> {
  * ```
  */
 export async function createUser(userData: UserCreateData): Promise<User> {
-  try {
-    const response = await apiClient.post<UserApiResponse>(
-      ADMIN_ENDPOINTS.USERS.CREATE,
-      userData
-    );
+  const response = await apiClient.post<UserApiResponse>(
+    ADMIN_ENDPOINTS.USERS.CREATE,
+    userData
+  );
 
-    return response.data.data;
-  } catch (error) {
-    throw error;
-  }
+  return response.data.data;
 }
 
 /**
@@ -264,18 +251,14 @@ export async function createUser(userData: UserCreateData): Promise<User> {
  * ```
  */
 export async function updateUser(userData: UserUpdateData): Promise<User> {
-  try {
-    const { id, ...updateFields } = userData;
+  const { id, ...updateFields } = userData;
 
-    const response = await apiClient.put<UserApiResponse>(
-      ADMIN_ENDPOINTS.USERS.UPDATE(id),
-      updateFields
-    );
+  const response = await apiClient.put<UserApiResponse>(
+    ADMIN_ENDPOINTS.USERS.UPDATE(id),
+    updateFields
+  );
 
-    return response.data.data;
-  } catch (error) {
-    throw error;
-  }
+  return response.data.data;
 }
 
 /**
@@ -304,15 +287,11 @@ export async function updateUser(userData: UserUpdateData): Promise<User> {
 export async function deleteUser(
   userId: number
 ): Promise<{ deleted: boolean; userId: number }> {
-  try {
-    const response = await apiClient.delete<DeleteUserResponse>(
-      ADMIN_ENDPOINTS.USERS.DELETE(userId)
-    );
+  const response = await apiClient.delete<DeleteUserResponse>(
+    ADMIN_ENDPOINTS.USERS.DELETE(userId)
+  );
 
-    return response.data.data;
-  } catch (error) {
-    throw error;
-  }
+  return response.data.data;
 }
 
 // ============================================================================
@@ -344,19 +323,15 @@ export async function deleteUser(
 export async function suspendUser(
   userId: number
 ): Promise<{ success: boolean; userId: number; message?: string }> {
-  try {
-    const response = await apiClient.post<UserStatusResponse>(
-      ADMIN_ENDPOINTS.USERS.BULK,
-      {
-        action: 'suspend',
-        userIds: [userId],
-      }
-    );
+  const response = await apiClient.post<UserStatusResponse>(
+    ADMIN_ENDPOINTS.USERS.BULK,
+    {
+      action: 'suspend',
+      userIds: [userId],
+    }
+  );
 
-    return response.data.data;
-  } catch (error) {
-    throw error;
-  }
+  return response.data.data;
 }
 
 /**
@@ -379,19 +354,15 @@ export async function suspendUser(
 export async function unsuspendUser(
   userId: number
 ): Promise<{ success: boolean; userId: number; message?: string }> {
-  try {
-    const response = await apiClient.post<UserStatusResponse>(
-      ADMIN_ENDPOINTS.USERS.BULK,
-      {
-        action: 'unsuspend',
-        userIds: [userId],
-      }
-    );
+  const response = await apiClient.post<UserStatusResponse>(
+    ADMIN_ENDPOINTS.USERS.BULK,
+    {
+      action: 'unsuspend',
+      userIds: [userId],
+    }
+  );
 
-    return response.data.data;
-  } catch (error) {
-    throw error;
-  }
+  return response.data.data;
 }
 
 /**
@@ -414,19 +385,15 @@ export async function unsuspendUser(
 export async function unlockUser(
   userId: number
 ): Promise<{ success: boolean; userId: number; message?: string }> {
-  try {
-    const response = await apiClient.post<UserStatusResponse>(
-      ADMIN_ENDPOINTS.USERS.BULK,
-      {
-        action: 'unlock',
-        userIds: [userId],
-      }
-    );
+  const response = await apiClient.post<UserStatusResponse>(
+    ADMIN_ENDPOINTS.USERS.BULK,
+    {
+      action: 'unlock',
+      userIds: [userId],
+    }
+  );
 
-    return response.data.data;
-  } catch (error) {
-    throw error;
-  }
+  return response.data.data;
 }
 
 /**
@@ -450,19 +417,15 @@ export async function unlockUser(
 export async function confirmUser(
   userId: number
 ): Promise<{ success: boolean; userId: number; message?: string }> {
-  try {
-    const response = await apiClient.post<UserStatusResponse>(
-      ADMIN_ENDPOINTS.USERS.BULK,
-      {
-        action: 'confirm',
-        userIds: [userId],
-      }
-    );
+  const response = await apiClient.post<UserStatusResponse>(
+    ADMIN_ENDPOINTS.USERS.BULK,
+    {
+      action: 'confirm',
+      userIds: [userId],
+    }
+  );
 
-    return response.data.data;
-  } catch (error) {
-    throw error;
-  }
+  return response.data.data;
 }
 
 /**
@@ -489,19 +452,15 @@ export async function confirmUser(
 export async function resendConfirmationEmail(
   userId: number
 ): Promise<{ sent: boolean; userId: number; message: string }> {
-  try {
-    const response = await apiClient.post<ResendEmailResponse>(
-      ADMIN_ENDPOINTS.USERS.BULK,
-      {
-        action: 'resendemail',
-        userIds: [userId],
-      }
-    );
+  const response = await apiClient.post<ResendEmailResponse>(
+    ADMIN_ENDPOINTS.USERS.BULK,
+    {
+      action: 'resendemail',
+      userIds: [userId],
+    }
+  );
 
-    return response.data.data;
-  } catch (error) {
-    throw error;
-  }
+  return response.data.data;
 }
 
 // ============================================================================

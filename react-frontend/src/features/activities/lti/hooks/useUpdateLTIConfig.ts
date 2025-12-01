@@ -469,9 +469,9 @@ function parseApiError(error: unknown): LTIConfigError {
       return {
         type: 'PERMISSION_DENIED',
         message:
-          responseData?.error?.message ||
+          responseData?.error?.message ??
           'You do not have permission to update this LTI tool configuration. Required capability: mod/lti:addinstance or mod/lti:addcourseinstance.',
-        code: responseData?.error?.code || 'PERMISSION_DENIED',
+        code: responseData?.error?.code ?? 'PERMISSION_DENIED',
         details: responseData?.error?.details,
         status,
         originalError: error,
@@ -483,8 +483,8 @@ function parseApiError(error: unknown): LTIConfigError {
       return {
         type: 'NOT_FOUND',
         message:
-          responseData?.error?.message || 'The LTI tool configuration was not found.',
-        code: responseData?.error?.code || 'NOT_FOUND',
+          responseData?.error?.message ?? 'The LTI tool configuration was not found.',
+        code: responseData?.error?.code ?? 'NOT_FOUND',
         status,
         originalError: error,
       };
@@ -492,14 +492,14 @@ function parseApiError(error: unknown): LTIConfigError {
 
     // Validation error (400, 422)
     if (status === 400 || status === 422) {
-      const errorCode = responseData?.error?.code || 'VALIDATION_ERROR';
+      const errorCode = responseData?.error?.code ?? 'VALIDATION_ERROR';
       const errorType: LTIConfigErrorType =
         errorCode === 'TOOL_TYPE_NOT_FOUND' ? 'TOOL_TYPE_NOT_FOUND' : 'VALIDATION_ERROR';
 
       return {
         type: errorType,
         message:
-          responseData?.error?.message ||
+          responseData?.error?.message ??
           'Invalid configuration data. Please check the provided values.',
         code: errorCode,
         details: responseData?.error?.details,
@@ -523,7 +523,7 @@ function parseApiError(error: unknown): LTIConfigError {
     return {
       type: 'UNKNOWN_ERROR',
       message:
-        responseData?.error?.message ||
+        responseData?.error?.message ??
         'An error occurred while updating the configuration.',
       code: responseData?.error?.code,
       details: responseData?.error?.details,
@@ -689,7 +689,9 @@ function useUpdateLTIConfig(
       // Optimistically update the cache
       if (previousTool) {
         queryClient.setQueryData<LtiTool>(LTI_QUERY_KEYS.tool(ltiId), (old) => {
-          if (!old) return old;
+          if (!old) {
+            return old;
+          }
           return {
             ...old,
             ...params,

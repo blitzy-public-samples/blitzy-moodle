@@ -312,8 +312,8 @@ function handleApiError(error: unknown): never {
       const apiError = data?.error;
 
       // Extract error details from API response
-      const errorMessage = apiError?.message || getDefaultErrorMessage(status);
-      const errorCode = apiError?.code || getDefaultErrorCode(status);
+      const errorMessage = apiError?.message ?? getDefaultErrorMessage(status);
+      const errorCode = apiError?.code ?? getDefaultErrorCode(status);
       const errorDetails = apiError?.details;
 
       throw new ProfileApiError(errorMessage, status, errorCode, errorDetails);
@@ -540,8 +540,8 @@ export async function updateUserProfile(
       autosubscribe, 
       trackforums,
       mailformat,
-      maildisplay,
-      maildigest,
+      maildisplay: _maildisplay,  // Exclude from spread - handled separately if needed
+      maildigest: _maildigest,    // Exclude from spread - handled separately if needed
       customfields: _customfields,  // Exclude customfields from API request body
       ...restPayload 
     } = payloadOrUserId;
