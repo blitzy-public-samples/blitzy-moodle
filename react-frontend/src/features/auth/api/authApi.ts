@@ -385,8 +385,18 @@ export async function login(credentials: LoginCredentials): Promise<LoginRespons
 
     // Handle axios errors
     if (isAxiosError(error)) {
-      const status = error.response?.status ?? 500;
-      const errorData = error.response?.data as { error?: ApiError } | undefined;
+      // Check for network errors first (no response received)
+      // Network errors have code 'ERR_NETWORK' and no response object
+      if (!error.response || error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED') {
+        throw createApiError(
+          'NETWORK_ERROR',
+          error.message || 'Network error during login',
+          0
+        );
+      }
+
+      const status = error.response.status;
+      const errorData = error.response.data as { error?: ApiError } | undefined;
 
       // Extract error from response if available
       if (errorData?.error) {
@@ -413,7 +423,7 @@ export async function login(credentials: LoginCredentials): Promise<LoginRespons
       }
     }
 
-    // Handle generic errors
+    // Handle generic errors (non-axios)
     throw createApiError(
       'NETWORK_ERROR',
       error instanceof Error ? error.message : 'Network error during login',
@@ -472,15 +482,17 @@ export async function logout(): Promise<void> {
 
     // Handle axios errors
     if (isAxiosError(error)) {
-      const status = error.response?.status ?? 500;
-      const errorData = error.response?.data as { error?: ApiError } | undefined;
-
-      if (errorData?.error) {
-        throw {
-          ...errorData.error,
-          status,
-        } as ApiError;
+      // Check for network errors first (no response received)
+      if (!error.response || error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED') {
+        throw createApiError(
+          'NETWORK_ERROR',
+          error.message || 'Network error during logout',
+          0
+        );
       }
+
+      const status = error.response.status;
+      const errorData = error.response.data as { error?: ApiError } | undefined;
 
       // For logout, we might get 401 if token is already expired
       // This is not really an error - the user is effectively logged out
@@ -489,10 +501,19 @@ export async function logout(): Promise<void> {
         return;
       }
 
+      // For non-500 server errors, use the server-provided error if available
+      // For 500 errors, we prefer function-specific error codes for clearer UX
+      if (status !== 500 && errorData?.error) {
+        throw {
+          ...errorData.error,
+          status,
+        } as ApiError;
+      }
+
       throw createApiError('LOGOUT_FAILED', 'Failed to logout from server', status);
     }
 
-    // Handle generic errors
+    // Handle generic errors (non-axios)
     throw createApiError(
       'NETWORK_ERROR',
       error instanceof Error ? error.message : 'Network error during logout',
@@ -585,15 +606,17 @@ export async function refreshToken(): Promise<RefreshTokenResponse> {
 
     // Handle axios errors
     if (isAxiosError(error)) {
-      const status = error.response?.status ?? 500;
-      const errorData = error.response?.data as { error?: ApiError } | undefined;
-
-      if (errorData?.error) {
-        throw {
-          ...errorData.error,
-          status,
-        } as ApiError;
+      // Check for network errors first (no response received)
+      if (!error.response || error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED') {
+        throw createApiError(
+          'NETWORK_ERROR',
+          error.message || 'Network error during token refresh',
+          0
+        );
       }
+
+      const status = error.response.status;
+      const errorData = error.response.data as { error?: ApiError } | undefined;
 
       // 401 means refresh token is invalid/expired
       if (status === 401) {
@@ -604,10 +627,19 @@ export async function refreshToken(): Promise<RefreshTokenResponse> {
         );
       }
 
+      // For non-500 server errors, use the server-provided error if available
+      // For 500 errors, we prefer function-specific error codes for clearer UX
+      if (status !== 500 && errorData?.error) {
+        throw {
+          ...errorData.error,
+          status,
+        } as ApiError;
+      }
+
       throw createApiError('TOKEN_REFRESH_FAILED', 'Failed to refresh authentication token', status);
     }
 
-    // Handle generic errors
+    // Handle generic errors (non-axios)
     throw createApiError(
       'NETWORK_ERROR',
       error instanceof Error ? error.message : 'Network error during token refresh',
@@ -685,15 +717,17 @@ export async function getCurrentUser(): Promise<User> {
 
     // Handle axios errors
     if (isAxiosError(error)) {
-      const status = error.response?.status ?? 500;
-      const errorData = error.response?.data as { error?: ApiError } | undefined;
-
-      if (errorData?.error) {
-        throw {
-          ...errorData.error,
-          status,
-        } as ApiError;
+      // Check for network errors first (no response received)
+      if (!error.response || error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED') {
+        throw createApiError(
+          'NETWORK_ERROR',
+          error.message || 'Network error fetching user profile',
+          0
+        );
       }
+
+      const status = error.response.status;
+      const errorData = error.response.data as { error?: ApiError } | undefined;
 
       // 401 means not authenticated
       if (status === 401) {
@@ -704,10 +738,19 @@ export async function getCurrentUser(): Promise<User> {
         );
       }
 
+      // For non-500 server errors, use the server-provided error if available
+      // For 500 errors, we prefer function-specific error codes for clearer UX
+      if (status !== 500 && errorData?.error) {
+        throw {
+          ...errorData.error,
+          status,
+        } as ApiError;
+      }
+
       throw createApiError('USER_FETCH_FAILED', 'Failed to fetch user profile', status);
     }
 
-    // Handle generic errors
+    // Handle generic errors (non-axios)
     throw createApiError(
       'NETWORK_ERROR',
       error instanceof Error ? error.message : 'Network error fetching user profile',
@@ -801,15 +844,17 @@ export async function resetPassword(
 
     // Handle axios errors
     if (isAxiosError(error)) {
-      const status = error.response?.status ?? 500;
-      const errorData = error.response?.data as { error?: ApiError } | undefined;
-
-      if (errorData?.error) {
-        throw {
-          ...errorData.error,
-          status,
-        } as ApiError;
+      // Check for network errors first (no response received)
+      if (!error.response || error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED') {
+        throw createApiError(
+          'NETWORK_ERROR',
+          error.message || 'Network error during password reset',
+          0
+        );
       }
+
+      const status = error.response.status;
+      const errorData = error.response.data as { error?: ApiError } | undefined;
 
       // Rate limiting
       if (status === 429) {
@@ -820,7 +865,7 @@ export async function resetPassword(
         );
       }
 
-      // For most errors, return generic success for security
+      // For most 4xx errors, return generic success for security
       // (don't reveal if account exists or not)
       if (status >= 400 && status < 500) {
         return {
@@ -829,10 +874,19 @@ export async function resetPassword(
         };
       }
 
+      // For non-500 server errors, use the server-provided error if available
+      // For 500 errors, we prefer function-specific error codes for clearer UX
+      if (status !== 500 && errorData?.error) {
+        throw {
+          ...errorData.error,
+          status,
+        } as ApiError;
+      }
+
       throw createApiError('PASSWORD_RESET_FAILED', 'Failed to process password reset request', status);
     }
 
-    // Handle generic errors
+    // Handle generic errors (non-axios)
     throw createApiError(
       'NETWORK_ERROR',
       error instanceof Error ? error.message : 'Network error during password reset',
@@ -875,6 +929,11 @@ function createApiError(
  * @returns true if error is ApiError
  */
 function isApiError(error: unknown): error is ApiError {
+  // AxiosError also has code and message properties, so exclude it first
+  // to prevent incorrectly treating AxiosError as ApiError
+  if (isAxiosError(error)) {
+    return false;
+  }
   return (
     typeof error === 'object' &&
     error !== null &&
@@ -897,6 +956,7 @@ function isAxiosError(error: unknown): error is {
     data: unknown;
   };
   message: string;
+  code?: string;
 } {
   return (
     typeof error === 'object' &&

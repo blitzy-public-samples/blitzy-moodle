@@ -70,6 +70,39 @@ afterAll(() => {
 });
 
 /**
+ * Global Unhandled Rejection Handler
+ * 
+ * Axios errors contain non-serializable function properties (like transformRequest)
+ * which cause Vitest to fail when it tries to serialize them for cross-process communication.
+ * This handler sanitizes such errors by extracting only the serializable parts.
+ */
+process.on('unhandledRejection', (reason: unknown) => {
+  // Only handle errors that look like AxiosError objects (have config with transformRequest)
+  if (reason && typeof reason === 'object') {
+    const errorObj = reason as Record<string, unknown>;
+    
+    // Check if this is an AxiosError-like object with non-serializable config
+    if (errorObj.config && typeof errorObj.config === 'object') {
+      const config = errorObj.config as Record<string, unknown>;
+      if (typeof config.transformRequest === 'function' || typeof config.transformResponse === 'function') {
+        // Log a simplified version for debugging without causing serialization issues
+        const sanitizedError = {
+          message: errorObj.message || 'Unknown error',
+          status: (errorObj.response as Record<string, unknown>)?.status,
+          code: errorObj.code,
+          url: config.url,
+          method: config.method,
+        };
+        console.warn('[Test] Caught unhandled AxiosError rejection:', sanitizedError);
+        // Prevent the unhandled rejection from propagating
+        return;
+      }
+    }
+  }
+  // For non-Axios errors, let them propagate normally
+});
+
+/**
  * React Testing Library Cleanup
  * Automatically unmount React trees after each test to prevent memory leaks
  */

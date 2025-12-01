@@ -39,8 +39,8 @@ import type {
   AxiosInstance,
   InternalAxiosRequestConfig,
   AxiosResponse,
-  AxiosError,
 } from 'axios';
+import { AxiosError, AxiosHeaders } from 'axios';
 import {
   getAccessToken,
   refreshAccessToken,
@@ -223,6 +223,98 @@ function processQueue(error: Error | null, token: string | null = null): void {
   failedQueue = [];
 }
 
+/**
+ * Create a serializable error from an AxiosError
+ *
+ * AxiosError objects contain non-serializable properties (like transformRequest
+ * and transformResponse functions) that cause issues when:
+ * - Sending errors across process boundaries in test frameworks
+ * - Serializing errors for logging or transmission
+ * - Using structured clone algorithm
+ *
+ * This function extracts only the serializable parts of an AxiosError
+ * and creates a plain Error object that can be safely serialized.
+ *
+ * @param error - The AxiosError to convert
+ * @returns A plain Error object with additional serializable properties
+ */
+function createSerializableError(error: AxiosError): Error {
+  // Create a plain Error with the message
+  const serializableError = new Error(error.message);
+  serializableError.name = 'ApiError';
+  
+  // Attach serializable properties that tests and error handlers might need
+  const errorExtension: Record<string, unknown> = {
+    status: error.response?.status,
+    statusText: error.response?.statusText,
+    code: error.code,
+    url: error.config?.url,
+    method: error.config?.method,
+    data: error.response?.data,
+    // Include customError if it was attached by our interceptor
+    customError: (error as AxiosError & { customError?: unknown }).customError,
+  };
+  
+  // Assign properties to the error object
+  Object.assign(serializableError, errorExtension);
+  
+  // Preserve the stack trace for debugging
+  if (error.stack) {
+    serializableError.stack = error.stack;
+  }
+  
+  return serializableError;
+}
+
+/**
+ * Create a serializable AxiosError-like object for auth endpoints
+ * 
+ * Auth endpoint API functions use isAxiosError() check to determine error handling.
+ * This function creates a sanitized error that:
+ * 1. Passes isAxiosError() check (has isAxiosError: true)
+ * 2. Has all properties needed by API functions (response, code, message)
+ * 3. Does NOT have non-serializable functions (transformRequest, etc.)
+ * 
+ * This allows Vitest to serialize the error without crashing while still
+ * allowing API functions to properly handle the error.
+ */
+function createSerializableAxiosError(error: AxiosError): AxiosError {
+  // Create a minimal config without non-serializable functions
+  const safeConfig: InternalAxiosRequestConfig = {
+    url: error.config?.url,
+    method: error.config?.method,
+    baseURL: error.config?.baseURL,
+    headers: error.config?.headers || new AxiosHeaders(),
+    params: error.config?.params,
+    data: error.config?.data,
+    timeout: error.config?.timeout,
+    // Explicitly omit transformRequest and transformResponse
+    // as they contain functions that cannot be serialized
+  };
+
+  // Create a new AxiosError with sanitized properties
+  const sanitizedError = new AxiosError(
+    error.message,
+    error.code,
+    safeConfig,
+    error.request ? { url: error.config?.url } : undefined, // Minimal request info
+    error.response ? {
+      data: error.response.data,
+      status: error.response.status,
+      statusText: error.response.statusText,
+      headers: error.response.headers,
+      config: safeConfig,
+    } : undefined
+  );
+
+  // Preserve stack trace
+  if (error.stack) {
+    sanitizedError.stack = error.stack;
+  }
+
+  return sanitizedError;
+}
+
 // ============================================================================
 // Request Interceptor
 // ============================================================================
@@ -292,7 +384,7 @@ function onRequestError(error: AxiosError): Promise<never> {
     console.error('[Interceptor] Request setup error:', error.message);
   }
 
-  return Promise.reject(error);
+  return Promise.reject(createSerializableError(error));
 }
 
 // ============================================================================
@@ -412,8 +504,44 @@ function createOnResponseError(axiosInstance: AxiosInstance) {
   const originalRequest = error.config;
 
   // ============================================================================
+  // Auth Endpoint Pass-Through
+  // ============================================================================
+  
+  // Auth endpoints should handle their own errors without interceptor processing
+  // This allows the API functions (login, logout, refreshToken, getCurrentUser) to receive the
+  // raw AxiosError and extract proper error codes from the response data.
+  //
+  // The interceptor error handling (sanitization, custom error codes) is designed
+  // for general API calls. Auth endpoints have their own error mapping logic.
+  const AUTH_ENDPOINTS_PASSTHROUGH = [
+    '/auth/login',
+    '/auth/logout', 
+    '/auth/refresh',
+    '/auth/reset-password',
+    '/auth/me',  // getCurrentUser - needs its own 401/error handling
+  ];
+
+  // Check if this request is to an auth endpoint
+  const requestUrl = originalRequest?.url || '';
+  const isAuthEndpoint = AUTH_ENDPOINTS_PASSTHROUGH.some(endpoint => 
+    requestUrl.includes(endpoint)
+  );
+
+  // For auth endpoints, pass through a sanitized version of the error
+  // The API functions will handle error transformation
+  // We must sanitize to remove non-serializable functions (transformRequest, etc.)
+  // that cause Vitest serialization errors, while preserving the AxiosError structure
+  // so that isAxiosError() checks work correctly in the API functions.
+  if (isAuthEndpoint) {
+    return Promise.reject(createSerializableAxiosError(error));
+  }
+
+  // ============================================================================
   // Handle 401 Unauthorized - Token Refresh Logic
   // ============================================================================
+
+  // For non-auth endpoints, 401 errors should trigger token refresh
+  // Note: Auth endpoints already passed through above, so we don't need to check here
 
   if (error.response?.status === 401 && originalRequest) {
     // Prevent infinite refresh loops
@@ -426,7 +554,7 @@ function createOnResponseError(axiosInstance: AxiosInstance) {
       // Clear all tokens and redirect to login
       clearTokens();
       window.location.href = '/login';
-      return Promise.reject(error);
+      return Promise.reject(createSerializableError(error));
     }
 
     // Check if a refresh is already in progress
@@ -486,11 +614,53 @@ function createOnResponseError(axiosInstance: AxiosInstance) {
         console.error('[Interceptor] Token refresh failed:', refreshError);
       }
 
+      if (import.meta.env.DEV || import.meta.env.MODE === 'test') {
+        console.log('[Interceptor] Token refresh failed permanently, redirecting to login');
+      }
+
       // Clear all tokens and redirect to login
       clearTokens();
       window.location.href = '/login';
 
-      return Promise.reject(refreshError);
+      // IMPORTANT: Preserve the original error data when refresh fails
+      // The original error may have specific API error messages (e.g., "Authentication required")
+      // that are more informative than a generic "Token refresh failed" message.
+      // Extract the original error details from the error response
+      const originalErrorData = error.response?.data as { 
+        success?: boolean; 
+        error?: { code?: string; message?: string; details?: Record<string, unknown> } 
+      } | undefined;
+      
+      const originalApiError = originalErrorData?.error;
+      
+      // Use original API error message if available, otherwise fall back to generic message
+      const errorMessage = originalApiError?.message || 
+        (refreshError instanceof Error ? refreshError.message : 'Authentication required');
+      const errorCode = originalApiError?.code || 'UNAUTHORIZED';
+      
+      // Create a proper error object that preserves original error context
+      const refreshFailedError = new Error(errorMessage);
+      refreshFailedError.name = 'ApiError';
+      
+      // Attach serializable properties that callers expect
+      // Preserve original error data so error handlers receive meaningful messages
+      Object.assign(refreshFailedError, {
+        status: 401,
+        statusText: 'Unauthorized',
+        code: errorCode,
+        url: originalRequest?.url,
+        method: originalRequest?.method,
+        data: {
+          success: false,
+          error: {
+            code: errorCode,
+            message: errorMessage,
+            details: originalApiError?.details,
+          },
+        },
+      });
+
+      return Promise.reject(refreshFailedError);
     }
   }
 
@@ -513,7 +683,7 @@ function createOnResponseError(axiosInstance: AxiosInstance) {
       console.warn('[Interceptor] Permission denied:', error.config?.url);
     }
 
-    return Promise.reject(error);
+    return Promise.reject(createSerializableError(error));
   }
 
   // ============================================================================
@@ -535,7 +705,7 @@ function createOnResponseError(axiosInstance: AxiosInstance) {
       console.warn('[Interceptor] Resource not found:', error.config?.url);
     }
 
-    return Promise.reject(error);
+    return Promise.reject(createSerializableError(error));
   }
 
   // ============================================================================
@@ -555,7 +725,7 @@ function createOnResponseError(axiosInstance: AxiosInstance) {
       console.error('[Interceptor] Server error:', error.response.status, error.config?.url);
     }
 
-    return Promise.reject(error);
+    return Promise.reject(createSerializableError(error));
   }
 
   // ============================================================================
@@ -577,7 +747,7 @@ function createOnResponseError(axiosInstance: AxiosInstance) {
       console.error('[Interceptor] Network error:', error.message);
     }
 
-    return Promise.reject(error);
+    return Promise.reject(createSerializableError(error));
   }
 
   // ============================================================================
@@ -599,7 +769,7 @@ function createOnResponseError(axiosInstance: AxiosInstance) {
     console.error('[Interceptor] Unhandled error:', error.response?.status, error.config?.url);
   }
 
-  return Promise.reject(error);
+  return Promise.reject(createSerializableError(error));
   };
 }
 

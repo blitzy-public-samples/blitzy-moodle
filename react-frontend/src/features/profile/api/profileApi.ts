@@ -294,7 +294,7 @@ function normalizeUserData(userData: User): User {
  * @throws ProfileApiError with formatted error information
  */
 function handleApiError(error: unknown): never {
-  // Handle axios errors with response
+  // Handle axios errors with response (original AxiosError structure)
   if (error && typeof error === 'object' && 'response' in error) {
     const axiosError = error as {
       response?: {
@@ -320,7 +320,62 @@ function handleApiError(error: unknown): never {
     }
   }
 
-  // Handle network errors
+  // Handle interceptor-processed errors (serializable errors with status directly on error)
+  // The interceptor transforms AxiosErrors into plain Error objects with status, code, data
+  // attached directly to the error object (not in .response)
+  if (error && typeof error === 'object' && 'status' in error) {
+    const interceptorError = error as {
+      status: number;
+      code?: string;
+      data?: {
+        success: false;
+        error?: ApiError;
+      };
+      customError?: {
+        message: string;
+        code: string;
+        status: number;
+        details?: Record<string, unknown>;
+      };
+      message?: string;
+    };
+
+    const status = interceptorError.status;
+    
+    // First, try to extract error details from API response data
+    // This preserves specific error codes from the backend (e.g., 'SERVICE_UNAVAILABLE')
+    // rather than using generic interceptor codes (e.g., 'SERVER_ERROR')
+    const apiError = interceptorError.data?.error;
+    
+    if (apiError) {
+      // Use API error details if available - these are more specific
+      throw new ProfileApiError(
+        apiError.message ?? getDefaultErrorMessage(status),
+        status,
+        apiError.code ?? getDefaultErrorCode(status),
+        apiError.details
+      );
+    }
+    
+    // Fall back to interceptor's customError if no API error data
+    if (interceptorError.customError) {
+      throw new ProfileApiError(
+        interceptorError.customError.message,
+        interceptorError.customError.status,
+        interceptorError.customError.code,
+        interceptorError.customError.details
+      );
+    }
+    
+    // Last fallback - use defaults based on status
+    throw new ProfileApiError(
+      getDefaultErrorMessage(status),
+      status,
+      getDefaultErrorCode(status)
+    );
+  }
+
+  // Handle network errors (no status, just message)
   if (error && typeof error === 'object' && 'message' in error) {
     const networkError = error as { message: string };
     throw new ProfileApiError(
