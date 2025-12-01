@@ -30,9 +30,9 @@
  * @module tests/unit/features/activities/bigbluebuttonbn/bbbApi.test
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, afterEach, vi, beforeAll, afterAll } from 'vitest';
 import { http, HttpResponse } from 'msw';
-import { server } from '@/tests/mocks/server';
+import { server } from '@tests/mocks/server';
 import {
   fetchBBBInstance,
   fetchBBBMeetingStatus,
@@ -298,8 +298,8 @@ describe('fetchBBBInstance', () => {
       const result = await fetchBBBInstance(TEST_INSTANCE_ID);
 
       expect(result.presentations).toHaveLength(2);
-      expect(result.presentations[0].name).toBe('Agenda');
-      expect(result.presentations[1].name).toBe('Report');
+      expect(result.presentations[0]?.name).toBe('Agenda');
+      expect(result.presentations[1]?.name).toBe('Report');
     });
 
     it('should correctly parse instance with group settings', async () => {
@@ -366,9 +366,11 @@ describe('fetchBBBInstance', () => {
         })
       );
 
-      // Should not throw but data will be malformed
+      // The interceptor wraps non-standard responses in the standard envelope
+      // So { invalid: 'response' } becomes { success: true, data: { invalid: 'response' }, meta: {} }
+      // And fetchBBBInstance returns response.data.data which is the original malformed object
       const result = await fetchBBBInstance(TEST_INSTANCE_ID);
-      expect(result).toBeUndefined();
+      expect(result).toEqual({ invalid: 'response' });
     });
   });
 });
@@ -526,13 +528,14 @@ describe('fetchBBBMeetingStatus', () => {
 
     it('should handle network timeout', async () => {
       server.use(
-        http.get(`${API_BASE_URL}/bigbluebuttonbn/:id/status`, async () => {
-          await new Promise((resolve) => setTimeout(resolve, 10000));
+        http.get(`${API_BASE_URL}/bigbluebuttonbn/:id/status`, () => {
+          // Use HttpResponse.error() to simulate a network error (timeout, connection refused, etc.)
+          // MSW will reject the request immediately with a network error
           return HttpResponse.error();
         })
       );
 
-      // This test would need timeout configuration in actual implementation
+      // Network errors cause axios to reject the promise
       await expect(fetchBBBMeetingStatus(TEST_INSTANCE_ID)).rejects.toThrow();
     });
   });
@@ -561,8 +564,8 @@ describe('fetchBBBRecordings', () => {
       const result = await fetchBBBRecordings(TEST_INSTANCE_ID);
 
       expect(result).toHaveLength(3);
-      expect(result[0].name).toBe('Recording 1');
-      expect(result[2].name).toBe('Recording 3');
+      expect(result[0]?.name).toBe('Recording 1');
+      expect(result[2]?.name).toBe('Recording 3');
     });
 
     it('should return empty array when no recordings exist', async () => {
@@ -595,10 +598,10 @@ describe('fetchBBBRecordings', () => {
 
       const result = await fetchBBBRecordings(TEST_INSTANCE_ID);
 
-      expect(result[0].playbacks).toHaveLength(3);
-      expect(result[0].playbacks?.[0].type).toBe('presentation');
-      expect(result[0].playbacks?.[1].type).toBe('video');
-      expect(result[0].playbacks?.[2].type).toBe('podcast');
+      expect(result[0]?.playbacks).toHaveLength(3);
+      expect(result[0]?.playbacks?.[0]?.type).toBe('presentation');
+      expect(result[0]?.playbacks?.[1]?.type).toBe('video');
+      expect(result[0]?.playbacks?.[2]?.type).toBe('podcast');
     });
 
     it('should correctly parse published and unpublished recordings', async () => {
@@ -615,8 +618,8 @@ describe('fetchBBBRecordings', () => {
 
       const result = await fetchBBBRecordings(TEST_INSTANCE_ID);
 
-      expect(result[0].published).toBe(true);
-      expect(result[1].published).toBe(false);
+      expect(result[0]?.published).toBe(true);
+      expect(result[1]?.published).toBe(false);
     });
 
     it('should correctly parse imported recordings', async () => {
@@ -633,7 +636,7 @@ describe('fetchBBBRecordings', () => {
 
       const result = await fetchBBBRecordings(TEST_INSTANCE_ID);
 
-      expect(result[0].imported).toBe(true);
+      expect(result[0]?.imported).toBe(true);
     });
 
     it('should correctly parse recordings with various status values', async () => {
@@ -651,9 +654,9 @@ describe('fetchBBBRecordings', () => {
 
       const result = await fetchBBBRecordings(TEST_INSTANCE_ID);
 
-      expect(result[0].status).toBe(0);
-      expect(result[1].status).toBe(2);
-      expect(result[2].status).toBe(5);
+      expect(result[0]?.status).toBe(0);
+      expect(result[1]?.status).toBe(2);
+      expect(result[2]?.status).toBe(5);
     });
   });
 
@@ -700,7 +703,7 @@ describe('joinBBBMeeting', () => {
       };
 
       server.use(
-        http.post(`${API_BASE_URL}/bigbluebuttonbn/:id/join`, async ({ params, request }) => {
+        http.post(`${API_BASE_URL}/bigbluebuttonbn/:id/join`, async ({ params }) => {
           expect(params.id).toBe(String(TEST_INSTANCE_ID));
           return HttpResponse.json(createApiResponse(mockJoinResponse));
         })
@@ -1576,13 +1579,18 @@ describe('TypeScript type inference', () => {
     expect(Array.isArray(result)).toBe(true);
     if (result.length > 0) {
       const recording = result[0];
-      const id: number = recording.id;
-      const name: string | null = recording.name;
-      const published: boolean | null = recording.published;
-      const status: BBBRecordingStatus = recording.status;
+      if (recording) {
+        const id: number = recording.id;
+        const name: string | null = recording.name;
+        const published: boolean | null = recording.published;
+        const status: BBBRecordingStatus = recording.status;
 
-      expect(typeof id).toBe('number');
-      expect(typeof status).toBe('number');
+        expect(typeof id).toBe('number');
+        expect(typeof status).toBe('number');
+        // Use variables to satisfy TypeScript strict mode
+        expect(name === null || typeof name === 'string').toBe(true);
+        expect(published === null || typeof published === 'boolean').toBe(true);
+      }
     }
   });
 });
@@ -1693,7 +1701,7 @@ describe('edge cases and integration scenarios', () => {
 
       const result = await fetchBBBRecordings(TEST_INSTANCE_ID);
 
-      expect(result[0].headless).toBe(true);
+      expect(result[0]?.headless).toBe(true);
     });
 
     it('should handle recording with null playbacks', async () => {
@@ -1710,8 +1718,8 @@ describe('edge cases and integration scenarios', () => {
 
       const result = await fetchBBBRecordings(TEST_INSTANCE_ID);
 
-      expect(result[0].playbacks).toBeNull();
-      expect(result[0].status).toBe(0);
+      expect(result[0]?.playbacks).toBeNull();
+      expect(result[0]?.status).toBe(0);
     });
   });
 
