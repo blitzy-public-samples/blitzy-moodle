@@ -264,7 +264,7 @@ describe('DiscussionThread', () => {
     });
     user = userEvent.setup();
 
-    // Default mock auth
+    // Default mock auth - must include all AuthHook properties
     mockUseAuth.mockReturnValue({
       user: createMockUser(),
       isAuthenticated: true,
@@ -274,6 +274,10 @@ describe('DiscussionThread', () => {
       error: null,
       isLoginLoading: false,
       isLogoutLoading: false,
+      checkAuth: vi.fn().mockResolvedValue(true),
+      getUser: vi.fn().mockReturnValue(createMockUser()),
+      refreshToken: vi.fn().mockResolvedValue(undefined),
+      clearError: vi.fn(),
     });
   });
 
@@ -953,8 +957,9 @@ describe('DiscussionThread', () => {
 
   describe('Moderator Actions', () => {
     beforeEach(() => {
+      const moderatorUser = createMockUser({ id: 100, fullname: 'Moderator User' });
       mockUseAuth.mockReturnValue({
-        user: createMockUser({ id: 100, fullname: 'Moderator User' }),
+        user: moderatorUser,
         isAuthenticated: true,
         login: vi.fn(),
         logout: vi.fn(),
@@ -962,6 +967,10 @@ describe('DiscussionThread', () => {
         error: null,
         isLoginLoading: false,
         isLogoutLoading: false,
+        checkAuth: vi.fn().mockResolvedValue(true),
+        getUser: vi.fn().mockReturnValue(moderatorUser),
+        refreshToken: vi.fn().mockResolvedValue(undefined),
+        clearError: vi.fn(),
       });
     });
 
@@ -1040,6 +1049,10 @@ describe('DiscussionThread', () => {
         error: null,
         isLoginLoading: false,
         isLogoutLoading: false,
+        checkAuth: vi.fn().mockResolvedValue(true),
+        getUser: vi.fn().mockReturnValue(currentUser),
+        refreshToken: vi.fn().mockResolvedValue(undefined),
+        clearError: vi.fn(),
       });
 
       const discussion = createMockDiscussion();
@@ -1077,6 +1090,10 @@ describe('DiscussionThread', () => {
         error: null,
         isLoginLoading: false,
         isLogoutLoading: false,
+        checkAuth: vi.fn().mockResolvedValue(true),
+        getUser: vi.fn().mockReturnValue(currentUser),
+        refreshToken: vi.fn().mockResolvedValue(undefined),
+        clearError: vi.fn(),
       });
 
       const discussion = createMockDiscussion();
@@ -1106,8 +1123,9 @@ describe('DiscussionThread', () => {
         canDelete: false,
       });
 
+      const studentUser = createMockUser({ id: 5, fullname: 'Student User' });
       mockUseAuth.mockReturnValue({
-        user: createMockUser({ id: 5, fullname: 'Student User' }),
+        user: studentUser,
         isAuthenticated: true,
         login: vi.fn(),
         logout: vi.fn(),
@@ -1115,6 +1133,10 @@ describe('DiscussionThread', () => {
         error: null,
         isLoginLoading: false,
         isLogoutLoading: false,
+        checkAuth: vi.fn().mockResolvedValue(true),
+        getUser: vi.fn().mockReturnValue(studentUser),
+        refreshToken: vi.fn().mockResolvedValue(undefined),
+        clearError: vi.fn(),
       });
 
       const discussion = createMockDiscussion();
