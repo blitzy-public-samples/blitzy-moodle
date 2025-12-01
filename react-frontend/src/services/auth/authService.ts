@@ -183,6 +183,29 @@ interface RefreshTokenResponse {
  */
 let refreshPromise: Promise<string> | null = null;
 
+/**
+ * Reset auth service state for testing
+ *
+ * This function resets all module-level state variables used by the
+ * auth service. It should be called in test afterEach() to ensure
+ * test isolation.
+ *
+ * IMPORTANT: This function is intended for testing purposes only.
+ * Do not call in production code.
+ *
+ * @example
+ * ```typescript
+ * import { resetAuthServiceState } from '@/services/auth/authService';
+ *
+ * afterEach(() => {
+ *   resetAuthServiceState();
+ * });
+ * ```
+ */
+export function resetAuthServiceState(): void {
+  refreshPromise = null;
+}
+
 // ============================================================================
 // Token Storage Functions
 // ============================================================================

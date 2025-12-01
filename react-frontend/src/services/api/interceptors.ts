@@ -165,6 +165,30 @@ let isRefreshing = false;
 let failedQueue: QueuedRequest[] = [];
 
 /**
+ * Reset interceptor state for testing
+ *
+ * This function resets all module-level state variables used by the
+ * token refresh interceptor. It should be called in test afterEach()
+ * to ensure test isolation.
+ *
+ * IMPORTANT: This function is intended for testing purposes only.
+ * Do not call in production code.
+ *
+ * @example
+ * ```typescript
+ * import { resetInterceptorState } from '@/services/api/interceptors';
+ *
+ * afterEach(() => {
+ *   resetInterceptorState();
+ * });
+ * ```
+ */
+export function resetInterceptorState(): void {
+  isRefreshing = false;
+  failedQueue = [];
+}
+
+/**
  * Process all queued requests after token refresh completes
  *
  * This function is called after refreshAccessToken() resolves or rejects.

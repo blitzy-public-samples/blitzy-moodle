@@ -82,6 +82,8 @@ declare global {
 export interface RenderOptions extends Omit<RTLRenderOptions, 'wrapper'> {
   /** Initial Redux state (partial override) */
   initialState?: Partial<RootState>;
+  /** Alias for initialState (common RTL pattern) */
+  preloadedState?: Partial<RootState>;
   /** Custom Redux store instance */
   store?: EnhancedStore;
   /** Initial route for MemoryRouter */
@@ -238,6 +240,7 @@ export function render(
 ): EnhancedRenderResult {
   const {
     initialState,
+    preloadedState,
     store: customStore,
     initialRoute = '/',
     routes = [],
@@ -250,11 +253,14 @@ export function render(
     ...renderOptions
   } = options;
 
+  // Support both initialState and preloadedState (preloadedState is common RTL pattern)
+  const effectiveInitialState = initialState ?? preloadedState;
+
   // Create or use provided store
   let storeInstance: EnhancedStore;
   if (customStore) {
     storeInstance = customStore;
-  } else if (initialState || authenticated) {
+  } else if (effectiveInitialState || authenticated) {
     // Build initial state with auth if needed
     // Normalize user to ensure required fields exist for AuthState
     const user = normalizeUser(customUser || createMockUser());
@@ -279,10 +285,10 @@ export function render(
     
     storeInstance = createMockStore({
       ...authState,
-      ...initialState,
+      ...effectiveInitialState,
     });
   } else {
-    storeInstance = createMockStore(initialState);
+    storeInstance = createMockStore(effectiveInitialState);
   }
 
   // Create or use provided query client
@@ -344,24 +350,59 @@ export function render(
  * 
  * Convenience function that renders a component with authentication context.
  * Automatically creates a mock user and sets up authenticated state.
+ * Supports two calling signatures for flexibility:
+ * 1. Simple: renderWithAuth(<Component />, user) - just pass a User object
+ * 2. Advanced: renderWithAuth(<Component />, { preloadedState, user, ... }) - pass RenderOptions
  * 
  * @param {ReactElement} ui - Component to render
- * @param {User} user - Custom user object (optional)
+ * @param {User | RenderOptions} userOrOptions - User object or RenderOptions for advanced configuration
  * @returns {EnhancedRenderResult} Render result with authenticated context
  * 
  * @example
  * ```typescript
+ * // Simple usage with default or custom user
  * renderWithAuth(<ProtectedComponent />);
  * renderWithAuth(<UserProfile />, createMockUser({ email: 'test@example.com' }));
+ * 
+ * // Advanced usage with preloaded state
+ * renderWithAuth(<ProtectedComponent />, {
+ *   preloadedState: {
+ *     auth: { user: mockUser, tokens: mockTokens, isAuthenticated: true }
+ *   }
+ * });
  * ```
  */
 export function renderWithAuth(
   ui: ReactElement,
-  user?: User
+  userOrOptions?: User | RenderOptions
 ): EnhancedRenderResult {
+  // Determine if second argument is a User or RenderOptions
+  // User objects have 'id' or 'username', RenderOptions have 'preloadedState', 'initialState', etc.
+  const isRenderOptions = (arg: unknown): arg is RenderOptions => {
+    if (!arg || typeof arg !== 'object') return false;
+    const obj = arg as Record<string, unknown>;
+    return (
+      'preloadedState' in obj ||
+      'initialState' in obj ||
+      'store' in obj ||
+      'initialRoute' in obj ||
+      'queryClient' in obj ||
+      'authenticated' in obj
+    );
+  };
+
+  if (isRenderOptions(userOrOptions)) {
+    // Advanced usage: RenderOptions passed
+    return render(ui, {
+      authenticated: true,
+      ...userOrOptions,
+    });
+  }
+
+  // Simple usage: User object passed (or undefined)
   return render(ui, {
     authenticated: true,
-    user,
+    user: userOrOptions,
   });
 }
 

@@ -9,22 +9,24 @@
  * @module tests/integration/auth-token-refresh
  */
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { screen, waitFor, act } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { http, HttpResponse, delay } from 'msw';
 
 // Internal imports from depends_on_files
 import { server } from '../mocks/server';
-import { renderWithAuth, createTestQueryClient } from '../helpers/render';
+import { renderWithAuth } from '../helpers/render';
 import { apiClient } from '../../src/services/api/client';
+import { resetInterceptorState } from '../../src/services/api/interceptors';
 import { 
   setTokens, 
   clearTokens, 
   getAccessToken, 
-  getRefreshToken 
+  getRefreshToken,
+  resetAuthServiceState
 } from '../../src/services/auth/authService';
-import { selectAuthTokens } from '../../src/features/auth/store/authSlice';
+import { AuthStatus } from '../../src/features/auth/types/auth.types';
 
 // ============================================================================
 // Test Constants
@@ -33,7 +35,7 @@ import { selectAuthTokens } from '../../src/features/auth/store/authSlice';
 /**
  * Base URL for API endpoints in tests
  */
-const API_BASE_URL = 'http://localhost:8080/api/v1';
+const API_BASE_URL = 'http://localhost:8000/api/v1';
 
 /**
  * Test tokens used across test cases
@@ -52,14 +54,20 @@ const TEST_TOKENS = {
 };
 
 /**
- * Test user data
+ * Test user data with all required properties per User type
  */
 const TEST_USER = {
   id: 1,
   username: 'testuser',
   email: 'test@example.com',
-  firstName: 'Test',
-  lastName: 'User',
+  firstname: 'Test',
+  lastname: 'User',
+  fullname: 'Test User',
+  auth: 'manual',
+  confirmed: true,
+  suspended: false,
+  roles: [],
+  capabilities: [],
 };
 
 /**
@@ -70,6 +78,31 @@ const PROTECTED_RESOURCE_DATA = {
   name: 'Protected Resource',
   data: 'Sensitive data only accessible with valid token',
 };
+
+/**
+ * Helper function to create auth state for preloadedState
+ * Ensures all required fields are present with correct types
+ */
+function createAuthState(
+  accessToken: string = TEST_TOKENS.expiredAccessToken,
+  refreshToken: string = TEST_TOKENS.validRefreshToken
+) {
+  return {
+    auth: {
+      user: TEST_USER,
+      tokens: {
+        accessToken,
+        refreshToken,
+        expiresIn: 3600,
+        tokenType: 'Bearer',
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      error: null,
+      status: AuthStatus.AUTHENTICATED,
+    },
+  };
+}
 
 // ============================================================================
 // MSW Handlers Factory Functions
@@ -118,13 +151,14 @@ function createSuccessfulRefreshHandler(refreshDelay = 0) {
     }
 
     // Return new tokens on successful refresh
+    // Note: authService expects snake_case keys (access_token, refresh_token)
     return HttpResponse.json({
       success: true,
       data: {
-        accessToken: TEST_TOKENS.newAccessToken,
-        refreshToken: TEST_TOKENS.newRefreshToken,
-        expiresIn: 3600,
-        tokenType: 'Bearer',
+        access_token: TEST_TOKENS.newAccessToken,
+        refresh_token: TEST_TOKENS.newRefreshToken,
+        expires_in: 3600,
+        token_type: 'Bearer',
       },
     });
   });
@@ -193,13 +227,14 @@ function createCountingRefreshHandler() {
     const body = await request.json() as { refreshToken?: string };
     
     if (body.refreshToken === TEST_TOKENS.validRefreshToken) {
+      // Note: authService expects snake_case keys (access_token, refresh_token)
       return HttpResponse.json({
         success: true,
         data: {
-          accessToken: TEST_TOKENS.newAccessToken,
-          refreshToken: TEST_TOKENS.newRefreshToken,
-          expiresIn: 3600,
-          tokenType: 'Bearer',
+          access_token: TEST_TOKENS.newAccessToken,
+          refresh_token: TEST_TOKENS.newRefreshToken,
+          expires_in: 3600,
+          token_type: 'Bearer',
         },
       });
     }
@@ -322,7 +357,7 @@ function ConcurrentRequestsComponent({
 
   useEffect(() => {
     const makeRequests = async () => {
-      const promises = Array.from({ length: requestCount }, async (_, index) => {
+      const promises = Array.from({ length: requestCount }, async () => {
         try {
           const response = await apiClient.get('/protected/resource');
           return { success: true, data: response.data };
@@ -396,6 +431,12 @@ describe('Auth Token Refresh Integration', () => {
     // Reset MSW handlers
     server.resetHandlers();
     
+    // Reset interceptor state (isRefreshing, failedQueue) to prevent test isolation issues
+    resetInterceptorState();
+    
+    // Reset auth service state (refreshPromise mutex) to prevent test isolation issues
+    resetAuthServiceState();
+    
     // Clear all mocks
     vi.clearAllMocks();
     
@@ -424,21 +465,7 @@ describe('Auth Token Refresh Integration', () => {
       renderWithAuth(
         <TestProtectedComponent onSuccess={onSuccess} onError={onError} />,
         {
-          preloadedState: {
-            auth: {
-              user: TEST_USER,
-              tokens: {
-                accessToken: TEST_TOKENS.expiredAccessToken,
-                refreshToken: TEST_TOKENS.validRefreshToken,
-              },
-              isAuthenticated: true,
-              isLoading: false,
-              error: null,
-              sessionExpiresAt: null,
-              lastActivity: Date.now(),
-              rememberMe: false,
-            },
-          },
+          preloadedState: createAuthState(),
         }
       );
 
@@ -468,13 +495,14 @@ describe('Auth Token Refresh Integration', () => {
           const body = await request.json();
           refreshCalls.push({ timestamp: Date.now(), body });
 
+          // Note: authService expects snake_case keys (access_token, refresh_token)
           return HttpResponse.json({
             success: true,
             data: {
-              accessToken: TEST_TOKENS.newAccessToken,
-              refreshToken: TEST_TOKENS.newRefreshToken,
-              expiresIn: 3600,
-              tokenType: 'Bearer',
+              access_token: TEST_TOKENS.newAccessToken,
+              refresh_token: TEST_TOKENS.newRefreshToken,
+              expires_in: 3600,
+              token_type: 'Bearer',
             },
           });
         }),
@@ -488,21 +516,7 @@ describe('Auth Token Refresh Integration', () => {
       renderWithAuth(
         <TestProtectedComponent />,
         {
-          preloadedState: {
-            auth: {
-              user: TEST_USER,
-              tokens: {
-                accessToken: TEST_TOKENS.expiredAccessToken,
-                refreshToken: TEST_TOKENS.validRefreshToken,
-              },
-              isAuthenticated: true,
-              isLoading: false,
-              error: null,
-              sessionExpiresAt: null,
-              lastActivity: Date.now(),
-              rememberMe: false,
-            },
-          },
+          preloadedState: createAuthState(),
         }
       );
 
@@ -515,7 +529,9 @@ describe('Auth Token Refresh Integration', () => {
       expect(refreshCalls.length).toBe(1);
 
       // Verify refresh was called with correct refresh token
-      expect(refreshCalls[0].body).toEqual({
+      const firstRefreshCall = refreshCalls[0];
+      expect(firstRefreshCall).toBeDefined();
+      expect(firstRefreshCall!.body).toEqual({
         refreshToken: TEST_TOKENS.validRefreshToken,
       });
     });
@@ -541,21 +557,7 @@ describe('Auth Token Refresh Integration', () => {
       renderWithAuth(
         <TestProtectedComponent />,
         {
-          preloadedState: {
-            auth: {
-              user: TEST_USER,
-              tokens: {
-                accessToken: TEST_TOKENS.expiredAccessToken,
-                refreshToken: TEST_TOKENS.validRefreshToken,
-              },
-              isAuthenticated: true,
-              isLoading: false,
-              error: null,
-              sessionExpiresAt: null,
-              lastActivity: Date.now(),
-              rememberMe: false,
-            },
-          },
+          preloadedState: createAuthState(),
         }
       );
 
@@ -607,21 +609,7 @@ describe('Auth Token Refresh Integration', () => {
       renderWithAuth(
         <TestProtectedComponent />,
         {
-          preloadedState: {
-            auth: {
-              user: TEST_USER,
-              tokens: {
-                accessToken: TEST_TOKENS.expiredAccessToken,
-                refreshToken: TEST_TOKENS.validRefreshToken,
-              },
-              isAuthenticated: true,
-              isLoading: false,
-              error: null,
-              sessionExpiresAt: null,
-              lastActivity: Date.now(),
-              rememberMe: false,
-            },
-          },
+          preloadedState: createAuthState(),
         }
       );
 
@@ -686,21 +674,7 @@ describe('Auth Token Refresh Integration', () => {
       renderWithAuth(
         <ConcurrentRequestsComponent requestCount={5} onAllComplete={onAllComplete} />,
         {
-          preloadedState: {
-            auth: {
-              user: TEST_USER,
-              tokens: {
-                accessToken: TEST_TOKENS.expiredAccessToken,
-                refreshToken: TEST_TOKENS.validRefreshToken,
-              },
-              isAuthenticated: true,
-              isLoading: false,
-              error: null,
-              sessionExpiresAt: null,
-              lastActivity: Date.now(),
-              rememberMe: false,
-            },
-          },
+          preloadedState: createAuthState(),
         }
       );
 
@@ -761,23 +735,7 @@ describe('Auth Token Refresh Integration', () => {
 
       renderWithAuth(
         <ConcurrentRequestsComponent requestCount={3} onAllComplete={onAllComplete} />,
-        {
-          preloadedState: {
-            auth: {
-              user: TEST_USER,
-              tokens: {
-                accessToken: TEST_TOKENS.expiredAccessToken,
-                refreshToken: TEST_TOKENS.validRefreshToken,
-              },
-              isAuthenticated: true,
-              isLoading: false,
-              error: null,
-              sessionExpiresAt: null,
-              lastActivity: Date.now(),
-              rememberMe: false,
-            },
-          },
-        }
+        { preloadedState: createAuthState() }
       );
 
       await waitFor(() => {
@@ -809,23 +767,7 @@ describe('Auth Token Refresh Integration', () => {
 
       renderWithAuth(
         <TestProtectedComponent onError={onError} />,
-        {
-          preloadedState: {
-            auth: {
-              user: TEST_USER,
-              tokens: {
-                accessToken: TEST_TOKENS.expiredAccessToken,
-                refreshToken: TEST_TOKENS.expiredRefreshToken,
-              },
-              isAuthenticated: true,
-              isLoading: false,
-              error: null,
-              sessionExpiresAt: null,
-              lastActivity: Date.now(),
-              rememberMe: false,
-            },
-          },
-        }
+        { preloadedState: createAuthState(TEST_TOKENS.expiredAccessToken, TEST_TOKENS.expiredRefreshToken) }
       );
 
       // Wait for error to appear
@@ -842,18 +784,12 @@ describe('Auth Token Refresh Integration', () => {
     });
 
     it('should redirect to login when refresh fails', async () => {
-      // Mock window.location for redirect testing
-      const originalLocation = window.location;
-      const mockLocation = {
-        ...originalLocation,
-        href: '',
-        assign: vi.fn(),
-        replace: vi.fn(),
-      };
-      Object.defineProperty(window, 'location', {
-        value: mockLocation,
-        writable: true,
-      });
+      // Note: We can't directly test window.location.href redirect in happy-dom without
+      // breaking axios URL resolution. Instead, we verify the logout behavior by checking:
+      // 1. Tokens are cleared
+      // 2. Error is shown
+      // The actual redirect is verified through the interceptor clearing tokens and
+      // attempting the redirect (which we can't capture in test environment)
 
       server.use(
         createFailingRefreshHandler(),
@@ -866,23 +802,7 @@ describe('Auth Token Refresh Integration', () => {
 
       renderWithAuth(
         <TestProtectedComponent onError={onError} />,
-        {
-          preloadedState: {
-            auth: {
-              user: TEST_USER,
-              tokens: {
-                accessToken: TEST_TOKENS.expiredAccessToken,
-                refreshToken: TEST_TOKENS.expiredRefreshToken,
-              },
-              isAuthenticated: true,
-              isLoading: false,
-              error: null,
-              sessionExpiresAt: null,
-              lastActivity: Date.now(),
-              rememberMe: false,
-            },
-          },
-        }
+        { preloadedState: createAuthState(TEST_TOKENS.expiredAccessToken, TEST_TOKENS.expiredRefreshToken) }
       );
 
       // Wait for error handling
@@ -890,15 +810,13 @@ describe('Auth Token Refresh Integration', () => {
         expect(screen.getByRole('alert')).toBeInTheDocument();
       }, { timeout: 5000 });
 
-      // Verify tokens were cleared
+      // Verify tokens were cleared (proves logout logic executed)
+      // The actual redirect to /login happens in interceptors.ts
       expect(getAccessToken()).toBeNull();
       expect(getRefreshToken()).toBeNull();
 
-      // Restore window.location
-      Object.defineProperty(window, 'location', {
-        value: originalLocation,
-        writable: true,
-      });
+      // Verify error callback was called
+      expect(onError).toHaveBeenCalled();
     });
 
     it('should clear authentication state on refresh failure', async () => {
@@ -915,23 +833,7 @@ describe('Auth Token Refresh Integration', () => {
 
       renderWithAuth(
         <TestProtectedComponent />,
-        {
-          preloadedState: {
-            auth: {
-              user: TEST_USER,
-              tokens: {
-                accessToken: TEST_TOKENS.expiredAccessToken,
-                refreshToken: TEST_TOKENS.expiredRefreshToken,
-              },
-              isAuthenticated: true,
-              isLoading: false,
-              error: null,
-              sessionExpiresAt: null,
-              lastActivity: Date.now(),
-              rememberMe: false,
-            },
-          },
-        }
+        { preloadedState: createAuthState(TEST_TOKENS.expiredAccessToken, TEST_TOKENS.expiredRefreshToken) }
       );
 
       // Wait for error state
@@ -960,23 +862,7 @@ describe('Auth Token Refresh Integration', () => {
 
       renderWithAuth(
         <TestProtectedComponent />,
-        {
-          preloadedState: {
-            auth: {
-              user: TEST_USER,
-              tokens: {
-                accessToken: TEST_TOKENS.expiredAccessToken,
-                refreshToken: TEST_TOKENS.validRefreshToken,
-              },
-              isAuthenticated: true,
-              isLoading: false,
-              error: null,
-              sessionExpiresAt: null,
-              lastActivity: Date.now(),
-              rememberMe: false,
-            },
-          },
-        }
+        { preloadedState: createAuthState() }
       );
 
       // Loading state should be visible initially
@@ -1007,23 +893,7 @@ describe('Auth Token Refresh Integration', () => {
 
       renderWithAuth(
         <TestProtectedComponent onSuccess={onSuccess} onError={onError} />,
-        {
-          preloadedState: {
-            auth: {
-              user: TEST_USER,
-              tokens: {
-                accessToken: TEST_TOKENS.expiredAccessToken,
-                refreshToken: TEST_TOKENS.validRefreshToken,
-              },
-              isAuthenticated: true,
-              isLoading: false,
-              error: null,
-              sessionExpiresAt: null,
-              lastActivity: Date.now(),
-              rememberMe: false,
-            },
-          },
-        }
+        { preloadedState: createAuthState() }
       );
 
       // Wait for successful completion
@@ -1060,23 +930,7 @@ describe('Auth Token Refresh Integration', () => {
 
       renderWithAuth(
         <UserContextComponent />,
-        {
-          preloadedState: {
-            auth: {
-              user: TEST_USER,
-              tokens: {
-                accessToken: TEST_TOKENS.expiredAccessToken,
-                refreshToken: TEST_TOKENS.validRefreshToken,
-              },
-              isAuthenticated: true,
-              isLoading: false,
-              error: null,
-              sessionExpiresAt: null,
-              lastActivity: Date.now(),
-              rememberMe: false,
-            },
-          },
-        }
+        { preloadedState: createAuthState() }
       );
 
       // User info should be displayed initially
@@ -1110,23 +964,7 @@ describe('Auth Token Refresh Integration', () => {
 
       renderWithAuth(
         <TestProtectedComponent onError={onError} />,
-        {
-          preloadedState: {
-            auth: {
-              user: TEST_USER,
-              tokens: {
-                accessToken: TEST_TOKENS.expiredAccessToken,
-                refreshToken: TEST_TOKENS.validRefreshToken,
-              },
-              isAuthenticated: true,
-              isLoading: false,
-              error: null,
-              sessionExpiresAt: null,
-              lastActivity: Date.now(),
-              rememberMe: false,
-            },
-          },
-        }
+        { preloadedState: createAuthState() }
       );
 
       // Wait for error to be handled
@@ -1143,11 +981,12 @@ describe('Auth Token Refresh Integration', () => {
       server.use(
         http.post(`${API_BASE_URL}/auth/refresh`, () => {
           refreshCalls.push(Date.now());
+          // Note: authService expects snake_case keys (access_token, refresh_token)
           return HttpResponse.json({
             success: true,
             data: {
-              accessToken: TEST_TOKENS.newAccessToken,
-              refreshToken: TEST_TOKENS.newRefreshToken,
+              access_token: TEST_TOKENS.newAccessToken,
+              refresh_token: TEST_TOKENS.newRefreshToken,
             },
           });
         }),
@@ -1166,23 +1005,7 @@ describe('Auth Token Refresh Integration', () => {
 
       renderWithAuth(
         <TestProtectedComponent onError={onError} />,
-        {
-          preloadedState: {
-            auth: {
-              user: TEST_USER,
-              tokens: {
-                accessToken: TEST_TOKENS.expiredAccessToken,
-                refreshToken: TEST_TOKENS.validRefreshToken,
-              },
-              isAuthenticated: true,
-              isLoading: false,
-              error: null,
-              sessionExpiresAt: null,
-              lastActivity: Date.now(),
-              rememberMe: false,
-            },
-          },
-        }
+        { preloadedState: createAuthState() }
       );
 
       await waitFor(() => {
