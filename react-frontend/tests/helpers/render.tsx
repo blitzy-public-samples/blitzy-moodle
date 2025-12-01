@@ -42,7 +42,28 @@ import type { RootState } from '@/app/store';
 import theme, { createAppTheme } from '@/styles/theme';
 import { createMockStore } from './mockStore';
 import { createMockUser } from './mockData';
-import { AuthStatus, type User } from '@/features/auth/types/auth.types';
+import { AuthStatus, type User as AuthUser } from '@/features/auth/types/auth.types';
+import type { User as EntityUser } from '@/types/entities';
+
+/**
+ * Flexible User type for test rendering
+ * Accepts both the auth User type and the entities User type
+ * This allows mock data generators to work with the render helper
+ */
+type User = AuthUser | EntityUser;
+
+/**
+ * Converts an EntityUser to AuthUser by ensuring required fields exist
+ * Used internally to normalize user data for auth state
+ */
+function normalizeUser(user: User): AuthUser {
+  return {
+    ...user,
+    fullname: user.fullname ?? `${user.firstname} ${user.lastname}`,
+    roles: user.roles ?? [],
+    capabilities: user.capabilities ?? [],
+  } as AuthUser;
+}
 
 /**
  * Extend globalThis with test utilities.
@@ -235,7 +256,8 @@ export function render(
     storeInstance = customStore;
   } else if (initialState || authenticated) {
     // Build initial state with auth if needed
-    const user = customUser || createMockUser();
+    // Normalize user to ensure required fields exist for AuthState
+    const user = normalizeUser(customUser || createMockUser());
     
     const authState = authenticated
       ? {

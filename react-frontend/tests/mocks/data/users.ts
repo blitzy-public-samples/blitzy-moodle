@@ -207,6 +207,20 @@ export function mockUser(overrides: DeepPartial<User> = {}): User {
     
     // User roles (optional)
     roles: overrides.roles ?? [],
+    
+    // User capabilities (optional, used for authorization checks)
+    capabilities: overrides.capabilities ?? [
+      {
+        capability: 'moodle/course:view',
+        contextId: 1,
+        granted: true,
+      },
+      {
+        capability: 'moodle/course:viewhiddencourses',
+        contextId: 1,
+        granted: false,
+      },
+    ],
   };
 }
 

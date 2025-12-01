@@ -144,6 +144,15 @@ export interface User {
     sortorder?: number;
     archetype?: string;
   }>;
+  /** User capabilities/permissions for authorization checks */
+  capabilities?: Array<{
+    /** Capability name (e.g., 'moodle/course:view') */
+    capability: string;
+    /** Context ID where permission applies */
+    contextId: number;
+    /** Whether permission is granted */
+    granted: boolean;
+  }>;
 }
 
 /**
@@ -231,6 +240,41 @@ export interface Course {
   isenrolled?: boolean;
   /** Whether current user can access course */
   canaccess?: boolean;
+  /** Number of enrolled users in the course */
+  enrolledusers?: number;
+  /** Detailed enrollment information for current user */
+  enrollmentinfo?: CourseEnrollmentInfo;
+}
+
+/**
+ * Course Enrollment Info
+ * 
+ * Represents enrollment status and options for a user-course combination.
+ * Used to determine available enrollment actions and display appropriate UI.
+ * 
+ * @see public/enrol/lib.php - Enrollment library functions
+ */
+export interface CourseEnrollmentInfo {
+  /** Whether the user is currently enrolled */
+  enrolled: boolean;
+  /** Available enrollment methods (self, guest, paypal, manual, etc.) */
+  enrollmentMethods: string[];
+  /** Whether the user can self-enroll */
+  canEnroll: boolean;
+  /** Message to display about enrollment status or requirements */
+  enrollmentMessage: string | null;
+  /** Whether an enrollment key is required for self-enrollment */
+  requiresKey?: boolean;
+  /** Enrollment start date (timestamp) */
+  enrolstartdate?: number;
+  /** Enrollment end date (timestamp) */
+  enrolenddate?: number;
+  /** Whether guest access is allowed */
+  guestaccess?: boolean;
+  /** Password required for guest access */
+  guestpassword?: string;
+  /** User's role after enrollment */
+  roleid?: number;
 }
 
 /**
