@@ -3,7 +3,8 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { UseMutationResult } from '@tanstack/react-query';
 import { ProfileEditForm } from '@/features/profile/components/ProfileEditForm';
-import type { User, UpdateProfilePayload } from '@/features/profile/types/profile.types';
+import type { User } from '@/features/profile/api/profileApi';
+import type { UpdateProfilePayload } from '@/features/profile/types/profile.types';
 
 // Mock the useUpdateProfile hook
 const mockUpdateProfile = vi.fn();
@@ -40,16 +41,27 @@ vi.mock('@/hooks/useToast', () => ({
 describe('ProfileEditForm', () => {
   const mockUser: User = {
     id: 1,
+    username: 'johndoe',
     firstname: 'John',
     lastname: 'Doe',
     fullname: 'John Doe',
     email: 'john.doe@example.com',
+    emailstop: false,
     city: 'New York',
     country: 'US',
+    lang: 'en',
+    timezone: 'America/New_York',
+    firstaccess: 1609459200,
+    lastaccess: 1700000000,
+    lastlogin: 1699900000,
+    currentlogin: 1700000000,
+    suspended: false,
+    confirmed: true,
+    auth: 'manual',
+    calendartype: 'gregorian',
     department: 'Engineering',
     description: 'Software developer with 5 years of experience',
-    interests: 'programming, testing, react',
-    username: 'johndoe',
+    interests: ['programming', 'testing', 'react'],
     profileimageurl: 'https://example.com/avatar.jpg',
     profileimageurlsmall: 'https://example.com/avatar-small.jpg',
   };
@@ -112,8 +124,11 @@ describe('ProfileEditForm', () => {
       const interestsField = screen.getByLabelText(/interests/i);
       expect(interestsField).toBeInTheDocument();
       
-      // Verify interests are pre-filled (interests is a comma-separated string)
-      expect(interestsField).toHaveValue(mockUser.interests);
+      // Verify interests are pre-filled (component converts array to comma-separated string)
+      const expectedInterests = Array.isArray(mockUser.interests) 
+        ? mockUser.interests.join(',')
+        : mockUser.interests;
+      expect(interestsField).toHaveValue(expectedInterests);
     });
 
     it('renders save and cancel buttons', () => {
@@ -558,7 +573,11 @@ describe('ProfileEditForm', () => {
       render(<ProfileEditForm {...defaultProps} />);
 
       const interestsInput = screen.getByLabelText(/interests/i);
-      expect(interestsInput).toHaveValue(mockUser.interests);
+      // Component converts interests array to comma-separated string for display
+      const expectedInterests = Array.isArray(mockUser.interests) 
+        ? mockUser.interests.join(',')
+        : mockUser.interests;
+      expect(interestsInput).toHaveValue(expectedInterests);
     });
 
     // Note: Component uses a simple TextField for interests (comma-separated string),

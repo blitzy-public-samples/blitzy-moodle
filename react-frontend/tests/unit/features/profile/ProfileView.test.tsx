@@ -3,7 +3,7 @@ import { render, screen, cleanup } from '@testing-library/react';
 import { axe, toHaveNoViolations } from 'jest-axe';
 import '@testing-library/jest-dom';
 import ProfileView from '@/features/profile/components/ProfileView';
-import type { User } from '@/features/profile/types/profile.types';
+import type { User } from '@/features/profile/api/profileApi';
 import type { UseProfileResult } from '@/features/profile/hooks/useProfile';
 import type { UseAuthReturn } from '@/features/auth/hooks/useAuth';
 import type { User as AuthUser, Role, Permission } from '@/features/auth/types/auth.types';
@@ -31,6 +31,7 @@ const mockValidUser: User = {
   lastname: 'Doe',
   fullname: 'John Doe',
   email: 'john.doe@example.com',
+  emailstop: false,
   department: 'Engineering',
   institution: 'University of Example',
   city: 'San Francisco',
@@ -41,14 +42,16 @@ const mockValidUser: User = {
   profileimageurl: 'https://example.com/avatar/johndoe.jpg',
   profileimageurlsmall: 'https://example.com/avatar/johndoe_small.jpg',
   customfields: [
-    { type: 'text', name: 'Phone', shortname: 'phone', value: '+1 555-0123' },
-    { type: 'text', name: 'LinkedIn', shortname: 'linkedin', value: 'linkedin.com/in/johndoe' },
+    { name: 'Phone', shortname: 'phone', value: '+1 555-0123' },
+    { name: 'LinkedIn', shortname: 'linkedin', value: 'linkedin.com/in/johndoe' },
   ],
   lang: 'en',
   theme: 'boost',
   calendartype: 'gregorian',
   firstaccess: 1609459200,
   lastaccess: 1704067200,
+  lastlogin: 1704000000,
+  currentlogin: 1704067200,
   auth: 'manual',
   suspended: false,
   confirmed: true,
@@ -61,6 +64,7 @@ const mockCurrentUser: User = {
   lastname: 'Doe',
   fullname: 'John Doe',
   email: 'john.doe@example.com',
+  emailstop: false,
   department: 'Engineering',
   institution: 'University of Example',
   city: 'San Francisco',
@@ -76,6 +80,8 @@ const mockCurrentUser: User = {
   calendartype: 'gregorian',
   firstaccess: 1609459200,
   lastaccess: 1704067200,
+  lastlogin: 1704000000,
+  currentlogin: 1704067200,
   auth: 'manual',
   suspended: false,
   confirmed: true,
@@ -88,6 +94,7 @@ const mockOtherUser: User = {
   lastname: 'Doe',
   fullname: 'Jane Doe',
   email: 'jane.doe@example.com',
+  emailstop: false,
   department: 'Marketing',
   institution: 'University of Example',
   city: 'New York',
@@ -103,6 +110,8 @@ const mockOtherUser: User = {
   calendartype: 'gregorian',
   firstaccess: 1609459200,
   lastaccess: 1704067200,
+  lastlogin: 1704000000,
+  currentlogin: 1704067200,
   auth: 'manual',
   suspended: false,
   confirmed: true,
@@ -144,7 +153,7 @@ const createAuthUser = (user: User): AuthUser => ({
   email: user.email || '',
   firstname: user.firstname || '',
   lastname: user.lastname || '',
-  fullname: user.fullname,
+  fullname: user.fullname || `${user.firstname} ${user.lastname}`,
   profileimageurl: user.profileimageurl,
   auth: 'manual',
   confirmed: true,
@@ -274,6 +283,7 @@ describe('ProfileView Component', () => {
         lastname: 'User',
         fullname: 'Min User',
         email: 'min@example.com',
+        emailstop: false,
         department: '',
         institution: '',
         city: '',
@@ -289,6 +299,8 @@ describe('ProfileView Component', () => {
         calendartype: 'gregorian',
         firstaccess: 0,
         lastaccess: 0,
+        lastlogin: 0,
+        currentlogin: 0,
         auth: 'manual',
         suspended: false,
         confirmed: true,

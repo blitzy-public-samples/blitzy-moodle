@@ -165,20 +165,14 @@ export function ProfileView({
   };
 
   /**
-   * Format interests string to array of tags
+   * Get user interests as array of tags
    */
   const getInterests = (): string[] => {
     if (!user?.interests) {
       return [];
     }
-    // Handle both string and array formats
-    if (Array.isArray(user.interests)) {
-      return user.interests.filter(Boolean);
-    }
-    return user.interests
-      .split(',')
-      .map((interest: string) => interest.trim())
-      .filter(Boolean);
+    // interests is always an array of strings
+    return user.interests.filter(Boolean);
   };
 
   // Loading state - show skeleton

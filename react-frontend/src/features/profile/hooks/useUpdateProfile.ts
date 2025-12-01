@@ -13,6 +13,7 @@ import {
   uploadAvatar,
   deleteAvatar,
   updateUserPreferences,
+  type User,
 } from '../api/profileApi';
 import type {
   UpdateProfilePayload,
@@ -20,7 +21,6 @@ import type {
   ProfileUpdateResponse,
   AvatarUploadResponse,
   UserPreferences,
-  User,
 } from '../types/profile.types';
 import { profileKeys } from './useProfile';
 
@@ -197,15 +197,28 @@ export function useUpdateProfile(
 
       // Optimistically update cache
       if (previousProfile) {
-        // Exclude customfields from the optimistic update to avoid type mismatch
-        const { customfields: _customfields, ...profileUpdates } = updatedProfile;
+        // Exclude fields that need special handling to avoid type mismatch
+        const { 
+          customfields: _customfields, 
+          interests: payloadInterests,
+          userid: _userid,
+          ...safeProfileUpdates 
+        } = updatedProfile;
+
+        // Normalize interests to always be an array if provided
+        const normalizedInterests = payloadInterests
+          ? Array.isArray(payloadInterests)
+            ? payloadInterests
+            : payloadInterests.split(',').map((s) => s.trim()).filter(Boolean)
+          : previousProfile.interests;
 
         queryClient.setQueryData<User>(queryKey, {
           ...previousProfile,
-          ...profileUpdates,
+          ...safeProfileUpdates,
+          interests: normalizedInterests,
           fullname:
-            updatedProfile.firstname && updatedProfile.lastname
-              ? `${updatedProfile.firstname} ${updatedProfile.lastname}`
+            safeProfileUpdates.firstname && safeProfileUpdates.lastname
+              ? `${safeProfileUpdates.firstname} ${safeProfileUpdates.lastname}`
               : previousProfile.fullname,
         });
       }
@@ -396,11 +409,22 @@ export function useUpdatePreferences(
       const previousProfile = queryClient.getQueryData<User>(queryKey);
 
       if (previousProfile?.preferences) {
+        // Filter out undefined values from updatedPreferences to satisfy Record<string, ...> type
+        const filteredUpdates = Object.entries(updatedPreferences).reduce(
+          (acc, [key, value]) => {
+            if (value !== undefined) {
+              acc[key] = value;
+            }
+            return acc;
+          },
+          {} as Record<string, string | number | boolean>
+        );
+        
         queryClient.setQueryData<User>(queryKey, {
           ...previousProfile,
           preferences: {
             ...previousProfile.preferences,
-            ...updatedPreferences,
+            ...filteredUpdates,
           },
         });
       }

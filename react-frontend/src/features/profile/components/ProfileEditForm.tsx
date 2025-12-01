@@ -25,7 +25,8 @@ import {
 } from '@mui/material';
 import { Save as SaveIcon, Cancel as CancelIcon } from '@mui/icons-material';
 import { useForm, Controller } from 'react-hook-form';
-import type { User, UpdateProfilePayload } from '../types/profile.types';
+import type { User } from '../api/profileApi';
+import type { UpdateProfilePayload } from '../types/profile.types';
 import type { SimplifiedApiError } from '@/types/api';
 import { useUpdateProfile } from '../hooks/useUpdateProfile';
 

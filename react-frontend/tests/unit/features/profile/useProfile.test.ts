@@ -32,8 +32,8 @@ import { fetchUserProfile, updateUserProfile } from '@/features/profile/api/prof
 // Import the hook to test
 import { useProfile } from '@/features/profile/hooks/useProfile';
 
-// Import User type from profile types
-import type { User } from '@/features/profile/types/profile.types';
+// Import User type from profile API (re-exported from entities)
+import type { User } from '@/features/profile/api/profileApi';
 
 interface UpdateProfileData {
   firstname?: string;
@@ -57,11 +57,22 @@ function createMockUser(overrides: Partial<User> = {}): User {
     lastname: 'User',
     fullname: 'Test User',
     email: 'test@example.com',
+    emailstop: false,
     profileimageurlsmall: 'https://example.com/avatar-small.jpg',
     profileimageurl: 'https://example.com/avatar.jpg',
     description: 'Test user description',
     city: 'Test City',
     country: 'US',
+    lang: 'en',
+    timezone: 'America/New_York',
+    calendartype: 'gregorian',
+    firstaccess: 1609459200,
+    lastaccess: 1700000000,
+    lastlogin: 1699900000,
+    currentlogin: 1700000000,
+    auth: 'manual',
+    suspended: false,
+    confirmed: true,
     ...overrides,
   };
 }

@@ -17,8 +17,8 @@ import {
   type QueryObserverResult,
   type UseQueryOptions,
 } from '@tanstack/react-query';
-import { fetchUserProfile, fetchCurrentUserProfile, updateUserProfile } from '../api/profileApi';
-import type { User, UpdateProfilePayload, UpdateProfileData } from '../types/profile.types';
+import { fetchUserProfile, fetchCurrentUserProfile, updateUserProfile, type User } from '../api/profileApi';
+import type { UpdateProfilePayload, UpdateProfileData } from '../types/profile.types';
 
 /**
  * Convert UpdateProfilePayload (internal format with booleans and enums)
@@ -540,14 +540,25 @@ export function useUpdateProfile(
             return old;
           }
 
+          // Destructure known problematic fields to handle them separately
+          const { interests: payloadInterests, userid: _userid, ...safeVariables } = variables;
+          
+          // Normalize interests to always be an array if provided
+          const normalizedInterests = payloadInterests
+            ? Array.isArray(payloadInterests)
+              ? payloadInterests
+              : payloadInterests.split(',').map((s) => s.trim()).filter(Boolean)
+            : old.interests;
+
           // Merge update payload with existing data
           return {
             ...old,
-            ...variables,
+            ...safeVariables,
+            interests: normalizedInterests,
             // Preserve computed/server-only fields
             fullname:
-              variables.firstname && variables.lastname
-                ? `${variables.firstname} ${variables.lastname}`.trim()
+              safeVariables.firstname && safeVariables.lastname
+                ? `${safeVariables.firstname} ${safeVariables.lastname}`.trim()
                 : old.fullname,
             timemodified: Date.now() / 1000, // Optimistically update modification time
           };

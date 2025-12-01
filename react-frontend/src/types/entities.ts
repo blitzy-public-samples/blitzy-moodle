@@ -127,13 +127,17 @@ export interface User {
   trustbitmask?: number;
   /** Whether user account has been deleted */
   deleted?: boolean;
+  /** User interests/tags for profile */
+  interests?: string[];
   /** User preferences as key-value pairs */
   preferences?: Record<string, string | number | boolean>;
-  /** Custom profile fields */
-  customfields?: Array<{ name: string; value: string }>;
+  /** Custom profile fields with optional shortname for field identification */
+  customfields?: Array<{ name: string; value: string; shortname?: string }>;
   /** User roles across contexts */
   roles?: Array<{
     id: RoleId;
+    /** Alias for id for backward compatibility */
+    roleid?: RoleId;
     name: string;
     shortname: string;
     description?: string;

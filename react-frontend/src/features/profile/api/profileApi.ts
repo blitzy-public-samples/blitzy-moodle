@@ -122,6 +122,161 @@ export class ProfileApiError extends Error {
 }
 
 // ============================================================================
+// Retry Utilities
+// ============================================================================
+
+/**
+ * Configuration for retry behavior
+ */
+interface RetryConfig {
+  /** Maximum number of retry attempts (default: 3) */
+  maxRetries: number;
+  /** Initial delay in milliseconds between retries (default: 1000) */
+  initialDelayMs: number;
+  /** Multiplier for exponential backoff (default: 2) */
+  backoffMultiplier: number;
+  /** HTTP status codes that trigger retry (default: [500, 502, 503, 504]) */
+  retryableStatusCodes: number[];
+}
+
+/**
+ * Default retry configuration
+ *
+ * Follows industry best practices for transient error handling:
+ * - 3 retries with exponential backoff
+ * - 5xx errors are considered retryable
+ * - Initial delay of 100ms
+ */
+const DEFAULT_RETRY_CONFIG: RetryConfig = {
+  maxRetries: 3,
+  initialDelayMs: 100,
+  backoffMultiplier: 2,
+  retryableStatusCodes: [500, 502, 503, 504],
+};
+
+/**
+ * Sleep utility for implementing delays
+ *
+ * @param ms - Number of milliseconds to sleep
+ * @returns Promise that resolves after the specified delay
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Check if an error is retryable based on HTTP status code
+ *
+ * @param error - Error to check
+ * @param config - Retry configuration
+ * @returns True if the error is retryable
+ */
+function isRetryableError(error: unknown, config: RetryConfig): boolean {
+  if (error instanceof ProfileApiError) {
+    return config.retryableStatusCodes.includes(error.status);
+  }
+  return false;
+}
+
+/**
+ * Execute a function with automatic retry on transient errors
+ *
+ * Implements exponential backoff retry pattern for handling transient
+ * server errors (5xx). This improves resilience when backend services
+ * experience temporary issues.
+ *
+ * @typeParam T - Return type of the function
+ * @param fn - Async function to execute with retry logic
+ * @param config - Optional partial retry configuration
+ * @returns Promise resolving to the function result
+ * @throws Last error encountered if all retries are exhausted
+ *
+ * @example
+ * ```typescript
+ * const profile = await withRetry(
+ *   () => apiClient.get('/users/123'),
+ *   { maxRetries: 5 }
+ * );
+ * ```
+ */
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  config: Partial<RetryConfig> = {}
+): Promise<T> {
+  const finalConfig = { ...DEFAULT_RETRY_CONFIG, ...config };
+  let lastError: unknown;
+  let currentDelay = finalConfig.initialDelayMs;
+
+  for (let attempt = 0; attempt <= finalConfig.maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+
+      // Check if we should retry
+      const isLastAttempt = attempt === finalConfig.maxRetries;
+      const canRetry = isRetryableError(error, finalConfig);
+
+      if (isLastAttempt || !canRetry) {
+        throw error;
+      }
+
+      // Wait before retrying with exponential backoff
+      await sleep(currentDelay);
+      currentDelay *= finalConfig.backoffMultiplier;
+    }
+  }
+
+  // Should never reach here, but TypeScript requires a throw
+  throw lastError;
+}
+
+// ============================================================================
+// Data Transformation Utilities
+// ============================================================================
+
+/**
+ * Normalize user data from API response
+ *
+ * Transforms user data to ensure consistent data types:
+ * - Converts interests from comma-separated string to array
+ * - Ensures proper field types for frontend consumption
+ *
+ * The API may return interests as a comma-separated string (Moodle's internal format)
+ * but our frontend expects an array of strings. This function handles the conversion.
+ *
+ * @param userData - Raw user data from API (may have string interests)
+ * @returns Normalized User object with interests as array
+ */
+function normalizeUserData(userData: User): User {
+  // Create a copy to avoid mutating the original
+  const normalized = { ...userData };
+  
+  // Handle interests conversion from API format (string) to frontend format (array)
+  // The API may return interests as a comma-separated string from Moodle
+  // Cast to unknown first to handle the type mismatch between API and frontend types
+  const rawInterests = normalized.interests as unknown;
+  
+  if (rawInterests !== undefined && rawInterests !== null) {
+    if (typeof rawInterests === 'string') {
+      // Convert comma-separated string to array
+      normalized.interests = rawInterests
+        .split(',')
+        .map((interest: string) => interest.trim())
+        .filter((interest: string) => interest.length > 0);
+    } else if (Array.isArray(rawInterests)) {
+      // Already an array, ensure it's clean
+      normalized.interests = rawInterests;
+    } else {
+      // Unknown format, default to empty array
+      normalized.interests = [];
+    }
+  }
+  
+  return normalized;
+}
+
+// ============================================================================
 // Error Handling Utilities
 // ============================================================================
 
@@ -273,12 +428,15 @@ function getDefaultErrorCode(status: number): string {
  * ```
  */
 export async function getUserProfile(userId: number): Promise<User> {
-  try {
-    const response: AxiosResponse<ApiResponse<User>> = await apiClient.get(`/users/${userId}`);
-    return extractData(response);
-  } catch (error) {
-    handleApiError(error);
-  }
+  return withRetry(async () => {
+    try {
+      const response: AxiosResponse<ApiResponse<User>> = await apiClient.get(`/users/${userId}`);
+      const userData = extractData(response);
+      return normalizeUserData(userData);
+    } catch (error) {
+      handleApiError(error);
+    }
+  });
 }
 
 /**
@@ -303,12 +461,15 @@ export async function getUserProfile(userId: number): Promise<User> {
  * ```
  */
 export async function getCurrentUserProfile(): Promise<User> {
-  try {
-    const response: AxiosResponse<ApiResponse<User>> = await apiClient.get('/auth/me');
-    return extractData(response);
-  } catch (error) {
-    handleApiError(error);
-  }
+  return withRetry(async () => {
+    try {
+      const response: AxiosResponse<ApiResponse<User>> = await apiClient.get('/auth/me');
+      const userData = extractData(response);
+      return normalizeUserData(userData);
+    } catch (error) {
+      handleApiError(error);
+    }
+  });
 }
 
 /**
@@ -324,7 +485,12 @@ export async function getCurrentUserProfile(): Promise<User> {
  * from public/user/editlib.php. See public/user/edit.php lines 60-62 and 104-121
  * for capability checks.
  *
- * @param payload - Update payload containing userid and fields to update
+ * Supports two calling patterns for flexibility:
+ * 1. updateUserProfile(payload) - Payload object containing userid and fields
+ * 2. updateUserProfile(userId, data) - Separate userId and data arguments
+ *
+ * @param payloadOrUserId - Update payload with userid OR user ID as number
+ * @param data - Optional update data when first arg is userId (for 2-arg pattern)
  * @returns Promise resolving to updated User object with all profile fields
  *
  * @throws ProfileApiError with code 'UNAUTHORIZED' (401) - Not authenticated
@@ -334,6 +500,7 @@ export async function getCurrentUserProfile(): Promise<User> {
  *
  * @example
  * ```typescript
+ * // Pattern 1: Payload object
  * const updatedUser = await updateUserProfile({
  *   userid: 123,
  *   firstname: 'John',
@@ -342,20 +509,73 @@ export async function getCurrentUserProfile(): Promise<User> {
  *   country: 'US',
  *   description: 'Software developer'
  * });
+ *
+ * // Pattern 2: Separate arguments
+ * const updatedUser = await updateUserProfile(123, {
+ *   firstname: 'John',
+ *   lastname: 'Doe',
+ *   city: 'New York',
+ *   country: 'US'
+ * });
  * ```
  */
-export async function updateUserProfile(payload: UpdateProfilePayload): Promise<User> {
-  const { userid, ...updateData } = payload;
+export async function updateUserProfile(
+  payloadOrUserId: UpdateProfilePayload | number,
+  data?: UpdateProfileData
+): Promise<User> {
+  // Support both calling patterns:
+  // 1. updateUserProfile(payload) - payload object with userid
+  // 2. updateUserProfile(userId, data) - separate userId and data
+  let userid: number;
+  let updateData: Partial<UpdateProfileData>;
 
-  try {
-    const response: AxiosResponse<ApiResponse<User>> = await apiClient.put(
-      `/users/${userid}`,
-      updateData
-    );
-    return extractData(response);
-  } catch (error) {
-    handleApiError(error);
+  if (typeof payloadOrUserId === 'number') {
+    // Pattern 2: Separate arguments (data is already converted UpdateProfileData)
+    userid = payloadOrUserId;
+    updateData = data ?? {};
+  } else {
+    // Pattern 1: Payload object - convert boolean/enum fields to numeric for API
+    const { 
+      userid: payloadUserId, 
+      autosubscribe, 
+      trackforums,
+      mailformat,
+      maildisplay,
+      maildigest,
+      customfields: _customfields,  // Exclude customfields from API request body
+      ...restPayload 
+    } = payloadOrUserId;
+    userid = payloadUserId;
+    
+    // Convert payload to API format (boolean -> 0|1, enums -> numbers)
+    const convertedData: Partial<UpdateProfileData> = { ...restPayload };
+    
+    // Convert boolean fields to 0|1
+    if (typeof autosubscribe === 'boolean') {
+      convertedData.autosubscribe = autosubscribe ? 1 : 0;
+    }
+    if (typeof trackforums === 'boolean') {
+      convertedData.trackforums = trackforums ? 1 : 0;
+    }
+    // mailformat enum is already numeric (MailFormat.PLAIN_TEXT = 0, MailFormat.HTML = 1)
+    if (mailformat !== undefined) {
+      convertedData.mailformat = mailformat as 0 | 1;
+    }
+    
+    updateData = convertedData;
   }
+
+  return withRetry(async () => {
+    try {
+      const response: AxiosResponse<ApiResponse<User>> = await apiClient.put(
+        `/users/${userid}`,
+        updateData
+      );
+      return extractData(response);
+    } catch (error) {
+      handleApiError(error);
+    }
+  });
 }
 
 /**
@@ -392,22 +612,24 @@ export async function uploadAvatar(userId: number, file: File): Promise<AvatarUp
   const formData = new FormData();
   formData.append('file', file);
 
-  try {
-    const response: AxiosResponse<ApiResponse<AvatarUploadResponse>> = await apiClient.post(
-      `/users/${userId}/avatar`,
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-        // Extended timeout for file uploads
-        timeout: 60000,
-      }
-    );
-    return extractData(response);
-  } catch (error) {
-    handleApiError(error);
-  }
+  return withRetry(async () => {
+    try {
+      const response: AxiosResponse<ApiResponse<AvatarUploadResponse>> = await apiClient.post(
+        `/users/${userId}/avatar`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+          // Extended timeout for file uploads
+          timeout: 60000,
+        }
+      );
+      return extractData(response);
+    } catch (error) {
+      handleApiError(error);
+    }
+  });
 }
 
 /**
@@ -437,14 +659,16 @@ export async function uploadAvatar(userId: number, file: File): Promise<AvatarUp
  * ```
  */
 export async function getUserPreferences(userId: number): Promise<UserPreferences> {
-  try {
-    const response: AxiosResponse<ApiResponse<UserPreferences>> = await apiClient.get(
-      `/users/${userId}/preferences`
-    );
-    return extractData(response);
-  } catch (error) {
-    handleApiError(error);
-  }
+  return withRetry(async () => {
+    try {
+      const response: AxiosResponse<ApiResponse<UserPreferences>> = await apiClient.get(
+        `/users/${userId}/preferences`
+      );
+      return extractData(response);
+    } catch (error) {
+      handleApiError(error);
+    }
+  });
 }
 
 /**
@@ -479,15 +703,17 @@ export async function updateUserPreference(
   name: string,
   value: string | number | boolean
 ): Promise<UserPreferences> {
-  try {
-    const response: AxiosResponse<ApiResponse<UserPreferences>> = await apiClient.put(
-      `/users/${userId}/preferences`,
-      { name, value: String(value) }
-    );
-    return extractData(response);
-  } catch (error) {
-    handleApiError(error);
-  }
+  return withRetry(async () => {
+    try {
+      const response: AxiosResponse<ApiResponse<UserPreferences>> = await apiClient.put(
+        `/users/${userId}/preferences`,
+        { name, value: String(value) }
+      );
+      return extractData(response);
+    } catch (error) {
+      handleApiError(error);
+    }
+  });
 }
 
 /**
@@ -532,15 +758,17 @@ export async function updateUserPreferences(
       value: String(value),
     }));
 
-  try {
-    const response: AxiosResponse<ApiResponse<UserPreferences>> = await apiClient.put(
-      `/users/${userId}/preferences/bulk`,
-      { preferences: preferencesArray }
-    );
-    return extractData(response);
-  } catch (error) {
-    handleApiError(error);
-  }
+  return withRetry(async () => {
+    try {
+      const response: AxiosResponse<ApiResponse<UserPreferences>> = await apiClient.put(
+        `/users/${userId}/preferences/bulk`,
+        { preferences: preferencesArray }
+      );
+      return extractData(response);
+    } catch (error) {
+      handleApiError(error);
+    }
+  });
 }
 
 // ============================================================================
@@ -570,11 +798,13 @@ export async function updateUserPreferences(
  * ```
  */
 export async function deleteAvatar(userId: number): Promise<void> {
-  try {
-    await apiClient.delete(`/users/${userId}/avatar`);
-  } catch (error) {
-    handleApiError(error);
-  }
+  return withRetry(async () => {
+    try {
+      await apiClient.delete(`/users/${userId}/avatar`);
+    } catch (error) {
+      handleApiError(error);
+    }
+  });
 }
 
 /**
@@ -594,15 +824,17 @@ export async function deleteAvatar(userId: number): Promise<void> {
  * ```
  */
 export async function canEditOwnProfile(): Promise<boolean> {
-  try {
-    const response: AxiosResponse<ApiResponse<{ canEdit: boolean }>> = await apiClient.get(
-      '/users/me/capabilities/edit'
-    );
-    return extractData(response).canEdit;
-  } catch {
-    // If the capability check fails, assume no permission
-    return false;
-  }
+  return withRetry(async () => {
+    try {
+      const response: AxiosResponse<ApiResponse<{ canEdit: boolean }>> = await apiClient.get(
+        '/users/me/capabilities/edit'
+      );
+      return extractData(response).canEdit;
+    } catch {
+      // If the capability check fails, assume no permission
+      return false;
+    }
+  });
 }
 
 // ============================================================================
@@ -610,8 +842,10 @@ export async function canEditOwnProfile(): Promise<boolean> {
 // ============================================================================
 
 // Re-export types that consumers of this module may need
+// User is exported from entities to maintain type consistency across the application
+export type { User } from '@/types/entities';
+
 export type {
-  User,
   UserPreferences,
   UpdateProfilePayload,
   UpdateProfileData,
@@ -620,3 +854,19 @@ export type {
 } from '../types/profile.types';
 
 export type { ApiResponse } from '@/types/api';
+
+// ============================================================================
+// Function Aliases for Backward Compatibility
+// ============================================================================
+
+/**
+ * Alias for getUserProfile for backward compatibility with existing hooks
+ * @deprecated Use getUserProfile instead
+ */
+export const fetchUserProfile = getUserProfile;
+
+/**
+ * Alias for getCurrentUserProfile for backward compatibility with existing hooks
+ * @deprecated Use getCurrentUserProfile instead
+ */
+export const fetchCurrentUserProfile = getCurrentUserProfile;
