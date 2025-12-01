@@ -49,7 +49,6 @@ import {
   Forum as ForumIcon,
   Check as CheckIcon,
   CheckCircle as CheckCircleIcon,
-  FilterList as FilterListIcon,
   Sort as SortIcon,
   MoreVert as MoreVertIcon,
   School as SchoolIcon,
@@ -195,7 +194,7 @@ function formatDueDate(dueDate: number, overdue: boolean): { text: string; color
  * @returns A hex color string
  */
 function getCourseColor(courseId: number): string {
-  const colors = [
+  const colors: readonly string[] = [
     '#1976d2', // Blue
     '#388e3c', // Green
     '#f57c00', // Orange
@@ -204,8 +203,9 @@ function getCourseColor(courseId: number): string {
     '#00838f', // Teal
     '#6d4c41', // Brown
     '#455a64', // Blue Grey
-  ];
-  return colors[courseId % colors.length];
+  ] as const;
+  // Use non-null assertion since we know the array has elements and modulo guarantees valid index
+  return colors[courseId % colors.length] ?? '#1976d2';
 }
 
 // ============================================================================
@@ -477,10 +477,13 @@ const TimelineWidget: React.FC = () => {
   const handleFilterChange = useCallback(
     (_event: React.SyntheticEvent, newValue: number) => {
       const newFilter = filterValues[newValue];
-      setPreferences((prev) => ({
-        ...prev,
-        filter: newFilter,
-      }));
+      // Only update if we got a valid filter value
+      if (newFilter !== undefined) {
+        setPreferences((prev) => ({
+          ...prev,
+          filter: newFilter,
+        }));
+      }
     },
     [filterValues, setPreferences]
   );
