@@ -49,7 +49,6 @@ import {
   Edit as EditIcon,
   PersonAdd as PersonAddIcon,
   Grade as GradeIcon,
-  Description as DescriptionIcon,
   Add as AddIcon,
   Delete as DeleteIcon,
   Update as UpdateIcon,
