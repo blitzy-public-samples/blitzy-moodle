@@ -411,7 +411,7 @@ export function useCreateCategory(
 
     onSettled: (data, error, newCategoryInput, context) => {
       // Always invalidate to ensure cache is in sync with server
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: categoryQueryKeys.list(newCategoryInput.glossaryId),
       });
 
@@ -580,7 +580,7 @@ export function useUpdateCategory(
     onSettled: (data, error, updateInput, context) => {
       // Always invalidate to ensure cache is in sync with server
       if (context?.glossaryId) {
-        queryClient.invalidateQueries({
+        void queryClient.invalidateQueries({
           queryKey: categoryQueryKeys.list(context.glossaryId),
         });
       }
@@ -715,12 +715,12 @@ export function useDeleteCategory(
 
     onSettled: (data, error, deleteInput, context) => {
       // Always invalidate related queries to ensure cache consistency
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: categoryQueryKeys.list(deleteInput.glossaryId),
       });
 
       // Also invalidate entries query since entries might have been affected
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ['glossary', deleteInput.glossaryId, 'entries'],
       });
 
