@@ -677,7 +677,8 @@ function OnlineUsersWidget({
                     const filters: RoleFilter[] = ['all', 'students', 'teachers'];
                     const currentIndex = filters.indexOf(roleFilter);
                     const nextIndex = (currentIndex + 1) % filters.length;
-                    handleFilterChange(filters[nextIndex]);
+                    // Use fallback to 'all' to satisfy TypeScript since array access could theoretically be undefined
+                    handleFilterChange(filters[nextIndex] ?? 'all');
                   }}
                 >
                   <FilterListIcon fontSize="small" />
