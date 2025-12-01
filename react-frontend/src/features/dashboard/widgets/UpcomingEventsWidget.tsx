@@ -345,7 +345,6 @@ interface EventItemProps {
 }
 
 function EventItem({ event, compact }: EventItemProps): React.ReactElement {
-  const eventUrl = event.url || '#';
   const eventColor = getEventColor(event.eventtype);
   const formattedTime = formatEventTime(event.timestart);
 
