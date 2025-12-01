@@ -127,8 +127,15 @@ export interface UseCategoriesOptions
 export interface UseCreateCategoryOptions
   extends Omit<
     UseMutationOptions<GlossaryCategory, Error, CreateCategoryInput, CreateCategoryContext>,
-    'mutationFn'
-  > {}
+    'mutationFn' | 'onMutate' | 'onError' | 'onSuccess' | 'onSettled'
+  > {
+  /** Called when the mutation encounters an error */
+  onError?: (error: Error, variables: CreateCategoryInput, context: CreateCategoryContext | undefined) => void;
+  /** Called when the mutation succeeds */
+  onSuccess?: (data: GlossaryCategory, variables: CreateCategoryInput, context: CreateCategoryContext | undefined) => void;
+  /** Called after the mutation completes (success or error) */
+  onSettled?: (data: GlossaryCategory | undefined, error: Error | null, variables: CreateCategoryInput, context: CreateCategoryContext | undefined) => void;
+}
 
 /**
  * Options for the useUpdateCategory mutation hook
@@ -136,8 +143,15 @@ export interface UseCreateCategoryOptions
 export interface UseUpdateCategoryOptions
   extends Omit<
     UseMutationOptions<GlossaryCategory, Error, UpdateCategoryInput, UpdateCategoryContext>,
-    'mutationFn'
-  > {}
+    'mutationFn' | 'onMutate' | 'onError' | 'onSuccess' | 'onSettled'
+  > {
+  /** Called when the mutation encounters an error */
+  onError?: (error: Error, variables: UpdateCategoryInput, context: UpdateCategoryContext | undefined) => void;
+  /** Called when the mutation succeeds */
+  onSuccess?: (data: GlossaryCategory, variables: UpdateCategoryInput, context: UpdateCategoryContext | undefined) => void;
+  /** Called after the mutation completes (success or error) */
+  onSettled?: (data: GlossaryCategory | undefined, error: Error | null, variables: UpdateCategoryInput, context: UpdateCategoryContext | undefined) => void;
+}
 
 /**
  * Input for delete category mutation
@@ -155,8 +169,15 @@ export interface DeleteCategoryInput {
 export interface UseDeleteCategoryOptions
   extends Omit<
     UseMutationOptions<boolean, Error, DeleteCategoryInput, DeleteCategoryContext>,
-    'mutationFn'
-  > {}
+    'mutationFn' | 'onMutate' | 'onError' | 'onSuccess' | 'onSettled'
+  > {
+  /** Called when the mutation encounters an error */
+  onError?: (error: Error, variables: DeleteCategoryInput, context: DeleteCategoryContext | undefined) => void;
+  /** Called when the mutation succeeds */
+  onSuccess?: (data: boolean, variables: DeleteCategoryInput, context: DeleteCategoryContext | undefined) => void;
+  /** Called after the mutation completes (success or error) */
+  onSettled?: (data: boolean | undefined, error: Error | null, variables: DeleteCategoryInput, context: DeleteCategoryContext | undefined) => void;
+}
 
 // ============================================================================
 // Context Types for Optimistic Updates
@@ -167,7 +188,7 @@ export interface UseDeleteCategoryOptions
  */
 interface CreateCategoryContext {
   /** Previous categories list for rollback */
-  previousCategories?: GlossaryCategory[];
+  previousCategories: GlossaryCategory[] | undefined;
   /** Temporary ID assigned to the optimistic category */
   tempId: number;
 }
@@ -177,9 +198,9 @@ interface CreateCategoryContext {
  */
 interface UpdateCategoryContext {
   /** Previous categories list for rollback */
-  previousCategories?: GlossaryCategory[];
+  previousCategories: GlossaryCategory[] | undefined;
   /** The glossary ID for cache key lookup */
-  glossaryId?: Id;
+  glossaryId: Id | undefined;
 }
 
 /**
@@ -187,7 +208,7 @@ interface UpdateCategoryContext {
  */
 interface DeleteCategoryContext {
   /** Previous categories list for rollback */
-  previousCategories?: GlossaryCategory[];
+  previousCategories: GlossaryCategory[] | undefined;
 }
 
 // ============================================================================
@@ -388,17 +409,23 @@ export function useCreateCategory(
       options?.onSuccess?.(createdCategory, newCategoryInput, context);
     },
 
-    onSettled: (data, error, newCategoryInput) => {
+    onSettled: (data, error, newCategoryInput, context) => {
       // Always invalidate to ensure cache is in sync with server
       queryClient.invalidateQueries({
         queryKey: categoryQueryKeys.list(newCategoryInput.glossaryId),
       });
 
       // Call user's onSettled if provided
-      options?.onSettled?.(data, error, newCategoryInput, undefined);
+      options?.onSettled?.(data, error, newCategoryInput, context);
     },
 
-    ...options,
+    // Pass through non-callback options
+    retry: options?.retry,
+    retryDelay: options?.retryDelay,
+    gcTime: options?.gcTime,
+    meta: options?.meta,
+    networkMode: options?.networkMode,
+    throwOnError: options?.throwOnError,
   });
 }
 
@@ -562,7 +589,13 @@ export function useUpdateCategory(
       options?.onSettled?.(data, error, updateInput, context);
     },
 
-    ...options,
+    // Pass through non-callback options
+    retry: options?.retry,
+    retryDelay: options?.retryDelay,
+    gcTime: options?.gcTime,
+    meta: options?.meta,
+    networkMode: options?.networkMode,
+    throwOnError: options?.throwOnError,
   });
 }
 
@@ -695,7 +728,13 @@ export function useDeleteCategory(
       options?.onSettled?.(data, error, deleteInput, context);
     },
 
-    ...options,
+    // Pass through non-callback options
+    retry: options?.retry,
+    retryDelay: options?.retryDelay,
+    gcTime: options?.gcTime,
+    meta: options?.meta,
+    networkMode: options?.networkMode,
+    throwOnError: options?.throwOnError,
   });
 }
 
