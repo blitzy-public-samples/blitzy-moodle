@@ -19,9 +19,7 @@ import {
   useQuery,
   useMutation,
   useQueryClient,
-  type UseQueryOptions,
   type UseMutationOptions,
-  type QueryKey,
 } from '@tanstack/react-query';
 
 import {
@@ -324,7 +322,7 @@ export function usePostComment(
       return { previousComments, entryId: newCommentInput.entryId };
     },
 
-    onError: (_error, variables, context) => {
+    onError: (_error, _variables, context) => {
       // Rollback to previous state on error
       if (context?.previousComments && context?.entryId) {
         queryClient.setQueriesData<CommentsResponse>(
@@ -345,7 +343,7 @@ export function usePostComment(
       }
     },
 
-    onSuccess: (newComment, variables) => {
+    onSuccess: (_newComment, variables) => {
       // Invalidate and refetch to get accurate server data
       queryClient.invalidateQueries({
         queryKey: commentKeys.entry(variables.entryId),
@@ -463,7 +461,7 @@ export function useUpdateComment(
       return { previousComments, entryId };
     },
 
-    onError: (_error, variables, context) => {
+    onError: (_error, _variables, context) => {
       // Rollback on error
       if (context?.previousComments && context?.entryId) {
         queryClient.setQueriesData<CommentsResponse>(
@@ -588,7 +586,7 @@ export function useDeleteComment(
       return { previousComments, entryId };
     },
 
-    onError: (_error, variables, context) => {
+    onError: (_error, _variables, context) => {
       // Rollback on error
       if (context?.previousComments && context?.entryId) {
         queryClient.setQueriesData<CommentsResponse>(
