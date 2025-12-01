@@ -128,8 +128,8 @@ export function LoginForm({
     };
 
     try {
-      // Submit login request using the useAuth hook
-      const response = await login(credentials.username, credentials.password);
+      // Submit login request using the useAuth hook with LoginCredentials object
+      const response = await login(credentials);
       
       // Only call onSuccess if user and tokens are present
       if (response.user && response.tokens) {
