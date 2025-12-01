@@ -28,7 +28,7 @@
 
 import { useQuery, type UseQueryOptions } from '@tanstack/react-query';
 import { getCourse } from '../api/courseApi';
-import type { Course } from '../types/course.types';
+import type { Course } from '@/types/entities';
 import type { ApiResponse } from '@/types/api';
 
 // ============================================================================
