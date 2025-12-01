@@ -22,22 +22,19 @@ import {
 } from 'vitest';
 import { cleanup, waitFor, act } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
-import { useForm, FormProvider, Controller } from 'react-hook-form';
+import { useForm, FormProvider, Controller, Control, FieldValues } from 'react-hook-form';
 import { createTheme, ThemeProvider } from '@mui/material';
 import type { Theme } from '@mui/material/styles';
 
 import RichTextEditor from '@/components/editor/RichTextEditor';
-import type {
-  RichTextEditorProps,
-  RichTextEditorRef,
-} from '@/components/editor/RichTextEditor';
+import type { RichTextEditorRef } from '@/components/editor/RichTextEditor';
 import {
   render,
   screen,
   userEvent,
   fireEvent,
-} from '@/tests/helpers/render';
-import { server } from '@/tests/mocks/server';
+} from '@tests/helpers/render';
+import { server } from '@tests/mocks/server';
 
 // ============================================================================
 // MOCK TYPES AND INTERFACES
@@ -93,16 +90,19 @@ function createMockEditorInstance(): MockEditorInstance {
 
 // Global mock editor instance for tests
 let mockEditorInstance: MockEditorInstance;
-let mockInitCallback: ((evt: unknown, editor: MockEditorInstance) => void) | null = null;
-let mockOnChangeCallback: ((content: string, editor: MockEditorInstance) => void) | null = null;
+// These are assigned during mock execution for potential use in tests
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+let _mockInitCallback: ((evt: unknown, editor: MockEditorInstance) => void) | null = null;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+let _mockOnChangeCallback: ((content: string, editor: MockEditorInstance) => void) | null = null;
 let capturedInitConfig: Record<string, unknown> | null = null;
 
 // Mock the @tinymce/tinymce-react module
 vi.mock('@tinymce/tinymce-react', () => ({
   Editor: vi.fn(({ onInit, onEditorChange, init, value, disabled }: MockEditorProps) => {
     // Capture callbacks for testing
-    mockInitCallback = onInit ?? null;
-    mockOnChangeCallback = onEditorChange ?? null;
+    _mockInitCallback = onInit ?? null;
+    _mockOnChangeCallback = onEditorChange ?? null;
     capturedInitConfig = init ?? null;
 
     // Simulate editor initialization on render
@@ -262,8 +262,8 @@ function createDarkTheme(): Theme {
 beforeEach(() => {
   vi.clearAllMocks();
   mockEditorInstance = createMockEditorInstance();
-  mockInitCallback = null;
-  mockOnChangeCallback = null;
+  _mockInitCallback = null;
+  _mockOnChangeCallback = null;
   capturedInitConfig = null;
   mockUploadFile.mockResolvedValue({ url: 'https://example.com/uploaded.jpg' });
 });
@@ -272,6 +272,9 @@ afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   server.resetHandlers();
+  // Reference mock callbacks to satisfy noUnusedLocals (they're captured for potential test verification)
+  void _mockInitCallback;
+  void _mockOnChangeCallback;
 });
 
 // ============================================================================
@@ -395,19 +398,11 @@ describe('RichTextEditor', () => {
     });
 
     it('should use Controller name prop for form field registration', async () => {
-      const methods = {
-        control: {} as never,
-        handleSubmit: vi.fn((fn) => (e: React.FormEvent) => {
-          e?.preventDefault?.();
-          return fn({ content: '' });
-        }),
-      };
-
+      // Render without control prop to test basic name prop functionality
       render(
         <RichTextEditor
           name="testFieldName"
           label="Test Field"
-          control={methods.control}
         />
       );
 
@@ -415,6 +410,8 @@ describe('RichTextEditor', () => {
 
       // The component should render with the provided name
       expect(screen.getByText('Test Field')).toBeInTheDocument();
+      // The editor container should be rendered
+      expect(screen.getByTestId('tinymce-editor')).toBeInTheDocument();
     });
 
     it('should display FormHelperText when validation fails', async () => {
@@ -803,7 +800,8 @@ describe('RichTextEditor', () => {
 
       await waitForEditorInit();
 
-      const editor = screen.getByRole('textbox');
+      // Use getByTestId to avoid multiple textbox role elements issue
+      const editor = screen.getByTestId('tinymce-editor');
       expect(editor).toHaveAttribute('aria-label');
     });
 
@@ -812,7 +810,9 @@ describe('RichTextEditor', () => {
 
       await waitForEditorInit();
 
-      expect(screen.getByRole('textbox')).toBeInTheDocument();
+      // Use getByTestId and verify role attribute
+      const editor = screen.getByTestId('tinymce-editor');
+      expect(editor).toHaveAttribute('role', 'textbox');
     });
 
     it('should support keyboard navigation through toolbar', async () => {
@@ -1183,9 +1183,11 @@ describe('RichTextEditor', () => {
         expect(editorRef.current).toBeDefined();
       });
 
-      const editor = editorRef.current?.getEditor();
+      const _editor = editorRef.current?.getEditor();
       // Editor may be null if not yet initialized, but the method should exist
       expect(editorRef.current?.getEditor).toBeDefined();
+      // Suppress unused variable warning - we're just verifying the method exists and returns
+      void _editor;
     });
   });
 
@@ -1374,12 +1376,12 @@ describe('RichTextEditor', () => {
   describe('React Hook Form Integration with Control', () => {
     it('should render with Controller when control prop is provided', async () => {
       function FormWithEditor(): React.ReactElement {
-        const { control } = useForm({ defaultValues: { content: '' } });
+        const methods = useForm<{ content: string }>({ defaultValues: { content: '' } });
         return (
           <RichTextEditor
             name="content"
             label="Form Content"
-            control={control}
+            control={methods.control as unknown as Control<FieldValues>}
           />
         );
       }
@@ -1394,7 +1396,7 @@ describe('RichTextEditor', () => {
 
     it('should display field error from fieldState when using control', async () => {
       function FormWithValidation(): React.ReactElement {
-        const { control, formState } = useForm({
+        const methods = useForm<{ content: string }>({
           defaultValues: { content: '' },
           mode: 'onChange',
         });
@@ -1403,9 +1405,9 @@ describe('RichTextEditor', () => {
           <RichTextEditor
             name="content"
             label="Required Content"
-            control={control}
-            error={!!formState.errors.content}
-            helperText={formState.errors.content?.message ?? ''}
+            control={methods.control as unknown as Control<FieldValues>}
+            error={!!methods.formState.errors.content}
+            helperText={methods.formState.errors.content?.message ?? ''}
             required
           />
         );
