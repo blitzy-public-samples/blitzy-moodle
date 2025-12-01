@@ -33,10 +33,8 @@ import {
   useQuery,
   useQueryClient,
   keepPreviousData,
-  type UseQueryResult,
 } from '@tanstack/react-query';
 import { getCourses, type CourseListParams } from '@/features/courses/api/courseApi';
-import type { GetCoursesResponse } from '@/features/courses/types/course.types';
 import useDebounce from '@/hooks/useDebounce';
 import type { Course } from '@/types/entities';
 import type { PaginatedResponse } from '@/types/api';
