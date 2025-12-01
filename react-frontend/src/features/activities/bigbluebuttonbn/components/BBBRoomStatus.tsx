@@ -381,7 +381,6 @@ export function BBBRoomStatus({
     isLoading,
     isError,
     error,
-    refetch,
   } = useBBBMeetingInfo(instanceId, {
     enabled: instanceId > 0,
     refetchInterval: enablePolling ? pollingInterval : false,
