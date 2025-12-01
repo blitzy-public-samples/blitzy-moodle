@@ -48,7 +48,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Today,
-  Event,
   CalendarToday,
   Circle,
 } from '@mui/icons-material';
