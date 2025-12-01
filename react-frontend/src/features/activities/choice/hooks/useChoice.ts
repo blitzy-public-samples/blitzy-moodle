@@ -369,11 +369,24 @@ async function fetchChoice(choiceId: number): Promise<Choice> {
     // Re-throw with more context for debugging
     if (error instanceof Error) {
       // Check for specific error types and provide user-friendly messages
-      const axiosError = error as { response?: { status?: number; data?: { error?: { message?: string; code?: string } } } };
+      // The error can be either:
+      // 1. Standard AxiosError: error.response.status
+      // 2. Serialized error (from interceptors): error.status (direct property)
+      const axiosError = error as { 
+        response?: { status?: number; data?: { error?: { message?: string; code?: string } } };
+        status?: number;
+        data?: { error?: { message?: string; code?: string } };
+        customError?: { message?: string; code?: string; status?: number };
+      };
 
-      if (axiosError.response) {
-        const { status, data } = axiosError.response;
+      // Get status from either response object or direct property (serialized error)
+      const status = axiosError.response?.status ?? axiosError.status;
+      // Get data from either response object or direct property (serialized error)
+      const data = axiosError.response?.data ?? axiosError.data;
+      // Get customError if present (from interceptors)
+      const customError = axiosError.customError;
 
+      if (status) {
         // Handle specific HTTP error statuses
         switch (status) {
           case 401:
@@ -385,7 +398,10 @@ async function fetchChoice(choiceId: number): Promise<Choice> {
           case 500:
             throw new Error('Server error: Unable to load choice activity. Please try again later.');
           default:
-            // Use error message from API if available
+            // Use error message from API or customError if available
+            if (customError?.message) {
+              throw new Error(customError.message);
+            }
             if (data?.error?.message) {
               throw new Error(data.error.message);
             }
@@ -393,7 +409,7 @@ async function fetchChoice(choiceId: number): Promise<Choice> {
       }
 
       // Network or other errors
-      if (error.message.includes('Network Error')) {
+      if (error.message.includes('Network Error') || error.message.includes('network')) {
         throw new Error('Network error: Unable to connect to the server. Please check your connection.');
       }
 
