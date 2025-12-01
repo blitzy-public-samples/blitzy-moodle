@@ -328,14 +328,16 @@ export function usePostComment(
         queryClient.setQueriesData<CommentsResponse>(
           { queryKey: commentKeys.entry(context.entryId) },
           (old) => {
-            if (!old) return old;
+            if (!old) {
+              return old;
+            }
             return {
               ...old,
-              comments: context.previousComments || [],
+              comments: context.previousComments ?? [],
               pagination: {
                 ...old.pagination,
-                total: (context.previousComments || []).length,
-                totalPages: Math.ceil((context.previousComments || []).length / old.pagination.perPage),
+                total: (context.previousComments ?? []).length,
+                totalPages: Math.ceil((context.previousComments ?? []).length / old.pagination.perPage),
               },
             };
           }
@@ -345,19 +347,19 @@ export function usePostComment(
 
     onSuccess: (_newComment, variables) => {
       // Invalidate and refetch to get accurate server data
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: commentKeys.entry(variables.entryId),
       });
 
       // Also invalidate the entry itself to update comment count
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ['glossary', 'entry', variables.entryId],
       });
     },
 
     onSettled: (_data, _error, variables) => {
       // Ensure data consistency after mutation completes
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: commentKeys.entry(variables.entryId),
       });
     },
@@ -441,7 +443,9 @@ export function useUpdateComment(
       queryClient.setQueriesData<CommentsResponse>(
         { queryKey: commentKeys.entry(entryId) },
         (old) => {
-          if (!old) return old;
+          if (!old) {
+            return old;
+          }
           return {
             ...old,
             comments: old.comments.map((comment) =>
@@ -467,10 +471,12 @@ export function useUpdateComment(
         queryClient.setQueriesData<CommentsResponse>(
           { queryKey: commentKeys.entry(context.entryId) },
           (old) => {
-            if (!old) return old;
+            if (!old) {
+              return old;
+            }
             return {
               ...old,
-              comments: context.previousComments || [],
+              comments: context.previousComments ?? [],
             };
           }
         );
@@ -479,14 +485,14 @@ export function useUpdateComment(
 
     onSuccess: (_data, variables) => {
       // Invalidate to ensure fresh data
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: commentKeys.entry(variables.entryId),
       });
     },
 
     onSettled: (_data, _error, variables) => {
       // Final cache synchronization
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: commentKeys.entry(variables.entryId),
       });
     },
@@ -564,7 +570,9 @@ export function useDeleteComment(
       queryClient.setQueriesData<CommentsResponse>(
         { queryKey: commentKeys.entry(entryId) },
         (old) => {
-          if (!old) return old;
+          if (!old) {
+            return old;
+          }
           const filteredComments = old.comments.filter(
             (comment) => comment.id !== commentId
           );
@@ -592,15 +600,17 @@ export function useDeleteComment(
         queryClient.setQueriesData<CommentsResponse>(
           { queryKey: commentKeys.entry(context.entryId) },
           (old) => {
-            if (!old) return old;
+            if (!old) {
+              return old;
+            }
             return {
               ...old,
-              comments: context.previousComments || [],
+              comments: context.previousComments ?? [],
               pagination: {
                 ...old.pagination,
-                total: (context.previousComments || []).length,
+                total: (context.previousComments ?? []).length,
                 totalPages: Math.ceil(
-                  (context.previousComments || []).length / old.pagination.perPage
+                  (context.previousComments ?? []).length / old.pagination.perPage
                 ),
               },
             };
@@ -611,19 +621,19 @@ export function useDeleteComment(
 
     onSuccess: (_data, variables) => {
       // Invalidate to ensure fresh data
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: commentKeys.entry(variables.entryId),
       });
 
       // Also invalidate the entry itself to update comment count
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ['glossary', 'entry', variables.entryId],
       });
     },
 
     onSettled: (_data, _error, variables) => {
       // Final cache synchronization
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: commentKeys.entry(variables.entryId),
       });
     },
@@ -719,7 +729,7 @@ export function invalidateEntryComments(
   queryClient: ReturnType<typeof useQueryClient>,
   entryId: Id
 ): void {
-  queryClient.invalidateQueries({
+  void queryClient.invalidateQueries({
     queryKey: commentKeys.entry(entryId),
   });
 }
