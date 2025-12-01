@@ -50,12 +50,10 @@ import {
   DashboardVisibility,
   DashboardPageName,
   CalendarEventType,
-  TimelineFilter,
-  TimelineSort,
   ActivityType,
 } from '@/features/dashboard/types/dashboard.types';
 
-// Import interfaces and type aliases as types
+// Import interfaces, type aliases, and enums used only as types
 import type {
   DashboardData,
   CourseOverviewPreferences,
@@ -71,6 +69,8 @@ import type {
   DashboardPage,
   RoleCapabilities,
   TimelineLimit,
+  TimelineFilter,
+  TimelineSort,
   CourseGrouping,
   CourseSort,
   CourseView,
