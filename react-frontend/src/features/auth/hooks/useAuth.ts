@@ -46,12 +46,16 @@ import {
   getCurrentUser,
   CURRENT_USER_QUERY_KEY,
 } from '@/features/auth/api/authApi';
+import type { LoginResponse } from '@/features/auth/api/authApi';
 import type {
   User,
   AuthTokens,
   AuthError,
   LoginCredentials,
 } from '@/features/auth/types/auth.types';
+
+// Re-export LoginResponse for consumer convenience
+export type { LoginResponse };
 
 // ============================================================================
 // Constants
@@ -112,6 +116,22 @@ export interface AuthHook {
   isLoading: boolean;
 
   /**
+   * Loading state specifically for login operation
+   *
+   * True only during login mutation, false for other auth operations.
+   * Use this when you need to distinguish login loading from other loading states.
+   */
+  isLoginLoading: boolean;
+
+  /**
+   * Loading state specifically for logout operation
+   *
+   * True only during logout mutation, false for other auth operations.
+   * Use this when you need to distinguish logout loading from other loading states.
+   */
+  isLogoutLoading: boolean;
+
+  /**
    * Authentication error information if any
    *
    * Contains error code and message when authentication fails.
@@ -129,17 +149,18 @@ export interface AuthHook {
    * - Invalidates React Query cache
    *
    * @param credentials - Username and password
-   * @returns Promise resolving when login completes
+   * @returns Promise resolving to LoginResponse with user and tokens
    * @throws {AuthError} If authentication fails
    *
    * @example
    * ```tsx
-   * const { login, isLoading, error } = useAuth();
+   * const { login, isLoginLoading, error } = useAuth();
    *
    * const handleSubmit = async (e: FormEvent) => {
    *   e.preventDefault();
    *   try {
-   *     await login({ username, password });
+   *     const { user, tokens } = await login({ username, password });
+   *     console.log('Logged in as:', user.firstname);
    *     navigate('/dashboard');
    *   } catch (err) {
    *     // Error is available via the error property
@@ -147,7 +168,7 @@ export interface AuthHook {
    * };
    * ```
    */
-  login: (credentials: LoginCredentials) => Promise<void>;
+  login: (credentials: LoginCredentials) => Promise<LoginResponse>;
 
   /**
    * Logout the current user
@@ -269,6 +290,23 @@ export interface AuthHook {
   clearError: () => void;
 }
 
+/**
+ * UseAuthReturn type alias for AuthHook
+ *
+ * Provides an alternative name for the hook return type that follows
+ * common React hook naming conventions (useXxx returns UseXxxReturn).
+ *
+ * @example
+ * ```tsx
+ * import type { UseAuthReturn } from '@/features/auth/hooks/useAuth';
+ *
+ * function MyComponent({ auth }: { auth: UseAuthReturn }) {
+ *   return auth.isAuthenticated ? <Dashboard /> : <Login />;
+ * }
+ * ```
+ */
+export type UseAuthReturn = AuthHook;
+
 // ============================================================================
 // Helper Functions
 // ============================================================================
@@ -344,8 +382,12 @@ function isTokenExpired(token: string | null): boolean {
     const parts = token.split('.');
     if (parts.length !== 3) return true;
 
+    // Get payload part (guaranteed to exist after length check)
+    const payloadPart = parts[1];
+    if (!payloadPart) return true;
+
     // Decode payload (base64url -> JSON)
-    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+    const payload = JSON.parse(atob(payloadPart.replace(/-/g, '+').replace(/_/g, '/')));
 
     // Check expiration (exp is in seconds, Date.now() is in milliseconds)
     const expirationMs = payload.exp * 1000;
@@ -433,7 +475,9 @@ export function useAuth(): AuthHook {
 
   // Select auth state from Redux store
   const user = useAppSelector((state) => state.auth.user);
-  const tokens = useAppSelector((state) => state.auth.tokens);
+  // Note: tokens selector available for future features requiring token inspection
+  const _tokens = useAppSelector((state) => state.auth.tokens);
+  void _tokens; // Suppress unused variable warning - reserved for future use
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
   const isReduxLoading = useAppSelector((state) => state.auth.isLoading);
   const reduxError = useAppSelector((state) => state.auth.error);
@@ -576,10 +620,13 @@ export function useAuth(): AuthHook {
 
   /**
    * Login with credentials
+   *
+   * Returns the LoginResponse containing user and tokens for consumer convenience.
    */
   const login = useCallback(
-    async (credentials: LoginCredentials): Promise<void> => {
-      await loginMutation.mutateAsync(credentials);
+    async (credentials: LoginCredentials): Promise<LoginResponse> => {
+      const response = await loginMutation.mutateAsync(credentials);
+      return response;
     },
     [loginMutation]
   );
@@ -626,7 +673,8 @@ export function useAuth(): AuthHook {
       }
 
       // Fetch current user from API
-      const { data: userData } = await queryClient.fetchQuery({
+      // Note: fetchQuery returns TData directly, not { data: TData }
+      const userData = await queryClient.fetchQuery({
         queryKey: CURRENT_USER_QUERY_KEY,
         queryFn: getCurrentUser,
       });
@@ -767,6 +815,20 @@ export function useAuth(): AuthHook {
     checkAuthQuery.isLoading;
 
   /**
+   * Login-specific loading state
+   *
+   * True only when login mutation is in progress.
+   */
+  const isLoginLoading = loginMutation.isPending;
+
+  /**
+   * Logout-specific loading state
+   *
+   * True only when logout mutation is in progress.
+   */
+  const isLogoutLoading = logoutMutation.isPending;
+
+  /**
    * Combined error state
    *
    * Returns error from Redux state, mutations, or query.
@@ -785,6 +847,8 @@ export function useAuth(): AuthHook {
     user,
     isAuthenticated,
     isLoading,
+    isLoginLoading,
+    isLogoutLoading,
     error,
     login,
     logout,
