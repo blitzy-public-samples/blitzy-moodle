@@ -303,8 +303,9 @@ describe('GradingStrategyRenderer', () => {
   let user: ReturnType<typeof userEvent.setup>;
 
   beforeEach(() => {
-    // Setup user event instance for each test
-    user = userEvent.setup();
+    // Setup user event instance for each test with reduced delay for faster typing
+    // This prevents timeouts when typing long strings during parallel test execution
+    user = userEvent.setup({ delay: null });
     
     // Clear all mocks before each test
     vi.clearAllMocks();
