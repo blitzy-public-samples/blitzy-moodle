@@ -74,13 +74,12 @@ import {
 } from '@mui/icons-material';
 
 // Internal imports
-import type { Course } from '@/features/courses/types/course.types';
+import type { Course, CourseCategory } from '@/types/entities';
 import { deleteCourse } from '@/features/courses/api/courseApi';
 import useDebounce from '@/hooks/useDebounce';
-import useToast from '@/hooks/useToast';
+import { useToast } from '@/hooks/useToast';
 
 // Admin-specific imports
-import type { CourseCategory } from '../types/category.types';
 import type { CourseFilters, CourseSortField, SortOrder } from '../types/filters.types';
 import type { BulkActionResult } from '../types/bulk.types';
 import {
@@ -273,9 +272,15 @@ const CourseManagement: React.FC<CourseManagementProps> = ({
       filterObj.visible = visibilityFilter === 'visible';
     }
 
-    if (sortModel.length > 0) {
-      filterObj.sortBy = sortModel[0].field as CourseSortField;
-      filterObj.sortOrder = sortModel[0].sort as SortOrder;
+    if (sortModel.length > 0 && sortModel[0]) {
+      const sortField = sortModel[0].field;
+      const sortDirection = sortModel[0].sort;
+      if (sortField) {
+        filterObj.sortBy = sortField as CourseSortField;
+      }
+      if (sortDirection) {
+        filterObj.sortOrder = sortDirection as SortOrder;
+      }
     }
 
     return filterObj;
@@ -304,7 +309,7 @@ const CourseManagement: React.FC<CourseManagementProps> = ({
   /**
    * Query for fetching categories for filter dropdown
    */
-  const { data: categoriesData, isLoading: isCategoriesLoading } = useQuery({
+  const { data: categoriesData } = useQuery({
     queryKey: [ADMIN_CATEGORIES_QUERY_KEY],
     queryFn: () => getAllCategories(),
     staleTime: 60000, // 1 minute
@@ -385,10 +390,10 @@ const CourseManagement: React.FC<CourseManagementProps> = ({
   // ============================================================================
 
   const courses: CourseRow[] = useMemo(() => {
-    if (!coursesData?.success || !coursesData.data?.courses) {
+    if (!coursesData?.success || !coursesData.data?.items) {
       return [];
     }
-    return coursesData.data.courses.map((course) => ({
+    return coursesData.data.items.map((course: Course) => ({
       ...course,
       id: course.id,
     }));
@@ -399,10 +404,10 @@ const CourseManagement: React.FC<CourseManagementProps> = ({
   }, [coursesData]);
 
   const categories: CourseCategory[] = useMemo(() => {
-    if (!categoriesData?.success || !categoriesData.data?.categories) {
+    if (!categoriesData?.success || !categoriesData.data?.items) {
       return [];
     }
-    return categoriesData.data.categories;
+    return categoriesData.data.items;
   }, [categoriesData]);
 
   const selectedCoursesCount = selectedCourseIds.length;
@@ -605,7 +610,7 @@ const CourseManagement: React.FC<CourseManagementProps> = ({
    */
   const handleToggleVisibility = useCallback(
     (course: CourseRow) => {
-      const newVisibility = course.visible === 1 ? false : true;
+      const newVisibility = !course.visible;
       bulkVisibilityMutation.mutate({
         courseIds: [course.id],
         visible: newVisibility,
@@ -723,7 +728,7 @@ const CourseManagement: React.FC<CourseManagementProps> = ({
                       <EditIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
-                  <Tooltip title={params.row.visible === 1 ? 'Hide Course' : 'Show Course'}>
+                  <Tooltip title={params.row.visible ? 'Hide Course' : 'Show Course'}>
                     <IconButton
                       size="small"
                       onClick={(e) => {
@@ -731,12 +736,12 @@ const CourseManagement: React.FC<CourseManagementProps> = ({
                         handleToggleVisibility(params.row);
                       }}
                       aria-label={
-                        params.row.visible === 1
+                        params.row.visible
                           ? `Hide ${params.row.fullname}`
                           : `Show ${params.row.fullname}`
                       }
                     >
-                      {params.row.visible === 1 ? (
+                      {params.row.visible ? (
                         <VisibilityOffIcon fontSize="small" />
                       ) : (
                         <VisibilityIcon fontSize="small" />
@@ -1176,6 +1181,3 @@ const CourseManagement: React.FC<CourseManagementProps> = ({
 };
 
 export default CourseManagement;
-
-// Re-export props interface for external use
-export type { CourseManagementProps };
