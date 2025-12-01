@@ -468,7 +468,7 @@ export function useChoiceResponse(): UseChoiceResponseResult {
      * @returns Context object with previous data for rollback
      */
     onMutate: async (input: ChoiceResponseInput): Promise<MutationContext> => {
-      const { choiceId, answer, action = 'submit', courseId } = input;
+      const { choiceId, answer, action = 'submit' } = input;
 
       // Cancel any outgoing refetches to avoid overwriting optimistic update
       await queryClient.cancelQueries({
@@ -544,7 +544,7 @@ export function useChoiceResponse(): UseChoiceResponseResult {
      */
     onError: (
       error: Error,
-      input: ChoiceResponseInput,
+      _input: ChoiceResponseInput,
       context: MutationContext | undefined
     ): void => {
       // Rollback to previous data on error
