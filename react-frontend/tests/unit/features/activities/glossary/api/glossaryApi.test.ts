@@ -25,9 +25,6 @@ import type {
   GlossaryComment,
   GlossaryAttachment,
   RatingStats,
-  GlossaryDisplayFormat,
-  GlossaryBrowseMode,
-  TextFormat,
   CreateEntryInput,
   UpdateEntryInput,
   CreateCategoryInput,
@@ -37,7 +34,12 @@ import type {
   UpdateCommentInput,
   GlossaryFilters,
 } from '@/features/activities/glossary/types/glossary.types';
-import { server } from '@/tests/mocks/server';
+import {
+  GlossaryDisplayFormat,
+  GlossaryBrowseMode,
+  TextFormat,
+} from '@/features/activities/glossary/types/glossary.types';
+import { server } from '@tests/mocks/server';
 
 // Mock the apiClient module
 vi.mock('@/services/api/client', () => ({
@@ -388,7 +390,7 @@ describe('glossaryApi', () => {
       expect(apiClient.get).toHaveBeenCalledTimes(1);
       expect(apiClient.get).toHaveBeenCalledWith('/glossary', { params: { courseid: 5 } });
       expect(result).toHaveLength(2);
-      expect(result[0].mainglossary).toBe(true);
+      expect(result[0]!.mainglossary).toBe(true);
     });
 
     it('should return empty array when no glossaries exist', async () => {
@@ -611,7 +613,7 @@ describe('glossaryApi', () => {
 
       expect(result.attachment).toBe(true);
       expect(result.attachments).toHaveLength(1);
-      expect(result.attachments[0].filename).toBe('diagram.png');
+      expect(result.attachments![0]!.filename).toBe('diagram.png');
     });
 
     it('should return entry with category information', async () => {
@@ -1014,8 +1016,8 @@ describe('glossaryApi', () => {
       expect(apiClient.get).toHaveBeenCalledTimes(1);
       expect(apiClient.get).toHaveBeenCalledWith('/glossary/1/categories');
       expect(result).toHaveLength(2);
-      expect(result[0].name).toBe('Technical Terms');
-      expect(result[0].entrycount).toBe(25);
+      expect(result[0]!.name).toBe('Technical Terms');
+      expect(result[0]!.entrycount).toBe(25);
     });
 
     it('should return empty array when no categories exist', async () => {
@@ -1357,7 +1359,7 @@ describe('glossaryApi', () => {
       expect(apiClient.get).toHaveBeenCalledTimes(1);
       expect(apiClient.get).toHaveBeenCalledWith('/glossary/entries/100/comments');
       expect(result).toHaveLength(2);
-      expect(result[0].content).toBe('Great explanation!');
+      expect(result[0]!.content).toBe('Great explanation!');
     });
 
     it('should return empty array when no comments exist', async () => {
@@ -1545,7 +1547,7 @@ describe('glossaryApi', () => {
         },
       });
       expect(result.entries).toHaveLength(1);
-      expect(result.entries[0].concept).toBe('API');
+      expect(result.entries[0]!.concept).toBe('API');
     });
 
     it('should search with fullsearch enabled', async () => {
@@ -1686,7 +1688,7 @@ describe('glossaryApi', () => {
       // Create a custom mock that captures the onUploadProgress callback
       let capturedOnUploadProgress: ((event: { loaded: number; total: number }) => void) | undefined;
 
-      vi.mocked(apiClient.post).mockImplementationOnce((url, data, config) => {
+      vi.mocked(apiClient.post).mockImplementationOnce((_url, _data, config) => {
         capturedOnUploadProgress = config?.onUploadProgress as unknown as (event: { loaded: number; total: number }) => void;
         return Promise.resolve(createMockAxiosResponse(mockResponse));
       });
@@ -1781,8 +1783,8 @@ describe('glossaryApi', () => {
       expect(apiClient.get).toHaveBeenCalledTimes(1);
       expect(apiClient.get).toHaveBeenCalledWith('/glossary/entries/100/attachments');
       expect(result).toHaveLength(2);
-      expect(result[0].filename).toBe('document.pdf');
-      expect(result[1].filename).toBe('image.png');
+      expect(result[0]!.filename).toBe('document.pdf');
+      expect(result[1]!.filename).toBe('image.png');
     });
 
     it('should return empty array when no attachments exist', async () => {
@@ -1805,7 +1807,7 @@ describe('glossaryApi', () => {
 
       const result = await getAttachments(100);
 
-      expect(result[0].fileurl).toBe('https://example.com/files/download/123');
+      expect(result[0]!.fileurl).toBe('https://example.com/files/download/123');
     });
   });
 
