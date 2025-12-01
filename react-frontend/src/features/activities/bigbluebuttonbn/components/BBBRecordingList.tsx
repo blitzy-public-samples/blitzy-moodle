@@ -50,9 +50,7 @@ import {
   Search as SearchIcon,
   PlayArrow as PlayIcon,
   Visibility as PublishIcon,
-  VisibilityOff as UnpublishIcon,
   Lock as ProtectIcon,
-  LockOpen as UnprotectIcon,
   Delete as DeleteIcon,
   Edit as EditIcon,
   Check as CheckIcon,
@@ -258,7 +256,7 @@ export const BBBRecordingList: FC<BBBRecordingListProps> = ({
   });
 
   // Toast notifications
-  const { success, error: showError, warning } = useToast();
+  const { success, error: showError } = useToast();
 
   // Query client for cache management
   const queryClient = useQueryClient();
@@ -300,7 +298,7 @@ export const BBBRecordingList: FC<BBBRecordingListProps> = ({
   const updateMetadataMutation = useUpdateBBBRecordingMetadata(instanceId);
 
   // Protect recording mutation (not in useBBBRecordings, implement inline)
-  const protectMutation = useMutation<BBBRecording, Error, { recordingId: string }>({
+  const protectMutation = useMutation<BBBRecording, Error, { recordingId: string }, { previousRecordings: BBBRecording[] | undefined }>({
     mutationFn: async ({ recordingId }) => {
       const response = await apiClient.post<{
         success: boolean;
@@ -355,7 +353,7 @@ export const BBBRecordingList: FC<BBBRecordingListProps> = ({
   });
 
   // Unprotect recording mutation
-  const unprotectMutation = useMutation<BBBRecording, Error, { recordingId: string }>({
+  const unprotectMutation = useMutation<BBBRecording, Error, { recordingId: string }, { previousRecordings: BBBRecording[] | undefined }>({
     mutationFn: async ({ recordingId }) => {
       const response = await apiClient.post<{
         success: boolean;
@@ -547,7 +545,7 @@ export const BBBRecordingList: FC<BBBRecordingListProps> = ({
         sortable: true,
         filterable: true,
         renderCell: (params) => {
-          const recording = params.row as BBBRecording;
+          const recording = params.row;
           const isEditing =
             editState.recordingId === recording.recordingId &&
             editState.field === 'name';
@@ -625,7 +623,7 @@ export const BBBRecordingList: FC<BBBRecordingListProps> = ({
         sortable: true,
         filterable: true,
         renderCell: (params) => {
-          const recording = params.row as BBBRecording;
+          const recording = params.row;
           const isEditing =
             editState.recordingId === recording.recordingId &&
             editState.field === 'description';
@@ -707,7 +705,7 @@ export const BBBRecordingList: FC<BBBRecordingListProps> = ({
         width: 180,
         sortable: true,
         renderCell: (params) => {
-          const recording = params.row as BBBRecording;
+          const recording = params.row;
           return (
             <Typography variant="body2">
               {formatDate(recording.startTime)}
@@ -723,7 +721,7 @@ export const BBBRecordingList: FC<BBBRecordingListProps> = ({
         width: 120,
         sortable: false,
         renderCell: (params) => {
-          const recording = params.row as BBBRecording;
+          const recording = params.row;
           return (
             <Typography variant="body2">
               {formatDuration(recording.startTime, recording.endTime)}
@@ -739,7 +737,7 @@ export const BBBRecordingList: FC<BBBRecordingListProps> = ({
         width: 180,
         sortable: false,
         renderCell: (params) => {
-          const recording = params.row as BBBRecording;
+          const recording = params.row;
           return (
             <Stack direction="row" spacing={0.5}>
               <Chip
@@ -769,7 +767,7 @@ export const BBBRecordingList: FC<BBBRecordingListProps> = ({
         width: 200,
         sortable: false,
         renderCell: (params) => {
-          const recording = params.row as BBBRecording;
+          const recording = params.row;
           const playbacks = recording.playbacks ?? [];
 
           if (playbacks.length === 0) {
