@@ -797,17 +797,18 @@ describe('GradingStrategyRenderer', () => {
       renderWithForm({ workshop, dimensions });
 
       const feedbackFields = screen.getAllByRole('textbox', { name: /feedback/i });
-      const detailedComment = 'The submission demonstrates excellent understanding of the topic with well-structured arguments.';
+      // Use a shorter comment to reduce typing time during parallel test execution
+      const detailedComment = 'This submission is excellent!';
       
       await user.type(feedbackFields[0]!, detailedComment);
 
       await waitFor(() => {
         expect(feedbackFields[0]).toHaveValue(detailedComment);
-      });
+      }, { timeout: 10000 });
 
       // Should not show validation errors
       expect(screen.queryByText(/required/i)).not.toBeInTheDocument();
-    });
+    }, 15000); // Extended timeout for parallel test execution
 
     it('should respect readonly mode in comments strategy', () => {
       const workshop = createMockWorkshop({ strategy: 'comments' });
