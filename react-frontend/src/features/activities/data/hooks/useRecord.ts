@@ -90,39 +90,15 @@ export interface UseRecordParams {
 /**
  * Return type for the useRecord hook.
  *
- * Extends React Query's UseQueryResult with additional helper methods
- * for common record operations.
+ * Combines React Query's UseQueryResult with additional helper properties
+ * for common record operations. Uses type intersection instead of interface
+ * extension because UseQueryResult is a complex mapped type.
  */
-export interface UseRecordResult extends UseQueryResult<RecordData, Error> {
+export type UseRecordResult = UseQueryResult<RecordData, Error> & {
   /**
    * The fetched record data (alias for data property)
    */
   record: RecordData | undefined;
-
-  /**
-   * Whether the record is currently being fetched
-   */
-  isLoading: boolean;
-
-  /**
-   * Whether there was an error fetching the record
-   */
-  isError: boolean;
-
-  /**
-   * The error that occurred, if any
-   */
-  error: Error | null;
-
-  /**
-   * Whether the record has been successfully fetched
-   */
-  isSuccess: boolean;
-
-  /**
-   * Function to manually refetch the record data
-   */
-  refetch: UseQueryResult<RecordData, Error>['refetch'];
 
   /**
    * Helper function to check if current user can edit the record
@@ -143,7 +119,7 @@ export interface UseRecordResult extends UseQueryResult<RecordData, Error> {
    * Helper function to check if record is pending approval
    */
   isPending: boolean;
-}
+};
 
 // ============================================================================
 // Constants
@@ -329,26 +305,22 @@ function useRecord({
   });
 
   // Compute helper flags from the record data
-  const record = queryResult.data;
-  const canEdit = record?.permissions.canEdit ?? false;
-  const canDelete = record?.permissions.canDelete ?? false;
-  const isApproved = record?.approved ?? false;
-  const isPending = !isApproved && record !== undefined;
+  const recordData = queryResult.data;
+  const canEdit = recordData?.permissions.canEdit ?? false;
+  const canDelete = recordData?.permissions.canDelete ?? false;
+  // Access approved from the underlying DatabaseRecord properties via RecordWithContents
+  const isApproved = (recordData as RecordWithContents | undefined)?.approved ?? false;
+  const isPending = !isApproved && recordData !== undefined;
 
-  // Return enhanced result object
+  // Return enhanced result object combining query result with custom properties
   return {
     ...queryResult,
-    record: queryResult.data,
-    isLoading: queryResult.isLoading,
-    isError: queryResult.isError,
-    error: queryResult.error,
-    isSuccess: queryResult.isSuccess,
-    refetch: queryResult.refetch,
+    record: recordData,
     canEdit,
     canDelete,
     isApproved,
     isPending,
-  };
+  } as UseRecordResult;
 }
 
 // ============================================================================
