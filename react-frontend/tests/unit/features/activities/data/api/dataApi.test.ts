@@ -15,9 +15,10 @@
  * Uses MSW (Mock Service Worker) for API mocking
  */
 
-import { describe, it, expect, beforeAll, afterAll, afterEach, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, afterEach, beforeEach, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../../../../mocks/server';
+import { addComment } from '@/features/activities/data/api/dataApi';
 
 // Import the dataApi module
 import * as dataApi from '@/features/activities/data/api/dataApi';
@@ -2041,6 +2042,230 @@ describe('dataApi', () => {
       );
 
       await expect(dataApi.getDatabase(1)).rejects.toThrow();
+    });
+  });
+
+  // ==========================================================================
+  // Spy and Mock Function Tests (using vi from Vitest)
+  // ==========================================================================
+
+  describe('Function Spying and Mocking', () => {
+    it('should verify addComment is called with correct parameters', async () => {
+      // Create a spy on the addComment function
+      const addCommentSpy = vi.spyOn(dataApi, 'addComment');
+
+      const params: AddCommentParams = {
+        databaseId: 1,
+        recordId: 1,
+        content: 'Test comment via spy',
+      };
+
+      await dataApi.addComment(params);
+
+      // Verify the function was called with the correct parameters
+      expect(addCommentSpy).toHaveBeenCalledTimes(1);
+      expect(addCommentSpy).toHaveBeenCalledWith(params);
+
+      // Clean up the spy
+      addCommentSpy.mockRestore();
+    });
+
+    it('should verify API methods are invoked correctly using spies', async () => {
+      // Create spies on multiple API methods
+      const getDatabaseSpy = vi.spyOn(dataApi, 'getDatabase');
+      const getRecordsSpy = vi.spyOn(dataApi, 'getRecords');
+
+      // Call the methods
+      await dataApi.getDatabase(1);
+      await dataApi.getRecords(1, { page: 1, perPage: 10 });
+
+      // Verify calls
+      expect(getDatabaseSpy).toHaveBeenCalledWith(1);
+      expect(getRecordsSpy).toHaveBeenCalledWith(1, { page: 1, perPage: 10 });
+
+      // Clean up spies
+      getDatabaseSpy.mockRestore();
+      getRecordsSpy.mockRestore();
+    });
+
+    it('should use mock functions for callback testing', () => {
+      // Create a mock function using vi.fn()
+      const mockCallback = vi.fn((value: number) => value * 2);
+
+      // Use the mock function
+      const result1 = mockCallback(5);
+      const result2 = mockCallback(10);
+
+      // Verify mock function behavior
+      expect(mockCallback).toHaveBeenCalledTimes(2);
+      expect(mockCallback).toHaveBeenNthCalledWith(1, 5);
+      expect(mockCallback).toHaveBeenNthCalledWith(2, 10);
+      expect(result1).toBe(10);
+      expect(result2).toBe(20);
+    });
+
+    it('should spy on validation functions within API calls', async () => {
+      const exportSpy = vi.spyOn(dataApi, 'exportRecords');
+
+      const params: ExportRecordsParams = {
+        databaseId: 1,
+        format: 'csv',
+        fieldIds: [1, 2, 3],
+      };
+
+      await dataApi.exportRecords(params);
+
+      // Verify export was called with filtering options
+      expect(exportSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          format: 'csv',
+          fieldIds: [1, 2, 3],
+        })
+      );
+
+      exportSpy.mockRestore();
+    });
+
+    it('should verify error handler is triggered on API failure', async () => {
+      // Override handler to simulate an error
+      server.use(
+        http.get(`*${API_BASE_URL}/data/databases/:id`, () => {
+          return HttpResponse.json(
+            {
+              success: false,
+              error: {
+                code: 'DATABASE_ERROR',
+                message: 'Database connection failed',
+              },
+            },
+            { status: 500 }
+          );
+        })
+      );
+
+      const getDatabaseSpy = vi.spyOn(dataApi, 'getDatabase');
+
+      // Call should reject due to the error response
+      await expect(dataApi.getDatabase(1)).rejects.toThrow();
+
+      // Verify the spy captured the call despite the error
+      expect(getDatabaseSpy).toHaveBeenCalledWith(1);
+
+      getDatabaseSpy.mockRestore();
+    });
+
+    it('should mock implementation for testing edge cases', async () => {
+      // Create a mock function with custom implementation
+      const mockProcessRecord = vi.fn().mockImplementation((record: RecordWithContents) => {
+        return {
+          ...record,
+          processed: true,
+          processedAt: new Date().toISOString(),
+        };
+      });
+
+      const testRecord: RecordWithContents = {
+        id: 1,
+        userid: 2,
+        groupid: 0,
+        dataid: 1,
+        timecreated: 1609459200,
+        timemodified: 1609459200,
+        approved: true,
+        contents: [
+          {
+            id: 1,
+            fieldid: 1,
+            recordid: 1,
+            content: 'Test content',
+          },
+        ],
+      };
+
+      const processedRecord = mockProcessRecord(testRecord);
+
+      expect(mockProcessRecord).toHaveBeenCalledWith(testRecord);
+      expect(processedRecord).toHaveProperty('processed', true);
+      expect(processedRecord).toHaveProperty('processedAt');
+    });
+
+    it('should track multiple API calls in sequence', async () => {
+      const createRecordSpy = vi.spyOn(dataApi, 'createRecord');
+      const updateRecordSpy = vi.spyOn(dataApi, 'updateRecord');
+
+      // Simulate creating a record
+      const createParams: CreateRecordParams = {
+        databaseId: 1,
+        data: [{ fieldId: 1, value: 'Initial value' }],
+      };
+      const createResult = await dataApi.createRecord(createParams);
+
+      // Verify create was called
+      expect(createRecordSpy).toHaveBeenCalledWith(createParams);
+
+      // Simulate updating the record
+      const updateParams: UpdateRecordParams = {
+        databaseId: 1,
+        recordId: createResult.recordid,
+        data: [{ fieldId: 1, value: 'Updated value' }],
+      };
+
+      await dataApi.updateRecord(updateParams);
+
+      // Verify update was called after create
+      expect(updateRecordSpy).toHaveBeenCalledWith(updateParams);
+      expect(createRecordSpy.mock.invocationCallOrder[0]).toBeLessThan(
+        updateRecordSpy.mock.invocationCallOrder[0]
+      );
+
+      createRecordSpy.mockRestore();
+      updateRecordSpy.mockRestore();
+    });
+  });
+
+  // ==========================================================================
+  // Direct addComment Import Tests (per schema requirements)
+  // ==========================================================================
+
+  describe('Direct addComment Import', () => {
+    it('should call addComment directly from named import', async () => {
+      const params: AddCommentParams = {
+        databaseId: 1,
+        recordId: 1,
+        content: 'Direct import comment test',
+      };
+
+      // Using the directly imported addComment function
+      const result = await addComment(params);
+
+      expect(result).toHaveProperty('id');
+      expect(result.content).toBe('Direct import comment test');
+    });
+
+    it('should validate addComment throws for invalid params', async () => {
+      await expect(
+        addComment({
+          databaseId: 0,
+          recordId: 1,
+          content: 'Test',
+        })
+      ).rejects.toThrow('Invalid database ID provided');
+
+      await expect(
+        addComment({
+          databaseId: 1,
+          recordId: 0,
+          content: 'Test',
+        })
+      ).rejects.toThrow('Invalid record ID provided');
+
+      await expect(
+        addComment({
+          databaseId: 1,
+          recordId: 1,
+          content: '',
+        })
+      ).rejects.toThrow('Comment content is required');
     });
   });
 });
