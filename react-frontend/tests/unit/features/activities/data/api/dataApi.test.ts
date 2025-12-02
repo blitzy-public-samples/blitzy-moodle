@@ -2196,27 +2196,30 @@ describe('dataApi', () => {
       // Simulate creating a record
       const createParams: CreateRecordParams = {
         databaseId: 1,
-        data: [{ fieldId: 1, value: 'Initial value' }],
+        data: [{ fieldid: 1, value: 'Initial value' }],
       };
-      const createResult = await dataApi.createRecord(createParams);
+      // createRecord returns the new entry ID directly as a number
+      const newRecordId = await dataApi.createRecord(createParams);
 
       // Verify create was called
       expect(createRecordSpy).toHaveBeenCalledWith(createParams);
 
-      // Simulate updating the record
+      // Simulate updating the record using the returned ID
       const updateParams: UpdateRecordParams = {
         databaseId: 1,
-        recordId: createResult.recordid,
-        data: [{ fieldId: 1, value: 'Updated value' }],
+        recordId: newRecordId,
+        data: [{ fieldid: 1, value: 'Updated value' }],
       };
 
       await dataApi.updateRecord(updateParams);
 
       // Verify update was called after create
       expect(updateRecordSpy).toHaveBeenCalledWith(updateParams);
-      expect(createRecordSpy.mock.invocationCallOrder[0]).toBeLessThan(
-        updateRecordSpy.mock.invocationCallOrder[0]
-      );
+      const createCallOrder = createRecordSpy.mock.invocationCallOrder[0];
+      const updateCallOrder = updateRecordSpy.mock.invocationCallOrder[0];
+      expect(createCallOrder).toBeDefined();
+      expect(updateCallOrder).toBeDefined();
+      expect(createCallOrder!).toBeLessThan(updateCallOrder!);
 
       createRecordSpy.mockRestore();
       updateRecordSpy.mockRestore();
