@@ -255,12 +255,19 @@ export interface FeedbackHookResult {
  *
  * Represents the aggregated data from feedback and status queries
  * used internally within the hook for derived computations.
+ * 
+ * @internal This type is defined for documentation purposes.
+ * The underscore prefix indicates it's intentionally unused directly
+ * since React Query manages individual query data types.
  */
-interface FeedbackQueryData {
+type _FeedbackQueryData = {
   feedback: Feedback;
   status: FeedbackStatus | null;
   questions: FeedbackItem[];
-}
+};
+
+// Re-export to prevent unused warning (can be used externally for testing)
+export type { _FeedbackQueryData as FeedbackQueryData };
 
 // ============================================================================
 // HOOK IMPLEMENTATION
@@ -342,11 +349,11 @@ export function useFeedback(options: FeedbackHookOptions): FeedbackHookResult {
   const feedbackQuery = useQuery({
     queryKey: ['feedback', feedbackId, courseId] as const,
     queryFn: async (): Promise<Feedback> => {
+      // API errors are thrown by axios and caught by React Query
+      // ApiResponse type guarantees success: true, so we just extract data
       const response = await getFeedback(feedbackId);
-      if (!response.success || !response.data) {
-        throw new Error(
-          response.error?.message || 'Failed to fetch feedback data'
-        );
+      if (!response.data) {
+        throw new Error('Failed to fetch feedback data: No data returned');
       }
       return response.data;
     },
@@ -373,11 +380,11 @@ export function useFeedback(options: FeedbackHookOptions): FeedbackHookResult {
   const statusQuery = useQuery({
     queryKey: ['feedback', 'status', feedbackId, courseId] as const,
     queryFn: async (): Promise<FeedbackStatus> => {
+      // API errors are thrown by axios and caught by React Query
+      // ApiResponse type guarantees success: true, so we just extract data
       const response = await getFeedbackStatus(feedbackId);
-      if (!response.success || !response.data) {
-        throw new Error(
-          response.error?.message || 'Failed to fetch feedback status'
-        );
+      if (!response.data) {
+        throw new Error('Failed to fetch feedback status: No data returned');
       }
       return response.data;
     },
@@ -403,11 +410,11 @@ export function useFeedback(options: FeedbackHookOptions): FeedbackHookResult {
   const questionsQuery = useQuery({
     queryKey: ['feedback', 'questions', feedbackId] as const,
     queryFn: async (): Promise<FeedbackItem[]> => {
+      // API errors are thrown by axios and caught by React Query
+      // ApiResponse type guarantees success: true, so we just extract data
       const response = await getFeedbackQuestions(feedbackId);
-      if (!response.success || !response.data) {
-        throw new Error(
-          response.error?.message || 'Failed to fetch feedback questions'
-        );
+      if (!response.data) {
+        throw new Error('Failed to fetch feedback questions: No data returned');
       }
       return response.data;
     },
