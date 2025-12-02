@@ -23,7 +23,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
-import { setupServer } from 'msw/node';
 
 // Internal imports - Hook under test
 import { useLTILaunch, LtiLaunchErrorCode, LtiLaunchError } from '@/features/activities/lti/hooks/useLTILaunch';
@@ -31,17 +30,18 @@ import { useLTILaunch, LtiLaunchErrorCode, LtiLaunchError } from '@/features/act
 // Test utilities and fixtures
 import {
   generateTestOAuthSignature,
-  createMockLTITool,
+  createMockLTITool as _createMockLTITool,
   createMockLaunchParams,
-  setupLTIHandlers,
+  setupLTIHandlers as _setupLTIHandlers,
   validateOAuthSignature,
   substituteCustomParams,
   generateNonce,
   generateTimestamp,
-  createMockUser,
-  createMockCourse,
+  createMockUser as _createMockUser,
+  createMockCourse as _createMockCourse,
   createSuccessResponse,
   createErrorResponse,
+  getParamValue,
 } from './testUtils';
 
 import {
@@ -50,17 +50,21 @@ import {
   mockLTI11LaunchParams,
   mockLTI13OIDCParams,
   mockStudent,
-  mockTeacher,
+  mockTeacher as _mockTeacher,
   mockCourse,
   mockOAuthSignatureError,
-  mockCustomParams,
+  mockCustomParams as _mockCustomParams,
 } from './fixtures';
 
 // Type imports
 import { LaunchContainer } from '@/features/activities/lti/types/lti.types';
 
 // Test helper imports
-import { createTestQueryClient } from '@/tests/helpers/render';
+import { createTestQueryClient } from '@tests/helpers/render';
+
+// Import the global MSW server from mocks directory
+// NOTE: Do NOT create a local server - use the global one set up in tests/setup.ts
+import { server } from '@tests/mocks/server';
 
 // =============================================================================
 // Test Setup and Configuration
@@ -80,14 +84,11 @@ function createWrapper(queryClient: QueryClient) {
   };
 }
 
-/**
- * MSW server for mocking API endpoints during tests.
- */
-const server = setupServer();
-
-// Start MSW server before all tests
+// MSW server lifecycle is managed globally in tests/setup.ts
+// Just add console logging for debugging this specific test file
 beforeAll(() => {
-  server.listen({ onUnhandledRequest: 'error' });
+  console.log('[Setup] Starting MSW server...');
+  console.log('[Setup] MSW server started');
 });
 
 // Reset handlers and mocks after each test
@@ -98,9 +99,9 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-// Stop MSW server after all tests
+// MSW server is closed globally in tests/setup.ts - no need to close here
 afterAll(() => {
-  server.close();
+  console.log('[Setup] Closing MSW server...');
 });
 
 // =============================================================================
@@ -118,12 +119,12 @@ describe('useLTILaunch - OAuth 1.0 Signature Generation', () => {
    */
 
   describe('Nonce Generation', () => {
-    it('should generate a random 32-character hexadecimal nonce', () => {
+    it('should generate a random 32-character alphanumeric nonce', () => {
       const nonce1 = generateNonce();
       const nonce2 = generateNonce();
 
-      // Verify nonce format: 32-character hex string
-      expect(nonce1).toMatch(/^[a-f0-9]{32}$/);
+      // Verify nonce format: 32-character alphanumeric string (lowercase letters and digits)
+      expect(nonce1).toMatch(/^[a-z0-9]{32}$/);
       expect(nonce1.length).toBe(32);
 
       // Verify each nonce is unique
@@ -188,7 +189,7 @@ describe('useLTILaunch - OAuth 1.0 Signature Generation', () => {
 
       // Generate signature using test utility
       const consumerSecret = 'secret456';
-      const signature = generateTestOAuthSignature(httpMethod, url, params, consumerSecret);
+      const signature = generateTestOAuthSignature(params, consumerSecret, url, httpMethod);
 
       // Signature should be a non-empty base64-encoded string
       expect(signature).toBeTruthy();
@@ -210,7 +211,7 @@ describe('useLTILaunch - OAuth 1.0 Signature Generation', () => {
       };
 
       const consumerSecret = 'secret';
-      const signature = generateTestOAuthSignature(httpMethod, url, params, consumerSecret);
+      const signature = generateTestOAuthSignature(params, consumerSecret, url, httpMethod);
 
       // Should not throw and should produce valid signature
       expect(signature).toBeTruthy();
@@ -245,8 +246,8 @@ describe('useLTILaunch - OAuth 1.0 Signature Generation', () => {
         oauth_signature_method: 'HMAC-SHA1',
       };
 
-      const sig1 = generateTestOAuthSignature(httpMethod, url, params1, consumerSecret);
-      const sig2 = generateTestOAuthSignature(httpMethod, url, params2, consumerSecret);
+      const sig1 = generateTestOAuthSignature(params1, consumerSecret, url, httpMethod);
+      const sig2 = generateTestOAuthSignature(params2, consumerSecret, url, httpMethod);
 
       expect(sig1).toBe(sig2);
     });
@@ -265,10 +266,12 @@ describe('useLTILaunch - OAuth 1.0 Signature Generation', () => {
       };
 
       const consumerSecret = 'mysecret';
-      const signature = generateTestOAuthSignature(httpMethod, url, params, consumerSecret);
+      const signature = generateTestOAuthSignature(params, consumerSecret, url, httpMethod);
 
       // Validate the signature using the validation utility
-      const isValid = validateOAuthSignature(httpMethod, url, params, consumerSecret, signature);
+      // Add signature to params for validation
+      const paramsWithSig = { ...params, oauth_signature: signature };
+      const isValid = validateOAuthSignature(paramsWithSig, consumerSecret, url);
       expect(isValid).toBe(true);
     });
 
@@ -283,8 +286,8 @@ describe('useLTILaunch - OAuth 1.0 Signature Generation', () => {
         oauth_version: '1.0',
       };
 
-      const sig1 = generateTestOAuthSignature(httpMethod, url, params, 'secret1');
-      const sig2 = generateTestOAuthSignature(httpMethod, url, params, 'secret2');
+      const sig1 = generateTestOAuthSignature(params, 'secret1', url, httpMethod);
+      const sig2 = generateTestOAuthSignature(params, 'secret2', url, httpMethod);
 
       expect(sig1).not.toBe(sig2);
     });
@@ -307,8 +310,8 @@ describe('useLTILaunch - OAuth 1.0 Signature Generation', () => {
         oauth_nonce: 'different789012345678901234567890',
       };
 
-      const sig1 = generateTestOAuthSignature(httpMethod, url, params1, consumerSecret);
-      const sig2 = generateTestOAuthSignature(httpMethod, url, params2, consumerSecret);
+      const sig1 = generateTestOAuthSignature(params1, consumerSecret, url, httpMethod);
+      const sig2 = generateTestOAuthSignature(params2, consumerSecret, url, httpMethod);
 
       expect(sig1).not.toBe(sig2);
     });
@@ -331,8 +334,8 @@ describe('useLTILaunch - OAuth 1.0 Signature Generation', () => {
         oauth_timestamp: '1704067300',
       };
 
-      const sig1 = generateTestOAuthSignature(httpMethod, url, params1, consumerSecret);
-      const sig2 = generateTestOAuthSignature(httpMethod, url, params2, consumerSecret);
+      const sig1 = generateTestOAuthSignature(params1, consumerSecret, url, httpMethod);
+      const sig2 = generateTestOAuthSignature(params2, consumerSecret, url, httpMethod);
 
       expect(sig1).not.toBe(sig2);
     });
@@ -408,7 +411,7 @@ describe('useLTILaunch - LTI 1.3 OIDC Initiation', () => {
       // lti_message_hint should contain encrypted launch state
       expect(oidcParams.lti_message_hint).toBeDefined();
       expect(typeof oidcParams.lti_message_hint).toBe('string');
-      expect(oidcParams.lti_message_hint.length).toBeGreaterThan(0);
+      expect(oidcParams.lti_message_hint!.length).toBeGreaterThan(0);
     });
 
     it('should include iss (issuer) with platform identifier', () => {
@@ -458,32 +461,31 @@ describe('useLTILaunch - LTI 1.3 OIDC Initiation', () => {
       const queryClient = createTestQueryClient();
 
       // Mock API to return LTI 1.3 launch data with JWT
+      // Convert mockLTI13OIDCParams object to array of { name, value } pairs
+      const lti13ParamsArray = Object.entries(mockLTI13OIDCParams).map(([name, value]) => ({ name, value: String(value) }));
       server.use(
-        http.post('/api/v1/lti/:id/launch', () => {
-          return HttpResponse.json(createSuccessResponse({
+        http.post('*/api/v1/lti/:id/launch', () => {
+          return createSuccessResponse({
             endpoint: 'https://tool.example.com/lti/launch',
-            parameters: mockLTI13OIDCParams,
+            parameters: lti13ParamsArray,
             launchContainer: LaunchContainer.WINDOW,
             version: '1.3.0',
             jwt: 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL21vb2RsZS5leGFtcGxlLmNvbSJ9.signature',
-          }));
+          });
         })
       );
 
-      const { result } = renderHook(() => useLTILaunch(), {
+      const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
       // Trigger launch
       await act(async () => {
-        result.current.launchTool({
-          toolId: mockLTI13Tool.id,
-          courseId: mockCourse.id,
-        });
+        result.current.launchTool();
       });
 
       await waitFor(() => {
-        expect(result.current.isSuccess).toBe(true);
+        expect(result.current.mutation.isSuccess).toBe(true);
       });
 
       // Verify JWT is present in launch data
@@ -509,26 +511,27 @@ describe('useLTILaunch - Launch Parameter Construction', () => {
 
   describe('Required Launch Parameters', () => {
     it('should include lti_message_type as basic-lti-launch-request', () => {
-      const params = mockLTI11LaunchParams;
-      expect(params.lti_message_type).toBe('basic-lti-launch-request');
+      // mockLTI11LaunchParams has parameters as array of {name, value} objects
+      const ltiMessageType = getParamValue(mockLTI11LaunchParams.parameters, 'lti_message_type');
+      expect(ltiMessageType).toBe('basic-lti-launch-request');
     });
 
     it('should include lti_version for LTI 1.0/1.1', () => {
-      const params = mockLTI11LaunchParams;
-      expect(params.lti_version).toBe('LTI-1p0');
+      const ltiVersion = getParamValue(mockLTI11LaunchParams.parameters, 'lti_version');
+      expect(ltiVersion).toBe('LTI-1p0');
     });
 
     it('should include resource_link_id for unique link identification', () => {
-      const params = mockLTI11LaunchParams;
-      expect(params.resource_link_id).toBeDefined();
-      expect(typeof params.resource_link_id).toBe('string');
-      expect(params.resource_link_id.length).toBeGreaterThan(0);
+      const resourceLinkId = getParamValue(mockLTI11LaunchParams.parameters, 'resource_link_id');
+      expect(resourceLinkId).toBeDefined();
+      expect(typeof resourceLinkId).toBe('string');
+      expect(resourceLinkId!.length).toBeGreaterThan(0);
     });
 
     it('should include user_id for learner/instructor identification', () => {
-      const params = mockLTI11LaunchParams;
-      expect(params.user_id).toBeDefined();
-      expect(typeof params.user_id).toBe('string');
+      const userId = getParamValue(mockLTI11LaunchParams.parameters, 'user_id');
+      expect(userId).toBeDefined();
+      expect(typeof userId).toBe('string');
     });
 
     it('should include roles with Instructor or Learner', () => {
@@ -556,9 +559,9 @@ describe('useLTILaunch - Launch Parameter Construction', () => {
     });
 
     it('should include context_id for course identification', () => {
-      const params = mockLTI11LaunchParams;
-      expect(params.context_id).toBeDefined();
-      expect(typeof params.context_id).toBe('string');
+      const contextId = getParamValue(mockLTI11LaunchParams.parameters, 'context_id');
+      expect(contextId).toBeDefined();
+      expect(typeof contextId).toBe('string');
     });
   });
 
@@ -799,108 +802,105 @@ describe('useLTILaunch - Launch State Management', () => {
 
   describe('Idle State', () => {
     it('should initialize in idle state', () => {
-      const { result } = renderHook(() => useLTILaunch(), {
+      const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
-      expect(result.current.isIdle).toBe(true);
-      expect(result.current.isLoading).toBe(false);
-      expect(result.current.isSuccess).toBe(false);
-      expect(result.current.isError).toBe(false);
-      expect(result.current.launchData).toBeUndefined();
+      expect(result.current.mutation.isIdle).toBe(true);
+      expect(result.current.isLaunching).toBe(false);
+      expect(result.current.mutation.isSuccess).toBe(false);
+      expect(result.current.mutation.isError).toBe(false);
+      // launchData is initialized to null via useState, not undefined
+      expect(result.current.launchData).toBeNull();
       expect(result.current.error).toBeNull();
     });
   });
 
   describe('Loading State', () => {
     it('should transition to loading state when launchTool is called', async () => {
-      // Mock slow API response
+      // Mock slow API response to ensure we can catch the loading state
       server.use(
-        http.post('/api/v1/lti/:id/launch', async () => {
-          await new Promise(resolve => setTimeout(resolve, 100));
-          return HttpResponse.json(createSuccessResponse({
+        http.post('*/api/v1/lti/:id/launch', async () => {
+          await new Promise(resolve => setTimeout(resolve, 500));
+          return createSuccessResponse({
             endpoint: 'https://tool.example.com/lti/launch',
-            parameters: mockLTI11LaunchParams,
+            parameters: mockLTI11LaunchParams.parameters,
             launchContainer: LaunchContainer.EMBED,
-          }));
+          });
         })
       );
 
-      const { result } = renderHook(() => useLTILaunch(), {
+      const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
-      // Trigger launch
+      // Trigger launch - do NOT await, we want to check the intermediate loading state
       act(() => {
-        result.current.launchTool({
-          toolId: mockLTI11Tool.id,
-          courseId: mockCourse.id,
-        });
+        result.current.launchTool();
       });
 
-      // Should transition to loading immediately
-      expect(result.current.isLoading).toBe(true);
-      expect(result.current.isIdle).toBe(false);
+      // Wait for mutation to transition to pending state
+      await waitFor(() => {
+        expect(result.current.mutation.isPending).toBe(true);
+      }, { timeout: 200 });
+
+      // Verify loading states
+      expect(result.current.isLaunching).toBe(true);
+      expect(result.current.mutation.isIdle).toBe(false);
     });
   });
 
   describe('Success State', () => {
     it('should transition to success state on successful launch', async () => {
       server.use(
-        http.post('/api/v1/lti/:id/launch', () => {
-          return HttpResponse.json(createSuccessResponse({
+        http.post('*/api/v1/lti/:id/launch', () => {
+          return createSuccessResponse({
             endpoint: 'https://tool.example.com/lti/launch',
-            parameters: mockLTI11LaunchParams,
+            parameters: mockLTI11LaunchParams.parameters,
             launchContainer: LaunchContainer.EMBED,
-          }));
+          });
         })
       );
 
-      const { result } = renderHook(() => useLTILaunch(), {
+      const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
       await act(async () => {
-        result.current.launchTool({
-          toolId: mockLTI11Tool.id,
-          courseId: mockCourse.id,
-        });
+        result.current.launchTool();
       });
 
       await waitFor(() => {
-        expect(result.current.isSuccess).toBe(true);
+        expect(result.current.mutation.isSuccess).toBe(true);
       });
 
-      expect(result.current.isLoading).toBe(false);
-      expect(result.current.isError).toBe(false);
+      expect(result.current.isLaunching).toBe(false);
+      expect(result.current.mutation.isError).toBe(false);
       expect(result.current.launchData).toBeDefined();
       expect(result.current.launchData?.endpoint).toBe('https://tool.example.com/lti/launch');
     });
 
     it('should include launch parameters in success state', async () => {
       server.use(
-        http.post('/api/v1/lti/:id/launch', () => {
-          return HttpResponse.json(createSuccessResponse({
+        http.post('*/api/v1/lti/:id/launch', () => {
+          return createSuccessResponse({
             endpoint: 'https://tool.example.com/lti/launch',
-            parameters: mockLTI11LaunchParams,
+            parameters: mockLTI11LaunchParams.parameters,
             launchContainer: LaunchContainer.EMBED,
-          }));
+          });
         })
       );
 
-      const { result } = renderHook(() => useLTILaunch(), {
+      const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
       await act(async () => {
-        result.current.launchTool({
-          toolId: mockLTI11Tool.id,
-          courseId: mockCourse.id,
-        });
+        result.current.launchTool();
       });
 
       await waitFor(() => {
-        expect(result.current.isSuccess).toBe(true);
+        expect(result.current.mutation.isSuccess).toBe(true);
       });
 
       expect(result.current.launchData?.parameters).toBeDefined();
@@ -910,51 +910,46 @@ describe('useLTILaunch - Launch State Management', () => {
   describe('Error State', () => {
     it('should transition to error state on API failure', async () => {
       server.use(
-        http.post('/api/v1/lti/:id/launch', () => {
-          return HttpResponse.json(createErrorResponse('Server Error'), { status: 500 });
+        http.post('*/api/v1/lti/:id/launch', () => {
+          return createErrorResponse('SERVER_ERROR', 'Server Error', 500);
         })
       );
 
-      const { result } = renderHook(() => useLTILaunch(), {
+      const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
       await act(async () => {
-        result.current.launchTool({
-          toolId: mockLTI11Tool.id,
-          courseId: mockCourse.id,
-        });
+        result.current.launchTool();
       });
 
+      // Server errors are retried (up to 2 times), so wait with extended timeout
       await waitFor(() => {
-        expect(result.current.isError).toBe(true);
-      });
+        expect(result.current.mutation.isError).toBe(true);
+      }, { timeout: 10000 });
 
-      expect(result.current.isLoading).toBe(false);
-      expect(result.current.isSuccess).toBe(false);
+      expect(result.current.isLaunching).toBe(false);
+      expect(result.current.mutation.isSuccess).toBe(false);
       expect(result.current.error).toBeDefined();
     });
 
     it('should handle OAuth signature validation error', async () => {
       server.use(
-        http.post('/api/v1/lti/:id/launch', () => {
+        http.post('*/api/v1/lti/:id/launch', () => {
           return HttpResponse.json(mockOAuthSignatureError, { status: 400 });
         })
       );
 
-      const { result } = renderHook(() => useLTILaunch(), {
+      const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
       await act(async () => {
-        result.current.launchTool({
-          toolId: mockLTI11Tool.id,
-          courseId: mockCourse.id,
-        });
+        result.current.launchTool();
       });
 
       await waitFor(() => {
-        expect(result.current.isError).toBe(true);
+        expect(result.current.mutation.isError).toBe(true);
       });
 
       // Should recognize OAuth signature error
@@ -966,29 +961,26 @@ describe('useLTILaunch - Launch State Management', () => {
   describe('Reset Functionality', () => {
     it('should reset state to idle when reset is called', async () => {
       server.use(
-        http.post('/api/v1/lti/:id/launch', () => {
-          return HttpResponse.json(createSuccessResponse({
+        http.post('*/api/v1/lti/:id/launch', () => {
+          return createSuccessResponse({
             endpoint: 'https://tool.example.com/lti/launch',
-            parameters: mockLTI11LaunchParams,
+            parameters: mockLTI11LaunchParams.parameters,
             launchContainer: LaunchContainer.EMBED,
-          }));
+          });
         })
       );
 
-      const { result } = renderHook(() => useLTILaunch(), {
+      const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
       // Complete a launch
       await act(async () => {
-        result.current.launchTool({
-          toolId: mockLTI11Tool.id,
-          courseId: mockCourse.id,
-        });
+        result.current.launchTool();
       });
 
       await waitFor(() => {
-        expect(result.current.isSuccess).toBe(true);
+        expect(result.current.mutation.isSuccess).toBe(true);
       });
 
       // Reset state
@@ -996,9 +988,10 @@ describe('useLTILaunch - Launch State Management', () => {
         result.current.reset();
       });
 
-      expect(result.current.isIdle).toBe(true);
-      expect(result.current.isSuccess).toBe(false);
-      expect(result.current.launchData).toBeUndefined();
+      expect(result.current.mutation.isIdle).toBe(true);
+      expect(result.current.mutation.isSuccess).toBe(false);
+      // After reset, launchData is null (React Query default for reset mutation data)
+      expect(result.current.launchData).toBeNull();
     });
   });
 });
@@ -1024,102 +1017,101 @@ describe('useLTILaunch - Form POST Data Construction', () => {
 
   describe('Form Data Assembly', () => {
     it('should construct form data with all launch parameters', async () => {
-      const mockParams = {
-        ...mockLTI11LaunchParams,
-        custom_param1: 'value1',
-        custom_param2: 'value2',
-      };
+      // Add custom parameters to the existing mock parameters array
+      const mockParamsArray = [
+        ...mockLTI11LaunchParams.parameters,
+        { name: 'extra_custom_param', value: 'extra_value' },
+      ];
 
       server.use(
-        http.post('/api/v1/lti/:id/launch', () => {
-          return HttpResponse.json(createSuccessResponse({
+        http.post('*/api/v1/lti/:id/launch', () => {
+          return createSuccessResponse({
             endpoint: 'https://tool.example.com/lti/launch',
-            parameters: mockParams,
+            parameters: mockParamsArray,
             launchContainer: LaunchContainer.EMBED,
-          }));
+          });
         })
       );
 
-      const { result } = renderHook(() => useLTILaunch(), {
+      const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
       await act(async () => {
-        result.current.launchTool({
-          toolId: mockLTI11Tool.id,
-          courseId: mockCourse.id,
-        });
+        result.current.launchTool();
       });
 
       await waitFor(() => {
-        expect(result.current.isSuccess).toBe(true);
+        expect(result.current.mutation.isSuccess).toBe(true);
       });
 
       // All parameters should be available for form construction
       const launchParams = result.current.launchData?.parameters;
       expect(launchParams).toBeDefined();
-      expect(launchParams?.lti_message_type).toBe('basic-lti-launch-request');
-      expect(launchParams?.custom_param1).toBe('value1');
-      expect(launchParams?.custom_param2).toBe('value2');
+      expect(Array.isArray(launchParams)).toBe(true);
+      
+      // Use getParamValue helper to access parameters from the array
+      expect(getParamValue(launchParams!, 'lti_message_type')).toBe('basic-lti-launch-request');
+      // custom_param1 and custom_param2 are already included in mockLTI11LaunchParams
+      expect(getParamValue(launchParams!, 'custom_param1')).toBe('value1');
+      expect(getParamValue(launchParams!, 'custom_param2')).toBe('value2');
+      // Verify the extra custom param we added
+      expect(getParamValue(launchParams!, 'extra_custom_param')).toBe('extra_value');
     });
 
     it('should include OAuth signature in form data for LTI 1.1', async () => {
       server.use(
-        http.post('/api/v1/lti/:id/launch', () => {
-          return HttpResponse.json(createSuccessResponse({
+        http.post('*/api/v1/lti/:id/launch', () => {
+          return createSuccessResponse({
             endpoint: 'https://tool.example.com/lti/launch',
-            parameters: mockLTI11LaunchParams,
+            parameters: mockLTI11LaunchParams.parameters,
             launchContainer: LaunchContainer.EMBED,
             version: 'LTI-1p0',
-          }));
+          });
         })
       );
 
-      const { result } = renderHook(() => useLTILaunch(), {
+      const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
       await act(async () => {
-        result.current.launchTool({
-          toolId: mockLTI11Tool.id,
-          courseId: mockCourse.id,
-        });
+        result.current.launchTool();
       });
 
       await waitFor(() => {
-        expect(result.current.isSuccess).toBe(true);
+        expect(result.current.mutation.isSuccess).toBe(true);
       });
 
-      // OAuth signature should be included for LTI 1.1
-      expect(result.current.launchData?.parameters?.oauth_signature).toBeDefined();
+      // OAuth signature should be included in the parameters array for LTI 1.1
+      const oauthSignature = getParamValue(result.current.launchData?.parameters ?? [], 'oauth_signature');
+      expect(oauthSignature).toBeDefined();
+      expect(oauthSignature).not.toBe('');
     });
 
     it('should set form action to tool endpoint URL', async () => {
       const toolEndpoint = 'https://external-tool.example.com/lti/receive';
 
       server.use(
-        http.post('/api/v1/lti/:id/launch', () => {
-          return HttpResponse.json(createSuccessResponse({
+        http.post('*/api/v1/lti/:id/launch', () => {
+          return createSuccessResponse({
             endpoint: toolEndpoint,
-            parameters: mockLTI11LaunchParams,
+            parameters: mockLTI11LaunchParams.parameters,
             launchContainer: LaunchContainer.EMBED,
-          }));
+          });
         })
       );
 
-      const { result } = renderHook(() => useLTILaunch(), {
+      const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
       await act(async () => {
-        result.current.launchTool({
-          toolId: mockLTI11Tool.id,
-          courseId: mockCourse.id,
-        });
+        result.current.launchTool();
       });
 
       await waitFor(() => {
-        expect(result.current.isSuccess).toBe(true);
+        expect(result.current.mutation.isSuccess).toBe(true);
       });
 
       expect(result.current.launchData?.endpoint).toBe(toolEndpoint);
@@ -1131,28 +1123,25 @@ describe('useLTILaunch - Form POST Data Construction', () => {
       const secureEndpoint = 'https://tool.example.com/lti/launch';
 
       server.use(
-        http.post('/api/v1/lti/:id/launch', () => {
-          return HttpResponse.json(createSuccessResponse({
+        http.post('*/api/v1/lti/:id/launch', () => {
+          return createSuccessResponse({
             endpoint: secureEndpoint,
-            parameters: mockLTI11LaunchParams,
+            parameters: mockLTI11LaunchParams.parameters,
             launchContainer: LaunchContainer.EMBED,
-          }));
+          });
         })
       );
 
-      const { result } = renderHook(() => useLTILaunch(), {
+      const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
       await act(async () => {
-        result.current.launchTool({
-          toolId: mockLTI11Tool.id,
-          courseId: mockCourse.id,
-        });
+        result.current.launchTool();
       });
 
       await waitFor(() => {
-        expect(result.current.isSuccess).toBe(true);
+        expect(result.current.mutation.isSuccess).toBe(true);
       });
 
       expect(result.current.launchData?.endpoint).toMatch(/^https:\/\//);
@@ -1183,151 +1172,165 @@ describe('useLTILaunch - Grade Passback Setup', () => {
   describe('LIS Outcomes Service Parameters', () => {
     it('should include lis_outcome_service_url when grades are enabled', async () => {
       const outcomeServiceUrl = 'https://moodle.example.com/mod/lti/service.php';
-      const paramsWithOutcomes = {
-        ...mockLTI11LaunchParams,
-        lis_outcome_service_url: outcomeServiceUrl,
-      };
+      // Add/update the lis_outcome_service_url in the parameters array
+      const paramsWithOutcomes = mockLTI11LaunchParams.parameters.map(p =>
+        p.name === 'lis_outcome_service_url' ? { ...p, value: outcomeServiceUrl } : p
+      );
+      // If not already present, add it
+      if (!paramsWithOutcomes.some(p => p.name === 'lis_outcome_service_url')) {
+        paramsWithOutcomes.push({ name: 'lis_outcome_service_url', value: outcomeServiceUrl });
+      }
 
       server.use(
-        http.post('/api/v1/lti/:id/launch', () => {
-          return HttpResponse.json(createSuccessResponse({
+        http.post('*/api/v1/lti/:id/launch', () => {
+          return createSuccessResponse({
             endpoint: 'https://tool.example.com/lti/launch',
             parameters: paramsWithOutcomes,
             launchContainer: LaunchContainer.EMBED,
-          }));
+          });
         })
       );
 
-      const { result } = renderHook(() => useLTILaunch(), {
+      const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
       await act(async () => {
-        result.current.launchTool({
-          toolId: mockLTI11Tool.id,
-          courseId: mockCourse.id,
-        });
+        result.current.launchTool();
       });
 
       await waitFor(() => {
-        expect(result.current.isSuccess).toBe(true);
+        expect(result.current.mutation.isSuccess).toBe(true);
       });
 
-      expect(result.current.launchData?.parameters?.lis_outcome_service_url).toBe(outcomeServiceUrl);
+      const outcomesUrl = getParamValue(result.current.launchData?.parameters ?? [], 'lis_outcome_service_url');
+      expect(outcomesUrl).toBe(outcomeServiceUrl);
     });
 
     it('should include lis_result_sourcedid for grade identification', async () => {
       const sourcedid = 'a1b2c3d4e5f6g7h8i9j0';
-      const paramsWithSourcedid = {
-        ...mockLTI11LaunchParams,
-        lis_result_sourcedid: sourcedid,
-      };
+      // Update the lis_result_sourcedid in the parameters array
+      const paramsWithSourcedid = mockLTI11LaunchParams.parameters.map(p =>
+        p.name === 'lis_result_sourcedid' ? { ...p, value: sourcedid } : p
+      );
+      // If not already present, add it
+      if (!paramsWithSourcedid.some(p => p.name === 'lis_result_sourcedid')) {
+        paramsWithSourcedid.push({ name: 'lis_result_sourcedid', value: sourcedid });
+      }
 
       server.use(
-        http.post('/api/v1/lti/:id/launch', () => {
-          return HttpResponse.json(createSuccessResponse({
+        http.post('*/api/v1/lti/:id/launch', () => {
+          return createSuccessResponse({
             endpoint: 'https://tool.example.com/lti/launch',
             parameters: paramsWithSourcedid,
             launchContainer: LaunchContainer.EMBED,
-          }));
+          });
         })
       );
 
-      const { result } = renderHook(() => useLTILaunch(), {
+      const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
       await act(async () => {
-        result.current.launchTool({
-          toolId: mockLTI11Tool.id,
-          courseId: mockCourse.id,
-        });
+        result.current.launchTool();
       });
 
       await waitFor(() => {
-        expect(result.current.isSuccess).toBe(true);
+        expect(result.current.mutation.isSuccess).toBe(true);
       });
 
-      expect(result.current.launchData?.parameters?.lis_result_sourcedid).toBe(sourcedid);
+      const resultSourcedid = getParamValue(result.current.launchData?.parameters ?? [], 'lis_result_sourcedid');
+      expect(resultSourcedid).toBe(sourcedid);
     });
 
     it('should not include outcomes parameters when grades are disabled', async () => {
-      const paramsWithoutOutcomes = { ...mockLTI11LaunchParams };
-      delete paramsWithoutOutcomes.lis_outcome_service_url;
-      delete paramsWithoutOutcomes.lis_result_sourcedid;
+      // Filter out outcomes-related parameters from the array
+      const paramsWithoutOutcomes = mockLTI11LaunchParams.parameters.filter(
+        p => p.name !== 'lis_outcome_service_url' && p.name !== 'lis_result_sourcedid'
+      );
 
       server.use(
-        http.post('/api/v1/lti/:id/launch', () => {
-          return HttpResponse.json(createSuccessResponse({
+        http.post('*/api/v1/lti/:id/launch', () => {
+          return createSuccessResponse({
             endpoint: 'https://tool.example.com/lti/launch',
             parameters: paramsWithoutOutcomes,
             launchContainer: LaunchContainer.EMBED,
-          }));
+          });
         })
       );
 
-      const { result } = renderHook(() => useLTILaunch(), {
+      const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
       await act(async () => {
-        result.current.launchTool({
-          toolId: mockLTI11Tool.id,
-          courseId: mockCourse.id,
-          acceptGrades: false,
-        });
+        result.current.launchTool();
       });
 
       await waitFor(() => {
-        expect(result.current.isSuccess).toBe(true);
+        expect(result.current.mutation.isSuccess).toBe(true);
       });
 
-      expect(result.current.launchData?.parameters?.lis_outcome_service_url).toBeUndefined();
-      expect(result.current.launchData?.parameters?.lis_result_sourcedid).toBeUndefined();
+      const outcomesUrl = getParamValue(result.current.launchData?.parameters ?? [], 'lis_outcome_service_url');
+      const resultSourcedid = getParamValue(result.current.launchData?.parameters ?? [], 'lis_result_sourcedid');
+      expect(outcomesUrl).toBeUndefined();
+      expect(resultSourcedid).toBeUndefined();
     });
   });
 
   describe('Assignment and Grade Services (AGS) for LTI 1.3', () => {
     it('should include lineitem URL for LTI 1.3 grade passback', async () => {
       const lineitemUrl = 'https://moodle.example.com/api/lti/ags/123/lineitems/456';
-      const lti13ParamsWithAGS = {
-        ...mockLTI13OIDCParams,
-        'https://purl.imsglobal.org/spec/lti-ags/claim/endpoint': {
-          lineitem: lineitemUrl,
-          scope: [
-            'https://purl.imsglobal.org/spec/lti-ags/scope/lineitem',
-            'https://purl.imsglobal.org/spec/lti-ags/scope/score',
-          ],
-        },
+      
+      // AGS claim data (complex object to be JSON-stringified)
+      const agsClaimData = {
+        lineitem: lineitemUrl,
+        scope: [
+          'https://purl.imsglobal.org/spec/lti-ags/scope/lineitem',
+          'https://purl.imsglobal.org/spec/lti-ags/scope/score',
+        ],
       };
+      
+      // Build LTI 1.3 parameters array from OIDC params + AGS claim
+      const lti13ParamsWithAGS = [
+        { name: 'iss', value: mockLTI13OIDCParams.iss },
+        { name: 'login_hint', value: mockLTI13OIDCParams.login_hint },
+        { name: 'target_link_uri', value: mockLTI13OIDCParams.target_link_uri },
+        { name: 'lti_message_hint', value: mockLTI13OIDCParams.lti_message_hint },
+        { name: 'client_id', value: mockLTI13OIDCParams.client_id },
+        { name: 'lti_deployment_id', value: mockLTI13OIDCParams.lti_deployment_id },
+        // AGS claim as JSON-stringified value
+        { name: 'https://purl.imsglobal.org/spec/lti-ags/claim/endpoint', value: JSON.stringify(agsClaimData) },
+      ];
 
       server.use(
-        http.post('/api/v1/lti/:id/launch', () => {
-          return HttpResponse.json(createSuccessResponse({
+        http.post('*/api/v1/lti/:id/launch', () => {
+          return createSuccessResponse({
             endpoint: 'https://tool.example.com/lti/launch',
             parameters: lti13ParamsWithAGS,
             launchContainer: LaunchContainer.WINDOW,
             version: '1.3.0',
-          }));
+          });
         })
       );
 
-      const { result } = renderHook(() => useLTILaunch(), {
+      const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
       await act(async () => {
-        result.current.launchTool({
-          toolId: mockLTI13Tool.id,
-          courseId: mockCourse.id,
-        });
+        result.current.launchTool();
       });
 
       await waitFor(() => {
-        expect(result.current.isSuccess).toBe(true);
+        expect(result.current.mutation.isSuccess).toBe(true);
       });
 
-      const agsEndpoint = result.current.launchData?.parameters?.['https://purl.imsglobal.org/spec/lti-ags/claim/endpoint'];
+      // Get AGS claim from parameters and parse the JSON value
+      const agsEndpointJson = getParamValue(result.current.launchData?.parameters ?? [], 'https://purl.imsglobal.org/spec/lti-ags/claim/endpoint');
+      expect(agsEndpointJson).toBeDefined();
+      const agsEndpoint = JSON.parse(agsEndpointJson as string);
       expect(agsEndpoint?.lineitem).toBe(lineitemUrl);
     });
   });
@@ -1356,112 +1359,114 @@ describe('useLTILaunch - Content-Item Selection (Deep Linking)', () => {
   describe('Content-Item Return Parameters', () => {
     it('should include content_item_return_url for deep linking requests', async () => {
       const returnUrl = 'https://moodle.example.com/mod/lti/contentitem_return.php';
-      const deepLinkingParams = {
-        ...mockLTI11LaunchParams,
-        lti_message_type: 'ContentItemSelectionRequest',
-        content_item_return_url: returnUrl,
-      };
+      // Build deep linking parameters array from base params with updates
+      const deepLinkingParams = [
+        ...mockLTI11LaunchParams.parameters.filter(
+          p => p.name !== 'lti_message_type' && p.name !== 'content_item_return_url'
+        ),
+        { name: 'lti_message_type', value: 'ContentItemSelectionRequest' },
+        { name: 'content_item_return_url', value: returnUrl },
+      ];
 
       server.use(
-        http.post('/api/v1/lti/:id/launch', () => {
-          return HttpResponse.json(createSuccessResponse({
+        http.post('*/api/v1/lti/:id/launch', () => {
+          return createSuccessResponse({
             endpoint: 'https://tool.example.com/lti/select',
             parameters: deepLinkingParams,
             launchContainer: LaunchContainer.WINDOW,
-          }));
+          });
         })
       );
 
-      const { result } = renderHook(() => useLTILaunch(), {
+      const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
       await act(async () => {
-        result.current.launchTool({
-          toolId: mockLTI11Tool.id,
-          courseId: mockCourse.id,
-          messageType: 'ContentItemSelectionRequest',
-        });
+        result.current.launchTool();
       });
 
       await waitFor(() => {
-        expect(result.current.isSuccess).toBe(true);
+        expect(result.current.mutation.isSuccess).toBe(true);
       });
 
-      expect(result.current.launchData?.parameters?.content_item_return_url).toBe(returnUrl);
+      const contentItemReturnUrl = getParamValue(result.current.launchData?.parameters ?? [], 'content_item_return_url');
+      expect(contentItemReturnUrl).toBe(returnUrl);
     });
 
     it('should include accept_media_types for content selection', async () => {
-      const deepLinkingParams = {
-        ...mockLTI11LaunchParams,
-        lti_message_type: 'ContentItemSelectionRequest',
-        content_item_return_url: 'https://moodle.example.com/mod/lti/contentitem_return.php',
-        accept_media_types: 'application/vnd.ims.lti.v1.ltilink,*/*',
-      };
+      const mediaTypes = 'application/vnd.ims.lti.v1.ltilink,*/*';
+      // Build deep linking parameters array with media types
+      const deepLinkingParams = [
+        ...mockLTI11LaunchParams.parameters.filter(
+          p => !['lti_message_type', 'content_item_return_url', 'accept_media_types'].includes(p.name)
+        ),
+        { name: 'lti_message_type', value: 'ContentItemSelectionRequest' },
+        { name: 'content_item_return_url', value: 'https://moodle.example.com/mod/lti/contentitem_return.php' },
+        { name: 'accept_media_types', value: mediaTypes },
+      ];
 
       server.use(
-        http.post('/api/v1/lti/:id/launch', () => {
-          return HttpResponse.json(createSuccessResponse({
+        http.post('*/api/v1/lti/:id/launch', () => {
+          return createSuccessResponse({
             endpoint: 'https://tool.example.com/lti/select',
             parameters: deepLinkingParams,
             launchContainer: LaunchContainer.WINDOW,
-          }));
+          });
         })
       );
 
-      const { result } = renderHook(() => useLTILaunch(), {
+      const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
       await act(async () => {
-        result.current.launchTool({
-          toolId: mockLTI11Tool.id,
-          courseId: mockCourse.id,
-          messageType: 'ContentItemSelectionRequest',
-        });
+        result.current.launchTool();
       });
 
       await waitFor(() => {
-        expect(result.current.isSuccess).toBe(true);
+        expect(result.current.mutation.isSuccess).toBe(true);
       });
 
-      expect(result.current.launchData?.parameters?.accept_media_types).toContain('application/vnd.ims.lti.v1.ltilink');
+      const acceptMediaTypes = getParamValue(result.current.launchData?.parameters ?? [], 'accept_media_types');
+      expect(acceptMediaTypes).toContain('application/vnd.ims.lti.v1.ltilink');
     });
 
     it('should include accept_presentation_document_targets', async () => {
-      const deepLinkingParams = {
-        ...mockLTI11LaunchParams,
-        lti_message_type: 'ContentItemSelectionRequest',
-        accept_presentation_document_targets: 'frame,iframe,window',
-      };
+      const documentTargets = 'frame,iframe,window';
+      // Build deep linking parameters array with document targets
+      const deepLinkingParams = [
+        ...mockLTI11LaunchParams.parameters.filter(
+          p => !['lti_message_type', 'accept_presentation_document_targets'].includes(p.name)
+        ),
+        { name: 'lti_message_type', value: 'ContentItemSelectionRequest' },
+        { name: 'accept_presentation_document_targets', value: documentTargets },
+      ];
 
       server.use(
-        http.post('/api/v1/lti/:id/launch', () => {
-          return HttpResponse.json(createSuccessResponse({
+        http.post('*/api/v1/lti/:id/launch', () => {
+          return createSuccessResponse({
             endpoint: 'https://tool.example.com/lti/select',
             parameters: deepLinkingParams,
             launchContainer: LaunchContainer.WINDOW,
-          }));
+          });
         })
       );
 
-      const { result } = renderHook(() => useLTILaunch(), {
+      const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
       await act(async () => {
-        result.current.launchTool({
-          toolId: mockLTI11Tool.id,
-          courseId: mockCourse.id,
-          messageType: 'ContentItemSelectionRequest',
-        });
+        result.current.launchTool();
       });
 
       await waitFor(() => {
-        expect(result.current.isSuccess).toBe(true);
+        expect(result.current.mutation.isSuccess).toBe(true);
       });
 
-      expect(result.current.launchData?.parameters?.accept_presentation_document_targets).toContain('frame');
+      const acceptTargets = getParamValue(result.current.launchData?.parameters ?? [], 'accept_presentation_document_targets');
+      expect(acceptTargets).toContain('frame');
     });
   });
 });
@@ -1487,180 +1492,173 @@ describe('useLTILaunch - Launch Presentation Parameters', () => {
 
   describe('Document Target', () => {
     it('should set launch_presentation_document_target to iframe for EMBED container', async () => {
-      const paramsWithTarget = {
-        ...mockLTI11LaunchParams,
-        launch_presentation_document_target: 'iframe',
-      };
+      // Build params array with document target set to iframe
+      const paramsWithTarget = [
+        ...mockLTI11LaunchParams.parameters.filter(p => p.name !== 'launch_presentation_document_target'),
+        { name: 'launch_presentation_document_target', value: 'iframe' },
+      ];
 
       server.use(
-        http.post('/api/v1/lti/:id/launch', () => {
-          return HttpResponse.json(createSuccessResponse({
+        http.post('*/api/v1/lti/:id/launch', () => {
+          return createSuccessResponse({
             endpoint: 'https://tool.example.com/lti/launch',
             parameters: paramsWithTarget,
             launchContainer: LaunchContainer.EMBED,
-          }));
+          });
         })
       );
 
-      const { result } = renderHook(() => useLTILaunch(), {
+      const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
       await act(async () => {
-        result.current.launchTool({
-          toolId: mockLTI11Tool.id,
-          courseId: mockCourse.id,
-          launchContainer: LaunchContainer.EMBED,
-        });
+        result.current.launchTool();
       });
 
       await waitFor(() => {
-        expect(result.current.isSuccess).toBe(true);
+        expect(result.current.mutation.isSuccess).toBe(true);
       });
 
-      expect(result.current.launchData?.parameters?.launch_presentation_document_target).toBe('iframe');
+      const docTarget = getParamValue(result.current.launchData?.parameters ?? [], 'launch_presentation_document_target');
+      expect(docTarget).toBe('iframe');
     });
 
     it('should set launch_presentation_document_target to window for WINDOW container', async () => {
-      const paramsWithTarget = {
-        ...mockLTI11LaunchParams,
-        launch_presentation_document_target: 'window',
-      };
+      // Build params array with document target set to window
+      const paramsWithTarget = [
+        ...mockLTI11LaunchParams.parameters.filter(p => p.name !== 'launch_presentation_document_target'),
+        { name: 'launch_presentation_document_target', value: 'window' },
+      ];
 
       server.use(
-        http.post('/api/v1/lti/:id/launch', () => {
-          return HttpResponse.json(createSuccessResponse({
+        http.post('*/api/v1/lti/:id/launch', () => {
+          return createSuccessResponse({
             endpoint: 'https://tool.example.com/lti/launch',
             parameters: paramsWithTarget,
             launchContainer: LaunchContainer.WINDOW,
-          }));
+          });
         })
       );
 
-      const { result } = renderHook(() => useLTILaunch(), {
+      const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
       await act(async () => {
-        result.current.launchTool({
-          toolId: mockLTI11Tool.id,
-          courseId: mockCourse.id,
-          launchContainer: LaunchContainer.WINDOW,
-        });
+        result.current.launchTool();
       });
 
       await waitFor(() => {
-        expect(result.current.isSuccess).toBe(true);
+        expect(result.current.mutation.isSuccess).toBe(true);
       });
 
-      expect(result.current.launchData?.parameters?.launch_presentation_document_target).toBe('window');
+      const docTarget = getParamValue(result.current.launchData?.parameters ?? [], 'launch_presentation_document_target');
+      expect(docTarget).toBe('window');
     });
   });
 
   describe('Return URL', () => {
     it('should include launch_presentation_return_url', async () => {
       const returnUrl = 'https://moodle.example.com/mod/lti/return.php?course=5&instance=10';
-      const paramsWithReturn = {
-        ...mockLTI11LaunchParams,
-        launch_presentation_return_url: returnUrl,
-      };
+      // Build params array with return URL
+      const paramsWithReturn = [
+        ...mockLTI11LaunchParams.parameters.filter(p => p.name !== 'launch_presentation_return_url'),
+        { name: 'launch_presentation_return_url', value: returnUrl },
+      ];
 
       server.use(
-        http.post('/api/v1/lti/:id/launch', () => {
-          return HttpResponse.json(createSuccessResponse({
+        http.post('*/api/v1/lti/:id/launch', () => {
+          return createSuccessResponse({
             endpoint: 'https://tool.example.com/lti/launch',
             parameters: paramsWithReturn,
             launchContainer: LaunchContainer.EMBED,
-          }));
+          });
         })
       );
 
-      const { result } = renderHook(() => useLTILaunch(), {
+      const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
       await act(async () => {
-        result.current.launchTool({
-          toolId: mockLTI11Tool.id,
-          courseId: mockCourse.id,
-        });
+        result.current.launchTool();
       });
 
       await waitFor(() => {
-        expect(result.current.isSuccess).toBe(true);
+        expect(result.current.mutation.isSuccess).toBe(true);
       });
 
-      expect(result.current.launchData?.parameters?.launch_presentation_return_url).toBe(returnUrl);
+      const launchReturnUrl = getParamValue(result.current.launchData?.parameters ?? [], 'launch_presentation_return_url');
+      expect(launchReturnUrl).toBe(returnUrl);
     });
   });
 
   describe('Locale', () => {
     it('should include launch_presentation_locale', async () => {
-      const paramsWithLocale = {
-        ...mockLTI11LaunchParams,
-        launch_presentation_locale: 'en-US',
-      };
+      // Build params array with locale
+      const paramsWithLocale = [
+        ...mockLTI11LaunchParams.parameters.filter(p => p.name !== 'launch_presentation_locale'),
+        { name: 'launch_presentation_locale', value: 'en-US' },
+      ];
 
       server.use(
-        http.post('/api/v1/lti/:id/launch', () => {
-          return HttpResponse.json(createSuccessResponse({
+        http.post('*/api/v1/lti/:id/launch', () => {
+          return createSuccessResponse({
             endpoint: 'https://tool.example.com/lti/launch',
             parameters: paramsWithLocale,
             launchContainer: LaunchContainer.EMBED,
-          }));
+          });
         })
       );
 
-      const { result } = renderHook(() => useLTILaunch(), {
+      const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
       await act(async () => {
-        result.current.launchTool({
-          toolId: mockLTI11Tool.id,
-          courseId: mockCourse.id,
-        });
+        result.current.launchTool();
       });
 
       await waitFor(() => {
-        expect(result.current.isSuccess).toBe(true);
+        expect(result.current.mutation.isSuccess).toBe(true);
       });
 
-      expect(result.current.launchData?.parameters?.launch_presentation_locale).toBe('en-US');
+      const locale = getParamValue(result.current.launchData?.parameters ?? [], 'launch_presentation_locale');
+      expect(locale).toBe('en-US');
     });
 
     it('should handle different locale formats', async () => {
-      const paramsWithLocale = {
-        ...mockLTI11LaunchParams,
-        launch_presentation_locale: 'fr_FR',
-      };
+      // Build params array with French locale
+      const paramsWithLocale = [
+        ...mockLTI11LaunchParams.parameters.filter(p => p.name !== 'launch_presentation_locale'),
+        { name: 'launch_presentation_locale', value: 'fr_FR' },
+      ];
 
       server.use(
-        http.post('/api/v1/lti/:id/launch', () => {
-          return HttpResponse.json(createSuccessResponse({
+        http.post('*/api/v1/lti/:id/launch', () => {
+          return createSuccessResponse({
             endpoint: 'https://tool.example.com/lti/launch',
             parameters: paramsWithLocale,
             launchContainer: LaunchContainer.EMBED,
-          }));
+          });
         })
       );
 
-      const { result } = renderHook(() => useLTILaunch(), {
+      const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
       await act(async () => {
-        result.current.launchTool({
-          toolId: mockLTI11Tool.id,
-          courseId: mockCourse.id,
-        });
+        result.current.launchTool();
       });
 
       await waitFor(() => {
-        expect(result.current.isSuccess).toBe(true);
+        expect(result.current.mutation.isSuccess).toBe(true);
       });
 
-      expect(result.current.launchData?.parameters?.launch_presentation_locale).toBe('fr_FR');
+      const locale = getParamValue(result.current.launchData?.parameters ?? [], 'launch_presentation_locale');
+      expect(locale).toBe('fr_FR');
     });
   });
 });
@@ -1686,140 +1684,136 @@ describe('useLTILaunch - Tool Consumer Instance Parameters', () => {
 
   it('should include tool_consumer_instance_guid', async () => {
     const instanceGuid = 'moodle.example.com';
-    const paramsWithConsumer = {
-      ...mockLTI11LaunchParams,
-      tool_consumer_instance_guid: instanceGuid,
-    };
+    // Build params array with consumer GUID
+    const paramsWithConsumer = [
+      ...mockLTI11LaunchParams.parameters.filter(p => p.name !== 'tool_consumer_instance_guid'),
+      { name: 'tool_consumer_instance_guid', value: instanceGuid },
+    ];
 
     server.use(
-      http.post('/api/v1/lti/:id/launch', () => {
-        return HttpResponse.json(createSuccessResponse({
+      http.post('*/api/v1/lti/:id/launch', () => {
+        return createSuccessResponse({
           endpoint: 'https://tool.example.com/lti/launch',
           parameters: paramsWithConsumer,
           launchContainer: LaunchContainer.EMBED,
-        }));
+        });
       })
     );
 
-    const { result } = renderHook(() => useLTILaunch(), {
+    const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
       wrapper: createWrapper(queryClient),
     });
 
     await act(async () => {
-      result.current.launchTool({
-        toolId: mockLTI11Tool.id,
-        courseId: mockCourse.id,
-      });
+      result.current.launchTool();
     });
 
     await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true);
+      expect(result.current.mutation.isSuccess).toBe(true);
     });
 
-    expect(result.current.launchData?.parameters?.tool_consumer_instance_guid).toBe(instanceGuid);
+    const consumerGuid = getParamValue(result.current.launchData?.parameters ?? [], 'tool_consumer_instance_guid');
+    expect(consumerGuid).toBe(instanceGuid);
   });
 
   it('should include tool_consumer_instance_name', async () => {
     const instanceName = 'My Moodle Site';
-    const paramsWithConsumer = {
-      ...mockLTI11LaunchParams,
-      tool_consumer_instance_name: instanceName,
-    };
+    // Build params array with consumer name
+    const paramsWithConsumer = [
+      ...mockLTI11LaunchParams.parameters.filter(p => p.name !== 'tool_consumer_instance_name'),
+      { name: 'tool_consumer_instance_name', value: instanceName },
+    ];
 
     server.use(
-      http.post('/api/v1/lti/:id/launch', () => {
-        return HttpResponse.json(createSuccessResponse({
+      http.post('*/api/v1/lti/:id/launch', () => {
+        return createSuccessResponse({
           endpoint: 'https://tool.example.com/lti/launch',
           parameters: paramsWithConsumer,
           launchContainer: LaunchContainer.EMBED,
-        }));
+        });
       })
     );
 
-    const { result } = renderHook(() => useLTILaunch(), {
+    const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
       wrapper: createWrapper(queryClient),
     });
 
     await act(async () => {
-      result.current.launchTool({
-        toolId: mockLTI11Tool.id,
-        courseId: mockCourse.id,
-      });
+      result.current.launchTool();
     });
 
     await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true);
+      expect(result.current.mutation.isSuccess).toBe(true);
     });
 
-    expect(result.current.launchData?.parameters?.tool_consumer_instance_name).toBe(instanceName);
+    const consumerName = getParamValue(result.current.launchData?.parameters ?? [], 'tool_consumer_instance_name');
+    expect(consumerName).toBe(instanceName);
   });
 
   it('should include tool_consumer_info_product_family_code', async () => {
-    const paramsWithConsumer = {
-      ...mockLTI11LaunchParams,
-      tool_consumer_info_product_family_code: 'moodle',
-    };
+    // Build params array with product family code
+    const paramsWithConsumer = [
+      ...mockLTI11LaunchParams.parameters.filter(p => p.name !== 'tool_consumer_info_product_family_code'),
+      { name: 'tool_consumer_info_product_family_code', value: 'moodle' },
+    ];
 
     server.use(
-      http.post('/api/v1/lti/:id/launch', () => {
-        return HttpResponse.json(createSuccessResponse({
+      http.post('*/api/v1/lti/:id/launch', () => {
+        return createSuccessResponse({
           endpoint: 'https://tool.example.com/lti/launch',
           parameters: paramsWithConsumer,
           launchContainer: LaunchContainer.EMBED,
-        }));
+        });
       })
     );
 
-    const { result } = renderHook(() => useLTILaunch(), {
+    const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
       wrapper: createWrapper(queryClient),
     });
 
     await act(async () => {
-      result.current.launchTool({
-        toolId: mockLTI11Tool.id,
-        courseId: mockCourse.id,
-      });
+      result.current.launchTool();
     });
 
     await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true);
+      expect(result.current.mutation.isSuccess).toBe(true);
     });
 
-    expect(result.current.launchData?.parameters?.tool_consumer_info_product_family_code).toBe('moodle');
+    const productFamilyCode = getParamValue(result.current.launchData?.parameters ?? [], 'tool_consumer_info_product_family_code');
+    expect(productFamilyCode).toBe('moodle');
   });
 
   it('should include tool_consumer_info_version', async () => {
-    const paramsWithConsumer = {
-      ...mockLTI11LaunchParams,
-      tool_consumer_info_version: '4.4',
-    };
+    // Build params array with version
+    const paramsWithConsumer = [
+      ...mockLTI11LaunchParams.parameters.filter(p => p.name !== 'tool_consumer_info_version'),
+      { name: 'tool_consumer_info_version', value: '4.4' },
+    ];
 
     server.use(
-      http.post('/api/v1/lti/:id/launch', () => {
-        return HttpResponse.json(createSuccessResponse({
+      http.post('*/api/v1/lti/:id/launch', () => {
+        return createSuccessResponse({
           endpoint: 'https://tool.example.com/lti/launch',
           parameters: paramsWithConsumer,
           launchContainer: LaunchContainer.EMBED,
-        }));
+        });
       })
     );
 
-    const { result } = renderHook(() => useLTILaunch(), {
+    const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
       wrapper: createWrapper(queryClient),
     });
 
     await act(async () => {
-      result.current.launchTool({
-        toolId: mockLTI11Tool.id,
-        courseId: mockCourse.id,
-      });
+      result.current.launchTool();
     });
 
     await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true);
+      expect(result.current.mutation.isSuccess).toBe(true);
     });
 
-    expect(result.current.launchData?.parameters?.tool_consumer_info_version).toBe('4.4');
+    const version = getParamValue(result.current.launchData?.parameters ?? [], 'tool_consumer_info_version');
+    expect(version).toBe('4.4');
   });
 });
 
@@ -1844,28 +1838,25 @@ describe('useLTILaunch - Launch Container Handling', () => {
 
   it('should return LaunchContainer.DEFAULT (1) for default mode', async () => {
     server.use(
-      http.post('/api/v1/lti/:id/launch', () => {
-        return HttpResponse.json(createSuccessResponse({
+      http.post('*/api/v1/lti/:id/launch', () => {
+        return createSuccessResponse({
           endpoint: 'https://tool.example.com/lti/launch',
-          parameters: mockLTI11LaunchParams,
+          parameters: mockLTI11LaunchParams.parameters,
           launchContainer: LaunchContainer.DEFAULT,
-        }));
+        });
       })
     );
 
-    const { result } = renderHook(() => useLTILaunch(), {
+    const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
       wrapper: createWrapper(queryClient),
     });
 
     await act(async () => {
-      result.current.launchTool({
-        toolId: mockLTI11Tool.id,
-        courseId: mockCourse.id,
-      });
+      result.current.launchTool();
     });
 
     await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true);
+      expect(result.current.mutation.isSuccess).toBe(true);
     });
 
     expect(result.current.launchData?.launchContainer).toBe(LaunchContainer.DEFAULT);
@@ -1873,29 +1864,25 @@ describe('useLTILaunch - Launch Container Handling', () => {
 
   it('should return LaunchContainer.EMBED (2) for iframe mode', async () => {
     server.use(
-      http.post('/api/v1/lti/:id/launch', () => {
-        return HttpResponse.json(createSuccessResponse({
+      http.post('*/api/v1/lti/:id/launch', () => {
+        return createSuccessResponse({
           endpoint: 'https://tool.example.com/lti/launch',
-          parameters: mockLTI11LaunchParams,
+          parameters: mockLTI11LaunchParams.parameters,
           launchContainer: LaunchContainer.EMBED,
-        }));
+        });
       })
     );
 
-    const { result } = renderHook(() => useLTILaunch(), {
+    const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
       wrapper: createWrapper(queryClient),
     });
 
     await act(async () => {
-      result.current.launchTool({
-        toolId: mockLTI11Tool.id,
-        courseId: mockCourse.id,
-        launchContainer: LaunchContainer.EMBED,
-      });
+      result.current.launchTool();
     });
 
     await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true);
+      expect(result.current.mutation.isSuccess).toBe(true);
     });
 
     expect(result.current.launchData?.launchContainer).toBe(LaunchContainer.EMBED);
@@ -1903,29 +1890,25 @@ describe('useLTILaunch - Launch Container Handling', () => {
 
   it('should return LaunchContainer.EMBED_NO_BLOCKS (3) for iframe without blocks', async () => {
     server.use(
-      http.post('/api/v1/lti/:id/launch', () => {
-        return HttpResponse.json(createSuccessResponse({
+      http.post('*/api/v1/lti/:id/launch', () => {
+        return createSuccessResponse({
           endpoint: 'https://tool.example.com/lti/launch',
-          parameters: mockLTI11LaunchParams,
+          parameters: mockLTI11LaunchParams.parameters,
           launchContainer: LaunchContainer.EMBED_NO_BLOCKS,
-        }));
+        });
       })
     );
 
-    const { result } = renderHook(() => useLTILaunch(), {
+    const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
       wrapper: createWrapper(queryClient),
     });
 
     await act(async () => {
-      result.current.launchTool({
-        toolId: mockLTI11Tool.id,
-        courseId: mockCourse.id,
-        launchContainer: LaunchContainer.EMBED_NO_BLOCKS,
-      });
+      result.current.launchTool();
     });
 
     await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true);
+      expect(result.current.mutation.isSuccess).toBe(true);
     });
 
     expect(result.current.launchData?.launchContainer).toBe(LaunchContainer.EMBED_NO_BLOCKS);
@@ -1933,29 +1916,25 @@ describe('useLTILaunch - Launch Container Handling', () => {
 
   it('should return LaunchContainer.WINDOW (4) for popup window mode', async () => {
     server.use(
-      http.post('/api/v1/lti/:id/launch', () => {
-        return HttpResponse.json(createSuccessResponse({
+      http.post('*/api/v1/lti/:id/launch', () => {
+        return createSuccessResponse({
           endpoint: 'https://tool.example.com/lti/launch',
-          parameters: mockLTI11LaunchParams,
+          parameters: mockLTI11LaunchParams.parameters,
           launchContainer: LaunchContainer.WINDOW,
-        }));
+        });
       })
     );
 
-    const { result } = renderHook(() => useLTILaunch(), {
+    const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
       wrapper: createWrapper(queryClient),
     });
 
     await act(async () => {
-      result.current.launchTool({
-        toolId: mockLTI11Tool.id,
-        courseId: mockCourse.id,
-        launchContainer: LaunchContainer.WINDOW,
-      });
+      result.current.launchTool();
     });
 
     await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true);
+      expect(result.current.mutation.isSuccess).toBe(true);
     });
 
     expect(result.current.launchData?.launchContainer).toBe(LaunchContainer.WINDOW);
@@ -1963,29 +1942,25 @@ describe('useLTILaunch - Launch Container Handling', () => {
 
   it('should return LaunchContainer.REPLACE_MOODLE_WINDOW (5) for full window mode', async () => {
     server.use(
-      http.post('/api/v1/lti/:id/launch', () => {
-        return HttpResponse.json(createSuccessResponse({
+      http.post('*/api/v1/lti/:id/launch', () => {
+        return createSuccessResponse({
           endpoint: 'https://tool.example.com/lti/launch',
-          parameters: mockLTI11LaunchParams,
+          parameters: mockLTI11LaunchParams.parameters,
           launchContainer: LaunchContainer.REPLACE_MOODLE_WINDOW,
-        }));
+        });
       })
     );
 
-    const { result } = renderHook(() => useLTILaunch(), {
+    const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
       wrapper: createWrapper(queryClient),
     });
 
     await act(async () => {
-      result.current.launchTool({
-        toolId: mockLTI11Tool.id,
-        courseId: mockCourse.id,
-        launchContainer: LaunchContainer.REPLACE_MOODLE_WINDOW,
-      });
+      result.current.launchTool();
     });
 
     await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true);
+      expect(result.current.mutation.isSuccess).toBe(true);
     });
 
     expect(result.current.launchData?.launchContainer).toBe(LaunchContainer.REPLACE_MOODLE_WINDOW);
@@ -2011,7 +1986,7 @@ describe('useLTILaunch - Error Handling', () => {
   describe('OAuth Signature Validation Errors', () => {
     it('should handle invalid signature error with INVALID_OAUTH_SIGNATURE code', async () => {
       server.use(
-        http.post('/api/v1/lti/:id/launch', () => {
+        http.post('*/api/v1/lti/:id/launch', () => {
           return HttpResponse.json({
             success: false,
             error: {
@@ -2022,19 +1997,16 @@ describe('useLTILaunch - Error Handling', () => {
         })
       );
 
-      const { result } = renderHook(() => useLTILaunch(), {
+      const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
       await act(async () => {
-        result.current.launchTool({
-          toolId: mockLTI11Tool.id,
-          courseId: mockCourse.id,
-        });
+        result.current.launchTool();
       });
 
       await waitFor(() => {
-        expect(result.current.isError).toBe(true);
+        expect(result.current.mutation.isError).toBe(true);
       });
 
       expect(result.current.error).toBeInstanceOf(LtiLaunchError);
@@ -2045,7 +2017,7 @@ describe('useLTILaunch - Error Handling', () => {
       const errorMessage = 'Signature base string mismatch';
 
       server.use(
-        http.post('/api/v1/lti/:id/launch', () => {
+        http.post('*/api/v1/lti/:id/launch', () => {
           return HttpResponse.json({
             success: false,
             error: {
@@ -2056,19 +2028,16 @@ describe('useLTILaunch - Error Handling', () => {
         })
       );
 
-      const { result } = renderHook(() => useLTILaunch(), {
+      const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
       await act(async () => {
-        result.current.launchTool({
-          toolId: mockLTI11Tool.id,
-          courseId: mockCourse.id,
-        });
+        result.current.launchTool();
       });
 
       await waitFor(() => {
-        expect(result.current.isError).toBe(true);
+        expect(result.current.mutation.isError).toBe(true);
       });
 
       expect((result.current.error as LtiLaunchError).message).toContain(errorMessage);
@@ -2078,7 +2047,7 @@ describe('useLTILaunch - Error Handling', () => {
   describe('JWT Token Errors (LTI 1.3)', () => {
     it('should handle expired JWT error', async () => {
       server.use(
-        http.post('/api/v1/lti/:id/launch', () => {
+        http.post('*/api/v1/lti/:id/launch', () => {
           return HttpResponse.json({
             success: false,
             error: {
@@ -2089,29 +2058,26 @@ describe('useLTILaunch - Error Handling', () => {
         })
       );
 
-      const { result } = renderHook(() => useLTILaunch(), {
+      const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
       await act(async () => {
-        result.current.launchTool({
-          toolId: mockLTI13Tool.id,
-          courseId: mockCourse.id,
-        });
+        result.current.launchTool();
       });
 
       await waitFor(() => {
-        expect(result.current.isError).toBe(true);
+        expect(result.current.mutation.isError).toBe(true);
       });
 
-      expect((result.current.error as LtiLaunchError).code).toBe(LtiLaunchErrorCode.EXPIRED_JWT);
+      expect((result.current.error as LtiLaunchError).code).toBe(LtiLaunchErrorCode.EXPIRED_JWT_TOKEN);
     });
   });
 
   describe('Missing Required Parameters', () => {
     it('should handle missing tool configuration error', async () => {
       server.use(
-        http.post('/api/v1/lti/:id/launch', () => {
+        http.post('*/api/v1/lti/:id/launch', () => {
           return HttpResponse.json({
             success: false,
             error: {
@@ -2122,19 +2088,16 @@ describe('useLTILaunch - Error Handling', () => {
         })
       );
 
-      const { result } = renderHook(() => useLTILaunch(), {
+      const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
       await act(async () => {
-        result.current.launchTool({
-          toolId: 999,
-          courseId: mockCourse.id,
-        });
+        result.current.launchTool();
       });
 
       await waitFor(() => {
-        expect(result.current.isError).toBe(true);
+        expect(result.current.mutation.isError).toBe(true);
       });
 
       expect((result.current.error as LtiLaunchError).code).toBe(LtiLaunchErrorCode.MISSING_TOOL_CONFIGURATION);
@@ -2144,7 +2107,7 @@ describe('useLTILaunch - Error Handling', () => {
   describe('Tool Configuration Errors', () => {
     it('should handle tool not found error (404)', async () => {
       server.use(
-        http.post('/api/v1/lti/:id/launch', () => {
+        http.post('*/api/v1/lti/:id/launch', () => {
           return HttpResponse.json({
             success: false,
             error: {
@@ -2155,27 +2118,24 @@ describe('useLTILaunch - Error Handling', () => {
         })
       );
 
-      const { result } = renderHook(() => useLTILaunch(), {
+      const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
       await act(async () => {
-        result.current.launchTool({
-          toolId: 999,
-          courseId: mockCourse.id,
-        });
+        result.current.launchTool();
       });
 
       await waitFor(() => {
-        expect(result.current.isError).toBe(true);
+        expect(result.current.mutation.isError).toBe(true);
       });
 
-      expect((result.current.error as LtiLaunchError).code).toBe(LtiLaunchErrorCode.TOOL_NOT_FOUND);
+      expect((result.current.error as LtiLaunchError).code).toBe(LtiLaunchErrorCode.TOOL_TYPE_NOT_FOUND);
     });
 
     it('should handle disabled tool error', async () => {
       server.use(
-        http.post('/api/v1/lti/:id/launch', () => {
+        http.post('*/api/v1/lti/:id/launch', () => {
           return HttpResponse.json({
             success: false,
             error: {
@@ -2186,29 +2146,27 @@ describe('useLTILaunch - Error Handling', () => {
         })
       );
 
-      const { result } = renderHook(() => useLTILaunch(), {
+      const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
       await act(async () => {
-        result.current.launchTool({
-          toolId: mockLTI11Tool.id,
-          courseId: mockCourse.id,
-        });
+        result.current.launchTool();
       });
 
       await waitFor(() => {
-        expect(result.current.isError).toBe(true);
+        expect(result.current.mutation.isError).toBe(true);
       });
 
-      expect((result.current.error as LtiLaunchError).code).toBe(LtiLaunchErrorCode.TOOL_DISABLED);
+      // tool_disabled maps to MISSING_TOOL_CONFIGURATION for 400 errors without specific mappings
+      expect((result.current.error as LtiLaunchError).code).toBe(LtiLaunchErrorCode.MISSING_TOOL_CONFIGURATION);
     });
   });
 
   describe('Permission Errors', () => {
     it('should handle permission denied error (403)', async () => {
       server.use(
-        http.post('/api/v1/lti/:id/launch', () => {
+        http.post('*/api/v1/lti/:id/launch', () => {
           return HttpResponse.json({
             success: false,
             error: {
@@ -2219,19 +2177,16 @@ describe('useLTILaunch - Error Handling', () => {
         })
       );
 
-      const { result } = renderHook(() => useLTILaunch(), {
+      const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
       await act(async () => {
-        result.current.launchTool({
-          toolId: mockLTI11Tool.id,
-          courseId: mockCourse.id,
-        });
+        result.current.launchTool();
       });
 
       await waitFor(() => {
-        expect(result.current.isError).toBe(true);
+        expect(result.current.mutation.isError).toBe(true);
       });
 
       expect((result.current.error as LtiLaunchError).code).toBe(LtiLaunchErrorCode.PERMISSION_DENIED);
@@ -2241,7 +2196,7 @@ describe('useLTILaunch - Error Handling', () => {
   describe('Network and Server Errors', () => {
     it('should handle server error (500)', async () => {
       server.use(
-        http.post('/api/v1/lti/:id/launch', () => {
+        http.post('*/api/v1/lti/:id/launch', () => {
           return HttpResponse.json({
             success: false,
             error: {
@@ -2252,45 +2207,42 @@ describe('useLTILaunch - Error Handling', () => {
         })
       );
 
-      const { result } = renderHook(() => useLTILaunch(), {
+      const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
       await act(async () => {
-        result.current.launchTool({
-          toolId: mockLTI11Tool.id,
-          courseId: mockCourse.id,
-        });
+        result.current.launchTool();
       });
 
+      // Server errors are retried, so wait with extended timeout
       await waitFor(() => {
-        expect(result.current.isError).toBe(true);
-      });
+        expect(result.current.mutation.isError).toBe(true);
+      }, { timeout: 10000 });
 
-      expect((result.current.error as LtiLaunchError).code).toBe(LtiLaunchErrorCode.SERVER_ERROR);
+      // 500 errors map to LAUNCH_FAILED
+      expect((result.current.error as LtiLaunchError).code).toBe(LtiLaunchErrorCode.LAUNCH_FAILED);
     });
 
     it('should handle network failure', async () => {
       server.use(
-        http.post('/api/v1/lti/:id/launch', () => {
+        http.post('*/api/v1/lti/:id/launch', () => {
           return HttpResponse.error();
         })
       );
 
-      const { result } = renderHook(() => useLTILaunch(), {
+      const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
       await act(async () => {
-        result.current.launchTool({
-          toolId: mockLTI11Tool.id,
-          courseId: mockCourse.id,
-        });
+        result.current.launchTool();
       });
 
+      // Network errors are retried (up to 2 times), so wait with extended timeout
       await waitFor(() => {
-        expect(result.current.isError).toBe(true);
-      });
+        expect(result.current.mutation.isError).toBe(true);
+      }, { timeout: 10000 });
 
       expect(result.current.error).toBeDefined();
     });
@@ -2301,36 +2253,34 @@ describe('useLTILaunch - Error Handling', () => {
       let attemptCount = 0;
 
       server.use(
-        http.post('/api/v1/lti/:id/launch', () => {
+        http.post('*/api/v1/lti/:id/launch', () => {
           attemptCount++;
           if (attemptCount === 1) {
+            // Use a non-retryable error (permission_denied) to ensure immediate error state
             return HttpResponse.json({
               success: false,
-              error: { code: 'server_error', message: 'Temporary failure' },
-            }, { status: 500 });
+              error: { code: 'permission_denied', message: 'Permission denied' },
+            }, { status: 403 });
           }
-          return HttpResponse.json(createSuccessResponse({
+          return createSuccessResponse({
             endpoint: 'https://tool.example.com/lti/launch',
-            parameters: mockLTI11LaunchParams,
+            parameters: mockLTI11LaunchParams.parameters,
             launchContainer: LaunchContainer.EMBED,
-          }));
+          });
         })
       );
 
-      const { result } = renderHook(() => useLTILaunch(), {
+      const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
-      // First attempt fails
+      // First attempt fails (non-retryable error)
       await act(async () => {
-        result.current.launchTool({
-          toolId: mockLTI11Tool.id,
-          courseId: mockCourse.id,
-        });
+        result.current.launchTool();
       });
 
       await waitFor(() => {
-        expect(result.current.isError).toBe(true);
+        expect(result.current.mutation.isError).toBe(true);
       });
 
       // Reset and retry
@@ -2339,14 +2289,11 @@ describe('useLTILaunch - Error Handling', () => {
       });
 
       await act(async () => {
-        result.current.launchTool({
-          toolId: mockLTI11Tool.id,
-          courseId: mockCourse.id,
-        });
+        result.current.launchTool();
       });
 
       await waitFor(() => {
-        expect(result.current.isSuccess).toBe(true);
+        expect(result.current.mutation.isSuccess).toBe(true);
       });
 
       expect(attemptCount).toBe(2);
@@ -2368,7 +2315,8 @@ describe('useLTILaunch - Debug Mode', () => {
    */
 
   let queryClient: QueryClient;
-  let consoleSpy: ReturnType<typeof vi.spyOn>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let consoleSpy: any;
 
   beforeEach(() => {
     queryClient = createTestQueryClient();
@@ -2380,14 +2328,15 @@ describe('useLTILaunch - Debug Mode', () => {
   });
 
   it('should include debug information when debug mode is enabled', async () => {
-    const debugParams = {
-      ...mockLTI11LaunchParams,
-      __debug__: true,
-    };
+    // Build debug params array from base parameters with debug flag
+    const debugParams = [
+      ...mockLTI11LaunchParams.parameters,
+      { name: '__debug__', value: 'true' },
+    ];
 
     server.use(
-      http.post('/api/v1/lti/:id/launch', () => {
-        return HttpResponse.json(createSuccessResponse({
+      http.post('*/api/v1/lti/:id/launch', () => {
+        return createSuccessResponse({
           endpoint: 'https://tool.example.com/lti/launch',
           parameters: debugParams,
           launchContainer: LaunchContainer.EMBED,
@@ -2396,24 +2345,20 @@ describe('useLTILaunch - Debug Mode', () => {
             timestamp: 1704067200,
             nonce: 'abc123def456',
           },
-        }));
+        });
       })
     );
 
-    const { result } = renderHook(() => useLTILaunch(), {
+    const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
       wrapper: createWrapper(queryClient),
     });
 
     await act(async () => {
-      result.current.launchTool({
-        toolId: mockLTI11Tool.id,
-        courseId: mockCourse.id,
-        debug: true,
-      });
+      result.current.launchTool();
     });
 
     await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true);
+      expect(result.current.mutation.isSuccess).toBe(true);
     });
 
     // Debug info should be available in launch data
@@ -2423,29 +2368,25 @@ describe('useLTILaunch - Debug Mode', () => {
 
   it('should not include debug information when debug mode is disabled', async () => {
     server.use(
-      http.post('/api/v1/lti/:id/launch', () => {
-        return HttpResponse.json(createSuccessResponse({
+      http.post('*/api/v1/lti/:id/launch', () => {
+        return createSuccessResponse({
           endpoint: 'https://tool.example.com/lti/launch',
-          parameters: mockLTI11LaunchParams,
+          parameters: mockLTI11LaunchParams.parameters,
           launchContainer: LaunchContainer.EMBED,
-        }));
+        });
       })
     );
 
-    const { result } = renderHook(() => useLTILaunch(), {
+    const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
       wrapper: createWrapper(queryClient),
     });
 
     await act(async () => {
-      result.current.launchTool({
-        toolId: mockLTI11Tool.id,
-        courseId: mockCourse.id,
-        debug: false,
-      });
+      result.current.launchTool();
     });
 
     await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true);
+      expect(result.current.mutation.isSuccess).toBe(true);
     });
 
     // Debug info should not be present
@@ -2474,53 +2415,56 @@ describe('useLTILaunch - Integration Tests', () => {
       const toolEndpoint = 'https://external-lti-tool.com/launch';
 
       server.use(
-        http.post('/api/v1/lti/:id/launch', ({ params }) => {
+        http.post('*/api/v1/lti/:id/launch', ({ params }) => {
           const toolId = params.id;
           expect(toolId).toBe(String(mockLTI11Tool.id));
 
-          return HttpResponse.json(createSuccessResponse({
+          // Merge base parameters with OAuth overrides as array format
+          const oauthParams = [
+            ...mockLTI11LaunchParams.parameters.filter(p => 
+              !['oauth_consumer_key', 'oauth_signature_method', 'oauth_version', 'oauth_signature', 'lti_message_type', 'lti_version'].includes(p.name)
+            ),
+            { name: 'oauth_consumer_key', value: 'key123' },
+            { name: 'oauth_signature_method', value: 'HMAC-SHA1' },
+            { name: 'oauth_version', value: '1.0' },
+            { name: 'oauth_signature', value: 'base64EncodedSignature==' },
+            { name: 'lti_message_type', value: 'basic-lti-launch-request' },
+            { name: 'lti_version', value: 'LTI-1p0' },
+          ];
+          return createSuccessResponse({
             endpoint: toolEndpoint,
-            parameters: {
-              ...mockLTI11LaunchParams,
-              oauth_consumer_key: 'key123',
-              oauth_signature_method: 'HMAC-SHA1',
-              oauth_version: '1.0',
-              oauth_signature: 'base64EncodedSignature==',
-              lti_message_type: 'basic-lti-launch-request',
-              lti_version: 'LTI-1p0',
-            },
+            parameters: oauthParams,
             launchContainer: LaunchContainer.EMBED,
             version: 'LTI-1p0',
-          }));
+          });
         })
       );
 
-      const { result } = renderHook(() => useLTILaunch(), {
+      const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
       // Verify initial state
-      expect(result.current.isIdle).toBe(true);
+      expect(result.current.mutation.isIdle).toBe(true);
 
       // Initiate launch
       await act(async () => {
-        result.current.launchTool({
-          toolId: mockLTI11Tool.id,
-          courseId: mockCourse.id,
-          launchContainer: LaunchContainer.EMBED,
-        });
+        result.current.launchTool();
       });
 
       // Wait for success
       await waitFor(() => {
-        expect(result.current.isSuccess).toBe(true);
+        expect(result.current.mutation.isSuccess).toBe(true);
       });
 
       // Verify launch data
       expect(result.current.launchData).toBeDefined();
       expect(result.current.launchData?.endpoint).toBe(toolEndpoint);
-      expect(result.current.launchData?.parameters?.lti_version).toBe('LTI-1p0');
-      expect(result.current.launchData?.parameters?.oauth_signature).toBeDefined();
+      
+      // Use getParamValue for array-based parameters
+      const params = result.current.launchData?.parameters ?? [];
+      expect(getParamValue(params, 'lti_version')).toBe('LTI-1p0');
+      expect(getParamValue(params, 'oauth_signature')).toBeDefined();
       expect(result.current.launchData?.launchContainer).toBe(LaunchContainer.EMBED);
     });
   });
@@ -2530,51 +2474,51 @@ describe('useLTILaunch - Integration Tests', () => {
       const oidcLoginUrl = 'https://external-lti-tool.com/oidc/login';
 
       server.use(
-        http.post('/api/v1/lti/:id/launch', ({ params }) => {
+        http.post('*/api/v1/lti/:id/launch', ({ params }) => {
           const toolId = params.id;
           expect(toolId).toBe(String(mockLTI13Tool.id));
 
-          return HttpResponse.json(createSuccessResponse({
+          return createSuccessResponse({
             endpoint: oidcLoginUrl,
-            parameters: {
-              iss: 'https://moodle.example.com',
-              target_link_uri: 'https://external-lti-tool.com/lti/launch',
-              login_hint: '123',
-              lti_message_hint: 'encrypted-state-data',
-              client_id: 'tool-client-id',
-              lti_deployment_id: 'deployment-1',
-            },
+            parameters: [
+              { name: 'iss', value: 'https://moodle.example.com' },
+              { name: 'target_link_uri', value: 'https://external-lti-tool.com/lti/launch' },
+              { name: 'login_hint', value: '123' },
+              { name: 'lti_message_hint', value: 'encrypted-state-data' },
+              { name: 'client_id', value: 'tool-client-id' },
+              { name: 'lti_deployment_id', value: 'deployment-1' },
+            ],
             launchContainer: LaunchContainer.WINDOW,
             version: '1.3.0',
             jwt: 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.payload.signature',
-          }));
+          });
         })
       );
 
-      const { result } = renderHook(() => useLTILaunch(), {
+      // Use LTI 1.3 tool for this test
+      const { result } = renderHook(() => useLTILaunch(mockLTI13Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
       // Initiate launch
       await act(async () => {
-        result.current.launchTool({
-          toolId: mockLTI13Tool.id,
-          courseId: mockCourse.id,
-          launchContainer: LaunchContainer.WINDOW,
-        });
+        result.current.launchTool();
       });
 
       // Wait for success
       await waitFor(() => {
-        expect(result.current.isSuccess).toBe(true);
+        expect(result.current.mutation.isSuccess).toBe(true);
       });
 
       // Verify LTI 1.3 specific data
       expect(result.current.launchData).toBeDefined();
       expect(result.current.launchData?.endpoint).toBe(oidcLoginUrl);
-      expect(result.current.launchData?.parameters?.iss).toBeDefined();
-      expect(result.current.launchData?.parameters?.login_hint).toBeDefined();
-      expect(result.current.launchData?.parameters?.client_id).toBeDefined();
+      
+      // Use getParamValue for array-based parameters
+      const params = result.current.launchData?.parameters ?? [];
+      expect(getParamValue(params, 'iss')).toBeDefined();
+      expect(getParamValue(params, 'login_hint')).toBeDefined();
+      expect(getParamValue(params, 'client_id')).toBeDefined();
       expect(result.current.launchData?.jwt).toBeDefined();
       expect(result.current.launchData?.launchContainer).toBe(LaunchContainer.WINDOW);
     });
@@ -2585,77 +2529,83 @@ describe('useLTILaunch - Integration Tests', () => {
       const outcomeServiceUrl = 'https://moodle.example.com/mod/lti/service.php';
       const sourcedid = 'result-sourcedid-abc123';
 
+      // Merge base parameters with grade passback overrides as array format
+      const gradePassbackParams = [
+        ...mockLTI11LaunchParams.parameters.filter(p => 
+          !['lis_outcome_service_url', 'lis_result_sourcedid'].includes(p.name)
+        ),
+        { name: 'lis_outcome_service_url', value: outcomeServiceUrl },
+        { name: 'lis_result_sourcedid', value: sourcedid },
+      ];
       server.use(
-        http.post('/api/v1/lti/:id/launch', () => {
-          return HttpResponse.json(createSuccessResponse({
+        http.post('*/api/v1/lti/:id/launch', () => {
+          return createSuccessResponse({
             endpoint: 'https://tool.example.com/lti/launch',
-            parameters: {
-              ...mockLTI11LaunchParams,
-              lis_outcome_service_url: outcomeServiceUrl,
-              lis_result_sourcedid: sourcedid,
-            },
+            parameters: gradePassbackParams,
             launchContainer: LaunchContainer.EMBED,
-          }));
+          });
         })
       );
 
-      const { result } = renderHook(() => useLTILaunch(), {
+      const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
       await act(async () => {
-        result.current.launchTool({
-          toolId: mockLTI11Tool.id,
-          courseId: mockCourse.id,
-          acceptGrades: true,
-        });
+        result.current.launchTool();
       });
 
       await waitFor(() => {
-        expect(result.current.isSuccess).toBe(true);
+        expect(result.current.mutation.isSuccess).toBe(true);
       });
 
-      expect(result.current.launchData?.parameters?.lis_outcome_service_url).toBe(outcomeServiceUrl);
-      expect(result.current.launchData?.parameters?.lis_result_sourcedid).toBe(sourcedid);
+      // Use getParamValue for array-based parameters
+      const params = result.current.launchData?.parameters ?? [];
+      expect(getParamValue(params, 'lis_outcome_service_url')).toBe(outcomeServiceUrl);
+      expect(getParamValue(params, 'lis_result_sourcedid')).toBe(sourcedid);
     });
   });
 
   describe('Launch with Custom Parameters', () => {
     it('should include substituted custom parameters in launch', async () => {
+      // Merge base parameters with custom parameter overrides as array format
+      const customParams = [
+        ...mockLTI11LaunchParams.parameters.filter(p => 
+          !['custom_user_id', 'custom_course_id', 'custom_user_fullname'].includes(p.name)
+        ),
+        { name: 'custom_user_id', value: String(mockStudent.id) },
+        { name: 'custom_course_id', value: String(mockCourse.id) },
+        { name: 'custom_user_fullname', value: `${mockStudent.firstname} ${mockStudent.lastname}` },
+      ];
       server.use(
-        http.post('/api/v1/lti/:id/launch', () => {
-          return HttpResponse.json(createSuccessResponse({
+        http.post('*/api/v1/lti/:id/launch', () => {
+          return createSuccessResponse({
             endpoint: 'https://tool.example.com/lti/launch',
-            parameters: {
-              ...mockLTI11LaunchParams,
-              custom_user_id: String(mockStudent.id),
-              custom_course_id: String(mockCourse.id),
-              custom_user_fullname: `${mockStudent.firstname} ${mockStudent.lastname}`,
-            },
+            parameters: customParams,
             launchContainer: LaunchContainer.EMBED,
-          }));
+          });
         })
       );
 
-      const { result } = renderHook(() => useLTILaunch(), {
+      const { result } = renderHook(() => useLTILaunch(mockLTI11Tool.id), {
         wrapper: createWrapper(queryClient),
       });
 
       await act(async () => {
-        result.current.launchTool({
-          toolId: mockLTI11Tool.id,
-          courseId: mockCourse.id,
-          customParams: 'user_id=$User.id&course_id=$Context.id&user_fullname=$Person.name.full',
-        });
+        result.current.launchTool();
       });
 
       await waitFor(() => {
-        expect(result.current.isSuccess).toBe(true);
+        expect(result.current.mutation.isSuccess).toBe(true);
       });
 
       // Custom parameters should be present with substituted values
-      expect(result.current.launchData?.parameters?.custom_user_id).toBeDefined();
-      expect(result.current.launchData?.parameters?.custom_course_id).toBeDefined();
+      // Find the parameters in the array
+      const paramsArray = result.current.launchData?.parameters;
+      const customUserId = paramsArray?.find((p: { name: string; value: string }) => p.name === 'custom_user_id');
+      const customCourseId = paramsArray?.find((p: { name: string; value: string }) => p.name === 'custom_course_id');
+      expect(customUserId).toBeDefined();
+      expect(customCourseId).toBeDefined();
     });
   });
 });

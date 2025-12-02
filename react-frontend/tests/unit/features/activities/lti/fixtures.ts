@@ -25,8 +25,8 @@ import {
   LaunchContainer,
   LtiToolProxyState,
 } from '@/features/activities/lti/types/lti.types';
-import type { User } from '@/features/admin/users/types/user.types';
-import type { Course } from '@/features/admin/courses/types/course.types';
+import type { User } from '@/features/auth/types/auth.types';
+import type { Course } from '@/types/entities';
 import type { CourseModule } from '@/features/activities/quizzes/types/quiz.types';
 
 /**
@@ -171,9 +171,9 @@ export const mockStudent: Partial<User> = {
   lastname: 'Student',
   email: 'john.student@example.com',
   auth: 'manual',
-  confirmed: 1,
-  suspended: 0,
-  deleted: 0,
+  confirmed: true,
+  suspended: false,
+  deleted: false,
   firstaccess: Math.floor(Date.now() / 1000) - 86400 * 30, // 30 days ago
   lastaccess: Math.floor(Date.now() / 1000) - 3600, // 1 hour ago
   lastlogin: Math.floor(Date.now() / 1000) - 3600, // 1 hour ago
@@ -194,9 +194,9 @@ export const mockTeacher: Partial<User> = {
   lastname: 'Smith',
   email: 'jane.smith@example.com',
   auth: 'manual',
-  confirmed: 1,
-  suspended: 0,
-  deleted: 0,
+  confirmed: true,
+  suspended: false,
+  deleted: false,
   firstaccess: Math.floor(Date.now() / 1000) - 86400 * 90, // 90 days ago
   lastaccess: Math.floor(Date.now() / 1000) - 1800, // 30 minutes ago
   lastlogin: Math.floor(Date.now() / 1000) - 1800, // 30 minutes ago
@@ -217,9 +217,9 @@ export const mockAdmin: Partial<User> = {
   lastname: 'User',
   email: 'admin@moodle.example.com',
   auth: 'manual',
-  confirmed: 1,
-  suspended: 0,
-  deleted: 0,
+  confirmed: true,
+  suspended: false,
+  deleted: false,
   firstaccess: Math.floor(Date.now() / 1000) - 86400 * 365, // 1 year ago
   lastaccess: Math.floor(Date.now() / 1000) - 300, // 5 minutes ago
   lastlogin: Math.floor(Date.now() / 1000) - 300, // 5 minutes ago
@@ -239,7 +239,7 @@ export const mockCourse: Partial<Course> = {
   shortname: 'CS101',
   idnumber: 'CS-101-2024',
   category: 1,
-  visible: 1,
+  visible: true,
   format: 'topics',
   startdate: 1704067200, // 2024-01-01
   enddate: 1719792000, // 2024-07-01
@@ -494,13 +494,14 @@ export const mockPermissionDeniedError = {
  */
 export const mockOAuthSignatureError = {
   success: false,
-  code: 'OAUTH_SIGNATURE_INVALID',
-  message: 'OAuth signature verification failed',
-  status: 401,
-  details: {
-    oauth_signature_method: 'HMAC-SHA1',
-    timestamp: '1704067200',
-    nonce: 'a1b2c3d4e5f6g7h8i9j0',
+  error: {
+    code: 'invalid_oauth_signature',
+    message: 'OAuth signature verification failed',
+    details: {
+      oauth_signature_method: 'HMAC-SHA1',
+      timestamp: '1704067200',
+      nonce: 'a1b2c3d4e5f6g7h8i9j0',
+    },
   },
 };
 

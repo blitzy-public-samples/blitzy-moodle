@@ -40,17 +40,115 @@ export interface LtiLaunchParams {
   oauth_timestamp?: string;
   oauth_nonce?: string;
   oauth_version?: string;
+  oauth_signature?: string;
+  oauth_callback?: string;
   resource_link_id?: string;
+  resource_link_title?: string;
+  resource_link_description?: string;
   user_id?: string;
   roles?: string;
   context_id?: string;
+  context_type?: string;
   context_label?: string;
   context_title?: string;
+  lis_person_name_given?: string;
+  lis_person_name_family?: string;
+  lis_person_name_full?: string;
+  lis_person_contact_email_primary?: string;
   launch_presentation_locale?: string;
+  launch_presentation_document_target?: string;
+  launch_presentation_width?: string;
+  launch_presentation_height?: string;
+  launch_presentation_return_url?: string;
+  tool_consumer_instance_guid?: string;
+  tool_consumer_instance_name?: string;
+  tool_consumer_instance_description?: string;
   tool_consumer_info_product_family_code?: string;
+  tool_consumer_info_version?: string;
   lti_version?: string;
   lti_message_type?: string;
+  lis_outcome_service_url?: string;
+  lis_result_sourcedid?: string;
+  // LTI 1.3 OIDC params
+  login_hint?: string;
+  lti_message_hint?: string;
+  iss?: string;
+  target_link_uri?: string;
+  client_id?: string;
+  lti_deployment_id?: string;
   [key: string]: string | undefined;
+}
+
+/**
+ * Configuration options for factory-style launch parameter generation.
+ * Provides a more ergonomic API for test authors to specify launch scenarios.
+ */
+export interface LaunchParamsConfig {
+  /** LTI version string (e.g., 'LTI-1p0', '1.3.0') */
+  version?: string;
+  /** Whether to include OAuth 1.0 parameters */
+  oauth?: boolean;
+  /** Whether to include OIDC parameters (LTI 1.3) */
+  oidc?: boolean;
+  /** User ID (will be converted to string for user_id param) */
+  userId?: number | string;
+  /** User roles as an array (will be joined into comma-separated string) */
+  roles?: string[];
+  /** Platform issuer URL for OIDC */
+  issuer?: string;
+  /** Target link URI for OIDC */
+  targetLinkUri?: string;
+  /** Client ID for OIDC */
+  clientId?: string;
+  /** Deployment ID for LTI 1.3 */
+  deploymentId?: string;
+  /** Course/context ID */
+  courseId?: number | string;
+  /** Course title */
+  courseTitle?: string;
+  /** Course label/shortname */
+  courseLabel?: string;
+  /** Resource link ID */
+  resourceLinkId?: string;
+  /** Consumer key for OAuth */
+  consumerKey?: string;
+  /** Consumer secret for OAuth signature generation */
+  consumerSecret?: string;
+  /** Launch URL for OAuth signature generation */
+  launchUrl?: string;
+  /** User object for populating PII fields */
+  user?: Partial<User>;
+  /** Course object for populating context fields */
+  course?: Partial<Course>;
+  /** Whether to include user's name in launch params */
+  sendName?: boolean;
+  /** Whether to include user's email in launch params */
+  sendEmail?: boolean;
+}
+
+/**
+ * Type guard to check if input is a configuration object vs raw params.
+ */
+function isLaunchParamsConfig(input: unknown): input is LaunchParamsConfig {
+  if (!input || typeof input !== 'object') return false;
+  const obj = input as Record<string, unknown>;
+  // Check for config-specific properties that don't exist on LtiLaunchParams
+  return (
+    'version' in obj ||
+    'oauth' in obj ||
+    'oidc' in obj ||
+    'userId' in obj ||
+    ('roles' in obj && Array.isArray(obj.roles)) ||
+    'issuer' in obj ||
+    'targetLinkUri' in obj ||
+    'clientId' in obj ||
+    'deploymentId' in obj ||
+    'courseId' in obj ||
+    'user' in obj ||
+    'course' in obj ||
+    'sendName' in obj ||
+    'sendEmail' in obj
+  );
 }
 
 export interface LtiGradeData {
@@ -149,22 +247,35 @@ export function createMockLTITool(overrides: Partial<LtiTool> = {}): LtiTool {
 
 /**
  * Creates mock LTI launch parameters for OAuth 1.0 or OIDC launches.
- * Generates complete parameter set including OAuth signature, context, user, and role data.
+ * Supports two calling patterns:
+ * 1. Direct overrides: `createMockLaunchParams({ lti_version: 'LTI-1p0' })`
+ * 2. Config object: `createMockLaunchParams({ version: 'LTI-1p0', oauth: true })`
  * 
- * @param {Partial<LtiLaunchParams>} overrides - Properties to override
+ * @param {Partial<LtiLaunchParams> | LaunchParamsConfig} input - Overrides or config
  * @returns {LtiLaunchParams} Complete launch parameter object
  * 
  * @example
  * ```typescript
+ * // Direct override pattern
  * const oauthParams = createMockLaunchParams({ lti_version: LtiVersion.LTI_1P0 });
- * const oidcParams = createMockLaunchParams({ lti_version: LtiVersion.LTI_1P3 });
+ * 
+ * // Config pattern (more ergonomic)
+ * const oidcParams = createMockLaunchParams({ version: '1.3.0', oidc: true, userId: 123 });
  * ```
  */
 export function createMockLaunchParams(
-  overrides: Partial<LtiLaunchParams> = {}
+  input: LaunchParamsConfig | Partial<LtiLaunchParams> = {}
 ): LtiLaunchParams {
   const timestamp = Math.floor(Date.now() / 1000);
   const nonce = generateNonce();
+
+  // Determine if input is config object or direct overrides
+  if (isLaunchParamsConfig(input)) {
+    return createMockLaunchParamsFromConfig(input, timestamp, nonce);
+  }
+
+  // Direct override pattern - input is Partial<LtiLaunchParams>
+  const overrides = input as Partial<LtiLaunchParams>;
 
   return {
     lti_message_type: overrides.lti_message_type ?? 'basic-lti-launch-request',
@@ -201,7 +312,100 @@ export function createMockLaunchParams(
     oauth_callback: overrides.oauth_callback ?? 'about:blank',
     lis_outcome_service_url: overrides.lis_outcome_service_url,
     lis_result_sourcedid: overrides.lis_result_sourcedid,
+    // OIDC params
+    login_hint: overrides.login_hint,
+    lti_message_hint: overrides.lti_message_hint,
+    iss: overrides.iss,
+    target_link_uri: overrides.target_link_uri,
+    client_id: overrides.client_id,
+    lti_deployment_id: overrides.lti_deployment_id,
   };
+}
+
+/**
+ * Internal helper to create launch params from a configuration object.
+ * This pattern is more ergonomic for test authors.
+ */
+function createMockLaunchParamsFromConfig(
+  config: LaunchParamsConfig,
+  timestamp: number,
+  nonce: string
+): LtiLaunchParams {
+  const isOidc = config.oidc || config.version === '1.3.0' || config.version === LtiVersion.LTI_1P3;
+  const ltiVersion = config.version ?? (isOidc ? LtiVersion.LTI_1P3 : LtiVersion.LTI_1P0);
+  const consumerSecret = config.consumerSecret ?? 'test_consumer_secret';
+  const launchUrl = config.launchUrl ?? 'https://example.com/lti/launch';
+
+  // Extract user info from config.user if provided
+  const user = config.user;
+  const course = config.course;
+
+  // Build base params
+  const params: LtiLaunchParams = {
+    lti_message_type: 'basic-lti-launch-request',
+    lti_version: ltiVersion,
+    resource_link_id: config.resourceLinkId ?? `${generateMockId()}`,
+    resource_link_title: 'Test Resource',
+    resource_link_description: 'Test LTI resource',
+    user_id: config.userId !== undefined ? String(config.userId) : (user?.id !== undefined ? String(user.id) : `${generateMockId()}`),
+    roles: config.roles ? config.roles.join(',') : 'Learner',
+    // Only include PII if sendName is true
+    ...(config.sendName && user ? {
+      lis_person_name_given: user.firstname,
+      lis_person_name_family: user.lastname,
+      lis_person_name_full: `${user.firstname} ${user.lastname}`,
+    } : (config.sendName !== false ? {
+      lis_person_name_given: 'Test',
+      lis_person_name_family: 'Student',
+      lis_person_name_full: 'Test Student',
+    } : {})),
+    // Only include email if sendEmail is true
+    ...(config.sendEmail && user ? {
+      lis_person_contact_email_primary: user.email,
+    } : (config.sendEmail !== false ? {
+      lis_person_contact_email_primary: 'test@example.com',
+    } : {})),
+    context_id: config.courseId !== undefined ? String(config.courseId) : (course?.id !== undefined ? String(course.id) : `${generateMockId()}`),
+    context_type: 'CourseSection',
+    context_title: config.courseTitle ?? (course?.fullname ?? 'Test Course'),
+    context_label: config.courseLabel ?? (course?.shortname ?? 'TEST101'),
+    launch_presentation_locale: 'en',
+    launch_presentation_document_target: 'iframe',
+    launch_presentation_width: '100%',
+    launch_presentation_height: '600',
+    launch_presentation_return_url: 'https://moodle.example.com/mod/lti/return.php',
+    tool_consumer_instance_guid: 'example.moodle.com',
+    tool_consumer_instance_name: 'Example Moodle',
+    tool_consumer_instance_description: 'Example Moodle Site',
+    tool_consumer_info_product_family_code: 'moodle',
+    tool_consumer_info_version: '4.4',
+  };
+
+  // Add OAuth 1.0 params if requested or if LTI 1.0/1.1
+  if (config.oauth || (!isOidc && config.oauth !== false)) {
+    params.oauth_version = '1.0';
+    params.oauth_nonce = nonce;
+    params.oauth_timestamp = `${timestamp}`;
+    params.oauth_consumer_key = config.consumerKey ?? 'test_consumer_key';
+    params.oauth_signature_method = 'HMAC-SHA1';
+    params.oauth_callback = 'about:blank';
+
+    // Generate OAuth signature
+    const signature = generateTestOAuthSignature(params, consumerSecret, launchUrl);
+    params.oauth_signature = signature;
+  }
+
+  // Add OIDC params if requested or if LTI 1.3
+  if (isOidc || config.oidc) {
+    params.login_hint = config.userId !== undefined ? String(config.userId) : `${generateMockId()}`;
+    params.lti_message_hint = `encrypted_state_${generateNonce().substring(0, 16)}`;
+    params.iss = config.issuer ?? 'https://moodle.example.com';
+    params.target_link_uri = config.targetLinkUri ?? 'https://tool.example.com/lti/launch';
+    params.client_id = config.clientId ?? 'tool_client_id';
+    params.lti_deployment_id = config.deploymentId ?? `deployment_${generateMockId()}`;
+  }
+
+  return params;
 }
 
 /**
@@ -427,40 +631,106 @@ export function generateTimestamp(): number {
 // ============================================================================
 
 /**
+ * Context object for custom parameter substitution.
+ * Provides all the context needed for variable substitution in LTI custom parameters.
+ */
+export interface SubstitutionContext {
+  user: Partial<User>;
+  course: Partial<Course>;
+  resourceLinkId?: string;
+  resourceLinkTitle?: string;
+}
+
+/**
  * Substitutes custom parameter variables with actual values.
  * Implements LTI variable substitution for custom parameters like $User.id, $CourseSection.title.
  * 
+ * This function supports two call signatures:
+ * 1. Context-based (preferred): substituteCustomParams(paramValue, context)
+ * 2. Legacy 3-arg: substituteCustomParams(paramValue, user, course)
+ * 
  * @param {string} paramValue - Parameter value with variables (e.g., "$User.id")
- * @param {User} user - User context
- * @param {Course} course - Course context
+ * @param {SubstitutionContext | Partial<User>} contextOrUser - Either a context object or user
+ * @param {Partial<Course>} [course] - Course context (only for legacy 3-arg signature)
  * @returns {string} Substituted parameter value
  * 
  * @example
  * ```typescript
+ * // Context-based signature (preferred)
+ * const result = substituteCustomParams('$User.id', { user: mockUser, course: mockCourse });
+ * 
+ * // Legacy 3-arg signature
  * const result = substituteCustomParams('$User.id', mockUser, mockCourse);
- * expect(result).toBe('12345');
  * ```
  */
 export function substituteCustomParams(
   paramValue: string,
-  user: User,
-  course: Course
+  contextOrUser: SubstitutionContext | Partial<User>,
+  course?: Partial<Course>
 ): string {
+  // Determine if we're using context-based or legacy signature
+  let user: Partial<User>;
+  let courseData: Partial<Course>;
+  let resourceLinkId: string | undefined;
+  let resourceLinkTitle: string | undefined;
+
+  if ('user' in contextOrUser && 'course' in contextOrUser) {
+    // Context-based signature
+    const context = contextOrUser as SubstitutionContext;
+    user = context.user;
+    courseData = context.course;
+    resourceLinkId = context.resourceLinkId;
+    resourceLinkTitle = context.resourceLinkTitle;
+  } else {
+    // Legacy 3-arg signature
+    user = contextOrUser as Partial<User>;
+    courseData = course ?? {};
+  }
+
   let result = paramValue;
 
   // User substitutions
-  result = result.replace(/\$User\.id/g, String(user.id));
-  result = result.replace(/\$User\.username/g, user.username);
-  result = result.replace(/\$Person\.name\.given/g, user.firstname);
-  result = result.replace(/\$Person\.name\.family/g, user.lastname);
-  result = result.replace(/\$Person\.name\.full/g, user.fullname);
-  result = result.replace(/\$Person\.email\.primary/g, user.email);
+  if (user.id !== undefined) {
+    result = result.replace(/\$User\.id/g, String(user.id));
+  }
+  if (user.username) {
+    result = result.replace(/\$User\.username/g, user.username);
+  }
+  if (user.firstname) {
+    result = result.replace(/\$Person\.name\.given/g, user.firstname);
+  }
+  if (user.lastname) {
+    result = result.replace(/\$Person\.name\.family/g, user.lastname);
+  }
+  // Full name - construct from first + last if not available
+  const fullname = (user as { fullname?: string }).fullname ?? 
+                   (user.firstname && user.lastname ? `${user.firstname} ${user.lastname}` : '');
+  if (fullname) {
+    result = result.replace(/\$Person\.name\.full/g, fullname);
+  }
+  if (user.email) {
+    result = result.replace(/\$Person\.email\.primary/g, user.email);
+  }
 
   // Course substitutions
-  result = result.replace(/\$CourseSection\.sourcedId/g, String(course.id));
-  result = result.replace(/\$CourseSection\.title/g, course.fullname);
-  result = result.replace(/\$CourseSection\.label/g, course.shortname);
-  result = result.replace(/\$Context\.id/g, String(course.id));
+  if (courseData.id !== undefined) {
+    result = result.replace(/\$CourseSection\.sourcedId/g, String(courseData.id));
+    result = result.replace(/\$Context\.id/g, String(courseData.id));
+  }
+  if (courseData.fullname) {
+    result = result.replace(/\$CourseSection\.title/g, courseData.fullname);
+  }
+  if (courseData.shortname) {
+    result = result.replace(/\$CourseSection\.label/g, courseData.shortname);
+  }
+
+  // Resource link substitutions
+  if (resourceLinkId) {
+    result = result.replace(/\$ResourceLink\.id/g, resourceLinkId);
+  }
+  if (resourceLinkTitle) {
+    result = result.replace(/\$ResourceLink\.title/g, resourceLinkTitle);
+  }
 
   return result;
 }
@@ -533,8 +803,22 @@ export function buildLaunchForm(params: LtiLaunchParams): Record<string, string>
  * const server = setupServer(...handlers);
  * ```
  */
+/**
+ * Converts a flat LtiLaunchParams object into an array of {name, value} pairs.
+ * This is needed because the hook's LtiLaunchData.parameters expects an array format.
+ * 
+ * @param {LtiLaunchParams} params - Flat params object
+ * @returns {Array<{name: string, value: string}>} Array of parameter objects
+ */
+export function flatParamsToArray(params: LtiLaunchParams): Array<{ name: string; value: string }> {
+  return Object.entries(params).map(([name, value]) => ({
+    name,
+    value: String(value ?? ''),
+  }));
+}
+
 export function setupLTIHandlers() {
-  const baseUrl = '/api/v1';
+  const baseUrl = '*/api/v1';  // Use wildcard to match any host (e.g., http://localhost:8000)
 
   return [
     // GET /api/v1/lti/:id - Get LTI tool details
@@ -545,15 +829,26 @@ export function setupLTIHandlers() {
 
     // POST /api/v1/lti/:id/launch - Launch LTI tool
     http.post(`${baseUrl}/lti/:id/launch`, async ({ params, request }) => {
-      const body = await request.json() as { userId: number; courseId: number };
-      const launchParams = createMockLaunchParams({
+      const body = await request.json() as { 
+        userId?: number; 
+        courseId?: number;
+        message_type?: string;
+        trigger_view?: boolean;
+      };
+      const flatParams = createMockLaunchParams({
         resource_link_id: String(params.id),
-        user_id: String(body.userId),
-        context_id: String(body.courseId),
+        user_id: body.userId !== undefined ? String(body.userId) : undefined,
+        context_id: body.courseId !== undefined ? String(body.courseId) : undefined,
       });
+      
+      // Convert flat params to array format expected by hook's LtiLaunchData
+      const parametersArray = flatParamsToArray(flatParams);
+      
       return createSuccessResponse({
-        launchUrl: 'https://example.com/lti/launch',
-        params: launchParams,
+        endpoint: 'https://tool.example.com/lti/launch',
+        parameters: parametersArray,
+        launchContainer: 2, // LTI_LAUNCH_CONTAINER_EMBED (typical default)
+        version: '1.1.0',
       });
     }),
 
@@ -774,4 +1069,28 @@ export function expectGradeInRange(
   
   expect(grade).toBeGreaterThanOrEqual(min);
   expect(grade).toBeLessThanOrEqual(max);
+}
+
+/**
+ * Helper function to look up a parameter value by name from a parameters array.
+ * Used for accessing LtiLaunchData.parameters which is an array of {name, value} objects.
+ * 
+ * @param {Array<{name: string, value: string}>} parameters - Array of parameter objects
+ * @param {string} name - The parameter name to look up
+ * @returns {string | undefined} The value of the parameter if found, undefined otherwise
+ * 
+ * @example
+ * ```typescript
+ * const ltiMessageType = getParamValue(launchData.parameters, 'lti_message_type');
+ * expect(ltiMessageType).toBe('basic-lti-launch-request');
+ * ```
+ */
+export function getParamValue(
+  parameters: Array<{ name: string; value: string }> | undefined | null,
+  name: string
+): string | undefined {
+  if (!parameters || !Array.isArray(parameters)) {
+    return undefined;
+  }
+  return parameters.find(p => p.name === name)?.value;
 }

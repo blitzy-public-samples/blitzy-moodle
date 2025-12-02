@@ -238,6 +238,19 @@ export interface LtiLaunchData {
   }>;
   /** OAuth signature (if applicable) */
   oauth_signature?: string;
+  /** Launch container type - determines how the tool is displayed */
+  launchContainer?: LaunchContainer;
+  /** Debug information (only present when debug mode is enabled) */
+  debug?: {
+    /** The signature base string used for OAuth signing */
+    signatureBaseString?: string;
+    /** The normalized parameters string */
+    normalizedParams?: string;
+    /** Timestamp used in signature */
+    timestamp?: string;
+    /** Nonce used in signature */
+    nonce?: string;
+  };
 }
 
 /**

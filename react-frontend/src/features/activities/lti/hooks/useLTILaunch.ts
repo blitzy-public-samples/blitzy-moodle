@@ -52,6 +52,8 @@ export enum LtiLaunchErrorCode {
   MISSING_TOOL_CONFIGURATION = 'MISSING_TOOL_CONFIGURATION',
   /** OAuth signature verification failed (LTI 1.1) */
   INVALID_OAUTH_SIGNATURE = 'INVALID_OAUTH_SIGNATURE',
+  /** JWT signature verification failed (LTI 1.3) */
+  INVALID_JWT_SIGNATURE = 'INVALID_JWT_SIGNATURE',
   /** JWT token has expired (LTI 1.3) */
   EXPIRED_JWT_TOKEN = 'EXPIRED_JWT_TOKEN',
   /** Cannot reach the external tool URL */
@@ -64,6 +66,12 @@ export enum LtiLaunchErrorCode {
   TOOL_TYPE_NOT_FOUND = 'TOOL_TYPE_NOT_FOUND',
   /** LTI 1.3 OIDC initiation failed */
   OIDC_INITIATION_FAILED = 'OIDC_INITIATION_FAILED',
+  /** LTI 1.3 OIDC authentication failed */
+  OIDC_AUTHENTICATION_FAILED = 'OIDC_AUTHENTICATION_FAILED',
+  /** Nonce is invalid or has already been used */
+  INVALID_NONCE = 'INVALID_NONCE',
+  /** Tool is temporarily unavailable */
+  TOOL_UNAVAILABLE = 'TOOL_UNAVAILABLE',
   /** General launch failure */
   LAUNCH_FAILED = 'LAUNCH_FAILED',
   /** Network error during launch */
@@ -188,6 +196,8 @@ export interface LtiLaunchData {
   windowTitle?: string;
   /** Window features string for popup configuration */
   windowFeatures?: string;
+  /** JWT token for LTI 1.3 launches (signed assertion) */
+  jwt?: string;
   /** User context information */
   userContext?: {
     userId: number;
@@ -206,6 +216,17 @@ export interface LtiLaunchData {
     id: string;
     title?: string;
     description?: string;
+  };
+  /** Debug information (only present when debug mode is enabled) */
+  debug?: {
+    /** The signature base string used for OAuth signing */
+    signatureBaseString?: string;
+    /** The normalized parameters string */
+    normalizedParams?: string;
+    /** Timestamp used in signature */
+    timestamp?: string;
+    /** Nonce used in signature */
+    nonce?: string;
   };
 }
 
@@ -333,10 +354,15 @@ async function fetchLaunchData(request: LtiLaunchApiRequest): Promise<LtiLaunchD
       throw error;
     }
 
-    // Handle Axios/API errors
+    // Handle Axios/API errors (including serialized errors from interceptors)
     if (isAxiosError(error)) {
-      const status = error.response?.status;
-      const errorData = error.response?.data as { error?: { code?: string; message?: string } } | undefined;
+      // Support both native AxiosError (error.response.status) and serialized error (error.status)
+      const serializedErr = error as { status?: number; data?: unknown };
+      const status = error.response?.status ?? serializedErr.status;
+      
+      // Support both native AxiosError (error.response.data) and serialized error (error.data)
+      const rawErrorData = error.response?.data ?? serializedErr.data;
+      const errorData = rawErrorData as { error?: { code?: string; message?: string } } | undefined;
       const errorCode = errorData?.error?.code;
       const errorMessage = errorData?.error?.message ?? error.message;
 
@@ -417,7 +443,12 @@ async function fetchLaunchData(request: LtiLaunchApiRequest): Promise<LtiLaunchD
 // ============================================================================
 
 /**
- * Type guard for Axios errors
+ * Type guard for Axios errors (including serialized errors from interceptors)
+ * 
+ * The API interceptors convert AxiosErrors to serializable Error objects for
+ * non-auth endpoints. This type guard recognizes both:
+ * 1. Native AxiosErrors (with isAxiosError: true)
+ * 2. Serialized errors from createSerializableError() (with status and data properties)
  */
 function isAxiosError(error: unknown): error is {
   response?: {
@@ -425,14 +456,27 @@ function isAxiosError(error: unknown): error is {
     data?: unknown;
   };
   message: string;
-  isAxiosError: boolean;
+  isAxiosError?: boolean;
+  // Serialized error properties (from createSerializableError in interceptors)
+  status?: number;
+  data?: unknown;
 } {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'isAxiosError' in error &&
-    (error as { isAxiosError: boolean }).isAxiosError === true
-  );
+  if (typeof error !== 'object' || error === null) {
+    return false;
+  }
+  
+  // Check for native AxiosError
+  if ('isAxiosError' in error && (error as { isAxiosError: boolean }).isAxiosError === true) {
+    return true;
+  }
+  
+  // Check for serialized error from interceptors (has status and data properties directly)
+  const serializedError = error as { status?: number; data?: unknown; name?: string };
+  if (serializedError.name === 'ApiError' && typeof serializedError.status === 'number') {
+    return true;
+  }
+  
+  return false;
 }
 
 // ============================================================================
@@ -689,13 +733,18 @@ export function useLTILaunch(ltiId: number): UseLTILaunchResult {
 
     // Configure retry behavior
     retry: (failureCount, error) => {
-      // Don't retry for permission or configuration errors
+      // Don't retry for permission, configuration, or authentication errors
       if (error instanceof LtiLaunchError) {
         const nonRetryableCodes = [
           LtiLaunchErrorCode.PERMISSION_DENIED,
           LtiLaunchErrorCode.MISSING_TOOL_CONFIGURATION,
           LtiLaunchErrorCode.TOOL_TYPE_NOT_FOUND,
           LtiLaunchErrorCode.INVALID_OAUTH_SIGNATURE,
+          LtiLaunchErrorCode.EXPIRED_JWT_TOKEN,
+          LtiLaunchErrorCode.INVALID_JWT_SIGNATURE,
+          LtiLaunchErrorCode.OIDC_AUTHENTICATION_FAILED,
+          LtiLaunchErrorCode.INVALID_NONCE,
+          LtiLaunchErrorCode.TOOL_UNAVAILABLE, // Tool is down, retrying won't help immediately
         ];
         if (nonRetryableCodes.includes(error.code)) {
           return false;
