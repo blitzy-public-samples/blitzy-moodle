@@ -233,7 +233,7 @@ const MAX_IFRAME_HEIGHT = 2000;
 function H5PPlayer({
   activityId,
   cmId,
-  contextId,
+  contextId: _contextId,
   baseUrl,
   previewMode = false,
   onStatement,
@@ -243,6 +243,9 @@ function H5PPlayer({
   width = '100%',
   className,
 }: H5PPlayerProps): React.ReactElement {
+  // Note: _contextId is received for API compatibility but currently unused
+  // It may be used in future versions for enhanced permission checking
+  void _contextId;
   // ============================================================================
   // HOOKS AND STATE
   // ============================================================================
