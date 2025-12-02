@@ -33,7 +33,6 @@ import {
   Box,
   Typography,
   CircularProgress,
-  FormHelperText,
   LinearProgress,
   Paper,
   Divider,
@@ -177,7 +176,7 @@ function parsePresentation(item: FeedbackItem): FeedbackItemPresentation {
             const [valuePart, textPart] = opt.split('####');
             return {
               text: textPart || opt,
-              value: parseInt(valuePart, 10) || 0,
+              value: parseInt(valuePart ?? '0', 10) || 0,
             };
           });
           return {
@@ -204,12 +203,14 @@ function parsePresentation(item: FeedbackItem): FeedbackItemPresentation {
 
       case 'numeric': {
         // Format: "min|max" or just accept any number
-        const [rangeFrom, rangeTo] = item.presentation.split('|').map(Number);
+        const numericParts = item.presentation.split('|').map(Number);
+        const rangeFromVal = numericParts[0];
+        const rangeToVal = numericParts[1];
         return {
           ...basePresentation,
           numeric: {
-            rangeFrom: isNaN(rangeFrom) ? 0 : rangeFrom,
-            rangeTo: isNaN(rangeTo) ? 100 : rangeTo,
+            rangeFrom: rangeFromVal !== undefined && !isNaN(rangeFromVal) ? rangeFromVal : 0,
+            rangeTo: rangeToVal !== undefined && !isNaN(rangeToVal) ? rangeToVal : 100,
           },
         };
       }
@@ -218,14 +219,16 @@ function parsePresentation(item: FeedbackItem): FeedbackItemPresentation {
       case 'textarea': {
         // Format: "width" or "width|maxlength" for textfield
         // Format: "width|height" for textarea
-        const [width, heightOrMax] = item.presentation.split('|').map(Number);
+        const textParts = item.presentation.split('|').map(Number);
+        const widthVal = textParts[0];
+        const heightOrMaxVal = textParts[1];
         return {
           ...basePresentation,
           text: {
-            width: isNaN(width) ? 50 : width,
+            width: widthVal !== undefined && !isNaN(widthVal) ? widthVal : 50,
             ...(item.typ === 'textarea'
-              ? { rows: isNaN(heightOrMax) ? 5 : heightOrMax }
-              : { maxLength: heightOrMax }),
+              ? { rows: heightOrMaxVal !== undefined && !isNaN(heightOrMaxVal) ? heightOrMaxVal : 5 }
+              : { maxLength: heightOrMaxVal }),
           },
         };
       }
@@ -473,7 +476,7 @@ export function FeedbackForm({
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitSuccess, setIsSubmitSuccess] = useState(false);
-  const [submissionResponse, setSubmissionResponse] = useState<FeedbackResponse | null>(null);
+  const [_submissionResponse, setSubmissionResponse] = useState<FeedbackResponse | null>(null);
 
   // Last autosave timestamp for tracking
   const [lastAutoSave, setLastAutoSave] = useState<Date | null>(null);
@@ -520,8 +523,8 @@ export function FeedbackForm({
     mode: 'onBlur',
   });
 
-  // Watch all form values for autosave
-  const formValues = watch();
+  // Watch form to trigger re-renders on value changes (important for autosave timing)
+  watch();
 
   // ============================================================================
   // CALLBACKS
@@ -907,7 +910,7 @@ export function FeedbackForm({
   /**
    * Renders the success message after submission.
    */
-  const renderSuccessMessage = (): React.ReactNode => {
+  const renderSuccessMessage = (): JSX.Element => {
     return (
       <Box
         sx={{
