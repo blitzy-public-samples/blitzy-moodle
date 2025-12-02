@@ -573,15 +573,13 @@ export function useFeedbackResponse(): FeedbackResponseHookResult {
       }
 
       // Submit to API
+      // Note: ApiResponse<T> always has success: true. If an error occurs,
+      // axios throws an exception caught by the mutation's onError handler.
       const response = await submitFeedbackResponse(options.feedbackId, {
         ...apiResponses,
         courseid: options.courseId,
         gopage: options.goToPage,
       });
-
-      if (!response.success) {
-        throw new Error(response.error?.message || 'Failed to submit feedback');
-      }
 
       // Transform API response to FeedbackResponse type
       const feedbackResponse: FeedbackResponse = {
@@ -659,7 +657,7 @@ export function useFeedbackResponse(): FeedbackResponseHookResult {
       showError(error.message || 'Failed to submit feedback');
     },
 
-    onSuccess: (data: FeedbackResponse, options: SubmitResponseOptions) => {
+    onSuccess: (_data: FeedbackResponse, options: SubmitResponseOptions) => {
       // Invalidate relevant queries to trigger refetch
       queryClient.invalidateQueries({ queryKey: ['feedback', options.feedbackId] });
       queryClient.invalidateQueries({
@@ -707,15 +705,13 @@ export function useFeedbackResponse(): FeedbackResponseHookResult {
       }
 
       // Save to API
-      const response = await saveProgressApi(options.feedbackId, {
+      // Note: ApiResponse<T> always has success: true. If an error occurs,
+      // axios throws an exception caught by the mutation's onError handler.
+      await saveProgressApi(options.feedbackId, {
         ...apiResponses,
         courseid: options.courseId,
         gopage: options.currentPage,
       });
-
-      if (!response.success) {
-        throw new Error(response.error?.message || 'Failed to save progress');
-      }
     },
 
     onMutate: async (options: SaveProgressOptions) => {
@@ -749,7 +745,7 @@ export function useFeedbackResponse(): FeedbackResponseHookResult {
       return { previousProgress };
     },
 
-    onError: (error: FeedbackValidationError, options: SaveProgressOptions, context) => {
+    onError: (_error: FeedbackValidationError, options: SaveProgressOptions, context) => {
       // Rollback optimistic update
       if (context?.previousProgress) {
         queryClient.setQueryData(
