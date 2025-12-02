@@ -21,9 +21,9 @@
  * @see {@link react-frontend/src/features/activities/choice/api/choiceApi.ts}
  */
 
-import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
-import { server } from '@/tests/mocks/server';
+import { server } from '@tests/mocks/server';
 import {
   getChoice,
   submitResponse,
@@ -36,8 +36,6 @@ import {
   getChoiceResults,
   type ChoiceWithOptions,
   type ChoiceAvailabilityStatus,
-  type GetResponseDataOptions,
-  type GetChoiceResultsOptions,
 } from '@/features/activities/choice/api/choiceApi';
 import type {
   Choice,
@@ -55,7 +53,13 @@ import type {
 // TEST CONSTANTS
 // ============================================================================
 
-const API_BASE_URL = '/api/v1';
+/**
+ * API base URL for MSW handler matching.
+ * Uses wildcard prefix to match any origin (e.g., http://localhost:8000/api/v1).
+ * This is necessary because vitest.config.ts sets VITE_API_BASE_URL to the full URL,
+ * and MSW needs to match the complete URL that axios requests.
+ */
+const API_BASE_URL = '*/api/v1';
 
 /**
  * Standard API response envelope factory
@@ -277,20 +281,13 @@ function createMockSubmitResponse(overrides: Partial<SubmitChoiceResponse> = {})
 // ============================================================================
 
 describe('choiceApi', () => {
-  // Start server before all tests
-  beforeAll(() => {
-    server.listen({ onUnhandledRequest: 'warn' });
-  });
+  // Note: MSW server lifecycle (listen/close) is managed by global test setup in tests/setup.ts
+  // We only need to reset handlers between tests and clear mocks
 
-  // Reset handlers after each test
+  // Reset handlers after each test for test isolation
   afterEach(() => {
     server.resetHandlers();
     vi.clearAllMocks();
-  });
-
-  // Close server after all tests
-  afterAll(() => {
-    server.close();
   });
 
   // ============================================================================
@@ -368,10 +365,10 @@ describe('choiceApi', () => {
         const result = await getChoice(1);
 
         expect(result.options).toHaveLength(3);
-        expect(result.options[0].text).toBe('Option A');
-        expect(result.options[0].maxanswers).toBe(10);
-        expect(result.options[1].checked).toBe(true);
-        expect(result.options[2].disabled).toBe(true);
+        expect(result.options[0]!.text).toBe('Option A');
+        expect(result.options[0]!.maxanswers).toBe(10);
+        expect(result.options[1]!.checked).toBe(true);
+        expect(result.options[2]!.disabled).toBe(true);
       });
 
       it('should include capability and update status', async () => {
@@ -488,9 +485,9 @@ describe('choiceApi', () => {
 
         const result = await getResults(1);
 
-        expect(result.options[0].userresponses).toHaveLength(2);
-        expect(result.options[0].userresponses[0].fullname).toBe('John Doe');
-        expect(result.options[0].userresponses[1].fullname).toBe('Jane Smith');
+        expect(result.options[0]!.userresponses).toHaveLength(2);
+        expect(result.options[0]!.userresponses[0]!.fullname).toBe('John Doe');
+        expect(result.options[0]!.userresponses[1]!.fullname).toBe('Jane Smith');
       });
 
       it('should return empty userresponses array for anonymous mode', async () => {
@@ -513,8 +510,8 @@ describe('choiceApi', () => {
 
         const result = await getResults(1);
 
-        expect(result.options[0].userresponses).toHaveLength(0);
-        expect(result.options[0].numberofuser).toBe(5);
+        expect(result.options[0]!.userresponses).toHaveLength(0);
+        expect(result.options[0]!.numberofuser).toBe(5);
       });
 
       it('should include percentage calculations', async () => {
@@ -535,9 +532,9 @@ describe('choiceApi', () => {
 
         const result = await getResults(1);
 
-        expect(result.options[0].percentageamount).toBe(50);
-        expect(result.options[1].percentageamount).toBe(30);
-        expect(result.options[2].percentageamount).toBe(20);
+        expect(result.options[0]!.percentageamount).toBe(50);
+        expect(result.options[1]!.percentageamount).toBe(30);
+        expect(result.options[2]!.percentageamount).toBe(20);
         expect(result.percentageamount).toBe(100);
       });
     });
@@ -574,8 +571,8 @@ describe('choiceApi', () => {
         const result = await getUserResponse(42, 15);
 
         expect(result).toHaveLength(1);
-        expect(result[0].optionid).toBe(2);
-        expect(result[0].userid).toBe(15);
+        expect(result[0]!.optionid).toBe(2);
+        expect(result[0]!.userid).toBe(15);
       });
 
       it('should return multiple responses for multiple-choice', async () => {
@@ -620,7 +617,7 @@ describe('choiceApi', () => {
 
         const result = await getUserResponse(1, 1);
 
-        expect(result[0].timemodified).toBe(1704153600);
+        expect(result[0]!.timemodified).toBe(1704153600);
       });
     });
   });
@@ -639,7 +636,7 @@ describe('choiceApi', () => {
         const result = await getMyResponse(42);
 
         expect(result).toHaveLength(1);
-        expect(result[0].optionid).toBe(2);
+        expect(result[0]!.optionid).toBe(2);
       });
 
       it('should return empty array if current user has not responded', async () => {
@@ -696,9 +693,9 @@ describe('choiceApi', () => {
 
         const result = await getResponseData(1);
 
-        expect(result.responses[0].email).toBe('john@example.com');
-        expect(result.responses[0].department).toBe('Computer Science');
-        expect(result.responses[0].institution).toBe('University');
+        expect(result.responses[0]!.email).toBe('john@example.com');
+        expect(result.responses[0]!.department).toBe('Computer Science');
+        expect(result.responses[0]!.institution).toBe('University');
       });
 
       it('should support group filtering with groupId parameter', async () => {
@@ -753,8 +750,8 @@ describe('choiceApi', () => {
 
         const result = await getResponseData(1);
 
-        expect(result.responses[0].selectedOptions).toHaveLength(2);
-        expect(result.responses[0].selectedOptions[0].text).toBe('Option A');
+        expect(result.responses[0]!.selectedOptions).toHaveLength(2);
+        expect(result.responses[0]!.selectedOptions![0]!.text).toBe('Option A');
       });
 
       it('should include group memberships for each user', async () => {
@@ -777,8 +774,8 @@ describe('choiceApi', () => {
 
         const result = await getResponseData(1);
 
-        expect(result.responses[0].groups).toHaveLength(2);
-        expect(result.responses[0].groups[0].name).toBe('Group A');
+        expect(result.responses[0]!.groups).toHaveLength(2);
+        expect(result.responses[0]!.groups![0]!.name).toBe('Group A');
       });
     });
   });
@@ -888,7 +885,7 @@ describe('choiceApi', () => {
 
         expect(result.available).toBe(false);
         expect(result.warnings).toHaveLength(1);
-        expect(result.warnings[0].type).toBe('notopenyet');
+        expect(result.warnings[0]!.type).toBe('notopenyet');
         expect(result.timeOpen).toBe(futureTime);
       });
 
@@ -913,7 +910,7 @@ describe('choiceApi', () => {
 
         expect(result.available).toBe(false);
         expect(result.isClosed).toBe(true);
-        expect(result.warnings[0].type).toBe('expired');
+        expect(result.warnings[0]!.type).toBe('expired');
       });
 
       it('should return choicesaved warning when user already responded and update not allowed', async () => {
@@ -936,7 +933,7 @@ describe('choiceApi', () => {
 
         expect(result.hasResponded).toBe(true);
         expect(result.canUpdate).toBe(false);
-        expect(result.warnings[0].type).toBe('choicesaved');
+        expect(result.warnings[0]!.type).toBe('choicesaved');
       });
 
       it('should return previewonly warning when in preview mode', async () => {
@@ -957,7 +954,7 @@ describe('choiceApi', () => {
         const result = await getAvailabilityStatus(1);
 
         expect(result.isPreview).toBe(true);
-        expect(result.warnings[0].type).toBe('previewonly');
+        expect(result.warnings[0]!.type).toBe('previewonly');
       });
 
       it('should include timeopen and timeclose values', async () => {
@@ -1501,7 +1498,7 @@ describe('choiceApi', () => {
       const result = await getResponseData(1, { groupId: 5 });
 
       expect(result.groupId).toBe(5);
-      expect(result.responses[0].groups[0].id).toBe(5);
+      expect(result.responses[0]!.groups![0]!.id).toBe(5);
     });
 
     it('should return all groups when groupId is 0', async () => {

@@ -195,62 +195,142 @@ function extractResponseData<T>(response: AxiosResponse<ApiResponse<T>>): T {
 }
 
 /**
+ * Type guard to check if data is a valid ChoiceWithOptions object
+ *
+ * This validates that the response data has the expected shape,
+ * protecting against malformed JSON or unexpected response formats.
+ *
+ * @param data - Data to validate
+ * @returns True if data has the required Choice properties
+ */
+function isValidChoiceData(data: unknown): data is ChoiceWithOptions {
+  if (typeof data !== 'object' || data === null) {
+    return false;
+  }
+
+  const obj = data as Record<string, unknown>;
+
+  // Check required Choice properties
+  return (
+    typeof obj.id === 'number' &&
+    typeof obj.name === 'string' &&
+    Array.isArray(obj.options)
+  );
+}
+
+/**
  * Maps API error response to ChoiceApiError
+ *
+ * This function handles errors from both:
+ * 1. Raw Axios errors (with error.response.data)
+ * 2. Serialized errors from interceptors (with error.data or error.customError)
  *
  * @param error - Error from API request
  * @returns ChoiceApiError with appropriate code and message
  */
 function handleChoiceApiError(error: unknown): ChoiceApiError {
-  // Check if error has response data with error details
-  if (
-    typeof error === 'object' &&
-    error !== null &&
-    'response' in error &&
-    typeof (error as { response?: { data?: unknown } }).response?.data === 'object'
-  ) {
-    const responseData = (error as { response: { data: Record<string, unknown> } }).response.data;
+  if (typeof error !== 'object' || error === null) {
+    return createChoiceError('cannotsubmit', 'An unknown error occurred');
+  }
 
-    // Check for known error codes
-    if (typeof responseData.error === 'object' && responseData.error !== null) {
-      const errorInfo = responseData.error as { code?: string; message?: string; details?: Record<string, unknown> };
+  const errorObj = error as Record<string, unknown>;
 
-      const errorCode = errorInfo.code as ChoiceApiErrorCode | undefined;
-      const errorMessage = errorInfo.message ?? 'An error occurred';
+  // First, check for customError (set by interceptors with extracted error info)
+  // This is the most reliable source after interceptor processing
+  if (errorObj.customError && typeof errorObj.customError === 'object') {
+    const customError = errorObj.customError as {
+      code?: string;
+      message?: string;
+      details?: Record<string, unknown>;
+    };
 
-      // Map known Moodle choice error strings to error codes
-      if (errorCode) {
-        return createChoiceError(errorCode, errorMessage, errorInfo.details);
-      }
+    if (customError.code && customError.code !== 'UNKNOWN_ERROR' && customError.code !== 'ERR_BAD_REQUEST') {
+      // Use the API error code from customError
+      return createChoiceError(
+        customError.code as ChoiceApiErrorCode,
+        customError.message ?? 'An error occurred',
+        customError.details
+      );
     }
+  }
 
-    // Check for error message in string format
-    if (typeof responseData.message === 'string') {
-      const message = responseData.message.toLowerCase();
+  // Second, check for error.data (response data copied by interceptor's createSerializableError)
+  // This contains the raw API response data
+  if (errorObj.data && typeof errorObj.data === 'object') {
+    const responseData = errorObj.data as Record<string, unknown>;
+    const extractedError = extractErrorFromResponseData(responseData);
+    if (extractedError) {
+      return extractedError;
+    }
+  }
 
-      if (message.includes('at least one option')) {
-        return createChoiceError('atleastoneoption', responseData.message);
-      }
-      if (message.includes('multiple') && message.includes('not allowed')) {
-        return createChoiceError('multiplenotallowederror', responseData.message);
-      }
-      if (message.includes('cannot submit')) {
-        return createChoiceError('cannotsubmit', responseData.message);
-      }
-      if (message.includes('exceeded') || message.includes('full')) {
-        return createChoiceError('choicesexceeded', responseData.message);
-      }
-      if (message.includes('not open') || message.includes('not yet')) {
-        return createChoiceError('notopenyet', responseData.message);
-      }
-      if (message.includes('expired') || message.includes('closed')) {
-        return createChoiceError('expired', responseData.message);
-      }
+  // Third, check for error.response.data (raw Axios error, before interceptor processing)
+  // This path is for cases where interceptors didn't process the error
+  if (
+    'response' in errorObj &&
+    typeof (errorObj as { response?: { data?: unknown } }).response?.data === 'object'
+  ) {
+    const responseData = (errorObj as { response: { data: Record<string, unknown> } }).response.data;
+    const extractedError = extractErrorFromResponseData(responseData);
+    if (extractedError) {
+      return extractedError;
     }
   }
 
   // Default error handling
   const message = error instanceof Error ? error.message : 'An unknown error occurred';
   return createChoiceError('cannotsubmit', message);
+}
+
+/**
+ * Extracts error information from API response data
+ *
+ * @param responseData - The response data object from API error
+ * @returns ChoiceApiError if error info was extracted, null otherwise
+ */
+function extractErrorFromResponseData(responseData: Record<string, unknown>): ChoiceApiError | null {
+  // Check for known error codes in error object
+  if (typeof responseData.error === 'object' && responseData.error !== null) {
+    const errorInfo = responseData.error as {
+      code?: string;
+      message?: string;
+      details?: Record<string, unknown>;
+    };
+
+    const errorCode = errorInfo.code as ChoiceApiErrorCode | undefined;
+    const errorMessage = errorInfo.message ?? 'An error occurred';
+
+    // Map known Moodle choice error strings to error codes
+    if (errorCode) {
+      return createChoiceError(errorCode, errorMessage, errorInfo.details);
+    }
+  }
+
+  // Check for error message in string format (legacy format)
+  if (typeof responseData.message === 'string') {
+    const message = responseData.message.toLowerCase();
+
+    if (message.includes('at least one option')) {
+      return createChoiceError('atleastoneoption', responseData.message);
+    }
+    if (message.includes('multiple') && message.includes('not allowed')) {
+      return createChoiceError('multiplenotallowederror', responseData.message);
+    }
+    if (message.includes('cannot submit')) {
+      return createChoiceError('cannotsubmit', responseData.message);
+    }
+    if (message.includes('exceeded') || message.includes('full')) {
+      return createChoiceError('choicesexceeded', responseData.message);
+    }
+    if (message.includes('not open') || message.includes('not yet')) {
+      return createChoiceError('notopenyet', responseData.message);
+    }
+    if (message.includes('expired') || message.includes('closed')) {
+      return createChoiceError('expired', responseData.message);
+    }
+  }
+
+  return null;
 }
 
 // ============================================================================
@@ -290,7 +370,14 @@ export async function getChoice(choiceId: number): Promise<ChoiceWithOptions> {
       `/choices/${choiceId}`
     );
 
-    return extractResponseData(response);
+    const data = extractResponseData(response);
+
+    // Validate response data structure to catch malformed JSON or unexpected responses
+    if (!isValidChoiceData(data)) {
+      throw createChoiceError('cannotsubmit', 'Invalid response data format');
+    }
+
+    return data;
   } catch (error) {
     throw handleChoiceApiError(error);
   }
