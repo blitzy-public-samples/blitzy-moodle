@@ -35,9 +35,7 @@ import {
   type CreateRecordParams,
   type UpdateRecordParams,
 } from '../api/dataApi';
-import type { DatabaseRecord } from '../types/data.types';
-import { useFieldValidation, type FieldValidationError } from './useFieldValidation';
-import type { DatabaseField } from '../types/data.types';
+import type { DatabaseRecord, DatabaseField } from '../types/data.types';
 
 // ============================================================================
 // Type Definitions
