@@ -469,7 +469,7 @@ function useLTI(ltiId: number, options: UseLTIOptions = {}): UseLTIResult {
     }
 
     // Check tool configuration privacy settings
-    if (configQuery.data?.privacy.acceptGrades === true) {
+    if (configQuery.data?.privacy?.acceptGrades === true) {
       return true;
     }
 
@@ -487,7 +487,7 @@ function useLTI(ltiId: number, options: UseLTIOptions = {}): UseLTIResult {
     }
 
     // Check if membership service is available in config
-    if (configQuery.data?.services.membershipsUrl) {
+    if (configQuery.data?.services?.membershipsUrl) {
       return true;
     }
 
@@ -635,4 +635,3 @@ function useLTI(ltiId: number, options: UseLTIOptions = {}): UseLTIResult {
 
 export default useLTI;
 export { useLTI };
-export type { UseLTIOptions };
