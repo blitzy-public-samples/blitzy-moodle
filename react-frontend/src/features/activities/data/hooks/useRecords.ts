@@ -30,6 +30,7 @@ import {
   useInfiniteQuery,
   type UseQueryResult,
   type UseInfiniteQueryResult,
+  type InfiniteData,
   type QueryKey,
 } from '@tanstack/react-query';
 
@@ -39,7 +40,6 @@ import type {
   DatabaseRecordsResponse,
   DatabaseRecord,
 } from '@/features/activities/data/types/data.types';
-import type { ApiResponse } from '@/types/api';
 import type { Id } from '@/types/common';
 
 // ============================================================================
@@ -347,7 +347,7 @@ export interface UseRecordsInfiniteResult {
   /**
    * Raw React Query infinite query result for advanced usage
    */
-  queryResult: UseInfiniteQueryResult<DatabaseRecordsResponse, Error>;
+  queryResult: UseInfiniteQueryResult<InfiniteData<DatabaseRecordsResponse, unknown>, Error>;
 }
 
 // ============================================================================
