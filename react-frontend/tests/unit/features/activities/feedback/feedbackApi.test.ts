@@ -20,7 +20,7 @@
  * @module tests/unit/features/activities/feedback/feedbackApi.test
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../../../mocks/server';
 import {
@@ -274,7 +274,9 @@ const handlers = [
   // POST /api/v1/feedback/:id/submit
   http.post(`${API_BASE_URL}/feedback/:id/submit`, async ({ params, request }) => {
     const id = Number(params.id);
-    const body = (await request.json()) as { responses: Record<string, unknown> };
+    // Parse body for future validation if needed
+    const _body = (await request.json()) as { responses: Record<string, unknown> };
+    void _body;
 
     if (id === 123) {
       return HttpResponse.json({
@@ -340,7 +342,8 @@ const handlers = [
   http.get(`${API_BASE_URL}/feedback/:id/analysis`, ({ params, request }) => {
     const id = Number(params.id);
     const url = new URL(request.url);
-    const courseid = url.searchParams.get('courseid');
+    const _courseid = url.searchParams.get('courseid');
+    void _courseid; // Reserved for future filtering
     const groupid = url.searchParams.get('groupid');
 
     if (id === 123) {
@@ -745,7 +748,7 @@ describe('feedbackApi', () => {
     it('should return correct data for multichoice question type', async () => {
       const response = await getFeedbackQuestions(123);
 
-      const multichoiceItem = response.data[0];
+      const multichoiceItem = response.data[0]!;
       expect(multichoiceItem.typ).toBe('multichoice');
       expect(multichoiceItem.required).toBe(1);
       expect(multichoiceItem.position).toBe(1);
@@ -755,7 +758,7 @@ describe('feedbackApi', () => {
     it('should return correct data for numeric question type', async () => {
       const response = await getFeedbackQuestions(123);
 
-      const numericItem = response.data[1];
+      const numericItem = response.data[1]!;
       expect(numericItem.typ).toBe('numeric');
       expect(numericItem.presentation).toBe('1|10');
     });
@@ -763,7 +766,7 @@ describe('feedbackApi', () => {
     it('should return correct data for textarea question type', async () => {
       const response = await getFeedbackQuestions(123);
 
-      const textareaItem = response.data[2];
+      const textareaItem = response.data[2]!;
       expect(textareaItem.typ).toBe('textarea');
       expect(textareaItem.required).toBe(0);
     });
@@ -771,7 +774,7 @@ describe('feedbackApi', () => {
     it('should return correct data for textfield question type', async () => {
       const response = await getFeedbackQuestions(123);
 
-      const textfieldItem = response.data[3];
+      const textfieldItem = response.data[3]!;
       expect(textfieldItem.typ).toBe('textfield');
     });
 
@@ -786,7 +789,7 @@ describe('feedbackApi', () => {
     it('should handle dependent questions with dependitem/dependvalue populated', async () => {
       const response = await getFeedbackQuestions(123);
 
-      const dependentItem = response.data[3];
+      const dependentItem = response.data[3]!;
       expect(dependentItem.dependitem).toBe(1);
       expect(dependentItem.dependvalue).toBe('Satisfied');
     });
@@ -795,13 +798,13 @@ describe('feedbackApi', () => {
       const response = await getFeedbackQuestions(123);
 
       for (let i = 0; i < response.data.length - 1; i++) {
-        expect(response.data[i].position).toBeLessThan(response.data[i + 1].position);
+        expect(response.data[i]!.position).toBeLessThan(response.data[i + 1]!.position);
       }
     });
 
     it('should verify FeedbackItem TypeScript interface compliance', async () => {
       const response = await getFeedbackQuestions(123);
-      const item = response.data[0];
+      const item = response.data[0]!;
 
       expect(typeof item.id).toBe('number');
       expect(typeof item.feedback).toBe('number');
@@ -1018,7 +1021,7 @@ describe('feedbackApi', () => {
 
     it('should verify QuestionAnalysis interface for each item', async () => {
       const response = await getFeedbackAnalysis(123);
-      const item = response.data.items[0];
+      const item = response.data.items[0]!;
 
       expect(typeof item.itemId).toBe('number');
       expect(typeof item.name).toBe('string');
@@ -1031,7 +1034,7 @@ describe('feedbackApi', () => {
 
     it('should include distribution data for multichoice questions', async () => {
       const response = await getFeedbackAnalysis(123);
-      const multichoiceItem = response.data.items[0];
+      const multichoiceItem = response.data.items[0]!;
 
       expect(multichoiceItem.distribution).toBeDefined();
       expect(multichoiceItem.distribution).toHaveLength(5);
@@ -1044,7 +1047,7 @@ describe('feedbackApi', () => {
 
     it('should include statistics for numeric questions', async () => {
       const response = await getFeedbackAnalysis(123);
-      const numericItem = response.data.items[1];
+      const numericItem = response.data.items[1]!;
 
       expect(numericItem.statistics).toBeDefined();
       expect(numericItem.statistics?.mean).toBe(7.5);
@@ -1057,7 +1060,7 @@ describe('feedbackApi', () => {
 
     it('should include chart data for visualization', async () => {
       const response = await getFeedbackAnalysis(123);
-      const item = response.data.items[0];
+      const item = response.data.items[0]!;
 
       expect(item.chartData).toBeDefined();
       expect(item.chartData?.labels).toHaveLength(5);
@@ -1197,10 +1200,10 @@ describe('feedbackApi', () => {
 
       expect(response.success).toBe(true);
       expect(response.data).toHaveLength(1);
-      expect(response.data[0].completedId).toBe(456);
-      expect(response.data[0].timemodified).toBe(1705000000);
-      expect(response.data[0].courseid).toBe(1);
-      expect(response.data[0].values).toEqual({
+      expect(response.data[0]!.completedId).toBe(456);
+      expect(response.data[0]!.timemodified).toBe(1705000000);
+      expect(response.data[0]!.courseid).toBe(1);
+      expect(response.data[0]!.values).toEqual({
         1: 'Satisfied',
         2: 8,
         3: 'Great course!',
@@ -1220,8 +1223,8 @@ describe('feedbackApi', () => {
 
       expect(response.success).toBe(true);
       expect(response.data).toHaveLength(2);
-      expect(response.data[0].completedId).toBe(789);
-      expect(response.data[1].completedId).toBe(456);
+      expect(response.data[0]!.completedId).toBe(789);
+      expect(response.data[1]!.completedId).toBe(456);
     });
 
     it('should handle 403 permission check for viewing others responses', async () => {
@@ -1238,7 +1241,7 @@ describe('feedbackApi', () => {
 
     it('should verify FeedbackUserResponses TypeScript interface', async () => {
       const response = await getFeedbackResponses(123);
-      const userResponse = response.data[0];
+      const userResponse = response.data[0]!;
 
       expect(typeof userResponse.completedId).toBe('number');
       expect(typeof userResponse.timemodified).toBe('number');
@@ -1387,8 +1390,11 @@ describe('feedbackApi', () => {
       try {
         const response = await getFeedback(123);
         // If it doesn't throw, verify the response indicates something non-standard
-        // API client may wrap raw text in data field
-        expect(response.data === 'not valid json' || response.success === false).toBe(true);
+        // API client may wrap raw text in data field - use type assertion for edge case
+        const rawData = response.data as unknown;
+        const isRawText = rawData === 'not valid json';
+        const isFailure = (response as unknown as { success: boolean }).success === false;
+        expect(isRawText || isFailure).toBe(true);
       } catch (error) {
         // If it throws, that's also valid handling
         expect(error).toBeDefined();
@@ -1441,9 +1447,9 @@ describe('feedbackApi', () => {
 
       const results = await Promise.all(promises);
 
-      expect(results[0].success).toBe(true);
-      expect(results[1].success).toBe(true);
-      expect(results[2].success).toBe(true);
+      expect(results[0]!.success).toBe(true);
+      expect(results[1]!.success).toBe(true);
+      expect(results[2]!.success).toBe(true);
     });
 
     it('should handle request with invalid parameters - negative ID', async () => {
@@ -1527,20 +1533,21 @@ describe('feedbackApi', () => {
     });
 
     it('should handle feedback with all question types', async () => {
+      const baseItem = mockFeedbackItems[0]!;
       const allTypesItems: FeedbackItem[] = [
-        { ...mockFeedbackItems[0], id: 1, typ: 'multichoice' as FeedbackQuestionType, position: 1 },
+        { ...baseItem, id: 1, typ: 'multichoice' as FeedbackQuestionType, position: 1 },
         {
-          ...mockFeedbackItems[0],
+          ...baseItem,
           id: 2,
           typ: 'multichoicerated' as FeedbackQuestionType,
           position: 2,
         },
-        { ...mockFeedbackItems[0], id: 3, typ: 'numeric' as FeedbackQuestionType, position: 3 },
-        { ...mockFeedbackItems[0], id: 4, typ: 'textarea' as FeedbackQuestionType, position: 4 },
-        { ...mockFeedbackItems[0], id: 5, typ: 'textfield' as FeedbackQuestionType, position: 5 },
-        { ...mockFeedbackItems[0], id: 6, typ: 'info' as FeedbackQuestionType, position: 6 },
-        { ...mockFeedbackItems[0], id: 7, typ: 'label' as FeedbackQuestionType, position: 7 },
-        { ...mockFeedbackItems[0], id: 8, typ: 'captcha' as FeedbackQuestionType, position: 8 },
+        { ...baseItem, id: 3, typ: 'numeric' as FeedbackQuestionType, position: 3 },
+        { ...baseItem, id: 4, typ: 'textarea' as FeedbackQuestionType, position: 4 },
+        { ...baseItem, id: 5, typ: 'textfield' as FeedbackQuestionType, position: 5 },
+        { ...baseItem, id: 6, typ: 'info' as FeedbackQuestionType, position: 6 },
+        { ...baseItem, id: 7, typ: 'label' as FeedbackQuestionType, position: 7 },
+        { ...baseItem, id: 8, typ: 'captcha' as FeedbackQuestionType, position: 8 },
       ];
 
       server.use(

@@ -86,9 +86,51 @@ function createWrapper(queryClient: QueryClient) {
 
 // MSW server lifecycle is managed globally in tests/setup.ts
 // Just add console logging for debugging this specific test file
+
+// Store original window functions for restoration
+const originalWindowOpen = window.open;
+const originalLocationHref = Object.getOwnPropertyDescriptor(window, 'location');
+const originalFormSubmit = HTMLFormElement.prototype.submit;
+
 beforeAll(() => {
   console.log('[Setup] Starting MSW server...');
   console.log('[Setup] MSW server started');
+  
+  // Mock window.open to prevent happy-dom errors during launch execution
+  window.open = vi.fn().mockReturnValue({
+    document: { title: '' },
+    focus: vi.fn(),
+    close: vi.fn(),
+  });
+  
+  // Mock window.location.href assignment to prevent happy-dom navigation errors
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  delete (window as any).location;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (window as any).location = {
+    href: 'http://localhost:3000',
+    origin: 'http://localhost:3000',
+    protocol: 'http:',
+    host: 'localhost:3000',
+    hostname: 'localhost',
+    port: '3000',
+    pathname: '/',
+    search: '',
+    hash: '',
+    assign: vi.fn(),
+    replace: vi.fn(),
+    reload: vi.fn(),
+    toString: () => 'http://localhost:3000',
+  };
+  Object.defineProperty(window.location, 'href', {
+    get: () => 'http://localhost:3000',
+    set: vi.fn(),
+    configurable: true,
+  });
+  
+  // Mock form.submit() to prevent happy-dom navigation errors during LTI launch
+  // The hook creates forms and submits them, which triggers happy-dom to navigate
+  HTMLFormElement.prototype.submit = vi.fn();
 });
 
 // Reset handlers and mocks after each test
@@ -102,6 +144,15 @@ afterEach(() => {
 // MSW server is closed globally in tests/setup.ts - no need to close here
 afterAll(() => {
   console.log('[Setup] Closing MSW server...');
+  
+  // Restore original window functions
+  window.open = originalWindowOpen;
+  if (originalLocationHref) {
+    Object.defineProperty(window, 'location', originalLocationHref);
+  }
+  
+  // Restore original form.submit()
+  HTMLFormElement.prototype.submit = originalFormSubmit;
 });
 
 // =============================================================================
@@ -920,7 +971,8 @@ describe('useLTILaunch - Launch State Management', () => {
       });
 
       await act(async () => {
-        result.current.launchTool();
+        // Catch expected rejection to prevent unhandled promise rejection
+        result.current.launchTool().catch(() => {});
       });
 
       // Server errors are retried (up to 2 times), so wait with extended timeout
@@ -945,7 +997,8 @@ describe('useLTILaunch - Launch State Management', () => {
       });
 
       await act(async () => {
-        result.current.launchTool();
+        // Catch expected rejection to prevent unhandled promise rejection
+        result.current.launchTool().catch(() => {});
       });
 
       await waitFor(() => {
@@ -2002,7 +2055,8 @@ describe('useLTILaunch - Error Handling', () => {
       });
 
       await act(async () => {
-        result.current.launchTool();
+        // Catch expected rejection to prevent unhandled promise rejection
+        result.current.launchTool().catch(() => {});
       });
 
       await waitFor(() => {
@@ -2033,7 +2087,8 @@ describe('useLTILaunch - Error Handling', () => {
       });
 
       await act(async () => {
-        result.current.launchTool();
+        // Catch expected rejection to prevent unhandled promise rejection
+        result.current.launchTool().catch(() => {});
       });
 
       await waitFor(() => {
@@ -2063,7 +2118,8 @@ describe('useLTILaunch - Error Handling', () => {
       });
 
       await act(async () => {
-        result.current.launchTool();
+        // Catch expected rejection to prevent unhandled promise rejection
+        result.current.launchTool().catch(() => {});
       });
 
       await waitFor(() => {
@@ -2093,7 +2149,8 @@ describe('useLTILaunch - Error Handling', () => {
       });
 
       await act(async () => {
-        result.current.launchTool();
+        // Catch expected rejection to prevent unhandled promise rejection
+        result.current.launchTool().catch(() => {});
       });
 
       await waitFor(() => {
@@ -2123,7 +2180,8 @@ describe('useLTILaunch - Error Handling', () => {
       });
 
       await act(async () => {
-        result.current.launchTool();
+        // Catch expected rejection to prevent unhandled promise rejection
+        result.current.launchTool().catch(() => {});
       });
 
       await waitFor(() => {
@@ -2151,7 +2209,8 @@ describe('useLTILaunch - Error Handling', () => {
       });
 
       await act(async () => {
-        result.current.launchTool();
+        // Catch expected rejection to prevent unhandled promise rejection
+        result.current.launchTool().catch(() => {});
       });
 
       await waitFor(() => {
@@ -2182,7 +2241,8 @@ describe('useLTILaunch - Error Handling', () => {
       });
 
       await act(async () => {
-        result.current.launchTool();
+        // Catch expected rejection to prevent unhandled promise rejection
+        result.current.launchTool().catch(() => {});
       });
 
       await waitFor(() => {
@@ -2212,7 +2272,8 @@ describe('useLTILaunch - Error Handling', () => {
       });
 
       await act(async () => {
-        result.current.launchTool();
+        // Catch expected rejection to prevent unhandled promise rejection
+        result.current.launchTool().catch(() => {});
       });
 
       // Server errors are retried, so wait with extended timeout
@@ -2236,7 +2297,8 @@ describe('useLTILaunch - Error Handling', () => {
       });
 
       await act(async () => {
-        result.current.launchTool();
+        // Catch expected rejection to prevent unhandled promise rejection
+        result.current.launchTool().catch(() => {});
       });
 
       // Network errors are retried (up to 2 times), so wait with extended timeout
@@ -2276,7 +2338,8 @@ describe('useLTILaunch - Error Handling', () => {
 
       // First attempt fails (non-retryable error)
       await act(async () => {
-        result.current.launchTool();
+        // Catch expected rejection to prevent unhandled promise rejection
+        result.current.launchTool().catch(() => {});
       });
 
       await waitFor(() => {
