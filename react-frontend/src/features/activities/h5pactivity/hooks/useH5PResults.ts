@@ -47,7 +47,7 @@
  */
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type { UseQueryResult, QueryClient } from '@tanstack/react-query';
+import type { QueryClient } from '@tanstack/react-query';
 
 import {
   getAttemptResults,
@@ -56,8 +56,6 @@ import {
 } from '../api/h5pApi';
 
 import type {
-  H5PReportData,
-  H5PAttempt,
   H5PResult,
   H5PAttemptWithResults,
   H5PUserAttempts,
@@ -565,19 +563,23 @@ export function useH5PResults(
   const getHighestScoringAttempt = (): H5PAttemptWithResults | undefined => {
     if (attempts.length === 0) return undefined;
 
+    // Use first attempt as initial value (safe since we checked length > 0)
+    const firstAttempt = attempts[0]!;
     return attempts.reduce((highest, current) => {
       const highestScaled = highest.scaled || 0;
       const currentScaled = current.scaled || 0;
       return currentScaled > highestScaled ? current : highest;
-    }, attempts[0]);
+    }, firstAttempt);
   };
 
   const getMostRecentAttempt = (): H5PAttemptWithResults | undefined => {
     if (attempts.length === 0) return undefined;
 
+    // Use first attempt as initial value (safe since we checked length > 0)
+    const firstAttempt = attempts[0]!;
     return attempts.reduce((mostRecent, current) => {
       return current.timemodified > mostRecent.timemodified ? current : mostRecent;
-    }, attempts[0]);
+    }, firstAttempt);
   };
 
   const refetch = async (): Promise<void> => {
