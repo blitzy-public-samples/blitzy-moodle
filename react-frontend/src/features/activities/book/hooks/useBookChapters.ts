@@ -319,6 +319,14 @@ export default function useBookChapters(
     // The API wraps book_preload_chapters() from locallib.php
     queryFn: () => fetchBookChapters(bookId),
 
+    // Transform the data to ensure chapters are sorted by pagenum
+    // This implements requirement #4: "Returns chapters array sorted by pagenum"
+    select: (data: Chapter[]): Chapter[] => {
+      // Sort chapters by pagenum in ascending order
+      // This mirrors the PHP book_preload_chapters() behavior
+      return [...data].sort((a, b) => a.pagenum - b.pagenum);
+    },
+
     // Enable/disable the query based on bookId validity
     enabled: isEnabled,
 
@@ -385,7 +393,7 @@ export default function useBookChapters(
    * Used for default chapter selection when entering a book without
    * a specific chapter ID.
    */
-  const firstChapter: Chapter | null = chapters.length > 0 ? chapters[0] : null;
+  const firstChapter: Chapter | null = chapters.length > 0 ? (chapters[0] ?? null) : null;
 
   /**
    * Total count of chapters (including subchapters)
@@ -432,11 +440,11 @@ export default function useBookChapters(
 
     // Get previous chapter (if not at the beginning)
     const previous: Chapter | null =
-      currentIndex > 0 ? chapters[currentIndex - 1] : null;
+      currentIndex > 0 ? (chapters[currentIndex - 1] ?? null) : null;
 
     // Get next chapter (if not at the end)
     const next: Chapter | null =
-      currentIndex < chapters.length - 1 ? chapters[currentIndex + 1] : null;
+      currentIndex < chapters.length - 1 ? (chapters[currentIndex + 1] ?? null) : null;
 
     return { previous, next };
   };
