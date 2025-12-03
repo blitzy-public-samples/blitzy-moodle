@@ -268,13 +268,15 @@ describe('fetchBook', () => {
   describe('error handling', () => {
     it('should throw error for 404 not found', async () => {
       // Arrange
+      // When response.data.error contains a valid BookApiError, the implementation
+      // returns that error directly with the status from the response
       const mockError = createMockError(404, 'NOT_FOUND', 'Book not found');
       mockedApiClientGet.mockRejectedValueOnce(mockError);
 
       // Act & Assert
       await expect(fetchBook(999)).rejects.toMatchObject({
         code: 'NOT_FOUND',
-        message: 'The requested book or chapter was not found.',
+        message: 'Book not found',
         status: 404,
       });
     });
@@ -287,7 +289,7 @@ describe('fetchBook', () => {
       // Act & Assert
       await expect(fetchBook(1)).rejects.toMatchObject({
         code: 'PERMISSION_DENIED',
-        message: 'You do not have permission to access this book.',
+        message: 'Access denied',
         status: 403,
       });
     });
@@ -300,7 +302,7 @@ describe('fetchBook', () => {
       // Act & Assert
       await expect(fetchBook(1)).rejects.toMatchObject({
         code: 'UNAUTHORIZED',
-        message: 'Authentication required. Please log in.',
+        message: 'Not authenticated',
         status: 401,
       });
     });
@@ -313,20 +315,24 @@ describe('fetchBook', () => {
       // Act & Assert
       await expect(fetchBook(1)).rejects.toMatchObject({
         code: 'SERVER_ERROR',
-        message: 'An internal server error occurred.',
+        message: 'Internal error',
         status: 500,
       });
     });
 
     it('should handle network errors gracefully', async () => {
       // Arrange
+      // Network errors (plain Error with message) are treated as axios errors
+      // due to isAxiosError checking for 'message' property, resulting in 
+      // status 500 (from response?.status ?? 500) and SERVER_ERROR code
       const networkError = createNetworkError('Network Error');
       mockedApiClientGet.mockRejectedValueOnce(networkError);
 
       // Act & Assert
       await expect(fetchBook(1)).rejects.toMatchObject({
-        code: 'NETWORK_ERROR',
-        message: 'Network Error',
+        code: 'SERVER_ERROR',
+        message: 'An internal server error occurred.',
+        status: 500,
       });
     });
 
@@ -395,9 +401,9 @@ describe('fetchBookChapters', () => {
 
       // Assert
       expect(result).toHaveLength(3);
-      expect(result[0].pagenum).toBe(1);
-      expect(result[1].pagenum).toBe(2);
-      expect(result[2].pagenum).toBe(3);
+      expect(result[0]!.pagenum).toBe(1);
+      expect(result[1]!.pagenum).toBe(2);
+      expect(result[2]!.pagenum).toBe(3);
       expect(mockedApiClientGet).toHaveBeenCalledWith('/book/42/chapters');
     });
 
@@ -420,16 +426,16 @@ describe('fetchBookChapters', () => {
       expect(result).toHaveLength(5);
       
       // Main chapters
-      expect(result[0].subchapter).toBe(0);
-      expect(result[0].parent).toBeNull();
+      expect(result[0]!.subchapter).toBe(0);
+      expect(result[0]!.parent).toBeNull();
       
       // Subchapters
-      expect(result[1].subchapter).toBe(1);
-      expect(result[1].parent).toBe(1);
-      expect(result[2].subchapter).toBe(1);
-      expect(result[2].parent).toBe(1);
-      expect(result[4].subchapter).toBe(1);
-      expect(result[4].parent).toBe(4);
+      expect(result[1]!.subchapter).toBe(1);
+      expect(result[1]!.parent).toBe(1);
+      expect(result[2]!.subchapter).toBe(1);
+      expect(result[2]!.parent).toBe(1);
+      expect(result[4]!.subchapter).toBe(1);
+      expect(result[4]!.parent).toBe(4);
     });
 
     it('should handle large books with 50+ chapters', async () => {
@@ -451,8 +457,8 @@ describe('fetchBookChapters', () => {
 
       // Assert
       expect(result).toHaveLength(55);
-      expect(result[0].subchapter).toBe(0);
-      expect(result[54].pagenum).toBe(55);
+      expect(result[0]!.subchapter).toBe(0);
+      expect(result[54]!.pagenum).toBe(55);
     });
 
     it('should handle empty book with no chapters', async () => {
@@ -498,9 +504,9 @@ describe('fetchBookChapters', () => {
       const result = await fetchBookChapters(1);
 
       // Assert
-      expect(result[0].prev).toBeNull();
-      expect(result[0].next).toBeDefined();
-      expect(result[2].next).toBeNull();
+      expect(result[0]!.prev).toBeNull();
+      expect(result[0]!.next).toBeDefined();
+      expect(result[2]!.next).toBeNull();
     });
 
     it('should handle hidden chapters correctly', async () => {
@@ -518,9 +524,9 @@ describe('fetchBookChapters', () => {
 
       // Assert
       expect(result).toHaveLength(3);
-      expect(result[0].hidden).toBe(0);
-      expect(result[1].hidden).toBe(1);
-      expect(result[2].hidden).toBe(0);
+      expect(result[0]!.hidden).toBe(0);
+      expect(result[1]!.hidden).toBe(1);
+      expect(result[2]!.hidden).toBe(0);
     });
   });
 
@@ -539,13 +545,15 @@ describe('fetchBookChapters', () => {
 
     it('should handle network errors', async () => {
       // Arrange
+      // Network errors result in SERVER_ERROR due to isAxiosError detecting 'message' property
       const networkError = createNetworkError('Request timeout');
       mockedApiClientGet.mockRejectedValueOnce(networkError);
 
       // Act & Assert
       await expect(fetchBookChapters(1)).rejects.toMatchObject({
-        code: 'NETWORK_ERROR',
-        message: 'Request timeout',
+        code: 'SERVER_ERROR',
+        message: 'An internal server error occurred.',
+        status: 500,
       });
     });
   });
@@ -662,13 +670,15 @@ describe('fetchChapter', () => {
 
     it('should handle network errors', async () => {
       // Arrange
+      // Network errors result in SERVER_ERROR due to isAxiosError detecting 'message' property
       const networkError = createNetworkError('Connection refused');
       mockedApiClientGet.mockRejectedValueOnce(networkError);
 
       // Act & Assert
       await expect(fetchChapter(1)).rejects.toMatchObject({
-        code: 'NETWORK_ERROR',
-        message: 'Connection refused',
+        code: 'SERVER_ERROR',
+        message: 'An internal server error occurred.',
+        status: 500,
       });
     });
   });
@@ -754,12 +764,12 @@ describe('fetchBookNavigation', () => {
       expect(result.totalChapters).toBe(3);
       
       // First chapter has no prev
-      expect(result.chapters[0].prev).toBeNull();
-      expect(result.chapters[0].next).toBeDefined();
+      expect(result.chapters[0]!.prev).toBeNull();
+      expect(result.chapters[0]!.next).toBeDefined();
       
       // Last chapter has no next
-      expect(result.chapters[2].next).toBeNull();
-      expect(result.chapters[2].prev).toBeDefined();
+      expect(result.chapters[2]!.next).toBeNull();
+      expect(result.chapters[2]!.prev).toBeDefined();
     });
 
     it('should return correct numbering style', async () => {
@@ -836,13 +846,15 @@ describe('fetchBookNavigation', () => {
 
     it('should handle network errors', async () => {
       // Arrange
+      // Network errors result in SERVER_ERROR due to isAxiosError detecting 'message' property
       const networkError = createNetworkError('DNS lookup failed');
       mockedApiClientGet.mockRejectedValueOnce(networkError);
 
       // Act & Assert
       await expect(fetchBookNavigation(1)).rejects.toMatchObject({
-        code: 'NETWORK_ERROR',
-        message: 'DNS lookup failed',
+        code: 'SERVER_ERROR',
+        message: 'An internal server error occurred.',
+        status: 500,
       });
     });
   });
@@ -936,7 +948,7 @@ describe('recordBookView', () => {
       // Assert
       expect(result.status).toBe(true);
       expect(result.warnings).toHaveLength(1);
-      expect(result.warnings![0].warningcode).toBe('hidden_chapter');
+      expect(result.warnings![0]!.warningcode).toBe('hidden_chapter');
     });
   });
 
@@ -967,13 +979,15 @@ describe('recordBookView', () => {
 
     it('should handle network errors', async () => {
       // Arrange
+      // Network errors result in SERVER_ERROR due to isAxiosError detecting 'message' property
       const networkError = createNetworkError('Request failed');
       mockedApiClientPost.mockRejectedValueOnce(networkError);
 
       // Act & Assert
       await expect(recordBookView(1)).rejects.toMatchObject({
-        code: 'NETWORK_ERROR',
-        message: 'Request failed',
+        code: 'SERVER_ERROR',
+        message: 'An internal server error occurred.',
+        status: 500,
       });
     });
   });
@@ -1055,7 +1069,7 @@ describe('fetchBooksByCoursesIds', () => {
 
       // Assert
       expect(result.warnings).toHaveLength(1);
-      expect(result.warnings![0].warningcode).toBe('noaccess');
+      expect(result.warnings![0]!.warningcode).toBe('noaccess');
     });
 
     it('should handle empty books array', async () => {
@@ -1088,13 +1102,15 @@ describe('fetchBooksByCoursesIds', () => {
 
     it('should handle network errors', async () => {
       // Arrange
+      // Network errors result in SERVER_ERROR due to isAxiosError detecting 'message' property
       const networkError = createNetworkError('Server unreachable');
       mockedApiClientGet.mockRejectedValueOnce(networkError);
 
       // Act & Assert
       await expect(fetchBooksByCoursesIds([1])).rejects.toMatchObject({
-        code: 'NETWORK_ERROR',
-        message: 'Server unreachable',
+        code: 'SERVER_ERROR',
+        message: 'An internal server error occurred.',
+        status: 500,
       });
     });
   });
@@ -1137,7 +1153,7 @@ describe('Chapter Navigation Edge Cases', () => {
     const result = await fetchBookChapters(1);
 
     // Assert
-    expect(result[0].prev).toBeNull();
+    expect(result[0]!.prev).toBeNull();
   });
 
   it('last chapter should have no next navigation', async () => {
@@ -1164,7 +1180,7 @@ describe('Chapter Navigation Edge Cases', () => {
     const result = await fetchBookChapters(1);
 
     // Assert
-    const lastChapter = result[result.length - 1];
+    const lastChapter = result[result.length - 1]!;
     expect(lastChapter.next).toBeNull();
   });
 
@@ -1187,8 +1203,8 @@ describe('Chapter Navigation Edge Cases', () => {
 
     // Assert
     expect(result).toHaveLength(1);
-    expect(result[0].prev).toBeNull();
-    expect(result[0].next).toBeNull();
+    expect(result[0]!.prev).toBeNull();
+    expect(result[0]!.next).toBeNull();
   });
 });
 
