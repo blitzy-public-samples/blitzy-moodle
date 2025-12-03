@@ -24,7 +24,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import React, {
+import {
   useState,
   useEffect,
   useRef,
@@ -51,23 +51,20 @@ import {
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
   Menu as MenuIcon,
-  Close as CloseIcon,
   SkipPrevious as PreviousIcon,
   SkipNext as NextIcon,
   Fullscreen as FullscreenIcon,
   FullscreenExit as FullscreenExitIcon,
 } from '@mui/icons-material';
 import ExitToApp from '@mui/icons-material/ExitToApp';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 
 import ScormTOC from './ScormTOC';
 import { useScorm, scormQueryKeys } from '../hooks/useScorm';
-import { useScormAttempt } from '../hooks/useScormAttempt';
+import useScormAttempt from '../hooks/useScormAttempt';
 import useScormTracking, { formatSessionTime } from '../hooks/useScormTracking';
 import type {
-  Scorm,
   ScormSco,
-  ScormAttempt,
   ScormTrackingElement,
 } from '../types/scorm.types';
 import { ScormVersion, ScormNavDisplay, ScormTocDisplay } from '../types/scorm.types';
@@ -137,6 +134,8 @@ const SCORM_2004_ERRORS = {
 interface ScormPlayerProps {
   /** SCORM activity ID */
   scormId: number;
+  /** User ID for tracking attempts */
+  userId: number;
   /** Initial SCO ID to load (optional, will use first launchable SCO if not provided) */
   scoId?: number;
   /** Current attempt number */
@@ -227,53 +226,37 @@ function getScorm2004ErrorString(errorCode: string): string {
 
 /**
  * Find the first launchable SCO from SCO list
+ * 
+ * SCOs are provided as a flat array sorted by sortorder.
+ * A launchable SCO has a non-empty launch URL.
  */
 function findFirstLaunchableSco(scoes: ScormSco[]): ScormSco | null {
-  for (const sco of scoes) {
+  // Sort by sortorder and find first with launch URL
+  const sorted = [...scoes].sort((a, b) => (a.sortorder ?? 0) - (b.sortorder ?? 0));
+  for (const sco of sorted) {
     if (sco.launch) {
       return sco;
     }
-    // Recursively check children if present
-    if (sco.children && sco.children.length > 0) {
-      const found = findFirstLaunchableSco(sco.children);
-      if (found) {
-        return found;
-      }
-    }
   }
   return null;
 }
 
 /**
- * Find SCO by ID in a tree structure
+ * Find SCO by ID in a flat SCO list
  */
 function findScoById(scoes: ScormSco[], scoId: number): ScormSco | null {
-  for (const sco of scoes) {
-    if (sco.id === scoId) {
-      return sco;
-    }
-    if (sco.children && sco.children.length > 0) {
-      const found = findScoById(sco.children, scoId);
-      if (found) {
-        return found;
-      }
-    }
-  }
-  return null;
+  return scoes.find(sco => sco.id === scoId) ?? null;
 }
 
 /**
- * Flatten SCO tree into array for navigation
+ * Get sorted array of launchable SCOs for navigation
+ * 
+ * SCOs are already flat; this sorts by sortorder and filters to launchable items.
  */
-function flattenScoes(scoes: ScormSco[]): ScormSco[] {
-  const result: ScormSco[] = [];
-  for (const sco of scoes) {
-    result.push(sco);
-    if (sco.children && sco.children.length > 0) {
-      result.push(...flattenScoes(sco.children));
-    }
-  }
-  return result;
+function getSortedLaunchableScoes(scoes: ScormSco[]): ScormSco[] {
+  return [...scoes]
+    .filter(sco => sco.launch)
+    .sort((a, b) => (a.sortorder ?? 0) - (b.sortorder ?? 0));
 }
 
 /**
@@ -294,6 +277,7 @@ function buildScoUrl(scormId: number, scoId: number, attempt: number): string {
  */
 function ScormPlayer({
   scormId,
+  userId,
   scoId: initialScoId,
   attempt: initialAttempt,
   mode = 'normal',
@@ -362,31 +346,33 @@ function ScormPlayer({
     userData,
     isLoading: isScormLoading,
     error: scormError,
-  } = useScorm(scormId, initialAttempt);
+  } = useScorm(scormId);
 
   // Manage SCORM attempts
   const {
     attempt,
     isLoading: isAttemptLoading,
     error: attemptError,
-    createAttempt,
-    canStartNewAttempt,
-  } = useScormAttempt(scormId);
+    // createAttempt and canStartNewAttempt available for future "New Attempt" UI
+    createAttempt: _createAttempt,
+    canStartNewAttempt: _canStartNewAttempt,
+  } = useScormAttempt(scormId, userId);
 
   // Tracking data submission
-  const { saveTracking, saveTrackingAsync, savingTracking } = useScormTracking();
+  // saveTracking (non-async) and savingTracking (loading state) available but not used
+  const { saveTrackingAsync } = useScormTracking();
 
   // Current attempt number (from hook or prop)
-  const currentAttempt = attempt?.attempt ?? initialAttempt ?? 1;
+  const currentAttempt = attempt?.attemptNumber ?? initialAttempt ?? 1;
 
   // ========================================================================
   // DERIVED STATE
   // ========================================================================
 
-  // Flatten SCO list for navigation
+  // Get sorted launchable SCOs for navigation
   const flatScoes = useMemo(() => {
     if (!scoes) return [];
-    return flattenScoes(scoes).filter((sco) => sco.launch);
+    return getSortedLaunchableScoes(scoes);
   }, [scoes]);
 
   // Current SCO object
@@ -409,13 +395,35 @@ function ScormPlayer({
     };
   }, [flatScoes, currentScoId]);
 
-  // Determine SCORM version
-  const scormVersion = useMemo(() => {
+  // Determine SCORM version for display and API selection
+  // scorm.version is a string like "SCORM_1.2", "SCORM_2004", "scorm_13", etc.
+  // Both SCORM 1.2 and 2004 APIs are registered on window; SCO content determines which to use
+  const scormVersionEnum = useMemo(() => {
     if (!scorm) return ScormVersion.SCORM_12;
-    return scorm.version === ScormVersion.SCORM_2004
-      ? ScormVersion.SCORM_2004
-      : ScormVersion.SCORM_12;
+    const versionStr = scorm.version.toLowerCase();
+    // SCORM 2004 (also known as SCORM 1.3 internally in Moodle)
+    if (versionStr.includes('2004') || versionStr === 'scorm_13' || versionStr.includes('1.3')) {
+      return ScormVersion.SCORM_2004;
+    }
+    // AICC
+    if (versionStr.includes('aicc')) {
+      return ScormVersion.SCORM_AICC;
+    }
+    // Default to SCORM 1.2
+    return ScormVersion.SCORM_12;
   }, [scorm]);
+
+  // Human-readable SCORM version string for display
+  const scormVersionDisplay = useMemo(() => {
+    switch (scormVersionEnum) {
+      case ScormVersion.SCORM_2004:
+        return 'SCORM 2004';
+      case ScormVersion.SCORM_AICC:
+        return 'AICC';
+      default:
+        return 'SCORM 1.2';
+    }
+  }, [scormVersionEnum]);
 
   // Whether navigation controls should be shown
   const showNavigation = useMemo(() => {
@@ -489,15 +497,18 @@ function ScormPlayer({
           diagnosticMessage: '',
         }));
 
-        // Initialize default CMI values
+        // Initialize default CMI values for SCORM 1.2
+        // Note: userData contains attempt metadata, not CMI tracking data.
+        // CMI data would need to be fetched separately from the tracking API.
+        // For now, initialize with defaults; saved values will be retrieved via LMSGetValue.
         setCmiDataStore((prev) => ({
           ...prev,
-          'cmi.core.lesson_status': userData?.['cmi.core.lesson_status'] ?? 'not attempted',
-          'cmi.core.entry': userData?.['cmi.core.entry'] ?? 'ab-initio',
-          'cmi.core.lesson_location': userData?.['cmi.core.lesson_location'] ?? '',
-          'cmi.suspend_data': userData?.['cmi.suspend_data'] ?? '',
-          'cmi.core.student_id': userData?.['cmi.core.student_id'] ?? '',
-          'cmi.core.student_name': userData?.['cmi.core.student_name'] ?? '',
+          'cmi.core.lesson_status': prev['cmi.core.lesson_status'] ?? 'not attempted',
+          'cmi.core.entry': prev['cmi.core.entry'] ?? 'ab-initio',
+          'cmi.core.lesson_location': prev['cmi.core.lesson_location'] ?? '',
+          'cmi.suspend_data': prev['cmi.suspend_data'] ?? '',
+          'cmi.core.student_id': String(userId ?? ''),
+          'cmi.core.student_name': prev['cmi.core.student_name'] ?? '',
         }));
 
         return 'true';
@@ -560,8 +571,9 @@ function ScormPlayer({
           diagnosticMessage: '',
         }));
 
-        // Check local store first, then user data from server
-        const value = cmiDataStore[element] ?? userData?.[element] ?? '';
+        // Get value from local CMI data store
+        // Note: Server tracking data would need separate API call and integration
+        const value = cmiDataStore[element] ?? '';
         return String(value);
       },
 
@@ -686,15 +698,17 @@ function ScormPlayer({
         }));
 
         // Initialize default CMI values for SCORM 2004
+        // Note: userData contains attempt metadata, not CMI tracking data.
+        // CMI data would need to be fetched separately from the tracking API.
         setCmiDataStore((prev) => ({
           ...prev,
-          'cmi.completion_status': userData?.['cmi.completion_status'] ?? 'unknown',
-          'cmi.success_status': userData?.['cmi.success_status'] ?? 'unknown',
-          'cmi.entry': userData?.['cmi.entry'] ?? 'ab-initio',
-          'cmi.location': userData?.['cmi.location'] ?? '',
-          'cmi.suspend_data': userData?.['cmi.suspend_data'] ?? '',
-          'cmi.learner_id': userData?.['cmi.learner_id'] ?? '',
-          'cmi.learner_name': userData?.['cmi.learner_name'] ?? '',
+          'cmi.completion_status': prev['cmi.completion_status'] ?? 'unknown',
+          'cmi.success_status': prev['cmi.success_status'] ?? 'unknown',
+          'cmi.entry': prev['cmi.entry'] ?? 'ab-initio',
+          'cmi.location': prev['cmi.location'] ?? '',
+          'cmi.suspend_data': prev['cmi.suspend_data'] ?? '',
+          'cmi.learner_id': String(userId ?? ''),
+          'cmi.learner_name': prev['cmi.learner_name'] ?? '',
         }));
 
         return 'true';
@@ -766,8 +780,9 @@ function ScormPlayer({
           diagnosticMessage: '',
         }));
 
-        // Check local store first, then user data from server
-        const value = cmiDataStore[element] ?? userData?.[element] ?? '';
+        // Get value from local CMI data store
+        // Note: Server tracking data would need separate API call and integration
+        const value = cmiDataStore[element] ?? '';
         return String(value);
       },
 
@@ -1259,6 +1274,23 @@ function ScormPlayer({
 
         {/* Spacer */}
         <Box sx={{ flex: 1 }} />
+
+        {/* SCORM Version Badge */}
+        {!isMobile && (
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{
+              mr: 2,
+              px: 1,
+              py: 0.5,
+              borderRadius: 1,
+              bgcolor: 'action.hover',
+            }}
+          >
+            {scormVersionDisplay}
+          </Typography>
+        )}
 
         {/* Fullscreen Toggle */}
         <IconButton
