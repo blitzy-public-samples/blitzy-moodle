@@ -128,6 +128,33 @@ export class ResourceApiError extends Error {
 }
 
 /**
+ * Extended error type that includes serialized error properties from interceptors
+ * 
+ * The interceptors transform AxiosError into a serialized format that includes
+ * properties directly on the error object for better React Query compatibility.
+ */
+interface SerializedApiError extends Error {
+  status?: number;
+  statusText?: string;
+  code?: string;
+  url?: string;
+  method?: string;
+  data?: ApiErrorResponse | { success: false; error: { code: string; message: string; details?: Record<string, unknown> } };
+  customError?: {
+    message: string;
+    code: string;
+    status: number;
+    details?: Record<string, unknown>;
+  };
+  response?: {
+    status: number;
+    statusText?: string;
+    data?: ApiErrorResponse;
+  };
+  request?: unknown;
+}
+
+/**
  * Transform Axios errors into user-friendly ResourceApiError instances
  *
  * Handles common error scenarios:
@@ -138,15 +165,64 @@ export class ResourceApiError extends Error {
  * - 500: Server error
  * - Network errors (no response)
  *
+ * Supports both standard AxiosError format and serialized error format
+ * from interceptors (which has properties directly on error object).
+ *
  * @param error - The Axios error to transform
  * @param resourceType - Type of resource for contextual error messages
  * @returns Transformed ResourceApiError with user-friendly message
  */
 function handleApiError(
-  error: AxiosError<ApiErrorResponse>,
+  error: AxiosError<ApiErrorResponse> | SerializedApiError,
   resourceType: 'resource' | 'file' | 'page' | 'url' | 'folder'
 ): ResourceApiError {
-  // Handle API error response with error envelope
+  // Cast to SerializedApiError to access potential serialized properties
+  const serializedError = error as SerializedApiError;
+  
+  // First check for customError from interceptors (most specific)
+  if (serializedError.customError) {
+    let { code, message, status, details } = serializedError.customError;
+    
+    // If the interceptor provided 'UNKNOWN_ERROR', check if we can provide a better code based on status
+    if (code === 'UNKNOWN_ERROR' && status) {
+      switch (status) {
+        case 400:
+          code = 'BAD_REQUEST';
+          message = message.includes('unexpected') ? `Invalid request for ${resourceType}. Please check the provided ID.` : message;
+          break;
+        case 401:
+          code = 'UNAUTHORIZED';
+          message = message.includes('unexpected') ? 'Your session has expired. Please log in again.' : message;
+          break;
+        case 403:
+          code = 'PERMISSION_DENIED';
+          message = message.includes('unexpected') ? `You do not have permission to view this ${resourceType}.` : message;
+          break;
+        case 404:
+          code = 'NOT_FOUND';
+          message = message.includes('unexpected') ? `The requested ${resourceType} was not found.` : message;
+          break;
+        case 500:
+          code = 'SERVER_ERROR';
+          message = message.includes('unexpected') ? `A server error occurred while loading the ${resourceType}. Please try again later.` : message;
+          break;
+      }
+    }
+    
+    // In dev mode, the interceptor may set details to the entire response body.
+    // Extract the nested error.details if available for cleaner error objects.
+    let extractedDetails = details;
+    if (details && typeof details === 'object' && 'error' in details) {
+      const responseData = details as { error?: { details?: Record<string, unknown> } };
+      if (responseData.error?.details) {
+        extractedDetails = responseData.error.details;
+      }
+    }
+    
+    return new ResourceApiError(message, status, code, extractedDetails);
+  }
+  
+  // Handle API error response with error envelope (standard AxiosError format)
   if (error.response?.data?.error) {
     const { code, message, details } = error.response.data.error;
     return new ResourceApiError(
@@ -156,11 +232,19 @@ function handleApiError(
       details
     );
   }
+  
+  // Handle serialized error format from interceptors (data directly on error)
+  if (serializedError.data && typeof serializedError.data === 'object' && 'error' in serializedError.data && serializedError.data.error) {
+    const { code, message, details } = serializedError.data.error;
+    const status = serializedError.status ?? 0;
+    return new ResourceApiError(message, status, code, details);
+  }
 
   // Handle HTTP status codes without error envelope
-  if (error.response) {
-    const {status} = error.response;
-
+  // Check both response.status (AxiosError) and status (serialized)
+  const status = error.response?.status ?? serializedError.status;
+  
+  if (status !== undefined && status !== 0) {
     switch (status) {
       case 400:
         return new ResourceApiError(
@@ -202,7 +286,8 @@ function handleApiError(
   }
 
   // Handle network errors (no response received)
-  if (error.request) {
+  // Check both request (AxiosError) and code (serialized network error)
+  if (error.request || serializedError.code === 'ERR_NETWORK' || serializedError.code === 'ECONNREFUSED') {
     return new ResourceApiError(
       'Unable to connect to the server. Please check your internet connection.',
       0,
