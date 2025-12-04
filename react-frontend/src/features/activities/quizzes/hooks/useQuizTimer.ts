@@ -24,7 +24,9 @@ import {
 } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { submitQuizAnswers } from '../api/quizApi';
-import type { QuizTimer } from '../types/quiz.types';
+// Note: QuizTimer type from quiz.types.ts is used as a reference for the timer structure.
+// This hook implements its own interfaces (UseQuizTimerOptions, UseQuizTimerResult) that are
+// tailored for the hook's specific needs while maintaining compatibility with the QuizTimer pattern.
 
 // ============================================================================
 // Types and Interfaces
@@ -394,12 +396,14 @@ function useQuizTimer(
       // Silent success - auto-save should not notify user
       // Log for debugging purposes in development
       if (process.env.NODE_ENV === 'development') {
+        // eslint-disable-next-line no-console
         console.debug(`[useQuizTimer] Auto-save successful for attempt ${attemptId}`);
       }
     },
     onError: (error: Error) => {
       // Log error but don't disrupt user experience
       // The quiz will continue to function, user can manually save
+      // eslint-disable-next-line no-console
       console.error('[useQuizTimer] Auto-save failed:', error.message);
       // In production, this could also report to error tracking service
     },
@@ -449,20 +453,18 @@ function useQuizTimer(
    */
   const triggerAutoSave = useCallback(async (): Promise<void> => {
     if (!attemptId || !quizIdRef.current) {
+      // eslint-disable-next-line no-console
       console.warn('[useQuizTimer] Cannot trigger auto-save: missing attemptId or quizId');
       return;
     }
 
-    try {
-      await autoSaveMutation.mutateAsync({
-        quizId: quizIdRef.current,
-        attemptId,
-        answers: currentAnswersRef.current,
-      });
-    } catch (error) {
-      // Error already logged by mutation, just propagate
-      throw error;
-    }
+    // Directly call mutation - errors are logged by mutation's onError handler
+    // and will propagate to the caller for handling
+    await autoSaveMutation.mutateAsync({
+      quizId: quizIdRef.current,
+      attemptId,
+      answers: currentAnswersRef.current,
+    });
   }, [attemptId, autoSaveMutation]);
 
   // ============================================================================
