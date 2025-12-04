@@ -51,14 +51,47 @@ import {
 import type {
   QuizAttempt,
   Question,
-  QuizAttemptState,
-  AttemptResponse,
   AttemptSummary,
-} from '../types/quiz.types';
+} from '../api/quizApi';
 
 // ============================================================================
 // Types and Interfaces
 // ============================================================================
+
+/**
+ * Response returned when an attempt is finished
+ * Uses QuizAttempt from entities.ts (via quizApi) for API compatibility
+ */
+export interface AttemptResponse {
+  /** The completed attempt */
+  attempt: QuizAttempt;
+
+  /** Grade received (null if not yet graded) */
+  grade: number | null;
+
+  /** Feedback text */
+  feedback: string | null;
+
+  /** Final state of attempt as string */
+  state: QuizAttempt['state'];
+
+  /** Time finished (Unix timestamp, may be undefined if not finished) */
+  timefinish: number | undefined;
+
+  /** Whether attempt can be reviewed */
+  canreview: boolean;
+
+  /** URL to review the attempt */
+  reviewurl?: string;
+}
+
+/**
+ * Context type for mutations with optimistic updates
+ * Stores previous state for rollback on error
+ */
+interface MutationContext {
+  previousQuestions?: AttemptQuestionsResponse;
+}
 
 /**
  * Configuration options for the useQuizAttempt hook
@@ -412,7 +445,8 @@ function useQuizAttempt(options: UseQuizAttemptOptions): UseQuizAttemptResult {
   const submitAnswerMutation = useMutation<
     SubmitAnswersResponse,
     Error,
-    { questionId: number; answer: AnswerValue }
+    { questionId: number; answer: AnswerValue },
+    MutationContext
   >({
     mutationFn: async ({ questionId, answer }) => {
       if (!activeAttemptId) {
@@ -500,7 +534,8 @@ function useQuizAttempt(options: UseQuizAttemptOptions): UseQuizAttemptResult {
   const submitAllAnswersMutation = useMutation<
     SubmitAnswersResponse,
     Error,
-    Record<number, AnswerValue>
+    Record<number, AnswerValue>,
+    MutationContext
   >({
     mutationFn: async (answers) => {
       if (!activeAttemptId) {
