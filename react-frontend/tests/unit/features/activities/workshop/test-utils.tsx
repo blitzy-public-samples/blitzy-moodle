@@ -101,6 +101,7 @@ export function createMockWorkshop(overrides?: Partial<Workshop>): Workshop {
     submissionEnd: now + oneDay * 7,
     assessmentStart: now + oneDay * 7,
     assessmentEnd: now + oneDay * 14,
+    phaseSwitchAssessment: true,
     useExamples: true,
     examplesMode: EXAMPLES_MODE.BEFORE_SUBMISSION,
     usePeerAssessment: true,

@@ -298,6 +298,22 @@ function validateTransition(
 ): PhaseTransitionValidation {
   const warnings: string[] = [];
 
+  // Validate that target phase is one of the valid phase values
+  const validPhases: PhaseNumber[] = [
+    PHASE_SETUP,
+    PHASE_SUBMISSION,
+    PHASE_ASSESSMENT,
+    PHASE_EVALUATION,
+    PHASE_CLOSED,
+  ];
+  if (!validPhases.includes(targetPhase)) {
+    return {
+      valid: false,
+      message: 'Invalid target phase value',
+      warnings: [],
+    };
+  }
+
   // Same phase transition is a no-op
   if (currentPhase === targetPhase) {
     return {
@@ -581,8 +597,8 @@ function useWorkshopPhase(workshopId: number): UseWorkshopPhaseResult {
     if (!workshop) {
       return false;
     }
-    // Access the phaseswitchassessment property from Workshop entity
-    return Boolean(workshop.phaseswitchassessment);
+    // Access the phaseSwitchAssessment property from Workshop entity
+    return Boolean(workshop.phaseSwitchAssessment);
   }, [workshop]);
 
   /**
@@ -606,7 +622,7 @@ function useWorkshopPhase(workshopId: number): UseWorkshopPhaseResult {
     }
 
     // Must have a submission deadline set
-    const submissionEnd = workshop.submissionend;
+    const { submissionEnd } = workshop;
     if (!submissionEnd || submissionEnd <= 0) {
       return false;
     }

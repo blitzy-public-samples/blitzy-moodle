@@ -60,6 +60,7 @@ const createMockWorkshop = (overrides: Partial<Workshop> = {}): Workshop => {
     submissionEnd: Date.now() / 1000 + 86400,
     assessmentStart: Date.now() / 1000 - 3600,
     assessmentEnd: Date.now() / 1000 + 86400,
+    phaseSwitchAssessment: false,
     useExamples: false,
     examplesMode: ExamplesMode.VOLUNTARY,
     usePeerAssessment: true,

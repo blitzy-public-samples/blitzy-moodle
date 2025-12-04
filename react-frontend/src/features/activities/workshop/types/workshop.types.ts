@@ -84,6 +84,8 @@ export interface Workshop {
   submissionEnd: number | null;
   assessmentStart: number | null;
   assessmentEnd: number | null;
+  /** Whether to automatically switch to assessment phase when submission deadline passes */
+  phaseSwitchAssessment: boolean;
   useExamples: boolean;
   examplesMode: ExamplesMode;
   usePeerAssessment: boolean;

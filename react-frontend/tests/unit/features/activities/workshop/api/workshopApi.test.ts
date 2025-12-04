@@ -63,6 +63,7 @@ const mockWorkshop: Workshop = {
   submissionEnd: 1640100000,
   assessmentStart: 1640100001,
   assessmentEnd: 1640200000,
+  phaseSwitchAssessment: false,
   useExamples: false,
   examplesMode: ExamplesMode.VOLUNTARY,
   usePeerAssessment: true,
