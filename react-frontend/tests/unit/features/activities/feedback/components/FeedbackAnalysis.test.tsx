@@ -736,7 +736,9 @@ describe('FeedbackAnalysis', () => {
       renderWithAuth(<FeedbackAnalysis {...defaultProps} />);
 
       await waitFor(() => {
-        expect(screen.getByText(/95/)).toBeInTheDocument();
+        // Use more specific text matcher to avoid matching multiple elements
+        // (responseCount appears in accordion header and potentially statistics)
+        expect(screen.getByText(/95 responses/i)).toBeInTheDocument();
       });
     });
 
