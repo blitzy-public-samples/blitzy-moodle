@@ -48,7 +48,7 @@ import type { ApiResponse, ListParams } from '@/types/api';
  * Provides consistent and type-safe query keys for React Query cache management.
  * Using a factory pattern ensures proper cache invalidation across related queries.
  */
-const workshopQueryKeys = {
+export const workshopQueryKeys = {
   /** Base key for all workshop queries */
   all: ['workshops'] as const,
 
@@ -87,7 +87,7 @@ const workshopQueryKeys = {
 /**
  * Workshop details with additional computed fields
  */
-interface WorkshopDetailResponse {
+export interface WorkshopDetailResponse {
   workshop: Workshop;
   userPlan?: WorkshopUserPlan;
   currentPhaseTitle?: string;
@@ -100,7 +100,7 @@ interface WorkshopDetailResponse {
 /**
  * Parameters for creating or updating a submission
  */
-interface CreateSubmissionParams {
+export interface CreateSubmissionParams {
   workshopId: number;
   title: string;
   content: string;
@@ -111,7 +111,7 @@ interface CreateSubmissionParams {
 /**
  * Parameters for updating an existing submission
  */
-interface UpdateSubmissionParams {
+export interface UpdateSubmissionParams {
   submissionId: number;
   title?: string;
   content?: string;
@@ -122,7 +122,7 @@ interface UpdateSubmissionParams {
 /**
  * Parameters for switching workshop phase
  */
-interface SwitchPhaseParams {
+export interface SwitchPhaseParams {
   workshopId: number;
   targetPhase: WorkshopPhase;
 }
@@ -130,7 +130,7 @@ interface SwitchPhaseParams {
 /**
  * Parameters for allocating reviewers
  */
-interface AllocateReviewersParams {
+export interface AllocateReviewersParams {
   workshopId: number;
   method: 'manual' | 'random' | 'scheduled';
   settings?: {
@@ -146,7 +146,7 @@ interface AllocateReviewersParams {
 /**
  * Parameters for creating an assessment
  */
-interface CreateAssessmentParams {
+export interface CreateAssessmentParams {
   submissionId: number;
   formData: WorkshopAssessmentFormData;
 }
@@ -154,7 +154,7 @@ interface CreateAssessmentParams {
 /**
  * Parameters for updating a grade
  */
-interface UpdateGradeParams {
+export interface UpdateGradeParams {
   workshopId: number;
   submissionId: number;
   grade?: number | null;
@@ -167,7 +167,7 @@ interface UpdateGradeParams {
 /**
  * Workshop grade information
  */
-interface WorkshopGrade {
+export interface WorkshopGrade {
   submissionId: number;
   authorId: number;
   authorName: string;
