@@ -22,8 +22,7 @@ import React, {
   useMemo,
   useRef,
 } from 'react';
-import { useForm, Controller } from 'react-hook-form';
-import { useQueryClient } from '@tanstack/react-query';
+import { useForm, Controller, FormProvider } from 'react-hook-form';
 import {
   Box,
   Typography,
@@ -45,21 +44,21 @@ import InfoIcon from '@mui/icons-material/Info';
 import WarningIcon from '@mui/icons-material/Warning';
 
 // Internal imports from dependency whitelist
-import GradingStrategyRenderer from '@/features/activities/workshop/components/GradingStrategyRenderer';
-import SubmissionDisplay from '@/features/activities/workshop/components/SubmissionDisplay';
+import GradingStrategyRenderer, {
+  type GradingDimension,
+} from '@/features/activities/workshop/components/GradingStrategyRenderer';
 import RichTextEditor from '@/components/editor/RichTextEditor';
-import Modal from '@/components/feedback/Modal';
+import { Modal } from '@/components/feedback/Modal';
 import Alert from '@/components/feedback/Alert';
 import LoadingSpinner from '@/components/feedback/LoadingSpinner';
 
 // Types
 import type {
   Workshop,
-  WorkshopSubmission,
-  WorkshopAssessment,
   DimensionGrade,
-  WorkshopPhase,
+  WorkshopUserPlan,
 } from '@/features/activities/workshop/types/workshop.types';
+import type { WorkshopAssessmentDimension } from '@/types/entities';
 
 // Hooks
 import {
@@ -83,6 +82,12 @@ export interface PeerAssessmentFormProps {
   assessmentId: number;
   /** ID of the workshop instance */
   workshopId: number;
+  /**
+   * Grading dimension definitions for the workshop.
+   * Contains descriptions, max grades, weights, etc. for each criterion.
+   * Required for GradingStrategyRenderer to display proper grading UI.
+   */
+  dimensionDefinitions?: GradingDimension[];
   /** Optional callback when assessment is successfully submitted */
   onSubmitSuccess?: (assessmentId: number) => void;
   /** Optional callback when draft is saved */
@@ -91,8 +96,16 @@ export interface PeerAssessmentFormProps {
   onNavigateNext?: (nextAssessmentId: number) => void;
   /** Optional callback when assessment is cancelled */
   onCancel?: () => void;
-  /** Whether to show submission in compact mode */
-  compactSubmissionView?: boolean;
+}
+
+/**
+ * Extended dimension grade type for form that includes validation metadata
+ */
+interface FormDimensionGrade extends DimensionGrade {
+  /** Maximum grade for this dimension (for validation) */
+  maxgrade?: number;
+  /** Whether peer comment is required */
+  peercommentrequired?: boolean;
 }
 
 /**
@@ -100,7 +113,7 @@ export interface PeerAssessmentFormProps {
  */
 interface AssessmentFormData {
   /** Grades and comments for each assessment dimension */
-  dimensions: DimensionGrade[];
+  dimensions: FormDimensionGrade[];
   /** Overall feedback to the submission author */
   feedbackauthor: string;
   /** Format of feedback to author (1 = HTML, default) */
@@ -108,7 +121,7 @@ interface AssessmentFormData {
   /** Assessment weight override (for teachers with allocate capability) */
   weight: number;
   /** Grade override for grading of assessment (for teachers) */
-  gradinggradeover?: number;
+  gradinggradeover?: number | null;
   /** Feedback from teacher to reviewer */
   feedbackreviewer?: string;
   /** Format of feedback to reviewer */
@@ -158,7 +171,7 @@ function isAssessmentPhaseActive(phase: number | undefined): boolean {
  * @returns Array of validation error messages (empty if valid)
  */
 function validateDimensions(
-  dimensions: DimensionGrade[],
+  dimensions: FormDimensionGrade[],
   strategy: string | undefined
 ): string[] {
   const errors: string[] = [];
@@ -197,8 +210,8 @@ function validateDimensions(
       }
     }
 
-    // Check peercomment if required (for some strategies)
-    if (dimension.peercommentrequired && !dimension.peercomment?.trim()) {
+    // Check peerComment if required (for some strategies)
+    if (dimension.peercommentrequired && !dimension.peerComment?.trim()) {
       errors.push(`Comment is required for dimension ${dimNumber}`);
     }
   });
@@ -215,21 +228,23 @@ function validateDimensions(
  */
 function areExamplesCompleted(
   workshop: Workshop | undefined,
-  userPlan: { phases: Array<{ tasks: Array<{ completed: boolean; code: string }> }> } | undefined
+  userPlan: WorkshopUserPlan | undefined
 ): boolean {
   // If examples are not required, consider them completed
-  if (!workshop?.useexamples) return true;
+  if (!workshop?.useExamples) return true;
 
   // Find the example assessment task in the submission or assessment phase
   if (!userPlan?.phases) return true;
 
   for (const phase of userPlan.phases) {
     for (const task of phase.tasks) {
+      // Check for example assessment tasks using 'key' property
       if (
-        task.code === 'exampleassessment' ||
-        task.code === 'assessexamples'
+        task.key === 'exampleassessment' ||
+        task.key === 'assessexamples'
       ) {
-        if (!task.completed) {
+        // Handle boolean | 'info' - treat 'info' as incomplete
+        if (task.completed !== true) {
           return false;
         }
       }
@@ -237,6 +252,47 @@ function areExamplesCompleted(
   }
 
   return true;
+}
+
+/**
+ * Transforms form dimension grades to API-expected format
+ *
+ * Converts from camelCase FormDimensionGrade to lowercase WorkshopAssessmentDimension
+ * to match the API contract defined in entities.ts.
+ *
+ * @param dimensions - Array of form dimension grades with camelCase properties
+ * @returns Array of API-formatted dimension grades with lowercase properties
+ */
+function transformDimensionsForApi(
+  dimensions: FormDimensionGrade[]
+): WorkshopAssessmentDimension[] {
+  return dimensions.map((dim) => ({
+    dimensionid: dim.dimensionId,
+    grade: dim.grade ?? undefined,
+    peercomment: dim.peerComment ?? undefined,
+    peercommentformat: dim.peerCommentFormat,
+  }));
+}
+
+/**
+ * Transforms API dimension grades to form format
+ *
+ * Converts from lowercase WorkshopAssessmentDimension to camelCase FormDimensionGrade
+ * for use in the React Hook Form.
+ *
+ * @param dimensions - Array of API dimension grades with lowercase properties
+ * @returns Array of form-formatted dimension grades with camelCase properties
+ */
+function transformDimensionsFromApi(
+  dimensions: WorkshopAssessmentDimension[] | undefined
+): FormDimensionGrade[] {
+  if (!dimensions) return [];
+  return dimensions.map((dim) => ({
+    dimensionId: typeof dim.dimensionid === 'number' ? dim.dimensionid : Number(dim.dimensionid),
+    grade: dim.grade ?? null,
+    peerComment: dim.peercomment ?? null,
+    peerCommentFormat: dim.peercommentformat,
+  }));
 }
 
 // ============================================================================
@@ -276,11 +332,11 @@ function areExamplesCompleted(
 function PeerAssessmentForm({
   assessmentId,
   workshopId,
+  dimensionDefinitions = [],
   onSubmitSuccess,
   onDraftSaved,
   onNavigateNext,
   onCancel,
-  compactSubmissionView = false,
 }: PeerAssessmentFormProps): React.ReactElement {
   // ==========================================================================
   // State Management
@@ -302,7 +358,6 @@ function PeerAssessmentForm({
   // Hooks
   // ==========================================================================
 
-  const queryClient = useQueryClient();
   const { hasCapability } = usePermissions();
   const { success: showSuccess, error: showError } = useToast();
 
@@ -348,7 +403,7 @@ function PeerAssessmentForm({
   // ==========================================================================
 
   const defaultValues: AssessmentFormData = useMemo(() => ({
-    dimensions: assessment?.dimensions || [],
+    dimensions: transformDimensionsFromApi(assessment?.dimensions),
     feedbackauthor: assessment?.feedbackauthor || '',
     feedbackauthorformat: assessment?.feedbackauthorformat || 1,
     weight: assessment?.weight ?? 1,
@@ -357,17 +412,18 @@ function PeerAssessmentForm({
     feedbackreviewerformat: assessment?.feedbackreviewerformat || 1,
   }), [assessment]);
 
+  // Form methods - using `methods` pattern to enable FormProvider for nested components
+  const methods = useForm<AssessmentFormData>({
+    defaultValues,
+    mode: 'onChange',
+  });
   const {
     control,
     handleSubmit,
     watch,
-    setValue,
     reset,
-    formState: { isDirty, errors: formErrors },
-  } = useForm<AssessmentFormData>({
-    defaultValues,
-    mode: 'onChange',
-  });
+    formState: { isDirty },
+  } = methods;
 
   // Watch form values for auto-save
   const watchedDimensions = watch('dimensions');
@@ -377,7 +433,7 @@ function PeerAssessmentForm({
   useEffect(() => {
     if (assessment) {
       reset({
-        dimensions: assessment.dimensions || [],
+        dimensions: transformDimensionsFromApi(assessment.dimensions),
         feedbackauthor: assessment.feedbackauthor || '',
         feedbackauthorformat: assessment.feedbackauthorformat || 1,
         weight: assessment.weight ?? 1,
@@ -418,30 +474,19 @@ function PeerAssessmentForm({
   // Determine if feedback to author is required
   const isFeedbackRequired = useMemo(() => {
     if (!workshop) return false;
-    // overallfeedbackmode: 0 = disabled, 1 = enabled optional, 2 = enabled required
-    return workshop.overallfeedbackmode === 2;
+    // overallFeedbackMode: 0 = disabled, 1 = enabled optional, 2 = enabled required
+    return workshop.overallFeedbackMode === 2;
   }, [workshop]);
 
   // Check if feedback is enabled at all
   const isFeedbackEnabled = useMemo(() => {
     if (!workshop) return true;
-    return (workshop.overallfeedbackmode ?? 1) > 0;
+    return (workshop.overallFeedbackMode ?? 1) > 0;
   }, [workshop]);
 
   // ==========================================================================
   // Handlers
   // ==========================================================================
-
-  /**
-   * Handles dimension grade changes from GradingStrategyRenderer
-   */
-  const handleDimensionsChange = useCallback(
-    (newDimensions: DimensionGrade[]) => {
-      setValue('dimensions', newDimensions, { shouldDirty: true });
-      setHasUnsavedChanges(true);
-    },
-    [setValue]
-  );
 
   /**
    * Validates the form and returns validation errors
@@ -472,7 +517,7 @@ function PeerAssessmentForm({
 
     try {
       await updateAssessment({
-        dimensions: formData.dimensions,
+        dimensions: transformDimensionsForApi(formData.dimensions),
         feedbackauthor: formData.feedbackauthor,
         feedbackauthorformat: formData.feedbackauthorformat,
         weight: canAllocate ? formData.weight : undefined,
@@ -531,7 +576,7 @@ function PeerAssessmentForm({
     try {
       // First update the assessment with final data
       await updateAssessment({
-        dimensions: formData.dimensions,
+        dimensions: transformDimensionsForApi(formData.dimensions),
         feedbackauthor: formData.feedbackauthor,
         feedbackauthorformat: formData.feedbackauthorformat,
         weight: canAllocate ? formData.weight : undefined,
@@ -654,49 +699,55 @@ function PeerAssessmentForm({
   // Show error if workshop failed to load
   if (workshopError) {
     return (
-      <Alert severity="error" title="Error Loading Workshop">
-        {workshopError.message || 'Failed to load workshop data'}
-      </Alert>
+      <Alert
+        severity="error"
+        title="Error Loading Workshop"
+        message={workshopError.message || 'Failed to load workshop data'}
+      />
     );
   }
 
   // Show error if assessment failed to load
   if (assessmentError) {
     return (
-      <Alert severity="error" title="Error Loading Assessment">
-        {assessmentError.message || 'Failed to load assessment data'}
-      </Alert>
+      <Alert
+        severity="error"
+        title="Error Loading Assessment"
+        message={assessmentError.message || 'Failed to load assessment data'}
+      />
     );
   }
 
   // Check if assessment exists
   if (!assessment) {
     return (
-      <Alert severity="warning" title="Assessment Not Found">
-        The requested assessment could not be found. Please check the URL and
-        try again.
-      </Alert>
+      <Alert
+        severity="warning"
+        title="Assessment Not Found"
+        message="The requested assessment could not be found. Please check the URL and try again."
+      />
     );
   }
 
   // Check phase restrictions
   if (!isAssessmentPhaseActive(currentPhase)) {
     return (
-      <Alert severity="info" title="Assessment Not Available">
-        Assessment is only available during the assessment phase of the
-        workshop. The current phase is:{' '}
-        {workshopData?.currentPhaseTitle || 'Unknown'}
-      </Alert>
+      <Alert
+        severity="info"
+        title="Assessment Not Available"
+        message={`Assessment is only available during the assessment phase of the workshop. The current phase is: ${workshopData?.currentPhaseTitle || 'Unknown'}`}
+      />
     );
   }
 
   // Check example assessments completion
   if (!examplesCompleted) {
     return (
-      <Alert severity="warning" title="Example Assessments Required">
-        You must complete all example assessments before you can assess peer
-        submissions. Please complete the example assessments first.
-      </Alert>
+      <Alert
+        severity="warning"
+        title="Example Assessments Required"
+        message="You must complete all example assessments before you can assess peer submissions. Please complete the example assessments first."
+      />
     );
   }
 
@@ -705,7 +756,8 @@ function PeerAssessmentForm({
   // ==========================================================================
 
   return (
-    <Box component="form" onSubmit={handleSubmit(() => {})}>
+    <FormProvider {...methods}>
+      <Box component="form" onSubmit={handleSubmit(() => {})}>
       {/* Header Section */}
       <Paper elevation={1} sx={{ p: 3, mb: 3 }}>
         <Typography variant="h5" component="h1" gutterBottom>
@@ -717,57 +769,69 @@ function PeerAssessmentForm({
         </Typography>
 
         {/* Assessment instructions from workshop */}
-        {workshop?.instructassessors && (
-          <Alert severity="info" sx={{ mt: 2 }}>
-            <Typography variant="subtitle2" gutterBottom>
-              Assessment Instructions
-            </Typography>
-            <div
-              dangerouslySetInnerHTML={{
-                __html: workshop.instructassessors,
-              }}
-            />
-          </Alert>
+        {workshop?.instructReviewers && (
+          <Alert
+            severity="info"
+            sx={{ mt: 2 }}
+            title="Assessment Instructions"
+            message={
+              <div
+                dangerouslySetInnerHTML={{
+                  __html: workshop.instructReviewers,
+                }}
+              />
+            }
+          />
         )}
       </Paper>
 
       {/* Validation Errors */}
       {validationErrors.length > 0 && (
-        <Alert severity="error" sx={{ mb: 3 }} title="Validation Errors">
-          <ul style={{ margin: 0, paddingLeft: 20 }}>
-            {validationErrors.map((error, index) => (
-              <li key={index}>{error}</li>
-            ))}
-          </ul>
-        </Alert>
+        <Alert
+          severity="error"
+          sx={{ mb: 3 }}
+          title="Validation Errors"
+          message={
+            <ul style={{ margin: 0, paddingLeft: 20 }}>
+              {validationErrors.map((error, index) => (
+                <li key={index}>{error}</li>
+              ))}
+            </ul>
+          }
+        />
       )}
 
       {/* Update/Submit Errors */}
       {(updateError || submitError) && (
-        <Alert severity="error" sx={{ mb: 3 }} title="Error">
-          {updateError?.message ||
+        <Alert
+          severity="error"
+          sx={{ mb: 3 }}
+          title="Error"
+          message={
+            updateError?.message ||
             submitError?.message ||
-            'An error occurred while saving the assessment'}
-        </Alert>
+            'An error occurred while saving the assessment'
+          }
+        />
       )}
 
       {/* Submission Display */}
-      {assessment.submission && (
+      {assessment.submissionid && (
         <Card sx={{ mb: 3 }}>
           <CardContent>
             <Typography variant="h6" gutterBottom>
               Submission Being Assessed
             </Typography>
             <Divider sx={{ mb: 2 }} />
-            <SubmissionDisplay
-              submission={assessment.submission}
-              showAuthor={
-                !workshop?.assessmentanonymous &&
-                currentPhase !== PHASE.ASSESSMENT
-              }
-              isExample={false}
-              workshop={workshop}
-            />
+            {assessment.submissiontitle ? (
+              <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+                {assessment.submissiontitle}
+              </Typography>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                Submission ID: {assessment.submissionid}
+              </Typography>
+            )}
           </CardContent>
         </Card>
       )}
@@ -784,12 +848,19 @@ function PeerAssessmentForm({
           </Typography>
           <Divider sx={{ mb: 2 }} />
 
-          <GradingStrategyRenderer
-            workshop={workshop}
-            dimensions={watchedDimensions || []}
-            onChange={handleDimensionsChange}
-            readonly={!isEditable}
-          />
+          {workshop && dimensionDefinitions.length > 0 ? (
+            <GradingStrategyRenderer
+              workshop={workshop}
+              dimensions={dimensionDefinitions}
+              readonly={!isEditable}
+            />
+          ) : (
+            <Alert
+              severity="warning"
+              title="Grading Criteria Unavailable"
+              message="The grading criteria definitions are not available. Please contact your instructor."
+            />
+          )}
         </CardContent>
       </Card>
 
@@ -828,8 +899,9 @@ function PeerAssessmentForm({
                 render={({ field, fieldState }) => (
                   <>
                     <RichTextEditor
-                      control={control}
                       name="feedbackauthor"
+                      value={field.value || ''}
+                      onChange={field.onChange}
                       placeholder="Enter your feedback to the submission author..."
                       disabled={!isEditable}
                     />
@@ -901,9 +973,9 @@ function PeerAssessmentForm({
                     message: 'Grade override cannot be negative',
                   },
                   max: {
-                    value: workshop?.gradinggrade || 100,
+                    value: workshop?.gradingGrade || 100,
                     message: `Grade override cannot exceed ${
-                      workshop?.gradinggrade || 100
+                      workshop?.gradingGrade || 100
                     }`,
                   },
                 }}
@@ -915,7 +987,7 @@ function PeerAssessmentForm({
                     helperText={
                       fieldState.error?.message ||
                       `Override the calculated grading grade (0-${
-                        workshop?.gradinggrade || 100
+                        workshop?.gradingGrade || 100
                       })`
                     }
                     error={!!fieldState.error}
@@ -923,12 +995,12 @@ function PeerAssessmentForm({
                     InputProps={{
                       inputProps: {
                         min: 0,
-                        max: workshop?.gradinggrade || 100,
+                        max: workshop?.gradingGrade || 100,
                         step: 0.01,
                       },
                       endAdornment: (
                         <InputAdornment position="end">
-                          / {workshop?.gradinggrade || 100}
+                          / {workshop?.gradingGrade || 100}
                         </InputAdornment>
                       ),
                     }}
@@ -969,11 +1041,17 @@ function PeerAssessmentForm({
 
       {/* Unsaved Changes Warning */}
       {hasUnsavedChanges && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          <WarningIcon fontSize="small" sx={{ mr: 1, verticalAlign: 'middle' }} />
-          You have unsaved changes. Save your draft or submit to avoid losing
-          your work.
-        </Alert>
+        <Alert
+          severity="warning"
+          sx={{ mb: 2 }}
+          message={
+            <>
+              <WarningIcon fontSize="small" sx={{ mr: 1, verticalAlign: 'middle' }} />
+              You have unsaved changes. Save your draft or submit to avoid losing
+              your work.
+            </>
+          }
+        />
       )}
 
       {/* Action Buttons */}
@@ -1052,7 +1130,8 @@ function PeerAssessmentForm({
           </Typography>
         )}
       </Modal>
-    </Box>
+      </Box>
+    </FormProvider>
   );
 }
 
