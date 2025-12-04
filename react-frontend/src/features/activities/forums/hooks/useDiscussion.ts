@@ -2,18 +2,35 @@
  * useDiscussion Hook
  *
  * Custom React Query hook for managing discussion thread data and operations.
- * Provides:
- * - Discussion and posts fetching with automatic caching
+ * Provides comprehensive functionality for forum discussion management including:
+ * - Discussion and posts fetching with automatic caching (3-minute stale time)
  * - Nested post hierarchy reconstruction from flat API responses
  * - Reply creation with optimistic updates
- * - Post editing with conflict detection
+ * - Post editing with conflict detection and rollback
  * - Post deletion with cascade handling
- * - Discussion subscription management
- * - Mark as read functionality
- * - Moderator actions (pin, lock, move, split)
- * - Post reporting
+ * - Mark as read functionality with optimistic status updates
  *
  * @module features/activities/forums/hooks/useDiscussion
+ *
+ * @example
+ * ```tsx
+ * // Using the main useDiscussion hook
+ * const {
+ *   discussion,
+ *   posts,
+ *   isLoading,
+ *   createReply,
+ *   editPost,
+ *   deletePost,
+ *   markAsRead
+ * } = useDiscussion(discussionId);
+ *
+ * // Using standalone hooks
+ * const { mutate: createPost, isPending } = useCreatePost(discussionId);
+ * const { mutate: updatePost } = useUpdatePost(discussionId);
+ * const { mutate: removePost } = useDeletePost(discussionId);
+ * const { mutate: markRead } = useMarkDiscussionRead(discussionId);
+ * ```
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -53,24 +70,46 @@ import type {
   ReportResponse,
 } from '../api/forumApi';
 
+// ============================================================================
+// QUERY KEY FACTORY
+// ============================================================================
+
 /**
  * Query key factory for discussion-related queries
  * Ensures consistent cache key structure across the application
+ *
+ * Following the pattern: ['discussions', discussionId, 'posts'] for granular cache management
  */
 export const discussionKeys = {
+  /** Base key for all discussion queries */
   all: ['discussions'] as const,
+
+  /** Key for discussion list queries */
   lists: () => [...discussionKeys.all, 'list'] as const,
+
+  /** Key for filtered discussion list */
   list: (filters: string) => [...discussionKeys.lists(), { filters }] as const,
+
+  /** Key for all discussion detail queries */
   details: () => [...discussionKeys.all, 'detail'] as const,
+
+  /** Key for specific discussion detail with posts */
   detail: (id: number) => [...discussionKeys.details(), id] as const,
+
+  /** Key for discussion posts - matches ['discussions', discussionId, 'posts'] pattern */
+  posts: (discussionId: number) => ['discussions', discussionId, 'posts'] as const,
 };
 
+// ============================================================================
+// HELPER FUNCTIONS - POST TRANSFORMATION
+// ============================================================================
+
 /**
- * Transforms API Post objects to DiscussionPost objects
+ * Transforms API Post objects to DiscussionPost objects for UI rendering
  * Converts snake_case to camelCase and adds UI-specific properties
  *
- * @param apiPost - Post object from API
- * @returns Transformed DiscussionPost object
+ * @param apiPost - Post object from API with snake_case properties
+ * @returns Transformed DiscussionPost object with camelCase properties
  */
 function transformPost(apiPost: Post): DiscussionPost {
   // API may include additional user fields beyond the Post interface
@@ -78,6 +117,7 @@ function transformPost(apiPost: Post): DiscussionPost {
     userid?: number;
     username?: string;
     userpictureurl?: string | null;
+    userfullname?: string;
   };
 
   // Prioritize userid if explicitly provided (especially for deleted users),
@@ -95,189 +135,190 @@ function transformPost(apiPost: Post): DiscussionPost {
   // Use userpictureurl from API if present
   const userPictureUrl = apiPostWithUserData.userpictureurl ?? '';
 
+  // Build author object for the post
+  const author: Author = {
+    id: userId,
+    username: userName,
+    fullName: apiPostWithUserData.userfullname ?? userName,
+    pictureUrl: userPictureUrl,
+    profileUrl: userId > 0 ? `/user/profile.php?id=${userId}` : undefined,
+  };
+
   return {
     id: apiPost.id,
     discussionId: apiPost.discussionid,
-    parentId: apiPost.parentid === 0 ? null : apiPost.parentid,
-    subject: apiPost.subject,
+    parentId: apiPost.parentid ?? 0,
+    author,
+    subject: apiPost.subject ?? '',
     message: apiPost.message,
-    userId,
-    userName,
-    userPictureUrl,
+    messageFormat: apiPost.messageformat ?? 1,
     created: apiPost.timecreated,
     modified: apiPost.timemodified,
-    // Version for concurrent edit detection - use timemodified as proxy
-    version: apiPost.timemodified,
-    deleted: apiPost.deleted,
-    hasAttachments: apiPost.hasattachments,
-    // Attachments would come from separate API call or be included in response
+    hasAttachments: apiPost.hasattachments ?? false,
     attachments: [],
-    // Permission flags - these should come from the API based on user's capabilities
-    // For now, we set default values
+    deleted: apiPost.deleted ?? false,
+    isPrivateReply: (apiPost.privatereplyto ?? 0) > 0,
+    privateReplyTo: apiPost.privatereplyto,
+    wordCount: apiPost.wordcount ?? 0,
+    charCount: apiPost.charcount ?? 0,
     canEdit: false,
     canDelete: false,
     canReply: true,
-    // Initialize empty replies array - will be populated by buildPostHierarchy
-    replies: [],
+    children: [],
+    depth: 0,
+    isRead: false,
+    isPending: false,
   };
 }
 
 /**
- * Reconstructs nested post hierarchy from flat array
- * Converts flat API response into tree structure with replies
+ * Builds a hierarchical post tree from a flat array of posts
+ * Creates parent-child relationships based on parentId field
  *
- * @param flatPosts - Flat array of posts from API
- * @returns Array of root posts with nested replies
+ * @param posts - Flat array of DiscussionPost objects
+ * @returns Array of root-level posts with nested children
  */
-function buildPostHierarchy(flatPosts: DiscussionPost[]): DiscussionPost[] {
+function buildPostHierarchy(posts: DiscussionPost[]): DiscussionPost[] {
+  if (!posts || posts.length === 0) {
+    return [];
+  }
+
   // Create a map for quick lookup
   const postMap = new Map<number, DiscussionPost>();
-  const rootPosts: DiscussionPost[] = [];
 
-  // First pass: create map and initialize replies arrays
-  flatPosts.forEach((post) => {
-    postMap.set(post.id, { ...post, replies: [] });
+  // First pass: create map with clean children arrays
+  posts.forEach((post) => {
+    postMap.set(post.id, {
+      ...post,
+      children: [],
+    });
   });
 
   // Second pass: build hierarchy
-  flatPosts.forEach((post) => {
-    const postWithReplies = postMap.get(post.id);
-    if (!postWithReplies) {
-      return;
-    }
+  const rootPosts: DiscussionPost[] = [];
 
-    if (post.parentId === null || post.parentId === 0) {
-      // Root level post
-      rootPosts.push(postWithReplies);
+  posts.forEach((post) => {
+    const currentPost = postMap.get(post.id);
+    if (!currentPost) return;
+
+    if (post.parentId === 0 || post.parentId === null || post.parentId === undefined) {
+      // Root post (no parent)
+      currentPost.depth = 0;
+      rootPosts.push(currentPost);
     } else {
-      // Child post - add to parent's replies
-      const parent = postMap.get(post.parentId);
-      if (parent) {
-        parent.replies.push(postWithReplies);
+      // Child post - find parent and add to children
+      const parentPost = postMap.get(post.parentId);
+      if (parentPost) {
+        currentPost.depth = (parentPost.depth ?? 0) + 1;
+        parentPost.children = parentPost.children ?? [];
+        parentPost.children.push(currentPost);
       } else {
-        // Broken parent reference - treat as root
-        console.warn(`Post ${post.id} has invalid parent ${post.parentId}, treating as root`);
-        rootPosts.push(postWithReplies);
+        // Parent not found - treat as root (orphaned post)
+        currentPost.depth = 0;
+        rootPosts.push(currentPost);
       }
     }
   });
 
-  return rootPosts;
+  // Sort children recursively by creation time
+  const sortChildren = (posts: DiscussionPost[]): DiscussionPost[] => {
+    return posts
+      .sort((a, b) => a.created - b.created)
+      .map((post) => ({
+        ...post,
+        children: post.children ? sortChildren(post.children) : [],
+      }));
+  };
+
+  return sortChildren(rootPosts);
 }
 
 /**
  * Constructs a DiscussionDetail object from API response data
- * Handles both cases: when backend returns discussion object or only posts
+ * Aggregates metadata from discussion and posts
  *
- * @param data - API response data containing discussion and/or posts
- * @returns DiscussionDetail object with all required properties
+ * @param data - API response containing discussion and posts
+ * @returns DiscussionDetail object or undefined if data is invalid
  */
 function constructDiscussionDetail(
   data: DiscussionWithPosts | undefined
 ): DiscussionDetail | undefined {
-  if (!data) {
+  if (!data?.discussion) {
     return undefined;
   }
 
-  // If backend returns discussion object, enhance it
-  if (data.discussion) {
-    const firstPost = data.posts?.[0];
-    const uniqueAuthors = new Set(data.posts?.map((p) => p.authorid) ?? []);
+  // Extract unique authors from posts for participant count
+  const uniqueAuthors = new Set<number>();
+  data.posts.forEach((post) => {
+    if (post.authorid > 0) {
+      uniqueAuthors.add(post.authorid);
+    }
+  });
 
-    // Create author object from first post or use defaults
-    const author: Author = {
-      id: firstPost?.authorid ?? data.discussion.userid,
-      pictureitemid: 0,
-      firstname: '',
-      lastname: '',
-      fullname: 'Unknown', // Will be populated by API if available
-      email: '',
-      deleted: false,
-    };
-
-    return {
-      ...data.discussion,
-      author,
-      created:
-        firstPost?.timecreated ?? data.discussion.timemodified ?? Math.floor(Date.now() / 1000),
-      numViews: 0, // Not available in current API response
-      numParticipants: uniqueAuthors.size,
-      numReplies: (data.posts?.length ?? 1) - 1, // Subtract starter post
-      subscribed: data.subscribed ?? false, // Use API-provided subscription status or default to false
-      // Time-based scheduling fields (defaults as not scheduled)
-      timestart: 0, // No scheduled start time
-      timeend: 0, // No scheduled end time
-      timelocked: 0, // Not time-locked
-    };
-  }
-
-  // Fallback: construct from posts if discussion object not available
-  const firstPost = data.posts?.[0];
-  if (!firstPost) {
-    return undefined;
-  }
-
-  const uniqueAuthors = new Set(data.posts?.map((p) => p.authorid) ?? []);
-
-  const author: Author = {
-    id: firstPost.authorid,
-    pictureitemid: 0,
-    firstname: '',
-    lastname: '',
-    fullname: 'Unknown',
-    email: '',
-    deleted: false,
-  };
+  const disc = data.discussion;
 
   return {
-    id: firstPost.discussionid ?? 0,
-    name: firstPost.subject ?? 'Discussion',
-    courseid: 0, // Not available from posts alone
-    forumid: 0, // Not available from posts alone
-    firstpostid: firstPost.id,
-    userid: firstPost.authorid,
-    groupid: 0,
-    assessed: false,
-    timemodified: firstPost.timemodified ?? firstPost.timecreated,
-    usermodified: firstPost.authorid,
-    timestart: 0,
-    timeend: 0,
-    pinned: false,
-    timelocked: 0,
-    author,
-    created: firstPost.timecreated,
-    numViews: 0,
+    id: disc.id,
+    forumId: disc.forum,
+    courseId: disc.course ?? 0,
+    name: disc.name,
+    subject: disc.name,
+    message: '', // First post message handled separately
+    timeCreated: disc.timestart ?? Math.floor(Date.now() / 1000),
+    timeModified: disc.timemodified ?? disc.timestart ?? Math.floor(Date.now() / 1000),
+    userCreated: disc.userid ?? 0,
+    userModified: disc.usermodified ?? disc.userid ?? 0,
+    pinned: disc.pinned === 1 || disc.pinned === true,
+    locked: disc.locked === 1 || disc.locked === true,
+    numPosts: data.totalPosts ?? data.posts.length,
     numParticipants: uniqueAuthors.size,
     numReplies: data.posts.length - 1,
-    subscribed: false,
+    subscribed: data.subscribed ?? false,
+    unreadCount: 0,
   };
 }
 
+// ============================================================================
+// OPTIONS INTERFACES
+// ============================================================================
+
 /**
  * Options for useDiscussion hook callbacks
+ * Allows consumers to hook into mutation lifecycle events
  */
 export interface UseDiscussionOptions {
+  /** Number of retry attempts for failed queries */
   retryCount?: number;
+
+  // Create post callbacks
   onCreateSuccess?: (data: PostResponse) => void;
   onCreateError?: (error: Error) => void;
   onCreateSettled?: () => void;
+
+  // Edit post callbacks
   onEditSuccess?: (data: PostResponse) => void;
   onEditError?: (error: Error) => void;
   onEditSettled?: () => void;
   onEditConflict?: (data: { post: Post; conflictData: Post }) => void;
-  onDeleteSuccess?: (data: {
-    softDeleted?: boolean;
-    hardDeleted?: boolean;
-    message?: string;
-  }) => void;
+
+  // Delete post callbacks
+  onDeleteSuccess?: (data: { softDeleted?: boolean; hardDeleted?: boolean; message?: string }) => void;
   onDeleteError?: (error: Error) => void;
+
+  // Load more callbacks
   onLoadMoreError?: (error: Error) => void;
+
+  // Subscription callbacks
   onSubscribeSuccess?: (data: SubscriptionResponse) => void;
   onSubscribeError?: (error: Error) => void;
   onUnsubscribeSuccess?: (data: SubscriptionResponse) => void;
   onUnsubscribeError?: (error: Error) => void;
+
+  // Mark as read callbacks
   onMarkAsReadSuccess?: (data: MarkReadResponse) => void;
   onMarkAsReadError?: (error: Error) => void;
+
+  // Moderation callbacks
   onPinSuccess?: (data: ModerationResponse) => void;
   onPinError?: (error: Error) => void;
   onUnpinSuccess?: (data: ModerationResponse) => void;
@@ -290,12 +331,451 @@ export interface UseDiscussionOptions {
   onMoveError?: (error: Error) => void;
   onSplitSuccess?: (data: ModerationResponse) => void;
   onSplitError?: (error: Error) => void;
+
+  // Report callbacks
   onReportSuccess?: (data: ReportResponse) => void;
   onReportError?: (error: Error) => void;
 }
 
 /**
- * Custom hook for discussion thread management
+ * Options for standalone useCreatePost hook
+ */
+export interface UseCreatePostOptions {
+  onSuccess?: (data: PostResponse) => void;
+  onError?: (error: Error) => void;
+  onSettled?: () => void;
+}
+
+/**
+ * Options for standalone useUpdatePost hook
+ */
+export interface UseUpdatePostOptions {
+  onSuccess?: (data: PostResponse) => void;
+  onError?: (error: Error) => void;
+  onSettled?: () => void;
+  onConflict?: (data: { post: Post; conflictData: Post }) => void;
+}
+
+/**
+ * Options for standalone useDeletePost hook
+ */
+export interface UseDeletePostOptions {
+  onSuccess?: (data: { softDeleted?: boolean; hardDeleted?: boolean; message?: string }) => void;
+  onError?: (error: Error) => void;
+}
+
+/**
+ * Options for standalone useMarkDiscussionRead hook
+ */
+export interface UseMarkDiscussionReadOptions {
+  onSuccess?: (data: MarkReadResponse) => void;
+  onError?: (error: Error) => void;
+}
+
+// ============================================================================
+// STANDALONE HOOKS
+// ============================================================================
+
+/**
+ * Standalone hook for creating a post/reply in a discussion
+ *
+ * Creates a new post or reply with optimistic updates and automatic
+ * cache invalidation. Supports both root posts and nested replies.
+ *
+ * @param discussionId - ID of the discussion to post in
+ * @param options - Optional callbacks for mutation events
+ * @returns Mutation object with mutate function and state
+ *
+ * @example
+ * ```tsx
+ * const { mutate: createPost, isPending } = useCreatePost(discussionId, {
+ *   onSuccess: (data) => toast.success('Post created!'),
+ * });
+ *
+ * // Create a reply
+ * createPost({ message: 'My reply', parentPostId: parentId });
+ * ```
+ */
+export function useCreatePost(discussionId: number, options?: UseCreatePostOptions) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      postData,
+      parentPostId,
+    }: {
+      postData: CreatePostData;
+      parentPostId?: number;
+    }) => {
+      return createPost({ ...postData, discussionId, parentPostId });
+    },
+    onMutate: async ({ postData, parentPostId }) => {
+      // Cancel outgoing refetches to prevent overwriting optimistic update
+      await queryClient.cancelQueries({ queryKey: discussionKeys.detail(discussionId) });
+
+      // Snapshot previous value for rollback
+      const previousData = queryClient.getQueryData<DiscussionWithPosts>(
+        discussionKeys.detail(discussionId)
+      );
+
+      // Generate temporary ID for optimistic post
+      const optimisticId = Date.now() + Math.random();
+
+      // Optimistically add post to cache
+      queryClient.setQueryData<DiscussionWithPosts>(
+        discussionKeys.detail(discussionId),
+        (old) => {
+          if (!old) return old;
+
+          const optimisticPost: Post = {
+            id: optimisticId,
+            discussionid: discussionId,
+            parentid: parentPostId ?? 0,
+            authorid: 0, // Will be replaced by server
+            timecreated: Math.floor(Date.now() / 1000),
+            timemodified: Math.floor(Date.now() / 1000),
+            mailed: false,
+            subject: postData.subject ?? `Re: ${old.discussion?.name ?? ''}`,
+            message: postData.message,
+            messageformat: 1,
+            messagetrust: false,
+            hasattachments: postData.attachments ? postData.attachments.length > 0 : false,
+            totalscore: 0,
+            mailnow: false,
+            deleted: false,
+            privatereplyto: 0,
+            wordcount: postData.message.split(/\s+/).length,
+            charcount: postData.message.length,
+          };
+
+          return {
+            ...old,
+            posts: [...old.posts, optimisticPost],
+          };
+        }
+      );
+
+      return { previousData, optimisticId };
+    },
+    onError: (err, _variables, context) => {
+      // Rollback on error
+      if (context?.previousData) {
+        queryClient.setQueryData(discussionKeys.detail(discussionId), context.previousData);
+      }
+      options?.onError?.(err);
+    },
+    onSuccess: (data) => {
+      // Invalidate queries to refresh with real data
+      void queryClient.invalidateQueries({ queryKey: discussionKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: discussionKeys.detail(discussionId) });
+      options?.onSuccess?.(data);
+    },
+    onSettled: () => {
+      options?.onSettled?.();
+    },
+  });
+}
+
+/**
+ * Standalone hook for updating an existing post
+ *
+ * Updates post content with optimistic updates and conflict detection.
+ * Automatically rolls back on error and handles 409 conflict responses.
+ *
+ * @param discussionId - ID of the discussion containing the post
+ * @param options - Optional callbacks for mutation events
+ * @returns Mutation object with mutate function and state
+ *
+ * @example
+ * ```tsx
+ * const { mutate: editPost, isPending } = useUpdatePost(discussionId, {
+ *   onConflict: (data) => showConflictDialog(data),
+ * });
+ *
+ * editPost({ postId: 123, message: 'Updated content' });
+ * ```
+ */
+export function useUpdatePost(discussionId: number, options?: UseUpdatePostOptions) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      postId,
+      postData,
+    }: {
+      postId: number;
+      postData: UpdatePostData;
+    }) => {
+      return updatePost({ ...postData, postId });
+    },
+    onMutate: async ({ postId, postData }) => {
+      await queryClient.cancelQueries({ queryKey: discussionKeys.detail(discussionId) });
+      const previousData = queryClient.getQueryData<DiscussionWithPosts>(
+        discussionKeys.detail(discussionId)
+      );
+
+      // Optimistically update the post
+      queryClient.setQueryData<DiscussionWithPosts>(
+        discussionKeys.detail(discussionId),
+        (old) => {
+          if (!old) return old;
+
+          return {
+            ...old,
+            posts: old.posts.map((post: Post) =>
+              post.id === postId
+                ? {
+                    ...post,
+                    message: postData.message,
+                    subject: postData.subject ?? post.subject,
+                    timemodified: Math.floor(Date.now() / 1000),
+                  }
+                : post
+            ),
+          };
+        }
+      );
+
+      return { previousData };
+    },
+    onError: (err, _variables, context) => {
+      // Rollback on error
+      if (context?.previousData) {
+        queryClient.setQueryData(discussionKeys.detail(discussionId), context.previousData);
+      }
+
+      // Check for conflict (409 status code)
+      if (
+        typeof err === 'object' &&
+        err !== null &&
+        'response' in err &&
+        typeof err.response === 'object' &&
+        err.response !== null &&
+        'status' in err.response &&
+        err.response.status === 409
+      ) {
+        const responseData = 'data' in err.response ? err.response.data : undefined;
+        const conflictPost =
+          typeof responseData === 'object' && responseData !== null
+            ? 'post' in responseData
+              ? (responseData.post as Post)
+              : 'currentPost' in responseData
+                ? (responseData.currentPost as Post)
+                : undefined
+            : undefined;
+
+        if (conflictPost && typeof responseData === 'object' && responseData !== null) {
+          options?.onConflict?.({
+            post: conflictPost,
+            conflictData: responseData as Post,
+          });
+        }
+      }
+
+      options?.onError?.(err);
+    },
+    onSuccess: (data) => {
+      void queryClient.invalidateQueries({ queryKey: discussionKeys.detail(discussionId) });
+      options?.onSuccess?.(data);
+    },
+    onSettled: () => {
+      options?.onSettled?.();
+    },
+  });
+}
+
+/**
+ * Standalone hook for deleting a post
+ *
+ * Deletes a post with optimistic removal from cache. Handles both
+ * soft delete (marks as deleted) and hard delete (removes completely).
+ *
+ * @param discussionId - ID of the discussion containing the post
+ * @param options - Optional callbacks for mutation events
+ * @returns Mutation object with mutate function and state
+ *
+ * @example
+ * ```tsx
+ * const { mutate: removePost, isPending } = useDeletePost(discussionId, {
+ *   onSuccess: (data) => {
+ *     if (data.softDeleted) toast.info('Post marked as deleted');
+ *     else toast.success('Post removed');
+ *   },
+ * });
+ *
+ * removePost(postId);
+ * ```
+ */
+export function useDeletePost(discussionId: number, options?: UseDeletePostOptions) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (postId: number) => {
+      return deletePost(postId);
+    },
+    onMutate: async (postId) => {
+      await queryClient.cancelQueries({ queryKey: discussionKeys.detail(discussionId) });
+      const previousData = queryClient.getQueryData<DiscussionWithPosts>(
+        discussionKeys.detail(discussionId)
+      );
+
+      // Optimistically mark as deleted
+      queryClient.setQueryData<DiscussionWithPosts>(
+        discussionKeys.detail(discussionId),
+        (old) => {
+          if (!old) return old;
+
+          return {
+            ...old,
+            posts: old.posts.map((post: Post) =>
+              post.id === postId
+                ? {
+                    ...post,
+                    deleted: true,
+                    message: '[deleted]',
+                  }
+                : post
+            ),
+          };
+        }
+      );
+
+      return { previousData, postId };
+    },
+    onError: (err, _variables, context) => {
+      // Rollback on error
+      if (context?.previousData) {
+        queryClient.setQueryData(discussionKeys.detail(discussionId), context.previousData);
+      }
+      options?.onError?.(err);
+    },
+    onSuccess: (data, _variables, context) => {
+      // Update cache based on delete type
+      if (data.softDeleted) {
+        // Keep post but marked as deleted
+        queryClient.setQueryData<DiscussionWithPosts>(
+          discussionKeys.detail(discussionId),
+          (old) => {
+            if (!old) return old;
+
+            return {
+              ...old,
+              posts: old.posts.map((post: Post) =>
+                post.id === context?.postId
+                  ? { ...post, deleted: true, message: '[deleted]' }
+                  : post
+              ),
+            };
+          }
+        );
+      } else if (data.hardDeleted) {
+        // Remove post completely
+        queryClient.setQueryData<DiscussionWithPosts>(
+          discussionKeys.detail(discussionId),
+          (old) => {
+            if (!old) return old;
+
+            return {
+              ...old,
+              posts: old.posts.filter((post: Post) => post.id !== context?.postId),
+            };
+          }
+        );
+      }
+
+      void queryClient.invalidateQueries({ queryKey: discussionKeys.lists() });
+      options?.onSuccess?.(data);
+    },
+  });
+}
+
+/**
+ * Standalone hook for marking a discussion as read
+ *
+ * Marks all posts in a discussion as read with optimistic UI update.
+ * Updates unread count immediately for responsive UX.
+ *
+ * @param discussionId - ID of the discussion to mark as read
+ * @param options - Optional callbacks for mutation events
+ * @returns Mutation object with mutate function and state
+ *
+ * @example
+ * ```tsx
+ * const { mutate: markRead, isPending } = useMarkDiscussionRead(discussionId, {
+ *   onSuccess: () => toast.success('Marked as read'),
+ * });
+ *
+ * // Call when user views discussion
+ * useEffect(() => {
+ *   markRead();
+ * }, [markRead]);
+ * ```
+ */
+export function useMarkDiscussionRead(
+  discussionId: number,
+  options?: UseMarkDiscussionReadOptions
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => markDiscussionRead(discussionId),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: discussionKeys.detail(discussionId) });
+      const previousData = queryClient.getQueryData<DiscussionWithPosts>(
+        discussionKeys.detail(discussionId)
+      );
+
+      // Optimistically update unread count to 0
+      queryClient.setQueryData<DiscussionWithPosts>(
+        discussionKeys.detail(discussionId),
+        (old) => {
+          if (!old?.discussion) return old;
+
+          return {
+            ...old,
+            discussion: {
+              ...old.discussion,
+              unreadCount: 0,
+            },
+          };
+        }
+      );
+
+      return { previousData };
+    },
+    onSuccess: (data) => {
+      options?.onSuccess?.(data);
+    },
+    onError: (err, _variables, context) => {
+      // Rollback on error
+      if (context?.previousData) {
+        queryClient.setQueryData(discussionKeys.detail(discussionId), context.previousData);
+      }
+      options?.onError?.(err);
+    },
+  });
+}
+
+// ============================================================================
+// MAIN HOOK
+// ============================================================================
+
+/**
+ * Custom hook for comprehensive discussion thread management
+ *
+ * Provides complete functionality for viewing and interacting with
+ * a forum discussion, including:
+ * - Fetching discussion data and posts with automatic caching
+ * - Transforming flat post arrays into nested tree structure
+ * - Creating replies with optimistic updates
+ * - Editing posts with conflict detection
+ * - Deleting posts with cascade handling
+ * - Managing discussion subscriptions
+ * - Marking discussions as read
+ * - Moderator actions (pin, lock, move, split)
+ * - Post reporting
+ *
+ * Uses 3-minute stale time for discussion content freshness.
  *
  * @param discussionId - ID of the discussion to manage
  * @param options - Optional callbacks for mutation events
@@ -307,37 +787,65 @@ export interface UseDiscussionOptions {
  *   discussion,
  *   posts,
  *   isLoading,
+ *   isError,
+ *   error,
+ *   refetch,
  *   createReply,
- *   editPost
+ *   isCreatingReply,
+ *   editPost,
+ *   deletePost,
+ *   markAsRead,
+ *   subscribe,
+ *   unsubscribe,
+ *   hasMore,
+ *   loadMore,
  * } = useDiscussion(discussionId, {
  *   onCreateSuccess: (data) => console.log('Post created', data),
- *   onEditConflict: (data) => showConflictDialog(data)
+ *   onEditConflict: (data) => showConflictDialog(data),
  * });
+ *
+ * if (isLoading) return <Spinner />;
+ * if (isError) return <ErrorMessage error={error} />;
+ *
+ * return (
+ *   <DiscussionView
+ *     discussion={discussion}
+ *     posts={posts}
+ *     onReply={(parentId, content) => createReply({ postData: { message: content }, parentId })}
+ *   />
+ * );
  * ```
  */
 export function useDiscussion(discussionId: number, options?: UseDiscussionOptions) {
   const queryClient = useQueryClient();
 
-  // Fetch discussion and posts
-  const { data, isLoading, isSuccess, isError, error, refetch } = useQuery({
+  // ========== MAIN QUERY ==========
+  // Fetch discussion and posts with 3-minute stale time
+  const {
+    data,
+    isLoading,
+    isFetching,
+    isSuccess,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: discussionKeys.detail(discussionId),
     queryFn: () => getDiscussionPosts(discussionId),
-    staleTime: 30000, // 30 seconds
+    staleTime: 3 * 60 * 1000, // 3 minutes
     refetchOnWindowFocus: true,
-    retry: options?.retryCount ?? 3, // Default to 3 retries, configurable via options
+    retry: options?.retryCount ?? 3,
   });
 
-  // Transform API Post objects to DiscussionPost objects and reconstruct hierarchy
+  // Transform posts to hierarchical structure
   const posts = data?.posts ? buildPostHierarchy(data.posts.map(transformPost)) : undefined;
   const discussion = constructDiscussionDetail(data);
 
-  // Extract pagination info
+  // Pagination info
   const hasMore = data?.hasMore ?? false;
   const nextCursor = data?.nextCursor;
 
-  /**
-   * Load more posts for pagination
-   */
+  // ========== LOAD MORE MUTATION ==========
   const loadMoreMutation = useMutation({
     mutationFn: async () => {
       if (!nextCursor) {
@@ -346,164 +854,151 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
       return fetchMorePosts(discussionId, nextCursor);
     },
     onSuccess: (newData) => {
-      // Append new posts to existing data
-      queryClient.setQueryData<DiscussionWithPosts>(discussionKeys.detail(discussionId), (old) => {
-        if (!old) {
-          return old;
-        }
+      queryClient.setQueryData<DiscussionWithPosts>(
+        discussionKeys.detail(discussionId),
+        (old) => {
+          if (!old) return old;
 
-        return {
-          ...old,
-          posts: [...old.posts, ...newData.posts],
-          hasMore: newData.hasMore,
-          nextCursor: newData.nextCursor,
-        };
-      });
+          return {
+            ...old,
+            posts: [...old.posts, ...newData.posts],
+            hasMore: newData.hasMore,
+            nextCursor: newData.nextCursor,
+          };
+        }
+      );
     },
     onError: (err) => {
       options?.onLoadMoreError?.(err);
     },
   });
 
-  /**
-   * Load replies for a specific post (incremental loading)
-   */
+  // ========== LOAD REPLIES MUTATION ==========
   const loadRepliesMutation = useMutation({
     mutationFn: async (parentPostId: number) => {
       return fetchPostReplies(parentPostId);
     },
-    onSuccess: (newData, _parentPostId) => {
-      // Append new replies to the flat posts array in the cache
-      // The hierarchy will be automatically rebuilt on next render
-      // Note: fetchPostReplies returns ApiPost[], transform to canonical Post[]
+    onSuccess: (newData) => {
       const canonicalPosts = transformApiPostsToCanonical(newData);
-      queryClient.setQueryData<DiscussionWithPosts>(discussionKeys.detail(discussionId), (old) => {
-        if (!old) {
-          return old;
-        }
+      queryClient.setQueryData<DiscussionWithPosts>(
+        discussionKeys.detail(discussionId),
+        (old) => {
+          if (!old) return old;
 
-        return {
-          ...old,
-          posts: [...old.posts, ...canonicalPosts],
-        };
-      });
+          return {
+            ...old,
+            posts: [...old.posts, ...canonicalPosts],
+          };
+        }
+      );
     },
     onError: (err) => {
-      // Error loading more posts - could notify user via toast
-      console.error('Failed to load more posts:', err);
+      console.error('Failed to load replies:', err);
     },
   });
 
-  /**
-   * Create a reply to a post with optimistic update
-   */
+  // ========== CREATE REPLY MUTATION ==========
   const createReplyMutation = useMutation({
-    mutationFn: async ({ postData, parentId }: { postData: CreatePostData; parentId?: number }) => {
+    mutationFn: async ({
+      postData,
+      parentId,
+    }: {
+      postData: CreatePostData;
+      parentId?: number;
+    }) => {
       return createPost({ ...postData, discussionId, parentPostId: parentId });
     },
     onMutate: async ({ postData, parentId }) => {
-      // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: discussionKeys.detail(discussionId) });
-
-      // Snapshot previous value
       const previousData = queryClient.getQueryData(discussionKeys.detail(discussionId));
-
-      // Generate unique temporary ID for this optimistic post
       const optimisticId = Date.now() + Math.random();
 
-      // Optimistically update cache
-      queryClient.setQueryData<DiscussionWithPosts>(discussionKeys.detail(discussionId), (old) => {
-        if (!old) {
-          return old;
+      queryClient.setQueryData<DiscussionWithPosts>(
+        discussionKeys.detail(discussionId),
+        (old) => {
+          if (!old) return old;
+
+          const optimisticPost: Post = {
+            id: optimisticId,
+            discussionid: discussionId,
+            parentid: parentId ?? 0,
+            authorid: 0,
+            timecreated: Math.floor(Date.now() / 1000),
+            timemodified: Math.floor(Date.now() / 1000),
+            mailed: false,
+            subject: postData.subject ?? `Re: ${old.discussion?.name ?? ''}`,
+            message: postData.message,
+            messageformat: 1,
+            messagetrust: false,
+            hasattachments: postData.attachments ? postData.attachments.length > 0 : false,
+            totalscore: 0,
+            mailnow: false,
+            deleted: false,
+            privatereplyto: 0,
+            wordcount: postData.message.split(/\s+/).length,
+            charcount: postData.message.length,
+          };
+
+          return {
+            ...old,
+            posts: [...old.posts, optimisticPost],
+          };
         }
-
-        // Create optimistic Post object matching API structure
-        const optimisticPost: Post = {
-          id: optimisticId, // Unique temporary ID
-          discussionid: discussionId,
-          parentid: parentId ?? 0,
-          authorid: 0, // Will be replaced by server
-          timecreated: Math.floor(Date.now() / 1000),
-          timemodified: Math.floor(Date.now() / 1000),
-          mailed: false,
-          subject: `Re: ${old.discussion?.name ?? ''}`,
-          message: postData.message,
-          messageformat: 1, // HTML format
-          messagetrust: false,
-          hasattachments: postData.attachments ? postData.attachments.length > 0 : false,
-          totalscore: 0,
-          mailnow: false,
-          deleted: false,
-          privatereplyto: 0,
-          wordcount: postData.message.split(/\s+/).length,
-          charcount: postData.message.length,
-        };
-
-        const newPosts = [...old.posts, optimisticPost];
-
-        return {
-          ...old,
-          posts: newPosts,
-        };
-      });
+      );
 
       return { previousData, optimisticId };
     },
     onError: (err, _variables, context) => {
-      // Rollback optimistic update on error
       if (context?.previousData) {
         queryClient.setQueryData(discussionKeys.detail(discussionId), context.previousData);
       }
-      // Call user-provided error callback
       options?.onCreateError?.(err);
     },
     onSuccess: (data) => {
-      // Invalidate the lists query to refresh forum/discussion lists
       void queryClient.invalidateQueries({ queryKey: discussionKeys.lists() });
-
-      // Invalidate the detail query to trigger a refetch and ensure data consistency
-      // The refetch will replace ALL optimistic posts with real data from server
       void queryClient.invalidateQueries({ queryKey: discussionKeys.detail(discussionId) });
-
-      // Call user-provided success callback
       options?.onCreateSuccess?.(data);
     },
     onSettled: () => {
-      // Call user-provided settled callback
       options?.onCreateSettled?.();
     },
   });
 
-  /**
-   * Edit a post with conflict detection
-   */
+  // ========== EDIT POST MUTATION ==========
   const editPostMutation = useMutation({
-    mutationFn: async ({ postId, postData }: { postId: number; postData: UpdatePostData }) => {
+    mutationFn: async ({
+      postId,
+      postData,
+    }: {
+      postId: number;
+      postData: UpdatePostData;
+    }) => {
       return updatePost({ ...postData, postId });
     },
     onMutate: async ({ postId, postData }) => {
       await queryClient.cancelQueries({ queryKey: discussionKeys.detail(discussionId) });
       const previousData = queryClient.getQueryData(discussionKeys.detail(discussionId));
 
-      // Optimistically update the post in flat array
-      queryClient.setQueryData<DiscussionWithPosts>(discussionKeys.detail(discussionId), (old) => {
-        if (!old) {
-          return old;
-        }
+      queryClient.setQueryData<DiscussionWithPosts>(
+        discussionKeys.detail(discussionId),
+        (old) => {
+          if (!old) return old;
 
-        return {
-          ...old,
-          posts: old.posts.map((post: Post) =>
-            post.id === postId
-              ? {
-                  ...post,
-                  message: postData.message,
-                  timemodified: Math.floor(Date.now() / 1000),
-                }
-              : post
-          ),
-        };
-      });
+          return {
+            ...old,
+            posts: old.posts.map((post: Post) =>
+              post.id === postId
+                ? {
+                    ...post,
+                    message: postData.message,
+                    subject: postData.subject ?? post.subject,
+                    timemodified: Math.floor(Date.now() / 1000),
+                  }
+                : post
+            ),
+          };
+        }
+      );
 
       return { previousData };
     },
@@ -512,7 +1007,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
         queryClient.setQueryData(discussionKeys.detail(discussionId), context.previousData);
       }
 
-      // Check for conflict (409 status code) - type guard for axios error
+      // Check for conflict (409 status code)
       if (
         typeof err === 'object' &&
         err !== null &&
@@ -522,10 +1017,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
         'status' in err.response &&
         err.response.status === 409
       ) {
-        // Call conflict callback with conflict data
         const responseData = 'data' in err.response ? err.response.data : undefined;
-
-        // Check for 'post' or 'currentPost' in response data
         const conflictPost =
           typeof responseData === 'object' && responseData !== null
             ? 'post' in responseData
@@ -535,7 +1027,6 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
                 : undefined
             : undefined;
 
-        // Only call onEditConflict if we have valid conflict data
         if (conflictPost && typeof responseData === 'object' && responseData !== null) {
           options?.onEditConflict?.({
             post: conflictPost,
@@ -544,23 +1035,18 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
         }
       }
 
-      // Call user-provided error callback
       options?.onEditError?.(err);
     },
     onSuccess: (data) => {
       void queryClient.invalidateQueries({ queryKey: discussionKeys.detail(discussionId) });
-      // Call user-provided success callback
       options?.onEditSuccess?.(data);
     },
     onSettled: () => {
-      // Call user-provided settled callback
       options?.onEditSettled?.();
     },
   });
 
-  /**
-   * Delete a post with cascade handling
-   */
+  // ========== DELETE POST MUTATION ==========
   const deletePostMutation = useMutation({
     mutationFn: async (postId: number) => {
       return deletePost(postId);
@@ -569,25 +1055,21 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
       await queryClient.cancelQueries({ queryKey: discussionKeys.detail(discussionId) });
       const previousData = queryClient.getQueryData(discussionKeys.detail(discussionId));
 
-      // Optimistically mark as deleted in flat array
-      queryClient.setQueryData<DiscussionWithPosts>(discussionKeys.detail(discussionId), (old) => {
-        if (!old) {
-          return old;
-        }
+      queryClient.setQueryData<DiscussionWithPosts>(
+        discussionKeys.detail(discussionId),
+        (old) => {
+          if (!old) return old;
 
-        return {
-          ...old,
-          posts: old.posts.map((post: Post) =>
-            post.id === postId
-              ? {
-                  ...post,
-                  deleted: true,
-                  message: '[deleted]',
-                }
-              : post
-          ),
-        };
-      });
+          return {
+            ...old,
+            posts: old.posts.map((post: Post) =>
+              post.id === postId
+                ? { ...post, deleted: true, message: '[deleted]' }
+                : post
+            ),
+          };
+        }
+      );
 
       return { previousData, postId };
     },
@@ -595,42 +1077,30 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
       if (context?.previousData) {
         queryClient.setQueryData(discussionKeys.detail(discussionId), context.previousData);
       }
-      // Call user-provided error callback
       options?.onDeleteError?.(err);
     },
     onSuccess: (data, _variables, context) => {
-      // Update cache based on delete type
       if (data.softDeleted) {
-        // Keep the post in cache but mark as deleted (flat array)
         queryClient.setQueryData<DiscussionWithPosts>(
           discussionKeys.detail(discussionId),
           (old) => {
-            if (!old) {
-              return old;
-            }
+            if (!old) return old;
 
             return {
               ...old,
               posts: old.posts.map((post: Post) =>
                 post.id === context?.postId
-                  ? {
-                      ...post,
-                      deleted: true,
-                      message: '[deleted]',
-                    }
+                  ? { ...post, deleted: true, message: '[deleted]' }
                   : post
               ),
             };
           }
         );
       } else if (data.hardDeleted) {
-        // Remove the post from cache (flat array)
         queryClient.setQueryData<DiscussionWithPosts>(
           discussionKeys.detail(discussionId),
           (old) => {
-            if (!old) {
-              return old;
-            }
+            if (!old) return old;
 
             return {
               ...old,
@@ -641,36 +1111,28 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
       }
 
       void queryClient.invalidateQueries({ queryKey: discussionKeys.lists() });
-      // Call user-provided success callback
       options?.onDeleteSuccess?.(data);
     },
   });
 
-  /**
-   * Subscribe to discussion with optimistic update
-   */
+  // ========== SUBSCRIBE MUTATION ==========
   const subscribeMutation = useMutation({
     mutationFn: () => subscribeDiscussion(discussionId),
     onMutate: async () => {
-      // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: discussionKeys.detail(discussionId) });
       const previousData = queryClient.getQueryData(discussionKeys.detail(discussionId));
 
-      // Optimistically update subscription status
-      queryClient.setQueryData<DiscussionWithPosts>(discussionKeys.detail(discussionId), (old) => {
-        if (!old) {
-          return old;
+      queryClient.setQueryData<DiscussionWithPosts>(
+        discussionKeys.detail(discussionId),
+        (old) => {
+          if (!old) return old;
+          return { ...old, subscribed: true };
         }
-        return {
-          ...old,
-          subscribed: true,
-        };
-      });
+      );
 
       return { previousData };
     },
     onError: (err, _variables, context) => {
-      // Rollback on error
       if (context?.previousData) {
         queryClient.setQueryData(discussionKeys.detail(discussionId), context.previousData);
       }
@@ -684,31 +1146,24 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
     },
   });
 
-  /**
-   * Unsubscribe from discussion with optimistic update
-   */
+  // ========== UNSUBSCRIBE MUTATION ==========
   const unsubscribeMutation = useMutation({
     mutationFn: () => unsubscribeDiscussion(discussionId),
     onMutate: async () => {
-      // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: discussionKeys.detail(discussionId) });
       const previousData = queryClient.getQueryData(discussionKeys.detail(discussionId));
 
-      // Optimistically update subscription status
-      queryClient.setQueryData<DiscussionWithPosts>(discussionKeys.detail(discussionId), (old) => {
-        if (!old) {
-          return old;
+      queryClient.setQueryData<DiscussionWithPosts>(
+        discussionKeys.detail(discussionId),
+        (old) => {
+          if (!old) return old;
+          return { ...old, subscribed: false };
         }
-        return {
-          ...old,
-          subscribed: false,
-        };
-      });
+      );
 
       return { previousData };
     },
     onError: (err, _variables, context) => {
-      // Rollback on error
       if (context?.previousData) {
         queryClient.setQueryData(discussionKeys.detail(discussionId), context.previousData);
       }
@@ -722,28 +1177,27 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
     },
   });
 
-  /**
-   * Mark discussion as read
-   */
+  // ========== MARK AS READ MUTATION ==========
   const markAsReadMutation = useMutation({
     mutationFn: () => markDiscussionRead(discussionId),
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: discussionKeys.detail(discussionId) });
       const previousData = queryClient.getQueryData(discussionKeys.detail(discussionId));
 
-      // Optimistically update unread count
-      queryClient.setQueryData<DiscussionWithPosts>(discussionKeys.detail(discussionId), (old) => {
-        if (!old?.discussion) {
-          return old;
+      queryClient.setQueryData<DiscussionWithPosts>(
+        discussionKeys.detail(discussionId),
+        (old) => {
+          if (!old?.discussion) return old;
+
+          return {
+            ...old,
+            discussion: {
+              ...old.discussion,
+              unreadCount: 0,
+            },
+          };
         }
-        return {
-          ...old,
-          discussion: {
-            ...old.discussion,
-            unreadCount: 0,
-          },
-        };
-      });
+      );
 
       return { previousData };
     },
@@ -758,9 +1212,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
     },
   });
 
-  /**
-   * Pin discussion (moderator action)
-   */
+  // ========== PIN DISCUSSION MUTATION ==========
   const pinDiscussionMutation = useMutation({
     mutationFn: () => pinDiscussion(discussionId),
     onSuccess: (data) => {
@@ -773,9 +1225,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
     },
   });
 
-  /**
-   * Unpin discussion (moderator action)
-   */
+  // ========== UNPIN DISCUSSION MUTATION ==========
   const unpinDiscussionMutation = useMutation({
     mutationFn: () => unpinDiscussion(discussionId),
     onSuccess: (data) => {
@@ -788,9 +1238,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
     },
   });
 
-  /**
-   * Lock discussion (moderator action)
-   */
+  // ========== LOCK DISCUSSION MUTATION ==========
   const lockDiscussionMutation = useMutation({
     mutationFn: () => lockDiscussion(discussionId),
     onSuccess: (data) => {
@@ -803,9 +1251,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
     },
   });
 
-  /**
-   * Unlock discussion (moderator action)
-   */
+  // ========== UNLOCK DISCUSSION MUTATION ==========
   const unlockDiscussionMutation = useMutation({
     mutationFn: () => unlockDiscussion(discussionId),
     onSuccess: (data) => {
@@ -818,9 +1264,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
     },
   });
 
-  /**
-   * Move discussion to another forum (moderator action)
-   */
+  // ========== MOVE DISCUSSION MUTATION ==========
   const moveDiscussionMutation = useMutation({
     mutationFn: (targetForumId: number) => moveDiscussion(discussionId, targetForumId),
     onSuccess: (data) => {
@@ -832,9 +1276,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
     },
   });
 
-  /**
-   * Split discussion into separate thread (moderator action)
-   */
+  // ========== SPLIT DISCUSSION MUTATION ==========
   const splitDiscussionMutation = useMutation({
     mutationFn: ({ postId, newSubject }: { postId: number; newSubject: string }) =>
       splitDiscussion(discussionId, postId, newSubject),
@@ -847,9 +1289,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
     },
   });
 
-  /**
-   * Report a post for moderation
-   */
+  // ========== REPORT POST MUTATION ==========
   const reportPostMutation = useMutation({
     mutationFn: ({ postId, reason }: { postId: number; reason: string }) =>
       reportPost(postId, reason),
@@ -861,65 +1301,83 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
     },
   });
 
+  // ========== RETURN VALUE ==========
   return {
     // Query state
     discussion,
     posts,
     isLoading,
+    isFetching,
     isSuccess,
     isError,
     error,
     refetch,
 
-    // Mutation functions
+    // Create reply
     createReply: createReplyMutation.mutate,
     createReplyAsync: createReplyMutation.mutateAsync,
     isCreatingReply: createReplyMutation.isPending,
+    isPosting: createReplyMutation.isPending,
 
+    // Edit post
     editPost: editPostMutation.mutate,
     editPostAsync: editPostMutation.mutateAsync,
     isEditingPost: editPostMutation.isPending,
+    isUpdating: editPostMutation.isPending,
 
+    // Delete post
     deletePost: deletePostMutation.mutate,
     deletePostAsync: deletePostMutation.mutateAsync,
     isDeletingPost: deletePostMutation.isPending,
+    isDeleting: deletePostMutation.isPending,
 
+    // Subscribe
     subscribe: subscribeMutation.mutate,
     subscribeAsync: subscribeMutation.mutateAsync,
     isSubscribing: subscribeMutation.isPending,
 
+    // Unsubscribe
     unsubscribe: unsubscribeMutation.mutate,
     unsubscribeAsync: unsubscribeMutation.mutateAsync,
     isUnsubscribing: unsubscribeMutation.isPending,
 
+    // Mark as read
     markAsRead: markAsReadMutation.mutate,
     markAsReadAsync: markAsReadMutation.mutateAsync,
     isMarkingAsRead: markAsReadMutation.isPending,
+    isMarkingRead: markAsReadMutation.isPending,
 
+    // Pin discussion
     pinDiscussion: pinDiscussionMutation.mutate,
     pinDiscussionAsync: pinDiscussionMutation.mutateAsync,
     isPinning: pinDiscussionMutation.isPending,
 
+    // Unpin discussion
     unpinDiscussion: unpinDiscussionMutation.mutate,
     unpinDiscussionAsync: unpinDiscussionMutation.mutateAsync,
     isUnpinning: unpinDiscussionMutation.isPending,
 
+    // Lock discussion
     lockDiscussion: lockDiscussionMutation.mutate,
     lockDiscussionAsync: lockDiscussionMutation.mutateAsync,
     isLocking: lockDiscussionMutation.isPending,
 
+    // Unlock discussion
     unlockDiscussion: unlockDiscussionMutation.mutate,
     unlockDiscussionAsync: unlockDiscussionMutation.mutateAsync,
     isUnlocking: unlockDiscussionMutation.isPending,
 
+    // Move discussion
     moveDiscussion: moveDiscussionMutation.mutate,
     moveDiscussionAsync: moveDiscussionMutation.mutateAsync,
     isMoving: moveDiscussionMutation.isPending,
 
+    // Split discussion
     splitDiscussion: splitDiscussionMutation.mutate,
     splitDiscussionAsync: splitDiscussionMutation.mutateAsync,
     isSplitting: splitDiscussionMutation.isPending,
 
+    // Report post
     reportPost: reportPostMutation.mutate,
     reportPostAsync: reportPostMutation.mutateAsync,
     isReportingPost: reportPostMutation.isPending,
@@ -936,3 +1394,9 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
     isLoadingReplies: loadRepliesMutation.isPending,
   };
 }
+
+// ============================================================================
+// DEFAULT EXPORT
+// ============================================================================
+
+export default useDiscussion;
