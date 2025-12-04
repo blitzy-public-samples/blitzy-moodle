@@ -582,7 +582,7 @@ export const quizzesHandlers = [
    * GET /api/v1/quizzes/:id - Get quiz details
    * Returns comprehensive quiz information including settings, restrictions, and user attempts
    */
-  http.get('/api/v1/quizzes/:id', async ({ params }) => {
+  http.get('*/api/v1/quizzes/:id', async ({ params }) => {
     await addLatency();
 
     const quizId = Number(params.id);
@@ -668,7 +668,7 @@ export const quizzesHandlers = [
    * POST /api/v1/quizzes/:id/attempt - Create new quiz attempt
    * Validates eligibility and creates a new attempt for the student
    */
-  http.post('/api/v1/quizzes/:id/attempt', async ({ params, request }) => {
+  http.post('*/api/v1/quizzes/:id/attempt', async ({ params, request }) => {
     await addLatency();
 
     const quizId = Number(params.id);
@@ -812,7 +812,7 @@ export const quizzesHandlers = [
    * GET /api/v1/quizzes/:id/questions - Get questions for current page
    * Returns paginated questions for the quiz attempt
    */
-  http.get('/api/v1/quizzes/:id/questions', async ({ params, request }) => {
+  http.get('*/api/v1/quizzes/:id/questions', async ({ params, request }) => {
     await addLatency();
 
     const quizId = Number(params.id);
@@ -870,7 +870,7 @@ export const quizzesHandlers = [
    * POST /api/v1/quizzes/:id/submit - Submit answers
    * Handles both auto-save and final submission of quiz answers
    */
-  http.post('/api/v1/quizzes/:id/submit', async ({ params, request }) => {
+  http.post('*/api/v1/quizzes/:id/submit', async ({ params, request }) => {
     await addLatency();
 
     const quizId = Number(params.id);
@@ -959,7 +959,7 @@ export const quizzesHandlers = [
    * GET /api/v1/quizzes/attempts/:id/results - Get attempt results
    * Returns graded results for a completed attempt
    */
-  http.get('/api/v1/quizzes/attempts/:id/results', async ({ params }) => {
+  http.get('*/api/v1/quizzes/attempts/:id/results', async ({ params }) => {
     await addLatency();
 
     const attemptId = Number(params.id);
@@ -1058,7 +1058,7 @@ export const quizzesHandlers = [
    * GET /api/v1/quizzes/:id/attempts - List user's attempts
    * Returns all attempts for the specified quiz
    */
-  http.get('/api/v1/quizzes/:id/attempts', async ({ params }) => {
+  http.get('*/api/v1/quizzes/:id/attempts', async ({ params }) => {
     await addLatency();
 
     const quizId = Number(params.id);
@@ -1122,7 +1122,7 @@ export const quizzesHandlers = [
    * GET /api/v1/quizzes/attempts/:id/review - Review completed attempt
    * Returns detailed review including questions, answers, and feedback
    */
-  http.get('/api/v1/quizzes/attempts/:id/review', async ({ params }) => {
+  http.get('*/api/v1/quizzes/attempts/:id/review', async ({ params }) => {
     await addLatency();
 
     const attemptId = Number(params.id);
@@ -1275,7 +1275,7 @@ export const quizzesHandlers = [
    * GET /api/v1/quizzes/attempts/:id/summary - Get attempt summary
    * Returns overview of all questions before final submission
    */
-  http.get('/api/v1/quizzes/attempts/:id/summary', async ({ params }) => {
+  http.get('*/api/v1/quizzes/attempts/:id/summary', async ({ params }) => {
     await addLatency();
 
     const attemptId = Number(params.id);
