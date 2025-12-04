@@ -411,7 +411,7 @@ describe('useForum', () => {
       renderHook(() => useForum(1), { wrapper });
 
       await waitFor(() => {
-        const queryData = queryClient.getQueryData(['forums', 1]);
+        const queryData = queryClient.getQueryData(['forums', 'detail', 1]);
         expect(queryData).toBeDefined();
       });
     });
@@ -454,7 +454,8 @@ describe('useForum', () => {
       const queryClient = createTestQueryClient();
       const wrapper = createWrapper(queryClient);
 
-      const { result } = renderHook(() => useForum(1), { wrapper });
+      // Pass retry: false to avoid retrying network errors in tests
+      const { result } = renderHook(() => useForum(1, { retry: false }), { wrapper });
 
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false);
@@ -577,12 +578,22 @@ describe('useForum', () => {
       }
 
       // Verify next page is prefetched
+      // The query key includes all discussion params with defaults
       await waitFor(() => {
         const nextPageData = queryClient.getQueryData([
           'forums',
+          'detail',
           1,
           'discussions',
-          { page: 2, perPage: 20 },
+          { 
+            page: 2, 
+            perPage: 20,
+            sortBy: 'date',
+            sortOrder: 'desc',
+            filter: 'all',
+            search: undefined,
+            groupid: undefined,
+          },
         ]);
         expect(nextPageData).toBeDefined();
       });
@@ -703,7 +714,7 @@ describe('useForum', () => {
       });
 
       // Verify cache was updated
-      const cachedData = queryClient.getQueryData(['forums', 1]);
+      const cachedData = queryClient.getQueryData(['forums', 'detail', 1]);
       expect(cachedData).toBeDefined();
     });
 
@@ -747,7 +758,7 @@ describe('useForum', () => {
 
       // Mark the query as stale to ensure refetch will happen on focus
       // React Query only refetches stale queries on window focus
-      await queryClient.invalidateQueries({ queryKey: ['forums', 1] });
+      await queryClient.invalidateQueries({ queryKey: ['forums', 'detail', 1] });
 
       // Wait for invalidation to complete
       await waitFor(() => {
@@ -776,7 +787,7 @@ describe('useForum', () => {
       });
 
       // Verify cache is populated - compare without timemodified since it's dynamic
-      const cachedData = queryClient.getQueryData(['forums', 1]);
+      const cachedData = queryClient.getQueryData(['forums', 'detail', 1]);
       const { timemodified: _cachedTime, ...cachedWithoutTime } = (cachedData as Record<string, unknown>) ?? {};
       const { timemodified: _mockTime, ...mockWithoutTime } = getMockForumData();
       expect(cachedWithoutTime).toEqual(mockWithoutTime);
@@ -809,10 +820,15 @@ describe('useForum', () => {
       const queryClient = createTestQueryClient();
       const wrapper = createWrapper(queryClient);
 
-      const { result } = renderHook(() => useForum(1), { wrapper });
+      // Load forum with discussions enabled
+      const { result } = renderHook(
+        () => useForum(1, { discussionOptions: { page: 1, perPage: 20 } }),
+        { wrapper }
+      );
 
       await waitFor(() => {
         expect(result.current.forum).toBeDefined();
+        expect(result.current.discussions).toBeDefined();
       });
 
       const newDiscussion = {
@@ -827,21 +843,20 @@ describe('useForum', () => {
         expect(result.current.isCreatingDiscussion).toBe(false);
       });
 
-      // Verify discussions cache invalidated (key includes undefined for options)
-      const discussionsData = queryClient.getQueryData([
-        'forums',
-        1,
-        'discussions',
-        undefined,
-      ]);
-      expect(discussionsData).toBeDefined();
+      // Verify mutation completed successfully by checking that discussions are still available
+      // The mutation invalidates the cache, but since the query is active, it will refetch
+      expect(result.current.discussions).toBeDefined();
     });
 
     it('should pin discussion (moderator only)', async () => {
       const queryClient = createTestQueryClient();
       const wrapper = createWrapper(queryClient);
 
-      const { result } = renderHook(() => useForum(1), { wrapper });
+      // Include discussionOptions to load discussions
+      const { result } = renderHook(
+        () => useForum(1, { discussionOptions: { page: 1, perPage: 20 } }),
+        { wrapper }
+      );
 
       // Wait for both forum and discussions to load
       await waitFor(() => {
@@ -868,7 +883,11 @@ describe('useForum', () => {
       const queryClient = createTestQueryClient();
       const wrapper = createWrapper(queryClient);
 
-      const { result } = renderHook(() => useForum(1), { wrapper });
+      // Include discussionOptions to load discussions
+      const { result } = renderHook(
+        () => useForum(1, { discussionOptions: { page: 1, perPage: 20 } }),
+        { wrapper }
+      );
 
       // Wait for both forum and discussions to load
       await waitFor(() => {
@@ -1085,7 +1104,7 @@ describe('useForum', () => {
 
       // Verify query has no active observers after unmount
       const queryCache = queryClient.getQueryCache();
-      const query = queryCache.find({ queryKey: ['forums', 1] });
+      const query = queryCache.find({ queryKey: ['forums', 'detail', 1] });
       expect(query?.getObserversCount()).toBe(0);
     });
   });
