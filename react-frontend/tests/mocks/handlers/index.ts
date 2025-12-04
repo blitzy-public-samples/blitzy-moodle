@@ -118,6 +118,12 @@ export { h5pHandlers } from './h5p';
  */
 export { resourcesHandlers } from './resources';
 
+/**
+ * MSW handlers for wiki activity API endpoints.
+ * Includes wiki details, page management, version history, editing, and page locking.
+ */
+export { wikiHandlers } from './wiki';
+
 // ============================================================================
 // Assessment & Grading
 // ============================================================================
@@ -175,6 +181,7 @@ import { choicesHandlers } from './choices';
 import { feedbackHandlers } from './feedback';
 import { h5pHandlers } from './h5p';
 import { resourcesHandlers } from './resources';
+import { wikiHandlers } from './wiki';
 import { gradesHandlers } from './grades';
 import { messagesHandlers } from './messages';
 import { filesHandlers } from './files';
@@ -191,7 +198,7 @@ import { adminHandlers } from './admin';
  * 1. Authentication & Authorization
  * 2. User Management
  * 3. Course Management
- * 4. Learning Activities (Assignments, Quizzes, Forums, Choices, Feedback, H5P, Resources)
+ * 4. Learning Activities (Assignments, Quizzes, Forums, Choices, Feedback, H5P, Resources, Wiki)
  * 5. Assessment & Grading
  * 6. Communication (Messages, Notifications)
  * 7. File Management
@@ -210,6 +217,7 @@ export const handlers: RequestHandler[] = [
   ...feedbackHandlers,
   ...h5pHandlers,
   ...resourcesHandlers,
+  ...wikiHandlers,
   ...gradesHandlers,
   ...messagesHandlers,
   ...filesHandlers,
