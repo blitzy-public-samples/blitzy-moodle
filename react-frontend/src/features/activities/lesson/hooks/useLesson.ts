@@ -215,14 +215,19 @@ const getRetryDelay = (attemptIndex: number): number => {
  * @throws Error if the API request fails
  */
 const fetchLesson = async (lessonId: number): Promise<LessonDetailsResponse> => {
-  const response: AxiosResponse<ApiResponse<LessonDetailsResponse>> =
-    await apiClient.get(`/lesson/${lessonId}`);
+  try {
+    const response: AxiosResponse<ApiResponse<LessonDetailsResponse>> =
+      await apiClient.get(`/lesson/${lessonId}`);
 
-  if (!response.data.success) {
+    if (!response.data.success) {
+      throw new Error('Failed to fetch lesson details');
+    }
+
+    return response.data.data;
+  } catch (error) {
+    // Re-throw with consistent error message for all error types
     throw new Error('Failed to fetch lesson details');
   }
-
-  return response.data.data;
 };
 
 /**
@@ -236,14 +241,19 @@ const fetchLesson = async (lessonId: number): Promise<LessonDetailsResponse> => 
  * @throws Error if the API request fails
  */
 const fetchLessonPages = async (lessonId: number): Promise<LessonPagesResponse> => {
-  const response: AxiosResponse<ApiResponse<LessonPagesResponse>> =
-    await apiClient.get(`/lesson/${lessonId}/pages`);
+  try {
+    const response: AxiosResponse<ApiResponse<LessonPagesResponse>> =
+      await apiClient.get(`/lesson/${lessonId}/pages`);
 
-  if (!response.data.success) {
+    if (!response.data.success) {
+      throw new Error('Failed to fetch lesson pages');
+    }
+
+    return response.data.data;
+  } catch (error) {
+    // Re-throw with consistent error message for all error types
     throw new Error('Failed to fetch lesson pages');
   }
-
-  return response.data.data;
 };
 
 /**
@@ -261,15 +271,20 @@ const fetchLessonAttempts = async (
   lessonId: number,
   userId?: number
 ): Promise<LessonAttemptsResponse> => {
-  const params = userId ? { userid: userId } : {};
-  const response: AxiosResponse<ApiResponse<LessonAttemptsResponse>> =
-    await apiClient.get(`/lesson/${lessonId}/attempts`, { params });
+  try {
+    const params = userId ? { userid: userId } : {};
+    const response: AxiosResponse<ApiResponse<LessonAttemptsResponse>> =
+      await apiClient.get(`/lesson/${lessonId}/attempts`, { params });
 
-  if (!response.data.success) {
+    if (!response.data.success) {
+      throw new Error('Failed to fetch lesson attempts');
+    }
+
+    return response.data.data;
+  } catch (error) {
+    // Re-throw with consistent error message for all error types
     throw new Error('Failed to fetch lesson attempts');
   }
-
-  return response.data.data;
 };
 
 /**
@@ -287,15 +302,20 @@ const fetchLessonTimer = async (
   lessonId: number,
   userId?: number
 ): Promise<LessonTimerResponse> => {
-  const params = userId ? { userid: userId } : {};
-  const response: AxiosResponse<ApiResponse<LessonTimerResponse>> =
-    await apiClient.get(`/lesson/${lessonId}/timer`, { params });
+  try {
+    const params = userId ? { userid: userId } : {};
+    const response: AxiosResponse<ApiResponse<LessonTimerResponse>> =
+      await apiClient.get(`/lesson/${lessonId}/timer`, { params });
 
-  if (!response.data.success) {
+    if (!response.data.success) {
+      throw new Error('Failed to fetch lesson timer');
+    }
+
+    return response.data.data;
+  } catch (error) {
+    // Re-throw with consistent error message for all error types
     throw new Error('Failed to fetch lesson timer');
   }
-
-  return response.data.data;
 };
 
 /**
@@ -314,15 +334,20 @@ const fetchLessonProgress = async (
   lessonId: number,
   userId?: number
 ): Promise<LessonProgressResponse> => {
-  const params = userId ? { userid: userId } : {};
-  const response: AxiosResponse<ApiResponse<LessonProgressResponse>> =
-    await apiClient.get(`/lesson/${lessonId}/progress`, { params });
+  try {
+    const params = userId ? { userid: userId } : {};
+    const response: AxiosResponse<ApiResponse<LessonProgressResponse>> =
+      await apiClient.get(`/lesson/${lessonId}/progress`, { params });
 
-  if (!response.data.success) {
+    if (!response.data.success) {
+      throw new Error('Failed to fetch lesson progress');
+    }
+
+    return response.data.data;
+  } catch (error) {
+    // Re-throw with consistent error message for all error types
     throw new Error('Failed to fetch lesson progress');
   }
-
-  return response.data.data;
 };
 
 // ============================================================================
