@@ -52,7 +52,7 @@ import {
 } from '@mui/icons-material';
 
 // Internal imports from depends_on_files
-import { PageType } from '../types/lesson.types';
+import { QuestionType } from '../types/lesson.types';
 import type { LessonPage, LessonProgress } from '../types/lesson.types';
 import { useLessonPages } from '../api/lessonApi';
 import { ProgressBar } from '../../../../components/feedback/ProgressBar';
@@ -68,10 +68,12 @@ type PageStatus = 'completed' | 'in-progress' | 'not-started';
 interface ProgressTrackerProps {
   /** The lesson ID to track progress for */
   lessonId: number;
-  /** Current attempt ID for the lesson */
-  attemptId?: number;
+  /** Current attempt ID for the lesson (reserved for future use) */
+  _attemptId?: number;
   /** Progress data for the current attempt */
   progress?: LessonProgress;
+  /** Maximum score possible for the lesson (from API maxGrade field) */
+  maxScore?: number;
   /** Whether progress data is currently loading */
   isLoading?: boolean;
   /** Error that occurred while loading progress */
@@ -130,8 +132,9 @@ function formatTimeSpent(seconds: number): string {
  */
 const ProgressTracker: React.FC<ProgressTrackerProps> = ({
   lessonId,
-  attemptId,
+  // _attemptId is reserved for future use (tracking specific attempts)
   progress,
+  maxScore,
   isLoading = false,
   error = null,
   onPageClick,
@@ -232,9 +235,9 @@ const ProgressTracker: React.FC<ProgressTrackerProps> = ({
       const children: TreeNode[] = [];
 
       // Check if this is a structural page (branch table or cluster)
-      const isStructural = page.qtype === PageType.TYPE_STRUCTURE;
-      const isBranchTable = isStructural && page.title?.toLowerCase().includes('branch');
-      const isCluster = isStructural && page.title?.toLowerCase().includes('cluster');
+      // Structural pages include branch tables (20), end of branch (21), clusters (30), end of cluster (31)
+      const isBranchTable = page.qtype === QuestionType.BRANCHTABLE || page.qtype === QuestionType.ENDOFBRANCH;
+      const isCluster = page.qtype === QuestionType.CLUSTER || page.qtype === QuestionType.ENDOFCLUSTER;
 
       // Build child nodes
       childIds.forEach((childId) => {
@@ -290,10 +293,14 @@ const ProgressTracker: React.FC<ProgressTrackerProps> = ({
       (totalPages > 0 ? Math.round((pagesCompleted / totalPages) * 100) : 0);
     const timeSpentFormatted = formatTimeSpent(progress.timeSpent || 0);
 
+    // Use maxScore from props if provided (from API maxGrade field)
     let scoreDisplay: string | null = null;
-    if (progress.score !== undefined && progress.maxScore !== undefined && progress.maxScore > 0) {
-      const scorePercentage = Math.round((progress.score / progress.maxScore) * 100);
-      scoreDisplay = `${progress.score}/${progress.maxScore} (${scorePercentage}%)`;
+    if (progress.score !== undefined && maxScore !== undefined && maxScore > 0) {
+      const scorePercentage = Math.round((progress.score / maxScore) * 100);
+      scoreDisplay = `${progress.score}/${maxScore} (${scorePercentage}%)`;
+    } else if (progress.score !== undefined && progress.score > 0) {
+      // Show score without percentage if maxScore is not available
+      scoreDisplay = `${progress.score} points`;
     }
 
     return {
@@ -303,18 +310,33 @@ const ProgressTracker: React.FC<ProgressTrackerProps> = ({
       timeSpentFormatted,
       scoreDisplay,
     };
-  }, [progress, pagesData]);
+  }, [progress, pagesData, maxScore]);
 
   /**
    * Get the appropriate icon for a page based on its type
    */
   const getPageTypeIcon = useCallback((page: LessonPage): React.ReactNode => {
-    if (page.qtype === PageType.TYPE_STRUCTURE) {
+    // Structural pages (branch tables, clusters, and their end markers)
+    if (
+      page.qtype === QuestionType.BRANCHTABLE ||
+      page.qtype === QuestionType.ENDOFBRANCH ||
+      page.qtype === QuestionType.CLUSTER ||
+      page.qtype === QuestionType.ENDOFCLUSTER
+    ) {
       return <BranchIcon fontSize="small" />;
     }
-    if (page.qtype === PageType.TYPE_QUESTION) {
+    // Question pages (any qtype with a positive value that's not structural)
+    if (
+      page.qtype === QuestionType.SHORTANSWER ||
+      page.qtype === QuestionType.TRUEFALSE ||
+      page.qtype === QuestionType.MULTICHOICE ||
+      page.qtype === QuestionType.MATCHING ||
+      page.qtype === QuestionType.NUMERICAL ||
+      page.qtype === QuestionType.ESSAY
+    ) {
       return <QuestionIcon fontSize="small" />;
     }
+    // Content pages (default - qtype of 0 or unknown)
     return <ContentIcon fontSize="small" />;
   }, []);
 
@@ -357,7 +379,7 @@ const ProgressTracker: React.FC<ProgressTrackerProps> = ({
    * Render a single page node in the tree
    */
   const renderPageNode = useCallback(
-    (node: TreeNode, index: number): React.ReactNode => {
+    (node: TreeNode, _index: number): React.ReactNode => {
       const { page, children, depth, isCluster, isBranchTable } = node;
       const hasChildren = children.length > 0;
       const isExpanded = expandedSections.has(page.id);
@@ -579,8 +601,8 @@ const ProgressTracker: React.FC<ProgressTrackerProps> = ({
               variant="outlined"
               color={
                 progress?.score !== undefined &&
-                progress?.maxScore !== undefined &&
-                progress.score >= progress.maxScore * 0.7
+                maxScore !== undefined &&
+                progress.score >= maxScore * 0.7
                   ? 'success'
                   : 'default'
               }
@@ -643,7 +665,7 @@ const ProgressTracker: React.FC<ProgressTrackerProps> = ({
       </Box>
 
       {/* Completion message */}
-      {progress?.completed && (
+      {progress?.isCompleted && (
         <Box sx={{ mt: 2, textAlign: 'center' }}>
           <Chip
             label="Lesson Completed!"
