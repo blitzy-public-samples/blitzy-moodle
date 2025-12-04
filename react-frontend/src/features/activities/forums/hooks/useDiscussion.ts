@@ -115,7 +115,6 @@ function transformPost(apiPost: Post): DiscussionPost {
   // API may include additional user fields beyond the Post interface
   const apiPostWithUserData = apiPost as Post & {
     userid?: number;
-    username?: string;
     userpictureurl?: string | null;
     userfullname?: string;
   };
@@ -124,10 +123,10 @@ function transformPost(apiPost: Post): DiscussionPost {
   // otherwise use authorid
   const userId = apiPostWithUserData.userid ?? apiPost.authorid ?? 0;
 
-  // Use username from API if present, otherwise create placeholder
+  // Use userfullname from API if present, otherwise create placeholder
   // Handle deleted users (userid=0) with special placeholder
-  const userName = apiPostWithUserData.username
-    ? apiPostWithUserData.username
+  const userName = apiPostWithUserData.userfullname
+    ? apiPostWithUserData.userfullname
     : userId === 0
       ? '[deleted user]'
       : `User ${userId}`;
@@ -135,39 +134,26 @@ function transformPost(apiPost: Post): DiscussionPost {
   // Use userpictureurl from API if present
   const userPictureUrl = apiPostWithUserData.userpictureurl ?? '';
 
-  // Build author object for the post
-  const author: Author = {
-    id: userId,
-    username: userName,
-    fullName: apiPostWithUserData.userfullname ?? userName,
-    pictureUrl: userPictureUrl,
-    profileUrl: userId > 0 ? `/user/profile.php?id=${userId}` : undefined,
-  };
-
   return {
     id: apiPost.id,
     discussionId: apiPost.discussionid,
-    parentId: apiPost.parentid ?? 0,
-    author,
+    parentId: apiPost.parentid ?? null,
     subject: apiPost.subject ?? '',
     message: apiPost.message,
-    messageFormat: apiPost.messageformat ?? 1,
+    userId,
+    userName,
+    userPictureUrl,
     created: apiPost.timecreated,
     modified: apiPost.timemodified,
+    version: 0, // Version for concurrent edit detection
+    deleted: apiPost.deleted ?? false,
     hasAttachments: apiPost.hasattachments ?? false,
     attachments: [],
-    deleted: apiPost.deleted ?? false,
-    isPrivateReply: (apiPost.privatereplyto ?? 0) > 0,
-    privateReplyTo: apiPost.privatereplyto,
-    wordCount: apiPost.wordcount ?? 0,
-    charCount: apiPost.charcount ?? 0,
     canEdit: false,
     canDelete: false,
     canReply: true,
-    children: [],
-    depth: 0,
-    isRead: false,
-    isPending: false,
+    unread: false,
+    replies: [],
   };
 }
 
@@ -186,11 +172,11 @@ function buildPostHierarchy(posts: DiscussionPost[]): DiscussionPost[] {
   // Create a map for quick lookup
   const postMap = new Map<number, DiscussionPost>();
 
-  // First pass: create map with clean children arrays
+  // First pass: create map with clean replies arrays
   posts.forEach((post) => {
     postMap.set(post.id, {
       ...post,
-      children: [],
+      replies: [],
     });
   });
 
@@ -199,38 +185,35 @@ function buildPostHierarchy(posts: DiscussionPost[]): DiscussionPost[] {
 
   posts.forEach((post) => {
     const currentPost = postMap.get(post.id);
-    if (!currentPost) return;
+    if (!currentPost) {return;}
 
     if (post.parentId === 0 || post.parentId === null || post.parentId === undefined) {
       // Root post (no parent)
-      currentPost.depth = 0;
       rootPosts.push(currentPost);
     } else {
-      // Child post - find parent and add to children
+      // Child post - find parent and add to replies
       const parentPost = postMap.get(post.parentId);
       if (parentPost) {
-        currentPost.depth = (parentPost.depth ?? 0) + 1;
-        parentPost.children = parentPost.children ?? [];
-        parentPost.children.push(currentPost);
+        parentPost.replies = parentPost.replies ?? [];
+        parentPost.replies.push(currentPost);
       } else {
         // Parent not found - treat as root (orphaned post)
-        currentPost.depth = 0;
         rootPosts.push(currentPost);
       }
     }
   });
 
-  // Sort children recursively by creation time
-  const sortChildren = (posts: DiscussionPost[]): DiscussionPost[] => {
-    return posts
+  // Sort replies recursively by creation time
+  const sortReplies = (postsToSort: DiscussionPost[]): DiscussionPost[] => {
+    return postsToSort
       .sort((a, b) => a.created - b.created)
       .map((post) => ({
         ...post,
-        children: post.children ? sortChildren(post.children) : [],
+        replies: post.replies ? sortReplies(post.replies) : [],
       }));
   };
 
-  return sortChildren(rootPosts);
+  return sortReplies(rootPosts);
 }
 
 /**
@@ -257,24 +240,40 @@ function constructDiscussionDetail(
 
   const disc = data.discussion;
 
+  // Construct author object from available API data
+  const author: Author = {
+    id: disc.userid,
+    pictureitemid: 0,
+    firstname: '',
+    lastname: '',
+    fullname: disc.userFullName,
+    email: '',
+    deleted: false,
+  };
+
   return {
+    // Base Discussion properties
     id: disc.id,
-    forumId: disc.forum,
-    courseId: disc.course ?? 0,
+    courseid: disc.courseid,
+    forumid: disc.forumid,
     name: disc.name,
-    subject: disc.name,
-    message: '', // First post message handled separately
-    timeCreated: disc.timestart ?? Math.floor(Date.now() / 1000),
-    timeModified: disc.timemodified ?? disc.timestart ?? Math.floor(Date.now() / 1000),
-    userCreated: disc.userid ?? 0,
-    userModified: disc.usermodified ?? disc.userid ?? 0,
-    pinned: disc.pinned === 1 || disc.pinned === true,
-    locked: disc.locked === 1 || disc.locked === true,
-    numPosts: data.totalPosts ?? data.posts.length,
+    firstpostid: disc.firstpostid,
+    userid: disc.userid,
+    groupid: disc.groupid,
+    timemodified: disc.timemodified,
+    timestart: disc.created, // Use created as timestart
+    timeend: 0, // No end time from API
+    pinned: disc.pinned,
+    timelocked: 0, // Default to not locked
+    locked: disc.locked,
+    // DiscussionDetail extended properties
+    author,
+    created: disc.created,
+    numViews: 0, // Not available from API
     numParticipants: uniqueAuthors.size,
-    numReplies: data.posts.length - 1,
+    numReplies: Math.max(0, data.posts.length - 1), // Calculate from actual posts (total - root)
     subscribed: data.subscribed ?? false,
-    unreadCount: 0,
+    unreadCount: disc.unreadCount,
   };
 }
 
@@ -425,7 +424,7 @@ export function useCreatePost(discussionId: number, options?: UseCreatePostOptio
       queryClient.setQueryData<DiscussionWithPosts>(
         discussionKeys.detail(discussionId),
         (old) => {
-          if (!old) return old;
+          if (!old) {return old;}
 
           const optimisticPost: Post = {
             id: optimisticId,
@@ -518,7 +517,7 @@ export function useUpdatePost(discussionId: number, options?: UseUpdatePostOptio
       queryClient.setQueryData<DiscussionWithPosts>(
         discussionKeys.detail(discussionId),
         (old) => {
-          if (!old) return old;
+          if (!old) {return old;}
 
           return {
             ...old,
@@ -623,7 +622,7 @@ export function useDeletePost(discussionId: number, options?: UseDeletePostOptio
       queryClient.setQueryData<DiscussionWithPosts>(
         discussionKeys.detail(discussionId),
         (old) => {
-          if (!old) return old;
+          if (!old) {return old;}
 
           return {
             ...old,
@@ -656,7 +655,7 @@ export function useDeletePost(discussionId: number, options?: UseDeletePostOptio
         queryClient.setQueryData<DiscussionWithPosts>(
           discussionKeys.detail(discussionId),
           (old) => {
-            if (!old) return old;
+            if (!old) {return old;}
 
             return {
               ...old,
@@ -673,7 +672,7 @@ export function useDeletePost(discussionId: number, options?: UseDeletePostOptio
         queryClient.setQueryData<DiscussionWithPosts>(
           discussionKeys.detail(discussionId),
           (old) => {
-            if (!old) return old;
+            if (!old) {return old;}
 
             return {
               ...old,
@@ -729,7 +728,7 @@ export function useMarkDiscussionRead(
       queryClient.setQueryData<DiscussionWithPosts>(
         discussionKeys.detail(discussionId),
         (old) => {
-          if (!old?.discussion) return old;
+          if (!old?.discussion) {return old;}
 
           return {
             ...old,
@@ -857,7 +856,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
       queryClient.setQueryData<DiscussionWithPosts>(
         discussionKeys.detail(discussionId),
         (old) => {
-          if (!old) return old;
+          if (!old) {return old;}
 
           return {
             ...old,
@@ -883,7 +882,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
       queryClient.setQueryData<DiscussionWithPosts>(
         discussionKeys.detail(discussionId),
         (old) => {
-          if (!old) return old;
+          if (!old) {return old;}
 
           return {
             ...old,
@@ -916,7 +915,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
       queryClient.setQueryData<DiscussionWithPosts>(
         discussionKeys.detail(discussionId),
         (old) => {
-          if (!old) return old;
+          if (!old) {return old;}
 
           const optimisticPost: Post = {
             id: optimisticId,
@@ -982,7 +981,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
       queryClient.setQueryData<DiscussionWithPosts>(
         discussionKeys.detail(discussionId),
         (old) => {
-          if (!old) return old;
+          if (!old) {return old;}
 
           return {
             ...old,
@@ -1058,7 +1057,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
       queryClient.setQueryData<DiscussionWithPosts>(
         discussionKeys.detail(discussionId),
         (old) => {
-          if (!old) return old;
+          if (!old) {return old;}
 
           return {
             ...old,
@@ -1084,7 +1083,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
         queryClient.setQueryData<DiscussionWithPosts>(
           discussionKeys.detail(discussionId),
           (old) => {
-            if (!old) return old;
+            if (!old) {return old;}
 
             return {
               ...old,
@@ -1100,7 +1099,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
         queryClient.setQueryData<DiscussionWithPosts>(
           discussionKeys.detail(discussionId),
           (old) => {
-            if (!old) return old;
+            if (!old) {return old;}
 
             return {
               ...old,
@@ -1125,7 +1124,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
       queryClient.setQueryData<DiscussionWithPosts>(
         discussionKeys.detail(discussionId),
         (old) => {
-          if (!old) return old;
+          if (!old) {return old;}
           return { ...old, subscribed: true };
         }
       );
@@ -1156,7 +1155,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
       queryClient.setQueryData<DiscussionWithPosts>(
         discussionKeys.detail(discussionId),
         (old) => {
-          if (!old) return old;
+          if (!old) {return old;}
           return { ...old, subscribed: false };
         }
       );
@@ -1187,7 +1186,7 @@ export function useDiscussion(discussionId: number, options?: UseDiscussionOptio
       queryClient.setQueryData<DiscussionWithPosts>(
         discussionKeys.detail(discussionId),
         (old) => {
-          if (!old?.discussion) return old;
+          if (!old?.discussion) {return old;}
 
           return {
             ...old,
