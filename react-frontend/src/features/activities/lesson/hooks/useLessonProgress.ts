@@ -19,7 +19,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { useLesson } from './useLesson';
 import { apiClient } from '@/services/api/client';
-import type { LessonProgress } from '../types/lesson.types';
+// Note: LessonProgress type is available from '../types/lesson.types' if needed
+// The hook uses its own LessonProgressState interface for internal state management
 import type { Id, Timestamp } from '@/types/common';
 
 // ============================================================================
@@ -28,8 +29,10 @@ import type { Id, Timestamp } from '@/types/common';
 
 /**
  * Navigation constants matching Moodle LESSON_* jump constants
+ * These are exported for documentation and potential future client-side logic.
+ * Currently, branching logic is handled server-side via the PHP API.
  */
-const LESSON_JUMP_CONSTANTS = {
+export const LESSON_JUMP_CONSTANTS = {
   /** Jump to this page */
   LESSON_THISPAGE: 0,
   /** Jump to next page */
@@ -50,8 +53,9 @@ const LESSON_JUMP_CONSTANTS = {
 
 /**
  * Lesson end of lesson constant
+ * Exported for convenience, same as LESSON_JUMP_CONSTANTS.LESSON_EOL
  */
-const LESSON_EOL = -9;
+export const LESSON_EOL = LESSON_JUMP_CONSTANTS.LESSON_EOL;
 
 // ============================================================================
 // TypeScript Interfaces
