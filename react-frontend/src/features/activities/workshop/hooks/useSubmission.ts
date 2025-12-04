@@ -33,7 +33,7 @@ import {
   type UseQueryResult,
 } from '@tanstack/react-query';
 import { apiClient } from '@/services/api/client';
-import type { WorkshopSubmission, File as MoodleFile } from '@/types/entities';
+import type { WorkshopSubmission } from '@/types/entities';
 import { WORKSHOP_QUERY_KEY } from './useWorkshop';
 
 // ============================================================================
@@ -651,7 +651,7 @@ export function useCreateSubmission(
         data
       );
     },
-    onError: (error, { workshopId }) => {
+    onError: (_error, { workshopId }) => {
       // On error, refetch to ensure cache is accurate
       queryClient.invalidateQueries({
         queryKey: [WORKSHOP_QUERY_KEY, workshopId],
@@ -694,12 +694,18 @@ export function useUpdateSubmission(
   options?: UseMutationOptions<
     WorkshopSubmission,
     Error,
-    UpdateSubmissionVariables
+    UpdateSubmissionVariables,
+    { previousSubmission: WorkshopSubmission | undefined }
   >
-): UseMutationResult<WorkshopSubmission, Error, UpdateSubmissionVariables> {
+): UseMutationResult<WorkshopSubmission, Error, UpdateSubmissionVariables, { previousSubmission: WorkshopSubmission | undefined }> {
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useMutation<
+    WorkshopSubmission,
+    Error,
+    UpdateSubmissionVariables,
+    { previousSubmission: WorkshopSubmission | undefined }
+  >({
     mutationFn: async ({ submissionId, data }: UpdateSubmissionVariables) => {
       return updateSubmission(submissionId, data);
     },
@@ -747,7 +753,7 @@ export function useUpdateSubmission(
         queryKey: [WORKSHOP_QUERY_KEY, data.workshopid],
       });
     },
-    onError: (error, variables, context) => {
+    onError: (_error, _variables, context) => {
       // Rollback on error
       if (context?.previousSubmission) {
         const { workshopid, id } = context.previousSubmission;
@@ -788,11 +794,21 @@ export function useUpdateSubmission(
  * ```
  */
 export function useDeleteSubmission(
-  options?: UseMutationOptions<void, Error, DeleteSubmissionVariables>
-): UseMutationResult<void, Error, DeleteSubmissionVariables> {
+  options?: UseMutationOptions<
+    void,
+    Error,
+    DeleteSubmissionVariables,
+    { previousSubmission: WorkshopSubmission | undefined }
+  >
+): UseMutationResult<void, Error, DeleteSubmissionVariables, { previousSubmission: WorkshopSubmission | undefined }> {
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useMutation<
+    void,
+    Error,
+    DeleteSubmissionVariables,
+    { previousSubmission: WorkshopSubmission | undefined }
+  >({
     mutationFn: async ({ submissionId }: DeleteSubmissionVariables) => {
       return deleteSubmission(submissionId);
     },
@@ -831,7 +847,7 @@ export function useDeleteSubmission(
         queryKey: [WORKSHOP_SUBMISSIONS_QUERY_KEY, workshopId],
       });
     },
-    onError: (error, { workshopId, submissionId }, context) => {
+    onError: (_error, { workshopId, submissionId }, context) => {
       // Rollback on error
       if (context?.previousSubmission) {
         queryClient.setQueryData(
@@ -884,12 +900,18 @@ export function usePublishSubmission(
   options?: UseMutationOptions<
     WorkshopSubmission,
     Error,
-    PublishSubmissionVariables
+    PublishSubmissionVariables,
+    { previousSubmission: WorkshopSubmission | undefined }
   >
-): UseMutationResult<WorkshopSubmission, Error, PublishSubmissionVariables> {
+): UseMutationResult<WorkshopSubmission, Error, PublishSubmissionVariables, { previousSubmission: WorkshopSubmission | undefined }> {
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useMutation<
+    WorkshopSubmission,
+    Error,
+    PublishSubmissionVariables,
+    { previousSubmission: WorkshopSubmission | undefined }
+  >({
     mutationFn: async ({
       submissionId,
       publish,
@@ -937,7 +959,7 @@ export function usePublishSubmission(
         queryKey: [WORKSHOP_SUBMISSIONS_QUERY_KEY, workshopId],
       });
     },
-    onError: (error, { workshopId, submissionId }, context) => {
+    onError: (_error, { workshopId, submissionId }, context) => {
       // Rollback on error
       if (context?.previousSubmission) {
         queryClient.setQueryData(
