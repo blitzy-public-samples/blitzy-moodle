@@ -16,17 +16,19 @@
  * @see public/mod/workshop/locallib.php
  */
 
-import { describe, it, expect, vi, beforeAll, afterAll, afterEach, beforeEach } from 'vitest';
+import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
-import { setupServer } from 'msw/node';
-import React, { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 // Internal imports
 import { useWorkshop, WORKSHOP_QUERY_KEY } from '@/features/activities/workshop/hooks/useWorkshop';
 import { createMockWorkshop } from './test-utils';
-import { createTestQueryClient } from '@/tests/helpers/render';
+import { createTestQueryClient } from '@tests/helpers/render';
+
+// Import global MSW server - do NOT create local server, use the one from tests/setup.ts
+import { server } from '@tests/mocks/server';
 
 // Import types for type checking assertions
 import type {
@@ -52,14 +54,15 @@ const PHASE_EVALUATION = 40;
 const PHASE_CLOSED = 50;
 
 /**
- * Default stale time matching the hook's configuration (5 minutes)
+ * Default stale time matching the hook's configuration
+ * @note The hook uses staleTime: 5 * 60 * 1000 (5 minutes = 300000ms)
  */
-const DEFAULT_STALE_TIME = 5 * 60 * 1000; // 300000ms
 
 /**
  * Base API URL for workshop endpoints
+ * Must match VITE_API_BASE_URL from vitest.config.ts for MSW to intercept requests
  */
-const API_BASE_URL = '/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api/v1';
 
 // ============================================================================
 // Mock Data Factories
@@ -170,15 +173,18 @@ function createMockWorkshopResponse(workshopId: number = 1) {
 }
 
 // ============================================================================
-// MSW Server Setup
+// MSW Handler Factories
 // ============================================================================
 
 /**
- * Default workshop API handlers for MSW
+ * Creates the default workshop API handler for MSW
  * Mocks GET /api/v1/workshops/{id} endpoint
+ * 
+ * NOTE: Global MSW server lifecycle is managed by tests/setup.ts
+ * We only define handlers here and use server.use() to add them per-test
  */
-const workshopHandlers = [
-  http.get(`${API_BASE_URL}/workshops/:id`, ({ params }) => {
+function createWorkshopHandler() {
+  return http.get(`${API_BASE_URL}/workshops/:id`, ({ params }) => {
     const id = Number(params.id);
     
     if (id <= 0 || isNaN(id)) {
@@ -195,32 +201,8 @@ const workshopHandlers = [
     }
 
     return HttpResponse.json(createMockWorkshopResponse(id));
-  }),
-];
-
-/**
- * MSW server instance for intercepting API requests
- */
-const server = setupServer(...workshopHandlers);
-
-// ============================================================================
-// Test Suite Setup
-// ============================================================================
-
-beforeAll(() => {
-  // Start MSW server before all tests
-  server.listen({ onUnhandledRequest: 'error' });
-});
-
-afterEach(() => {
-  // Reset handlers after each test
-  server.resetHandlers();
-});
-
-afterAll(() => {
-  // Clean up MSW server after all tests
-  server.close();
-});
+  });
+}
 
 // ============================================================================
 // Test Helper Functions
@@ -249,6 +231,10 @@ describe('useWorkshop Hook', () => {
   beforeEach(() => {
     // Create fresh QueryClient for each test to prevent cache pollution
     queryClient = createTestQueryClient();
+    
+    // Add default workshop handler to the global MSW server
+    // This will be reset after each test by the global afterEach in tests/setup.ts
+    server.use(createWorkshopHandler());
   });
 
   afterEach(() => {
@@ -486,10 +472,17 @@ describe('useWorkshop Hook', () => {
       const phasesWithTasks = result.current.userPlan?.phases.filter((p) => p.tasks.length > 0) ?? [];
       expect(phasesWithTasks.length).toBeGreaterThan(0);
 
-      const firstTask = phasesWithTasks[0].tasks[0];
-      expect(typeof firstTask.key).toBe('string');
-      expect(typeof firstTask.title).toBe('string');
-      expect(['boolean', 'string']).toContain(typeof firstTask.completed);
+      const firstPhaseWithTasks = phasesWithTasks[0];
+      expect(firstPhaseWithTasks).toBeDefined();
+      
+      const firstTask = firstPhaseWithTasks?.tasks[0];
+      expect(firstTask).toBeDefined();
+      
+      if (firstTask) {
+        expect(typeof firstTask.key).toBe('string');
+        expect(typeof firstTask.title).toBe('string');
+        expect(['boolean', 'string']).toContain(typeof firstTask.completed);
+      }
     });
   });
 
@@ -965,15 +958,19 @@ describe('useWorkshop Hook', () => {
 
       if (submissions && submissions.length > 0) {
         const submission = submissions[0];
-        const _id: number = submission.id;
-        const _title: string = submission.title;
-        const _authorId: number = submission.authorId;
-        const _published: boolean = submission.published;
+        expect(submission).toBeDefined();
+        
+        if (submission) {
+          const _id: number = submission.id;
+          const _title: string = submission.title;
+          const _authorId: number = submission.authorId;
+          const _published: boolean = submission.published;
 
-        expect(_id).toBeDefined();
-        expect(_title).toBeDefined();
-        expect(_authorId).toBeDefined();
-        expect(typeof _published).toBe('boolean');
+          expect(_id).toBeDefined();
+          expect(_title).toBeDefined();
+          expect(_authorId).toBeDefined();
+          expect(typeof _published).toBe('boolean');
+        }
       }
     });
   });
