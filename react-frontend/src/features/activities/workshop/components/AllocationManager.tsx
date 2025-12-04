@@ -317,7 +317,6 @@ function AllocationManager({
 
   // Fetch workshop data
   const {
-    workshop,
     submissions,
     isLoading: isWorkshopLoading,
     isError: isWorkshopError,
@@ -333,7 +332,7 @@ function AllocationManager({
 
   // Allocations state
   const [allocations, setAllocations] = useState<Allocation[]>([]);
-  const [isLoadingAllocations, setIsLoadingAllocations] = useState(true);
+  const [isLoadingAllocations, setIsLoadingAllocations] = useState(false);
 
   // Random allocation configuration
   const [randomConfig, setRandomConfig] = useState<RandomAllocationConfig>(DEFAULT_RANDOM_CONFIG);
@@ -526,7 +525,7 @@ function AllocationManager({
    */
   const scheduledAllocationMutation = useMutation({
     mutationFn: (config: ScheduledAllocationConfig) => saveScheduledAllocation(workshopId, config),
-    onSuccess: (result) => {
+    onSuccess: (_result) => {
       showSuccess(
         scheduledConfig.enabled
           ? 'Scheduled allocation enabled'
@@ -655,6 +654,8 @@ function AllocationManager({
     if (undoHistory.length === 0) return;
 
     const lastAction = undoHistory[undoHistory.length - 1];
+    if (!lastAction) return; // Type guard for TypeScript
+
     const newUndoHistory = undoHistory.slice(0, -1);
 
     // Reverse the action
@@ -665,8 +666,12 @@ function AllocationManager({
     });
 
     setUndoHistory(newUndoHistory);
-    setRedoHistory([...redoHistory, lastAction]);
-  }, [undoHistory, redoHistory, manualAllocationMutation]);
+    // Limit redo history size
+    setRedoHistory((prev) => {
+      const newHistory = [...prev, lastAction];
+      return newHistory.slice(-MAX_HISTORY_SIZE);
+    });
+  }, [undoHistory, manualAllocationMutation]);
 
   /**
    * Handle redo operation
@@ -675,6 +680,8 @@ function AllocationManager({
     if (redoHistory.length === 0) return;
 
     const lastAction = redoHistory[redoHistory.length - 1];
+    if (!lastAction) return; // Type guard for TypeScript
+
     const newRedoHistory = redoHistory.slice(0, -1);
 
     // Re-execute the action
@@ -685,8 +692,12 @@ function AllocationManager({
     });
 
     setRedoHistory(newRedoHistory);
-    setUndoHistory([...undoHistory, lastAction]);
-  }, [redoHistory, undoHistory, manualAllocationMutation]);
+    // Limit undo history size
+    setUndoHistory((prev) => {
+      const newHistory = [...prev, lastAction];
+      return newHistory.slice(-MAX_HISTORY_SIZE);
+    });
+  }, [redoHistory, manualAllocationMutation]);
 
   // ============================================================================
   // Loading and Error States
@@ -1201,6 +1212,7 @@ function AllocationManager({
                 onClick={handleUndo}
                 disabled={undoHistory.length === 0}
                 size="small"
+                aria-label="Undo"
               >
                 <UndoIcon />
               </IconButton>
@@ -1212,6 +1224,7 @@ function AllocationManager({
                 onClick={handleRedo}
                 disabled={redoHistory.length === 0}
                 size="small"
+                aria-label="Redo"
               >
                 <RedoIcon />
               </IconButton>
@@ -1233,18 +1246,21 @@ function AllocationManager({
           variant="fullWidth"
         >
           <Tab
+            id="tab-manual"
             icon={<ManualIcon />}
             iconPosition="start"
             label="Manual"
             value="manual"
           />
           <Tab
+            id="tab-random"
             icon={<RandomIcon />}
             iconPosition="start"
             label="Random"
             value="random"
           />
           <Tab
+            id="tab-scheduled"
             icon={<ScheduleIcon />}
             iconPosition="start"
             label="Scheduled"
@@ -1252,7 +1268,7 @@ function AllocationManager({
           />
         </Tabs>
 
-        <Box sx={{ p: 3 }}>
+        <Box role="tabpanel" sx={{ p: 3 }} aria-labelledby={`tab-${activeTab}`}>
           {activeTab === 'manual' && renderManualTab()}
           {activeTab === 'random' && renderRandomTab()}
           {activeTab === 'scheduled' && renderScheduledTab()}
