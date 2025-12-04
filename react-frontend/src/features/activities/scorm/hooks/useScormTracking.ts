@@ -164,6 +164,10 @@ export interface UseScormTrackingReturn {
   reset: () => void;
   /** Whether the last mutation was successful */
   isSuccess: boolean;
+  /** Whether the last mutation resulted in an error */
+  isError: boolean;
+  /** Alias for savingTracking for React Query naming consistency */
+  isLoading: boolean;
 }
 
 // ============================================================================
@@ -878,6 +882,16 @@ export default function useScormTracking(): UseScormTrackingReturn {
      * Whether the last mutation was successful
      */
     isSuccess: mutation.isSuccess,
+
+    /**
+     * Whether the last mutation resulted in an error
+     */
+    isError: mutation.isError,
+
+    /**
+     * Alias for savingTracking for React Query naming consistency
+     */
+    isLoading: mutation.isPending,
   };
 }
 
