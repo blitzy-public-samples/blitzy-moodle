@@ -54,7 +54,6 @@ import {
 
 // Internal imports from depends_on_files
 import type {
-  Workshop,
   WorkshopAssessment,
   WorkshopPhase,
 } from '@/features/activities/workshop/types/workshop.types';
@@ -562,7 +561,7 @@ function AssessmentsList({
             canOverrideGrades;
           return canEdit;
         },
-        disabled: (row) => !isEditingAllowed && !canOverrideGrades,
+        disabled: (_row) => !isEditingAllowed && !canOverrideGrades,
       });
     }
 
@@ -718,7 +717,7 @@ function AssessmentsList({
           rowActions={rowActions}
           mode="client"
           selectable={false}
-          initialSort={{ field: 'reviewerName', direction: 'asc' }}
+          sortModel={{ field: 'reviewerName', order: 'asc' }}
           pageSize={10}
           pageSizeOptions={[10, 25, 50]}
           emptyMessage="No assessments match the current filter"
