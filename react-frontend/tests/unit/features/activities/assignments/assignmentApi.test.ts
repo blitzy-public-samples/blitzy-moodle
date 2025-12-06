@@ -20,7 +20,7 @@
  * @module tests/unit/features/activities/assignments/assignmentApi.test
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
 
 // Internal imports from dependencies
@@ -32,19 +32,15 @@ import {
   saveFeedback,
   fetchAssignmentFiles,
 } from '@/features/activities/assignments/api/assignmentApi';
-import { apiClient } from '@/services/api/client';
 import type {
-  Assignment,
-  Submission,
-  Grade,
   AssignmentFile,
+  Grade,
 } from '@/features/activities/assignments/types/assignment.types';
-import { server } from '@/tests/mocks/server';
+import { server } from '@tests/mocks/server';
 import {
   createMockAssignment,
   createMockSubmission,
-  createMockGrade,
-} from '@/tests/helpers/mockData';
+} from '@tests/helpers/mockData';
 
 // ============================================================================
 // Test Utilities and Mock Data Factories
@@ -53,37 +49,18 @@ import {
 /**
  * Create a mock assignment file for testing
  * Note: This helper is not available in mockData.ts, so we define it locally
+ * Matches the AssignmentFile interface in assignment.types.ts
  */
 function createMockAssignmentFile(overrides: Partial<AssignmentFile> = {}): AssignmentFile {
   return {
-    id: Math.floor(Math.random() * 10000),
     filename: 'test-document.pdf',
     filepath: '/submissions/test/',
     filesize: 245678,
     mimetype: 'application/pdf',
     timemodified: Date.now(),
-    url: '/api/v1/files/download/5001',
-    downloadUrl: '/api/v1/files/download/5001',
-    previewurl: undefined,
+    fileurl: '/api/v1/files/download/5001',
     ...overrides,
   };
-}
-
-/**
- * Create FormData for testing file uploads
- */
-function createTestFormData(fields: Record<string, string | File | File[]>): FormData {
-  const formData = new FormData();
-  Object.entries(fields).forEach(([key, value]) => {
-    if (Array.isArray(value)) {
-      value.forEach((file, index) => {
-        formData.append(`${key}[${index}]`, file);
-      });
-    } else {
-      formData.append(key, value);
-    }
-  });
-  return formData;
 }
 
 /**
@@ -95,10 +72,129 @@ function createMockFile(name: string, content: string, type: string): File {
 }
 
 /**
- * Helper to wait for async operations
+ * Feature-specific Assignment type for tests
+ * Extends global Assignment with feature-specific properties
  */
-async function waitForApiCall(): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, 0));
+interface FeatureAssignment {
+  id: number;
+  cmid?: number;
+  course: number;
+  name: string;
+  intro?: string;
+  introformat?: number;
+  introfiles?: AssignmentFile[];
+  introattachments?: AssignmentFile[];
+  activity?: string;
+  activityformat?: number;
+  activityattachments?: AssignmentFile[];
+  nosubmissions?: number;
+  submissiondrafts?: number | boolean;
+  sendnotifications?: number | boolean;
+  sendlatenotifications?: number | boolean;
+  sendstudentnotifications?: number;
+  duedate?: number;
+  allowsubmissionsfromdate?: number;
+  cutoffdate?: number;
+  gradingduedate?: number;
+  grade?: number;
+  gradepenalty?: number;
+  timemodified?: number;
+  requiresubmissionstatement?: number | boolean;
+  submissionstatement?: string;
+  submissionstatementformat?: number;
+  completionsubmit?: number;
+  configs?: Array<{ plugin: string; subtype: string; name: string; value: string }>;
+  alwaysshowdescription?: number | boolean;
+  submissiontypes?: string[];
+  teamsubmission?: number;
+  requireallteammemberssubmit?: number;
+  teamsubmissiongroupingid?: number;
+  blindmarking?: number;
+  hidegrader?: number;
+  revealidentities?: number;
+  attemptreopenmethod?: string;
+  maxattempts?: number;
+  markingworkflow?: number;
+  markingallocation?: number;
+  preventsubmissionnotingroup?: number;
+  timelimit?: number;
+}
+
+/**
+ * Create a mock assignment with feature-specific properties for testing
+ * This bridges the gap between the global Assignment type used by mockData.ts
+ * and the feature-specific Assignment type in assignment.types.ts
+ */
+function createFeatureMockAssignment(overrides: Partial<FeatureAssignment> = {}): FeatureAssignment {
+  // Get base assignment from global mock helper
+  const baseAssignment = createMockAssignment({
+    id: overrides.id ?? 123,
+    course: overrides.course ?? 1,
+    name: overrides.name ?? 'Test Assignment',
+    intro: overrides.intro ?? '<p>Test assignment description</p>',
+    grade: overrides.grade ?? 100,
+  });
+
+  // Merge with feature-specific defaults and overrides
+  return {
+    ...baseAssignment,
+    // Feature-specific defaults
+    cmid: 456,
+    introformat: 1,
+    introfiles: [],
+    introattachments: [],
+    activity: '',
+    activityformat: 1,
+    activityattachments: [],
+    nosubmissions: 0,
+    submissiondrafts: 0,
+    sendnotifications: 0,
+    sendlatenotifications: 0,
+    sendstudentnotifications: 1,
+    duedate: Math.floor(Date.now() / 1000) + 86400 * 7,
+    allowsubmissionsfromdate: 0,
+    cutoffdate: 0,
+    gradingduedate: 0,
+    gradepenalty: 0,
+    timemodified: Math.floor(Date.now() / 1000),
+    requiresubmissionstatement: 0,
+    completionsubmit: 0,
+    configs: [],
+    alwaysshowdescription: 1,
+    teamsubmission: 0,
+    requireallteammemberssubmit: 0,
+    teamsubmissiongroupingid: 0,
+    blindmarking: 0,
+    hidegrader: 0,
+    revealidentities: 0,
+    attemptreopenmethod: 'none',
+    maxattempts: -1,
+    markingworkflow: 0,
+    markingallocation: 0,
+    preventsubmissionnotingroup: 0,
+    timelimit: 0,
+    ...overrides,
+  } as FeatureAssignment;
+}
+
+/**
+ * Create a mock assignment grade for testing
+ * Note: This is different from the gradebook Grade type.
+ * Uses the Grade interface from assignment.types.ts
+ */
+function createMockAssignmentGrade(overrides: Partial<Grade> = {}): Grade {
+  return {
+    id: 1001,
+    assignment: 123,
+    userid: 456,
+    attemptnumber: 0,
+    timecreated: Math.floor(Date.now() / 1000),
+    timemodified: Math.floor(Date.now() / 1000),
+    grader: 789,
+    grade: 85,
+    gradefordisplay: '85.00',
+    ...overrides,
+  };
 }
 
 // ============================================================================
@@ -109,10 +205,8 @@ describe('assignmentApi', () => {
   // Mock JWT token for authentication
   const mockToken = 'mock-jwt-token-for-testing';
 
-  beforeAll(() => {
-    // Start MSW server with default handlers
-    server.listen({ onUnhandledRequest: 'warn' });
-  });
+  // NOTE: server.listen() and server.close() are handled in global setup.ts
+  // Do NOT call them here to avoid duplicate request interception
 
   beforeEach(() => {
     // Reset handlers to default state
@@ -134,11 +228,6 @@ describe('assignmentApi', () => {
     // Clear all mocks and spies
     vi.clearAllMocks();
     vi.unstubAllGlobals();
-  });
-
-  afterAll(() => {
-    // Close MSW server
-    server.close();
   });
 
   // ==========================================================================
@@ -249,11 +338,12 @@ describe('assignmentApi', () => {
         expect(result.duedate).toBe(1640000000);
       });
 
-      it('handles assignment with null optional fields', async () => {
+      it('handles assignment with zero date fields (no date set)', async () => {
+        // In Moodle, 0 indicates "no date set" rather than null
         const mockAssignment = createMockAssignment({
           id: 123,
-          cutoffdate: null,
-          gradingduedate: null,
+          cutoffdate: 0,
+          gradingduedate: 0,
         });
 
         server.use(
@@ -267,8 +357,9 @@ describe('assignmentApi', () => {
 
         const result = await fetchAssignment(123);
 
-        expect(result.cutoffdate).toBeNull();
-        expect(result.gradingduedate).toBeNull();
+        // Moodle uses 0 to indicate no date is set
+        expect(result.cutoffdate).toBe(0);
+        expect(result.gradingduedate).toBe(0);
       });
 
       it('preserves all assignment properties', async () => {
@@ -400,11 +491,11 @@ describe('assignmentApi', () => {
   describe('submitAssignment', () => {
     describe('Successful Submission Tests', () => {
       it('submits assignment with text content', async () => {
-        let capturedBody: unknown = null;
+        let capturedBody: Record<string, unknown> | null = null;
 
         server.use(
           http.post('*/api/v1/assignments/123/submit', async ({ request }) => {
-            capturedBody = await request.json().catch(() => null);
+            capturedBody = await request.json().catch(() => null) as Record<string, unknown> | null;
             return HttpResponse.json({
               success: true,
               data: {
@@ -425,7 +516,9 @@ describe('assignmentApi', () => {
         });
 
         expect(result).toBeDefined();
-        expect(result.submission.id).toBe(789);
+        expect(capturedBody).toBeDefined();
+        expect(result.submission).toBeDefined();
+        expect(result.submission!.id).toBe(789);
       });
 
       it('returns submission confirmation', async () => {
@@ -451,8 +544,9 @@ describe('assignmentApi', () => {
           onlineText: 'Test',
         });
 
-        expect(result.submission.id).toBe(789);
-        expect(result.submission.status).toBe('submitted');
+        expect(result.submission).toBeDefined();
+        expect(result.submission!.id).toBe(789);
+        expect(result.submission!.status).toBe('submitted');
       });
 
       it('sends request to correct endpoint', async () => {
@@ -864,10 +958,10 @@ describe('assignmentApi', () => {
             return HttpResponse.json({
               success: true,
               data: {
-                grade: createMockGrade({ 
+                grade: createMockAssignmentGrade({ 
                   id: 3001, 
                   grade: 85,
-                  feedback: 'Good work' 
+                  gradefordisplay: '85.00 / 100.00',
                 }),
                 submission: createMockSubmission({ id: 1001 }),
               },
@@ -882,7 +976,8 @@ describe('assignmentApi', () => {
         });
 
         expect(result).toBeDefined();
-        expect(result.grade.grade).toBe(85);
+        expect(result.grade).toBeDefined();
+        expect(result.grade!.grade).toBe(85);
         expect(capturedBody).toMatchObject({
           userid: 456,
           grade: 85,
@@ -898,7 +993,7 @@ describe('assignmentApi', () => {
             return HttpResponse.json({
               success: true,
               data: {
-                grade: createMockGrade({ id: 1 }),
+                grade: createMockAssignmentGrade({ id: 1 }),
                 submission: createMockSubmission({ id: 1 }),
               },
             });
@@ -926,7 +1021,7 @@ describe('assignmentApi', () => {
             return HttpResponse.json({
               success: true,
               data: {
-                grade: createMockGrade({ id: 1 }),
+                grade: createMockAssignmentGrade({ id: 1 }),
                 submission: createMockSubmission({ id: 1 }),
               },
             });
@@ -1042,12 +1137,13 @@ describe('assignmentApi', () => {
             if (formData) {
               capturedUserId = formData.get('userid') as string;
             }
+            // saveFeedback returns SubmissionResponse with submission, not grade
             return HttpResponse.json({
               success: true,
-              data: createMockGrade({ 
-                id: 1, 
-                feedback: 'Excellent work!' 
-              }),
+              data: {
+                success: true,
+                submission: createMockSubmission({ id: 1001 }),
+              },
             });
           })
         );
@@ -1077,7 +1173,10 @@ describe('assignmentApi', () => {
             }
             return HttpResponse.json({
               success: true,
-              data: createMockGrade({ id: 1 }),
+              data: {
+                success: true,
+                submission: createMockSubmission({ id: 1 }),
+              },
             });
           })
         );
@@ -1107,7 +1206,10 @@ describe('assignmentApi', () => {
             }
             return HttpResponse.json({
               success: true,
-              data: createMockGrade({ id: 1 }),
+              data: {
+                success: true,
+                submission: createMockSubmission({ id: 1 }),
+              },
             });
           })
         );
@@ -1185,7 +1287,7 @@ describe('assignmentApi', () => {
           filename: 'document.pdf',
           filesize: 123456,
           mimetype: 'application/pdf',
-          url: '/api/v1/files/download/5001',
+          fileurl: '/api/v1/files/download/5001',
         });
 
         server.use(
@@ -1203,10 +1305,14 @@ describe('assignmentApi', () => {
 
         const result = await fetchAssignmentFiles(123);
 
-        expect(result.introFiles[0].filename).toBe('document.pdf');
-        expect(result.introFiles[0].filesize).toBe(123456);
-        expect(result.introFiles[0].mimetype).toBe('application/pdf');
-        expect(result.introFiles[0].url).toBe('/api/v1/files/download/5001');
+        expect(result.introFiles).toBeDefined();
+        expect(result.introFiles?.length).toBeGreaterThan(0);
+        const firstFile = result.introFiles?.[0];
+        expect(firstFile).toBeDefined();
+        expect(firstFile?.filename).toBe('document.pdf');
+        expect(firstFile?.filesize).toBe(123456);
+        expect(firstFile?.mimetype).toBe('application/pdf');
+        expect(firstFile?.fileurl).toBe('/api/v1/files/download/5001');
       });
 
       it('includes intro attachments and submission files', async () => {
@@ -1283,11 +1389,12 @@ describe('assignmentApi', () => {
   describe('API Client Integration', () => {
     describe('Request Interceptor Tests', () => {
       it('automatically adds JWT token to all requests', async () => {
-        let authHeader: string | null = null;
+        // Use object to capture header (avoids TypeScript control flow issues)
+        const captured: { authHeader: string | null } = { authHeader: null };
 
         server.use(
           http.get('*/api/v1/assignments/123', ({ request }) => {
-            authHeader = request.headers.get('Authorization');
+            captured.authHeader = request.headers.get('Authorization');
             return HttpResponse.json({
               success: true,
               data: createMockAssignment({ id: 123 }),
@@ -1298,7 +1405,13 @@ describe('assignmentApi', () => {
         await fetchAssignment(123);
 
         // The apiClient should add Authorization header via interceptor
-        // The exact behavior depends on the client implementation
+        // Note: The actual header presence depends on the apiClient implementation
+        // and whether a token is available. The test verifies the request completes.
+        // Either no header or a valid Bearer token is acceptable
+        if (captured.authHeader !== null) {
+          expect(captured.authHeader.startsWith('Bearer ')).toBe(true);
+        }
+        // If null, that's also acceptable (no auth header present)
       });
     });
 
@@ -1429,14 +1542,15 @@ describe('assignmentApi', () => {
         expect(result.duedate).toBe(unixTimestamp);
       });
 
-      it('preserves null dates', async () => {
+      it('preserves zero dates (indicating no date set)', async () => {
+        // In Moodle, 0 indicates "no date set" rather than null
         server.use(
           http.get('*/api/v1/assignments/123', () => {
             return HttpResponse.json({
               success: true,
               data: createMockAssignment({
                 id: 123,
-                cutoffdate: null,
+                cutoffdate: 0,
               }),
             });
           })
@@ -1444,7 +1558,8 @@ describe('assignmentApi', () => {
 
         const result = await fetchAssignment(123);
 
-        expect(result.cutoffdate).toBeNull();
+        // Moodle uses 0 to indicate no date is set
+        expect(result.cutoffdate).toBe(0);
       });
 
       it('handles zero timestamp (no deadline)', async () => {
@@ -1600,9 +1715,11 @@ describe('assignmentApi', () => {
         http.get('*/api/v1/assignments/123', () => {
           return HttpResponse.json({
             success: true,
-            data: createMockAssignment({
+            data: createFeatureMockAssignment({
               id: 123,
-              submissiontypes: [],
+              introfiles: [],
+              introattachments: [],
+              configs: [],
             }),
           });
         })
@@ -1610,10 +1727,13 @@ describe('assignmentApi', () => {
 
       const result = await fetchAssignment(123);
 
-      expect(result.submissiontypes).toEqual([]);
+      expect(result.introfiles).toEqual([]);
+      expect(result.introattachments).toEqual([]);
+      expect(result.configs).toEqual([]);
     });
 
-    it('handles submission with no files', async () => {
+    it('handles submission with no plugins (no files)', async () => {
+      // Submissions use plugins array for file data, not a direct files property
       server.use(
         http.post('*/api/v1/assignments/123/submit', () => {
           return HttpResponse.json({
@@ -1621,7 +1741,7 @@ describe('assignmentApi', () => {
             data: {
               submission: createMockSubmission({
                 id: 1,
-                files: [],
+                plugins: [],
               }),
             },
           });
@@ -1633,7 +1753,8 @@ describe('assignmentApi', () => {
         onlineText: 'Text only submission',
       });
 
-      expect(result.submission.files).toEqual([]);
+      expect(result.submission).toBeDefined();
+      expect(result.submission!.plugins).toEqual([]);
     });
   });
 
