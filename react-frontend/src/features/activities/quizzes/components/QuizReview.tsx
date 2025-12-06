@@ -68,8 +68,7 @@ import {
 // Internal imports from depends_on_files
 import {
   QuizAttemptState,
-  type QuizAttempt,
-  type QuestionDisplayOptions,
+  QuestionState,
   type QuestionNavigationState,
 } from '../types/quiz.types';
 import { QuizNavigation } from './QuizNavigation';
@@ -684,8 +683,25 @@ function QuizReview({
   const navigationState: QuestionNavigationState[] = useMemo(() => {
     if (!reviewData?.questions) return [];
     
+    // Helper to map question state strings to QuestionState enum values
+    const mapStateToQuestionState = (state: string | undefined): QuestionState | undefined => {
+      if (!state) return undefined;
+      const stateMap: Record<string, QuestionState> = {
+        'todo': QuestionState.TODO,
+        'complete': QuestionState.COMPLETE,
+        'invalid': QuestionState.INVALID,
+        'needsgrading': QuestionState.NEEDS_GRADING,
+        'graded': QuestionState.GRADED,
+        'gaveup': QuestionState.GAVE_UP,
+        // Map graded variants to GRADED state
+        'gradedright': QuestionState.GRADED,
+        'gradedwrong': QuestionState.GRADED,
+        'gradedpartial': QuestionState.GRADED,
+      };
+      return stateMap[state.toLowerCase()] || QuestionState.TODO;
+    };
+    
     return reviewData.questions.map((q, index) => {
-      const status = getQuestionStatus(q);
       const hasResponse = q.response !== undefined && 
         q.response !== null && 
         q.response !== '';
@@ -697,7 +713,7 @@ function QuizReview({
         flagged: q.flagged,
         page: q.page,
         isCurrentQuestion: index === currentQuestionIndex,
-        state: q.state as 'todo' | 'complete' | 'invalid' | 'gaveup' | 'gradedright' | 'gradedwrong' | 'gradedpartial' | 'needsgrading',
+        state: mapStateToQuestionState(q.state),
         canNavigate: true,
       };
     });
@@ -752,14 +768,14 @@ function QuizReview({
     : 0;
 
   // Calculate time taken from attempt timestamps
-  const timeTaken = attempt.timefinish > 0 && attempt.timestart > 0
-    ? attempt.timefinish - attempt.timestart
+  const timeTaken = (attempt.timefinish ?? 0) > 0 && attempt.timestart > 0
+    ? (attempt.timefinish ?? 0) - attempt.timestart
     : 0;
 
   // Determine which questions to display based on view mode
-  const questionsToDisplay = showAllQuestions 
+  const questionsToDisplay: QuizReviewQuestion[] = showAllQuestions 
     ? questions 
-    : [questions[currentQuestionIndex]].filter(Boolean);
+    : [questions[currentQuestionIndex]].filter((q): q is QuizReviewQuestion => q !== undefined);
 
   return (
     <Box className={className} sx={{ '@media print': { p: 2 } }}>
@@ -863,8 +879,8 @@ function QuizReview({
                 Submitted
               </Typography>
               <Typography variant="body1">
-                {attempt.timefinish > 0
-                  ? formatDateTime(new Date(attempt.timefinish * 1000)) 
+                {(attempt.timefinish ?? 0) > 0
+                  ? formatDateTime(new Date((attempt.timefinish ?? 0) * 1000)) 
                   : 'Not submitted'}
               </Typography>
             </Grid>
