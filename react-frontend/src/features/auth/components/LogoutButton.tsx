@@ -187,7 +187,7 @@ function LogoutButton({
 
   // Authentication hook - provides logout mutation and loading state
   // Using isLoading from the auth hook which reflects isLogoutLoading during logout
-  const { logout, isLoading, error: authError } = useAuth();
+  const { logout, isLoading } = useAuth();
 
   // Toast notifications for error feedback
   const { error: showErrorToast } = useToast();
