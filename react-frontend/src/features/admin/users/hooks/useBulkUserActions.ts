@@ -521,7 +521,7 @@ export function useBulkUserActions(): UseBulkUserActionsReturn {
     (response: BulkActionResponse, action: string): BulkActionResult => {
       return {
         success: response.success,
-        message: response.message || `${action} operation completed`,
+        message: response.message ?? `${action} operation completed`,
         successCount: response.successCount,
         failureCount: response.failureCount,
         totalCount: response.totalCount,
@@ -545,7 +545,7 @@ export function useBulkUserActions(): UseBulkUserActionsReturn {
       setLastResult(result);
 
       // Invalidate user queries to refresh the list
-      queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.ALL });
+      void queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.ALL });
 
       // Show appropriate toast notification
       if (result.success) {
