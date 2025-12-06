@@ -51,30 +51,30 @@ import useDebounce from '@/hooks/useDebounce';
  * Default stale time for messages queries (5 minutes)
  * Messages are considered fresh for this duration before refetching
  */
-const DEFAULT_STALE_TIME = 5 * 60 * 1000;
+export const DEFAULT_STALE_TIME = 5 * 60 * 1000;
 
 /**
  * Default cache time for messages queries (10 minutes)
  * Cached data is kept in memory for this duration after becoming inactive
  */
-const DEFAULT_CACHE_TIME = 10 * 60 * 1000;
+export const DEFAULT_CACHE_TIME = 10 * 60 * 1000;
 
 /**
  * Default refetch interval for real-time feel (30 seconds)
  * Messages are automatically refetched at this interval when the window is focused
  */
-const DEFAULT_REFETCH_INTERVAL = 30 * 1000;
+export const DEFAULT_REFETCH_INTERVAL = 30 * 1000;
 
 /**
  * Default page size for paginated queries
  */
-const DEFAULT_PAGE_SIZE = 20;
+export const DEFAULT_PAGE_SIZE = 20;
 
 /**
  * Debounce delay for search queries (300ms)
  * Prevents excessive API calls while user is typing
  */
-const SEARCH_DEBOUNCE_DELAY = 300;
+export const SEARCH_DEBOUNCE_DELAY = 300;
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -124,31 +124,38 @@ export interface UseMessageSearchParams {
 
 /**
  * Paginated response structure for conversations
+ * Matches ConversationListResponse from message.types.ts
  */
 export interface PaginatedConversationsResponse {
   conversations: Conversation[];
-  nextCursor?: string;
+  total: number;
+  page: number;
+  perPage: number;
   hasMore: boolean;
-  totalCount?: number;
 }
 
 /**
  * Paginated response structure for messages within a conversation
+ * Uses page-based pagination matching API response
  */
 export interface PaginatedMessagesResponse {
   messages: Message[];
-  nextCursor?: string;
+  total: number;
+  page: number;
+  perPage: number;
   hasMore: boolean;
 }
 
 /**
  * Paginated response structure for contacts
+ * Uses page-based pagination matching API response
  */
 export interface PaginatedContactsResponse {
   contacts: Contact[];
-  nextCursor?: string;
+  total: number;
+  page: number;
+  perPage: number;
   hasMore: boolean;
-  totalCount?: number;
 }
 
 /**
@@ -321,8 +328,9 @@ export function useMessages(params: UseMessagesParams = {}): UseMessagesReturn {
   } = params;
 
   // Build query key with filters for proper cache separation
+  // Note: messagingKeys.conversations() takes no arguments, filters are included in array
   const queryKey = useMemo(
-    () => messagingKeys.conversations(filters),
+    () => [...messagingKeys.conversations(), filters] as const,
     [filters]
   );
 
@@ -341,27 +349,44 @@ export function useMessages(params: UseMessagesParams = {}): UseMessagesReturn {
     Error,
     InfiniteData<PaginatedConversationsResponse>,
     QueryKey,
-    string | undefined
+    number
   >({
     queryKey,
     queryFn: async ({ pageParam }) => {
-      const response = await getConversations({
-        ...filters,
-        limit: pageSize,
-        cursor: pageParam,
-      });
+      // Build proper ListParams structure for API call
+      // Convert MessageFilters to Record<string, unknown> for filter param
+      const filterRecord: Record<string, unknown> | undefined = filters
+        ? {
+            userId: filters.userId,
+            conversationId: filters.conversationId,
+            readStatus: filters.readStatus,
+            dateRange: filters.dateRange,
+            searchTerm: filters.searchTerm,
+          }
+        : undefined;
+
+      const response = await getConversations(
+        {
+          pagination: { page: pageParam, perPage: pageSize },
+          filter: filterRecord,
+          search: filters?.searchTerm,
+        }
+        // Note: getConversations second parameter options (type, favourites)
+        // are not part of MessageFilters - omitted unless explicitly needed
+      );
 
       // Transform API response to match our interface
       return {
         conversations: response.conversations || [],
-        nextCursor: response.nextCursor,
+        total: response.total,
+        page: response.page,
+        perPage: response.perPage,
         hasMore: response.hasMore ?? false,
-        totalCount: response.totalCount,
       };
     },
-    initialPageParam: undefined,
+    initialPageParam: 1,
     getNextPageParam: (lastPage) =>
-      lastPage.hasMore ? lastPage.nextCursor : undefined,
+      lastPage.hasMore ? lastPage.page + 1 : undefined,
     staleTime: DEFAULT_STALE_TIME,
     gcTime: DEFAULT_CACHE_TIME,
     refetchInterval: enableRefetch ? refetchInterval : false,
@@ -376,7 +401,7 @@ export function useMessages(params: UseMessagesParams = {}): UseMessagesReturn {
   }, [data?.pages]);
 
   // Get total count from first page (if available)
-  const totalCount = data?.pages[0]?.totalCount;
+  const totalCount = data?.pages[0]?.total;
 
   return {
     conversations,
@@ -447,8 +472,9 @@ export function useSendMessage(): UseSendMessageReturn {
 
   const mutation = useMutation<Message, Error, SendMessageParams, { previousData: unknown }>({
     mutationFn: async (params: SendMessageParams) => {
-      const response = await sendMessage(params);
-      return response.message;
+      // sendMessage returns Message directly, not wrapped in an object
+      const message = await sendMessage(params);
+      return message;
     },
 
     // Optimistic update: add the message immediately before server confirmation
@@ -458,9 +484,9 @@ export function useSendMessage(): UseSendMessageReturn {
         queryKey: messagingKeys.conversations(),
       });
 
-      if (newMessage.conversationId) {
+      if (newMessage.conversationid) {
         await queryClient.cancelQueries({
-          queryKey: messagingKeys.conversationMessages(newMessage.conversationId),
+          queryKey: messagingKeys.conversationMessages(newMessage.conversationid),
         });
       }
 
@@ -483,7 +509,7 @@ export function useSendMessage(): UseSendMessageReturn {
 
               // Move the conversation to top of list (most recent)
               const updatedConversations = page.conversations.map((conv) => {
-                if (conv.id === newMessage.conversationId) {
+                if (conv.id === newMessage.conversationid) {
                   return {
                     ...conv,
                     lastMessageText: newMessage.text,
@@ -495,11 +521,11 @@ export function useSendMessage(): UseSendMessageReturn {
 
               // Reorder to put active conversation first
               const activeConv = updatedConversations.find(
-                (c) => c.id === newMessage.conversationId
+                (c) => c.id === newMessage.conversationid
               );
               if (activeConv) {
                 const others = updatedConversations.filter(
-                  (c) => c.id !== newMessage.conversationId
+                  (c) => c.id !== newMessage.conversationid
                 );
                 return {
                   ...page,
@@ -528,16 +554,16 @@ export function useSendMessage(): UseSendMessageReturn {
     },
 
     // Refetch after successful mutation to ensure consistency
-    onSuccess: (message, variables) => {
+    onSuccess: (_message, variables) => {
       // Invalidate and refetch conversations list
       queryClient.invalidateQueries({
         queryKey: messagingKeys.conversations(),
       });
 
       // Invalidate the specific conversation messages if we know the ID
-      if (variables.conversationId) {
+      if (variables.conversationid) {
         queryClient.invalidateQueries({
-          queryKey: messagingKeys.conversationMessages(variables.conversationId),
+          queryKey: messagingKeys.conversationMessages(variables.conversationid),
         });
       }
     },
@@ -648,8 +674,8 @@ export function useDeleteMessage(): UseDeleteMessageReturn {
               foundMessage = true;
               // Get conversation ID from the message if available
               const msg = page.messages[messageIndex];
-              if (msg.conversationId) {
-                conversationId = msg.conversationId;
+              if (msg && msg.conversationid) {
+                conversationId = msg.conversationid;
               }
               // Remove the message
               return {
@@ -772,8 +798,9 @@ export function useContacts(params: UseContactsParams = {}): UseContactsReturn {
   const debouncedSearch = useDebounce(search || '', SEARCH_DEBOUNCE_DELAY);
 
   // Build query key with search parameter
+  // Note: messagingKeys.contacts() takes no arguments, include search in key array
   const queryKey = useMemo(
-    () => messagingKeys.contacts(debouncedSearch || undefined),
+    () => [...messagingKeys.contacts(), debouncedSearch || 'all'] as const,
     [debouncedSearch]
   );
 
@@ -790,26 +817,29 @@ export function useContacts(params: UseContactsParams = {}): UseContactsReturn {
     Error,
     InfiniteData<PaginatedContactsResponse>,
     QueryKey,
-    string | undefined
+    number
   >({
     queryKey,
     queryFn: async ({ pageParam }) => {
-      const response = await getContacts({
+      // getContacts returns Contact[] - wrap result in paginated response structure
+      const contactsList = await getContacts({
+        pagination: { page: pageParam, perPage: pageSize },
         search: debouncedSearch || undefined,
-        limit: pageSize,
-        cursor: pageParam,
       });
 
+      // Since API returns Contact[], we estimate pagination based on result count
+      const hasMore = contactsList.length >= pageSize;
       return {
-        contacts: response.contacts || [],
-        nextCursor: response.nextCursor,
-        hasMore: response.hasMore ?? false,
-        totalCount: response.totalCount,
+        contacts: contactsList,
+        total: contactsList.length,
+        page: pageParam,
+        perPage: pageSize,
+        hasMore,
       };
     },
-    initialPageParam: undefined,
+    initialPageParam: 1,
     getNextPageParam: (lastPage) =>
-      lastPage.hasMore ? lastPage.nextCursor : undefined,
+      lastPage.hasMore ? lastPage.page + 1 : undefined,
     staleTime: DEFAULT_STALE_TIME,
     gcTime: DEFAULT_CACHE_TIME,
     enabled,
@@ -821,8 +851,8 @@ export function useContacts(params: UseContactsParams = {}): UseContactsReturn {
     return data.pages.flatMap((page) => page.contacts);
   }, [data?.pages]);
 
-  // Get total count from first page
-  const totalCount = data?.pages[0]?.totalCount;
+  // Get total count from accumulated contacts
+  const totalCount = contacts.length;
 
   return {
     contacts,
@@ -918,8 +948,10 @@ export function useMessageSearch(
   const isEnabled = debouncedQuery.trim().length >= minQueryLength;
 
   // Build query key for caching
+  // Note: messagingKeys.messageSearch only takes the query string
+  // userId is included in the key array for cache separation
   const queryKey = useMemo(
-    () => messagingKeys.search(debouncedQuery, userId),
+    () => [...messagingKeys.messageSearch(debouncedQuery), userId] as const,
     [debouncedQuery, userId]
   );
 
@@ -929,15 +961,16 @@ export function useMessageSearch(
   >({
     queryKey,
     queryFn: async () => {
+      // searchMessages expects (query, ListParams<Message>)
+      // userId filtering is not supported by the API directly
       const response = await searchMessages(debouncedQuery, {
-        userId,
-        limit: 50, // Higher limit for search results
+        pagination: { page: 1, perPage: 50 }, // Higher limit for search results
       });
 
       return {
         messages: response.messages || [],
         conversations: response.conversations || [],
-        totalCount: response.totalCount ?? 0,
+        totalCount: response.total ?? 0,
       };
     },
     enabled: isEnabled,
@@ -1033,28 +1066,34 @@ export function useConversationMessages(
     Error,
     InfiniteData<PaginatedMessagesResponse>,
     QueryKey,
-    string | undefined
+    number
   >({
     queryKey,
     queryFn: async ({ pageParam }) => {
       if (!conversationId) {
-        return { messages: [], hasMore: false };
+        return { messages: [], total: 0, page: 1, perPage: DEFAULT_PAGE_SIZE, hasMore: false };
       }
 
+      // getConversationMessages returns { messages: Message[]; members: ConversationMember[] }
+      // We need to wrap this in our pagination structure
       const response = await getConversationMessages(conversationId, {
-        limit: DEFAULT_PAGE_SIZE,
-        cursor: pageParam,
+        pagination: { page: pageParam, perPage: DEFAULT_PAGE_SIZE },
       });
+
+      // Estimate hasMore based on result count since API doesn't provide pagination info
+      const hasMore = response.messages.length >= DEFAULT_PAGE_SIZE;
 
       return {
         messages: response.messages || [],
-        nextCursor: response.nextCursor,
-        hasMore: response.hasMore ?? false,
+        total: response.messages.length,
+        page: pageParam,
+        perPage: DEFAULT_PAGE_SIZE,
+        hasMore,
       };
     },
-    initialPageParam: undefined,
+    initialPageParam: 1,
     getNextPageParam: (lastPage) =>
-      lastPage.hasMore ? lastPage.nextCursor : undefined,
+      lastPage.hasMore ? lastPage.page + 1 : undefined,
     staleTime: DEFAULT_STALE_TIME,
     gcTime: DEFAULT_CACHE_TIME,
     refetchInterval: DEFAULT_REFETCH_INTERVAL,
