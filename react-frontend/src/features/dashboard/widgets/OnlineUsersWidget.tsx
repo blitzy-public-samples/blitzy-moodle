@@ -26,7 +26,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import React, { useState, useMemo, useCallback } from 'react';
+import type React from 'react';
+import { useState, useMemo, useCallback } from 'react';
 
 // Material-UI Components
 import {
@@ -108,14 +109,14 @@ type RoleFilter = 'all' | 'students' | 'teachers';
 /**
  * Custom styled badge props for online status indicator
  */
-const StyledBadge = ({
+function StyledBadge({
   children,
   invisible = false,
 }: {
   children: React.ReactNode;
   invisible?: boolean;
-}) => (
-  <Badge
+}) {
+  return <Badge
     overlap="circular"
     anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
     invisible={invisible}
@@ -133,7 +134,7 @@ const StyledBadge = ({
   >
     {children}
   </Badge>
-);
+}
 
 // ============================================================================
 // Main Component
@@ -283,7 +284,7 @@ function OnlineUsersWidget({
    * Handle manual refresh button click
    */
   const handleRefresh = useCallback(() => {
-    refetch();
+    void refetch();
   }, [refetch]);
 
   /**

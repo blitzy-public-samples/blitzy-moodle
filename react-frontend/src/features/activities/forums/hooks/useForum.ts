@@ -429,7 +429,8 @@ function getErrorMessage(error: unknown): string {
   // Handle Axios errors with response data
   if (error instanceof AxiosError) {
     const status = error.response?.status;
-    const apiError = error.response?.data?.error as ApiErrorResponse | undefined;
+    const responseData = error.response?.data as { error?: ApiErrorResponse } | undefined;
+    const apiError = responseData?.error;
 
     // Return API-provided message if available
     if (apiError?.message) {
@@ -592,7 +593,7 @@ function applyOptimisticSubscriptionUpdate(
   subscribe: boolean
 ): OptimisticUpdateContext {
   // Cancel any outgoing refetches to avoid overwriting optimistic update
-  queryClient.cancelQueries({ queryKey: forumQueryKeys.detail(forumId) });
+  void queryClient.cancelQueries({ queryKey: forumQueryKeys.detail(forumId) });
 
   // Snapshot previous value for rollback
   const previousForum = queryClient.getQueryData<Forum>(
@@ -642,7 +643,7 @@ function applyOptimisticMarkReadUpdate(
   forumId: number
 ): OptimisticUpdateContext {
   // Cancel any outgoing refetches
-  queryClient.cancelQueries({ queryKey: forumQueryKeys.detail(forumId) });
+  void queryClient.cancelQueries({ queryKey: forumQueryKeys.detail(forumId) });
 
   // Snapshot previous value for rollback
   const previousForum = queryClient.getQueryData<Forum>(
@@ -828,7 +829,7 @@ export function useForum(
     },
 
     // Apply optimistic update before mutation
-    onMutate: async (subscribe: boolean) => {
+    onMutate: (subscribe: boolean) => {
       return applyOptimisticSubscriptionUpdate(queryClient, forumId, subscribe);
     },
 
@@ -855,7 +856,7 @@ export function useForum(
     // Always called after mutation completes
     onSettled: () => {
       // Invalidate to ensure cache is in sync with server
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: forumQueryKeys.detail(forumId),
       });
     },
@@ -887,7 +888,7 @@ export function useForum(
     },
 
     // Apply optimistic update
-    onMutate: async () => {
+    onMutate: () => {
       return applyOptimisticMarkReadUpdate(queryClient, forumId);
     },
 
@@ -905,7 +906,7 @@ export function useForum(
       }
 
       // Also invalidate discussion queries to update their unread counts
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ['forums', forumId, 'discussions'],
       });
     },
@@ -917,7 +918,7 @@ export function useForum(
 
     // Always invalidate after settlement
     onSettled: () => {
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: forumQueryKeys.detail(forumId),
       });
     },
@@ -965,7 +966,7 @@ export function useForum(
   const prefetchNextPage = useCallback(() => {
     // Access pagination from meta (primary) or legacy root properties
     const meta = discussionsQuery.data?.meta;
-    if (!meta) return;
+    if (!meta) {return;}
 
     const currentPage = meta.page ?? discussionParams.page ?? 1;
     const totalPages = meta.totalPages ?? 1;
@@ -975,7 +976,7 @@ export function useForum(
         ...discussionParams,
         page: currentPage + 1,
       };
-      queryClient.prefetchQuery({
+      void queryClient.prefetchQuery({
         queryKey: forumQueryKeys.discussionList(forumId, nextParams),
         queryFn: () => fetchDiscussions(forumId, nextParams),
       });
@@ -1000,11 +1001,11 @@ export function useForum(
     },
     onSuccess: () => {
       // Invalidate discussions list to refetch with new discussion
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: forumQueryKeys.discussions(forumId),
       });
       // Invalidate forum data to update discussion count
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: forumQueryKeys.detail(forumId),
       });
     },
@@ -1027,7 +1028,7 @@ export function useForum(
     },
     onSuccess: () => {
       // Invalidate discussions list to reflect pin status change
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: forumQueryKeys.discussions(forumId),
       });
     },
@@ -1047,7 +1048,7 @@ export function useForum(
   const unpinMutation = useMutation<ModerationResponse, Error, number>({
     mutationFn: unpinMutationFn,
     onSuccess: () => {
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: forumQueryKeys.discussions(forumId),
       });
     },
@@ -1075,7 +1076,7 @@ export function useForum(
     },
     onSuccess: () => {
       // Invalidate discussions list to reflect lock status change
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: forumQueryKeys.discussions(forumId),
       });
     },
@@ -1095,7 +1096,7 @@ export function useForum(
   const unlockMutation = useMutation<ModerationResponse, Error, number>({
     mutationFn: unlockMutationFn,
     onSuccess: () => {
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: forumQueryKeys.discussions(forumId),
       });
     },
@@ -1305,7 +1306,7 @@ export function useSubscribeToForum(
     },
 
     // Apply optimistic update before mutation
-    onMutate: async (subscribe: boolean) => {
+    onMutate: (subscribe: boolean) => {
       // Call user's onMutate if provided
       onMutate?.(subscribe);
 
@@ -1328,7 +1329,7 @@ export function useSubscribeToForum(
       }
 
       // Invalidate to ensure fresh data on next access
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: forumQueryKeys.detail(forumId),
       });
 
@@ -1348,7 +1349,7 @@ export function useSubscribeToForum(
     // Always called after mutation completes (success or error)
     onSettled: () => {
       // Refetch to ensure cache is in sync with server
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: forumQueryKeys.detail(forumId),
       });
 

@@ -251,7 +251,7 @@ const EventIndicator: React.FC<EventIndicatorProps> = React.memo(({ event, onCli
         <Circle
           sx={{
             fontSize: '8px',
-            color: color,
+            color,
             cursor: 'pointer',
           }}
         />

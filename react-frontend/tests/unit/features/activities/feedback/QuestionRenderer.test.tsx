@@ -466,7 +466,7 @@ describe('QuestionRenderer Component', () => {
       expect(Number((textarea as HTMLTextAreaElement).rows)).toBe(5);
     });
 
-    // eslint-disable-next-line @typescript-eslint/require-await
+     
     it('calls onChange with text value', async () => {
       render(<QuestionRenderer {...getBaseProps()} />);
 
@@ -546,7 +546,7 @@ describe('QuestionRenderer Component', () => {
       expect(input.tagName).toBe('INPUT');
     });
 
-    // eslint-disable-next-line @typescript-eslint/require-await
+     
     it('calls onChange with text value', async () => {
       render(<QuestionRenderer {...getBaseProps()} />);
 
@@ -641,7 +641,7 @@ describe('QuestionRenderer Component', () => {
       expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
     });
 
-    // eslint-disable-next-line @typescript-eslint/require-await
+     
     it('does not call onChange callback', async () => {
       render(<QuestionRenderer {...getBaseProps()} />);
 
@@ -1079,7 +1079,7 @@ describe('QuestionRenderer Component', () => {
       expect(typeof mockOnChange.mock.calls[0]![0]).toBe('string');
     });
 
-    // eslint-disable-next-line @typescript-eslint/require-await
+     
     it('calls onChange with number value for numeric', async () => {
       const props: QuestionRendererProps = {
         id: 23,
@@ -1516,7 +1516,7 @@ describe('QuestionRenderer Component', () => {
       expect(screen.getByRole('alert')).toBeInTheDocument();
     });
 
-    // eslint-disable-next-line @typescript-eslint/require-await
+     
     it('handles extremely long text input', async () => {
       const props: QuestionRendererProps = {
         id: 41,

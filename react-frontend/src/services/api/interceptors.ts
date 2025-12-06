@@ -285,8 +285,8 @@ function createSerializableAxiosError(error: AxiosError): AxiosError {
     method: error.config?.method,
     baseURL: error.config?.baseURL,
     headers: error.config?.headers || new AxiosHeaders(),
-    params: error.config?.params,
-    data: error.config?.data,
+    params: error.config?.params as Record<string, unknown> | undefined,
+    data: error.config?.data as unknown,
     timeout: error.config?.timeout,
     // Explicitly omit transformRequest and transformResponse
     // as they contain functions that cannot be serialized

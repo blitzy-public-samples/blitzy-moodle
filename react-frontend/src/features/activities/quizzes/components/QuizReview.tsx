@@ -30,7 +30,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import React, { useState, useMemo, useCallback } from 'react';
+import type React from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -282,7 +283,7 @@ function getStatusLabel(status: QuestionStatus): string {
  * @returns Formatted percentage string
  */
 function formatGradePercentage(grade: number | null, maxGrade: number): string {
-  if (grade === null || maxGrade <= 0) return '0.00%';
+  if (grade === null || maxGrade <= 0) {return '0.00%';}
   const percentage = (grade / maxGrade) * 100;
   return `${formatNumber(percentage, 2)}%`;
 }
@@ -293,9 +294,9 @@ function formatGradePercentage(grade: number | null, maxGrade: number): string {
  * @returns Alert severity
  */
 function getFeedbackSeverity(gradePercentage: number): 'success' | 'warning' | 'error' | 'info' {
-  if (gradePercentage >= 80) return 'success';
-  if (gradePercentage >= 60) return 'info';
-  if (gradePercentage >= 40) return 'warning';
+  if (gradePercentage >= 80) {return 'success';}
+  if (gradePercentage >= 60) {return 'info';}
+  if (gradePercentage >= 40) {return 'warning';}
   return 'error';
 }
 
@@ -305,9 +306,9 @@ function getFeedbackSeverity(gradePercentage: number): 'success' | 'warning' | '
  * @returns Grade label string
  */
 function getGradeLabel(percentage: number): string {
-  if (percentage >= 80) return 'Excellent';
-  if (percentage >= 60) return 'Good';
-  if (percentage >= 40) return 'Needs Improvement';
+  if (percentage >= 80) {return 'Excellent';}
+  if (percentage >= 60) {return 'Good';}
+  if (percentage >= 40) {return 'Needs Improvement';}
   return 'Below Average';
 }
 
@@ -681,11 +682,11 @@ function QuizReview({
 
   // Prepare navigation state from questions
   const navigationState: QuestionNavigationState[] = useMemo(() => {
-    if (!reviewData?.questions) return [];
+    if (!reviewData?.questions) {return [];}
     
     // Helper to map question state strings to QuestionState enum values
     const mapStateToQuestionState = (state: string | undefined): QuestionState | undefined => {
-      if (!state) return undefined;
+      if (!state) {return undefined;}
       const stateMap: Record<string, QuestionState> = {
         'todo': QuestionState.TODO,
         'complete': QuestionState.COMPLETE,

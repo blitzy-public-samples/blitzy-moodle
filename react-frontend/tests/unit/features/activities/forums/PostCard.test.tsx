@@ -5,7 +5,7 @@ import { axe, toHaveNoViolations } from 'jest-axe';
 import PostCard from '@/features/activities/forums/components/PostCard';
 import type { ForumPost, PostAttachment, UserRole } from '@/features/activities/forums/types/forum.types';
 
-/* eslint-disable @typescript-eslint/unbound-method */
+ 
 
 expect.extend(toHaveNoViolations);
 

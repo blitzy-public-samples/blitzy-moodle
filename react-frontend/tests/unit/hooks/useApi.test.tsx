@@ -276,7 +276,7 @@ describe('useApi', () => {
       expect(vi.mocked(axios).create).toHaveBeenCalledWith(
          
         expect.objectContaining({
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+           
           baseURL: expect.stringMatching(/\/api\/v1$/),
           timeout: 30000,
           headers: {
@@ -489,7 +489,7 @@ describe('useApi', () => {
       expect(vi.mocked(mockAxiosInstance).request).toHaveBeenCalledWith(
          
         expect.objectContaining({
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+           
           headers: expect.objectContaining({
             Authorization: `Bearer ${newAccessToken}`,
           }),
@@ -566,7 +566,7 @@ describe('useApi', () => {
       });
 
       // Override store.dispatch to capture actions
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+       
       store.dispatch = mockDispatch as any;
 
       function Wrapper({ children }: { children: React.ReactNode }) {
@@ -659,7 +659,7 @@ describe('useApi', () => {
         preloadedState: preloadedState as RootState,
       });
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+       
       store.dispatch = mockDispatch as any;
 
       function Wrapper({ children }: { children: React.ReactNode }) {
@@ -709,7 +709,7 @@ describe('useApi', () => {
 
       // Act & Assert
       await expect(onRejected(error403)).rejects.toMatchObject({
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+         
         response: expect.objectContaining({
           status: 403,
           data: {
@@ -742,7 +742,7 @@ describe('useApi', () => {
 
       // Act & Assert
       await expect(onRejected(error403)).rejects.toMatchObject({
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+         
         response: expect.objectContaining({
           status: 403,
           data: customError,
@@ -762,7 +762,7 @@ describe('useApi', () => {
 
       // Act & Assert
       await expect(onRejected(error404)).rejects.toMatchObject({
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+         
         response: expect.objectContaining({
           status: 404,
           data: {
@@ -788,7 +788,7 @@ describe('useApi', () => {
 
       // Act & Assert
       await expect(onRejected(error500)).rejects.toMatchObject({
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+         
         response: expect.objectContaining({
           status: 500,
           data: {
@@ -814,7 +814,7 @@ describe('useApi', () => {
 
       // Act & Assert
       await expect(onRejected(error502)).rejects.toMatchObject({
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+         
         response: expect.objectContaining({
           status: 502,
           data: {
@@ -854,7 +854,7 @@ describe('useApi', () => {
 
       // Act & Assert
       await expect(onRejected(networkError)).rejects.toMatchObject({
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+         
         response: expect.objectContaining({
           data: {
             success: false,
@@ -886,7 +886,7 @@ describe('useApi', () => {
 
       // Act & Assert
       await expect(onRejected(timeoutError)).rejects.toMatchObject({
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+         
         response: expect.objectContaining({
           data: {
             success: false,
@@ -918,7 +918,7 @@ describe('useApi', () => {
 
       // Act & Assert
       await expect(onRejected(genericError)).rejects.toMatchObject({
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+         
         response: expect.objectContaining({
           data: {
             success: false,
@@ -1083,7 +1083,7 @@ describe('useApi', () => {
 
       // Act & Assert - should handle gracefully
       await expect(onRejected(errorWithoutConfig)).rejects.toMatchObject({
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+         
         response: expect.objectContaining({
           data: {
             success: false,

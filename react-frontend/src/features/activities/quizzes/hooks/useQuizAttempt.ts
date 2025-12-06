@@ -411,7 +411,7 @@ function useQuizAttempt(options: UseQuizAttemptOptions): UseQuizAttemptResult {
       setActiveAttemptId(data.attempt.id);
 
       // Invalidate attempts cache to include the new attempt
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: quizQueryKeys.attempts(quizId),
       });
 
@@ -516,7 +516,7 @@ function useQuizAttempt(options: UseQuizAttemptOptions): UseQuizAttemptResult {
     },
     onSettled: () => {
       // Refetch to ensure cache is in sync with server
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: quizQueryKeys.questions(quizId, activeAttemptId ?? 0, 0),
       });
     },
@@ -609,7 +609,7 @@ function useQuizAttempt(options: UseQuizAttemptOptions): UseQuizAttemptResult {
     },
     onSettled: () => {
       // Ensure cache sync
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: quizQueryKeys.questions(quizId, activeAttemptId ?? 0, 0),
       });
     },
@@ -676,10 +676,10 @@ function useQuizAttempt(options: UseQuizAttemptOptions): UseQuizAttemptResult {
       setCurrentAttempt(data.attempt);
 
       // Invalidate all related caches
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: quizQueryKeys.attempts(quizId),
       });
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: quizQueryKeys.results(activeAttemptId ?? 0),
       });
 

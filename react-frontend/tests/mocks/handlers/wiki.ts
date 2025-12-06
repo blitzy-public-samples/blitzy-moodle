@@ -238,7 +238,7 @@ function getPage(pageId: number): WikiPage | undefined {
  */
 function updatePage(pageId: number, updates: Partial<WikiPage>): WikiPage | undefined {
   const page = wikiPagesStorage.get(pageId);
-  if (!page) return undefined;
+  if (!page) {return undefined;}
 
   const updatedPage = { ...page, ...updates };
   wikiPagesStorage.set(pageId, updatedPage);

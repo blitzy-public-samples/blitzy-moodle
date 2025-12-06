@@ -375,22 +375,22 @@ function clearStoredTokens(): void {
  * @returns true if token needs refresh, false otherwise
  */
 function isTokenExpired(token: string | null): boolean {
-  if (!token) return true;
+  if (!token) {return true;}
 
   try {
     // JWT structure: header.payload.signature
     const parts = token.split('.');
-    if (parts.length !== 3) return true;
+    if (parts.length !== 3) {return true;}
 
     // Get payload part (guaranteed to exist after length check)
     const payloadPart = parts[1];
-    if (!payloadPart) return true;
+    if (!payloadPart) {return true;}
 
     // Decode payload (base64url -> JSON)
-    const payload = JSON.parse(atob(payloadPart.replace(/-/g, '+').replace(/_/g, '/')));
+    const payload = JSON.parse(atob(payloadPart.replace(/-/g, '+').replace(/_/g, '/'))) as { exp?: number };
 
     // Check expiration (exp is in seconds, Date.now() is in milliseconds)
-    const expirationMs = payload.exp * 1000;
+    const expirationMs = (payload.exp ?? 0) * 1000;
     const nowMs = Date.now();
 
     // Token is expired if current time + threshold exceeds expiration
@@ -608,7 +608,7 @@ export function useAuth(): AuthHook {
       // Don't retry on 401 (not authenticated)
       if (error && typeof error === 'object' && 'status' in error) {
         const apiError = error as { status?: number };
-        if (apiError.status === 401) return false;
+        if (apiError.status === 401) {return false;}
       }
       return failureCount < 3;
     },
@@ -731,7 +731,7 @@ export function useAuth(): AuthHook {
    */
   useEffect(() => {
     // Only run once on mount
-    if (hasInitialized.current) return;
+    if (hasInitialized.current) {return;}
 
     const initializeAuth = async () => {
       hasInitialized.current = true;
@@ -795,7 +795,7 @@ export function useAuth(): AuthHook {
       }
     };
 
-    initializeAuth();
+    void initializeAuth();
   }, [dispatch, queryClient, refreshMutation]);
 
   // ============================================================================

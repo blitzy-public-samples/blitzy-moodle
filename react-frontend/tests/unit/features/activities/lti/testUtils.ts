@@ -130,7 +130,7 @@ export interface LaunchParamsConfig {
  * Type guard to check if input is a configuration object vs raw params.
  */
 function isLaunchParamsConfig(input: unknown): input is LaunchParamsConfig {
-  if (!input || typeof input !== 'object') return false;
+  if (!input || typeof input !== 'object') {return false;}
   const obj = input as Record<string, unknown>;
   // Check for config-specific properties that don't exist on LtiLaunchParams
   return (
@@ -275,7 +275,7 @@ export function createMockLaunchParams(
   }
 
   // Direct override pattern - input is Partial<LtiLaunchParams>
-  const overrides = input as Partial<LtiLaunchParams>;
+  const overrides = input;
 
   return {
     lti_message_type: overrides.lti_message_type ?? 'basic-lti-launch-request',
@@ -676,14 +676,14 @@ export function substituteCustomParams(
 
   if ('user' in contextOrUser && 'course' in contextOrUser) {
     // Context-based signature
-    const context = contextOrUser as SubstitutionContext;
+    const context = contextOrUser;
     user = context.user;
     courseData = context.course;
     resourceLinkId = context.resourceLinkId;
     resourceLinkTitle = context.resourceLinkTitle;
   } else {
     // Legacy 3-arg signature
-    user = contextOrUser as Partial<User>;
+    user = contextOrUser;
     courseData = course ?? {};
   }
 

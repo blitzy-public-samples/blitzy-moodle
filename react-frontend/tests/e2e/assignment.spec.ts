@@ -59,7 +59,7 @@ test.describe('Assignment Submission E2E Tests', () => {
   /**
    * Before each test: Initialize page object and navigate to fresh state
    */
-  // eslint-disable-next-line @typescript-eslint/require-await
+   
   test.beforeEach(async () => {
     assignmentPage = new AssignmentPage(page);
   });

@@ -466,11 +466,11 @@ describe('Feedback API Client', () => {
 
       // API wraps responses in a 'responses' property
       expect(requestBody).toEqual({ responses: validResponses });
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+       
       expect(requestBody.responses[1]).toBe('4');
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+       
       expect(requestBody.responses[2]).toBe('Great content and well-structured');
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+       
       expect(requestBody.responses[3]).toBe('Yes');
     });
 
@@ -1168,11 +1168,11 @@ describe('Feedback API Client', () => {
         expect(error).toBeDefined();
         // Error interceptor transforms errors into plain objects
         // with status, code, message, and details properties
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+         
         expect(error.status).toBeDefined();
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+         
         expect(error.code).toBeDefined();
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+         
         expect(error.message).toBeDefined();
       }
     });
@@ -1367,7 +1367,7 @@ describe('Feedback API Client', () => {
       expect(queryKey).toEqual(['feedback', 1]);
     });
 
-    // eslint-disable-next-line @typescript-eslint/require-await
+     
     it('should support staleTime and gcTime configurations', async () => {
       // These configurations would be in React Query hooks
       // React Query v5: renamed cacheTime to gcTime

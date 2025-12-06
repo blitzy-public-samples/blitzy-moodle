@@ -574,7 +574,7 @@ describe('Card Component', () => {
       await user.click(cardActionArea);
 
       expect(handleClick).toHaveBeenCalledWith(expect.any(Object));
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+       
       expect(handleClick.mock.calls?.[0]?.[0]).toHaveProperty('type');
     });
 

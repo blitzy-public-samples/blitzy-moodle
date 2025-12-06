@@ -384,7 +384,7 @@ async function fetchChoice(choiceId: number): Promise<Choice> {
       // Get data from either response object or direct property (serialized error)
       const data = axiosError.response?.data ?? axiosError.data;
       // Get customError if present (from interceptors)
-      const customError = axiosError.customError;
+      const {customError} = axiosError;
 
       if (status) {
         // Handle specific HTTP error statuses

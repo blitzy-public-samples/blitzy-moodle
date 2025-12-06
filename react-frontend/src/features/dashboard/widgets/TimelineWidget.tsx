@@ -60,8 +60,8 @@ import { useTimeline } from '@/features/dashboard/api/dashboardApi';
 import type {
   TimelineItem,
   TimelinePreferences,
-} from '@/features/dashboard/types/dashboard.types';
-import { TimelineFilter, TimelineSort, TimelineLimit } from '@/features/dashboard/types/dashboard.types';
+ TimelineLimit } from '@/features/dashboard/types/dashboard.types';
+import { TimelineFilter, TimelineSort } from '@/features/dashboard/types/dashboard.types';
 import useLocalStorage from '@/hooks/useLocalStorage';
 import { formatDate } from '@/utils/date';
 
@@ -565,7 +565,7 @@ const TimelineWidget: React.FC = () => {
    * Handle retry on error
    */
   const handleRetry = useCallback(() => {
-    refetch();
+    void refetch();
   }, [refetch]);
 
   /**
@@ -654,7 +654,7 @@ const TimelineWidget: React.FC = () => {
           <MenuItem
             key={value}
             onClick={() => handleSortChange(value as TimelineSort)}
-            selected={preferences.sort === value}
+            selected={preferences.sort === (value as TimelineSort)}
           >
             {label}
           </MenuItem>

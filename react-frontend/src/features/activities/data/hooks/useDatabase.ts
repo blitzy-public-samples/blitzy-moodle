@@ -19,7 +19,8 @@
  * @module features/activities/data/hooks/useDatabase
  */
 
-import { useQuery, UseQueryOptions, UseQueryResult } from '@tanstack/react-query';
+import type { UseQueryOptions, UseQueryResult } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 
 import { getDatabase, dataQueryKeys } from '@/features/activities/data/api/dataApi';
 import type { Database } from '@/features/activities/data/types/data.types';

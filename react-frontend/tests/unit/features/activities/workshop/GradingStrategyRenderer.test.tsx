@@ -908,7 +908,7 @@ describe('GradingStrategyRenderer', () => {
       });
     });
 
-    // eslint-disable-next-line @typescript-eslint/require-await
+     
     it('should map grade values correctly based on error presence', async () => {
       const workshop = createMockWorkshop({ strategy: 'numerrors' });
       const dimensions = createMockNumErrorsDimensions();

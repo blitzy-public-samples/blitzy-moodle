@@ -25,6 +25,7 @@ import { http, HttpResponse, delay } from 'msw';
 import { server } from '@tests/mocks/server';
 import { waitFor } from '@tests/helpers/asyncUtils';
 import { createTestQueryClient } from '@tests/helpers/render';
+import { QuestionType } from '@/features/activities/lesson/types/lesson.types';
 import {
   useLesson,
   useLessonAttempt,
@@ -2223,7 +2224,7 @@ describe('useLessonPages', () => {
     });
 
     // Check for branch page type
-    const branchPage = result.current.data?.pages.find(p => p.qtype === 20);
+    const branchPage = result.current.data?.pages.find(p => p.qtype === QuestionType.BRANCHTABLE);
     expect(branchPage).toBeDefined();
   });
 

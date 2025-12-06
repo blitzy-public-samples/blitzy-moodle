@@ -25,7 +25,8 @@
  * @module features/activities/workshop/components/AllocationManager
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import type React from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -450,7 +451,7 @@ function AllocationManager({
    * Load allocations on mount and when workshopId changes
    */
   useEffect(() => {
-    if (!workshopId || !canAllocate) return;
+    if (!workshopId || !canAllocate) {return;}
 
     const loadAllocations = async () => {
       setIsLoadingAllocations(true);
@@ -465,7 +466,7 @@ function AllocationManager({
       }
     };
 
-    loadAllocations();
+    void loadAllocations();
   }, [workshopId, canAllocate, showError]);
 
   // ============================================================================
@@ -487,8 +488,8 @@ function AllocationManager({
     }) => executeManualAllocation(workshopId, submissionId, reviewerId, action),
     onSuccess: (result, variables) => {
       // Refresh allocations
-      queryClient.invalidateQueries({ queryKey: ['workshops', workshopId] });
-      fetchAllocations(workshopId).then(setAllocations);
+      void queryClient.invalidateQueries({ queryKey: ['workshops', workshopId] });
+      void fetchAllocations(workshopId).then(setAllocations);
 
       // Update history for undo support
       if (variables.action === 'add') {
@@ -510,8 +511,8 @@ function AllocationManager({
   const randomAllocationMutation = useMutation({
     mutationFn: (config: RandomAllocationConfig) => executeRandomAllocation(workshopId, config),
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['workshops', workshopId] });
-      fetchAllocations(workshopId).then(setAllocations);
+      void queryClient.invalidateQueries({ queryKey: ['workshops', workshopId] });
+      void fetchAllocations(workshopId).then(setAllocations);
       showSuccess(`Random allocation completed: ${result.allocated} allocation(s) created`);
       onAllocationChange?.();
     },
@@ -651,10 +652,10 @@ function AllocationManager({
    * Handle undo operation
    */
   const handleUndo = useCallback(() => {
-    if (undoHistory.length === 0) return;
+    if (undoHistory.length === 0) {return;}
 
     const lastAction = undoHistory[undoHistory.length - 1];
-    if (!lastAction) return; // Type guard for TypeScript
+    if (!lastAction) {return;} // Type guard for TypeScript
 
     const newUndoHistory = undoHistory.slice(0, -1);
 
@@ -677,10 +678,10 @@ function AllocationManager({
    * Handle redo operation
    */
   const handleRedo = useCallback(() => {
-    if (redoHistory.length === 0) return;
+    if (redoHistory.length === 0) {return;}
 
     const lastAction = redoHistory[redoHistory.length - 1];
-    if (!lastAction) return; // Type guard for TypeScript
+    if (!lastAction) {return;} // Type guard for TypeScript
 
     const newRedoHistory = redoHistory.slice(0, -1);
 
@@ -1003,7 +1004,7 @@ function AllocationManager({
     };
 
     const formatDateForInput = (timestamp: number | null): string => {
-      if (!timestamp) return '';
+      if (!timestamp) {return '';}
       const date = new Date(timestamp * 1000);
       return date.toISOString().slice(0, 16); // Format: YYYY-MM-DDTHH:mm
     };

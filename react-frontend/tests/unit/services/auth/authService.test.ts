@@ -1101,8 +1101,8 @@ describe('AuthService', () => {
       it('should support token refresh flow: expired -> refresh -> continue', async () => {
         // Step 1: Token is expired
         (getItem as Mock).mockImplementation((key: string) => {
-          if (key === 'moodle_access_token') return VALID_ACCESS_TOKEN;
-          if (key === 'moodle_refresh_token') return VALID_REFRESH_TOKEN;
+          if (key === 'moodle_access_token') {return VALID_ACCESS_TOKEN;}
+          if (key === 'moodle_refresh_token') {return VALID_REFRESH_TOKEN;}
           return null;
         });
         (jwtDecode as Mock).mockReturnValueOnce(MOCK_EXPIRED_JWT_PAYLOAD) // First check for access token

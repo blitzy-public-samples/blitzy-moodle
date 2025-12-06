@@ -15,7 +15,8 @@
  * @module features/admin/courses/components/CourseManagement
  */
 
-import React, { useState, useCallback, useMemo } from 'react';
+import type React from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
   useQuery,
   useMutation,
@@ -31,6 +32,8 @@ import {
   type GridSortModel,
   type GridPaginationModel,
 } from '@mui/x-data-grid';
+import type {
+  SelectChangeEvent} from '@mui/material';
 import {
   Box,
   Button,
@@ -58,8 +61,7 @@ import {
   CircularProgress,
   FormControlLabel,
   RadioGroup,
-  Radio,
-  SelectChangeEvent,
+  Radio
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -156,6 +158,30 @@ const ADMIN_COURSES_QUERY_KEY = 'admin-courses-management';
 
 /** Query key for admin categories */
 const ADMIN_CATEGORIES_QUERY_KEY = 'admin-categories-management';
+
+/**
+ * No rows overlay component for DataGrid
+ * Extracted to prevent re-creation on every render
+ */
+const NoRowsOverlay = (): React.ReactElement => (
+  <Box
+    sx={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      height: '100%',
+      p: 3,
+    }}
+  >
+    <Typography variant="h6" color="text.secondary">
+      No courses found
+    </Typography>
+    <Typography variant="body2" color="text.secondary">
+      Try adjusting your search or filter criteria
+    </Typography>
+  </Box>
+);
 
 // ============================================================================
 // Component Implementation
@@ -326,7 +352,7 @@ const CourseManagement: React.FC<CourseManagementProps> = ({
   const deleteMutation = useMutation({
     mutationFn: (courseId: number) => deleteCourse(courseId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [ADMIN_COURSES_QUERY_KEY] });
+      void queryClient.invalidateQueries({ queryKey: [ADMIN_COURSES_QUERY_KEY] });
       toast.success('Course deleted successfully');
       handleCloseDeleteDialog();
     },
@@ -341,7 +367,7 @@ const CourseManagement: React.FC<CourseManagementProps> = ({
   const bulkDeleteMutation = useMutation({
     mutationFn: (courseIds: number[]) => bulkDeleteCourses(courseIds),
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: [ADMIN_COURSES_QUERY_KEY] });
+      void queryClient.invalidateQueries({ queryKey: [ADMIN_COURSES_QUERY_KEY] });
       handleBulkActionSuccess(result.data, 'deleted');
       handleCloseBulkDeleteDialog();
       setSelectedCourseIds([]);
@@ -358,7 +384,7 @@ const CourseManagement: React.FC<CourseManagementProps> = ({
     mutationFn: ({ courseIds, visible }: { courseIds: number[]; visible: boolean }) =>
       bulkUpdateCourses(courseIds, visible),
     onSuccess: (result, variables) => {
-      queryClient.invalidateQueries({ queryKey: [ADMIN_COURSES_QUERY_KEY] });
+      void queryClient.invalidateQueries({ queryKey: [ADMIN_COURSES_QUERY_KEY] });
       const action = variables.visible ? 'shown' : 'hidden';
       handleBulkActionSuccess(result.data, action);
       setSelectedCourseIds([]);
@@ -375,7 +401,7 @@ const CourseManagement: React.FC<CourseManagementProps> = ({
     mutationFn: ({ courseIds, categoryId }: { courseIds: number[]; categoryId: number }) =>
       bulkMoveCourses(courseIds, categoryId),
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: [ADMIN_COURSES_QUERY_KEY] });
+      void queryClient.invalidateQueries({ queryKey: [ADMIN_COURSES_QUERY_KEY] });
       handleBulkActionSuccess(result.data, 'moved');
       handleCloseMoveCategoryDialog();
       setSelectedCourseIds([]);
@@ -432,7 +458,7 @@ const CourseManagement: React.FC<CourseManagementProps> = ({
    * Handle category filter change
    */
   const handleCategoryChange = useCallback((event: SelectChangeEvent<number | ''>) => {
-    const value = event.target.value;
+    const {value} = event.target;
     setCategoryFilter(value === '' ? undefined : (value as number));
     setPaginationModel((prev) => ({ ...prev, page: 0 }));
   }, []);
@@ -565,7 +591,7 @@ const CourseManagement: React.FC<CourseManagementProps> = ({
   const handleConfirmMoveCategory = useCallback(() => {
     if (targetCategoryId !== '') {
       const courseIds = selectedCourseIds.map((id) => Number(id));
-      bulkMoveMutation.mutate({ courseIds, categoryId: targetCategoryId as number });
+      bulkMoveMutation.mutate({ courseIds, categoryId: targetCategoryId });
     }
   }, [selectedCourseIds, targetCategoryId, bulkMoveMutation]);
 
@@ -623,7 +649,7 @@ const CourseManagement: React.FC<CourseManagementProps> = ({
    * Handle refresh
    */
   const handleRefresh = useCallback(() => {
-    refetchCourses();
+    void refetchCourses();
   }, [refetchCourses]);
 
   /**
@@ -701,7 +727,7 @@ const CourseManagement: React.FC<CourseManagementProps> = ({
         headerName: 'Start Date',
         width: 120,
         valueFormatter: (params: GridValueFormatterParams<number>) => {
-          if (!params.value) return '-';
+          if (!params.value) {return '-';}
           return new Date(params.value * 1000).toLocaleDateString();
         },
       },
@@ -1024,25 +1050,7 @@ const CourseManagement: React.FC<CourseManagementProps> = ({
           aria-label="Course management table"
           getRowId={(row) => row.id}
           slots={{
-            noRowsOverlay: () => (
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  height: '100%',
-                  p: 3,
-                }}
-              >
-                <Typography variant="h6" color="text.secondary">
-                  No courses found
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Try adjusting your search or filter criteria
-                </Typography>
-              </Box>
-            ),
+            noRowsOverlay: NoRowsOverlay,
           }}
         />
       </Paper>

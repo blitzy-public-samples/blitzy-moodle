@@ -1584,7 +1584,7 @@ describe('useScormTracking Hook', () => {
     });
 
     it('should manage concurrent mutation calls with queue', async () => {
-      let callOrder: number[] = [];
+      const callOrder: number[] = [];
       let callCount = 0;
 
       mockSubmitTracking.mockImplementation(async () => {
@@ -1808,7 +1808,7 @@ describe('useScormTracking Hook', () => {
 
       for (let i = 0; i < interactionTypes.length; i++) {
         const typeValue = interactionTypes[i];
-        if (typeValue === undefined) continue;
+        if (typeValue === undefined) {continue;}
         
         const elements: ScormTrackingElement[] = [
           { element: `cmi.interactions.${i}.type`, value: typeValue },
@@ -2069,8 +2069,8 @@ describe('useScormTracking Hook', () => {
 
     it('should handle SCORM version string literals correctly', () => {
       // SCORM version string literals for formatSessionTime function
-      const scorm12Version: '1.2' = '1.2';
-      const scorm2004Version: '2004' = '2004';
+      const scorm12Version = '1.2' as const;
+      const scorm2004Version = '2004' as const;
 
       // validateCMIElement takes (element, value) and returns { isValid: boolean, ... }
       // Test SCORM 1.2 element with valid status

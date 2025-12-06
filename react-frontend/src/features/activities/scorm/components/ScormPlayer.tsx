@@ -371,13 +371,13 @@ function ScormPlayer({
 
   // Get sorted launchable SCOs for navigation
   const flatScoes = useMemo(() => {
-    if (!scoes) return [];
+    if (!scoes) {return [];}
     return getSortedLaunchableScoes(scoes);
   }, [scoes]);
 
   // Current SCO object
   const currentSco = useMemo(() => {
-    if (!scoes || currentScoId === null) return null;
+    if (!scoes || currentScoId === null) {return null;}
     return findScoById(scoes, currentScoId);
   }, [scoes, currentScoId]);
 
@@ -399,7 +399,7 @@ function ScormPlayer({
   // scorm.version is a string like "SCORM_1.2", "SCORM_2004", "scorm_13", etc.
   // Both SCORM 1.2 and 2004 APIs are registered on window; SCO content determines which to use
   const scormVersionEnum = useMemo(() => {
-    if (!scorm) return ScormVersion.SCORM_12;
+    if (!scorm) {return ScormVersion.SCORM_12;}
     const versionStr = scorm.version.toLowerCase();
     // SCORM 2004 (also known as SCORM 1.3 internally in Moodle)
     if (versionStr.includes('2004') || versionStr === 'scorm_13' || versionStr.includes('1.3')) {
@@ -427,19 +427,19 @@ function ScormPlayer({
 
   // Whether navigation controls should be shown
   const showNavigation = useMemo(() => {
-    if (!scorm) return true;
+    if (!scorm) {return true;}
     return scorm.nav !== ScormNavDisplay.DISABLED;
   }, [scorm]);
 
   // Whether TOC should be available
   const showToc = useMemo(() => {
-    if (!scorm) return true;
+    if (!scorm) {return true;}
     return scorm.hidetoc !== ScormTocDisplay.DISABLED;
   }, [scorm]);
 
   // Build iframe source URL
   const iframeSrc = useMemo(() => {
-    if (currentScoId === null) return '';
+    if (currentScoId === null) {return '';}
     return buildScoUrl(scormId, currentScoId, currentAttempt);
   }, [scormId, currentScoId, currentAttempt]);
 
@@ -989,17 +989,15 @@ function ScormPlayer({
    * Handle fullscreen toggle
    */
   const handleFullscreenToggle = useCallback(() => {
-    if (!playerContainerRef.current) return;
+    if (!playerContainerRef.current) {return;}
 
     if (!isFullscreen) {
       if (playerContainerRef.current.requestFullscreen) {
         void playerContainerRef.current.requestFullscreen();
       }
-    } else {
-      if (document.exitFullscreen) {
+    } else if (document.exitFullscreen) {
         void document.exitFullscreen();
       }
-    }
   }, [isFullscreen]);
 
   /**
@@ -1025,7 +1023,7 @@ function ScormPlayer({
    * Initialize SCORM API on window when component mounts
    */
   useEffect(() => {
-    if (apiInitializedRef.current) return;
+    if (apiInitializedRef.current) {return;}
     apiInitializedRef.current = true;
 
     // Create API objects based on SCORM version
@@ -1051,7 +1049,7 @@ function ScormPlayer({
    * Update SCORM APIs when callbacks change
    */
   useEffect(() => {
-    if (!apiInitializedRef.current) return;
+    if (!apiInitializedRef.current) {return;}
 
     // Update API objects with new callbacks
     const scorm12Api = createScorm12Api();

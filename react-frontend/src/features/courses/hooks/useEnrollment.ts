@@ -225,7 +225,7 @@ async function performOptimisticUpdate(
   // Optimistically update the course enrollment status
   if (previousCourse) {
     queryClient.setQueryData<Course>(QUERY_KEYS.course(courseId), (old) => {
-      if (!old) return old;
+      if (!old) {return old;}
       // TypeScript-safe way to update enrollment status
       // We use a type assertion here since enrollment info may be attached to the course
       return {
@@ -243,7 +243,7 @@ async function performOptimisticUpdate(
   } else if (!isEnrolling && previousUserCourses) {
     // For unenrollment, remove the course from user's list
     queryClient.setQueryData<Course[]>(QUERY_KEYS.myCourses, (old) => {
-      if (!old) return old;
+      if (!old) {return old;}
       return old.filter((course) => course.id !== courseId);
     });
   }
@@ -265,7 +265,7 @@ function rollbackOptimisticUpdate(
   queryClient: QueryClient,
   context: EnrollmentMutationContext | undefined
 ): void {
-  if (!context) return;
+  if (!context) {return;}
 
   // Restore previous course data
   if (context.previousCourse) {

@@ -1559,7 +1559,7 @@ describe('usePermissions - Edge Cases and Error Handling', () => {
 
   it('should handle missing capabilities property on user object', () => {
     const user = createStudentUser(5);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+     
     delete (user as any).capabilities;
     const wrapper = createWrapper(user, true);
     const { result } = renderHook(() => usePermissions(), { wrapper });

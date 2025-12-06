@@ -397,7 +397,7 @@ export function useSubmitAssignment(
     // Don't retry on validation errors (4xx status codes)
     retry: (failureCount, error) => {
       // Don't retry if we've already tried once or if it's a client error
-      if (failureCount >= 1) return false;
+      if (failureCount >= 1) {return false;}
       // Retry on network errors but not on client errors
       if (error.message.includes('Network') || error.message.includes('timeout')) {
         return true;
@@ -605,7 +605,7 @@ export function useSaveFeedback(
     onSettled: options?.onSettled,
     // Retry once for file upload failures (transient network issues)
     retry: (failureCount, error) => {
-      if (failureCount >= 1) return false;
+      if (failureCount >= 1) {return false;}
       // Retry on network errors
       if (error.message.includes('Network') || error.message.includes('timeout')) {
         return true;

@@ -447,7 +447,7 @@ describe('Interceptor Setup', () => {
     // At minimum, the auth interceptor should be attached
     // Note: handlers array may include null entries for ejected interceptors
     // Use type assertion to access internal handlers property (exists at runtime)
-    const requestInterceptors = apiClient.interceptors.request as unknown as { handlers: (unknown | null)[] };
+    const requestInterceptors = apiClient.interceptors.request as unknown as { handlers: unknown[] };
     const activeHandlers = requestInterceptors.handlers.filter(
       (h: unknown) => h !== null
     );
@@ -457,7 +457,7 @@ describe('Interceptor Setup', () => {
   it('should have at least one response interceptor handler', () => {
     // At minimum, the error handling interceptor should be attached
     // Use type assertion to access internal handlers property (exists at runtime)
-    const responseInterceptors = apiClient.interceptors.response as unknown as { handlers: (unknown | null)[] };
+    const responseInterceptors = apiClient.interceptors.response as unknown as { handlers: unknown[] };
     const activeHandlers = responseInterceptors.handlers.filter(
       (h: unknown) => h !== null
     );

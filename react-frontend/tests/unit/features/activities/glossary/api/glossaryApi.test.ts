@@ -613,7 +613,7 @@ describe('glossaryApi', () => {
 
       expect(result.attachment).toBe(true);
       expect(result.attachments).toHaveLength(1);
-      expect(result.attachments![0]!.filename).toBe('diagram.png');
+      expect(result.attachments[0]!.filename).toBe('diagram.png');
     });
 
     it('should return entry with category information', async () => {

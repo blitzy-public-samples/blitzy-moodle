@@ -348,7 +348,7 @@ export const ForumView: React.FC<ForumViewComponentProps> = ({ courseId, forumId
     // Navigate to the newly created discussion
     navigate(`/courses/${courseId}/forums/${forumId}/discussions/${discussionId}`);
     // Refetch forum data to update discussion count
-    refetch();
+    void refetch();
   };
 
   // ============================================================================

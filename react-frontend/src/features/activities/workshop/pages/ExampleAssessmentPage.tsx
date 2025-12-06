@@ -382,7 +382,7 @@ function adaptSubmissionForDisplay(
     authorid?: number;
   } | undefined | null
 ): AdaptedSubmission | null {
-  if (!submission) return null;
+  if (!submission) {return null;}
   
   return {
     id: submission.id,
@@ -423,7 +423,7 @@ function adaptWorkshopForComponents(
     nAttachments?: number;
   } | undefined | null
 ): AdaptedWorkshop | null {
-  if (!workshop) return null;
+  if (!workshop) {return null;}
   
   return {
     id: workshop.id,
@@ -465,7 +465,7 @@ function adaptAssessmentForForm(
     }>;
   } | undefined | null
 ): AdaptedAssessment | null {
-  if (!assessment) return null;
+  if (!assessment) {return null;}
   
   return {
     id: assessment.id,
@@ -507,7 +507,7 @@ function adaptComparisonData(
     overallPercentDifference?: number;
   } | undefined | null
 ): AdaptedComparisonData | null {
-  if (!comparison) return null;
+  if (!comparison) {return null;}
   
   return {
     dimensionDifferences: (comparison.dimensionDifferences ?? []).map((d) => ({
@@ -682,6 +682,35 @@ const ExampleAssessmentPage: React.FC = () => {
   }, [workshopData?.submissions, exampleIdNum]);
 
   // -------------------------------------------------------------------------
+  // Adapted Data for Components (computed unconditionally per Rules of Hooks)
+  // -------------------------------------------------------------------------
+  
+  const adaptedSubmission = React.useMemo(
+    () => adaptSubmissionForDisplay(exampleSubmission),
+    [exampleSubmission]
+  );
+  
+  const adaptedWorkshop = React.useMemo(
+    () => adaptWorkshopForComponents(workshop),
+    [workshop]
+  );
+  
+  const adaptedAssessment = React.useMemo(
+    () => adaptAssessmentForForm(existingAssessment),
+    [existingAssessment]
+  );
+  
+  const adaptedComparisonDataMemo = React.useMemo(
+    () => adaptComparisonData(comparisonData),
+    [comparisonData]
+  );
+  
+  const adaptedDimensions = React.useMemo(
+    () => createDefaultDimensions(),
+    []
+  );
+
+  // -------------------------------------------------------------------------
   // Effects
   // -------------------------------------------------------------------------
 
@@ -722,7 +751,7 @@ const ExampleAssessmentPage: React.FC = () => {
       // Transform dimensionGrades Record to dimensions array format
       const dimensions = Object.entries(data.dimensionGrades).map(([dimId, grade]) => ({
         dimensionid: parseInt(dimId, 10),
-        grade: grade,
+        grade,
       }));
 
       let assessmentResult;
@@ -879,35 +908,6 @@ const ExampleAssessmentPage: React.FC = () => {
   }
 
   // -------------------------------------------------------------------------
-  // Adapted Data for Components
-  // -------------------------------------------------------------------------
-  
-  const adaptedSubmission = React.useMemo(
-    () => adaptSubmissionForDisplay(exampleSubmission),
-    [exampleSubmission]
-  );
-  
-  const adaptedWorkshop = React.useMemo(
-    () => adaptWorkshopForComponents(workshop),
-    [workshop]
-  );
-  
-  const adaptedAssessment = React.useMemo(
-    () => adaptAssessmentForForm(existingAssessment),
-    [existingAssessment]
-  );
-  
-  const adaptedComparisonDataMemo = React.useMemo(
-    () => adaptComparisonData(comparisonData),
-    [comparisonData]
-  );
-  
-  const adaptedDimensions = React.useMemo(
-    () => createDefaultDimensions(),
-    []
-  );
-  
-  // -------------------------------------------------------------------------
   // Form Submit Handler Wrapper
   // -------------------------------------------------------------------------
   
@@ -979,7 +979,7 @@ const ExampleAssessmentPage: React.FC = () => {
               <SubmissionDisplay
                 submission={adaptedSubmission as Parameters<typeof SubmissionDisplay>[0]['submission']}
                 showAuthor={isTeacher}
-                isExample={true}
+                isExample
                 workshop={adaptedWorkshop as Parameters<typeof SubmissionDisplay>[0]['workshop']}
               />
             )}

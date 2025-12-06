@@ -53,9 +53,9 @@ import {
 } from '@mui/icons-material';
 
 // Internal imports from depends_on_files
-import type {
-  WorkshopAssessment,
+import {
   WorkshopPhase,
+  type WorkshopAssessment,
 } from '@/features/activities/workshop/types/workshop.types';
 import useWorkshop from '@/features/activities/workshop/hooks/useWorkshop';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -210,7 +210,7 @@ function getAssessmentStatus(
   workshopPhase: WorkshopPhase
 ): 'graded' | 'pending' | 'closed' {
   // If workshop is closed, all assessments are closed
-  if (workshopPhase >= 50) {
+  if (workshopPhase >= WorkshopPhase.CLOSED) {
     return 'closed';
   }
 
@@ -345,7 +345,7 @@ function AssessmentsList({
 
   // Check if assessment editing is allowed based on workshop phase
   const isEditingAllowed = useMemo(() => {
-    if (!currentPhase) return false;
+    if (!currentPhase) {return false;}
     return EDITABLE_PHASES.includes(currentPhase);
   }, [currentPhase]);
 
@@ -729,8 +729,8 @@ function AssessmentsList({
       {workshop && (
         <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
           <Chip
-            label={`Phase: ${workshop.phase === 30 ? 'Assessment' : workshop.phase === 50 ? 'Closed' : 'Other'}`}
-            color={workshop.phase === 30 ? 'primary' : 'default'}
+            label={`Phase: ${workshop.phase === WorkshopPhase.ASSESSMENT ? 'Assessment' : workshop.phase === WorkshopPhase.CLOSED ? 'Closed' : 'Other'}`}
+            color={workshop.phase === WorkshopPhase.ASSESSMENT ? 'primary' : 'default'}
             size="small"
           />
           {!isEditingAllowed && (

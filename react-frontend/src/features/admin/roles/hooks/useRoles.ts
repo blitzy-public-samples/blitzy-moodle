@@ -365,17 +365,17 @@ export function useRoles(): UseRolesReturn {
     },
     onSuccess: (_data, variables) => {
       // Invalidate roles list to refresh assignment counts
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: roleQueryKeys.all,
       });
 
       // Invalidate the user's roles query to reflect new assignment
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: roleQueryKeys.userRoles(variables.userId),
       });
 
       // Invalidate assignments for the context
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: roleQueryKeys.assignments(variables.contextId),
       });
     },
@@ -411,7 +411,7 @@ export function useRoles(): UseRolesReturn {
     }: RoleAssignmentParams): Promise<void> => {
       // First, get the role assignments in the context to find the matching assignment
       const assignmentsResponse = await getRoleAssignments(contextId, roleId);
-      const assignments = assignmentsResponse.data.assignments;
+      const {assignments} = assignmentsResponse.data;
 
       // Find the assignment matching the user
       const targetAssignment = assignments.find(
@@ -430,17 +430,17 @@ export function useRoles(): UseRolesReturn {
     },
     onSuccess: (_data, variables) => {
       // Invalidate roles list to refresh assignment counts
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: roleQueryKeys.all,
       });
 
       // Invalidate the user's roles query to reflect removed assignment
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: roleQueryKeys.userRoles(variables.userId),
       });
 
       // Invalidate assignments for the context
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: roleQueryKeys.assignments(variables.contextId),
       });
     },

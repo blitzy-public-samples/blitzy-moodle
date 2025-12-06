@@ -615,7 +615,7 @@ describe('useFileUpload', () => {
 
     // Verify onError was called with validation error
     expect(mockOnError).toHaveBeenCalledWith(expect.any(Error));
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+     
     expect(mockOnError.mock.calls[0][0].message).toContain('exceeds maximum allowed size');
   });
 

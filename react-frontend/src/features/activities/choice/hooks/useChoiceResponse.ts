@@ -293,7 +293,7 @@ function validateChoiceResponse(
     if (!choice.availability.isOpen && !choice.availability.isPreview) {
       throw new Error('This choice is not yet open for responses');
     }
-    const warnings = choice.availability.warnings;
+    const {warnings} = choice.availability;
     if (warnings.length > 0) {
       throw new Error(warnings[0]);
     }

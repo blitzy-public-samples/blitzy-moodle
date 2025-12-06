@@ -421,7 +421,7 @@ export function useCreateRecord(
 
       // Call user-provided error handler
       if (options?.onError) {
-        options.onError(error);
+        void options.onError(error);
       }
     },
 
@@ -438,7 +438,7 @@ export function useCreateRecord(
     onSettled: (): void => {
       // Call user-provided settled handler
       if (options?.onSettled) {
-        options.onSettled();
+        void options.onSettled();
       }
     },
   });
@@ -613,7 +613,7 @@ export function useUpdateRecord(
 
       // Call user-provided error handler
       if (options?.onError) {
-        options.onError(error);
+        void options.onError(error);
       }
     },
 
@@ -632,7 +632,7 @@ export function useUpdateRecord(
     onSettled: (): void => {
       // Call user-provided settled handler
       if (options?.onSettled) {
-        options.onSettled();
+        void options.onSettled();
       }
     },
   });
@@ -768,7 +768,7 @@ export function useDeleteRecord(
 
       // Call user-provided error handler
       if (options?.onError) {
-        options.onError(error);
+        void options.onError(error);
       }
     },
 
@@ -792,7 +792,7 @@ export function useDeleteRecord(
     onSettled: (): void => {
       // Call user-provided settled handler
       if (options?.onSettled) {
-        options.onSettled();
+        void options.onSettled();
       }
     },
   });
@@ -946,7 +946,7 @@ export function useApproveRecord(
 
       // Call user-provided error handler
       if (options?.onError) {
-        options.onError(error);
+        void options.onError(error);
       }
     },
 
@@ -965,7 +965,7 @@ export function useApproveRecord(
     onSettled: (): void => {
       // Call user-provided settled handler
       if (options?.onSettled) {
-        options.onSettled();
+        void options.onSettled();
       }
     },
   });

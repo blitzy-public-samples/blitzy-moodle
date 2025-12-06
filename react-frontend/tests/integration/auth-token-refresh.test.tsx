@@ -169,10 +169,10 @@ function createSuccessfulRefreshHandler(refreshDelay = 0) {
  * then succeeds with valid token after refresh
  */
 function createProtectedEndpointHandler() {
-  let requestCount = 0;
+  let _requestCount = 0;
 
   return http.get(`${API_BASE_URL}/protected/resource`, ({ request }) => {
-    requestCount++;
+    _requestCount++;
     const authHeader = request.headers.get('Authorization');
     
     // First request with expired token returns 401
@@ -572,7 +572,7 @@ describe('Auth Token Refresh Integration', () => {
     });
 
     it('should use new access token for subsequent requests', async () => {
-      let requestHeaders: Array<string | null> = [];
+      const requestHeaders: Array<string | null> = [];
 
       server.use(
         createSuccessfulRefreshHandler(),
@@ -635,12 +635,12 @@ describe('Auth Token Refresh Integration', () => {
       resetCallCount();
 
       // Track all protected endpoint requests
-      let protectedRequestCount = 0;
+      let _protectedRequestCount = 0;
 
       server.use(
         handler,
         http.get(`${API_BASE_URL}/protected/resource`, async ({ request }) => {
-          protectedRequestCount++;
+          _protectedRequestCount++;
           const authHeader = request.headers.get('Authorization');
           
           // Simulate some processing time

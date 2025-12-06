@@ -40,6 +40,7 @@ import type {
   UserListResponse,
   PaginationMeta,
   UserSortField,
+  UserFilterStatus,
 } from '../types/user-list.types';
 import { SortOrder } from '../types/user-list.types';
 
@@ -155,7 +156,7 @@ export interface UseUserManagementReturn {
   /** Set the role filter */
   setRole: (role: string | number | undefined) => void;
   /** Set the status filter */
-  setStatus: (status: import('../types/user-list.types').UserFilterStatus | undefined) => void;
+  setStatus: (status: UserFilterStatus | undefined) => void;
   /** Set the authentication method filter */
   setAuthMethod: (authMethod: string | undefined) => void;
   /** Set the confirmed status filter */
@@ -554,7 +555,7 @@ export function useUserManagement(
    * Useful for refresh buttons and after bulk operations
    */
   const refetch = useCallback((): void => {
-    queryRefetch();
+    void queryRefetch();
   }, [queryRefetch]);
 
   // ========================================

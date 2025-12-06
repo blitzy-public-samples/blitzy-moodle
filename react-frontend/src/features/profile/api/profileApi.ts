@@ -340,7 +340,7 @@ function handleApiError(error: unknown): never {
       message?: string;
     };
 
-    const status = interceptorError.status;
+    const {status} = interceptorError;
     
     // First, try to extract error details from API response data
     // This preserves specific error codes from the backend (e.g., 'SERVICE_UNAVAILABLE')

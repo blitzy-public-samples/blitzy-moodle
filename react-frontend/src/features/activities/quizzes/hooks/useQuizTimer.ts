@@ -403,7 +403,7 @@ function useQuizTimer(
     onError: (error: Error) => {
       // Log error but don't disrupt user experience
       // The quiz will continue to function, user can manually save
-      // eslint-disable-next-line no-console
+       
       console.error('[useQuizTimer] Auto-save failed:', error.message);
       // In production, this could also report to error tracking service
     },
@@ -453,7 +453,7 @@ function useQuizTimer(
    */
   const triggerAutoSave = useCallback(async (): Promise<void> => {
     if (!attemptId || !quizIdRef.current) {
-      // eslint-disable-next-line no-console
+       
       console.warn('[useQuizTimer] Cannot trigger auto-save: missing attemptId or quizId');
       return;
     }

@@ -91,9 +91,9 @@ function createMockEditorInstance(): MockEditorInstance {
 // Global mock editor instance for tests
 let mockEditorInstance: MockEditorInstance;
 // These are assigned during mock execution for potential use in tests
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 let _mockInitCallback: ((evt: unknown, editor: MockEditorInstance) => void) | null = null;
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 let _mockOnChangeCallback: ((content: string, editor: MockEditorInstance) => void) | null = null;
 let capturedInitConfig: Record<string, unknown> | null = null;
 

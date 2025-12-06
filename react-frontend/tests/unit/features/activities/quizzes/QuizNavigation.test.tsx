@@ -268,7 +268,7 @@ describe('QuizNavigation Component', () => {
       expect(mockOnQuestionClick).toHaveBeenNthCalledWith(3, 4);
     }, 15000); // Increased timeout to 15 seconds for multiple user interactions
 
-    // eslint-disable-next-line @typescript-eslint/require-await
+     
     it('should not call onQuestionClick for disabled buttons', async () => {
       const mockOnQuestionClick = vi.fn();
       const questions = createMockQuestions(10);

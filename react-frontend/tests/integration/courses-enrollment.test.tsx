@@ -890,13 +890,13 @@ describe('Course Enrollment Integration Tests', () => {
     it('should invalidate my-courses query after successful enrollment', async () => {
       const course = createUnenrolledCourse();
       const user = userEvent.setup();
-      let myCoursesQueryCount = 0;
+      let _myCoursesQueryCount = 0;
 
       server.use(
         createCourseHandler(course),
         createSuccessfulEnrollmentHandler(course.id),
         http.get('/api/v1/users/*/courses', async () => {
-          myCoursesQueryCount++;
+          _myCoursesQueryCount++;
           await delay(50);
           return HttpResponse.json({
             success: true,

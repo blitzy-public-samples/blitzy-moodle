@@ -181,7 +181,8 @@ function handleApiError(
   
   // First check for customError from interceptors (most specific)
   if (serializedError.customError) {
-    let { code, message, status, details } = serializedError.customError;
+    const { status, details } = serializedError.customError;
+    let { code, message } = serializedError.customError;
     
     // If the interceptor provided 'UNKNOWN_ERROR', check if we can provide a better code based on status
     if (code === 'UNKNOWN_ERROR' && status) {

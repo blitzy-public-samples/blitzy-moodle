@@ -1259,7 +1259,7 @@ describe('ResponseList Component', () => {
       expect(checkboxes.length).toBe(0);
     });
 
-    // eslint-disable-next-line @typescript-eslint/require-await
+     
     it('does not show bulk delete button when canDelete is false', async () => {
       renderWithProviders(
         <ResponseList

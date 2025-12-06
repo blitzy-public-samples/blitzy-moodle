@@ -33,7 +33,7 @@ import {
   ScormTocDisplay,
 } from '@/features/activities/scorm/types/scorm.types';
 
-/* eslint-disable @typescript-eslint/unbound-method */
+ 
 
 // Mock apiClient
 vi.mock('@/services/api/client');
@@ -1612,7 +1612,7 @@ describe('scormApi', () => {
   });
 
   describe('TypeScript interface validation', () => {
-    // eslint-disable-next-line @typescript-eslint/require-await
+     
     it('should validate Scorm interface structure', async () => {
       const mockScorm: Scorm = {
         id: 1,

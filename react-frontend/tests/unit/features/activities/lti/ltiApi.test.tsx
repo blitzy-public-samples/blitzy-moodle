@@ -92,7 +92,7 @@ const _LTI_ENDPOINTS = {
   TYPES: `${API_BASE_URL}/lti/types`,
   TYPE_CONFIG: (typeId: number) => `${API_BASE_URL}/lti/types/${typeId}/config`,
 } as const;
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 void _LTI_ENDPOINTS;
 
 // ============================================================================

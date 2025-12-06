@@ -250,7 +250,7 @@ describe('ScormReportCard - Loading and Error States', () => {
 
   it('should display info alert when no report data is available', async () => {
     // Mock API to return null (no data)
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+     
     vi.mocked(fetchAttemptReport).mockResolvedValue(null as any);
 
     renderWithQueryClient(
@@ -1024,7 +1024,7 @@ describe('ScormReportCard - SCO Progress Details', () => {
     expect(within(scoCard as HTMLElement).getByText('0h 10m 0s')).toBeInTheDocument();
   });
 
-  // eslint-disable-next-line @typescript-eslint/require-await
+   
   it('should not display SCO progress section when no SCO data exists', async () => {
     const mockReport = createMockReport({
       scoProgress: [],
@@ -1080,7 +1080,7 @@ describe('ScormReportCard - Detailed Report View', () => {
     expect(await screen.findByText(/result/i)).toBeInTheDocument();
   });
 
-  // eslint-disable-next-line @typescript-eslint/require-await
+   
   it('should not display interaction tracking when showDetailed is false', async () => {
     const mockReport = createMockReport({
       interactions: [

@@ -642,7 +642,7 @@ describe('useChoice Hook', () => {
 
       // Wait for completion
       await waitFor(() => {
-        if (!result.current) throw new Error('result.current is null');
+        if (!result.current) {throw new Error('result.current is null');}
         expect(result.current.isLoading).toBe(false);
       });
     });
@@ -777,7 +777,7 @@ describe('useChoice Hook', () => {
 
       // Wait for the new data to be reflected in state
       await waitFor(() => {
-        if (!result.current) throw new Error('result.current is null');
+        if (!result.current) {throw new Error('result.current is null');}
         // The updated name should appear after refetch completes
         expect(result.current.data?.name).toBe('Updated Choice Name');
       });
@@ -816,11 +816,11 @@ describe('useChoice Hook', () => {
 
       // Assert - isFetching should transition to true then back to false
       await waitFor(() => {
-        if (!result.current) throw new Error('result.current is null');
+        if (!result.current) {throw new Error('result.current is null');}
         expect(result.current.isFetching).toBe(true);
       });
       await waitFor(() => {
-        if (!result.current) throw new Error('result.current is null');
+        if (!result.current) {throw new Error('result.current is null');}
         expect(result.current.isFetching).toBe(false);
       });
     });
@@ -961,9 +961,9 @@ describe('useChoice Hook', () => {
       // Wait for the query to settle (use safeWaitForSuccess which handles null and loading)
       await waitFor(() => {
         rerender();
-        if (!result.current) throw new Error('result.current is null');
+        if (!result.current) {throw new Error('result.current is null');}
         // Wait until loading is complete
-        if (result.current.isLoading) throw new Error('Still loading');
+        if (result.current.isLoading) {throw new Error('Still loading');}
         return true;
       }, { timeout: 5000 });
 
@@ -1207,7 +1207,7 @@ describe('useChoice Hook', () => {
       // Wait for query to stabilize
       await waitFor(() => {
         expect(result.current).not.toBeNull();
-        expect(result.current!.isLoading).toBe(false);
+        expect(result.current.isLoading).toBe(false);
       });
 
       // Assert - Should not fetch
@@ -1224,7 +1224,7 @@ describe('useChoice Hook', () => {
       // Wait for query to stabilize
       await waitFor(() => {
         expect(result.current).not.toBeNull();
-        expect(result.current!.isLoading).toBe(false);
+        expect(result.current.isLoading).toBe(false);
       });
 
       // Assert - Should not fetch

@@ -168,9 +168,9 @@ function getDateGroup(eventTimestamp: number): DateGroup {
     return 'Tomorrow';
   } else if (eventDay < nextWeek) {
     return 'This Week';
-  } else {
+  } 
     return 'Later';
-  }
+  
 }
 
 /**
@@ -487,7 +487,7 @@ function UpcomingEventsWidget({
 
   // Memoize the date groups that have events
   const activeGroups = useMemo(() => {
-    if (!groupedEvents) return [];
+    if (!groupedEvents) {return [];}
 
     const groups: DateGroup[] = ['Today', 'Tomorrow', 'This Week', 'Later'];
     return groups.filter((group) => groupedEvents[group].length > 0);
@@ -495,7 +495,7 @@ function UpcomingEventsWidget({
 
   // Handle retry callback
   const handleRetry = useCallback(() => {
-    refetch();
+    void refetch();
   }, [refetch]);
 
   // Handle "View all" click
@@ -505,13 +505,13 @@ function UpcomingEventsWidget({
 
   // Check if there are more events to show
   const hasMoreEvents = useMemo(() => {
-    if (!eventsData?.events) return false;
+    if (!eventsData?.events) {return false;}
     return eventsData.events.length > maxEvents && !showAll;
   }, [eventsData?.events, maxEvents, showAll]);
 
   // Calculate total visible events
   const visibleEventCount = useMemo(() => {
-    if (!eventsData?.events) return 0;
+    if (!eventsData?.events) {return 0;}
     return showAll
       ? eventsData.events.length
       : Math.min(eventsData.events.length, maxEvents);

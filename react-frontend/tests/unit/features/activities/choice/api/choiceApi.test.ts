@@ -751,7 +751,7 @@ describe('choiceApi', () => {
         const result = await getResponseData(1);
 
         expect(result.responses[0]!.selectedOptions).toHaveLength(2);
-        expect(result.responses[0]!.selectedOptions![0]!.text).toBe('Option A');
+        expect(result.responses[0]!.selectedOptions[0]!.text).toBe('Option A');
       });
 
       it('should include group memberships for each user', async () => {
@@ -775,7 +775,7 @@ describe('choiceApi', () => {
         const result = await getResponseData(1);
 
         expect(result.responses[0]!.groups).toHaveLength(2);
-        expect(result.responses[0]!.groups![0]!.name).toBe('Group A');
+        expect(result.responses[0]!.groups[0]!.name).toBe('Group A');
       });
     });
   });
@@ -1498,7 +1498,7 @@ describe('choiceApi', () => {
       const result = await getResponseData(1, { groupId: 5 });
 
       expect(result.groupId).toBe(5);
-      expect(result.responses[0]!.groups![0]!.id).toBe(5);
+      expect(result.responses[0]!.groups[0]!.id).toBe(5);
     });
 
     it('should return all groups when groupId is 0', async () => {

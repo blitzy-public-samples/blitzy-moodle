@@ -21,7 +21,8 @@
  * @see public/mod/feedback/classes/complete_form.php - PHP form implementation
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import type React from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useForm, Controller, type FieldValues } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -49,7 +50,7 @@ import {
 } from '@mui/icons-material';
 
 import { QuestionRenderer } from './QuestionRenderer';
-import type { FeedbackItem, FeedbackItemPresentation, FeedbackResponse } from '../types';
+import { FeedbackQuestionType, type FeedbackItem, type FeedbackItemPresentation, type FeedbackResponse } from '../types';
 import { submitFeedbackResponse, saveProgress, type FeedbackResponses } from '../api/feedbackApi';
 import { useToast } from '@/hooks/useToast';
 import { Alert } from '@/components/feedback/Alert';
@@ -162,15 +163,15 @@ function parsePresentation(item: FeedbackItem): FeedbackItemPresentation {
 
   try {
     switch (item.typ) {
-      case 'multichoice':
-      case 'multichoicerated': {
+      case FeedbackQuestionType.MULTICHOICE:
+      case FeedbackQuestionType.MULTICHOICERATED: {
         // Format: "r>>>>>option1|option2|option3" or "c>>>>>option1|option2"
         // r = radio, c = checkbox, d = dropdown
         const parts = item.presentation.split('>>>>>');
         const subtype = (parts[0] || 'r') as 'r' | 'c' | 'd';
         const optionsPart = parts[1] || '';
 
-        if (item.typ === 'multichoicerated') {
+        if (item.typ === FeedbackQuestionType.MULTICHOICERATED) {
           // Rated options have format: "value####text"
           const options = optionsPart.split('|').map(opt => {
             const [valuePart, textPart] = opt.split('####');
@@ -201,7 +202,7 @@ function parsePresentation(item: FeedbackItem): FeedbackItemPresentation {
         };
       }
 
-      case 'numeric': {
+      case FeedbackQuestionType.NUMERIC: {
         // Format: "min|max" or just accept any number
         const numericParts = item.presentation.split('|').map(Number);
         const rangeFromVal = numericParts[0];
@@ -215,8 +216,8 @@ function parsePresentation(item: FeedbackItem): FeedbackItemPresentation {
         };
       }
 
-      case 'textfield':
-      case 'textarea': {
+      case FeedbackQuestionType.TEXTFIELD:
+      case FeedbackQuestionType.TEXTAREA: {
         // Format: "width" or "width|maxlength" for textfield
         // Format: "width|height" for textarea
         const textParts = item.presentation.split('|').map(Number);
@@ -226,15 +227,15 @@ function parsePresentation(item: FeedbackItem): FeedbackItemPresentation {
           ...basePresentation,
           text: {
             width: widthVal !== undefined && !isNaN(widthVal) ? widthVal : 50,
-            ...(item.typ === 'textarea'
+            ...(item.typ === FeedbackQuestionType.TEXTAREA
               ? { rows: heightOrMaxVal !== undefined && !isNaN(heightOrMaxVal) ? heightOrMaxVal : 5 }
               : { maxLength: heightOrMaxVal }),
           },
         };
       }
 
-      case 'info':
-      case 'label': {
+      case FeedbackQuestionType.INFO:
+      case FeedbackQuestionType.LABEL: {
         return {
           ...basePresentation,
           info: {
@@ -263,7 +264,7 @@ function groupItemsByPages(items: FeedbackItem[]): PageData[] {
   let pageIndex = 0;
 
   for (const item of items) {
-    if (item.typ === 'pagebreak') {
+    if (item.typ === FeedbackQuestionType.PAGEBREAK) {
       // Start a new page when encountering a pagebreak
       if (currentPage.length > 0) {
         pages.push({
@@ -299,7 +300,7 @@ function groupItemsByPages(items: FeedbackItem[]): PageData[] {
     pages.push({
       pageIndex: 0,
       items: items
-        .filter(item => item.typ !== 'pagebreak')
+        .filter(item => item.typ !== FeedbackQuestionType.PAGEBREAK)
         .map(item => ({
           ...item,
           presentation: parsePresentation(item),
@@ -326,7 +327,7 @@ function createValidationSchema(
 
   for (const item of items) {
     // Skip non-value items (labels, info, pagebreaks)
-    if (!item.hasvalue || item.typ === 'info' || item.typ === 'label' || item.typ === 'pagebreak') {
+    if (!item.hasvalue || item.typ === FeedbackQuestionType.INFO || item.typ === FeedbackQuestionType.LABEL || item.typ === FeedbackQuestionType.PAGEBREAK) {
       continue;
     }
 
@@ -334,7 +335,7 @@ function createValidationSchema(
     const isRequired = item.required === 1;
 
     switch (item.typ) {
-      case 'numeric': {
+      case FeedbackQuestionType.NUMERIC: {
         const numericPresentation = item.presentation.numeric;
         let numericSchema = z.coerce.number();
 
@@ -356,7 +357,7 @@ function createValidationSchema(
         break;
       }
 
-      case 'multichoice': {
+      case FeedbackQuestionType.MULTICHOICE: {
         const multichoicePresentation = item.presentation.multichoice;
         if (multichoicePresentation?.subtype === 'c') {
           // Checkbox - array of strings
@@ -372,15 +373,15 @@ function createValidationSchema(
         break;
       }
 
-      case 'multichoicerated': {
+      case FeedbackQuestionType.MULTICHOICERATED: {
         schemaFields[fieldKey] = isRequired
           ? z.string().min(1, 'Please select an option')
           : z.string().optional();
         break;
       }
 
-      case 'textarea':
-      case 'textfield':
+      case FeedbackQuestionType.TEXTAREA:
+      case FeedbackQuestionType.TEXTFIELD:
       default: {
         const textPresentation = item.presentation.text;
         let textSchema = z.string();
@@ -467,7 +468,7 @@ export function FeedbackForm({
   const [pageState, setPageState] = useState<PageState>({
     currentPage: Math.min(resumePage, pages.length - 1),
     totalPages: pages.length,
-    validatedPages: new Array(pages.length).fill(false),
+    validatedPages: new Array(pages.length).fill(false) as boolean[],
     isReviewPage: false,
   });
 
@@ -490,7 +491,7 @@ export function FeedbackForm({
     
     // Initialize all fields with empty/default values
     for (const item of allItems) {
-      if (!item.hasvalue || item.typ === 'info' || item.typ === 'label') {
+      if (!item.hasvalue || item.typ === FeedbackQuestionType.INFO || item.typ === FeedbackQuestionType.LABEL) {
         continue;
       }
       
@@ -546,14 +547,14 @@ export function FeedbackForm({
   const validateCurrentPage = useCallback(async (): Promise<boolean> => {
     const currentPageItems = pages[pageState.currentPage]?.items || [];
     const fieldsToValidate = currentPageItems
-      .filter(item => item.hasvalue && item.typ !== 'info' && item.typ !== 'label')
+      .filter(item => item.hasvalue && item.typ !== FeedbackQuestionType.INFO && item.typ !== FeedbackQuestionType.LABEL)
       .map(item => `item_${item.id}`);
 
     if (fieldsToValidate.length === 0) {
       return true;
     }
 
-    const isValid = await trigger(fieldsToValidate as (keyof FieldValues)[]);
+    const isValid = await trigger(fieldsToValidate);
     return isValid;
   }, [pages, pageState.currentPage, trigger]);
 
@@ -603,7 +604,7 @@ export function FeedbackForm({
           currentPage: prev.currentPage + 1,
           validatedPages: newValidatedPages,
         };
-      } else {
+      } 
         // Go to review page
         announce('All pages completed. Please review your answers before submitting.');
         return {
@@ -611,7 +612,7 @@ export function FeedbackForm({
           validatedPages: newValidatedPages,
           isReviewPage: true,
         };
-      }
+      
     });
 
     setSubmitError(null);
@@ -633,7 +634,7 @@ export function FeedbackForm({
         if (key.startsWith('item_')) {
           const itemId = parseInt(key.replace('item_', ''), 10);
           if (!isNaN(itemId) && value !== undefined && value !== '') {
-            responses[itemId] = value as string | number | string[];
+            responses[itemId] = value;
           }
         }
       }
@@ -744,7 +745,7 @@ export function FeedbackForm({
    */
   const handleRetrySubmit = useCallback(() => {
     setSubmitError(null);
-    handleSubmit(handleFormSubmit)();
+    void handleSubmit(handleFormSubmit)();
   }, [handleSubmit, handleFormSubmit]);
 
   // ============================================================================
@@ -758,7 +759,7 @@ export function FeedbackForm({
     }
 
     const autosaveTimer = setInterval(() => {
-      handleSaveDraft();
+      void handleSaveDraft();
     }, AUTOSAVE_INTERVAL);
 
     return () => clearInterval(autosaveTimer);
@@ -769,7 +770,7 @@ export function FeedbackForm({
     setPageState(prev => ({
       ...prev,
       totalPages: pages.length,
-      validatedPages: new Array(pages.length).fill(false),
+      validatedPages: new Array(pages.length).fill(false) as boolean[],
     }));
   }, [pages.length]);
 
@@ -782,8 +783,8 @@ export function FeedbackForm({
    */
   const renderQuestion = (item: ParsedFeedbackItem): React.ReactNode => {
     // Skip non-value items
-    if (!item.hasvalue || item.typ === 'pagebreak') {
-      if (item.typ === 'info' || item.typ === 'label') {
+    if (!item.hasvalue || item.typ === FeedbackQuestionType.PAGEBREAK) {
+      if (item.typ === FeedbackQuestionType.INFO || item.typ === FeedbackQuestionType.LABEL) {
         return (
           <Box key={item.id} sx={{ mb: 2 }}>
             <Typography
@@ -799,7 +800,7 @@ export function FeedbackForm({
     }
 
     const fieldKey = `item_${item.id}`;
-    const fieldError = errors[fieldKey]?.message as string | undefined;
+    const fieldError = errors[fieldKey]?.message;
     const isTouched = !!touchedFields[fieldKey];
 
     return (
@@ -873,7 +874,7 @@ export function FeedbackForm({
                 <Divider sx={{ mb: 2 }} />
                 
                 {page.items
-                  .filter(item => item.hasvalue && item.typ !== 'info' && item.typ !== 'label')
+                  .filter(item => item.hasvalue && item.typ !== FeedbackQuestionType.INFO && item.typ !== FeedbackQuestionType.LABEL)
                   .map(item => {
                     const fieldKey = `item_${item.id}`;
                     const value = values[fieldKey];

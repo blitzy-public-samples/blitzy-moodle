@@ -2,7 +2,7 @@ import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import useLocalStorage from '@/hooks/useLocalStorage';
 
-/* eslint-disable @typescript-eslint/unbound-method */
+ 
 
 /**
  * Comprehensive test suite for the useLocalStorage custom hook.

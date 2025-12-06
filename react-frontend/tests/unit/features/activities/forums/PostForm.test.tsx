@@ -14,8 +14,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
+ 
+ 
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, within, fireEvent, act, cleanup } from '@testing-library/react';
@@ -374,7 +374,7 @@ describe('PostForm Component', () => {
       expect(messageInput).toHaveAttribute('aria-label', 'Message body');
     });
 
-    // eslint-disable-next-line @typescript-eslint/require-await
+     
     it('handles rich text content changes', async () => {
       renderComponent();
 
@@ -385,7 +385,7 @@ describe('PostForm Component', () => {
       expect(messageInput).toHaveValue('Formatted content');
     });
 
-    // eslint-disable-next-line @typescript-eslint/require-await
+     
     it('preserves HTML formatting in message', async () => {
       const existingPost = createMockPost({
         id: 10,
@@ -445,7 +445,7 @@ describe('PostForm Component', () => {
       });
     });
 
-    // eslint-disable-next-line @typescript-eslint/require-await
+     
     it('displays uploaded files with preview', async () => {
       vi.mocked(useMultiFileUpload).mockReturnValue({
         files: [
@@ -488,7 +488,7 @@ describe('PostForm Component', () => {
       expect(mockRemoveFile).toHaveBeenCalledWith('1');
     });
 
-    // eslint-disable-next-line @typescript-eslint/require-await
+     
     it('validates file type restrictions', async () => {
       const invalidFile = new File(['content'], 'test.exe', { type: 'application/x-msdownload' });
       
@@ -512,7 +512,7 @@ describe('PostForm Component', () => {
       expect(screen.getByText(/file type not allowed/i)).toBeInTheDocument();
     });
 
-    // eslint-disable-next-line @typescript-eslint/require-await
+     
     it('validates file size limit', async () => {
       const largeFile = new File(['x'.repeat(11 * 1024 * 1024)], 'large.pdf', { type: 'application/pdf' });
       Object.defineProperty(largeFile, 'size', { value: 11 * 1024 * 1024 });
@@ -794,7 +794,7 @@ describe('PostForm Component', () => {
       });
     });
 
-    // eslint-disable-next-line @typescript-eslint/require-await
+     
     it('shows loading state during submission', async () => {
       vi.mocked(useCreatePost).mockReturnValue({
         createPost: mockCreatePost,
@@ -810,7 +810,7 @@ describe('PostForm Component', () => {
       // Component shows loading via button text change to "Posting..." and disabled state, not a progressbar
     });
 
-    // eslint-disable-next-line @typescript-eslint/require-await
+     
     it('disables form fields during submission', async () => {
       vi.mocked(useCreatePost).mockReturnValue({
         createPost: mockCreatePost,
@@ -1023,7 +1023,7 @@ describe('PostForm Component', () => {
       });
     });
 
-    // eslint-disable-next-line @typescript-eslint/require-await
+     
     it('handles concurrent edit detection', async () => {
       const existingPost = createMockPost({
         id: 10,
@@ -1441,7 +1441,7 @@ describe('PostForm Component', () => {
   });
 
   describe('Edge Cases', () => {
-    // eslint-disable-next-line @typescript-eslint/require-await
+     
     it('handles network timeout during submission', async () => {
       const timeoutError = new Error('Request timeout');
       timeoutError.name = 'TimeoutError';
@@ -1459,7 +1459,7 @@ describe('PostForm Component', () => {
       expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
     });
 
-    // eslint-disable-next-line @typescript-eslint/require-await
+     
     it('handles server validation errors', async () => {
       const validationError = {
         message: 'Validation failed',

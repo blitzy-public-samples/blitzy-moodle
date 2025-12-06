@@ -55,7 +55,7 @@ export const LESSON_JUMP_CONSTANTS = {
  * Lesson end of lesson constant
  * Exported for convenience, same as LESSON_JUMP_CONSTANTS.LESSON_EOL
  */
-export const LESSON_EOL = LESSON_JUMP_CONSTANTS.LESSON_EOL;
+export const {LESSON_EOL} = LESSON_JUMP_CONSTANTS;
 
 // ============================================================================
 // TypeScript Interfaces
@@ -339,7 +339,7 @@ export function useLessonProgress(
 
     // Set up countdown interval (every second)
     timerIntervalRef.current = setInterval(() => {
-      if (!isMountedRef.current) return;
+      if (!isMountedRef.current) {return;}
 
       setProgressState((prev) => {
         if (prev.timeRemaining === null || prev.timeRemaining <= 0) {
@@ -373,7 +373,7 @@ export function useLessonProgress(
       !progressState.isCompleted
     ) {
       // Timer has expired - trigger expiration handler
-      handleTimerExpiration();
+      void handleTimerExpiration();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [progressState.timeRemaining, progressState.isTimerActive, progressState.isCompleted]);
@@ -428,11 +428,11 @@ export function useLessonProgress(
     },
     onSuccess: () => {
       // Invalidate lesson progress queries to refresh data
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: lessonProgressQueryKeys.lesson(lessonId),
       });
       // Also invalidate main lesson queries
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ['lessons', lessonId],
       });
     },
@@ -535,10 +535,10 @@ export function useLessonProgress(
     },
     onSuccess: () => {
       // Invalidate queries after timer expiration
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: lessonProgressQueryKeys.lesson(lessonId),
       });
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ['lessons', lessonId],
       });
     },
@@ -564,7 +564,7 @@ export function useLessonProgress(
       }));
 
       // Invalidate page-specific queries to refresh content
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ['lessons', lessonId, 'pages', pageId],
       });
     },

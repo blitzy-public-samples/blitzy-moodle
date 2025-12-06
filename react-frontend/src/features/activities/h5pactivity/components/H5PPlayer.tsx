@@ -31,7 +31,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import type React from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Box,
   IconButton,
@@ -449,7 +450,9 @@ function H5PPlayer({
       let messageData: H5PPostMessageData;
       try {
         messageData =
-          typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+          typeof event.data === 'string' 
+            ? (JSON.parse(event.data) as H5PPostMessageData) 
+            : (event.data as H5PPostMessageData);
       } catch {
         // Not a JSON message, ignore
         return;

@@ -552,7 +552,7 @@ describe('DiscussionThread', () => {
   });
 
   describe('Expand/Collapse Controls', () => {
-    // eslint-disable-next-line @typescript-eslint/require-await
+     
     it('should provide expand/collapse button for deeply nested threads', async () => {
       const flatPosts = [
         createMockPost({ id: 1 }),
@@ -1320,7 +1320,7 @@ describe('DiscussionThread', () => {
       expect(screen.getByTestId('loading-skeleton')).toBeInTheDocument();
     });
 
-    // eslint-disable-next-line @typescript-eslint/require-await
+     
     it('should hide loading skeleton after data loads', async () => {
       const discussion = createMockDiscussion();
       mockUseDiscussion.mockReturnValue(createMockUseDiscussionReturn({
@@ -1583,7 +1583,7 @@ describe('DiscussionThread', () => {
       // In real implementation, optimistic update would show the reply immediately
     });
 
-    // eslint-disable-next-line @typescript-eslint/require-await
+     
     it('should rollback optimistic update on creation failure', async () => {
       const createReply = vi.fn().mockRejectedValue(new Error('Failed to create reply'));
       const discussion = createMockDiscussion();

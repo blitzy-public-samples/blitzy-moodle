@@ -20,8 +20,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+ 
+ 
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
@@ -34,7 +34,7 @@ import useH5PAttempts, {
   type UserAttempts,
 } from '@/features/activities/h5pactivity/hooks/useH5PAttempts';
 
-/* eslint-disable @typescript-eslint/unbound-method */
+ 
 
 // Mock the API client module
 vi.mock('@/services/api/client', () => ({
@@ -158,7 +158,7 @@ const mockH5PAttemptsResponse = mockApiResponseUserAttempts;
 const mockH5PAttemptsData = mockApiResponseUserAttempts.data;
 
 // Create a reference to the mocked API client for easier access in tests
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+ 
 const mockApiClient = apiClient as any;
 
 // ============================================================================

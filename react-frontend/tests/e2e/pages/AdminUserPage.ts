@@ -504,7 +504,7 @@ export class AdminUserPage {
    * @param cohortId - ID of the cohort to assign
    * NOTE: Cohort assignment is not yet implemented in the React component
    */
-  // eslint-disable-next-line @typescript-eslint/require-await
+   
   async bulkAssignCohort(_cohortId: string): Promise<void> {
     throw new Error('Cohort assignment is not yet implemented in the React component');
   }

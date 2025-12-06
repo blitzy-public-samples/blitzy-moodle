@@ -24,7 +24,8 @@
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import React, { useEffect, useMemo } from 'react';
+import type React from 'react';
+import { useEffect, useMemo } from 'react';
 import { Box, Typography, Skeleton, Alert, Chip } from '@mui/material';
 import {
   PlayCircleOutline as RunningIcon,
@@ -204,14 +205,12 @@ function SessionStartTime({
 }: {
   startedAt: number | null | undefined;
 }): React.ReactElement | null {
-  // Don't render if no start time provided
-  if (!startedAt) {
-    return null;
-  }
-
-  // Format the start time for display
+  // Format the start time for display - must be called before any early returns
   // The API returns timestamps in seconds, convert to milliseconds for formatTime
   const formattedTime = useMemo(() => {
+    if (!startedAt) {
+      return null;
+    }
     try {
       // Assume timestamp could be in seconds (Unix) or milliseconds
       // If the number is less than 10 digits, it's likely seconds
@@ -221,6 +220,11 @@ function SessionStartTime({
       return 'Unknown';
     }
   }, [startedAt]);
+
+  // Don't render if no start time provided
+  if (!formattedTime) {
+    return null;
+  }
 
   return (
     <Box sx={STATUS_ROW_SX} data-testid="bbb-session-start-time">
@@ -439,7 +443,7 @@ export function BBBRoomStatus({
 
   // Show error message if fetch failed
   if (isError && error) {
-    return <RoomStatusError error={error as Error} />;
+    return <RoomStatusError error={error} />;
   }
 
   // Don't render anything if no status data available
@@ -470,12 +474,10 @@ export function BBBRoomStatus({
       >
         <RunningStatusChip isRunning={isRunning} />
         {isRunning && (
-          <>
-            <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="text.secondary">
               {moderatorCount} {moderatorPlural ? 'moderators' : 'moderator'} •{' '}
               {participantCount} {participantPlural ? 'viewers' : 'viewer'}
             </Typography>
-          </>
         )}
       </Box>
     );

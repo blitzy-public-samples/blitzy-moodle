@@ -33,7 +33,7 @@ import type {
 } from '@/features/activities/forums/types/forum.types';
 import { ForumType } from '@/features/activities/forums/types/forum.types';
 
-/* eslint-disable @typescript-eslint/unbound-method */
+ 
 
 // Mock API base URL
 const API_BASE_URL = 'http://localhost:8000/api/v1';
@@ -1596,7 +1596,7 @@ describe('forumApi', () => {
       try {
         await forumApi.getForum(404);
       } catch (error: any) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+         
         expect(error.message).toBeDefined();
       }
     });
@@ -1610,7 +1610,7 @@ describe('forumApi', () => {
       expect(result).toBeDefined();
     });
 
-    // eslint-disable-next-line @typescript-eslint/require-await
+     
     it('should support request cancellation', async () => {
       const controller = new AbortController();
       

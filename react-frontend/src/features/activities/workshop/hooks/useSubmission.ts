@@ -634,11 +634,11 @@ export function useCreateSubmission(
     },
     onSuccess: (data, { workshopId }) => {
       // Invalidate workshop query to refresh submissions list
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: [WORKSHOP_QUERY_KEY, workshopId],
       });
       // Invalidate submissions queries
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: [WORKSHOP_SUBMISSIONS_QUERY_KEY, workshopId],
       });
       // Set the new submission in cache
@@ -653,10 +653,10 @@ export function useCreateSubmission(
     },
     onError: (_error, { workshopId }) => {
       // On error, refetch to ensure cache is accurate
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: [WORKSHOP_QUERY_KEY, workshopId],
       });
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: [WORKSHOP_SUBMISSIONS_QUERY_KEY, workshopId],
       });
     },
@@ -749,7 +749,7 @@ export function useUpdateSubmission(
         data
       );
       // Invalidate workshop to refresh any aggregated data
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: [WORKSHOP_QUERY_KEY, data.workshopid],
       });
     },
@@ -840,10 +840,10 @@ export function useDeleteSubmission(
     },
     onSuccess: (_, { workshopId }) => {
       // Invalidate all related queries
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: [WORKSHOP_QUERY_KEY, workshopId],
       });
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: [WORKSHOP_SUBMISSIONS_QUERY_KEY, workshopId],
       });
     },
@@ -860,7 +860,7 @@ export function useDeleteSubmission(
         );
       }
       // Refetch to ensure consistency
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: [WORKSHOP_QUERY_KEY, workshopId],
       });
     },
@@ -951,11 +951,11 @@ export function usePublishSubmission(
         data
       );
       // Invalidate workshop to refresh aggregate data
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: [WORKSHOP_QUERY_KEY, workshopId],
       });
       // Invalidate submissions list
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: [WORKSHOP_SUBMISSIONS_QUERY_KEY, workshopId],
       });
     },

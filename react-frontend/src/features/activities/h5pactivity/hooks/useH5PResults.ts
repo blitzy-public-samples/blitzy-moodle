@@ -551,17 +551,17 @@ export function useH5PResults(
   };
 
   const getAverageScore = (): number | null => {
-    if (attempts.length === 0) return null;
+    if (attempts.length === 0) {return null;}
 
     const validAttempts = attempts.filter(a => a.maxscore > 0);
-    if (validAttempts.length === 0) return null;
+    if (validAttempts.length === 0) {return null;}
 
     const totalScaled = validAttempts.reduce((sum, a) => sum + (a.scaled || 0), 0);
     return totalScaled / validAttempts.length;
   };
 
   const getHighestScoringAttempt = (): H5PAttemptWithResults | undefined => {
-    if (attempts.length === 0) return undefined;
+    if (attempts.length === 0) {return undefined;}
 
     // Use first attempt as initial value (safe since we checked length > 0)
     const firstAttempt = attempts[0]!;
@@ -573,7 +573,7 @@ export function useH5PResults(
   };
 
   const getMostRecentAttempt = (): H5PAttemptWithResults | undefined => {
-    if (attempts.length === 0) return undefined;
+    if (attempts.length === 0) {return undefined;}
 
     // Use first attempt as initial value (safe since we checked length > 0)
     const firstAttempt = attempts[0]!;
@@ -789,7 +789,7 @@ export function useH5PAttemptResults(
   });
 
   // Extract data with fallbacks
-  const data = queryResult.data;
+  const {data} = queryResult;
   const results: H5PResult[] = data?.results ?? [];
 
   // Compute score object

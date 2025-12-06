@@ -203,7 +203,7 @@ const ProgressTracker: React.FC<ProgressTrackerProps> = ({
       return [];
     }
 
-    const pages = pagesData.pages;
+    const {pages} = pagesData;
     const pageMap = new Map<number, LessonPage>();
     const childMap = new Map<number, number[]>();
 

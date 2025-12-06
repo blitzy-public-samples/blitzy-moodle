@@ -19,8 +19,10 @@
  * @module features/activities/data/hooks/useRecord
  */
 
-import { useQuery, UseQueryOptions, UseQueryResult } from '@tanstack/react-query';
-import { getRecord, dataQueryKeys, RecordWithContents } from '@/features/activities/data/api/dataApi';
+import type { UseQueryOptions, UseQueryResult } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
+import type { RecordWithContents } from '@/features/activities/data/api/dataApi';
+import { getRecord, dataQueryKeys } from '@/features/activities/data/api/dataApi';
 import type { DatabaseRecord } from '@/features/activities/data/types/data.types';
 import type { Id } from '@/types/common';
 

@@ -203,6 +203,14 @@ module.exports = {
       rules: {
         '@typescript-eslint/no-explicit-any': 'off', // Allow 'any' in tests for mocking
         '@typescript-eslint/no-non-null-assertion': 'off', // Allow ! in tests
+        '@typescript-eslint/unbound-method': 'off', // Allow unbound methods in test assertions
+        '@typescript-eslint/require-await': 'off', // Allow async without await in tests
+        '@typescript-eslint/no-unsafe-assignment': 'off', // Allow any assignments in tests
+        '@typescript-eslint/no-unsafe-member-access': 'off', // Allow any member access in tests
+        '@typescript-eslint/no-unsafe-argument': 'off', // Allow any arguments in tests
+        '@typescript-eslint/no-unsafe-call': 'off', // Allow any calls in tests
+        '@typescript-eslint/no-unsafe-return': 'off', // Allow any returns in tests
+        '@typescript-eslint/no-floating-promises': 'off', // Allow floating promises in tests
         'no-console': 'off', // Allow console in tests
       },
     },
@@ -216,6 +224,14 @@ module.exports = {
       rules: {
         '@typescript-eslint/no-explicit-any': 'off', // Allow 'any' in test infrastructure
         '@typescript-eslint/no-non-null-assertion': 'off', // Allow ! in test infrastructure
+        '@typescript-eslint/unbound-method': 'off', // Allow unbound methods in mocks
+        '@typescript-eslint/require-await': 'off', // Allow async without await
+        '@typescript-eslint/no-unsafe-assignment': 'off', // Allow any assignments
+        '@typescript-eslint/no-unsafe-member-access': 'off', // Allow any member access
+        '@typescript-eslint/no-unsafe-argument': 'off', // Allow any arguments
+        '@typescript-eslint/no-unsafe-call': 'off', // Allow any calls
+        '@typescript-eslint/no-unsafe-return': 'off', // Allow any returns
+        '@typescript-eslint/no-floating-promises': 'off', // Allow floating promises
         'no-console': 'off', // Allow console in test infrastructure for debugging
         '@typescript-eslint/prefer-nullish-coalescing': 'off', // Relax for test data
         'prefer-destructuring': 'off', // Relax for test data construction

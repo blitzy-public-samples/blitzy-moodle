@@ -395,7 +395,7 @@ export async function login(credentials: LoginCredentials): Promise<LoginRespons
         );
       }
 
-      const status = error.response.status;
+      const {status} = error.response;
       const errorData = error.response.data as { error?: ApiError } | undefined;
 
       // Extract error from response if available
@@ -491,7 +491,7 @@ export async function logout(): Promise<void> {
         );
       }
 
-      const status = error.response.status;
+      const {status} = error.response;
       const errorData = error.response.data as { error?: ApiError } | undefined;
 
       // For logout, we might get 401 if token is already expired
@@ -615,7 +615,7 @@ export async function refreshToken(): Promise<RefreshTokenResponse> {
         );
       }
 
-      const status = error.response.status;
+      const {status} = error.response;
       const errorData = error.response.data as { error?: ApiError } | undefined;
 
       // 401 means refresh token is invalid/expired
@@ -726,7 +726,7 @@ export async function getCurrentUser(): Promise<User> {
         );
       }
 
-      const status = error.response.status;
+      const {status} = error.response;
       const errorData = error.response.data as { error?: ApiError } | undefined;
 
       // 401 means not authenticated
@@ -853,7 +853,7 @@ export async function resetPassword(
         );
       }
 
-      const status = error.response.status;
+      const {status} = error.response;
       const errorData = error.response.data as { error?: ApiError } | undefined;
 
       // Rate limiting

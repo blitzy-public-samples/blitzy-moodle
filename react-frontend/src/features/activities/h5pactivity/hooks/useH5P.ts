@@ -440,7 +440,7 @@ export function useH5P(activityId: number, options: UseH5POptions = {}): UseH5PR
     onSuccess: () => {
       // Invalidate queries that might be affected by the view event
       // This ensures completion status and activity logs are refreshed
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: h5pQueryKeys.activity(activityId),
       });
     },
@@ -730,7 +730,7 @@ export function useH5PViewTracking(
     },
     onSuccess: () => {
       // Invalidate and refetch activity data to reflect the view
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: h5pQueryKeys.activity(activityId),
       });
     },

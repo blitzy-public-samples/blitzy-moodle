@@ -215,7 +215,7 @@ describe('assignmentApi', () => {
     // Mock localStorage for JWT token
     vi.stubGlobal('localStorage', {
       getItem: vi.fn((key: string) => {
-        if (key === 'auth_token') return mockToken;
+        if (key === 'auth_token') {return mockToken;}
         return null;
       }),
       setItem: vi.fn(),
@@ -581,7 +581,7 @@ describe('assignmentApi', () => {
           http.post('*/api/v1/assignments/123/submit', async ({ request }) => {
             const contentType = request.headers.get('content-type');
             if (contentType?.includes('multipart/form-data')) {
-              capturedFormData = await request.formData() as FormData;
+              capturedFormData = await request.formData();
             }
             return HttpResponse.json({
               success: true,

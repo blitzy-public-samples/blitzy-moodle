@@ -15,7 +15,8 @@
  * @module features/activities/workshop/components/PeerAssessmentForm
  */
 
-import React, {
+import type React from 'react';
+import {
   useState,
   useEffect,
   useCallback,
@@ -159,7 +160,7 @@ const AUTO_SAVE_INTERVAL = 30000;
  * @returns true if assessment is allowed
  */
 function isAssessmentPhaseActive(phase: number | undefined): boolean {
-  if (!phase) return false;
+  if (!phase) {return false;}
   return phase === PHASE.ASSESSMENT || phase === PHASE.EVALUATION;
 }
 
@@ -231,10 +232,10 @@ function areExamplesCompleted(
   userPlan: WorkshopUserPlan | undefined
 ): boolean {
   // If examples are not required, consider them completed
-  if (!workshop?.useExamples) return true;
+  if (!workshop?.useExamples) {return true;}
 
   // Find the example assessment task in the submission or assessment phase
-  if (!userPlan?.phases) return true;
+  if (!userPlan?.phases) {return true;}
 
   for (const phase of userPlan.phases) {
     for (const task of phase.tasks) {
@@ -286,7 +287,7 @@ function transformDimensionsForApi(
 function transformDimensionsFromApi(
   dimensions: WorkshopAssessmentDimension[] | undefined
 ): FormDimensionGrade[] {
-  if (!dimensions) return [];
+  if (!dimensions) {return [];}
   return dimensions.map((dim) => ({
     dimensionId: typeof dim.dimensionid === 'number' ? dim.dimensionid : Number(dim.dimensionid),
     grade: dim.grade ?? null,
@@ -377,7 +378,7 @@ function PeerAssessmentForm({
 
   // Mutation hooks
   const {
-    updateAssessment,
+    updateAssessmentAsync,
     isLoading: isUpdating,
     error: updateError,
   } = useUpdateAssessment(assessmentId, workshopId);
@@ -456,10 +457,10 @@ function PeerAssessmentForm({
   // Determine if assessment can be edited
   const isEditable = useMemo(() => {
     // Must be in assessment phase
-    if (!isAssessmentPhaseActive(currentPhase)) return false;
+    if (!isAssessmentPhaseActive(currentPhase)) {return false;}
 
     // Check if assessment exists and is editable
-    if (!assessment) return false;
+    if (!assessment) {return false;}
 
     // Check if user is the reviewer
     // The API should validate this, but we check client-side for UI
@@ -473,14 +474,14 @@ function PeerAssessmentForm({
 
   // Determine if feedback to author is required
   const isFeedbackRequired = useMemo(() => {
-    if (!workshop) return false;
+    if (!workshop) {return false;}
     // overallFeedbackMode: 0 = disabled, 1 = enabled optional, 2 = enabled required
     return workshop.overallFeedbackMode === 2;
   }, [workshop]);
 
   // Check if feedback is enabled at all
   const isFeedbackEnabled = useMemo(() => {
-    if (!workshop) return true;
+    if (!workshop) {return true;}
     return (workshop.overallFeedbackMode ?? 1) > 0;
   }, [workshop]);
 
@@ -516,7 +517,7 @@ function PeerAssessmentForm({
     const formData = watch();
 
     try {
-      await updateAssessment({
+      await updateAssessmentAsync({
         dimensions: transformDimensionsForApi(formData.dimensions),
         feedbackauthor: formData.feedbackauthor,
         feedbackauthorformat: formData.feedbackauthorformat,
@@ -539,7 +540,7 @@ function PeerAssessmentForm({
     }
   }, [
     watch,
-    updateAssessment,
+    updateAssessmentAsync,
     canAllocate,
     showSuccess,
     showError,
@@ -575,7 +576,7 @@ function PeerAssessmentForm({
 
     try {
       // First update the assessment with final data
-      await updateAssessment({
+      await updateAssessmentAsync({
         dimensions: transformDimensionsForApi(formData.dimensions),
         feedbackauthor: formData.feedbackauthor,
         feedbackauthorformat: formData.feedbackauthorformat,
@@ -599,7 +600,7 @@ function PeerAssessmentForm({
     }
   }, [
     watch,
-    updateAssessment,
+    updateAssessmentAsync,
     submitAssessment,
     submitMode,
     canAllocate,
@@ -652,7 +653,7 @@ function PeerAssessmentForm({
 
     // Set new auto-save timer
     autoSaveTimerRef.current = setTimeout(() => {
-      handleSaveDraft();
+      void handleSaveDraft();
     }, AUTO_SAVE_INTERVAL);
 
     // Cleanup on unmount

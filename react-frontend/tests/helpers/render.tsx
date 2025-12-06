@@ -379,7 +379,7 @@ export function renderWithAuth(
   // Determine if second argument is a User or RenderOptions
   // User objects have 'id' or 'username', RenderOptions have 'preloadedState', 'initialState', etc.
   const isRenderOptions = (arg: unknown): arg is RenderOptions => {
-    if (!arg || typeof arg !== 'object') return false;
+    if (!arg || typeof arg !== 'object') {return false;}
     const obj = arg as Record<string, unknown>;
     return (
       'preloadedState' in obj ||

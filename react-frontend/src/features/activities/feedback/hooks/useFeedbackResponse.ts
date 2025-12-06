@@ -659,17 +659,17 @@ export function useFeedbackResponse(): FeedbackResponseHookResult {
 
     onSuccess: (_data: FeedbackResponse, options: SubmitResponseOptions) => {
       // Invalidate relevant queries to trigger refetch
-      queryClient.invalidateQueries({ queryKey: ['feedback', options.feedbackId] });
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({ queryKey: ['feedback', options.feedbackId] });
+      void queryClient.invalidateQueries({
         queryKey: ['feedback', 'responses', options.feedbackId],
       });
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ['feedback', 'status', options.feedbackId],
       });
 
       // Invalidate user dashboard queries to update completion counts
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['user', 'courses'] });
+      void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      void queryClient.invalidateQueries({ queryKey: ['user', 'courses'] });
 
       // Show success notification
       showSuccess('Feedback submitted successfully');
@@ -714,7 +714,7 @@ export function useFeedbackResponse(): FeedbackResponseHookResult {
       });
     },
 
-    onMutate: async (options: SaveProgressOptions) => {
+    onMutate: (options: SaveProgressOptions) => {
       // Snapshot previous progress data
       const previousProgress = queryClient.getQueryData([
         'feedback',
@@ -856,7 +856,7 @@ export function useFeedbackResponse(): FeedbackResponseHookResult {
     saveProgress,
     isSubmitting: submitMutation.isPending,
     isSaving: saveProgressMutation.isPending,
-    error: (submitMutation.error || saveProgressMutation.error) as FeedbackValidationError | null,
+    error: (submitMutation.error || saveProgressMutation.error),
     validationErrors,
     clearErrors,
     resetSubmission,

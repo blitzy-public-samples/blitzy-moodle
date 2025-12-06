@@ -429,7 +429,7 @@ function useCourses(options: UseCoursesOptions = {}): UseCoursesReturn {
       };
 
       // Prefetch the next page in the background
-      queryClient.prefetchQuery({
+      void queryClient.prefetchQuery({
         queryKey: createQueryKey(nextPageFilters),
         queryFn: () => getCourses(nextPageParams),
         staleTime: STALE_TIME,
@@ -466,7 +466,7 @@ function useCourses(options: UseCoursesOptions = {}): UseCoursesReturn {
       const newParams: CourseListParams = { ...apiParams, page: pageNumber };
 
       // Manually trigger query with new page if needed
-      queryClient.fetchQuery({
+      void queryClient.fetchQuery({
         queryKey: createQueryKey(newFilters),
         queryFn: () => getCourses(newParams),
         staleTime: STALE_TIME,

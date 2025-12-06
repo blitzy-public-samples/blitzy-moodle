@@ -104,9 +104,9 @@ beforeAll(() => {
   });
   
   // Mock window.location.href assignment to prevent happy-dom navigation errors
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   delete (window as any).location;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   (window as any).location = {
     href: 'http://localhost:3000',
     origin: 'http://localhost:3000',
@@ -1104,12 +1104,12 @@ describe('useLTILaunch - Form POST Data Construction', () => {
       expect(Array.isArray(launchParams)).toBe(true);
       
       // Use getParamValue helper to access parameters from the array
-      expect(getParamValue(launchParams!, 'lti_message_type')).toBe('basic-lti-launch-request');
+      expect(getParamValue(launchParams, 'lti_message_type')).toBe('basic-lti-launch-request');
       // custom_param1 and custom_param2 are already included in mockLTI11LaunchParams
-      expect(getParamValue(launchParams!, 'custom_param1')).toBe('value1');
-      expect(getParamValue(launchParams!, 'custom_param2')).toBe('value2');
+      expect(getParamValue(launchParams, 'custom_param1')).toBe('value1');
+      expect(getParamValue(launchParams, 'custom_param2')).toBe('value2');
       // Verify the extra custom param we added
-      expect(getParamValue(launchParams!, 'extra_custom_param')).toBe('extra_value');
+      expect(getParamValue(launchParams, 'extra_custom_param')).toBe('extra_value');
     });
 
     it('should include OAuth signature in form data for LTI 1.1', async () => {
@@ -2378,7 +2378,7 @@ describe('useLTILaunch - Debug Mode', () => {
    */
 
   let queryClient: QueryClient;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   let consoleSpy: any;
 
   beforeEach(() => {

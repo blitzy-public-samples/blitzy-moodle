@@ -26,7 +26,7 @@ import {
   resourceKeys,
 } from '@/features/activities/resources/hooks/useResource';
 
-/* eslint-disable @typescript-eslint/unbound-method */
+ 
 
 // Mock the API client module
 vi.mock('@/services/api/client', () => ({
@@ -1366,7 +1366,7 @@ describe('TypeScript type safety', () => {
       expect(queryResult.refetch).toBeDefined();
     });
 
-    // eslint-disable-next-line @typescript-eslint/require-await
+     
     it('should return UseMutationResult type for mutations', async () => {
       vi.mocked(apiClient.post).mockResolvedValueOnce({
         data: createApiResponse({ success: true, viewcount: 1 }),

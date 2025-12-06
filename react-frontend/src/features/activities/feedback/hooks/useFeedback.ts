@@ -438,7 +438,7 @@ export function useFeedback(options: FeedbackHookOptions): FeedbackHookResult {
    */
   const isOpen = useMemo((): boolean => {
     const feedback = feedbackQuery.data;
-    if (!feedback) return false;
+    if (!feedback) {return false;}
 
     const now = Math.floor(Date.now() / 1000); // Current Unix timestamp
     const isAfterOpen = !feedback.timeopen || feedback.timeopen <= now;
@@ -484,7 +484,7 @@ export function useFeedback(options: FeedbackHookOptions): FeedbackHookResult {
    */
   const isAnonymous = useMemo((): boolean => {
     const feedback = feedbackQuery.data;
-    if (!feedback) return false;
+    if (!feedback) {return false;}
     return feedback.anonymous === FEEDBACK_ANONYMOUS_YES;
   }, [feedbackQuery.data]);
 
@@ -495,7 +495,7 @@ export function useFeedback(options: FeedbackHookOptions): FeedbackHookResult {
    */
   const hasResponded = useMemo((): boolean => {
     const status = statusQuery.data;
-    if (!status) return false;
+    if (!status) {return false;}
     return status.isSubmitted;
   }, [statusQuery.data]);
 
@@ -517,7 +517,7 @@ export function useFeedback(options: FeedbackHookOptions): FeedbackHookResult {
     const status = statusQuery.data;
     const feedback = feedbackQuery.data;
 
-    if (!status || !status.completedId || !feedback) {
+    if (!status?.completedId || !feedback) {
       return null;
     }
 

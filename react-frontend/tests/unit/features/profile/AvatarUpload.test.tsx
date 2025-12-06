@@ -23,7 +23,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 // Import the actual component
 import { AvatarUpload } from '../../../../src/features/profile/components/AvatarUpload';
 
-/* eslint-disable @typescript-eslint/unbound-method */
+ 
 
 // Mock the hooks
 vi.mock('../../../../src/features/profile/hooks/useUpdateProfile', () => ({
@@ -176,7 +176,7 @@ describe('AvatarUpload Component', () => {
   });
 
   describe('File Selection via Input', () => {
-    // eslint-disable-next-line @typescript-eslint/require-await
+     
     it('should allow file selection through file input element', async () => {
       const Wrapper = createWrapper();
       const { container } = render(
@@ -210,7 +210,7 @@ describe('AvatarUpload Component', () => {
       });
     });
 
-    // eslint-disable-next-line @typescript-eslint/require-await
+     
     it('should have accessible "Choose File" button', async () => {
       const Wrapper = createWrapper();
       render(
@@ -552,7 +552,7 @@ describe('AvatarUpload Component', () => {
       }
     });
 
-    // eslint-disable-next-line @typescript-eslint/require-await
+     
     it('should handle drag leave event', async () => {
       const Wrapper = createWrapper();
       render(
@@ -1025,7 +1025,7 @@ describe('AvatarUpload Component', () => {
       expect(mockUploadMutate).toHaveBeenCalledWith(file);
     });
 
-    // eslint-disable-next-line @typescript-eslint/require-await
+     
     it('should have accessible remove button', async () => {
       const Wrapper = createWrapper();
       render(

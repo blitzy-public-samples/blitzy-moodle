@@ -140,7 +140,7 @@ describe('useProfile Hook', () => {
       expect(result.current.isError).toBe(false);
     });
 
-    // eslint-disable-next-line @typescript-eslint/require-await
+     
     it('should not fetch data when userId is null', async () => {
       const { result } = renderHook(() => useProfile(null), {
         wrapper: createWrapper(),
@@ -847,7 +847,7 @@ describe('useProfile Hook', () => {
       });
 
       vi.mocked(fetchUserProfile)
-        // eslint-disable-next-line @typescript-eslint/require-await
+         
         .mockImplementation(async (userId: number) => {
           if (userId === 1313) {return profile1;}
           if (userId === 1414) {return profile2;}

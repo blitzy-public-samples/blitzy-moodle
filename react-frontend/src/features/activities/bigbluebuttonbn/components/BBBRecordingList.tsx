@@ -27,7 +27,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import React, {
+import type React from 'react';
+import {
   useState,
   useMemo,
   useCallback,

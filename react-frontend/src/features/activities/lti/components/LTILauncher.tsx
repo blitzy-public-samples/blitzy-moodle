@@ -24,7 +24,8 @@
  * @module features/activities/lti/components/LTILauncher
  */
 
-import React, {
+import type React from 'react';
+import {
   useCallback,
   useEffect,
   useRef,
@@ -511,13 +512,13 @@ function LTILauncher({
   const handleRetry = useCallback(() => {
     reset();
     hasLaunched.current = false;
-    executeLaunch();
+    void executeLaunch();
   }, [reset, executeLaunch]);
 
   // Auto-launch on mount if enabled
   useEffect(() => {
     if (autoLaunch && ltiId > 0) {
-      executeLaunch();
+      void executeLaunch();
     }
   }, [autoLaunch, ltiId, executeLaunch]);
 

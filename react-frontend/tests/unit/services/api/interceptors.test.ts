@@ -249,7 +249,7 @@ function getResponseErrorInterceptor(instance: AxiosInstance): {
   fulfilled: ((value: AxiosResponse) => AxiosResponse | Promise<AxiosResponse>) | null;
   rejected: ((error: unknown) => unknown) | null;
 } {
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return
+   
   return (instance.interceptors.response as any)['handlers'][0];
 }
 
@@ -270,23 +270,23 @@ describe('setupInterceptors', () => {
 
   it('should attach request interceptors', () => {
     const instance = axios.create();
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+     
     const initialRequestHandlers = (instance.interceptors.request as any)['handlers'].length;
     setupInterceptors(instance);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+     
     const finalRequestHandlers = (instance.interceptors.request as any)['handlers'].length;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+     
     expect(finalRequestHandlers).toBeGreaterThan(initialRequestHandlers);
   });
 
   it('should attach response interceptors', () => {
     const instance = axios.create();
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+     
     const initialResponseHandlers = (instance.interceptors.response as any)['handlers'].length;
     setupInterceptors(instance);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+     
     const finalResponseHandlers = (instance.interceptors.response as any)['handlers'].length;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+     
     expect(finalResponseHandlers).toBeGreaterThan(initialResponseHandlers);
   });
 });
@@ -521,7 +521,7 @@ describe('Response Success Interceptor', () => {
      
     expect(result.data).toHaveProperty('data');
     expect(result.data).toHaveProperty('meta');
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+     
     expect(result.data.data).toEqual({ id: 1, name: 'Test Course' });
   });
 
@@ -537,7 +537,7 @@ describe('Response Success Interceptor', () => {
     expect(result.data).toHaveProperty('success', true);
      
     expect(result.data).toHaveProperty('data');
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+     
     expect(result.data.data).toEqual({ id: 1, name: 'Test Course' });
   });
 
@@ -550,7 +550,7 @@ describe('Response Success Interceptor', () => {
 
     const responseInterceptor = getResponseErrorInterceptor(axiosInstance);
     const result = responseInterceptor.fulfilled!(response) as AxiosResponse;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+     
     expect(result.data.meta).toEqual({ page: 1, totalPages: 5 });
   });
 
@@ -644,7 +644,7 @@ describe('Response Error Interceptor - 401 Unauthorized', () => {
     expect(requestSpy).toHaveBeenCalledWith(
        
       expect.objectContaining({
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+         
         headers: expect.objectContaining({
           Authorization: `Bearer ${newToken}`,
         }),
@@ -1242,13 +1242,13 @@ describe('Interceptor Integration', () => {
     expect(adapterSpy).toHaveBeenCalledWith(
        
       expect.objectContaining({
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+         
         headers: expect.objectContaining({
           Authorization: `Bearer ${mockToken}`
         })
       })
     );
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+     
     expect(response.data.success).toBe(true);
   });
 
@@ -1441,7 +1441,7 @@ describe('Edge Cases', () => {
     expect(result.data).toHaveProperty('success', true);
      
     expect(result.data).toHaveProperty('data');
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+     
     expect(Array.isArray(result.data.data)).toBe(true);
   });
 

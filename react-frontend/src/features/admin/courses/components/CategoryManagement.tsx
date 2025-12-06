@@ -17,7 +17,8 @@
  * @see public/course/category.ajax.php - Reference for AJAX operations
  */
 
-import React, {
+import type React from 'react';
+import {
   useState,
   useCallback,
   useEffect,
@@ -204,7 +205,7 @@ function buildCategoryTree(categories: CourseCategory[]): CategoryTreeNode[] {
 
   categories.forEach((category) => {
     const treeNode = categoryMap.get(category.id);
-    if (!treeNode) return;
+    if (!treeNode) {return;}
 
     if (category.parent === 0) {
       // Top-level category
@@ -440,7 +441,7 @@ const CategoryTreeItem = memo(function CategoryTreeItem({
   // Handle drag events
   const handleDragStart = useCallback(
     (event: React.DragEvent) => {
-      if (!allowDragDrop) return;
+      if (!allowDragDrop) {return;}
       event.dataTransfer.setData('text/plain', String(node.id));
       event.dataTransfer.effectAllowed = 'move';
       onDragStart(node.id);
@@ -450,14 +451,14 @@ const CategoryTreeItem = memo(function CategoryTreeItem({
 
   const handleDragOver = useCallback(
     (event: React.DragEvent) => {
-      if (!allowDragDrop || isDragging) return;
+      if (!allowDragDrop || isDragging) {return;}
       event.preventDefault();
       event.dataTransfer.dropEffect = 'move';
 
       // Determine drop position based on mouse position
       const rect = event.currentTarget.getBoundingClientRect();
       const y = event.clientY - rect.top;
-      const height = rect.height;
+      const {height} = rect;
 
       let position: 'before' | 'after' | 'inside';
       if (y < height * 0.25) {
@@ -475,7 +476,7 @@ const CategoryTreeItem = memo(function CategoryTreeItem({
 
   const handleDrop = useCallback(
     (event: React.DragEvent) => {
-      if (!allowDragDrop) return;
+      if (!allowDragDrop) {return;}
       event.preventDefault();
       const position = dragState.dropPosition || 'inside';
       onDrop(node.id, position);
@@ -490,7 +491,7 @@ const CategoryTreeItem = memo(function CategoryTreeItem({
   // Highlight matching text
   const highlightText = useCallback(
     (text: string) => {
-      if (!searchTerm.trim()) return text;
+      if (!searchTerm.trim()) {return text;}
       const regex = new RegExp(`(${searchTerm})`, 'gi');
       const parts = text.split(regex);
       return parts.map((part, index) =>
@@ -512,7 +513,7 @@ const CategoryTreeItem = memo(function CategoryTreeItem({
 
   // Get drop indicator styles
   const getDropIndicatorStyle = () => {
-    if (!isDropTarget || !dragState.dropPosition) return {};
+    if (!isDropTarget || !dragState.dropPosition) {return {};}
 
     switch (dragState.dropPosition) {
       case 'before':
@@ -927,7 +928,7 @@ function CategoryManagement({
       return response.data;
     },
     onSuccess: (response) => {
-      queryClient.invalidateQueries({ queryKey: CATEGORIES_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: CATEGORIES_QUERY_KEY });
       setCreateDialogOpen(false);
       setFormData(DEFAULT_FORM_DATA);
       success(`Category "${response.data.name}" created successfully`);
@@ -958,7 +959,7 @@ function CategoryManagement({
       return response.data;
     },
     onSuccess: (response) => {
-      queryClient.invalidateQueries({ queryKey: CATEGORIES_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: CATEGORIES_QUERY_KEY });
       setEditDialogOpen(false);
       setEditingCategory(null);
       success(`Category "${response.data.name}" updated successfully`);
@@ -985,7 +986,7 @@ function CategoryManagement({
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: CATEGORIES_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: CATEGORIES_QUERY_KEY });
       setDeleteDialogOpen(false);
       setDeletingCategory(null);
       setDeleteConfirmed(false);
@@ -1008,11 +1009,11 @@ function CategoryManagement({
     }) => {
       return moveCategory(categoryId, newParentId);
     },
-    onMutate: async ({ categoryId }) => {
+    onMutate: ({ categoryId }) => {
       setProcessingIds((prev) => new Set(prev).add(categoryId));
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: CATEGORIES_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: CATEGORIES_QUERY_KEY });
       setMoveDialogOpen(false);
       setMovingCategory(null);
       setMoveTargetId(0);
@@ -1045,11 +1046,11 @@ function CategoryManagement({
       );
       return response.data;
     },
-    onMutate: async ({ id }) => {
+    onMutate: ({ id }) => {
       setProcessingIds((prev) => new Set(prev).add(id));
     },
     onSuccess: (response) => {
-      queryClient.invalidateQueries({ queryKey: CATEGORIES_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: CATEGORIES_QUERY_KEY });
       info(
         `Category "${response.data.name}" is now ${
           response.data.visible ? 'visible' : 'hidden'
@@ -1074,7 +1075,7 @@ function CategoryManagement({
 
   // Build category tree from flat list
   const categoryTree = useMemo(() => {
-    if (!categoriesResponse?.data) return [];
+    if (!categoriesResponse?.data) {return [];}
     return buildCategoryTree(categoriesResponse.data);
   }, [categoriesResponse?.data]);
 
@@ -1215,7 +1216,7 @@ function CategoryManagement({
 
   // Submit delete
   const handleDeleteSubmit = useCallback(() => {
-    if (!deletingCategory) return;
+    if (!deletingCategory) {return;}
 
     const hasContents =
       deletingCategory.coursecount > 0 ||
@@ -1244,7 +1245,7 @@ function CategoryManagement({
 
   // Submit move
   const handleMoveSubmit = useCallback(() => {
-    if (!movingCategory) return;
+    if (!movingCategory) {return;}
 
     // Validate move operation
     const descendantIds = getDescendantIds(movingCategory.id, categoryTree);
@@ -1270,14 +1271,14 @@ function CategoryManagement({
 
   const handleDragEnter = useCallback(
     (id: number, position: 'before' | 'after' | 'inside') => {
-      if (dragState.draggingId === id) return;
+      if (dragState.draggingId === id) {return;}
 
       // Validate drop target
       const descendantIds = getDescendantIds(
         dragState.draggingId!,
         categoryTree
       );
-      if (descendantIds.includes(id)) return;
+      if (descendantIds.includes(id)) {return;}
 
       setDragState((prev) => ({
         ...prev,
@@ -1766,7 +1767,7 @@ function CategoryManagement({
                   {flatCategories
                     .filter((cat) => {
                       // Exclude self and descendants
-                      if (cat.id === movingCategory.id) return false;
+                      if (cat.id === movingCategory.id) {return false;}
                       const descendantIds = getDescendantIds(
                         movingCategory.id,
                         categoryTree
