@@ -75,7 +75,6 @@ import {
   VisibilityOff,
   Search,
   Clear,
-  MoreVert,
   UnfoldMore,
   UnfoldLess,
   DriveFileMove,
@@ -238,11 +237,12 @@ function buildCategoryTree(categories: CourseCategory[]): CategoryTreeNode[] {
 
 /**
  * Flattens a category tree back into a flat array.
+ * Useful for bulk operations and data export.
  *
  * @param tree - Array of root CategoryTreeNode objects
  * @returns Flat array of all categories
  */
-function flattenCategoryTree(tree: CategoryTreeNode[]): CourseCategory[] {
+export function flattenCategoryTree(tree: CategoryTreeNode[]): CourseCategory[] {
   const result: CourseCategory[] = [];
 
   const traverse = (nodes: CategoryTreeNode[]) => {
@@ -363,6 +363,8 @@ interface CategoryTreeItemProps {
   onAddSubcategory: (parentId: number) => void;
   /** Callback to toggle visibility */
   onToggleVisibility: (category: CourseCategory) => void;
+  /** Callback to open move dialog */
+  onMove: (category: CourseCategory) => void;
   /** Whether to show course counts */
   showCourseCount: boolean;
   /** Whether drag-and-drop is enabled */
@@ -397,6 +399,7 @@ const CategoryTreeItem = memo(function CategoryTreeItem({
   onDelete,
   onAddSubcategory,
   onToggleVisibility,
+  onMove,
   showCourseCount,
   allowDragDrop,
   dragState,
@@ -742,6 +745,17 @@ const CategoryTreeItem = memo(function CategoryTreeItem({
           </ListItemIcon>
           {node.visible ? 'Hide' : 'Show'}
         </MenuItem>
+        <MenuItem
+          onClick={() => {
+            handleCloseContextMenu();
+            onMove(node);
+          }}
+        >
+          <ListItemIcon>
+            <DriveFileMove fontSize="small" />
+          </ListItemIcon>
+          Move
+        </MenuItem>
         <Divider />
         <MenuItem
           onClick={() => {
@@ -773,6 +787,7 @@ const CategoryTreeItem = memo(function CategoryTreeItem({
               onDelete={onDelete}
               onAddSubcategory={onAddSubcategory}
               onToggleVisibility={onToggleVisibility}
+              onMove={onMove}
               showCourseCount={showCourseCount}
               allowDragDrop={allowDragDrop}
               dragState={dragState}
@@ -1462,6 +1477,7 @@ function CategoryManagement({
               onDelete={handleOpenDelete}
               onAddSubcategory={handleOpenCreate}
               onToggleVisibility={handleToggleVisibility}
+              onMove={handleOpenMove}
               showCourseCount={showCourseCount}
               allowDragDrop={allowDragDrop}
               dragState={dragState}
