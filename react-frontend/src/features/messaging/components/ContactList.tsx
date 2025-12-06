@@ -64,7 +64,6 @@ import {
   Check as CheckIcon,
   Close as CloseIcon,
   People as PeopleIcon,
-  PersonOff as PersonOffIcon,
   Block as BlockIcon,
 } from '@mui/icons-material';
 
@@ -76,10 +75,9 @@ import {
   acceptContactRequest,
   rejectContactRequest,
 } from '@/features/messaging/api/messagingApi';
-import type { Contact, ContactRequest, ContactListProps } from '@/features/messaging/types/message.types';
+import type { Contact, ContactRequest } from '@/features/messaging/types/message.types';
 import { useToast } from '@/hooks/useToast';
 import useDebounce from '@/hooks/useDebounce';
-import { LoadingSpinner } from '@/components/feedback/LoadingSpinner';
 import { formatRelativeTime } from '@/utils/date';
 
 // ============================================================================
@@ -160,7 +158,7 @@ function groupContactsAlphabetically(
 
   for (const contact of sortedContacts) {
     const firstLetter = contact.fullname.charAt(0).toUpperCase();
-    const existing = grouped.get(firstLetter) || [];
+    const existing = grouped.get(firstLetter) ?? [];
     existing.push(contact);
     grouped.set(firstLetter, existing);
   }
@@ -235,7 +233,7 @@ function EmptyState({ type, searchQuery }: EmptyStateProps): JSX.Element {
     search: {
       icon: <SearchIcon sx={{ fontSize: 64, color: theme.palette.text.disabled }} />,
       title: 'No results found',
-      description: `No contacts match "${searchQuery || 'your search'}". Try a different search term.`,
+      description: `No contacts match "${searchQuery ? searchQuery : 'your search'}". Try a different search term.`,
     },
   };
 
@@ -404,7 +402,7 @@ export function ContactList({
     onSuccess: () => {
       success('Contact request accepted');
       // Invalidate contacts to refresh the list
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.CONTACTS] });
+      void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.CONTACTS] });
     },
     onSettled: () => {
       setLoadingContactId(null);
@@ -490,8 +488,6 @@ export function ContactList({
 
   // Total counts for display
   const contactsCount = contacts.length;
-  const isLoading = activeTab === 'contacts' ? isLoadingContacts : isLoadingRequests;
-  const isError = activeTab === 'contacts' ? isErrorContacts : isErrorRequests;
 
   // ============================================================================
   // Event Handlers
@@ -536,14 +532,12 @@ export function ContactList({
     (contact: ExtendedContact) => {
       if (onContactClick) {
         onContactClick(contact);
-      } else {
+      } else if (contact.conversationid) {
         // Default navigation to conversation view
-        if (contact.conversationid) {
-          navigate(`/messages/conversation/${contact.conversationid}`);
-        } else {
-          // Create new conversation with this user
-          navigate(`/messages/conversation/new?userId=${contact.userid}`);
-        }
+        navigate(`/messages/conversation/${contact.conversationid}`);
+      } else {
+        // Create new conversation with this user
+        navigate(`/messages/conversation/new?userId=${contact.userid}`);
       }
     },
     [onContactClick, navigate]
@@ -639,40 +633,13 @@ export function ContactList({
   // ============================================================================
 
   /**
-   * Render online status badge
-   */
-  const renderOnlineBadge = (
-    isonline: boolean | undefined,
-    showonlinestatus: boolean | undefined
-  ): JSX.Element | null => {
-    if (!showonlinestatus || !isonline) {
-      return null;
-    }
-
-    return (
-      <OnlineIcon
-        sx={{
-          fontSize: 12,
-          color: theme.palette.success.main,
-          position: 'absolute',
-          bottom: 0,
-          right: 0,
-        }}
-        aria-label="Online"
-      />
-    );
-  };
-
-  /**
    * Render a single contact item
    */
   const renderContactItem = (
     contact: ExtendedContact,
-    index: number,
+    _index: number,
     isSelected: boolean
   ): JSX.Element => {
-    const extendedContact = contact as ExtendedContact;
-
     return (
       <ListItem
         key={contact.userid}
@@ -702,7 +669,7 @@ export function ContactList({
             overlap="circular"
             anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
             badgeContent={
-              extendedContact.showonlinestatus && extendedContact.isonline ? (
+              contact.showonlinestatus && contact.isonline ? (
                 <OnlineIcon
                   sx={{
                     fontSize: 12,
@@ -749,7 +716,7 @@ export function ContactList({
             ) : null
           }
         />
-        {extendedContact.isblocked && (
+        {contact.isblocked && (
           <ListItemSecondaryAction>
             <Tooltip title="Blocked">
               <BlockIcon
@@ -769,11 +736,11 @@ export function ContactList({
    */
   const renderContactRequestItem = (
     request: ExtendedContactRequest,
-    index: number,
+    _index: number,
     isSelected: boolean
   ): JSX.Element => {
     const isProcessing = loadingContactId === request.id;
-    const user = request.user || {
+    const user = request.user ?? {
       id: request.userid,
       fullname: `User ${request.userid}`,
       profileimageurl: '',
@@ -894,7 +861,9 @@ export function ContactList({
     if (isLoadingContacts) {
       return (
         <List>
+          {/* Skeleton loaders have no unique identity, index keys are acceptable */}
           {Array.from({ length: 5 }).map((_, i) => (
+            // eslint-disable-next-line react/no-array-index-key
             <ContactSkeleton key={`skeleton-${i}`} />
           ))}
         </List>
@@ -975,7 +944,9 @@ export function ContactList({
     if (isLoadingRequests) {
       return (
         <List>
+          {/* Skeleton loaders have no unique identity, index keys are acceptable */}
           {Array.from({ length: 3 }).map((_, i) => (
+            // eslint-disable-next-line react/no-array-index-key
             <ContactSkeleton key={`skeleton-request-${i}`} />
           ))}
         </List>
