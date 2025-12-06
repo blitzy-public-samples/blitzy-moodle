@@ -25,7 +25,8 @@
  * @see public/message/classes/helper.php
  */
 
-import React, {
+import type React from 'react';
+import {
   useState,
   useEffect,
   useCallback,
@@ -330,11 +331,11 @@ export function MessageComposer({
       // Clear any previous errors
       setSendError(null);
       
-      // Invalidate and refetch
-      queryClient.invalidateQueries({
+      // Invalidate and refetch - void used to explicitly mark as fire-and-forget
+      void queryClient.invalidateQueries({
         queryKey: ['conversations', variables.conversationId, 'messages'],
       });
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ['conversations'],
       });
       
@@ -475,29 +476,12 @@ export function MessageComposer({
   );
 
   /**
-   * Handle keyboard events for Enter-to-send
-   */
-  const handleKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLDivElement>) => {
-      if (event.key === 'Enter') {
-        if (enterToSend && !event.shiftKey) {
-          // Enter sends message
-          event.preventDefault();
-          if (canSend) {
-            handleSendMessage();
-          }
-        }
-        // Shift+Enter allows new line (default behavior)
-      }
-    },
-    [enterToSend, canSend]
-  );
-
-  /**
    * Handle send message action
    */
   const handleSendMessage = useCallback(() => {
-    if (!canSend) return;
+    if (!canSend) {
+      return;
+    }
     
     const trimmedText = messageText.trim();
     if (!trimmedText) {
@@ -515,6 +499,25 @@ export function MessageComposer({
       text: trimmedText,
     });
   }, [canSend, messageText, maxLength, conversationId, sendMessageMutation, showError]);
+
+  /**
+   * Handle keyboard events for Enter-to-send
+   */
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (event.key === 'Enter') {
+        if (enterToSend && !event.shiftKey) {
+          // Enter sends message
+          event.preventDefault();
+          if (canSend) {
+            handleSendMessage();
+          }
+        }
+        // Shift+Enter allows new line (default behavior)
+      }
+    },
+    [enterToSend, canSend, handleSendMessage]
+  );
 
   /**
    * Handle retry after send failure
@@ -582,12 +585,17 @@ export function MessageComposer({
    */
   const handleFileSelect = useCallback(
     async (event: React.ChangeEvent<HTMLInputElement>) => {
-      const files = event.target.files;
-      if (!files || files.length === 0) return;
+      const { files } = event.target;
+      if (!files || files.length === 0) {
+        return;
+      }
       
-      const selectedFile = files[0];
+      // Use destructuring as recommended by ESLint
+      const [selectedFile] = files;
       // Additional null check for TypeScript strict mode
-      if (!selectedFile) return;
+      if (!selectedFile) {
+        return;
+      }
       
       const file: File = selectedFile;
       const fileId = `file-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
@@ -645,12 +653,16 @@ export function MessageComposer({
   const handlePaste = useCallback(
     (event: React.ClipboardEvent) => {
       const items = event.clipboardData?.items;
-      if (!items || !allowAttachments) return;
+      if (!items || !allowAttachments) {
+        return;
+      }
       
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
         // Skip if item is undefined (TypeScript strict null check)
-        if (!item) continue;
+        if (!item) {
+          continue;
+        }
         
         if (item.type.startsWith('image/')) {
           event.preventDefault();
@@ -664,8 +676,8 @@ export function MessageComposer({
               { id: fileId, file, preview },
             ]);
             
-            // Upload pasted image
-            uploadFile(file, '/api/v1/files/upload');
+            // Upload pasted image - void used to explicitly mark as fire-and-forget
+            void uploadFile(file, '/api/v1/files/upload');
           }
           break;
         }
@@ -884,7 +896,7 @@ export function MessageComposer({
           inputProps={{
             'aria-label': 'Message input',
             'aria-describedby': 'character-count',
-            maxLength: maxLength,
+            maxLength,
           }}
           sx={{
             '& .MuiOutlinedInput-root': {
@@ -982,9 +994,9 @@ export function MessageComposer({
           role="grid"
           aria-label="Emoji selection grid"
         >
-          {COMMON_EMOJIS.map((emoji, index) => (
+          {COMMON_EMOJIS.map((emoji) => (
             <IconButton
-              key={`${emoji}-${index}`}
+              key={emoji}
               onClick={() => handleEmojiSelect(emoji)}
               size="small"
               aria-label={`Insert ${emoji} emoji`}
