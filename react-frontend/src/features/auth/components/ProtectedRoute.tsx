@@ -46,6 +46,7 @@ import type { PropsWithChildren, ReactElement } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import { usePermissions } from '@/features/auth/hooks/usePermissions';
 import { LoadingSpinner } from '@/components/feedback/LoadingSpinner';
 
 // ============================================================================
@@ -59,6 +60,14 @@ import { LoadingSpinner } from '@/components/feedback/LoadingSpinner';
  * a protected route without authentication.
  */
 const DEFAULT_LOGIN_PATH = '/login';
+
+/**
+ * Default unauthorized/access denied route path
+ *
+ * Users will be redirected to this path when they are authenticated
+ * but lack the required permission to access a protected route.
+ */
+const DEFAULT_UNAUTHORIZED_PATH = '/unauthorized';
 
 /**
  * Query parameter name for storing the return URL
@@ -91,6 +100,16 @@ export interface ProtectedRouteProps {
   redirectPath?: string;
 
   /**
+   * Optional custom path to redirect users who lack required permissions
+   *
+   * Defaults to '/unauthorized'. Use this when you need to redirect to a
+   * different access denied page.
+   *
+   * @default '/unauthorized'
+   */
+  unauthorizedPath?: string;
+
+  /**
    * Optional custom loading message to display during auth check
    *
    * Displayed alongside the loading spinner while authentication
@@ -99,6 +118,31 @@ export interface ProtectedRouteProps {
    * @default 'Verifying authentication...'
    */
   loadingMessage?: string;
+
+  /**
+   * Optional required Moodle capability/permission for accessing this route
+   *
+   * When specified, the component will check if the authenticated user has
+   * this capability in the system context. If the user lacks the capability,
+   * they will be redirected to the unauthorized page.
+   *
+   * Capabilities follow Moodle's format: {component}/{action}
+   * Examples:
+   * - 'moodle/site:config' - Site administration
+   * - 'moodle/course:create' - Create courses
+   * - 'moodle/user:update' - Update user profiles
+   *
+   * Note: This is a UI-level check. The backend API enforces authoritative
+   * permission checking via require_capability() on every request.
+   *
+   * @example
+   * ```tsx
+   * <ProtectedRoute requiredPermission="moodle/site:config">
+   *   <AdminDashboard />
+   * </ProtectedRoute>
+   * ```
+   */
+  requiredPermission?: string;
 }
 
 /**
@@ -204,18 +248,31 @@ function buildRedirectUrl(
  * </ProtectedRoute>
  * ```
  *
+ * @example With required permission (admin-only route)
+ * ```tsx
+ * <ProtectedRoute requiredPermission="moodle/site:config">
+ *   <AdminDashboard />
+ * </ProtectedRoute>
+ * ```
+ *
  * @param props - Component props including children and optional configuration
- * @returns Loading spinner, redirect to login, or rendered children
+ * @returns Loading spinner, redirect to login, redirect to unauthorized, or rendered children
  */
 export function ProtectedRoute({
   children,
   redirectPath = DEFAULT_LOGIN_PATH,
+  unauthorizedPath = DEFAULT_UNAUTHORIZED_PATH,
   loadingMessage = 'Verifying authentication...',
+  requiredPermission,
 }: ProtectedRoutePropsWithChildren): ReactElement {
   // Get authentication state from Redux store via useAuth hook
   // isAuthenticated: true if user has valid JWT token
   // isLoading: true during initial auth check or token refresh
   const { isAuthenticated, isLoading } = useAuth();
+
+  // Get permission checking capability from usePermissions hook
+  // hasCapability: function to check if user has a specific Moodle capability
+  const { hasCapability } = usePermissions();
 
   // Get current location for preserving intended destination
   // pathname: the route path user was trying to access
@@ -281,15 +338,53 @@ export function ProtectedRoute({
   }
 
   /**
-   * Authenticated State
+   * Permission Check State
    *
-   * User has a valid authentication session. Render the protected
-   * children components. At this point:
+   * If a required permission is specified, check if the authenticated user
+   * has the required capability. Permission checks are performed against
+   * the system context (contextId: 0) for route-level access control.
+   *
+   * This is a UI-level check for better user experience. The authoritative
+   * permission enforcement always happens on the backend via Moodle's
+   * require_capability() function on every API request.
+   *
+   * If the user lacks the required permission, redirect them to the
+   * unauthorized page to show an access denied message.
+   */
+  if (requiredPermission) {
+    // Check if user has the required capability in system context
+    // System context (contextId: 0) is used for site-wide permissions
+    const hasRequiredPermission = hasCapability(requiredPermission, {
+      type: 'system',
+      contextId: 0,
+    });
+
+    if (!hasRequiredPermission) {
+      return (
+        <Navigate
+          to={unauthorizedPath}
+          replace
+          // Pass the attempted route and required permission for the unauthorized page
+          state={{
+            from: location.pathname + location.search,
+            requiredPermission,
+          }}
+        />
+      );
+    }
+  }
+
+  /**
+   * Authenticated and Authorized State
+   *
+   * User has a valid authentication session and (if required) the necessary
+   * permissions. Render the protected children components. At this point:
    * - JWT token is present and not expired
    * - User data is available in Redux store
+   * - User has passed any required permission checks
    * - API calls will include Authorization header automatically
    *
-   * Note: Backend API still validates tokens on each request.
+   * Note: Backend API still validates tokens and permissions on each request.
    * This frontend check is for UX (avoiding showing protected UI
    * to users who would be rejected by the API anyway).
    */
