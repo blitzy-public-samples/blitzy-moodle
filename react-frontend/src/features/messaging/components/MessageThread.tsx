@@ -68,7 +68,7 @@ import {
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
 } from '@mui/icons-material';
-import { VariableSizeList, type ListChildComponentProps } from 'react-window';
+import { List, type RowComponentProps, type ListImperativeAPI } from 'react-window';
 import { isSameDay, format as formatDate } from 'date-fns';
 
 import { deleteMessage } from '@/features/messaging/api/messagingApi';
@@ -90,8 +90,9 @@ import { truncate } from '@/utils/string';
 /**
  * Maximum message length constant from Moodle API
  * Source: public/message/classes/api.php - MESSAGE_MAX_LENGTH
+ * Used for message length validation and display truncation decisions
  */
-const MESSAGE_MAX_LENGTH = 4096;
+export const MESSAGE_MAX_LENGTH = 4096;
 
 /**
  * Maximum length before truncating message content
@@ -188,11 +189,12 @@ function getMemberInfo(
 
 /**
  * Checks if a URL is present in the message text
+ * Used for link preview detection and special message formatting
  *
  * @param text - The message text
  * @returns True if the text contains a URL
  */
-function containsUrl(text: string): boolean {
+export function containsUrl(text: string): boolean {
   const urlPattern = /https?:\/\/[^\s]+/gi;
   return urlPattern.test(text);
 }
@@ -205,20 +207,27 @@ function containsUrl(text: string): boolean {
  */
 function getInitials(fullname: string): string {
   const parts = fullname.trim().split(/\s+/);
-  if (parts.length === 1) {
-    return parts[0].charAt(0).toUpperCase();
+  const firstPart = parts[0];
+  const lastPart = parts[parts.length - 1];
+  
+  if (!firstPart) {
+    return '?';
   }
-  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+  
+  if (parts.length === 1 || !lastPart) {
+    return firstPart.charAt(0).toUpperCase();
+  }
+  return (firstPart.charAt(0) + lastPart.charAt(0)).toUpperCase();
 }
 
 /**
  * Groups messages by date and sender for efficient rendering
  *
  * @param messages - Array of messages
- * @param currentUserId - Current user ID
+ * @param _currentUserId - Current user ID (reserved for future use in message styling)
  * @returns Array of render items (messages and date dividers)
  */
-function groupMessages(messages: Message[], currentUserId: number): RenderItem[] {
+function groupMessages(messages: Message[], _currentUserId: number): RenderItem[] {
   const items: RenderItem[] = [];
 
   if (messages.length === 0) {
@@ -232,7 +241,6 @@ function groupMessages(messages: Message[], currentUserId: number): RenderItem[]
 
   let previousDate: Date | null = null;
   let previousSenderId: number | null = null;
-  let groupStartIndex: number | null = null;
 
   sortedMessages.forEach((message, index) => {
     const messageDate = new Date(message.timecreated * 1000);
@@ -247,7 +255,6 @@ function groupMessages(messages: Message[], currentUserId: number): RenderItem[]
       });
       previousDate = messageDate;
       previousSenderId = null;
-      groupStartIndex = null;
     }
 
     // Check if this message is grouped with the previous one
@@ -273,9 +280,6 @@ function groupMessages(messages: Message[], currentUserId: number): RenderItem[]
     });
 
     previousSenderId = message.useridfrom;
-    if (isFirstInGroup) {
-      groupStartIndex = items.length - 1;
-    }
   });
 
   return items;
@@ -547,6 +551,7 @@ function MessageBubble({
         flexDirection: isOwnMessage ? 'row-reverse' : 'row',
         alignItems: 'flex-end',
         gap: 1,
+        mt: isGrouped ? 0.25 : 1, // Reduced top margin for grouped messages
         mb: isLastInGroup ? 1.5 : 0.5,
         px: 2,
       }}
@@ -769,19 +774,22 @@ export function MessageThread({
   conversation,
   currentUserId,
   isLoading = false,
-  onBack,
-  onSettings,
-  onMessageSent,
-  showHeader = true,
-  showComposer = true,
-  headerActions,
+  onBack: _onBack,
+  onSettings: _onSettings,
+  onMessageSent: _onMessageSent,
+  showHeader: _showHeader = true,
+  showComposer: _showComposer = true,
+  headerActions: _headerActions,
 }: MessageThreadProps): React.ReactElement {
+  // Note: _onBack, _onSettings, _onMessageSent, _showHeader, _showComposer, and _headerActions
+  // are part of the MessageThreadProps interface for future implementation of additional features
+  // like header controls and message composer integration
   const theme = useTheme();
   const queryClient = useQueryClient();
   const { success, error, warning } = useToast();
 
   // Refs
-  const listRef = useRef<VariableSizeList>(null);
+  const listRef = useRef<ListImperativeAPI | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const itemSizes = useRef<Map<number, number>>(new Map());
 
@@ -813,12 +821,16 @@ export function MessageThread({
     }
 
     const item = renderItems[index];
+    if (!item) {
+      return ESTIMATED_MESSAGE_HEIGHT;
+    }
+    
     if (item.type === 'date-divider') {
       return DATE_DIVIDER_HEIGHT;
     }
 
     // Estimate based on message content length
-    const messageLength = item.message?.fullmessage?.length || 0;
+    const messageLength = item.message?.fullmessage?.length ?? 0;
     const lineCount = Math.ceil(messageLength / 50) || 1;
     const baseHeight = MIN_MESSAGE_HEIGHT;
     const additionalHeight = Math.min(lineCount * 20, 200);
@@ -831,7 +843,11 @@ export function MessageThread({
     if (!isLoading && listRef.current && renderItems.length > 0) {
       // Use setTimeout to ensure the list has rendered
       setTimeout(() => {
-        listRef.current?.scrollToItem(renderItems.length - 1, 'end');
+        listRef.current?.scrollToRow({ 
+          index: renderItems.length - 1, 
+          align: 'end',
+          behavior: 'smooth'
+        });
       }, 100);
     }
   }, [isLoading, renderItems.length]);
@@ -889,21 +905,51 @@ export function MessageThread({
 
   // Handle report action
   const handleReport = useCallback(
-    (messageId: number) => {
+    (_messageId: number) => {
       // Report functionality would be implemented here
+      // The _messageId parameter will be used when implementing
+      // the report API endpoint integration
       warning('Report functionality coming soon');
     },
     [warning]
   );
 
-  // Render a single row in the virtualized list
+  /**
+   * Props passed to each row via rowProps
+   */
+  interface RowData {
+    renderItems: RenderItem[];
+    currentUserId: number;
+    conversation: Conversation;
+    handleDeleteClick: (messageId: number) => void;
+    handleReport: (messageId: number) => void;
+  }
+
+  /**
+   * Row component for the virtualized list (react-window v2.x API)
+   * Receives ariaAttributes, index, style from List, plus RowData via rowProps
+   */
   const Row = useCallback(
-    ({ index, style }: ListChildComponentProps) => {
-      const item = renderItems[index];
+    ({ 
+      index, 
+      style, 
+      ariaAttributes,
+      renderItems: items,
+      currentUserId: userId,
+      conversation: conv,
+      handleDeleteClick: onDelete,
+      handleReport: onReport,
+    }: RowComponentProps<RowData>) => {
+      const item = items[index];
+      
+      // Handle undefined item (shouldn't happen but TypeScript requires it)
+      if (!item) {
+        return <div style={style} {...ariaAttributes} />;
+      }
 
       if (item.type === 'date-divider' && item.date) {
         return (
-          <div style={style}>
+          <div style={style} {...ariaAttributes}>
             <DateDivider date={item.date} />
           </div>
         );
@@ -911,25 +957,34 @@ export function MessageThread({
 
       if (item.type === 'message' && item.message) {
         return (
-          <div style={style}>
+          <div style={style} {...ariaAttributes}>
             <MessageBubble
               message={item.message}
-              currentUserId={currentUserId}
-              conversation={conversation}
-              isGrouped={item.isGrouped || false}
-              isFirstInGroup={item.isFirstInGroup || false}
-              isLastInGroup={item.isLastInGroup || false}
-              onDelete={handleDeleteClick}
-              onReport={handleReport}
+              currentUserId={userId}
+              conversation={conv}
+              isGrouped={item.isGrouped ?? false}
+              isFirstInGroup={item.isFirstInGroup ?? false}
+              isLastInGroup={item.isLastInGroup ?? false}
+              onDelete={onDelete}
+              onReport={onReport}
             />
           </div>
         );
       }
 
-      return null;
+      return <div style={style} {...ariaAttributes} />;
     },
-    [renderItems, currentUserId, conversation, handleDeleteClick, handleReport]
+    []
   );
+
+  // Memoized row props to pass to List
+  const rowProps: RowData = useMemo(() => ({
+    renderItems,
+    currentUserId,
+    conversation,
+    handleDeleteClick,
+    handleReport,
+  }), [renderItems, currentUserId, conversation, handleDeleteClick, handleReport]);
 
   // Render loading skeleton
   if (isLoading) {
@@ -1000,17 +1055,16 @@ export function MessageThread({
         role="list"
         aria-label="Messages"
       >
-        <VariableSizeList
-          ref={listRef}
-          height={containerRef.current?.clientHeight || 400}
-          width="100%"
-          itemCount={renderItems.length}
-          itemSize={getItemSize}
-          estimatedItemSize={ESTIMATED_MESSAGE_HEIGHT}
+        <List<RowData>
+          listRef={listRef}
+          defaultHeight={containerRef.current?.clientHeight || 400}
+          style={{ width: '100%', height: containerRef.current?.clientHeight || 400 }}
+          rowCount={renderItems.length}
+          rowHeight={getItemSize}
+          rowComponent={Row}
+          rowProps={rowProps}
           overscanCount={5}
-        >
-          {Row}
-        </VariableSizeList>
+        />
       </Box>
 
       {/* Delete confirmation modal */}

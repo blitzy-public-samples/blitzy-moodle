@@ -86,6 +86,7 @@
     "react-markdown": "^9.0.1",
     "react-redux": "^9.0.4",
     "react-router-dom": "^6.20.1",
+    "react-window": "^2.2.3",
     "recharts": "^2.10.3",
     "tinymce": "^6.8.0",
     "zod": "^3.22.4"
@@ -110,6 +111,7 @@
     "@types/pngjs": "^6.0.5",
     "@types/react": "^18.2.45",
     "@types/react-dom": "^18.2.18",
+    "@types/react-window": "^1.8.8",
     "@typescript-eslint/eslint-plugin": "^6.15.0",
     "@typescript-eslint/parser": "^6.15.0",
     "@vitejs/plugin-react": "^4.2.1",
