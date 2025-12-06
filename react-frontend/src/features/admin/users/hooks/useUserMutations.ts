@@ -35,7 +35,8 @@ import {
   resendConfirmationEmail,
 } from '../api/userAdminApi';
 import { useToast } from '@/hooks/useToast';
-import type { User, UserCreateData, UserUpdateData } from '../types/user.types';
+import type { User } from '@/types/entities';
+import type { UserCreateData, UserUpdateData } from '../types/user.types';
 import type { UserFormData } from '../types/user-form.types';
 
 // ============================================================================
@@ -112,6 +113,35 @@ export interface ResendEmailResult {
   userId: number;
   /** Message describing the result */
   message: string;
+}
+
+// ============================================================================
+// Mutation Context Types (for optimistic updates)
+// ============================================================================
+
+/**
+ * Context type for update user mutation
+ * Contains previous user data for rollback on error
+ */
+interface UpdateUserContext {
+  previousUser?: User;
+}
+
+/**
+ * Context type for delete user mutation
+ * Contains previous user list data for rollback on error
+ */
+interface DeleteUserContext {
+  previousUsers?: unknown;
+  userId?: number;
+}
+
+/**
+ * Context type for single user status mutations (suspend, unsuspend, confirm)
+ * Contains previous user data for rollback on error
+ */
+interface SingleUserContext {
+  previousUser?: User;
 }
 
 /**
@@ -314,7 +344,7 @@ export function useUserMutations(): UseUserMutationsReturn {
    * On success, invalidates user list queries to refresh the UI.
    */
   const createUserMutation = useMutation<User, Error, CreateUserParams>({
-    mutationFn: async ({ data }) => {
+    mutationFn: async ({ data }: CreateUserParams): Promise<User> => {
       const createData = mapFormDataToCreateData(data);
       return createUser(createData);
     },
@@ -344,12 +374,12 @@ export function useUserMutations(): UseUserMutationsReturn {
    * Calls PUT /api/v1/admin/users/{id} endpoint.
    * On success, invalidates both the user list and specific user queries.
    */
-  const updateUserMutation = useMutation<User, Error, UpdateUserParams>({
-    mutationFn: async ({ userId, data }) => {
+  const updateUserMutation = useMutation<User, Error, UpdateUserParams, UpdateUserContext>({
+    mutationFn: async ({ userId, data }: UpdateUserParams): Promise<User> => {
       const updateData = mapFormDataToUpdateData(userId, data);
       return updateUser(updateData);
     },
-    onMutate: async ({ userId, data }) => {
+    onMutate: async ({ userId, data }): Promise<UpdateUserContext> => {
       // Cancel any outgoing refetches to prevent them from overwriting our optimistic update
       await queryClient.cancelQueries({ queryKey: USER_QUERY_KEYS.adminUser(userId) });
 
@@ -357,11 +387,32 @@ export function useUserMutations(): UseUserMutationsReturn {
       const previousUser = queryClient.getQueryData<User>(USER_QUERY_KEYS.adminUser(userId));
 
       // Optimistically update the cache with new data
+      // Only update properties that exist on the User type
       if (previousUser) {
-        queryClient.setQueryData<User>(USER_QUERY_KEYS.adminUser(userId), {
+        const optimisticUser: User = {
           ...previousUser,
-          ...data,
-        });
+          // Map form fields to user properties (only include fields that are present)
+          ...(data.firstname !== undefined && { firstname: data.firstname }),
+          ...(data.lastname !== undefined && { lastname: data.lastname }),
+          ...(data.email !== undefined && { email: data.email }),
+          ...(data.username !== undefined && { username: data.username }),
+          ...(data.city !== undefined && { city: data.city }),
+          ...(data.country !== undefined && { country: data.country }),
+          ...(data.phone1 !== undefined && { phone1: data.phone1 }),
+          ...(data.phone2 !== undefined && { phone2: data.phone2 }),
+          ...(data.institution !== undefined && { institution: data.institution }),
+          ...(data.department !== undefined && { department: data.department }),
+          ...(data.address !== undefined && { address: data.address }),
+          ...(data.lang !== undefined && { lang: data.lang }),
+          ...(data.timezone !== undefined && { timezone: data.timezone }),
+          ...(data.theme !== undefined && { theme: data.theme }),
+          ...(data.description !== undefined && { description: data.description }),
+          ...(data.descriptionformat !== undefined && { descriptionformat: data.descriptionformat }),
+          ...(data.mailformat !== undefined && { mailformat: data.mailformat }),
+          ...(data.maildigest !== undefined && { maildigest: data.maildigest }),
+          ...(data.maildisplay !== undefined && { maildisplay: data.maildisplay }),
+        };
+        queryClient.setQueryData<User>(USER_QUERY_KEYS.adminUser(userId), optimisticUser);
       }
 
       // Return context with previous value for rollback
@@ -401,11 +452,11 @@ export function useUserMutations(): UseUserMutationsReturn {
    * Calls DELETE /api/v1/admin/users/{id} endpoint.
    * Moodle uses soft deletes - user record is marked deleted but not removed.
    */
-  const deleteUserMutation = useMutation<{ deleted: boolean; userId: number }, Error, SingleUserParams>({
-    mutationFn: async ({ userId }) => {
+  const deleteUserMutation = useMutation<{ deleted: boolean; userId: number }, Error, SingleUserParams, DeleteUserContext>({
+    mutationFn: async ({ userId }: SingleUserParams): Promise<{ deleted: boolean; userId: number }> => {
       return deleteUser(userId);
     },
-    onMutate: async ({ userId }) => {
+    onMutate: async ({ userId }): Promise<DeleteUserContext> => {
       // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: USER_QUERY_KEYS.adminUsers });
 
@@ -449,11 +500,11 @@ export function useUserMutations(): UseUserMutationsReturn {
    * Calls POST /api/v1/admin/users/bulk with action='suspend'.
    * Suspended users are immediately logged out and cannot log in.
    */
-  const suspendUserMutation = useMutation<UserStatusResult, Error, SingleUserParams>({
-    mutationFn: async ({ userId }) => {
+  const suspendUserMutation = useMutation<UserStatusResult, Error, SingleUserParams, SingleUserContext>({
+    mutationFn: async ({ userId }: SingleUserParams): Promise<UserStatusResult> => {
       return suspendUser(userId);
     },
-    onMutate: async ({ userId }) => {
+    onMutate: async ({ userId }): Promise<SingleUserContext> => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: USER_QUERY_KEYS.adminUser(userId) });
 
@@ -464,7 +515,7 @@ export function useUserMutations(): UseUserMutationsReturn {
       if (previousUser) {
         queryClient.setQueryData<User>(USER_QUERY_KEYS.adminUser(userId), {
           ...previousUser,
-          suspended: 1,
+          suspended: true,
         });
       }
 
@@ -501,11 +552,11 @@ export function useUserMutations(): UseUserMutationsReturn {
    * Calls POST /api/v1/admin/users/bulk with action='unsuspend'.
    * Allows the user to log in again after being suspended.
    */
-  const unsuspendUserMutation = useMutation<UserStatusResult, Error, SingleUserParams>({
-    mutationFn: async ({ userId }) => {
+  const unsuspendUserMutation = useMutation<UserStatusResult, Error, SingleUserParams, SingleUserContext>({
+    mutationFn: async ({ userId }: SingleUserParams): Promise<UserStatusResult> => {
       return unsuspendUser(userId);
     },
-    onMutate: async ({ userId }) => {
+    onMutate: async ({ userId }): Promise<SingleUserContext> => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: USER_QUERY_KEYS.adminUser(userId) });
 
@@ -516,7 +567,7 @@ export function useUserMutations(): UseUserMutationsReturn {
       if (previousUser) {
         queryClient.setQueryData<User>(USER_QUERY_KEYS.adminUser(userId), {
           ...previousUser,
-          suspended: 0,
+          suspended: false,
         });
       }
 
@@ -554,7 +605,7 @@ export function useUserMutations(): UseUserMutationsReturn {
    * Resets failed login count for accounts locked due to too many failed attempts.
    */
   const unlockUserMutation = useMutation<UserStatusResult, Error, SingleUserParams>({
-    mutationFn: async ({ userId }) => {
+    mutationFn: async ({ userId }: SingleUserParams): Promise<UserStatusResult> => {
       return unlockUser(userId);
     },
     onSuccess: (result, { userName }) => {
@@ -583,11 +634,11 @@ export function useUserMutations(): UseUserMutationsReturn {
    * Calls POST /api/v1/admin/users/bulk with action='confirm'.
    * Manually confirms a user that hasn't completed email verification.
    */
-  const confirmUserMutation = useMutation<UserStatusResult, Error, SingleUserParams>({
-    mutationFn: async ({ userId }) => {
+  const confirmUserMutation = useMutation<UserStatusResult, Error, SingleUserParams, SingleUserContext>({
+    mutationFn: async ({ userId }: SingleUserParams): Promise<UserStatusResult> => {
       return confirmUser(userId);
     },
-    onMutate: async ({ userId }) => {
+    onMutate: async ({ userId }): Promise<SingleUserContext> => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: USER_QUERY_KEYS.adminUser(userId) });
 
@@ -598,7 +649,7 @@ export function useUserMutations(): UseUserMutationsReturn {
       if (previousUser) {
         queryClient.setQueryData<User>(USER_QUERY_KEYS.adminUser(userId), {
           ...previousUser,
-          confirmed: 1,
+          confirmed: true,
         });
       }
 
@@ -636,7 +687,7 @@ export function useUserMutations(): UseUserMutationsReturn {
    * Sends a new confirmation email to users who haven't verified their account.
    */
   const resendConfirmationEmailMutation = useMutation<ResendEmailResult, Error, SingleUserParams>({
-    mutationFn: async ({ userId }) => {
+    mutationFn: async ({ userId }: SingleUserParams): Promise<ResendEmailResult> => {
       return resendConfirmationEmail(userId);
     },
     onSuccess: (result, { userName }) => {
