@@ -188,7 +188,7 @@ export function mockGradeItem(overrides: DeepPartial<GradeItem> = {}): GradeItem
   return {
     id,
     courseid,
-    categoryid: overrides.categoryid,
+    categoryid: overrides.categoryid ?? 1, // Default to category 1 if not specified
     itemname: overrides.itemname ?? 'Test Grade Item',
     itemtype: overrides.itemtype ?? 'mod',
     itemmodule: overrides.itemmodule ?? 'assign',

@@ -54,6 +54,12 @@ export interface GetGradeItemsOptions {
   cmId?: number;
   /** Only retrieve main items (itemnumber=0) */
   onlyMain?: boolean;
+  /** Include hidden items in the response */
+  includeHidden?: boolean;
+  /** Filter by category ID */
+  categoryId?: number;
+  /** Filter by item type (mod, category, course, manual) */
+  itemType?: string;
 }
 
 /**
@@ -328,7 +334,10 @@ export interface ExportResponse {
  * require_capability('moodle/grade:view') on the backend.
  *
  * @param courseId - The ID of the course to fetch grades for
- * @param userIds - Optional array of user IDs to filter grades (if omitted, returns all users)
+ * @param options - Optional configuration options
+ * @param options.userIds - Optional array of user IDs to filter grades (if omitted, returns all users)
+ * @param options.page - Page number for pagination (1-based)
+ * @param options.perPage - Number of items per page
  * @returns Promise resolving to ApiResponse containing CourseGrades data
  *
  * @example
@@ -340,18 +349,31 @@ export interface ExportResponse {
  * }
  *
  * // Fetch grades for specific users
- * const response = await getCourseGrades(5, [101, 102, 103]);
+ * const response = await getCourseGrades(5, { userIds: [101, 102, 103] });
+ *
+ * // Fetch grades with pagination
+ * const response = await getCourseGrades(5, { page: 1, perPage: 20 });
  * ```
  */
 export async function getCourseGrades(
   courseId: number,
-  userIds?: number[]
+  options?: {
+    userIds?: number[];
+    page?: number;
+    perPage?: number;
+  }
 ): Promise<ApiResult<CourseGrades>> {
   try {
     // Build query parameters
     const params: Record<string, string | number> = {};
-    if (userIds && userIds.length > 0) {
-      params.userIds = userIds.join(',');
+    if (options?.userIds && options.userIds.length > 0) {
+      params.userIds = options.userIds.join(',');
+    }
+    if (options?.page !== undefined) {
+      params.page = options.page;
+    }
+    if (options?.perPage !== undefined) {
+      params.perPage = options.perPage;
     }
 
     const response = await apiClient.get<ApiResponse<CourseGrades>>(
@@ -378,7 +400,9 @@ export async function getCourseGrades(
  * or ownership check on the backend.
  *
  * @param userId - The ID of the user to fetch grades for
- * @param courseIds - Optional array of course IDs to filter (if omitted, returns all enrolled courses)
+ * @param options - Optional configuration options
+ * @param options.courseId - Optional single course ID to filter grades
+ * @param options.courseIds - Optional array of course IDs to filter (if omitted, returns all enrolled courses)
  * @returns Promise resolving to ApiResponse containing UserGrades data
  *
  * @example
@@ -386,19 +410,28 @@ export async function getCourseGrades(
  * // Fetch all grades for user 42
  * const response = await getUserGrades(42);
  *
- * // Fetch grades for specific courses
- * const response = await getUserGrades(42, [5, 6, 7]);
+ * // Fetch grades for a specific course
+ * const response = await getUserGrades(42, { courseId: 5 });
+ *
+ * // Fetch grades for multiple courses
+ * const response = await getUserGrades(42, { courseIds: [5, 6, 7] });
  * ```
  */
 export async function getUserGrades(
   userId: number,
-  courseIds?: number[]
+  options?: {
+    courseId?: number;
+    courseIds?: number[];
+  }
 ): Promise<ApiResult<UserGrades>> {
   try {
     // Build query parameters
     const params: Record<string, string | number> = {};
-    if (courseIds && courseIds.length > 0) {
-      params.courseIds = courseIds.join(',');
+    if (options?.courseId !== undefined) {
+      params.courseId = options.courseId;
+    }
+    if (options?.courseIds && options.courseIds.length > 0) {
+      params.courseIds = options.courseIds.join(',');
     }
 
     const response = await apiClient.get<ApiResponse<UserGrades>>(
@@ -456,6 +489,15 @@ export async function getGradeItems(
     }
     if (options.onlyMain !== undefined) {
       params.onlyMain = options.onlyMain;
+    }
+    if (options.includeHidden !== undefined) {
+      params.includeHidden = options.includeHidden;
+    }
+    if (options.categoryId !== undefined) {
+      params.categoryId = options.categoryId;
+    }
+    if (options.itemType !== undefined) {
+      params.itemType = options.itemType;
     }
 
     const response = await apiClient.get<ApiResponse<GradeItem[]>>(
@@ -527,6 +569,9 @@ export async function updateGradeItem(
  * relationships.
  *
  * @param courseId - The ID of the course to fetch categories for
+ * @param options - Optional configuration options
+ * @param options.includeItems - Whether to include nested grade items in each category
+ * @param options.includeHidden - Whether to include hidden categories
  * @returns Promise resolving to ApiResponse containing array of GradeCategory
  *
  * @example
@@ -538,15 +583,31 @@ export async function updateGradeItem(
  *     console.log(`Category: ${category.fullname}, Depth: ${category.depth}`);
  *   });
  * }
+ *
+ * // Get categories with nested items
+ * const response = await getGradeCategories(5, { includeItems: true });
  * ```
  */
 export async function getGradeCategories(
-  courseId: number
+  courseId: number,
+  options?: {
+    includeItems?: boolean;
+    includeHidden?: boolean;
+  }
 ): Promise<ApiResult<GradeCategory[]>> {
   try {
+    const params: Record<string, number | boolean> = { courseId };
+
+    if (options?.includeItems !== undefined) {
+      params.includeItems = options.includeItems;
+    }
+    if (options?.includeHidden !== undefined) {
+      params.includeHidden = options.includeHidden;
+    }
+
     const response = await apiClient.get<ApiResponse<GradeCategory[]>>(
       '/gradebook/categories',
-      { params: { courseId } }
+      { params }
     );
 
     return response.data;
@@ -576,25 +637,51 @@ export async function getGradeCategories(
  * @example
  * ```typescript
  * // Update a grade with feedback
- * const response = await updateGrade(456, 85.5, 'Good work!');
+ * const response = await updateGrade(456, { finalgrade: 85.5, feedback: 'Good work!' });
  *
  * // Reset a grade to null
- * const response = await updateGrade(456, null);
+ * const response = await updateGrade(456, { finalgrade: null });
+ *
+ * // Update only feedback
+ * const response = await updateGrade(456, { feedback: 'Updated feedback text' });
+ *
+ * // Override a grade with reason
+ * const response = await updateGrade(456, {
+ *   finalgrade: 95,
+ *   overridden: true,
+ *   overrideReason: 'Late submission policy exception'
+ * });
  * ```
  */
 export async function updateGrade(
   gradeId: number,
-  grade: number | null,
-  feedback?: string
+  updateData: {
+    finalgrade?: number | null;
+    grade?: number | null;
+    feedback?: string;
+    overridden?: boolean;
+    overrideReason?: string;
+  }
 ): Promise<ApiResult<Grade>> {
   try {
-    const requestData: {
-      grade: number | null;
-      feedback?: string;
-    } = { grade };
+    // Build request data, handling both 'grade' and 'finalgrade' fields
+    const requestData: Record<string, unknown> = {};
 
-    if (feedback !== undefined) {
-      requestData.feedback = feedback;
+    // Support both 'finalgrade' and 'grade' field names
+    if (updateData.finalgrade !== undefined) {
+      requestData.finalgrade = updateData.finalgrade;
+    }
+    if (updateData.grade !== undefined) {
+      requestData.grade = updateData.grade;
+    }
+    if (updateData.feedback !== undefined) {
+      requestData.feedback = updateData.feedback;
+    }
+    if (updateData.overridden !== undefined) {
+      requestData.overridden = updateData.overridden;
+    }
+    if (updateData.overrideReason !== undefined) {
+      requestData.overrideReason = updateData.overrideReason;
     }
 
     const response = await apiClient.put<ApiResponse<Grade>>(
@@ -620,56 +707,129 @@ export async function updateGrade(
  *
  * Returns download URL or base64 encoded file data.
  *
- * @param courseId - The ID of the course to export grades for
- * @param format - Export format: 'csv', 'xlsx', 'ods', or 'txt'
- * @param options - Optional export configuration options
+ * @param options - Export options object
+ * @param options.courseId - The ID of the course to export grades for (required)
+ * @param options.format - Export format: 'csv', 'xlsx', 'ods', or 'txt' (required)
+ * @param options.userIds - Optional array of user IDs to filter by
+ * @param options.itemIds - Optional array of grade item IDs to export
+ * @param options.dateFrom - Optional start date for filtering grades (YYYY-MM-DD format)
+ * @param options.dateTo - Optional end date for filtering grades (YYYY-MM-DD format)
+ * @param options.includeUserData - Whether to include user data in export
+ * @param options.includeFeedback - Whether to include feedback in export
+ * @param options.decimalPoints - Number of decimal points for grades
+ * @param options.displayType - Display type: 'real', 'percentage', or 'letter'
+ * @param options.realOrLetterGrades - Whether to use real or letter grades
  * @returns Promise resolving to ApiResponse containing ExportResponse with URL or data
  *
  * @example
  * ```typescript
  * // Export as CSV with default options
- * const response = await exportGrades(5, 'csv');
+ * const response = await exportGrades({ courseId: 5, format: 'csv' });
  * if (response.success && response.data.url) {
  *   window.open(response.data.url, '_blank');
  * }
  *
  * // Export as Excel with custom options
- * const response = await exportGrades(5, 'xlsx', {
+ * const response = await exportGrades({
+ *   courseId: 5,
+ *   format: 'xlsx',
  *   includeUserData: true,
  *   includeFeedback: true,
  *   decimalPoints: 2,
  *   displayType: 'percentage'
  * });
+ *
+ * // Export with date range filter
+ * const response = await exportGrades({
+ *   courseId: 5,
+ *   format: 'csv',
+ *   dateFrom: '2024-01-01',
+ *   dateTo: '2024-12-31'
+ * });
+ *
+ * // Export specific grade items
+ * const response = await exportGrades({
+ *   courseId: 5,
+ *   format: 'csv',
+ *   itemIds: [10, 20, 30]
+ * });
+ *
+ * // Export grades for specific users
+ * const response = await exportGrades({
+ *   courseId: 5,
+ *   format: 'csv',
+ *   userIds: [1, 2, 3]
+ * });
  * ```
  */
-export async function exportGrades(
-  courseId: number,
-  format: 'csv' | 'xlsx' | 'ods' | 'txt',
-  options?: ExportOptions
-): Promise<ApiResult<ExportResponse>> {
+export async function exportGrades(options: {
+  courseId: number;
+  format: 'csv' | 'xlsx' | 'ods' | 'txt';
+  userIds?: number[];
+  itemIds?: number[];
+  dateFrom?: string;
+  dateTo?: string;
+  includeUserData?: boolean;
+  includeFeedback?: boolean;
+  decimalPoints?: number;
+  displayType?: 'real' | 'percentage' | 'letter';
+  realOrLetterGrades?: 'real' | 'letter';
+}): Promise<ApiResult<ExportResponse>> {
   try {
+    const {
+      courseId,
+      format,
+      userIds,
+      itemIds,
+      dateFrom,
+      dateTo,
+      includeUserData,
+      includeFeedback,
+      decimalPoints,
+      displayType,
+      realOrLetterGrades,
+    } = options;
+
     // Build query parameters
     const params: Record<string, string | number | boolean> = {
       courseId,
       format,
     };
 
-    if (options) {
-      if (options.includeUserData !== undefined) {
-        params.includeUserData = options.includeUserData;
-      }
-      if (options.includeFeedback !== undefined) {
-        params.includeFeedback = options.includeFeedback;
-      }
-      if (options.decimalPoints !== undefined) {
-        params.decimalPoints = options.decimalPoints;
-      }
-      if (options.displayType !== undefined) {
-        params.displayType = options.displayType;
-      }
-      if (options.realOrLetterGrades !== undefined) {
-        params.realOrLetterGrades = options.realOrLetterGrades;
-      }
+    if (userIds !== undefined && userIds.length > 0) {
+      params.userIds = userIds.join(',');
+    }
+
+    if (itemIds !== undefined && itemIds.length > 0) {
+      params.itemIds = itemIds.join(',');
+    }
+
+    if (dateFrom !== undefined) {
+      params.dateFrom = dateFrom;
+    }
+
+    if (dateTo !== undefined) {
+      params.dateTo = dateTo;
+    }
+
+    if (includeUserData !== undefined) {
+      params.includeUserData = includeUserData;
+    }
+
+    if (includeFeedback !== undefined) {
+      params.includeFeedback = includeFeedback;
+    }
+
+    if (decimalPoints !== undefined) {
+      params.decimalPoints = decimalPoints;
+    }
+
+    if (displayType !== undefined) {
+      params.displayType = displayType;
+    }
+
+    if (realOrLetterGrades !== undefined) {
+      params.realOrLetterGrades = realOrLetterGrades;
     }
 
     const response = await apiClient.get<ApiResponse<ExportResponse>>(
@@ -697,36 +857,88 @@ export async function exportGrades(
  * Permission: Validates based on report type (view own vs view all) on the backend.
  *
  * @param courseId - The ID of the course for the report
- * @param userId - Optional user ID for user-specific reports
- * @param reportType - Type of report: 'user', 'grader', or 'overview'
+ * @param options - Report options object
+ * @param options.courseId - Course ID to generate report for (required)
+ * @param options.userId - Optional user ID for user-specific reports
+ * @param options.groupId - Optional group ID to filter by group
+ * @param options.reportType - Type of report: 'user', 'grader', or 'overview' (default: 'user')
+ * @param options.page - Page number for pagination (1-based)
+ * @param options.perPage - Number of items per page
+ * @param options.includeGradeLetters - Whether to include letter grades
+ * @param options.includePercentages - Whether to include percentage calculations
  * @returns Promise resolving to ApiResponse containing GradeReport data
  *
  * @example
  * ```typescript
  * // Get user report for a specific student
- * const response = await getGradeReport(5, 42, 'user');
+ * const response = await getGradeReport({ courseId: 5, userId: 42, reportType: 'user' });
  *
  * // Get grader report for all students (teacher view)
- * const response = await getGradeReport(5, undefined, 'grader');
+ * const response = await getGradeReport({ courseId: 5, reportType: 'grader' });
  *
- * // Get overview report
- * const response = await getGradeReport(5, undefined, 'overview');
+ * // Get overview report with pagination
+ * const response = await getGradeReport({ courseId: 5, reportType: 'overview', page: 2, perPage: 25 });
+ *
+ * // Get report filtered by group
+ * const response = await getGradeReport({ courseId: 5, groupId: 10, reportType: 'grader' });
  * ```
  */
-export async function getGradeReport(
-  courseId: number,
-  userId?: number,
-  reportType: 'user' | 'grader' | 'overview' = 'user'
-): Promise<ApiResult<GradeReport>> {
+export async function getGradeReport(options: {
+  courseId: number;
+  userId?: number;
+  groupId?: number;
+  reportType?: 'user' | 'grader' | 'overview';
+  page?: number;
+  perPage?: number;
+  includeGradeLetters?: boolean;
+  includePercentages?: boolean;
+  includeStatistics?: boolean;
+}): Promise<ApiResult<GradeReport>> {
   try {
+    const {
+      courseId,
+      userId,
+      groupId,
+      reportType = 'user',
+      page,
+      perPage,
+      includeGradeLetters,
+      includePercentages,
+      includeStatistics,
+    } = options;
+
     // Build query parameters
-    const params: Record<string, string | number> = {
+    const params: Record<string, string | number | boolean> = {
       courseId,
       reportType,
     };
 
     if (userId !== undefined) {
       params.userId = userId;
+    }
+
+    if (groupId !== undefined) {
+      params.groupId = groupId;
+    }
+
+    if (page !== undefined) {
+      params.page = page;
+    }
+
+    if (perPage !== undefined) {
+      params.perPage = perPage;
+    }
+
+    if (includeGradeLetters !== undefined) {
+      params.includeGradeLetters = includeGradeLetters;
+    }
+
+    if (includePercentages !== undefined) {
+      params.includePercentages = includePercentages;
+    }
+
+    if (includeStatistics !== undefined) {
+      params.includeStatistics = includeStatistics;
     }
 
     const response = await apiClient.get<ApiResponse<GradeReport>>(
@@ -778,7 +990,7 @@ function handleGradebookError(
   error: unknown,
   fallbackMessage: string
 ): ErrorResponse {
-  // Type guard for axios-like error structure
+  // Type guard for axios-like error structure (original Axios error)
   const isAxiosError = (err: unknown): err is {
     response?: {
       status?: number;
@@ -796,6 +1008,29 @@ function handleGradebookError(
     return typeof err === 'object' && err !== null && 'response' in err;
   };
 
+  // Type guard for serialized error structure (after interceptor processing)
+  // The interceptor's createSerializableError creates an Error with direct properties
+  const isSerializedError = (err: unknown): err is {
+    status?: number;
+    data?: {
+      success?: boolean;
+      error?: {
+        code?: string;
+        message?: string;
+        details?: Record<string, unknown>;
+      };
+    };
+    customError?: {
+      code?: string;
+      message?: string;
+      status?: number;
+      details?: unknown;
+    };
+    message?: string;
+  } => {
+    return typeof err === 'object' && err !== null && ('data' in err || 'customError' in err);
+  };
+
   // If the error is already an ErrorResponse, return it
   if (
     typeof error === 'object' &&
@@ -806,7 +1041,60 @@ function handleGradebookError(
     return error as ErrorResponse;
   }
 
-  // Handle axios errors
+  // Handle serialized errors from interceptor (prioritize this check)
+  if (isSerializedError(error)) {
+    // First check customError (set by interceptor for specific status codes)
+    if (error.customError?.code) {
+      const errorCode = Object.values(ApiErrorCode).includes(error.customError.code as ApiErrorCode)
+        ? (error.customError.code as ApiErrorCode)
+        : getErrorCodeFromStatus(error.customError.status);
+
+      return {
+        success: false,
+        error: {
+          code: errorCode,
+          message: error.customError.message || getErrorMessageFromStatus(error.customError.status, fallbackMessage),
+          details: error.customError.details as Record<string, unknown> | undefined,
+        },
+      };
+    }
+
+    // Check data.error (API error response)
+    const apiError = error.data?.error;
+    if (apiError?.message) {
+      const errorCode = apiError.code
+        ? (Object.values(ApiErrorCode).includes(apiError.code as ApiErrorCode)
+            ? (apiError.code as ApiErrorCode)
+            : getErrorCodeFromStatus(error.status))
+        : getErrorCodeFromStatus(error.status);
+
+      return {
+        success: false,
+        error: {
+          code: errorCode,
+          message: apiError.message,
+          details: apiError.details,
+        },
+      };
+    }
+
+    // Fall back to status-based error
+    if (error.status) {
+      const message = getErrorMessageFromStatus(error.status, fallbackMessage);
+      const code = getErrorCodeFromStatus(error.status);
+
+      return {
+        success: false,
+        error: {
+          code,
+          message,
+          details: { status: error.status },
+        },
+      };
+    }
+  }
+
+  // Handle axios errors (original structure before interceptor serialization)
   if (isAxiosError(error)) {
     const status = error.response?.status;
     const apiError = error.response?.data?.error;

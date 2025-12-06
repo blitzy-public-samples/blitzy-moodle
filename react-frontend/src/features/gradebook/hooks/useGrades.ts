@@ -167,7 +167,7 @@ export function useCourseGrades(
   return useQuery<CourseGrades, Error>({
     queryKey: gradebookKeys.courseGrade(courseId, userIds),
     queryFn: async () => {
-      const response = await getCourseGrades(courseId, userIds);
+      const response = await getCourseGrades(courseId, { userIds });
       if (isSuccessResponse(response)) {
         return response.data;
       }
@@ -213,7 +213,7 @@ export function useUserGrades(
   return useQuery<UserGrades, Error>({
     queryKey: gradebookKeys.userGrade(userId, courseIds),
     queryFn: async () => {
-      const response = await getUserGrades(userId, courseIds);
+      const response = await getUserGrades(userId, { courseIds });
       if (isSuccessResponse(response)) {
         return response.data;
       }
@@ -350,7 +350,7 @@ export function useGradeReport(
   return useQuery<GradeReport, Error>({
     queryKey: gradebookKeys.report(courseId, userId, reportType),
     queryFn: async () => {
-      const response = await getGradeReport(courseId, userId, reportType);
+      const response = await getGradeReport({ courseId, userId, reportType });
       if (isSuccessResponse(response)) {
         return response.data;
       }
@@ -443,7 +443,7 @@ export function useUpdateGrade(): UseMutationResult<
 
   return useMutation<Grade, Error, UpdateGradeInput>({
     mutationFn: async ({ gradeId, grade, feedback }: UpdateGradeInput) => {
-      const response = await updateGrade(gradeId, grade, feedback);
+      const response = await updateGrade(gradeId, { grade, feedback });
       if (isSuccessResponse(response)) {
         return response.data;
       }
@@ -504,7 +504,7 @@ export function useExportGrades(): UseMutationResult<
     { courseId: number; format: 'csv' | 'xlsx' | 'ods' | 'txt'; options?: ExportOptions }
   >({
     mutationFn: async ({ courseId, format, options }) => {
-      const response = await exportGrades(courseId, format, options);
+      const response = await exportGrades({ courseId, format, ...options });
       if (isSuccessResponse(response)) {
         return response.data;
       }
@@ -603,7 +603,7 @@ export function useStudentCourseGrades(
   return useQuery<StudentCourseGradesData, Error>({
     queryKey: [...gradebookKeys.reports(), 'studentCourse', courseId, userId],
     queryFn: async () => {
-      const response = await getGradeReport(courseId, userId, 'user');
+      const response = await getGradeReport({ courseId, userId, reportType: 'user' });
       if (isSuccessResponse(response)) {
         const report = response.data;
         
