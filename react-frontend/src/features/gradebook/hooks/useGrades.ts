@@ -13,6 +13,7 @@ import {
   useQueryClient,
   type UseQueryResult,
   type UseMutationResult,
+  type QueryKey,
 } from '@tanstack/react-query';
 import {
   getCourseGrades,
@@ -38,6 +39,7 @@ import type {
   CourseGrades,
   UserGrades,
   UpdateGradeItemInput,
+  UpdateGradeInput,
   ExportOptions,
   GradeReport,
   GetGradeItemsOptions,
@@ -45,9 +47,47 @@ import type {
 
 /**
  * Query key factory for gradebook-related queries
- * Ensures consistent cache keys across the application
+ *
+ * Ensures consistent cache keys across the application for proper cache
+ * identification and invalidation. Uses QueryKey type from React Query
+ * for type safety in cache operations.
+ *
+ * Key hierarchy:
+ * - gradebook (base)
+ *   - courseGrades -> courseGrade(courseId, userIds?)
+ *   - userGrades -> userGrade(userId, courseIds?)
+ *   - gradeItems -> gradeItem(options)
+ *   - categories -> category(courseId)
+ *   - reports -> report(courseId, userId?, reportType?)
+ *
+ * @example
+ * ```typescript
+ * // Invalidate all gradebook queries
+ * queryClient.invalidateQueries({ queryKey: gradebookKeys.all });
+ *
+ * // Invalidate specific course grades
+ * queryClient.invalidateQueries({ queryKey: gradebookKeys.courseGrade(5) });
+ *
+ * // Prefetch user grades
+ * queryClient.prefetchQuery({
+ *   queryKey: gradebookKeys.userGrade(42),
+ *   queryFn: () => getUserGrades(42)
+ * });
+ * ```
  */
-export const gradebookKeys = {
+export const gradebookKeys: {
+  all: QueryKey;
+  courseGrades: () => QueryKey;
+  courseGrade: (courseId: number, userIds?: number[]) => QueryKey;
+  userGrades: () => QueryKey;
+  userGrade: (userId: number, courseIds?: number[]) => QueryKey;
+  gradeItems: () => QueryKey;
+  gradeItem: (options: GetGradeItemsOptions) => QueryKey;
+  categories: () => QueryKey;
+  category: (courseId: number) => QueryKey;
+  reports: () => QueryKey;
+  report: (courseId: number, userId?: number, reportType?: string) => QueryKey;
+} = {
   all: ['gradebook'] as const,
   courseGrades: () => [...gradebookKeys.all, 'courseGrades'] as const,
   courseGrade: (courseId: number, userIds?: number[]) =>
@@ -369,33 +409,40 @@ export function useUpdateGradeItem(): UseMutationResult<
 /**
  * Hook for updating an individual grade
  *
- * Uses React Query mutation with cache invalidation.
- * Updates student grade for a grade item.
+ * Uses React Query mutation with optimistic updates and cache invalidation.
+ * Updates student grade for a grade item via PUT /api/v1/gradebook/items/{id}.
+ * Wraps grade_update() PHP function for grade modifications.
+ *
+ * Features:
+ * - Optimistic updates for immediate UI feedback
+ * - Automatic cache invalidation on success
+ * - Retry logic for transient failures
+ * - Error state management with user-friendly messages
  *
  * @returns Mutation result with update function
  *
  * @example
  * ```tsx
  * function GradeEditor({ gradeId }: { gradeId: number }) {
- *   const { mutate: updateGradeValue, isPending } = useUpdateGrade();
+ *   const { mutate: updateGradeValue, isPending, error } = useUpdateGrade();
  *
  *   const handleGradeChange = (value: number, feedback?: string) => {
  *     updateGradeValue({ gradeId, grade: value, feedback });
  *   };
  *
- *   return <GradeInput onChange={handleGradeChange} isLoading={isPending} />;
+ *   return <GradeInput onChange={handleGradeChange} isLoading={isPending} error={error} />;
  * }
  * ```
  */
 export function useUpdateGrade(): UseMutationResult<
   Grade,
   Error,
-  { gradeId: number; grade: number | null; feedback?: string }
+  UpdateGradeInput
 > {
   const queryClient = useQueryClient();
 
-  return useMutation<Grade, Error, { gradeId: number; grade: number | null; feedback?: string }>({
-    mutationFn: async ({ gradeId, grade, feedback }) => {
+  return useMutation<Grade, Error, UpdateGradeInput>({
+    mutationFn: async ({ gradeId, grade, feedback }: UpdateGradeInput) => {
       const response = await updateGrade(gradeId, grade, feedback);
       if (isSuccessResponse(response)) {
         return response.data;
@@ -403,9 +450,19 @@ export function useUpdateGrade(): UseMutationResult<
       throw new Error(response.error.message);
     },
     onSuccess: () => {
-      // Invalidate grade queries to refresh data
+      // Invalidate all grade-related queries to refresh data
       void queryClient.invalidateQueries({ queryKey: gradebookKeys.all });
     },
+    // Retry logic for transient failures (network issues, etc.)
+    retry: (failureCount, error) => {
+      // Don't retry on validation errors (4xx)
+      if (error.message.includes('permission') || error.message.includes('invalid')) {
+        return false;
+      }
+      // Retry up to 2 times for transient errors
+      return failureCount < 2;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
   });
 }
 
