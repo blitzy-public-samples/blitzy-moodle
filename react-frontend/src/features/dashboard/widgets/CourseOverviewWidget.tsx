@@ -43,8 +43,6 @@ import {
   Pagination,
   Skeleton,
   Alert,
-  FormControl,
-  Select,
   Tooltip,
   Button,
 } from '@mui/material';
@@ -64,7 +62,6 @@ import {
 } from '@mui/icons-material';
 
 import { useCourseOverview } from '@/features/dashboard/api/dashboardApi';
-import type { Course } from '@/types/entities';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import type {
   CourseOverviewPreferences,
@@ -220,18 +217,6 @@ const CourseCard: React.FC<CourseCardProps> = React.memo(({ course, viewMode }) 
 
     return null;
   }, [course]);
-
-  /**
-   * Format date for display
-   */
-  const formatDate = useCallback((timestamp: number): string => {
-    if (!timestamp || timestamp === 0) return '';
-    return new Date(timestamp * 1000).toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  }, []);
 
   // Card view layout
   if (viewMode === 'card') {
@@ -629,7 +614,7 @@ const CourseOverviewWidget: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
 
   // Persistent preferences from localStorage
-  const [preferences, setPreferences, resetPreferences] = useLocalStorage<CourseOverviewPreferences>(
+  const [preferences, setPreferences] = useLocalStorage<CourseOverviewPreferences>(
     PREFERENCES_STORAGE_KEY,
     DEFAULT_PREFERENCES
   );
@@ -644,7 +629,6 @@ const CourseOverviewWidget: React.FC = () => {
     data: courseData,
     isLoading,
     isError,
-    error,
     refetch,
   } = useCourseOverview(preferences);
 
