@@ -158,7 +158,8 @@ const customParamsSchema = z.string().refine(
     const lines = val.split('\n').filter((line) => line.trim() !== '');
     return lines.every((line) => {
       const parts = line.split('=');
-      return parts.length >= 2 && parts[0].trim() !== '';
+      const firstPart = parts[0];
+      return parts.length >= 2 && firstPart !== undefined && firstPart.trim() !== '';
     });
   },
   { message: 'Each parameter must be in key=value format, one per line' }
@@ -434,7 +435,6 @@ const LTIConfigForm: React.FC<LTIConfigFormProps> = ({
 
   /** Watch LTI version for conditional field display */
   const selectedLtiVersion = watch('ltiversion');
-  const selectedTypeId = watch('typeid');
 
   // ============================================================================
   // Memoized Values
