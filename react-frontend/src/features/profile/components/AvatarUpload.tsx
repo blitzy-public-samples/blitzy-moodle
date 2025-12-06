@@ -22,7 +22,7 @@
  * @module features/profile/components
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   Box,
   Button,
@@ -57,6 +57,17 @@ import { uploadAvatar } from '../api/profileApi';
  * current avatar URL, callbacks for success/error handling, and constraints
  * for file uploads.
  */
+/**
+ * Constraints configuration object for file validation
+ * Alternative to individual maxFileSize and acceptedFormats props
+ */
+export interface AvatarConstraints {
+  /** Maximum file size in bytes */
+  maxSize?: number;
+  /** Array of accepted MIME types */
+  acceptedTypes?: string[];
+}
+
 export interface AvatarUploadProps {
   /**
    * User ID for avatar upload - required for API call
@@ -73,18 +84,20 @@ export interface AvatarUploadProps {
   /**
    * Callback invoked when avatar upload succeeds
    * Receives the new avatar URL as parameter
+   * Optional - if not provided, does nothing on success
    *
    * @param url - The new profile image URL returned by the server
    */
-  onUploadSuccess: (url: string) => void;
+  onUploadSuccess?: (url: string) => void;
 
   /**
    * Callback invoked when avatar upload fails
    * Receives the error object with details
+   * Optional - if not provided, does nothing on error
    *
    * @param error - Error object containing failure details
    */
-  onUploadError: (error: Error) => void;
+  onUploadError?: (error: Error) => void;
 
   /**
    * Maximum file size in bytes for uploaded images
@@ -97,6 +110,32 @@ export interface AvatarUploadProps {
    * Defaults to ['image/jpeg', 'image/png', 'image/gif']
    */
   acceptedFormats?: string[];
+
+  /**
+   * Constraints configuration object (alternative to individual props)
+   * If provided, maxSize overrides maxFileSize
+   */
+  constraints?: AvatarConstraints;
+
+  /**
+   * Whether to show the delete button for removing the current avatar
+   * Defaults to false
+   */
+  allowDelete?: boolean;
+
+  /**
+   * Callback invoked when avatar deletion succeeds
+   * Only applicable when allowDelete is true
+   */
+  onDeleteSuccess?: () => void;
+
+  /**
+   * Size variant for the avatar display
+   * - 'small': 64px
+   * - 'medium': 100px (default)
+   * - 'large': 150px
+   */
+  size?: 'small' | 'medium' | 'large';
 }
 
 /**
@@ -137,14 +176,29 @@ const DEFAULT_ACCEPTED_FORMATS = ['image/jpeg', 'image/png', 'image/gif'];
  * />
  * ```
  */
-function AvatarUpload({
+export function AvatarUpload({
   userId,
   currentAvatarUrl,
   onUploadSuccess,
   onUploadError,
   maxFileSize = DEFAULT_MAX_FILE_SIZE,
   acceptedFormats = DEFAULT_ACCEPTED_FORMATS,
+  constraints,
+  allowDelete = false,
+  onDeleteSuccess,
+  size = 'medium',
 }: AvatarUploadProps): React.ReactElement {
+  // Resolve constraints - constraints object takes precedence over individual props
+  const effectiveMaxFileSize = constraints?.maxSize ?? maxFileSize;
+  const effectiveAcceptedFormats = constraints?.acceptedTypes ?? acceptedFormats;
+
+  // Calculate avatar size in pixels based on size prop
+  const avatarSizeMap: Record<'small' | 'medium' | 'large', number> = {
+    small: 64,
+    medium: 100,
+    large: 150,
+  };
+  const avatarSizePx = avatarSizeMap[size];
   // ============================================================================
   // Component State
   // ============================================================================
@@ -180,6 +234,12 @@ function AvatarUpload({
    */
   const [showCropDialog, setShowCropDialog] = useState<boolean>(false);
 
+  /**
+   * Delete operation in progress flag
+   * True while the delete API call is being processed
+   */
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+
   // ============================================================================
   // Cleanup Effect
   // ============================================================================
@@ -213,22 +273,22 @@ function AvatarUpload({
   const validateFile = useCallback(
     (file: File): string | null => {
       // Check file type
-      if (!acceptedFormats.includes(file.type)) {
-        const formatNames = acceptedFormats
+      if (!effectiveAcceptedFormats.includes(file.type)) {
+        const formatNames = effectiveAcceptedFormats
           .map((format) => format.split('/')[1]?.toUpperCase() ?? format)
           .join(', ');
         return `Invalid file type. Accepted formats: ${formatNames}`;
       }
 
       // Check file size
-      if (file.size > maxFileSize) {
-        const maxSizeMB = (maxFileSize / (1024 * 1024)).toFixed(1);
+      if (file.size > effectiveMaxFileSize) {
+        const maxSizeMB = (effectiveMaxFileSize / (1024 * 1024)).toFixed(1);
         return `File size exceeds ${maxSizeMB}MB limit`;
       }
 
       return null;
     },
-    [acceptedFormats, maxFileSize]
+    [effectiveAcceptedFormats, effectiveMaxFileSize]
   );
 
   /**
@@ -294,8 +354,8 @@ function AvatarUpload({
       const response: AvatarUploadResponse = await uploadAvatar(userId, selectedFile);
 
       if (response.success) {
-        // Upload succeeded - invoke success callback with new avatar URL
-        onUploadSuccess(response.profileimageurl);
+        // Upload succeeded - invoke success callback with new avatar URL (if provided)
+        onUploadSuccess?.(response.profileimageurl);
 
         // Clear the selected file and preview after successful upload
         if (preview) {
@@ -307,14 +367,14 @@ function AvatarUpload({
         // Server returned an error response
         const errorMessage = response.error?.message ?? 'Upload failed';
         setError(errorMessage);
-        onUploadError(new Error(errorMessage));
+        onUploadError?.(new Error(errorMessage));
       }
     } catch (uploadError) {
       // Handle network or unexpected errors
       const errorMessage =
         uploadError instanceof Error ? uploadError.message : 'Failed to upload avatar';
       setError(errorMessage);
-      onUploadError(uploadError instanceof Error ? uploadError : new Error(errorMessage));
+      onUploadError?.(uploadError instanceof Error ? uploadError : new Error(errorMessage));
     } finally {
       setIsUploading(false);
     }
@@ -352,6 +412,40 @@ function AvatarUpload({
     setShowCropDialog(false);
   }, []);
 
+  /**
+   * Handles deleting the current avatar
+   *
+   * This function is called when the user clicks the delete button
+   * to remove their existing avatar. It calls the API to delete the avatar
+   * and invokes the onDeleteSuccess callback on success.
+   */
+  const handleDeleteAvatar = useCallback(async () => {
+    if (!currentAvatarUrl || isDeleting) {
+      return;
+    }
+
+    setIsDeleting(true);
+    setError(null);
+
+    try {
+      // Import and call the deleteAvatar API function
+      // deleteAvatar returns Promise<void> and throws on error
+      const { deleteAvatar } = await import('../api/profileApi');
+      await deleteAvatar(userId);
+
+      // Deletion succeeded - invoke success callback
+      onDeleteSuccess?.();
+    } catch (deleteError) {
+      // Handle network or unexpected errors
+      const errorMessage =
+        deleteError instanceof Error ? deleteError.message : 'Failed to delete avatar';
+      setError(errorMessage);
+      onUploadError?.(deleteError instanceof Error ? deleteError : new Error(errorMessage));
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [currentAvatarUrl, isDeleting, userId, onDeleteSuccess, onUploadError]);
+
   // ============================================================================
   // Dropzone Configuration
   // ============================================================================
@@ -365,14 +459,33 @@ function AvatarUpload({
    * - Single file mode (multiple: false)
    * - onDrop callback for file handling
    */
+  // Build the accept object dynamically based on effectiveAcceptedFormats
+  const acceptConfig = useMemo(() => {
+    const config: Record<string, string[]> = {};
+    for (const format of effectiveAcceptedFormats) {
+      if (format === 'image/jpeg') {
+        config['image/jpeg'] = ['.jpg', '.jpeg'];
+      } else if (format === 'image/png') {
+        config['image/png'] = ['.png'];
+      } else if (format === 'image/gif') {
+        config['image/gif'] = ['.gif'];
+      } else if (format === 'image/webp') {
+        config['image/webp'] = ['.webp'];
+      } else {
+        // Generic format handling
+        const ext = format.split('/')[1];
+        if (ext) {
+          config[format] = [`.${ext}`];
+        }
+      }
+    }
+    return config;
+  }, [effectiveAcceptedFormats]);
+
   const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
     onDrop,
-    accept: {
-      'image/jpeg': ['.jpg', '.jpeg'],
-      'image/png': ['.png'],
-      'image/gif': ['.gif'],
-    },
-    maxSize: maxFileSize,
+    accept: acceptConfig,
+    maxSize: effectiveMaxFileSize,
     multiple: false,
     disabled: isUploading,
   });
@@ -467,8 +580,8 @@ function AvatarUpload({
             src={displayImageUrl}
             alt="Avatar preview"
             sx={{
-              width: 120,
-              height: 120,
+              width: avatarSizePx,
+              height: avatarSizePx,
               border: '3px solid',
               borderColor: 'primary.main',
               boxShadow: 2,
@@ -476,7 +589,7 @@ function AvatarUpload({
           >
             {/* Default icon when no image */}
             {!displayImageUrl && (
-              <CloudUploadIcon sx={{ fontSize: 48, color: 'text.secondary' }} />
+              <CloudUploadIcon sx={{ fontSize: avatarSizePx * 0.4, color: 'text.secondary' }} />
             )}
           </Avatar>
 
@@ -605,6 +718,28 @@ function AvatarUpload({
           aria-label={isUploading ? 'Uploading avatar...' : 'Upload avatar image'}
         >
           {isUploading ? 'Uploading...' : 'Upload Avatar'}
+        </Button>
+      )}
+
+      {/* Delete Avatar Button - shown when allowDelete is true and there is a current avatar */}
+      {allowDelete && currentAvatarUrl && !selectedFile && (
+        <Button
+          variant="outlined"
+          color="error"
+          onClick={handleDeleteAvatar}
+          disabled={isDeleting || isUploading}
+          startIcon={
+            isDeleting ? (
+              <CircularProgress size={20} color="inherit" />
+            ) : (
+              <DeleteIcon />
+            )
+          }
+          fullWidth
+          sx={{ mt: 1 }}
+          aria-label={isDeleting ? 'Deleting avatar...' : 'Delete current avatar'}
+        >
+          {isDeleting ? 'Deleting...' : 'Delete Avatar'}
         </Button>
       )}
 
