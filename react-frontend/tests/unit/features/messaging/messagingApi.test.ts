@@ -21,7 +21,7 @@
  * @module tests/unit/features/messaging/messagingApi.test
  */
 
-import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, afterEach, beforeAll, afterAll, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 
@@ -86,13 +86,16 @@ import { ConversationType, NotificationType } from '../../../../src/features/mes
 
 /**
  * Mock JWT token for Authorization header testing
+ * Prefixed with underscore as it's available for future use but not currently referenced
  */
-const MOCK_JWT_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IlRlc3QgVXNlciIsImlhdCI6MTUxNjIzOTAyMiwiZXhwIjoxOTk5OTk5OTk5fQ.7MQ_3OqzKZGM_2Gvz0TAT3LsKNGfDMUOSjsB-FU6KDw';
+const _MOCK_JWT_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IlRlc3QgVXNlciIsImlhdCI6MTUxNjIzOTAyMiwiZXhwIjoxOTk5OTk5OTk5fQ.7MQ_3OqzKZGM_2Gvz0TAT3LsKNGfDMUOSjsB-FU6KDw';
+void _MOCK_JWT_TOKEN; // Suppress unused variable warning
 
 /**
  * API Base URL for mocked endpoints
+ * Must match VITE_API_BASE_URL from vitest.config.ts for MSW to intercept properly
  */
-const API_BASE_URL = '/api/v1';
+const API_BASE_URL = 'http://localhost:8000/api/v1';
 
 // ============================================================================
 // Mock Data Factory Functions
@@ -618,7 +621,8 @@ describe('Messaging API Client', () => {
       const result = await getConversations(undefined, { type: ConversationType.INDIVIDUAL });
 
       // Assert
-      expect(result.conversations[0].type).toBe(ConversationType.INDIVIDUAL);
+      expect(result.conversations).toHaveLength(1);
+      expect(result.conversations[0]!.type).toBe(ConversationType.INDIVIDUAL);
     });
 
     it('should fetch favourite conversations only', async () => {
@@ -642,7 +646,8 @@ describe('Messaging API Client', () => {
       const result = await getConversations(undefined, { favourites: true });
 
       // Assert
-      expect(result.conversations[0].isfavourite).toBe(true);
+      expect(result.conversations).toHaveLength(1);
+      expect(result.conversations[0]!.isfavourite).toBe(true);
     });
 
     it('should include unread counts in response', async () => {
@@ -667,8 +672,9 @@ describe('Messaging API Client', () => {
       const result = await getConversations();
 
       // Assert
-      expect(result.conversations[0].unreadcount).toBe(5);
-      expect(result.conversations[0].isread).toBe(false);
+      expect(result.conversations).toHaveLength(1);
+      expect(result.conversations[0]!.unreadcount).toBe(5);
+      expect(result.conversations[0]!.isread).toBe(false);
     });
 
     it('should handle pagination correctly', async () => {
@@ -1126,7 +1132,8 @@ describe('Messaging API Client', () => {
       const result = await getContacts({ search: 'john' });
 
       // Assert
-      expect(result[0].fullname).toBe('John Doe');
+      expect(result).toHaveLength(1);
+      expect(result[0]!.fullname).toBe('John Doe');
     });
   });
 
@@ -1158,7 +1165,7 @@ describe('Messaging API Client', () => {
       );
 
       // Act
-      await getContactRequests({ pagination: { page: 2 } });
+      await getContactRequests({ pagination: { page: 2, perPage: 20 } });
     });
   });
 
@@ -1363,7 +1370,8 @@ describe('Messaging API Client', () => {
       const result = await getNotifications(undefined, filters);
 
       // Assert
-      expect(result.notifications[0].timeread).toBeNull();
+      expect(result.notifications).toHaveLength(1);
+      expect(result.notifications[0]!.timeread).toBeNull();
     });
 
     it('should filter by notification type', async () => {
@@ -1699,7 +1707,7 @@ describe('Messaging API Client', () => {
       // Assert
       expect(result).toBeInstanceOf(Array);
       expect(result.length).toBe(2);
-      expect(result[0].fullname).toBe('John Doe');
+      expect(result[0]!.fullname).toBe('John Doe');
     });
 
     it('should throw error for empty query', async () => {
