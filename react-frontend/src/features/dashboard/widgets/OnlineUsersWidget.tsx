@@ -329,7 +329,12 @@ function OnlineUsersWidget({
   const getUserInitials = useCallback((user: OnlineUser): string => {
     const first = user.firstname?.[0] ?? '';
     const last = user.lastname?.[0] ?? '';
-    return (first + last).toUpperCase() || user.username?.[0]?.toUpperCase() || '?';
+    const initials = (first + last).toUpperCase();
+    if (initials) {
+      return initials;
+    }
+    const usernameInitial = user.username?.[0]?.toUpperCase();
+    return usernameInitial ?? '?';
   }, []);
 
   /**

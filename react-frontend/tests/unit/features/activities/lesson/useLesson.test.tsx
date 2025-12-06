@@ -25,7 +25,7 @@
  * @module tests/unit/features/activities/lesson
  */
 
-import React from 'react';
+import type React from 'react';
 import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll, vi } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';

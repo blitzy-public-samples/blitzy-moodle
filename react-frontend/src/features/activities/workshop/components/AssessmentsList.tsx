@@ -358,7 +358,7 @@ function AssessmentsList({
     return assessmentsData.assessments.map((assessment): DisplayAssessment => {
       // Build reviewer name from first/last name
       const reviewerName = canViewReviewerNames
-        ? `${assessment.reviewerFirstName || ''} ${assessment.reviewerLastName || ''}`.trim() ||
+        ? `${assessment.reviewerFirstName ?? ''} ${assessment.reviewerLastName ?? ''}`.trim() ||
           `Reviewer ${assessment.reviewerId}`
         : `Reviewer ${assessment.reviewerId}`;
 
@@ -510,7 +510,7 @@ function AssessmentsList({
         filterable: true,
         renderCell: (params) => (
           <Typography variant="body2" noWrap>
-            {params.row.submissionTitle || `Submission ${params.row.submissionId}`}
+            {params.row.submissionTitle ?? `Submission ${params.row.submissionId}`}
           </Typography>
         ),
       });

@@ -1053,7 +1053,7 @@ function handleGradebookError(
         success: false,
         error: {
           code: errorCode,
-          message: error.customError.message || getErrorMessageFromStatus(error.customError.status, fallbackMessage),
+          message: error.customError.message ? error.customError.message : getErrorMessageFromStatus(error.customError.status, fallbackMessage),
           details: error.customError.details as Record<string, unknown> | undefined,
         },
       };

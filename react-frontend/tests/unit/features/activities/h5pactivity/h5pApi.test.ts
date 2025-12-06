@@ -542,7 +542,7 @@ const handlers = [
     
     return HttpResponse.json(apiResponse({ 
       success: true, 
-      statementId: 'stmt-' + Date.now(),
+      statementId: `stmt-${  Date.now()}`,
       warnings: [],
     }));
   }),

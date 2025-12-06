@@ -590,7 +590,7 @@ export function useFeedbackResponse(): FeedbackResponseHookResult {
           timemodified: Math.floor(Date.now() / 1000),
           random_response: 0,
           anonymous_response: options.anonymous ? 1 : 0,
-          courseid: options.courseId || 0,
+          courseid: options.courseId ?? 0,
         },
         values: Object.entries(options.responses).map(([itemId, value]) => ({
           itemId: Number(itemId),
@@ -856,7 +856,7 @@ export function useFeedbackResponse(): FeedbackResponseHookResult {
     saveProgress,
     isSubmitting: submitMutation.isPending,
     isSaving: saveProgressMutation.isPending,
-    error: (submitMutation.error || saveProgressMutation.error),
+    error: (submitMutation.error ?? saveProgressMutation.error),
     validationErrors,
     clearErrors,
     resetSubmission,

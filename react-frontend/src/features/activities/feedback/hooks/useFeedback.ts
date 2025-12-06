@@ -362,7 +362,7 @@ export function useFeedback(options: FeedbackHookOptions): FeedbackHookResult {
     gcTime: DEFAULT_CACHE_TIME,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
-    refetchInterval: refetchInterval || undefined,
+    refetchInterval: refetchInterval ?? undefined,
     retry: 2,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
   });
@@ -393,7 +393,7 @@ export function useFeedback(options: FeedbackHookOptions): FeedbackHookResult {
     gcTime: DEFAULT_CACHE_TIME,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
-    refetchInterval: refetchInterval || undefined,
+    refetchInterval: refetchInterval ?? undefined,
     retry: 2,
   });
 

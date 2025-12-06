@@ -133,7 +133,7 @@ const ACTIVITY_ICONS: Record<string, React.ReactNode> = {
  */
 function getActivityIcon(activityType: string): React.ReactNode {
   const normalizedType = activityType.toLowerCase();
-  return ACTIVITY_ICONS[normalizedType] || ACTIVITY_ICONS.default;
+  return ACTIVITY_ICONS[normalizedType] ?? ACTIVITY_ICONS.default;
 }
 
 /**
@@ -333,7 +333,7 @@ interface EmptyStateProps {
   filter: TimelineFilter;
 }
 
-const EmptyState: React.FC<EmptyStateProps> = ({ filter }) => {
+function EmptyState({ filter }: EmptyStateProps): React.ReactElement {
   const getMessage = (): string => {
     switch (filter) {
       case TimelineFilter.OVERDUE:
@@ -369,27 +369,29 @@ const EmptyState: React.FC<EmptyStateProps> = ({ filter }) => {
       </Typography>
     </Box>
   );
-};
+}
 
 /**
  * Loading state component
  */
-const LoadingState: React.FC = () => (
-  <Box
-    sx={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      py: 6,
-    }}
-  >
-    <CircularProgress size={32} />
-    <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-      Loading timeline...
-    </Typography>
-  </Box>
-);
+function LoadingState(): React.ReactElement {
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        py: 6,
+      }}
+    >
+      <CircularProgress size={32} />
+      <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+        Loading timeline...
+      </Typography>
+    </Box>
+  );
+}
 
 /**
  * Error state component
@@ -399,30 +401,32 @@ interface ErrorStateProps {
   onRetry: () => void;
 }
 
-const ErrorState: React.FC<ErrorStateProps> = ({ message, onRetry }) => (
-  <Box
-    sx={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      py: 6,
-      px: 2,
-      textAlign: 'center',
-    }}
-  >
-    <ErrorIcon sx={{ fontSize: 48, color: 'error.main', mb: 2 }} />
-    <Typography variant="body1" color="error" sx={{ mb: 2 }}>
-      {message}
-    </Typography>
-    <Chip
-      label="Retry"
-      onClick={onRetry}
-      color="primary"
-      clickable
-    />
-  </Box>
-);
+function ErrorState({ message, onRetry }: ErrorStateProps): React.ReactElement {
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        py: 6,
+        px: 2,
+        textAlign: 'center',
+      }}
+    >
+      <ErrorIcon sx={{ fontSize: 48, color: 'error.main', mb: 2 }} />
+      <Typography variant="body1" color="error" sx={{ mb: 2 }}>
+        {message}
+      </Typography>
+      <Chip
+        label="Retry"
+        onClick={onRetry}
+        color="primary"
+        clickable
+      />
+    </Box>
+  );
+}
 
 // ============================================================================
 // Main Component
@@ -440,7 +444,7 @@ const ErrorState: React.FC<ErrorStateProps> = ({ message, onRetry }) => (
  * <TimelineWidget />
  * ```
  */
-const TimelineWidget: React.FC = () => {
+function TimelineWidget(): React.ReactElement {
   // Persist preferences to localStorage
   const [preferences, setPreferences] = useLocalStorage<TimelinePreferences>(
     TIMELINE_PREFERENCES_KEY,
@@ -771,6 +775,6 @@ const TimelineWidget: React.FC = () => {
       </CardContent>
     </Card>
   );
-};
+}
 
 export default TimelineWidget;

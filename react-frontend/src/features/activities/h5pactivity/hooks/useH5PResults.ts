@@ -529,7 +529,7 @@ export function useH5PResults(
         activityid: response.activityid,
         attempts: response.attempts.map(attempt => ({
           ...attempt,
-          results: attempt.results || [],
+          results: attempt.results ?? [],
         })) as H5PAttemptWithResults[],
         warnings: response.warnings,
       };
@@ -561,22 +561,20 @@ export function useH5PResults(
   };
 
   const getHighestScoringAttempt = (): H5PAttemptWithResults | undefined => {
-    if (attempts.length === 0) {return undefined;}
+    const firstAttempt = attempts[0];
+    if (!firstAttempt) {return undefined;}
 
-    // Use first attempt as initial value (safe since we checked length > 0)
-    const firstAttempt = attempts[0]!;
     return attempts.reduce((highest, current) => {
-      const highestScaled = highest.scaled || 0;
-      const currentScaled = current.scaled || 0;
+      const highestScaled = highest.scaled ?? 0;
+      const currentScaled = current.scaled ?? 0;
       return currentScaled > highestScaled ? current : highest;
     }, firstAttempt);
   };
 
   const getMostRecentAttempt = (): H5PAttemptWithResults | undefined => {
-    if (attempts.length === 0) {return undefined;}
+    const firstAttempt = attempts[0];
+    if (!firstAttempt) {return undefined;}
 
-    // Use first attempt as initial value (safe since we checked length > 0)
-    const firstAttempt = attempts[0]!;
     return attempts.reduce((mostRecent, current) => {
       return current.timemodified > mostRecent.timemodified ? current : mostRecent;
     }, firstAttempt);
@@ -778,7 +776,7 @@ export function useH5PAttemptResults(
       // Transform to include results array
       return {
         ...response,
-        results: response.results || [],
+        results: response.results ?? [],
       } as H5PAttemptWithResults;
     },
     enabled: enabled && isValidAttemptId,
@@ -902,7 +900,7 @@ export async function prefetchH5PResults(
         activityid: response.activityid,
         attempts: response.attempts.map(attempt => ({
           ...attempt,
-          results: attempt.results || [],
+          results: attempt.results ?? [],
         })),
         warnings: response.warnings,
       };
@@ -939,7 +937,7 @@ export async function prefetchAttemptResults(
       const response = await getAttemptResults(attemptId);
       return {
         ...response,
-        results: response.results || [],
+        results: response.results ?? [],
       };
     },
     staleTime: DEFAULT_STALE_TIME,

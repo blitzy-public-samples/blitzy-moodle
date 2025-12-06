@@ -168,16 +168,16 @@ function parsePresentation(item: FeedbackItem): FeedbackItemPresentation {
         // Format: "r>>>>>option1|option2|option3" or "c>>>>>option1|option2"
         // r = radio, c = checkbox, d = dropdown
         const parts = item.presentation.split('>>>>>');
-        const subtype = (parts[0] || 'r') as 'r' | 'c' | 'd';
-        const optionsPart = parts[1] || '';
+        const subtype = (parts[0] ?? 'r') as 'r' | 'c' | 'd';
+        const optionsPart = parts[1] ?? '';
 
         if (item.typ === FeedbackQuestionType.MULTICHOICERATED) {
           // Rated options have format: "value####text"
           const options = optionsPart.split('|').map(opt => {
             const [valuePart, textPart] = opt.split('####');
             return {
-              text: textPart || opt,
-              value: parseInt(valuePart ?? '0', 10) || 0,
+              text: textPart ?? opt,
+              value: parseInt(valuePart ?? '0', 10),
             };
           });
           return {
@@ -545,7 +545,7 @@ export function FeedbackForm({
    * @returns Promise resolving to whether validation passed
    */
   const validateCurrentPage = useCallback(async (): Promise<boolean> => {
-    const currentPageItems = pages[pageState.currentPage]?.items || [];
+    const currentPageItems = pages[pageState.currentPage]?.items ?? [];
     const fieldsToValidate = currentPageItems
       .filter(item => item.hasvalue && item.typ !== FeedbackQuestionType.INFO && item.typ !== FeedbackQuestionType.LABEL)
       .map(item => `item_${item.id}`);
@@ -707,7 +707,7 @@ export function FeedbackForm({
             timemodified: Math.floor(Date.now() / 1000),
             random_response: 0,
             anonymous_response: isAnonymous ? 1 : 0,
-            courseid: courseId || 0,
+            courseid: courseId ?? 0,
           },
           values: Object.entries(responses)
             .filter(([key]) => !isNaN(parseInt(key, 10)))
@@ -790,7 +790,7 @@ export function FeedbackForm({
             <Typography
               variant="body1"
               dangerouslySetInnerHTML={{
-                __html: item.presentation.info?.content || item.name,
+                __html: item.presentation.info?.content ?? item.name,
               }}
             />
           </Box>
@@ -865,11 +865,11 @@ export function FeedbackForm({
         </Typography>
 
         <Stack spacing={2}>
-          {pages.map((page, pageIndex) => (
-            <Card key={pageIndex} variant="outlined">
+          {pages.map((page) => (
+            <Card key={`page-${page.pageIndex}`} variant="outlined">
               <CardContent>
                 <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>
-                  Page {pageIndex + 1}
+                  Page {page.pageIndex + 1}
                 </Typography>
                 <Divider sx={{ mb: 2 }} />
                 
@@ -1006,14 +1006,14 @@ export function FeedbackForm({
             activeStep={pageState.isReviewPage ? pages.length : pageState.currentPage}
             alternativeLabel
           >
-            {pages.map((_, index) => (
+            {pages.map((page) => (
               <Step
-                key={index}
-                completed={pageState.validatedPages[index] || index < pageState.currentPage}
+                key={`step-${page.pageIndex}`}
+                completed={pageState.validatedPages[page.pageIndex] ?? page.pageIndex < pageState.currentPage}
               >
                 <StepLabel>
                   <Typography variant="caption">
-                    Page {index + 1}
+                    Page {page.pageIndex + 1}
                   </Typography>
                 </StepLabel>
               </Step>

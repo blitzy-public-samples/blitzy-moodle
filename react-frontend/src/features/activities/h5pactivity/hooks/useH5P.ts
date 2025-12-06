@@ -468,7 +468,7 @@ export function useH5P(activityId: number, options: UseH5POptions = {}): UseH5PR
   const isFetching = activityQuery.isFetching || accessQuery.isFetching;
 
   // Combine error states
-  const error = activityQuery.error || accessQuery.error;
+  const error = activityQuery.error ?? accessQuery.error;
   const isError = activityQuery.isError || accessQuery.isError;
 
   // Success only when both queries succeed

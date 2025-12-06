@@ -22,7 +22,8 @@ import {
 } from 'vitest';
 import { cleanup, waitFor, act } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
-import { useForm, FormProvider, Controller, Control, FieldValues } from 'react-hook-form';
+import type { Control, FieldValues } from 'react-hook-form';
+import { useForm, FormProvider, Controller } from 'react-hook-form';
 import { createTheme, ThemeProvider } from '@mui/material';
 import type { Theme } from '@mui/material/styles';
 
@@ -419,7 +420,7 @@ describe('RichTextEditor', () => {
         <RichTextEditor
           name="content"
           label="Content"
-          error={true}
+          error
           helperText="This field is required"
         />
       );
@@ -857,7 +858,7 @@ describe('RichTextEditor', () => {
     });
 
     it('should set aria-disabled when disabled prop is true', async () => {
-      render(<RichTextEditor name="content" disabled={true} />);
+      render(<RichTextEditor name="content" disabled />);
 
       await waitForEditorInit();
 
@@ -944,7 +945,7 @@ describe('RichTextEditor', () => {
       render(
         <RichTextEditor
           name="content"
-          error={true}
+          error
           helperText="Error message"
         />
       );
@@ -1029,7 +1030,7 @@ describe('RichTextEditor', () => {
       render(
         <RichTextEditor
           name="content"
-          error={true}
+          error
           helperText="This field is required"
         />
       );
@@ -1043,7 +1044,7 @@ describe('RichTextEditor', () => {
       render(
         <RichTextEditor
           name="content"
-          error={true}
+          error
           helperText="Validation error"
         />
       );
@@ -1060,7 +1061,7 @@ describe('RichTextEditor', () => {
       render(
         <RichTextEditor
           name="content"
-          error={true}
+          error
           helperText={customMessage}
         />
       );
@@ -1086,7 +1087,7 @@ describe('RichTextEditor', () => {
 
     it('should display required indicator when required prop is true', async () => {
       render(
-        <RichTextEditor name="content" label="Required Field" required={true} />
+        <RichTextEditor name="content" label="Required Field" required />
       );
 
       await waitForEditorInit();
@@ -1253,7 +1254,7 @@ describe('RichTextEditor', () => {
     });
 
     it('should disable editing when disabled prop is true', async () => {
-      render(<RichTextEditor name="content" disabled={true} />);
+      render(<RichTextEditor name="content" disabled />);
 
       await waitForEditorInit();
 

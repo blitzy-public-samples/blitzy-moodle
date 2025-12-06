@@ -390,7 +390,7 @@ function AllocationManager({
       submissionsWithAllocations.add(allocation.submissionId);
       uniqueReviewers.add(allocation.reviewerId);
 
-      const currentCount = reviewerWorkload.get(allocation.reviewerId) || 0;
+      const currentCount = reviewerWorkload.get(allocation.reviewerId) ?? 0;
       reviewerWorkload.set(allocation.reviewerId, currentCount + 1);
     });
 
@@ -717,7 +717,7 @@ function AllocationManager({
       <Alert
         severity="error"
         title="Error Loading Workshop"
-        message={workshopError?.message || 'Failed to load workshop data'}
+        message={workshopError?.message ?? 'Failed to load workshop data'}
       />
     );
   }
@@ -779,9 +779,9 @@ function AllocationManager({
         {/* Warnings */}
         {warnings.length > 0 && (
           <Box sx={{ mt: 2 }}>
-            {warnings.map((warning, index) => (
+            {warnings.map((warning) => (
               <Alert
-                key={index}
+                key={`warning-${warning}`}
                 severity="warning"
                 message={warning}
                 sx={{ mb: 1 }}
@@ -809,7 +809,7 @@ function AllocationManager({
           <InputLabel id="submission-select-label">Select Submission</InputLabel>
           <Select
             labelId="submission-select-label"
-            value={selectedSubmission || ''}
+            value={selectedSubmission ?? ''}
             label="Select Submission"
             onChange={(e) => setSelectedSubmission(e.target.value as number)}
           >
@@ -826,7 +826,7 @@ function AllocationManager({
           <InputLabel id="reviewer-select-label">Select Reviewer</InputLabel>
           <Select
             labelId="reviewer-select-label"
-            value={selectedReviewer || ''}
+            value={selectedReviewer ?? ''}
             label="Select Reviewer"
             onChange={(e) => setSelectedReviewer(e.target.value as number)}
           >
@@ -864,7 +864,7 @@ function AllocationManager({
           return (
             <Chip
               key={reviewerId}
-              label={`${reviewer?.authorFirstName || 'Unknown'}: ${count} reviews`}
+              label={`${reviewer?.authorFirstName ?? 'Unknown'}: ${count} reviews`}
               size="small"
               color={count > 3 ? 'warning' : 'default'}
             />

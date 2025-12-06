@@ -32,7 +32,6 @@ import {
   useState,
   useMemo,
   useCallback,
-  type FC,
   type ChangeEvent,
 } from 'react';
 import {
@@ -226,7 +225,7 @@ function getPlaybackIcon(format: string): React.ReactNode {
  * />
  * ```
  */
-export const BBBRecordingList: FC<BBBRecordingListProps> = ({
+export function BBBRecordingList({
   instanceId,
   groupId,
   tools = 'protect,unprotect,publish,unpublish,delete',
@@ -234,7 +233,7 @@ export const BBBRecordingList: FC<BBBRecordingListProps> = ({
   recordingWarnings = [],
   showSearch = true,
   canManage = true,
-}) => {
+}: BBBRecordingListProps): React.ReactElement {
   // ============================================================================
   // State Management
   // ============================================================================
@@ -558,7 +557,7 @@ export const BBBRecordingList: FC<BBBRecordingListProps> = ({
                   size="small"
                   value={editState.value}
                   onChange={handleEditChange}
-                  autoFocus
+                  aria-label="Edit recording name"
                   fullWidth
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
@@ -636,7 +635,7 @@ export const BBBRecordingList: FC<BBBRecordingListProps> = ({
                   size="small"
                   value={editState.value}
                   onChange={handleEditChange}
-                  autoFocus
+                  aria-label="Edit name field"
                   fullWidth
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
@@ -781,8 +780,8 @@ export const BBBRecordingList: FC<BBBRecordingListProps> = ({
 
           return (
             <Stack direction="row" spacing={1}>
-              {playbacks.map((playback, index) => (
-                <Tooltip key={index} title={`Play ${playback.type}`}>
+              {playbacks.map((playback) => (
+                <Tooltip key={playback.url} title={`Play ${playback.type}`}>
                   <Link
                     href={playback.url}
                     target="_blank"
@@ -846,10 +845,12 @@ export const BBBRecordingList: FC<BBBRecordingListProps> = ({
           }
         },
         disabled: (recording) =>
-          publishMutation.isPending ||
-          unpublishMutation.isPending ||
-          (recording.published && !availableTools.unpublish) ||
-          (!recording.published && !availableTools.publish),
+          [
+            publishMutation.isPending,
+            unpublishMutation.isPending,
+            recording.published && !availableTools.unpublish,
+            !recording.published && !availableTools.publish,
+          ].some(Boolean),
       });
     }
 
@@ -866,10 +867,12 @@ export const BBBRecordingList: FC<BBBRecordingListProps> = ({
           }
         },
         disabled: (recording) =>
-          protectMutation.isPending ||
-          unprotectMutation.isPending ||
-          (recording.protected && !availableTools.unprotect) ||
-          (!recording.protected && !availableTools.protect),
+          [
+            protectMutation.isPending,
+            unprotectMutation.isPending,
+            recording.protected && !availableTools.unprotect,
+            !recording.protected && !availableTools.protect,
+          ].some(Boolean),
       });
     }
 
@@ -943,9 +946,9 @@ export const BBBRecordingList: FC<BBBRecordingListProps> = ({
         </Box>
         {recordingWarnings.length > 0 && (
           <Box sx={{ mt: 3 }}>
-            {recordingWarnings.map((warning, index) => (
+            {recordingWarnings.map((warning) => (
               <Alert
-                key={index}
+                key={`warning-${warning.type}-${warning.message}`}
                 severity={warning.type}
                 message={warning.message}
                 closeable
@@ -988,9 +991,9 @@ export const BBBRecordingList: FC<BBBRecordingListProps> = ({
       {/* Recording Warnings */}
       {recordingWarnings.length > 0 && (
         <Box sx={{ mt: 3 }}>
-          {recordingWarnings.map((warningItem, index) => (
+          {recordingWarnings.map((warningItem) => (
             <Alert
-              key={index}
+              key={`warning-${warningItem.type}-${warningItem.message}`}
               severity={warningItem.type}
               message={warningItem.message}
               closeable
@@ -1055,6 +1058,6 @@ export const BBBRecordingList: FC<BBBRecordingListProps> = ({
       />
     </Box>
   );
-};
+}
 
 export default BBBRecordingList;

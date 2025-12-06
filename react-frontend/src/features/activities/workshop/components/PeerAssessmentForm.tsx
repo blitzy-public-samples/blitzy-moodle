@@ -405,12 +405,12 @@ function PeerAssessmentForm({
 
   const defaultValues: AssessmentFormData = useMemo(() => ({
     dimensions: transformDimensionsFromApi(assessment?.dimensions),
-    feedbackauthor: assessment?.feedbackauthor || '',
-    feedbackauthorformat: assessment?.feedbackauthorformat || 1,
+    feedbackauthor: assessment?.feedbackauthor ?? '',
+    feedbackauthorformat: assessment?.feedbackauthorformat ?? 1,
     weight: assessment?.weight ?? 1,
     gradinggradeover: assessment?.gradinggradeover,
-    feedbackreviewer: assessment?.feedbackreviewer || '',
-    feedbackreviewerformat: assessment?.feedbackreviewerformat || 1,
+    feedbackreviewer: assessment?.feedbackreviewer ?? '',
+    feedbackreviewerformat: assessment?.feedbackreviewerformat ?? 1,
   }), [assessment]);
 
   // Form methods - using `methods` pattern to enable FormProvider for nested components
@@ -435,12 +435,12 @@ function PeerAssessmentForm({
     if (assessment) {
       reset({
         dimensions: transformDimensionsFromApi(assessment.dimensions),
-        feedbackauthor: assessment.feedbackauthor || '',
-        feedbackauthorformat: assessment.feedbackauthorformat || 1,
+        feedbackauthor: assessment.feedbackauthor ?? '',
+        feedbackauthorformat: assessment.feedbackauthorformat ?? 1,
         weight: assessment.weight ?? 1,
         gradinggradeover: assessment.gradinggradeover,
-        feedbackreviewer: assessment.feedbackreviewer || '',
-        feedbackreviewerformat: assessment.feedbackreviewerformat || 1,
+        feedbackreviewer: assessment.feedbackreviewer ?? '',
+        feedbackreviewerformat: assessment.feedbackreviewerformat ?? 1,
       });
     }
   }, [assessment, reset]);
@@ -736,7 +736,7 @@ function PeerAssessmentForm({
       <Alert
         severity="info"
         title="Assessment Not Available"
-        message={`Assessment is only available during the assessment phase of the workshop. The current phase is: ${workshopData?.currentPhaseTitle || 'Unknown'}`}
+        message={`Assessment is only available during the assessment phase of the workshop. The current phase is: ${workshopData?.currentPhaseTitle ?? 'Unknown'}`}
       />
     );
   }
@@ -794,8 +794,8 @@ function PeerAssessmentForm({
           title="Validation Errors"
           message={
             <ul style={{ margin: 0, paddingLeft: 20 }}>
-              {validationErrors.map((error, index) => (
-                <li key={index}>{error}</li>
+              {validationErrors.map((error) => (
+                <li key={`validation-error-${error}`}>{error}</li>
               ))}
             </ul>
           }
@@ -803,14 +803,14 @@ function PeerAssessmentForm({
       )}
 
       {/* Update/Submit Errors */}
-      {(updateError || submitError) && (
+      {(updateError ?? submitError) && (
         <Alert
           severity="error"
           sx={{ mb: 3 }}
           title="Error"
           message={
-            updateError?.message ||
-            submitError?.message ||
+            updateError?.message ??
+            submitError?.message ??
             'An error occurred while saving the assessment'
           }
         />
@@ -845,7 +845,7 @@ function PeerAssessmentForm({
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             Grade each criterion according to the{' '}
-            {workshop?.strategy || 'default'} grading strategy.
+            {workshop?.strategy ?? 'default'} grading strategy.
           </Typography>
           <Divider sx={{ mb: 2 }} />
 
@@ -951,7 +951,7 @@ function PeerAssessmentForm({
                     type="number"
                     label="Assessment Weight"
                     helperText={
-                      fieldState.error?.message ||
+                      fieldState.error?.message ??
                       'Weight of this assessment in grade aggregation (0-16, default: 1)'
                     }
                     error={!!fieldState.error}
@@ -974,9 +974,9 @@ function PeerAssessmentForm({
                     message: 'Grade override cannot be negative',
                   },
                   max: {
-                    value: workshop?.gradingGrade || 100,
+                    value: workshop?.gradingGrade ?? 100,
                     message: `Grade override cannot exceed ${
-                      workshop?.gradingGrade || 100
+                      workshop?.gradingGrade ?? 100
                     }`,
                   },
                 }}
@@ -986,9 +986,9 @@ function PeerAssessmentForm({
                     type="number"
                     label="Grading Grade Override"
                     helperText={
-                      fieldState.error?.message ||
+                      fieldState.error?.message ??
                       `Override the calculated grading grade (0-${
-                        workshop?.gradingGrade || 100
+                        workshop?.gradingGrade ?? 100
                       })`
                     }
                     error={!!fieldState.error}
@@ -996,12 +996,12 @@ function PeerAssessmentForm({
                     InputProps={{
                       inputProps: {
                         min: 0,
-                        max: workshop?.gradingGrade || 100,
+                        max: workshop?.gradingGrade ?? 100,
                         step: 0.01,
                       },
                       endAdornment: (
                         <InputAdornment position="end">
-                          / {workshop?.gradingGrade || 100}
+                          / {workshop?.gradingGrade ?? 100}
                         </InputAdornment>
                       ),
                     }}
@@ -1113,7 +1113,6 @@ function PeerAssessmentForm({
               onClick={handleConfirmSubmit}
               variant="contained"
               color="primary"
-              autoFocus
             >
               Confirm Submit
             </Button>

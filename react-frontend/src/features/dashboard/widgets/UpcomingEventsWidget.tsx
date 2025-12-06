@@ -293,7 +293,7 @@ function ErrorState({ message, onRetry }: ErrorStateProps): React.ReactElement {
       }}
     >
       <Typography variant="body1" color="error" gutterBottom>
-        {message || 'Failed to load upcoming events'}
+        {message ? message : 'Failed to load upcoming events'}
       </Typography>
       {onRetry && (
         <Link

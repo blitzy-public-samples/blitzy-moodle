@@ -480,7 +480,7 @@ function CalendarWidget({
     const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
 
     const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
-    const events = calendarData?.events || [];
+    const events = calendarData?.events ?? [];
 
     return days.map((date) => {
       // Find events for this date
@@ -725,7 +725,7 @@ function CalendarWidget({
             <Grid
               container
               spacing={0}
-              key={`week-${weekIndex}`}
+              key={`week-${week[0]?.date.toISOString() ?? weekIndex}`}
               role="row"
               sx={{
                 borderBottom:

@@ -130,7 +130,7 @@ function formatTimeSpent(seconds: number): string {
  * Displays user's progress through a lesson with branching paths,
  * completion indicators, and navigation breadcrumbs.
  */
-const ProgressTracker: React.FC<ProgressTrackerProps> = ({
+function ProgressTracker({
   lessonId,
   // _attemptId is reserved for future use (tracking specific attempts)
   progress,
@@ -141,7 +141,7 @@ const ProgressTracker: React.FC<ProgressTrackerProps> = ({
   showStatistics = true,
   allowNavigation = false,
   className,
-}) => {
+}: ProgressTrackerProps): React.ReactElement {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -223,7 +223,10 @@ const ProgressTracker: React.FC<ProgressTrackerProps> = ({
         if (!childMap.has(parentId)) {
           childMap.set(parentId, []);
         }
-        childMap.get(parentId)!.push(page.id);
+        const siblings = childMap.get(parentId);
+        if (siblings) {
+          siblings.push(page.id);
+        }
       }
     });
 
@@ -231,7 +234,7 @@ const ProgressTracker: React.FC<ProgressTrackerProps> = ({
      * Recursively build tree nodes
      */
     const buildNode = (page: LessonPage, depth: number): TreeNode => {
-      const childIds = childMap.get(page.id) || [];
+      const childIds = childMap.get(page.id) ?? [];
       const children: TreeNode[] = [];
 
       // Check if this is a structural page (branch table or cluster)
@@ -279,15 +282,15 @@ const ProgressTracker: React.FC<ProgressTrackerProps> = ({
     if (!progress) {
       return {
         pagesCompleted: 0,
-        totalPages: pagesData?.pages?.length || 0,
+        totalPages: pagesData?.pages?.length ?? 0,
         progressPercentage: 0,
         timeSpentFormatted: '0s',
         scoreDisplay: null,
       };
     }
 
-    const pagesCompleted = progress.pagesCompleted || 0;
-    const totalPages = progress.totalPages || pagesData?.pages?.length || 0;
+    const pagesCompleted = progress.pagesCompleted ?? 0;
+    const totalPages = progress.totalPages ?? pagesData?.pages?.length ?? 0;
     const progressPercentage =
       progress.progressPercentage ||
       (totalPages > 0 ? Math.round((pagesCompleted / totalPages) * 100) : 0);
@@ -512,8 +515,8 @@ const ProgressTracker: React.FC<ProgressTrackerProps> = ({
   }
 
   // Handle error state
-  if (error || pagesError) {
-    const errorMessage = error?.message || pagesError?.message || 'Failed to load progress data';
+  if (error ?? pagesError) {
+    const errorMessage = error?.message ?? pagesError?.message ?? 'Failed to load progress data';
     return (
       <Paper className={className} sx={{ p: 2 }}>
         <Alert severity="error" aria-live="polite">
@@ -677,6 +680,6 @@ const ProgressTracker: React.FC<ProgressTrackerProps> = ({
       )}
     </Paper>
   );
-};
+}
 
 export default ProgressTracker;

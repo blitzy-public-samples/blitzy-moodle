@@ -237,28 +237,6 @@ function buildCategoryTree(categories: CourseCategory[]): CategoryTreeNode[] {
 }
 
 /**
- * Flattens a category tree back into a flat array.
- * Useful for bulk operations and data export.
- *
- * @param tree - Array of root CategoryTreeNode objects
- * @returns Flat array of all categories
- */
-export function flattenCategoryTree(tree: CategoryTreeNode[]): CourseCategory[] {
-  const result: CourseCategory[] = [];
-
-  const traverse = (nodes: CategoryTreeNode[]) => {
-    nodes.forEach((node) => {
-      const { children, ...category } = node;
-      result.push(category);
-      traverse(children);
-    });
-  };
-
-  traverse(tree);
-  return result;
-}
-
-/**
  * Gets all descendant IDs of a category.
  *
  * @param categoryId - The category ID to get descendants for
@@ -478,7 +456,7 @@ const CategoryTreeItem = memo(function CategoryTreeItem({
     (event: React.DragEvent) => {
       if (!allowDragDrop) {return;}
       event.preventDefault();
-      const position = dragState.dropPosition || 'inside';
+      const position = dragState.dropPosition ?? 'inside';
       onDrop(node.id, position);
     },
     [allowDragDrop, node.id, dragState.dropPosition, onDrop]
@@ -494,19 +472,22 @@ const CategoryTreeItem = memo(function CategoryTreeItem({
       if (!searchTerm.trim()) {return text;}
       const regex = new RegExp(`(${searchTerm})`, 'gi');
       const parts = text.split(regex);
-      return parts.map((part, index) =>
-        regex.test(part) ? (
+      let position = 0;
+      return parts.map((part) => {
+        const key = `${position}-${part.slice(0, 10)}`;
+        position += part.length;
+        return regex.test(part) ? (
           <Box
-            key={index}
+            key={`highlight-${key}`}
             component="span"
             sx={{ backgroundColor: 'warning.light', borderRadius: 0.5 }}
           >
             {part}
           </Box>
         ) : (
-          part
-        )
-      );
+          <span key={`text-${key}`}>{part}</span>
+        );
+      });
     },
     [searchTerm]
   );
@@ -1086,7 +1067,7 @@ function CategoryManagement({
 
   // Get flat list for parent selector
   const flatCategories = useMemo(() => {
-    return categoriesResponse?.data || [];
+    return categoriesResponse?.data ?? [];
   }, [categoriesResponse?.data]);
 
   // ============================================================================
@@ -1159,10 +1140,10 @@ function CategoryManagement({
     setEditingCategory(category);
     setFormData({
       name: category.name,
-      description: category.description || '',
+      description: category.description ?? '',
       parent: category.parent,
       visible: category.visible === 1,
-      idnumber: category.idnumber || '',
+      idnumber: category.idnumber ?? '',
     });
     setEditDialogOpen(true);
   }, []);
@@ -1271,11 +1252,11 @@ function CategoryManagement({
 
   const handleDragEnter = useCallback(
     (id: number, position: 'before' | 'after' | 'inside') => {
-      if (dragState.draggingId === id) {return;}
+      if (!dragState.draggingId || dragState.draggingId === id) {return;}
 
       // Validate drop target
       const descendantIds = getDescendantIds(
-        dragState.draggingId!,
+        dragState.draggingId,
         categoryTree
       );
       if (descendantIds.includes(id)) {return;}
@@ -1511,7 +1492,7 @@ function CategoryManagement({
               }
               required
               fullWidth
-              autoFocus
+              inputProps={{ 'aria-label': 'Category name' }}
               error={formData.name.length > 255}
               helperText={
                 formData.name.length > 255
@@ -1601,7 +1582,7 @@ function CategoryManagement({
               }
               required
               fullWidth
-              autoFocus
+              inputProps={{ 'aria-label': 'Category name input' }}
               error={formData.name.length > 255}
               helperText={
                 formData.name.length > 255
@@ -1787,7 +1768,7 @@ function CategoryManagement({
                   {movingCategory.parent === 0
                     ? 'Top level'
                     : flatCategories.find((c) => c.id === movingCategory.parent)
-                        ?.name || 'Unknown'}
+                        ?.name ?? 'Unknown'}
                 </Alert>
               )}
             </Box>

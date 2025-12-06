@@ -13,7 +13,7 @@
  * including validation errors (422), locked grades (409), and successful updates.
  */
 
-import React from 'react';
+import type React from 'react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/server';
@@ -596,7 +596,7 @@ describe('Grade Editing Integration Tests', () => {
           initialValues={mockGrade}
           onSubmit={vi.fn()}
           onCancel={vi.fn()}
-          readOnly={true}
+          readOnly
         />
       );
 
@@ -611,7 +611,7 @@ describe('Grade Editing Integration Tests', () => {
           initialValues={mockGrade}
           onSubmit={vi.fn()}
           onCancel={vi.fn()}
-          readOnly={true}
+          readOnly
         />
       );
 

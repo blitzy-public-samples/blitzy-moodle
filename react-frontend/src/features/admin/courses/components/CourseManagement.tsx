@@ -163,8 +163,8 @@ const ADMIN_CATEGORIES_QUERY_KEY = 'admin-categories-management';
  * No rows overlay component for DataGrid
  * Extracted to prevent re-creation on every render
  */
-const NoRowsOverlay = (): React.ReactElement => (
-  <Box
+function NoRowsOverlay(): React.ReactElement {
+  return <Box
     sx={{
       display: 'flex',
       flexDirection: 'column',
@@ -181,7 +181,7 @@ const NoRowsOverlay = (): React.ReactElement => (
       Try adjusting your search or filter criteria
     </Typography>
   </Box>
-);
+}
 
 // ============================================================================
 // Component Implementation
@@ -208,6 +208,7 @@ const NoRowsOverlay = (): React.ReactElement => (
  * <CourseManagement onCourseSelect={(id) => navigate(`/admin/courses/${id}`)} />
  * ```
  */
+// eslint-disable-next-line react/function-component-definition -- using React.FC for explicit typing
 const CourseManagement: React.FC<CourseManagementProps> = ({
   categoryId: initialCategoryId,
   onCourseSelect,

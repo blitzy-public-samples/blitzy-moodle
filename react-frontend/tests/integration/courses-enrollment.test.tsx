@@ -20,7 +20,7 @@
  * @module tests/integration/courses-enrollment
  */
 
-import React from 'react';
+import type React from 'react';
 import { screen, waitFor, within } from '@testing-library/react';
 import {
   describe,

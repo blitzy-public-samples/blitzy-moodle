@@ -343,7 +343,7 @@ function ScormPlayer({
   const {
     scorm,
     scoes,
-    userData,
+    userData: _userData,
     isLoading: isScormLoading,
     error: scormError,
   } = useScorm(scormId);
@@ -663,7 +663,7 @@ function ScormPlayer({
         return apiState.diagnosticMessage;
       },
     };
-  }, [apiState, userData, sessionStartTime, commitTrackingData, cmiDataStore]);
+  }, [apiState, sessionStartTime, commitTrackingData, cmiDataStore, userId]);
 
   /**
    * SCORM 2004 API Implementation
@@ -886,7 +886,7 @@ function ScormPlayer({
         return apiState.diagnosticMessage;
       },
     };
-  }, [apiState, userData, sessionStartTime, commitTrackingData, cmiDataStore]);
+  }, [apiState, sessionStartTime, commitTrackingData, cmiDataStore, userId]);
 
   // ========================================================================
   // EVENT HANDLERS
@@ -1384,7 +1384,7 @@ function ScormPlayer({
   }
 
   // Show error state
-  if (scormError || attemptError || playerError) {
+  if ([scormError, attemptError, playerError].some(Boolean)) {
     return renderError(
       scormError?.message ??
         attemptError?.message ??

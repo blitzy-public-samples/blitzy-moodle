@@ -34,7 +34,7 @@
  * - public/mod/forum/externallib.php - External API definitions
  */
 
-import { useCallback, useRef, useEffect } from 'react';
+import { useCallback, useRef, useEffect, useMemo } from 'react';
 import {
   useQuery,
   useMutation,
@@ -938,7 +938,7 @@ export function useForum(
     (discussionOptions.enabled !== false);
 
   // Build discussion fetch params (excluding forumId which is passed separately)
-  const discussionParams: DiscussionFetchParams = {
+  const discussionParams: DiscussionFetchParams = useMemo(() => ({
     page: discussionOptions?.page ?? 1,
     perPage: discussionOptions?.perPage ?? 20,
     sortBy: discussionOptions?.sortBy ?? 'date',
@@ -946,7 +946,15 @@ export function useForum(
     filter: discussionOptions?.filter ?? 'all',
     search: discussionOptions?.search,
     groupid: discussionOptions?.groupid,
-  };
+  }), [
+    discussionOptions?.page,
+    discussionOptions?.perPage,
+    discussionOptions?.sortBy,
+    discussionOptions?.sortOrder,
+    discussionOptions?.filter,
+    discussionOptions?.search,
+    discussionOptions?.groupid,
+  ]);
 
   const discussionsQuery = useQuery<PaginatedDiscussionsResponse, Error>({
     queryKey: forumQueryKeys.discussionList(forumId, discussionParams),

@@ -18,10 +18,11 @@
  * @subpackage tests/unit/features/activities/lti
  */
 
-import React from 'react';
+import type React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
+import type { QueryClient } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
 
 // Internal imports - Hook under test

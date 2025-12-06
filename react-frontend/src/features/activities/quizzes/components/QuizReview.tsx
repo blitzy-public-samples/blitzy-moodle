@@ -347,13 +347,13 @@ interface QuestionReviewCardProps {
   teacherMode: boolean;
 }
 
-const QuestionReviewCard: React.FC<QuestionReviewCardProps> = ({
+function QuestionReviewCard({
   question,
   questionNumber,
   displayConfig,
   isCurrentQuestion,
   teacherMode,
-}) => {
+}: QuestionReviewCardProps): React.ReactElement {
   const theme = useTheme();
   const status = getQuestionStatus(question);
   const statusColor = getStatusColor(status);
@@ -488,9 +488,9 @@ const QuestionReviewCard: React.FC<QuestionReviewCardProps> = ({
             </AccordionSummary>
             <AccordionDetails>
               <Stack spacing={1}>
-                {question.gradingBreakdown.map((item, index) => (
+                {question.gradingBreakdown.map((item) => (
                   <Box
-                    key={index}
+                    key={`breakdown-${item.criterion}`}
                     sx={{
                       display: 'flex',
                       justifyContent: 'space-between',
@@ -516,9 +516,9 @@ const QuestionReviewCard: React.FC<QuestionReviewCardProps> = ({
               File Attachments:
             </Typography>
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-              {question.attachments?.map((file, index) => (
+              {question.attachments?.map((file) => (
                 <Chip
-                  key={index}
+                  key={file.url}
                   icon={<DownloadIcon />}
                   label={file.filename}
                   variant="outlined"
@@ -545,9 +545,9 @@ const QuestionReviewCard: React.FC<QuestionReviewCardProps> = ({
             </AccordionSummary>
             <AccordionDetails>
               <Stack spacing={1}>
-                {question.history.map((entry, index) => (
+                {question.history.map((entry) => (
                   <Box
-                    key={index}
+                    key={`history-${entry.timestamp}`}
                     sx={{
                       p: 1.5,
                       backgroundColor: theme.palette.grey[50],
@@ -590,7 +590,7 @@ const QuestionReviewCard: React.FC<QuestionReviewCardProps> = ({
       </Box>
     </Card>
   );
-};
+}
 
 // ============================================================================
 // Main Component
@@ -699,7 +699,7 @@ function QuizReview({
         'gradedwrong': QuestionState.GRADED,
         'gradedpartial': QuestionState.GRADED,
       };
-      return stateMap[state.toLowerCase()] || QuestionState.TODO;
+      return stateMap[state.toLowerCase()] ?? QuestionState.TODO;
     };
     
     return reviewData.questions.map((q, index) => {

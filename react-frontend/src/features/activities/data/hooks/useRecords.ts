@@ -631,12 +631,13 @@ function applyClientSideFilters(
 
   // If filters were applied client-side, update the total count
   // Note: This is a simplified approach - ideally the API handles all filtering
-  const hasClientFilters =
-    (params.approvalStatus && params.approvalStatus !== 'all') ||
-    params.userId ||
-    params.groupId ||
-    params.dateRange ||
-    params.modifiedDateRange;
+  const hasClientFilters = [
+    params.approvalStatus && params.approvalStatus !== 'all',
+    params.userId,
+    params.groupId,
+    params.dateRange,
+    params.modifiedDateRange,
+  ].some(Boolean);
 
   if (hasClientFilters) {
     return {

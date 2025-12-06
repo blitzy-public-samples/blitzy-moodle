@@ -318,7 +318,7 @@ function checkContentSelectionSupport(toolType: LtiToolType | null | undefined):
   }
 
   // Check enabled capabilities for content item selection
-  const capabilities = toolType.enabledcapability || '';
+  const capabilities = toolType.enabledcapability ?? '';
   return (
     capabilities.includes('ContentItemSelection') ||
     capabilities.includes('ContentItem') ||
@@ -450,9 +450,9 @@ function useLTI(ltiId: number, options: UseLTIOptions = {}): UseLTIResult {
 
   // Combined error: return first error encountered (prioritizing tool errors)
   const firstError =
-    toolQuery.error ||
-    configQuery.error ||
-    toolTypesQuery.error ||
+    toolQuery.error ??
+    configQuery.error ??
+    toolTypesQuery.error ??
     gradesQuery.error;
 
   const error = categorizeLtiError(firstError);

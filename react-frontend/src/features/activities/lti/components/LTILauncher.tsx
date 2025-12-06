@@ -329,7 +329,7 @@ function NewWindowLink({
   return (
     <Box sx={{ p: 2 }}>
       <Typography variant="body1" gutterBottom>
-        {title || 'External tool launched in a new window.'}
+        {title ?? 'External tool launched in a new window.'}
       </Typography>
       <Link
         href={launchUrl}
@@ -602,7 +602,7 @@ function LTILauncher({
   if (container === LaunchContainer.WINDOW) {
     // For window mode, the hook handles opening the popup
     // We show a link to re-open if needed
-    if (launchData?.contentUrl || launchData?.endpoint) {
+    if (launchData && [launchData.contentUrl, launchData.endpoint].some(Boolean)) {
       return (
         <Box
           ref={containerRef}
@@ -610,7 +610,7 @@ function LTILauncher({
           sx={{ width: '100%' }}
         >
           <NewWindowLink
-            launchUrl={launchData.contentUrl || launchData.endpoint}
+            launchUrl={launchData.contentUrl ?? launchData.endpoint ?? ''}
             ltiId={ltiId}
             title={title}
             onLaunch={handleWindowLaunch}
@@ -690,7 +690,7 @@ function LTILauncher({
         ref={iframeRef}
         id="contentframe"
         name={iframeName}
-        title={title || 'LTI External Tool'}
+        title={title ?? 'LTI External Tool'}
         allow={iframeAllow}
         allowFullScreen
         onLoad={handleIframeLoad}

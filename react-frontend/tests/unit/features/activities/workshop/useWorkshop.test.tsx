@@ -18,7 +18,8 @@
 
 import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import type { QueryClient} from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
 import type { ReactNode } from 'react';
 

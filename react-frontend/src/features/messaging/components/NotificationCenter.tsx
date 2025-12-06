@@ -37,7 +37,6 @@ import React, {
   useRef,
   useMemo,
   type KeyboardEvent,
-  type MouseEvent,
 } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -80,7 +79,6 @@ import {
   Info as InfoIcon,
   DoneAll as DoneAllIcon,
   DeleteSweep as DeleteSweepIcon,
-  FilterList as FilterListIcon,
   ChevronRight as ChevronRightIcon,
   NotificationsOff as NotificationsOffIcon,
   Close as CloseIcon,
@@ -98,14 +96,12 @@ import {
 import type {
   Notification,
   NotificationFilters,
-  NotificationListResponse,
 } from '@/features/messaging/types/message.types';
 import { NotificationType } from '@/features/messaging/types/message.types';
 
 // Internal imports from shared modules
 import { useToast } from '@/hooks/useToast';
 import { formatRelativeTime } from '@/utils/date';
-import { LoadingSpinner } from '@/components/feedback/LoadingSpinner';
 
 // ============================================================================
 // Types and Interfaces
@@ -346,7 +342,10 @@ function groupNotificationsByType(notifications: Notification[]): NotificationGr
     if (!groups.has(type)) {
       groups.set(type, []);
     }
-    groups.get(type)!.push(notification);
+    const group = groups.get(type);
+    if (group) {
+      group.push(notification);
+    }
   });
 
   // Convert map to array of NotificationGroup objects
@@ -512,7 +511,7 @@ interface NotificationItemProps {
  */
 function NotificationItem({
   notification,
-  onRead,
+  onRead: _onRead,
   onClick,
   isMarking,
 }: NotificationItemProps): React.ReactElement {
@@ -754,8 +753,8 @@ export function NotificationCenter({
     mutationFn: markNotificationRead,
     onSuccess: () => {
       // Invalidate notification queries to refresh the list
-      queryClient.invalidateQueries({ queryKey: messagingKeys.notifications() });
-      queryClient.invalidateQueries({ queryKey: messagingKeys.unreadNotificationCount() });
+      void queryClient.invalidateQueries({ queryKey: messagingKeys.notifications() });
+      void queryClient.invalidateQueries({ queryKey: messagingKeys.unreadNotificationCount() });
     },
     onError: (err) => {
       console.error('Failed to mark notification as read:', err);
@@ -769,8 +768,8 @@ export function NotificationCenter({
   const markAllReadMutation = useMutation({
     mutationFn: markAllNotificationsRead,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: messagingKeys.notifications() });
-      queryClient.invalidateQueries({ queryKey: messagingKeys.unreadNotificationCount() });
+      void queryClient.invalidateQueries({ queryKey: messagingKeys.notifications() });
+      void queryClient.invalidateQueries({ queryKey: messagingKeys.unreadNotificationCount() });
       success('All notifications marked as read');
       onMarkAllRead?.();
     },
@@ -786,8 +785,8 @@ export function NotificationCenter({
   const clearAllMutation = useMutation({
     mutationFn: clearNotifications,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: messagingKeys.notifications() });
-      queryClient.invalidateQueries({ queryKey: messagingKeys.unreadNotificationCount() });
+      void queryClient.invalidateQueries({ queryKey: messagingKeys.notifications() });
+      void queryClient.invalidateQueries({ queryKey: messagingKeys.unreadNotificationCount() });
       success('All notifications cleared');
       onClearAll?.();
     },
@@ -802,12 +801,19 @@ export function NotificationCenter({
   // ============================================================================
 
   const unreadCount = unreadCountQuery.data ?? 0;
-  const notifications = notificationsQuery.data?.notifications ?? [];
-  const isLoading = notificationsQuery.isLoading;
+  const { isLoading } = notificationsQuery;
   const isAnyMutating =
     markReadMutation.isPending ||
     markAllReadMutation.isPending ||
     clearAllMutation.isPending;
+
+  /**
+   * Memoized notifications array to prevent unnecessary re-renders
+   */
+  const notifications = useMemo(
+    () => notificationsQuery.data?.notifications ?? [],
+    [notificationsQuery.data?.notifications]
+  );
 
   /**
    * Group notifications by type for display
@@ -1096,9 +1102,10 @@ export function NotificationCenter({
           }}
         >
           {isLoading ? (
-            // Loading skeleton
+            // Loading skeleton - index keys are safe here since items are never reordered
             <List disablePadding>
               {Array.from({ length: 5 }).map((_, index) => (
+                // eslint-disable-next-line react/no-array-index-key
                 <NotificationSkeleton key={`skeleton-${index}`} />
               ))}
             </List>

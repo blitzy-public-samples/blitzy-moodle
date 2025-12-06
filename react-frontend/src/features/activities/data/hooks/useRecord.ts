@@ -160,9 +160,9 @@ const DEFAULT_CACHE_TIME = 30 * 60 * 1000;
  */
 function transformRecordData(record: RecordWithContents): RecordData {
   // Extract user name parts from fullname if available
-  const nameParts = record.userfullname?.split(' ') || [];
-  const firstname = nameParts[0] || undefined;
-  const lastname = nameParts.slice(1).join(' ') || undefined;
+  const nameParts = record.userfullname?.split(' ') ?? [];
+  const firstname = nameParts[0] ? nameParts[0] : undefined;
+  const lastname = nameParts.slice(1).join(' ') ? nameParts.slice(1).join(' ') : undefined;
 
   return {
     ...record,

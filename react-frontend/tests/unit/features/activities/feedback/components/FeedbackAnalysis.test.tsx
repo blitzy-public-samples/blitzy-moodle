@@ -2047,7 +2047,7 @@ describe('FeedbackAnalysis', () => {
       const analysisData = createMockAnalysisData();
       mockUseFeedbackAnalysis.mockReturnValue(createSuccessHookResult(analysisData));
 
-      renderWithAuth(<FeedbackAnalysis feedbackId={456} canViewAnalysis={true} canViewResponses={true} />);
+      renderWithAuth(<FeedbackAnalysis feedbackId={456} canViewAnalysis canViewResponses />);
 
       await waitFor(() => {
         expect(mockUseFeedbackAnalysis).toHaveBeenCalled();
@@ -2059,7 +2059,7 @@ describe('FeedbackAnalysis', () => {
       mockUseFeedbackAnalysis.mockReturnValue(createSuccessHookResult(analysisData));
 
       const { rerender } = renderWithAuth(
-        <FeedbackAnalysis feedbackId={123} canViewAnalysis={true} canViewResponses={true} />
+        <FeedbackAnalysis feedbackId={123} canViewAnalysis canViewResponses />
       );
 
       await waitFor(() => {
@@ -2069,7 +2069,7 @@ describe('FeedbackAnalysis', () => {
       const callCount = mockUseFeedbackAnalysis.mock.calls.length;
 
       rerender(
-        <FeedbackAnalysis feedbackId={456} canViewAnalysis={true} canViewResponses={true} />
+        <FeedbackAnalysis feedbackId={456} canViewAnalysis canViewResponses />
       );
 
       await waitFor(() => {

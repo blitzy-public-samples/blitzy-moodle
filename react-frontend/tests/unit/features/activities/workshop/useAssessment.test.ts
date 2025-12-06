@@ -9,7 +9,8 @@
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import type { QueryClient} from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
 // Use the global MSW server from test setup instead of creating a local one
 import { server } from '@tests/mocks/server';

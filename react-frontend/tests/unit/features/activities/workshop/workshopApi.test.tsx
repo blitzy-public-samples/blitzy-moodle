@@ -9,13 +9,16 @@
  * caching strategies, optimistic updates, and TypeScript type safety.
  */
 
-import React, { ReactNode } from 'react';
+import type { ReactNode } from 'react';
+import type React from 'react';
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
 import { server } from '@tests/mocks/server';
 
+import type {
+  WorkshopGrade} from '@/features/activities/workshop/api/workshopApi';
 import {
   useWorkshop,
   useWorkshopSubmissions,
@@ -29,8 +32,7 @@ import {
   useUpdateWorkshopGrade,
   useUpdateSubmission,
   useUpdateAssessment,
-  workshopQueryKeys,
-  WorkshopGrade,
+  workshopQueryKeys
 } from '@/features/activities/workshop/api/workshopApi';
 
 import { createTestQueryClient } from '@tests/helpers/render';

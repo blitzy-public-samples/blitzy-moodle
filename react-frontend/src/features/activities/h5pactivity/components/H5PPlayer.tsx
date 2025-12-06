@@ -581,11 +581,11 @@ function H5PPlayer({
    * Handle fullscreen change events (from browser fullscreen controls)
    */
   const handleFullscreenChange = useCallback((): void => {
-    const isFullscreen = Boolean(
-      document.fullscreenElement ||
-        (document as Document & { webkitFullscreenElement?: Element }).webkitFullscreenElement ||
-        (document as Document & { msFullscreenElement?: Element }).msFullscreenElement
-    );
+    const isFullscreen = [
+      document.fullscreenElement,
+      (document as Document & { webkitFullscreenElement?: Element }).webkitFullscreenElement,
+      (document as Document & { msFullscreenElement?: Element }).msFullscreenElement,
+    ].some(Boolean);
     setState((prev) => ({ ...prev, isFullscreen }));
   }, []);
 
@@ -899,7 +899,7 @@ function H5PPlayer({
       <Alert
         severity="error"
         title="Content Loading Failed"
-        message={state.errorMessage || 'An error occurred while loading the H5P content. Please try again.'}
+        message={state.errorMessage ?? 'An error occurred while loading the H5P content. Please try again.'}
         action={
           <IconButton
             color="inherit"
@@ -940,7 +940,7 @@ function H5PPlayer({
       <Alert
         severity="error"
         title="Failed to Load Activity"
-        message={activityError?.message || 'Unable to load the H5P activity. Please check your permissions and try again.'}
+        message={activityError?.message ?? 'Unable to load the H5P activity. Please check your permissions and try again.'}
       />
     );
   }

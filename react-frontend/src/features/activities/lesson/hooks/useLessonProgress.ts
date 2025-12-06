@@ -361,6 +361,7 @@ export function useLessonProgress(
         timerIntervalRef.current = null;
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- timeRemaining is accessed via prev in the setter
   }, [progressState.isTimerActive]);
 
   // ============================================================================
@@ -680,9 +681,9 @@ export function useLessonProgress(
       stopTimerMutation.isPending ||
       timerExpirationMutation.isPending,
     error:
-      submitResponseMutation.error ||
-      startTimerMutation.error ||
-      stopTimerMutation.error ||
+      submitResponseMutation.error ??
+      startTimerMutation.error ??
+      stopTimerMutation.error ??
       timerExpirationMutation.error,
   };
 }

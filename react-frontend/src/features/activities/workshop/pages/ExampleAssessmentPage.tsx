@@ -216,35 +216,43 @@ interface AdaptedDimension {
 /**
  * Training banner component to clearly indicate this is a practice assessment
  */
-const TrainingBanner: React.FC<{ isComparison?: boolean }> = ({ isComparison = false }) => (
-  <Alert
-    severity="info"
-    sx={{
-      mb: 3,
-      '& .MuiAlert-message': {
-        width: '100%',
-      },
-    }}
-  >
-    <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-      {isComparison ? 'Assessment Training - Results' : 'Assessment Training Exercise'}
-    </Typography>
-    <Typography variant="body2">
-      {isComparison
-        ? 'Below you can see how your assessment compares to the reference assessment provided by the teacher. Use this feedback to improve your assessment skills before the peer assessment phase.'
-        : 'This is a training exercise to help you practice assessment skills. Assess this example submission as you would assess your peers\' work. After submitting, you will see how your assessment compares to the reference assessment.'}
-    </Typography>
-  </Alert>
-);
+function TrainingBanner({ isComparison = false }: { isComparison?: boolean }): React.ReactElement {
+  return (
+    <Alert
+      severity="info"
+      sx={{
+        mb: 3,
+        '& .MuiAlert-message': {
+          width: '100%',
+        },
+      }}
+    >
+      <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+        {isComparison ? 'Assessment Training - Results' : 'Assessment Training Exercise'}
+      </Typography>
+      <Typography variant="body2">
+        {isComparison
+          ? 'Below you can see how your assessment compares to the reference assessment provided by the teacher. Use this feedback to improve your assessment skills before the peer assessment phase.'
+          : 'This is a training exercise to help you practice assessment skills. Assess this example submission as you would assess your peers\' work. After submitting, you will see how your assessment compares to the reference assessment.'}
+      </Typography>
+    </Alert>
+  );
+}
 
 /**
  * Progress stepper component showing completion status of required examples
  */
-const ExampleProgressStepper: React.FC<{
+interface ExampleProgressStepperProps {
   progress: ExampleProgress;
   currentExampleId: number;
   workshopId: number;
-}> = ({ progress, currentExampleId, workshopId }) => {
+}
+
+function ExampleProgressStepper({
+  progress,
+  currentExampleId,
+  workshopId,
+}: ExampleProgressStepperProps): React.ReactElement | null {
   const navigate = useNavigate();
 
   if (progress.total <= 1) {
@@ -301,17 +309,24 @@ const ExampleProgressStepper: React.FC<{
       </CardContent>
     </Card>
   );
-};
+}
 
 /**
  * Navigation buttons for moving between examples
  */
-const ExampleNavigation: React.FC<{
+interface ExampleNavigationProps {
   progress: ExampleProgress;
   currentExampleId: number;
   workshopId: number;
   onBackToWorkshop: () => void;
-}> = ({ progress, currentExampleId, workshopId, onBackToWorkshop }) => {
+}
+
+function ExampleNavigation({
+  progress,
+  currentExampleId,
+  workshopId,
+  onBackToWorkshop,
+}: ExampleNavigationProps): React.ReactElement {
   const navigate = useNavigate();
 
   const currentIndex = progress.examples.findIndex((e) => e.id === currentExampleId);
@@ -356,7 +371,7 @@ const ExampleNavigation: React.FC<{
       </Box>
     </Box>
   );
-};
+}
 
 // ============================================================================
 // Type Adapter Functions
@@ -554,7 +569,7 @@ function createDefaultDimensions(): AdaptedDimension[] {
  * submissions in a workshop activity. Supports assessment creation, editing,
  * submission, and comparison with reference assessment.
  */
-const ExampleAssessmentPage: React.FC = () => {
+function ExampleAssessmentPage(): React.ReactElement {
   // -------------------------------------------------------------------------
   // URL Parameters and Navigation
   // -------------------------------------------------------------------------
@@ -580,7 +595,7 @@ const ExampleAssessmentPage: React.FC = () => {
   // -------------------------------------------------------------------------
   // State
   // -------------------------------------------------------------------------
-  const [viewMode, setViewMode] = useState<ViewMode>(modeParam || 'assess');
+  const [viewMode, setViewMode] = useState<ViewMode>(modeParam ?? 'assess');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // -------------------------------------------------------------------------
@@ -608,7 +623,7 @@ const ExampleAssessmentPage: React.FC = () => {
     data: existingAssessment,
     isLoading: isLoadingAssessment,
     error: assessmentError,
-  } = useExampleAssessment(assessmentIdNum || 0);
+  } = useExampleAssessment(assessmentIdNum ?? 0);
 
   // Fetch comparison data when in comparison mode
   const {
@@ -616,7 +631,7 @@ const ExampleAssessmentPage: React.FC = () => {
     isLoading: isLoadingComparison,
   } = useExampleAssessmentComparison(
     exampleIdNum,
-    existingAssessment?.id || assessmentIdNum || 0
+    existingAssessment?.id ?? assessmentIdNum ?? 0
   );
 
   // -------------------------------------------------------------------------
@@ -650,7 +665,7 @@ const ExampleAssessmentPage: React.FC = () => {
   const isEditable =
     viewMode === 'assess' &&
     canAssessExamples &&
-    (!existingAssessment || existingAssessment.grade === null);
+    (existingAssessment?.grade == null);
 
   // Build progress tracking data from workshop submissions
   const exampleProgress: ExampleProgress | null = React.useMemo(() => {
@@ -837,11 +852,11 @@ const ExampleAssessmentPage: React.FC = () => {
   // Error Handling
   // -------------------------------------------------------------------------
 
-  if (workshopError || exampleError || assessmentError) {
+  if (workshopError ?? exampleError ?? assessmentError) {
     const errorMsg =
-      workshopError?.message ||
-      exampleError?.message ||
-      assessmentError?.message ||
+      workshopError?.message ??
+      exampleError?.message ??
+      assessmentError?.message ??
       'An error occurred while loading the page';
 
     return (
@@ -1051,13 +1066,13 @@ const ExampleAssessmentPage: React.FC = () => {
             Reassess This Example
           </Button>
         )}
-        {viewMode === 'assess' && existingAssessment && existingAssessment.grade !== null && (
+        {viewMode === 'assess' && existingAssessment?.grade != null && (
           <Button
             variant="outlined"
             onClick={() => {
               setViewMode('compare');
               navigate(
-                `/mod/workshop/${workshopId}/example/${exampleId}/assessment/${existingAssessment.id}?mode=compare`,
+                `/mod/workshop/${workshopId}/example/${exampleId}/assessment/${existingAssessment?.id}?mode=compare`,
                 { replace: true }
               );
             }}
@@ -1090,6 +1105,6 @@ const ExampleAssessmentPage: React.FC = () => {
       )}
     </Container>
   );
-};
+}
 
 export default ExampleAssessmentPage;

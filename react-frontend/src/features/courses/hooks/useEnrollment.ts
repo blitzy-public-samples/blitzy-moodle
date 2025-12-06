@@ -409,7 +409,7 @@ export function useEnrollInCourse(): UseMutationResult<
         // Check for API-level failure
         if (!response.success || !response.data.success) {
           throw new EnrollmentOperationError(
-            response.data?.message || 'Enrollment failed',
+            response.data?.message ?? 'Enrollment failed',
             courseId,
             'ENROLLMENT_FAILED'
           );
@@ -479,6 +479,7 @@ export function useEnrollInCourse(): UseMutationResult<
       await invalidateEnrollmentQueries(queryClient, variables.courseId);
 
       // Log success for monitoring
+      // eslint-disable-next-line no-console -- intentional info logging for monitoring
       console.info('[useEnrollInCourse] Enrollment successful:', {
         courseId: data.courseid,
         userId: data.userid,
@@ -588,7 +589,7 @@ export function useUnenrollFromCourse(): UseMutationResult<
         // Check for API-level failure
         if (!response.success || !response.data.success) {
           throw new EnrollmentOperationError(
-            response.data?.message || 'Unenrollment failed',
+            response.data?.message ?? 'Unenrollment failed',
             courseId,
             'UNENROLLMENT_FAILED'
           );
@@ -658,6 +659,7 @@ export function useUnenrollFromCourse(): UseMutationResult<
       await invalidateEnrollmentQueries(queryClient, variables.courseId);
 
       // Log success for monitoring
+      // eslint-disable-next-line no-console -- intentional info logging for monitoring
       console.info('[useUnenrollFromCourse] Unenrollment successful:', {
         courseId: data.courseid,
         userId: data.userid,

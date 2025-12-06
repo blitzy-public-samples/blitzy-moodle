@@ -195,7 +195,7 @@ function mapFormDataToCreateData(formData: UserFormData): UserCreateData {
     firstname: formData.firstname,
     lastname: formData.lastname,
     email: formData.email,
-    password: formData.password || '',
+    password: formData.password ?? '',
     city: formData.city,
     country: formData.country,
     // Optional fields
@@ -231,27 +231,27 @@ function mapFormDataToUpdateData(userId: number, formData: Partial<UserFormData>
   const updateData: UserUpdateData = { id: userId };
 
   // Map only provided fields
-  if (formData.auth !== undefined) updateData.auth = formData.auth;
-  if (formData.firstname !== undefined) updateData.firstname = formData.firstname;
-  if (formData.lastname !== undefined) updateData.lastname = formData.lastname;
-  if (formData.email !== undefined) updateData.email = formData.email;
-  if (formData.city !== undefined) updateData.city = formData.city;
-  if (formData.country !== undefined) updateData.country = formData.country;
-  if (formData.idnumber !== undefined) updateData.idnumber = formData.idnumber;
-  if (formData.phone1 !== undefined) updateData.phone1 = formData.phone1;
-  if (formData.phone2 !== undefined) updateData.phone2 = formData.phone2;
-  if (formData.institution !== undefined) updateData.institution = formData.institution;
-  if (formData.department !== undefined) updateData.department = formData.department;
-  if (formData.address !== undefined) updateData.address = formData.address;
-  if (formData.lang !== undefined) updateData.lang = formData.lang;
-  if (formData.calendartype !== undefined) updateData.calendartype = formData.calendartype;
-  if (formData.theme !== undefined) updateData.theme = formData.theme;
-  if (formData.timezone !== undefined) updateData.timezone = formData.timezone;
-  if (formData.description !== undefined) updateData.description = formData.description;
-  if (formData.descriptionformat !== undefined) updateData.descriptionformat = formData.descriptionformat;
-  if (formData.mailformat !== undefined) updateData.mailformat = formData.mailformat;
-  if (formData.maildigest !== undefined) updateData.maildigest = formData.maildigest;
-  if (formData.maildisplay !== undefined) updateData.maildisplay = formData.maildisplay;
+  if (formData.auth !== undefined) { updateData.auth = formData.auth; }
+  if (formData.firstname !== undefined) { updateData.firstname = formData.firstname; }
+  if (formData.lastname !== undefined) { updateData.lastname = formData.lastname; }
+  if (formData.email !== undefined) { updateData.email = formData.email; }
+  if (formData.city !== undefined) { updateData.city = formData.city; }
+  if (formData.country !== undefined) { updateData.country = formData.country; }
+  if (formData.idnumber !== undefined) { updateData.idnumber = formData.idnumber; }
+  if (formData.phone1 !== undefined) { updateData.phone1 = formData.phone1; }
+  if (formData.phone2 !== undefined) { updateData.phone2 = formData.phone2; }
+  if (formData.institution !== undefined) { updateData.institution = formData.institution; }
+  if (formData.department !== undefined) { updateData.department = formData.department; }
+  if (formData.address !== undefined) { updateData.address = formData.address; }
+  if (formData.lang !== undefined) { updateData.lang = formData.lang; }
+  if (formData.calendartype !== undefined) { updateData.calendartype = formData.calendartype; }
+  if (formData.theme !== undefined) { updateData.theme = formData.theme; }
+  if (formData.timezone !== undefined) { updateData.timezone = formData.timezone; }
+  if (formData.description !== undefined) { updateData.description = formData.description; }
+  if (formData.descriptionformat !== undefined) { updateData.descriptionformat = formData.descriptionformat; }
+  if (formData.mailformat !== undefined) { updateData.mailformat = formData.mailformat; }
+  if (formData.maildigest !== undefined) { updateData.maildigest = formData.maildigest; }
+  if (formData.maildisplay !== undefined) { updateData.maildisplay = formData.maildisplay; }
 
   return updateData;
 }
@@ -350,8 +350,8 @@ export function useUserMutations(): UseUserMutationsReturn {
     },
     onSuccess: (newUser) => {
       // Invalidate user list queries to include new user
-      queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.users });
-      queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.adminUsers });
+      void queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.users });
+      void queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.adminUsers });
 
       // Show success notification
       toast.success(
@@ -420,8 +420,8 @@ export function useUserMutations(): UseUserMutationsReturn {
     },
     onSuccess: (updatedUser) => {
       // Invalidate user list queries to reflect updates
-      queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.users });
-      queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.adminUsers });
+      void queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.users });
+      void queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.adminUsers });
 
       // Update the specific user cache with server response
       queryClient.setQueryData<User>(USER_QUERY_KEYS.adminUser(updatedUser.id), updatedUser);
@@ -468,14 +468,14 @@ export function useUserMutations(): UseUserMutationsReturn {
     },
     onSuccess: (result, { userName }) => {
       // Invalidate user list queries to remove deleted user
-      queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.users });
-      queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.adminUsers });
+      void queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.users });
+      void queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.adminUsers });
 
       // Remove the specific user from cache
       queryClient.removeQueries({ queryKey: USER_QUERY_KEYS.adminUser(result.userId) });
 
       // Show success notification
-      const displayName = userName || `User #${result.userId}`;
+      const displayName = userName ?? `User #${result.userId}`;
       toast.success(`${displayName} has been deleted successfully.`);
     },
     onError: (error, { userName, userId }, context) => {
@@ -484,7 +484,7 @@ export function useUserMutations(): UseUserMutationsReturn {
         queryClient.setQueryData(USER_QUERY_KEYS.adminUsers, context.previousUsers);
       }
 
-      const displayName = userName || `User #${userId}`;
+      const displayName = userName ?? `User #${userId}`;
       const message = getErrorMessage(error, `Failed to delete ${displayName}. Please try again.`);
       toast.error(message);
     },
@@ -523,11 +523,11 @@ export function useUserMutations(): UseUserMutationsReturn {
     },
     onSuccess: (result, { userName }) => {
       // Invalidate queries to refresh user lists
-      queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.users });
-      queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.adminUsers });
-      queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.adminUser(result.userId) });
+      void queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.users });
+      void queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.adminUsers });
+      void queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.adminUser(result.userId) });
 
-      const displayName = userName || `User #${result.userId}`;
+      const displayName = userName ?? `User #${result.userId}`;
       toast.success(`${displayName} has been suspended.`);
     },
     onError: (error, { userId, userName }, context) => {
@@ -536,7 +536,7 @@ export function useUserMutations(): UseUserMutationsReturn {
         queryClient.setQueryData<User>(USER_QUERY_KEYS.adminUser(userId), context.previousUser);
       }
 
-      const displayName = userName || `User #${userId}`;
+      const displayName = userName ?? `User #${userId}`;
       const message = getErrorMessage(error, `Failed to suspend ${displayName}. Please try again.`);
       toast.error(message);
     },
@@ -575,11 +575,11 @@ export function useUserMutations(): UseUserMutationsReturn {
     },
     onSuccess: (result, { userName }) => {
       // Invalidate queries to refresh user lists
-      queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.users });
-      queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.adminUsers });
-      queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.adminUser(result.userId) });
+      void queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.users });
+      void queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.adminUsers });
+      void queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.adminUser(result.userId) });
 
-      const displayName = userName || `User #${result.userId}`;
+      const displayName = userName ?? `User #${result.userId}`;
       toast.success(`${displayName} has been reactivated.`);
     },
     onError: (error, { userId, userName }, context) => {
@@ -588,7 +588,7 @@ export function useUserMutations(): UseUserMutationsReturn {
         queryClient.setQueryData<User>(USER_QUERY_KEYS.adminUser(userId), context.previousUser);
       }
 
-      const displayName = userName || `User #${userId}`;
+      const displayName = userName ?? `User #${userId}`;
       const message = getErrorMessage(error, `Failed to unsuspend ${displayName}. Please try again.`);
       toast.error(message);
     },
@@ -610,15 +610,15 @@ export function useUserMutations(): UseUserMutationsReturn {
     },
     onSuccess: (result, { userName }) => {
       // Invalidate queries to refresh user data
-      queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.users });
-      queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.adminUsers });
-      queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.adminUser(result.userId) });
+      void queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.users });
+      void queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.adminUsers });
+      void queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.adminUser(result.userId) });
 
-      const displayName = userName || `User #${result.userId}`;
+      const displayName = userName ?? `User #${result.userId}`;
       toast.success(`${displayName}'s account has been unlocked.`);
     },
     onError: (error, { userId, userName }) => {
-      const displayName = userName || `User #${userId}`;
+      const displayName = userName ?? `User #${userId}`;
       const message = getErrorMessage(error, `Failed to unlock ${displayName}'s account. Please try again.`);
       toast.error(message);
     },
@@ -657,11 +657,11 @@ export function useUserMutations(): UseUserMutationsReturn {
     },
     onSuccess: (result, { userName }) => {
       // Invalidate queries to refresh user lists
-      queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.users });
-      queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.adminUsers });
-      queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.adminUser(result.userId) });
+      void queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.users });
+      void queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.adminUsers });
+      void queryClient.invalidateQueries({ queryKey: USER_QUERY_KEYS.adminUser(result.userId) });
 
-      const displayName = userName || `User #${result.userId}`;
+      const displayName = userName ?? `User #${result.userId}`;
       toast.success(`${displayName}'s account has been confirmed.`);
     },
     onError: (error, { userId, userName }, context) => {
@@ -670,7 +670,7 @@ export function useUserMutations(): UseUserMutationsReturn {
         queryClient.setQueryData<User>(USER_QUERY_KEYS.adminUser(userId), context.previousUser);
       }
 
-      const displayName = userName || `User #${userId}`;
+      const displayName = userName ?? `User #${userId}`;
       const message = getErrorMessage(error, `Failed to confirm ${displayName}'s account. Please try again.`);
       toast.error(message);
     },
@@ -691,7 +691,7 @@ export function useUserMutations(): UseUserMutationsReturn {
       return resendConfirmationEmail(userId);
     },
     onSuccess: (result, { userName }) => {
-      const displayName = userName || `User #${result.userId}`;
+      const displayName = userName ? userName : `User #${result.userId}`;
 
       if (result.sent) {
         toast.success(`Confirmation email sent to ${displayName}.`);
@@ -701,7 +701,7 @@ export function useUserMutations(): UseUserMutationsReturn {
       }
     },
     onError: (error, { userId, userName }) => {
-      const displayName = userName || `User #${userId}`;
+      const displayName = userName ? userName : `User #${userId}`;
       const message = getErrorMessage(
         error,
         `Failed to send confirmation email to ${displayName}. Please try again.`

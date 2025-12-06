@@ -454,7 +454,7 @@ async function deleteSubmission(submissionId: number): Promise<void> {
 
   if (!response.data.success) {
     throw new Error(
-      response.data.error?.message || 'Failed to delete submission'
+      response.data.error?.message ? response.data.error.message : 'Failed to delete submission'
     );
   }
 }

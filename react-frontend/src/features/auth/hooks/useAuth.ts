@@ -834,9 +834,9 @@ export function useAuth(): AuthHook {
    * Returns error from Redux state, mutations, or query.
    */
   const error: AuthError | null =
-    reduxError ||
-    (loginMutation.error ? normalizeError(loginMutation.error) : null) ||
-    (refreshMutation.error ? normalizeError(refreshMutation.error) : null) ||
+    reduxError ??
+    (loginMutation.error ? normalizeError(loginMutation.error) : null) ??
+    (refreshMutation.error ? normalizeError(refreshMutation.error) : null) ??
     (checkAuthQuery.error ? normalizeError(checkAuthQuery.error) : null);
 
   // ============================================================================

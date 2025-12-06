@@ -284,7 +284,7 @@ function createSerializableAxiosError(error: AxiosError): AxiosError {
     url: error.config?.url,
     method: error.config?.method,
     baseURL: error.config?.baseURL,
-    headers: error.config?.headers || new AxiosHeaders(),
+    headers: error.config?.headers ?? new AxiosHeaders(),
     params: error.config?.params as Record<string, unknown> | undefined,
     data: error.config?.data as unknown,
     timeout: error.config?.timeout,
@@ -522,7 +522,7 @@ function createOnResponseError(axiosInstance: AxiosInstance) {
   ];
 
   // Check if this request is to an auth endpoint
-  const requestUrl = originalRequest?.url || '';
+  const requestUrl = originalRequest?.url ?? '';
   const isAuthEndpoint = AUTH_ENDPOINTS_PASSTHROUGH.some(endpoint => 
     requestUrl.includes(endpoint)
   );
@@ -615,6 +615,7 @@ function createOnResponseError(axiosInstance: AxiosInstance) {
       }
 
       if (import.meta.env.DEV || import.meta.env.MODE === 'test') {
+        // eslint-disable-next-line no-console -- intentional debug logging in dev/test
         console.log('[Interceptor] Token refresh failed permanently, redirecting to login');
       }
 
@@ -634,9 +635,9 @@ function createOnResponseError(axiosInstance: AxiosInstance) {
       const originalApiError = originalErrorData?.error;
       
       // Use original API error message if available, otherwise fall back to generic message
-      const errorMessage = originalApiError?.message || 
+      const errorMessage = originalApiError?.message ?? 
         (refreshError instanceof Error ? refreshError.message : 'Authentication required');
-      const errorCode = originalApiError?.code || 'UNAUTHORIZED';
+      const errorCode = originalApiError?.code ?? 'UNAUTHORIZED';
       
       // Create a proper error object that preserves original error context
       const refreshFailedError = new Error(errorMessage);
