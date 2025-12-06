@@ -7,8 +7,7 @@
  * @module features/auth/pages/LoginPage
  */
 
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
+import { useSearchParams } from 'react-router-dom';
 import {
   Box,
   Container,
@@ -16,8 +15,6 @@ import {
   Typography,
 } from '@mui/material';
 import { LoginForm } from '../components/LoginForm';
-import { loginSuccess } from '../store/authSlice';
-import type { LoginResponse } from '../api/authApi';
 
 // ============================================================================
 // Component
@@ -45,8 +42,6 @@ export function LoginPage() {
   // Hooks
   // ============================================================================
 
-  const navigate = useNavigate();
-  const dispatch = useDispatch();
   const [searchParams] = useSearchParams();
 
   // Get return URL from query params (default to dashboard)
@@ -58,32 +53,17 @@ export function LoginPage() {
 
   /**
    * Handle successful login
-   * Updates Redux auth state and navigates to the return URL.
+   * Note: LoginForm internally handles Redux state updates, token storage,
+   * and navigation via useAuth hook. This callback is for page-specific actions.
    */
-  const handleLoginSuccess = async (response: LoginResponse) => {
+  const handleLoginSuccess = (data: { redirectUrl?: string }) => {
     // eslint-disable-next-line no-console
-    console.log('[LoginPage] handleLoginSuccess called with response:', response);
+    console.log('[LoginPage] handleLoginSuccess called with data:', data);
     // eslint-disable-next-line no-console
     console.log('[LoginPage] returnUrl:', returnUrl);
     
-    // Dispatch login success action to Redux store
-    // This updates the isAuthenticated flag and makes the user menu visible
-    dispatch(loginSuccess({ user: response.user, tokens: response.tokens }));
-    // eslint-disable-next-line no-console
-    console.log('[LoginPage] Dispatched loginSuccess to Redux');
-    
-    // Wait a brief moment to ensure state update has propagated to all components
-    // This prevents a race condition where ProtectedRoute or Header checks authentication
-    // before the Redux state has fully updated
-    await new Promise(resolve => setTimeout(resolve, 100));
-    // eslint-disable-next-line no-console
-    console.log('[LoginPage] Waited 100ms, now navigating to:', returnUrl);
-    
-    // Navigate to the return URL
-    // The token and user data are now in Redux state, localStorage, and React Query cache
-    navigate(returnUrl, { replace: true });
-    // eslint-disable-next-line no-console
-    console.log('[LoginPage] navigate() called');
+    // LoginForm handles navigation internally, but we can perform additional
+    // page-specific actions here if needed (e.g., analytics, tracking)
   };
 
   /**
@@ -91,7 +71,8 @@ export function LoginPage() {
    * Error is already displayed by LoginForm component
    */
   const handleLoginError = (error: Error) => {
-    console.error('Login error:', error);
+    // eslint-disable-next-line no-console
+    console.error('[LoginPage] Login error:', error);
     // LoginForm handles error display, no additional action needed here
   };
 
@@ -144,7 +125,8 @@ export function LoginPage() {
           <LoginForm
             onSuccess={handleLoginSuccess}
             onError={handleLoginError}
-            showRememberMe
+            redirectUrl={returnUrl}
+            showRememberUsername
             showForgotPassword
           />
         </Paper>

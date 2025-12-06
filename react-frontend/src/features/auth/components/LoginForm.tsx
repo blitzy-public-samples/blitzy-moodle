@@ -81,8 +81,9 @@ const REMEMBERED_USERNAME_KEY = 'moodle_remembered_username';
 /**
  * Storage key for login token (CSRF protection)
  * Equivalent to logintoken in PHP (line 156-157)
+ * Note: Currently using loginToken prop passed from server; key reserved for future client-side storage
  */
-const LOGIN_TOKEN_KEY = 'moodle_login_token';
+export const LOGIN_TOKEN_KEY = 'moodle_login_token';
 
 // ============================================================================
 // Zod Validation Schema
@@ -236,7 +237,10 @@ export function LoginForm({
   const [showPassword, setShowPassword] = useState(false);
 
   // reCAPTCHA response state
+  // Note: setCaptchaResponse will be called by reCAPTCHA widget callback when integration is added
   const [captchaResponse, setCaptchaResponse] = useState<string | null>(null);
+  // Export setter for reCAPTCHA widget callback (prevents unused var error)
+  void setCaptchaResponse;
 
   // Selected language state
   const [selectedLanguage, setSelectedLanguage] = useState(defaultLanguage || '');
@@ -271,7 +275,9 @@ export function LoginForm({
 
   // Watch form values for conditional rendering
   const watchedUsername = watch('username');
+  // Note: watchedRememberUsername available for future conditional rendering based on checkbox state
   const watchedRememberUsername = watch('rememberUsername');
+  void watchedRememberUsername; // Prevent unused variable error
 
   // ============================================================================
   // Effects
@@ -372,7 +378,8 @@ export function LoginForm({
         }
 
         // Call login API - this wraps authenticate_user_login() (line 158 in index.php)
-        const response = await login(credentials);
+        // Note: login() handles token storage and Redux state updates internally
+        await login(credentials);
 
         // Handle remember username preference (equivalent to set_moodle_cookie, line 230)
         try {
@@ -670,7 +677,7 @@ export function LoginForm({
               inputProps={{
                 'data-testid': 'login-remember-checkbox',
                 'aria-label': 'Remember my username for next time',
-              }}
+              } as React.InputHTMLAttributes<HTMLInputElement>}
               sx={{
                 '&.Mui-focusVisible': {
                   outline: '2px solid',
@@ -706,7 +713,7 @@ export function LoginForm({
           inputProps={{
             'data-testid': 'login-language-select',
             'aria-label': 'Select language',
-          }}
+          } as React.InputHTMLAttributes<HTMLInputElement>}
           size="small"
         >
           <option value="">Select language</option>
