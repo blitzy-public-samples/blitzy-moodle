@@ -35,8 +35,9 @@
  * @see public/login/lib.php - Core password reset functions
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
+import type React from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -45,14 +46,12 @@ import {
   Step,
   StepLabel,
   CircularProgress,
-  Container,
-  Paper,
 } from '@mui/material';
 
 // Internal imports from dependency files
-import { PasswordResetForm } from '../components/PasswordResetForm';
-import { SetPasswordForm } from '../components/SetPasswordForm';
-import { GuestLayout } from '@/components/layouts/GuestLayout';
+import PasswordResetForm from '../components/PasswordResetForm';
+import SetPasswordForm from '../components/SetPasswordForm';
+import GuestLayout from '@/components/layouts/GuestLayout';
 import { useToast } from '@/hooks/useToast';
 import { apiClient } from '@/services/api/client';
 
@@ -275,11 +274,6 @@ function PasswordResetPage(): React.ReactElement {
   const navigate = useNavigate();
 
   /**
-   * Location hook for state access
-   */
-  const location = useLocation();
-
-  /**
    * Toast notification hook
    */
   const toast = useToast();
@@ -346,7 +340,7 @@ function PasswordResetPage(): React.ReactElement {
       }
     };
 
-    checkExternalUrl();
+    void checkExternalUrl();
   }, []);
 
   /**
@@ -360,7 +354,9 @@ function PasswordResetPage(): React.ReactElement {
   useEffect(() => {
     const initializeMode = async (): Promise<void> => {
       // Don't proceed if redirecting to external URL
-      if (externalUrl) return;
+      if (externalUrl) {
+        return;
+      }
 
       setIsLoading(true);
 
@@ -392,7 +388,8 @@ function PasswordResetPage(): React.ReactElement {
       }
     };
 
-    initializeMode();
+    void initializeMode();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- validateToken is stable (empty deps), intentionally excluded to prevent re-runs
   }, [searchParams, setSearchParams, externalUrl]);
 
   // ============================================================================
@@ -418,12 +415,12 @@ function PasswordResetPage(): React.ReactElement {
         if (response.data.success && response.data.data?.valid) {
           // Token is valid
           setToken(tokenToValidate);
-          setUsername(response.data.data.username || '');
+          setUsername(response.data.data.username ?? '');
           setMode('set');
           setErrorMessage('');
         } else {
           // Token is invalid or expired
-          const errorCode = response.data.error?.code || 'INVALID_TOKEN';
+          const errorCode = response.data.error?.code ?? 'INVALID_TOKEN';
           handleTokenError(errorCode, response.data.error?.message);
         }
       } catch (error) {
@@ -436,6 +433,7 @@ function PasswordResetPage(): React.ReactElement {
         setIsLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleTokenError is stable (only depends on toast), intentionally excluded to prevent circular dependency
     []
   );
 
@@ -468,7 +466,7 @@ function PasswordResetPage(): React.ReactElement {
           'Guest accounts cannot reset their password.',
       };
 
-      const message = errorMessages[errorCode] || defaultMessage ||
+      const message = errorMessages[errorCode] ?? defaultMessage ??
         'There was a problem with your password reset link. Please try again.';
 
       setErrorMessage(message);
