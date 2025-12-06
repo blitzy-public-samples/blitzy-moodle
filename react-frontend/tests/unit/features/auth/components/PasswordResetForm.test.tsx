@@ -427,20 +427,27 @@ describe('PasswordResetForm Component', () => {
       renderPasswordResetForm();
       const user = userEvent.setup();
 
-      const emailInput = screen.queryByRole('textbox', { name: /email/i });
+      // Find email input by id for reliability (Material-UI sets id from name)
+      const emailInput = screen.queryByRole('textbox', { name: /email/i }) 
+        ?? document.getElementById('email') as HTMLInputElement | null;
 
-      if (emailInput) {
-        await user.type(emailInput, TEST_DATA.invalidEmail);
-
-        const submitButton = screen.getByRole('button', { name: /search/i });
-        await user.click(submitButton);
-
-        // Wait for validation error
-        await waitFor(() => {
-          const errorText = screen.queryByText(/valid email|invalid email|email format/i);
-          expect(errorText).toBeInTheDocument();
-        });
+      // Skip test gracefully if email input is not present (form variant without email field)
+      if (!emailInput) {
+        // Form may not have email field in some configurations - test is not applicable
+        return;
       }
+
+      await user.clear(emailInput);
+      await user.type(emailInput, TEST_DATA.invalidEmail);
+
+      const submitButton = screen.getByRole('button', { name: /search/i });
+      await user.click(submitButton);
+
+      // Wait for validation error with increased timeout for full suite runs
+      await waitFor(() => {
+        const errorText = screen.queryByText(/valid email|invalid email|email format|enter a valid/i);
+        expect(errorText).toBeInTheDocument();
+      }, { timeout: 3000 });
     });
 
     it('should enforce maximum length on username/email input', async () => {

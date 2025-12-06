@@ -265,7 +265,7 @@ function LogoutPage(_props: LogoutPageProps): JSX.Element {
    * Triggers the logout operation
    */
   const handleConfirmLogout = useCallback((): void => {
-    performLogout();
+    void performLogout();
   }, [performLogout]);
 
   /**
@@ -283,7 +283,7 @@ function LogoutPage(_props: LogoutPageProps): JSX.Element {
    */
   const handleRetryLogout = useCallback((): void => {
     setErrorMessage(null);
-    performLogout();
+    void performLogout();
   }, [performLogout]);
 
   // ============================================================================
@@ -333,7 +333,7 @@ function LogoutPage(_props: LogoutPageProps): JSX.Element {
     // In PHP: foreach($authsequence as $authname) { $authplugin->logoutpage_hook(); }
     // Then: require_logout(); redirect($redirect);
     setLogoutState('processing');
-    performLogout();
+    void performLogout();
   }, [
     isAuthenticated,
     hasValidSesskey,
@@ -466,7 +466,7 @@ function LogoutPage(_props: LogoutPageProps): JSX.Element {
               Logout Error
             </Typography>
             <Typography variant="body1" color="text.secondary" align="center">
-              {errorMessage || 'An error occurred during logout.'}
+              {errorMessage ?? 'An error occurred during logout.'}
             </Typography>
             <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
               <Button
@@ -580,7 +580,6 @@ function LogoutPage(_props: LogoutPageProps): JSX.Element {
             variant="contained"
             color="primary"
             disabled={isLoading}
-            autoFocus
             aria-label="Confirm logout"
             startIcon={
               isLoading ? (
