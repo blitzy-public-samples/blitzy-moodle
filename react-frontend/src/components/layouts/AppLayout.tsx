@@ -37,7 +37,7 @@
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import React, { Suspense, type ReactNode, type ErrorInfo } from 'react';
+import { Suspense, type ReactNode, type ErrorInfo } from 'react';
 import { Box, useMediaQuery, useTheme } from '@mui/material';
 import { ErrorBoundary, type FallbackProps } from 'react-error-boundary';
 
@@ -140,7 +140,7 @@ function ErrorFallback({ error, resetErrorBoundary }: FallbackProps): JSX.Elemen
       </Box>
 
       {/* Error details for development - only show in non-production */}
-      {process.env.NODE_ENV !== 'production' && error.message && (
+      {process.env.NODE_ENV !== 'production' && error instanceof Error && error.message && (
         <Box
           component="pre"
           sx={{
