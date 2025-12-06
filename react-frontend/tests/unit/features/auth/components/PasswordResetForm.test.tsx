@@ -27,7 +27,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import React from 'react';
+import type React from 'react';
 import { describe, it, expect, vi, afterEach, beforeAll, afterAll } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
@@ -125,7 +125,7 @@ const passwordResetHandler = http.post(RESET_PASSWORD_ENDPOINT, async ({ request
         data: {
           message: 'If your account exists in our system, you will receive an email with instructions to reset your password.',
           emailSent: true,
-          identifier: identifier,
+          identifier,
         },
         meta: {
           timestamp: new Date().toISOString(),
@@ -192,7 +192,7 @@ const passwordResetHandler = http.post(RESET_PASSWORD_ENDPOINT, async ({ request
       data: {
         message: 'If your account exists in our system, you will receive an email with instructions to reset your password.',
         emailSent: true,
-        identifier: identifier,
+        identifier,
       },
       meta: {
         timestamp: new Date().toISOString(),
@@ -1408,8 +1408,8 @@ describe('PasswordResetForm Component', () => {
           await user.click(tryAgainButton);
 
           await waitFor(() => {
-            const newInput = screen.queryByRole('textbox', { name: /username|email/i }) as HTMLInputElement | null;
-            if (newInput) {
+            const newInput = screen.queryByRole('textbox', { name: /username|email/i });
+            if (newInput && newInput instanceof HTMLInputElement) {
               expect(newInput.value).toBe('');
             }
           });
