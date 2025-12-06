@@ -28,7 +28,6 @@ import {
   type UseMutationResult,
   type UseQueryResult,
   type UseMutationOptions,
-  type UseQueryOptions,
 } from '@tanstack/react-query';
 
 // Import API functions and utilities from assignmentApi
@@ -39,7 +38,6 @@ import {
   saveFeedback,
   fetchAssignmentFiles,
   assignmentKeys,
-  useAssignmentFiles as useAssignmentFilesFromApi,
 } from '../api/assignmentApi';
 
 // Import types from assignment.types
@@ -357,7 +355,7 @@ export function useSubmitAssignment(
 
   return useMutation<SubmissionResponse, Error, SubmitAssignmentData, unknown>({
     mutationFn: submitAssignment,
-    onSuccess: (data, variables, context) => {
+    onSuccess: (data, variables, onMutateResult, mutationContext) => {
       // Invalidate assignment detail to refresh submission status
       void queryClient.invalidateQueries({
         queryKey: assignmentKeys.detail(variables.assignmentId),
@@ -380,10 +378,10 @@ export function useSubmitAssignment(
 
       // Call user-provided onSuccess callback if provided
       if (options?.onSuccess) {
-        options.onSuccess(data, variables, context);
+        options.onSuccess(data, variables, onMutateResult, mutationContext);
       }
     },
-    onError: (error, variables, context) => {
+    onError: (error, variables, onMutateResult, mutationContext) => {
       // Log error for debugging
       console.error('Submission failed:', error.message, {
         assignmentId: variables.assignmentId,
@@ -391,7 +389,7 @@ export function useSubmitAssignment(
 
       // Call user-provided onError callback if provided
       if (options?.onError) {
-        options.onError(error, variables, context);
+        options.onError(error, variables, onMutateResult, mutationContext);
       }
     },
     onSettled: options?.onSettled,
@@ -463,7 +461,7 @@ export function useGradeSubmission(
 
   return useMutation<GradeResponse, Error, GradeSubmissionData, unknown>({
     mutationFn: gradeSubmission,
-    onSuccess: (data, variables, context) => {
+    onSuccess: (data, variables, onMutateResult, mutationContext) => {
       // Invalidate submissions list to refresh grading status
       void queryClient.invalidateQueries({
         queryKey: assignmentKeys.submissions(variables.assignmentId),
@@ -487,10 +485,10 @@ export function useGradeSubmission(
 
       // Call user-provided onSuccess callback if provided
       if (options?.onSuccess) {
-        options.onSuccess(data, variables, context);
+        options.onSuccess(data, variables, onMutateResult, mutationContext);
       }
     },
-    onError: (error, variables, context) => {
+    onError: (error, variables, onMutateResult, mutationContext) => {
       // Log error for debugging
       console.error('Grading failed:', error.message, {
         assignmentId: variables.assignmentId,
@@ -499,7 +497,7 @@ export function useGradeSubmission(
 
       // Call user-provided onError callback if provided
       if (options?.onError) {
-        options.onError(error, variables, context);
+        options.onError(error, variables, onMutateResult, mutationContext);
       }
     },
     onSettled: options?.onSettled,
@@ -571,7 +569,7 @@ export function useSaveFeedback(
 
   return useMutation<SubmissionResponse, Error, SaveFeedbackData, unknown>({
     mutationFn: saveFeedback,
-    onSuccess: (data, variables, context) => {
+    onSuccess: (data, variables, onMutateResult, mutationContext) => {
       // Invalidate submissions list to refresh feedback status
       void queryClient.invalidateQueries({
         queryKey: assignmentKeys.submissions(variables.assignmentId),
@@ -589,10 +587,10 @@ export function useSaveFeedback(
 
       // Call user-provided onSuccess callback if provided
       if (options?.onSuccess) {
-        options.onSuccess(data, variables, context);
+        options.onSuccess(data, variables, onMutateResult, mutationContext);
       }
     },
-    onError: (error, variables, context) => {
+    onError: (error, variables, onMutateResult, mutationContext) => {
       // Log error for debugging
       console.error('Save feedback failed:', error.message, {
         assignmentId: variables.assignmentId,
@@ -601,7 +599,7 @@ export function useSaveFeedback(
 
       // Call user-provided onError callback if provided
       if (options?.onError) {
-        options.onError(error, variables, context);
+        options.onError(error, variables, onMutateResult, mutationContext);
       }
     },
     onSettled: options?.onSettled,
