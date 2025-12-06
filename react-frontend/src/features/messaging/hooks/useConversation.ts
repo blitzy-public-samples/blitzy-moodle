@@ -23,7 +23,6 @@ import {
   useQueryClient,
   useInfiniteQuery,
   type UseQueryOptions,
-  type UseMutationOptions,
   type InfiniteData,
   type QueryKey,
 } from '@tanstack/react-query';
@@ -48,21 +47,7 @@ import type {
 // Type Definitions
 // ============================================================================
 
-/**
- * Options for fetching conversation messages
- */
-interface ConversationMessagesOptions {
-  /** Whether to fetch newest messages first (default: true) */
-  newest?: boolean;
-  /** Unix timestamp to fetch messages from (for incremental loading) */
-  timefrom?: number;
-  /** Number of messages per page (default: 50) */
-  pageSize?: number;
-  /** Whether to enable polling for real-time updates */
-  enablePolling?: boolean;
-  /** Polling interval in milliseconds (default: 30000) */
-  pollingInterval?: number;
-}
+// ConversationMessagesOptions moved to UseConversationMessagesOptions interface below
 
 /**
  * Response type for conversation messages query
@@ -110,13 +95,7 @@ interface MarkMessageReadVariables {
   conversationId?: number;
 }
 
-/**
- * Result type for useSendMessage mutation
- */
-interface SendMessageResult {
-  /** The created message */
-  message: Message;
-}
+// SendMessageResult type removed - mutation returns Message directly
 
 // ============================================================================
 // Query Key Constants
@@ -527,15 +506,19 @@ export function useInfiniteConversationMessages(
 /**
  * Options for useSendMessage hook
  */
-interface UseSendMessageOptions
-  extends Omit<
-    UseMutationOptions<Message, Error, SendMessageVariables, { previousMessages?: Message[] }>,
-    'mutationFn'
-  > {
+interface UseSendMessageOptions {
   /** Whether to use optimistic updates (default: true) */
   optimistic?: boolean;
   /** Current user ID for optimistic update message creation */
   currentUserId?: number;
+  /** Called before the mutation function fires */
+  onMutate?: (variables: SendMessageVariables) => void | Promise<void>;
+  /** Called when the mutation encounters an error */
+  onError?: (error: Error, variables: SendMessageVariables, context: { previousMessages?: Message[] } | undefined) => void;
+  /** Called when the mutation is successful */
+  onSuccess?: (data: Message, variables: SendMessageVariables, context: { previousMessages?: Message[] }) => void;
+  /** Called when the mutation is either successful or errors */
+  onSettled?: (data: Message | undefined, error: Error | null, variables: SendMessageVariables, context: { previousMessages?: Message[] } | undefined) => void;
 }
 
 /**
@@ -586,7 +569,7 @@ interface UseSendMessageOptions
  */
 export function useSendMessage(options: UseSendMessageOptions = {}) {
   const queryClient = useQueryClient();
-  const { optimistic = true, currentUserId, onMutate, onError, onSettled, ...mutationOptions } = options;
+  const { optimistic = true, currentUserId, onMutate, onError, onSuccess, onSettled } = options;
 
   return useMutation<Message, Error, SendMessageVariables, { previousMessages?: Message[] }>({
     mutationFn: async (variables: SendMessageVariables): Promise<Message> => {
@@ -711,7 +694,10 @@ export function useSendMessage(options: UseSendMessageOptions = {}) {
       });
     },
 
-    ...mutationOptions,
+    onSuccess: (data, variables, context) => {
+      // Call user's onSuccess handler
+      onSuccess?.(data, variables, context);
+    },
   });
 }
 
@@ -722,13 +708,17 @@ export function useSendMessage(options: UseSendMessageOptions = {}) {
 /**
  * Options for useMarkMessageRead hook
  */
-interface UseMarkMessageReadOptions
-  extends Omit<
-    UseMutationOptions<void, Error, MarkMessageReadVariables, { previousConversation?: Conversation }>,
-    'mutationFn'
-  > {
+interface UseMarkMessageReadOptions {
   /** Whether to use optimistic updates (default: true) */
   optimistic?: boolean;
+  /** Called before the mutation function fires */
+  onMutate?: (variables: MarkMessageReadVariables) => void | Promise<void>;
+  /** Called when the mutation encounters an error */
+  onError?: (error: Error, variables: MarkMessageReadVariables, context: { previousConversation?: Conversation } | undefined) => void;
+  /** Called when the mutation is successful */
+  onSuccess?: (data: void, variables: MarkMessageReadVariables, context: { previousConversation?: Conversation }) => void;
+  /** Called when the mutation is either successful or errors */
+  onSettled?: (data: void | undefined, error: Error | null, variables: MarkMessageReadVariables, context: { previousConversation?: Conversation } | undefined) => void;
 }
 
 /**
@@ -762,7 +752,7 @@ interface UseMarkMessageReadOptions
  */
 export function useMarkMessageRead(options: UseMarkMessageReadOptions = {}) {
   const queryClient = useQueryClient();
-  const { optimistic = true, onMutate, onError, onSettled, ...mutationOptions } = options;
+  const { optimistic = true, onMutate, onError, onSuccess, onSettled } = options;
 
   return useMutation<void, Error, MarkMessageReadVariables, { previousConversation?: Conversation }>({
     mutationFn: async (variables: MarkMessageReadVariables): Promise<void> => {
@@ -851,7 +841,10 @@ export function useMarkMessageRead(options: UseMarkMessageReadOptions = {}) {
       });
     },
 
-    ...mutationOptions,
+    onSuccess: (data, variables, context) => {
+      // Call user's onSuccess handler
+      onSuccess?.(data, variables, context);
+    },
   });
 }
 
@@ -862,13 +855,17 @@ export function useMarkMessageRead(options: UseMarkMessageReadOptions = {}) {
 /**
  * Options for useMarkConversationRead hook
  */
-interface UseMarkConversationReadOptions
-  extends Omit<
-    UseMutationOptions<void, Error, number, { previousConversation?: Conversation }>,
-    'mutationFn'
-  > {
+interface UseMarkConversationReadOptions {
   /** Whether to use optimistic updates (default: true) */
   optimistic?: boolean;
+  /** Called before the mutation function fires */
+  onMutate?: (conversationId: number) => void | Promise<void>;
+  /** Called when the mutation encounters an error */
+  onError?: (error: Error, conversationId: number, context: { previousConversation?: Conversation } | undefined) => void;
+  /** Called when the mutation is successful */
+  onSuccess?: (data: void, conversationId: number, context: { previousConversation?: Conversation }) => void;
+  /** Called when the mutation is either successful or errors */
+  onSettled?: (data: void | undefined, error: Error | null, conversationId: number, context: { previousConversation?: Conversation } | undefined) => void;
 }
 
 /**
@@ -899,7 +896,7 @@ interface UseMarkConversationReadOptions
  */
 export function useMarkConversationRead(options: UseMarkConversationReadOptions = {}) {
   const queryClient = useQueryClient();
-  const { optimistic = true, onMutate, onError, onSettled, ...mutationOptions } = options;
+  const { optimistic = true, onMutate, onError, onSuccess, onSettled } = options;
 
   return useMutation<void, Error, number, { previousConversation?: Conversation }>({
     mutationFn: async (conversationId: number): Promise<void> => {
@@ -982,7 +979,10 @@ export function useMarkConversationRead(options: UseMarkConversationReadOptions 
       });
     },
 
-    ...mutationOptions,
+    onSuccess: (data, conversationId, context) => {
+      // Call user's onSuccess handler
+      onSuccess?.(data, conversationId, context);
+    },
   });
 }
 
