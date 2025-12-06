@@ -60,7 +60,6 @@ import {
   Paper,
   Tooltip,
   useTheme,
-  useMediaQuery,
   alpha,
 } from '@mui/material';
 import {
@@ -69,17 +68,14 @@ import {
   Sort as SortIcon,
   Delete as DeleteIcon,
   MarkEmailRead as MarkReadIcon,
-  MarkEmailUnread as MarkUnreadIcon,
   VolumeOff as MuteIcon,
   VolumeUp as UnmuteIcon,
   Star as StarIcon,
   StarBorder as StarBorderIcon,
   MoreVert as MoreVertIcon,
-  KeyboardArrowRight as ArrowRightIcon,
   Inbox as InboxIcon,
   Circle as OnlineIcon,
 } from '@mui/icons-material';
-import { formatDistanceToNow } from 'date-fns';
 
 // Internal imports from depends_on_files
 import {
@@ -91,12 +87,8 @@ import {
   setFavouriteConversations,
   unsetFavouriteConversations,
 } from '@/features/messaging/api/messagingApi';
-import type {
-  Conversation,
-  ConversationMember,
-  ConversationType,
-  ConversationListResponse,
-} from '@/features/messaging/types/message.types';
+import type { Conversation } from '@/features/messaging/types/message.types';
+import { ConversationType } from '@/features/messaging/types/message.types';
 import { useToast } from '@/hooks/useToast';
 import useDebounce from '@/hooks/useDebounce';
 import { formatRelativeTime } from '@/utils/date';
@@ -151,23 +143,12 @@ export interface MessageListComponentProps {
   showSort?: boolean;
 }
 
-/**
- * Internal state for swipe actions
- */
-interface SwipeState {
-  conversationId: number | null;
-  direction: 'left' | 'right' | null;
-}
-
 // ============================================================================
 // Constants
 // ============================================================================
 
 /** Default polling interval based on Moodle's messagepollmin (10 seconds) */
 const DEFAULT_POLL_INTERVAL = 10000;
-
-/** Maximum polling interval based on Moodle's messagepollmax (5 minutes) */
-const MAX_POLL_INTERVAL = 300000;
 
 /** Preview text maximum length */
 const PREVIEW_MAX_LENGTH = 60;
@@ -225,10 +206,12 @@ function getConversationAvatar(conversation: Conversation): string | null {
 function getLastMessagePreview(conversation: Conversation): string {
   if (conversation.messages && conversation.messages.length > 0) {
     const lastMessage = conversation.messages[0];
-    const text = lastMessage.smallmessage || lastMessage.fullmessage || '';
-    // Strip HTML tags for preview
-    const plainText = text.replace(/<[^>]*>/g, '').trim();
-    return truncate(plainText, PREVIEW_MAX_LENGTH);
+    if (lastMessage) {
+      const text = lastMessage.smallmessage || lastMessage.fullmessage || '';
+      // Strip HTML tags for preview
+      const plainText = text.replace(/<[^>]*>/g, '').trim();
+      return truncate(plainText, PREVIEW_MAX_LENGTH);
+    }
   }
   return 'No messages yet';
 }
@@ -238,7 +221,10 @@ function getLastMessagePreview(conversation: Conversation): string {
  */
 function getLastMessageTime(conversation: Conversation): number | null {
   if (conversation.messages && conversation.messages.length > 0) {
-    return conversation.messages[0].timecreated;
+    const firstMessage = conversation.messages[0];
+    if (firstMessage) {
+      return firstMessage.timecreated;
+    }
   }
   return conversation.timemodified || conversation.timecreated;
 }
@@ -268,8 +254,12 @@ function sortConversations(
     case 'unread':
       return sorted.sort((a, b) => {
         // Unread first, then by newest
-        if (a.unreadcount > 0 && b.unreadcount === 0) return -1;
-        if (a.unreadcount === 0 && b.unreadcount > 0) return 1;
+        if (a.unreadcount > 0 && b.unreadcount === 0) {
+          return -1;
+        }
+        if (a.unreadcount === 0 && b.unreadcount > 0) {
+          return 1;
+        }
         const timeA = getLastMessageTime(a) || 0;
         const timeB = getLastMessageTime(b) || 0;
         return timeB - timeA;
@@ -328,10 +318,9 @@ export function MessageList({
   showSort = true,
 }: MessageListComponentProps): JSX.Element {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { success, error: showError, warning } = useToast();
+  const { success, error: showError } = useToast();
   
   // State
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
@@ -343,8 +332,7 @@ export function MessageList({
   const [sortMenuAnchor, setSortMenuAnchor] = useState<HTMLElement | null>(null);
   const [contextMenuAnchor, setContextMenuAnchor] = useState<HTMLElement | null>(null);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
-  const [swipeState, setSwipeState] = useState<SwipeState>({ conversationId: null, direction: null });
-  const [currentPollInterval, setCurrentPollInterval] = useState(pollInterval);
+  const [currentPollInterval] = useState(pollInterval);
   
   // Refs
   const listRef = useRef<HTMLUListElement>(null);
@@ -429,13 +417,13 @@ export function MessageList({
         )
       );
     },
-    onError: (err, conversationId) => {
+    onError: () => {
       // Revert optimistic update
       showError('Failed to mark conversation as read');
-      refetch();
+      void refetch();
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: [CONVERSATIONS_QUERY_KEY] });
+      void queryClient.invalidateQueries({ queryKey: [CONVERSATIONS_QUERY_KEY] });
     },
   });
   
@@ -457,10 +445,10 @@ export function MessageList({
     },
     onError: () => {
       showError('Failed to delete conversation');
-      refetch();
+      void refetch();
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: [CONVERSATIONS_QUERY_KEY] });
+      void queryClient.invalidateQueries({ queryKey: [CONVERSATIONS_QUERY_KEY] });
     },
   });
   
@@ -475,7 +463,7 @@ export function MessageList({
         await unmuteConversation(conversationId);
       }
     },
-    onMutate: async ({ conversationId, mute }) => {
+    onMutate: ({ conversationId, mute }) => {
       setAllConversations((prev) =>
         prev.map((c) =>
           c.id === conversationId ? { ...c, ismuted: mute } : c
@@ -487,10 +475,10 @@ export function MessageList({
     },
     onError: () => {
       showError('Failed to update notification settings');
-      refetch();
+      void refetch();
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: [CONVERSATIONS_QUERY_KEY] });
+      void queryClient.invalidateQueries({ queryKey: [CONVERSATIONS_QUERY_KEY] });
     },
   });
   
@@ -505,7 +493,7 @@ export function MessageList({
         await unsetFavouriteConversations([conversationId]);
       }
     },
-    onMutate: async ({ conversationId, favourite }) => {
+    onMutate: ({ conversationId, favourite }) => {
       setAllConversations((prev) =>
         prev.map((c) =>
           c.id === conversationId ? { ...c, isfavourite: favourite } : c
@@ -517,10 +505,10 @@ export function MessageList({
     },
     onError: () => {
       showError('Failed to update favourites');
-      refetch();
+      void refetch();
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: [CONVERSATIONS_QUERY_KEY] });
+      void queryClient.invalidateQueries({ queryKey: [CONVERSATIONS_QUERY_KEY] });
     },
   });
   
@@ -535,8 +523,8 @@ export function MessageList({
     
     observerRef.current = new IntersectionObserver(
       (entries) => {
-        const [entry] = entries;
-        if (entry.isIntersecting && hasMore && !isLoading && !isFetching) {
+        const entry = entries[0];
+        if (entry && entry.isIntersecting && hasMore && !isLoading && !isFetching) {
           setPage((prev) => prev + 1);
         }
       },
@@ -658,7 +646,10 @@ export function MessageList({
         case ' ':
           event.preventDefault();
           if (focusedIndex >= 0 && focusedIndex < conversations.length) {
-            handleConversationClick(conversations[focusedIndex]);
+            const targetConversation = conversations[focusedIndex];
+            if (targetConversation) {
+              handleConversationClick(targetConversation);
+            }
           }
           break;
         case 'Home':
@@ -818,7 +809,7 @@ export function MessageList({
    * Render conversation avatar(s)
    */
   const renderAvatar = (conversation: Conversation) => {
-    const isGroup = conversation.type === 2;
+    const isGroup = conversation.type === ConversationType.GROUP;
     const members = conversation.members || [];
     
     if (isGroup && members.length > 1) {
@@ -921,7 +912,9 @@ export function MessageList({
       >
         <ListItemButton
           ref={(el) => {
-            if (el) listItemRefs.current.set(conversation.id, el);
+            if (el) {
+              listItemRefs.current.set(conversation.id, el);
+            }
           }}
           onClick={() => handleConversationClick(conversation)}
           onContextMenu={(e) => handleContextMenu(e, conversation)}
