@@ -1,106 +1,124 @@
 /**
  * AvatarUpload Component
  *
- * Component for uploading and managing user profile avatars.
- * Supports drag-and-drop, file validation, preview, and deletion.
+ * React component for uploading and cropping user profile avatar images with
+ * drag-and-drop support, image preview, client-side validation (file type, size),
+ * and cropping functionality before upload.
+ *
+ * Features:
+ * - Drag-and-drop file upload using react-dropzone
+ * - Real-time image preview
+ * - Client-side file type and size validation (max 100MB default)
+ * - Cropping functionality placeholder for future integration
+ * - Material-UI styling and responsive design
+ * - WCAG 2.1 AA accessibility compliance with proper ARIA labels
+ * - Integration with profile API for avatar submission
+ * - Comprehensive error handling and user feedback
+ *
+ * Based on Moodle profile picture handling from:
+ * - public/user/edit.php - Profile edit form with picture upload
+ * - public/user/edit_form.php - Form definition for profile editing
  *
  * @module features/profile/components
  */
 
-import type React from 'react';
-import { useState, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   Box,
-  Avatar,
   Button,
-  IconButton,
+  Avatar,
   Typography,
   Alert,
   CircularProgress,
+  IconButton,
   Paper,
-  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import {
-  CloudUpload as UploadIcon,
+  CloudUpload as CloudUploadIcon,
   Delete as DeleteIcon,
-  PhotoCamera as CameraIcon,
+  Crop as CropIcon,
 } from '@mui/icons-material';
-import { useUploadAvatar, useDeleteAvatar } from '../hooks/useUpdateProfile';
-import type { AvatarConstraints } from '../types/profile.types';
+import { useDropzone } from 'react-dropzone';
+import type { AvatarUploadResponse } from '../types/profile.types';
+import { uploadAvatar } from '../api/profileApi';
+
+// ============================================================================
+// Type Definitions
+// ============================================================================
 
 /**
- * Props for AvatarUpload component
+ * Props interface for AvatarUpload component
+ *
+ * Defines the configuration options for the avatar upload component including
+ * current avatar URL, callbacks for success/error handling, and constraints
+ * for file uploads.
  */
 export interface AvatarUploadProps {
   /**
-   * User ID for avatar upload
+   * User ID for avatar upload - required for API call
+   * The ID of the user whose avatar is being uploaded
    */
   userId: number;
 
   /**
-   * Current avatar URL
+   * Current avatar URL to display as initial preview
+   * If not provided, a default avatar placeholder is shown
    */
   currentAvatarUrl?: string;
 
   /**
-   * Callback on successful upload
+   * Callback invoked when avatar upload succeeds
+   * Receives the new avatar URL as parameter
+   *
+   * @param url - The new profile image URL returned by the server
    */
-  onUploadSuccess?: (url: string) => void;
+  onUploadSuccess: (url: string) => void;
 
   /**
-   * Callback on successful deletion
+   * Callback invoked when avatar upload fails
+   * Receives the error object with details
+   *
+   * @param error - Error object containing failure details
    */
-  onDeleteSuccess?: () => void;
+  onUploadError: (error: Error) => void;
 
   /**
-   * Whether to allow avatar deletion
-   * @default true
+   * Maximum file size in bytes for uploaded images
+   * Defaults to 100MB (104857600 bytes) as per requirements
    */
-  allowDelete?: boolean;
+  maxFileSize?: number;
 
   /**
-   * Custom avatar constraints
+   * Array of accepted MIME types for upload
+   * Defaults to ['image/jpeg', 'image/png', 'image/gif']
    */
-  constraints?: Partial<AvatarConstraints>;
-
-  /**
-   * Size variant
-   * @default 'medium'
-   */
-  size?: 'small' | 'medium' | 'large';
-
-  /**
-   * Additional CSS class name
-   */
-  className?: string;
+  acceptedFormats?: string[];
 }
 
 /**
- * Default avatar constraints
+ * Default maximum file size: 100MB in bytes
  */
-const DEFAULT_CONSTRAINTS: AvatarConstraints = {
-  maxSize: 5 * 1024 * 1024, // 5MB
-  allowedTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
-  minWidth: 100,
-  minHeight: 100,
-  maxWidth: 4096,
-  maxHeight: 4096,
-};
+const DEFAULT_MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
 
 /**
- * Avatar size configurations
+ * Default accepted image formats
  */
-const AVATAR_SIZES = {
-  small: { size: 80, iconSize: 32 },
-  medium: { size: 120, iconSize: 48 },
-  large: { size: 180, iconSize: 64 },
-};
+const DEFAULT_ACCEPTED_FORMATS = ['image/jpeg', 'image/png', 'image/gif'];
+
+// ============================================================================
+// Component Implementation
+// ============================================================================
 
 /**
  * AvatarUpload Component
  *
  * Interactive component for managing user avatars with drag-and-drop support,
- * validation, preview, and deletion capabilities.
+ * validation, preview, and upload capabilities. Uses react-dropzone for
+ * accessible file selection and Material-UI for consistent styling.
  *
  * @example
  * ```tsx
@@ -108,392 +126,534 @@ const AVATAR_SIZES = {
  *   userId={currentUser.id}
  *   currentAvatarUrl={currentUser.profileimageurl}
  *   onUploadSuccess={(url) => {
- *     toast.success('Avatar updated!');
+ *     console.log('New avatar URL:', url);
+ *     updateUserProfile({ profileimageurl: url });
  *   }}
+ *   onUploadError={(error) => {
+ *     console.error('Upload failed:', error.message);
+ *     showErrorToast(error.message);
+ *   }}
+ *   maxFileSize={5 * 1024 * 1024} // 5MB
  * />
  * ```
  */
-export function AvatarUpload({
+function AvatarUpload({
   userId,
   currentAvatarUrl,
   onUploadSuccess,
-  onDeleteSuccess,
-  allowDelete = true,
-  constraints = {},
-  size = 'medium',
-  className,
-}: AvatarUploadProps) {
-  // State
-  const [preview, setPreview] = useState<string | null>(null);
-  const [dragActive, setDragActive] = useState(false);
-  const [validationError, setValidationError] = useState<string | null>(null);
-
-  // Refs
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Merge constraints with defaults
-  const finalConstraints: AvatarConstraints = useMemo(
-    () => ({
-      ...DEFAULT_CONSTRAINTS,
-      ...constraints,
-    }),
-    [constraints]
-  );
-
-  // Get size configuration
-  const sizeConfig = AVATAR_SIZES[size];
-
-  // Mutations
-  const {
-    mutate: uploadAvatar,
-    isPending: isUploading,
-    error: uploadError,
-  } = useUploadAvatar(userId, {
-    onSuccess: (response) => {
-      if (response.success) {
-        setPreview(null);
-        setValidationError(null);
-        onUploadSuccess?.(response.profileimageurl);
-      } else if (response.error) {
-        setValidationError(response.error.message);
-      }
-    },
-    onError: (error) => {
-      setValidationError(error.message);
-    },
-  });
-
-  const { mutate: deleteAvatar, isPending: isDeleting } = useDeleteAvatar(userId, {
-    onSuccess: () => {
-      setPreview(null);
-      setValidationError(null);
-      onDeleteSuccess?.();
-    },
-  });
+  onUploadError,
+  maxFileSize = DEFAULT_MAX_FILE_SIZE,
+  acceptedFormats = DEFAULT_ACCEPTED_FORMATS,
+}: AvatarUploadProps): React.ReactElement {
+  // ============================================================================
+  // Component State
+  // ============================================================================
 
   /**
-   * Validate file before upload
+   * Currently selected file for upload
+   * Null when no file is selected
+   */
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  /**
+   * Preview URL for the selected image
+   * Generated using URL.createObjectURL() for local preview
+   * Null when no file is selected or after cleanup
+   */
+  const [preview, setPreview] = useState<string | null>(null);
+
+  /**
+   * Upload in progress flag
+   * True while the upload API call is being processed
+   */
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+
+  /**
+   * Error message to display to user
+   * Null when there are no errors
+   */
+  const [error, setError] = useState<string | null>(null);
+
+  /**
+   * Flag to control crop dialog visibility
+   * Placeholder for future cropping library integration
+   */
+  const [showCropDialog, setShowCropDialog] = useState<boolean>(false);
+
+  // ============================================================================
+  // Cleanup Effect
+  // ============================================================================
+
+  /**
+   * Cleanup effect to revoke object URLs on unmount
+   * Prevents memory leaks by releasing object URL resources
+   */
+  useEffect(() => {
+    // Cleanup function
+    return () => {
+      if (preview) {
+        URL.revokeObjectURL(preview);
+      }
+    };
+  }, [preview]);
+
+  // ============================================================================
+  // File Handling Functions
+  // ============================================================================
+
+  /**
+   * Validates the selected file against constraints
+   *
+   * Checks file type against accepted formats and file size against maximum.
+   * Returns validation error message or null if valid.
+   *
+   * @param file - The file to validate
+   * @returns Error message string if invalid, null if valid
    */
   const validateFile = useCallback(
     (file: File): string | null => {
-      // Check file size
-      if (file.size > finalConstraints.maxSize) {
-        return `File size exceeds ${(finalConstraints.maxSize / 1024 / 1024).toFixed(1)}MB limit`;
+      // Check file type
+      if (!acceptedFormats.includes(file.type)) {
+        const formatNames = acceptedFormats
+          .map((format) => format.split('/')[1]?.toUpperCase() ?? format)
+          .join(', ');
+        return `Invalid file type. Accepted formats: ${formatNames}`;
       }
 
-      // Check file type
-      if (!finalConstraints.allowedTypes.includes(file.type)) {
-        return `Invalid file type. Allowed types: ${finalConstraints.allowedTypes
-          .map((t) => t.split('/')[1]?.toUpperCase() ?? t)
-          .join(', ')}`;
+      // Check file size
+      if (file.size > maxFileSize) {
+        const maxSizeMB = (maxFileSize / (1024 * 1024)).toFixed(1);
+        return `File size exceeds ${maxSizeMB}MB limit`;
       }
 
       return null;
     },
-    [finalConstraints]
+    [acceptedFormats, maxFileSize]
   );
 
   /**
-   * Validate image dimensions
+   * Handles file drop from dropzone
+   *
+   * Validates the dropped file, creates a preview URL, and stores
+   * the file for upload. Displays validation errors if file is invalid.
+   *
+   * @param acceptedFiles - Array of files accepted by dropzone
    */
-  const validateImageDimensions = useCallback(
-    (file: File): Promise<string | null> => {
-      return new Promise((resolve) => {
-        const img = new Image();
-        const objectUrl = URL.createObjectURL(file);
+  const onDrop = useCallback(
+    (acceptedFiles: File[]) => {
+      // Clear previous errors
+      setError(null);
 
-        img.onload = () => {
-          URL.revokeObjectURL(objectUrl);
+      // Get the first file (single file mode)
+      const file = acceptedFiles[0];
 
-          const { width, height } = img;
-
-          // Check minimum dimensions if specified
-          if (finalConstraints.minWidth !== undefined && finalConstraints.minHeight !== undefined) {
-            if (width < finalConstraints.minWidth || height < finalConstraints.minHeight) {
-              resolve(
-                `Image dimensions too small. Minimum: ${finalConstraints.minWidth}x${finalConstraints.minHeight}px`
-              );
-              return;
-            }
-          }
-
-          // Check maximum dimensions if specified
-          if (finalConstraints.maxWidth !== undefined && finalConstraints.maxHeight !== undefined) {
-            if (width > finalConstraints.maxWidth || height > finalConstraints.maxHeight) {
-              resolve(
-                `Image dimensions too large. Maximum: ${finalConstraints.maxWidth}x${finalConstraints.maxHeight}px`
-              );
-              return;
-            }
-          }
-
-          resolve(null);
-        };
-
-        img.onerror = () => {
-          URL.revokeObjectURL(objectUrl);
-          resolve('Failed to load image for validation');
-        };
-
-        img.src = objectUrl;
-      });
-    },
-    [finalConstraints]
-  );
-
-  /**
-   * Handle file selection
-   */
-  const handleFileSelect = useCallback(
-    async (file: File) => {
-      // Reset previous errors
-      setValidationError(null);
-
-      // Validate file
-      const fileError = validateFile(file);
-      if (fileError) {
-        setValidationError(fileError);
+      if (!file) {
         return;
       }
 
-      // Validate dimensions
-      const dimensionError = await validateImageDimensions(file);
-      if (dimensionError) {
-        setValidationError(dimensionError);
+      // Validate the file
+      const validationError = validateFile(file);
+      if (validationError) {
+        setError(validationError);
         return;
       }
 
-      // Create preview
+      // Revoke previous preview URL if exists
+      if (preview) {
+        URL.revokeObjectURL(preview);
+      }
+
+      // Create preview URL
       const previewUrl = URL.createObjectURL(file);
+
+      // Update state
+      setSelectedFile(file);
       setPreview(previewUrl);
-
-      // Upload file
-      uploadAvatar(file);
     },
-    [validateFile, validateImageDimensions, uploadAvatar]
+    [preview, validateFile]
   );
 
   /**
-   * Handle file input change
+   * Handles file upload to server
+   *
+   * Creates FormData with the selected file and calls the profile API
+   * endpoint to upload the avatar. Invokes success/error callbacks
+   * based on the result.
    */
-  const handleInputChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      if (file) {
-        void handleFileSelect(file);
-      }
-      // Reset input value to allow selecting the same file again
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    },
-    [handleFileSelect]
-  );
-
-  /**
-   * Handle drag events
-   */
-  const handleDrag = useCallback((event: React.DragEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-
-    if (event.type === 'dragenter' || event.type === 'dragover') {
-      setDragActive(true);
-    } else if (event.type === 'dragleave') {
-      setDragActive(false);
+  const handleUpload = useCallback(async () => {
+    if (!selectedFile) {
+      setError('No file selected');
+      return;
     }
+
+    setIsUploading(true);
+    setError(null);
+
+    try {
+      // Call the uploadAvatar API function
+      const response: AvatarUploadResponse = await uploadAvatar(userId, selectedFile);
+
+      if (response.success) {
+        // Upload succeeded - invoke success callback with new avatar URL
+        onUploadSuccess(response.profileimageurl);
+
+        // Clear the selected file and preview after successful upload
+        if (preview) {
+          URL.revokeObjectURL(preview);
+        }
+        setSelectedFile(null);
+        setPreview(null);
+      } else {
+        // Server returned an error response
+        const errorMessage = response.error?.message ?? 'Upload failed';
+        setError(errorMessage);
+        onUploadError(new Error(errorMessage));
+      }
+    } catch (uploadError) {
+      // Handle network or unexpected errors
+      const errorMessage =
+        uploadError instanceof Error ? uploadError.message : 'Failed to upload avatar';
+      setError(errorMessage);
+      onUploadError(uploadError instanceof Error ? uploadError : new Error(errorMessage));
+    } finally {
+      setIsUploading(false);
+    }
+  }, [selectedFile, userId, onUploadSuccess, onUploadError, preview]);
+
+  /**
+   * Handles removal of selected file
+   *
+   * Clears the selected file and preview, revoking the object URL
+   * to prevent memory leaks.
+   */
+  const handleRemove = useCallback(() => {
+    if (preview) {
+      URL.revokeObjectURL(preview);
+    }
+    setSelectedFile(null);
+    setPreview(null);
+    setError(null);
+  }, [preview]);
+
+  /**
+   * Handles opening the crop dialog
+   *
+   * Placeholder function for future cropping library integration.
+   * Currently opens a dialog indicating cropping feature is coming.
+   */
+  const handleCrop = useCallback(() => {
+    setShowCropDialog(true);
   }, []);
 
   /**
-   * Handle drop event
+   * Handles closing the crop dialog
    */
-  const handleDrop = useCallback(
-    (event: React.DragEvent) => {
-      event.preventDefault();
-      event.stopPropagation();
-      setDragActive(false);
-
-      const file = event.dataTransfer?.files?.[0];
-      if (file) {
-        void handleFileSelect(file);
-      }
-    },
-    [handleFileSelect]
-  );
-
-  /**
-   * Handle click to open file dialog
-   */
-  const handleClick = useCallback(() => {
-    fileInputRef.current?.click();
+  const handleCloseCropDialog = useCallback(() => {
+    setShowCropDialog(false);
   }, []);
 
+  // ============================================================================
+  // Dropzone Configuration
+  // ============================================================================
+
   /**
-   * Handle delete avatar
+   * Configure react-dropzone hook
+   *
+   * Sets up drag-and-drop file selection with:
+   * - Accepted file types (image/jpeg, image/png, image/gif)
+   * - Maximum file size constraint
+   * - Single file mode (multiple: false)
+   * - onDrop callback for file handling
    */
-  const handleDelete = useCallback(() => {
-    if (window.confirm('Are you sure you want to delete your avatar?')) {
-      deleteAvatar();
+  const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
+    onDrop,
+    accept: {
+      'image/jpeg': ['.jpg', '.jpeg'],
+      'image/png': ['.png'],
+      'image/gif': ['.gif'],
+    },
+    maxSize: maxFileSize,
+    multiple: false,
+    disabled: isUploading,
+  });
+
+  // ============================================================================
+  // Display Logic
+  // ============================================================================
+
+  /**
+   * Determine the image URL to display
+   * Priority: preview (selected file) > current avatar > none
+   */
+  const displayImageUrl = preview ?? currentAvatarUrl;
+
+  /**
+   * Format file size for display
+   *
+   * @param bytes - File size in bytes
+   * @returns Formatted string with appropriate unit (KB or MB)
+   */
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024 * 1024) {
+      return `${(bytes / 1024).toFixed(1)} KB`;
     }
-  }, [deleteAvatar]);
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
 
-  /**
-   * Get display URL (preview or current avatar)
-   */
-  const displayUrl = preview ?? currentAvatarUrl;
-
-  const isProcessing = isUploading || isDeleting;
+  // ============================================================================
+  // Render
+  // ============================================================================
 
   return (
-    <Box className={className} display="flex" flexDirection="column" alignItems="center" gap={2}>
-      {/* Avatar Display with Upload Zone */}
-      <Box sx={{ position: 'relative', display: 'inline-block' }}>
-        <Paper
-          role="button"
-          tabIndex={0}
-          aria-label="Upload avatar image"
-          onDragEnter={handleDrag}
-          onDragOver={handleDrag}
-          onDragLeave={handleDrag}
-          onDrop={handleDrop}
-          onClick={handleClick}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              handleClick();
-            }
-          }}
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 2,
+        width: '100%',
+        maxWidth: 400,
+      }}
+    >
+      {/* Dropzone Area */}
+      <Paper
+        {...getRootProps()}
+        elevation={isDragActive ? 4 : 1}
+        sx={{
+          width: '100%',
+          p: 3,
+          border: '2px dashed',
+          borderColor: isDragReject
+            ? 'error.main'
+            : isDragActive
+              ? 'primary.main'
+              : 'divider',
+          borderRadius: 2,
+          backgroundColor: isDragActive
+            ? 'action.hover'
+            : 'background.paper',
+          cursor: isUploading ? 'not-allowed' : 'pointer',
+          transition: 'all 0.2s ease-in-out',
+          opacity: isUploading ? 0.7 : 1,
+          '&:hover': {
+            borderColor: isUploading ? 'divider' : 'primary.main',
+            backgroundColor: isUploading ? 'background.paper' : 'action.hover',
+          },
+          '&:focus-visible': {
+            outline: '2px solid',
+            outlineColor: 'primary.main',
+            outlineOffset: 2,
+          },
+        }}
+        role="button"
+        tabIndex={0}
+        aria-label="Drop zone for avatar image upload. Click or drag and drop an image file."
+        aria-describedby="dropzone-description"
+      >
+        {/* Hidden file input */}
+        <input {...getInputProps()} aria-label="Upload avatar image file" />
+
+        {/* Dropzone Content */}
+        <Box
           sx={{
-            position: 'relative',
-            borderRadius: '50%',
-            cursor: isProcessing ? 'not-allowed' : 'pointer',
-            border: dragActive ? '3px dashed' : '3px solid transparent',
-            borderColor: dragActive ? 'primary.main' : 'transparent',
-            transition: 'all 0.3s ease',
-            '&:hover': {
-              borderColor: isProcessing ? 'transparent' : 'primary.light',
-              transform: isProcessing ? 'none' : 'scale(1.05)',
-            },
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 2,
           }}
         >
+          {/* Avatar Preview */}
           <Avatar
-            src={displayUrl}
-            alt="User avatar"
+            src={displayImageUrl}
+            alt="Avatar preview"
             sx={{
-              width: sizeConfig.size,
-              height: sizeConfig.size,
-              opacity: isProcessing ? 0.5 : 1,
-            }}
-          />
-
-          {/* Upload Overlay */}
-          <Box
-            sx={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: 'rgba(0, 0, 0, 0.4)',
-              opacity: 0,
-              transition: 'opacity 0.3s ease',
-              '&:hover': {
-                opacity: isProcessing ? 0 : 1,
-              },
+              width: 120,
+              height: 120,
+              border: '3px solid',
+              borderColor: 'primary.main',
+              boxShadow: 2,
             }}
           >
-            {isProcessing ? (
-              <CircularProgress size={sizeConfig.iconSize} sx={{ color: 'white' }} />
-            ) : (
-              <CameraIcon sx={{ fontSize: sizeConfig.iconSize, color: 'white' }} />
+            {/* Default icon when no image */}
+            {!displayImageUrl && (
+              <CloudUploadIcon sx={{ fontSize: 48, color: 'text.secondary' }} />
             )}
+          </Avatar>
+
+          {/* Upload Instructions */}
+          <Box sx={{ textAlign: 'center' }}>
+            <Typography
+              variant="body1"
+              color={isDragActive ? 'primary' : 'text.primary'}
+              fontWeight="medium"
+            >
+              {isDragActive
+                ? 'Drop image here...'
+                : 'Drag & drop an image or click to browse'}
+            </Typography>
+            <Typography
+              id="dropzone-description"
+              variant="body2"
+              color="text.secondary"
+              sx={{ mt: 0.5 }}
+            >
+              Accepted formats: JPEG, PNG, GIF (max {(maxFileSize / (1024 * 1024)).toFixed(0)}MB)
+            </Typography>
           </Box>
 
-          {/* Instructions - positioned inside Paper for accessibility */}
-          <Typography
-            variant="body2"
-            color="text.secondary"
+          {/* Loading Spinner */}
+          {isUploading && (
+            <CircularProgress
+              size={24}
+              aria-label="Uploading avatar..."
+              sx={{ mt: 1 }}
+            />
+          )}
+        </Box>
+      </Paper>
+
+      {/* Error Alert */}
+      {error && (
+        <Alert
+          severity="error"
+          sx={{ width: '100%' }}
+          onClose={() => setError(null)}
+          role="alert"
+        >
+          {error}
+        </Alert>
+      )}
+
+      {/* Selected File Info */}
+      {selectedFile && (
+        <Paper
+          elevation={0}
+          sx={{
+            width: '100%',
+            p: 2,
+            backgroundColor: 'grey.50',
+            borderRadius: 1,
+          }}
+        >
+          <Box
             sx={{
-              position: 'absolute',
-              top: '100%',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              marginTop: 1,
-              textAlign: 'center',
-              whiteSpace: 'nowrap',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
             }}
           >
-            {dragActive ? (
-              'Drop image here'
-            ) : (
-              <>
-                Click or drag image to upload
-                <br />
-                Max size: {(finalConstraints.maxSize / 1024 / 1024).toFixed(1)}MB
-              </>
-            )}
-          </Typography>
+            <Box>
+              <Typography variant="body2" fontWeight="medium" noWrap>
+                {selectedFile.name}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {formatFileSize(selectedFile.size)}
+              </Typography>
+            </Box>
+
+            {/* Action Buttons */}
+            <Box sx={{ display: 'flex', gap: 0.5 }}>
+              {/* Crop Button (placeholder for future functionality) */}
+              <IconButton
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleCrop();
+                }}
+                disabled={isUploading}
+                size="small"
+                aria-label="Crop image"
+                title="Crop image"
+              >
+                <CropIcon fontSize="small" />
+              </IconButton>
+
+              {/* Remove Button */}
+              <IconButton
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRemove();
+                }}
+                disabled={isUploading}
+                size="small"
+                color="error"
+                aria-label="Remove selected image"
+                title="Remove image"
+              >
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </Box>
+          </Box>
         </Paper>
-      </Box>
+      )}
 
-      {/* Hidden File Input */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept={finalConstraints.allowedTypes.join(',')}
-        onChange={handleInputChange}
-        style={{ display: 'none' }}
-        disabled={isProcessing}
-        aria-label="Upload avatar image"
-      />
-
-      {/* Action Buttons */}
-      <Box display="flex" gap={1}>
+      {/* Upload Button */}
+      {selectedFile && (
         <Button
-          variant="outlined"
-          startIcon={<UploadIcon />}
-          onClick={handleClick}
-          disabled={isProcessing}
-          size="small"
+          variant="contained"
+          color="primary"
+          onClick={handleUpload}
+          disabled={isUploading || !selectedFile}
+          startIcon={
+            isUploading ? (
+              <CircularProgress size={20} color="inherit" />
+            ) : (
+              <CloudUploadIcon />
+            )
+          }
+          fullWidth
+          sx={{ mt: 1 }}
+          aria-label={isUploading ? 'Uploading avatar...' : 'Upload avatar image'}
         >
-          Choose File
+          {isUploading ? 'Uploading...' : 'Upload Avatar'}
         </Button>
-
-        {allowDelete && currentAvatarUrl && (
-          <Tooltip title="Remove avatar">
-            <IconButton color="error" onClick={handleDelete} disabled={isProcessing} size="small">
-              <DeleteIcon />
-            </IconButton>
-          </Tooltip>
-        )}
-      </Box>
-
-      {/* Validation Error */}
-      {validationError && (
-        <Alert severity="error" aria-live="assertive" sx={{ width: '100%', maxWidth: 400 }}>
-          {validationError}
-        </Alert>
       )}
 
-      {/* Upload Error */}
-      {uploadError && (
-        <Alert severity="error" aria-live="assertive" sx={{ width: '100%', maxWidth: 400 }}>
-          {uploadError.message || 'Failed to upload avatar'}
-        </Alert>
-      )}
-
-      {/* Upload Progress */}
-      {isUploading && (
-        <Alert severity="info" aria-live="polite" sx={{ width: '100%', maxWidth: 400 }}>
-          Uploading avatar...
-        </Alert>
-      )}
+      {/* Crop Dialog (Placeholder for future cropping library integration) */}
+      <Dialog
+        open={showCropDialog}
+        onClose={handleCloseCropDialog}
+        maxWidth="sm"
+        fullWidth
+        aria-labelledby="crop-dialog-title"
+      >
+        <DialogTitle id="crop-dialog-title">Crop Image</DialogTitle>
+        <DialogContent>
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 2,
+              py: 3,
+            }}
+          >
+            {preview && (
+              <Avatar
+                src={preview}
+                alt="Image to crop"
+                sx={{
+                  width: 200,
+                  height: 200,
+                  border: '2px dashed',
+                  borderColor: 'primary.main',
+                }}
+              />
+            )}
+            <Typography variant="body2" color="text.secondary" textAlign="center">
+              Image cropping functionality will be available in a future update.
+              For now, please ensure your image is already cropped to your preference.
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseCropDialog} color="primary">
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
 
+// Default export as specified in exports schema
 export default AvatarUpload;
