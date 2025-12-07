@@ -53,12 +53,17 @@ import {
 } from '@mui/material';
 
 // Internal Components
-import { ChoiceOptions } from './ChoiceOptions';
-import { ChoiceResults } from './ChoiceResults';
+import ChoiceOptions from './ChoiceOptions';
+import ChoiceResults, { 
+  type ChoiceResultsDataExtended,
+  type OptionResult,
+  type User,
+} from './ChoiceResults';
 
 // Custom Hooks
 import { useChoice } from '../hooks/useChoice';
 import { useChoiceResponse } from '../hooks/useChoiceResponse';
+import useChoiceResults from '../hooks/useChoiceResults';
 import { useToast } from '../../../../hooks/useToast';
 import { usePermissions } from '../../../../hooks/usePermissions';
 
@@ -66,10 +71,9 @@ import { usePermissions } from '../../../../hooks/usePermissions';
 import {
   ShowResultsMode,
   PublishMode,
-  type Choice,
-  type ChoiceOption,
-  type ChoiceResultsData,
+  type ChoiceOptionForDisplay,
 } from '../types/choice.types';
+import type { Choice, ChoiceOption } from '../hooks/useChoice';
 
 // ============================================================================
 // Type Definitions
@@ -163,28 +167,28 @@ function calculateAvailability(
   }
 
   const now = Date.now();
-  const timeopen = choice.timeOpen ? choice.timeOpen * 1000 : 0;
-  const timeclose = choice.timeClose ? choice.timeClose * 1000 : 0;
+  const timeopenMs = choice.timeopen ? choice.timeopen * 1000 : 0;
+  const timecloseMs = choice.timeclose ? choice.timeclose * 1000 : 0;
   const warnings: string[] = [];
 
   // Check preview mode (before timeopen and showpreview enabled)
-  const isPreview = timeopen > 0 && timeopen > now && choice.showPreview;
+  const isPreview = timeopenMs > 0 && timeopenMs > now && choice.showpreview;
 
   // Check if choice is closed
-  const isClosed = timeclose > 0 && now > timeclose;
+  const isClosed = timecloseMs > 0 && now > timecloseMs;
 
   // Check if choice is open (between timeopen and timeclose, or no restrictions)
   const isOpen =
-    (timeopen === 0 || now >= timeopen) && (timeclose === 0 || now <= timeclose);
+    (timeopenMs === 0 || now >= timeopenMs) && (timecloseMs === 0 || now <= timecloseMs);
 
   // Build warning messages
-  if (timeopen > 0 && now < timeopen) {
-    const openDate = new Date(timeopen).toLocaleString();
+  if (timeopenMs > 0 && now < timeopenMs) {
+    const openDate = new Date(timeopenMs).toLocaleString();
     warnings.push(`This choice will open on ${openDate}`);
   }
 
-  if (timeclose > 0 && !isClosed) {
-    const closeDate = new Date(timeclose).toLocaleString();
+  if (timecloseMs > 0 && !isClosed) {
+    const closeDate = new Date(timecloseMs).toLocaleString();
     warnings.push(`This choice will close on ${closeDate}`);
   }
 
@@ -193,14 +197,14 @@ function calculateAvailability(
   }
 
   // Determine if user can update their response
-  const canUpdate = choice.allowUpdate && isOpen;
+  const canUpdate = choice.allowupdate && isOpen;
 
   // Determine overall availability
   // User can respond if:
   // 1. Choice is open (not preview, not closed)
   // 2. User hasn't responded OR allowupdate is enabled
   const available =
-    isOpen && (!hasResponse || (hasResponse && choice.allowUpdate));
+    isOpen && (!hasResponse || (hasResponse && choice.allowupdate));
 
   return {
     available,
@@ -308,6 +312,101 @@ function getResultsAvailabilityMessage(
   }
 }
 
+/**
+ * Transform results data from useChoiceResults hook into ChoiceResultsDataExtended format
+ * 
+ * This function converts the API response format from useChoiceResults into the 
+ * ChoiceResultsDataExtended format expected by the ChoiceResults component.
+ * It groups users by their selected options and calculates counts.
+ * 
+ * @param choiceData - The choice activity data
+ * @param resultsData - The raw results data from useChoiceResults hook
+ * @param canReadResponses - Whether user can read individual responses
+ * @param canDeleteResponses - Whether user can delete responses
+ * @param courseModuleId - The course module ID
+ * @returns Transformed results data or null if data is insufficient
+ */
+function transformResultsData(
+  choiceData: Choice | null | undefined,
+  resultsData: { 
+    responses: Array<{
+      id: number;
+      firstname: string;
+      lastname: string;
+      selectedOptions: Array<{ id: number; text: string; maxanswers?: number }>;
+      answerid?: number;
+    }>;
+    totalCount: number;
+  } | null | undefined,
+  canReadResponses: boolean,
+  canDeleteResponses: boolean,
+  courseModuleId: number
+): ChoiceResultsDataExtended | null {
+  if (!choiceData || !resultsData) {
+    return null;
+  }
+
+  // Build options map with users grouped by option
+  const optionsMap: { [optionid: number]: OptionResult } = {};
+
+  // Initialize options from choice data
+  if (choiceData.options) {
+    choiceData.options.forEach((option) => {
+      optionsMap[option.id] = {
+        text: option.text,
+        user: [],
+        maxanswer: option.maxanswers || 0,
+        numberofuser: 0,
+      };
+    });
+  }
+
+  // Populate users for each option from results
+  resultsData.responses.forEach((response) => {
+    response.selectedOptions.forEach((selectedOption) => {
+      const optionId = selectedOption.id;
+      
+      // Initialize option if not already present (edge case)
+      if (!optionsMap[optionId]) {
+        optionsMap[optionId] = {
+          text: selectedOption.text,
+          user: [],
+          maxanswer: selectedOption.maxanswers || 0,
+          numberofuser: 0,
+        };
+      }
+      
+      // Add user to option's user list
+      const user: User = {
+        id: response.id,
+        firstname: response.firstname,
+        lastname: response.lastname,
+        imagealt: `${response.firstname} ${response.lastname}`,
+        picture: '', // Placeholder - actual picture URL would come from API
+        answerid: response.answerid || 0,
+      };
+      
+      optionsMap[optionId].user.push(user);
+      optionsMap[optionId].numberofuser = optionsMap[optionId].user.length;
+    });
+  });
+
+  return {
+    name: choiceData.name,
+    publish: choiceData.publish === PublishMode.NAMES,
+    options: optionsMap,
+    showunanswered: true, // Default to show unanswered
+    limitanswers: choiceData.limitanswers,
+    showavailable: choiceData.showavailable,
+    viewresponsecapability: canReadResponses,
+    deleterepsonsecapability: canDeleteResponses,
+    coursemoduleid: courseModuleId,
+    sesskey: '', // Session key should come from API context
+    numberofuser: resultsData.totalCount,
+    courseid: choiceData.courseId,
+  };
+}
+
 // ============================================================================
 // Main Component
 // ============================================================================
@@ -360,15 +459,12 @@ const ChoiceView: React.FC<ChoiceViewProps> = ({
   // Selected group for filtering results (teachers only)
   const [selectedGroup, setSelectedGroup] = useState<number>(0);
 
-  // Selected users for bulk actions
-  const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
-
   // ============================================================================
   // Custom Hooks
   // ============================================================================
 
   // Toast notifications
-  const { success, error: showError, warning, info } = useToast();
+  const { success, error: showError, info } = useToast();
 
   // Permissions
   const { hasCapability, isGuest } = usePermissions();
@@ -380,13 +476,23 @@ const ChoiceView: React.FC<ChoiceViewProps> = ({
     isError,
     error: fetchError,
     refetch,
-  } = useChoice({ choiceId, courseModuleId });
+  } = useChoice(choiceId);
 
   // Response mutations
   const {
     mutateAsync: submitResponse,
     isPending: isSubmitting,
-  } = useChoiceResponse({ choiceId });
+  } = useChoiceResponse();
+
+  // Fetch choice results (for displaying aggregated responses)
+  const {
+    data: resultsData,
+    isLoading: isLoadingResults,
+  } = useChoiceResults({
+    choiceId,
+    groupId: selectedGroup || undefined,
+    includeinactive: choiceData?.includeinactive || false,
+  });
 
   // ============================================================================
   // Derived State
@@ -425,19 +531,19 @@ const ChoiceView: React.FC<ChoiceViewProps> = ({
     }
 
     // If has response, check if updates are allowed
-    if (hasResponse && !choiceData?.allowUpdate) {
+    if (hasResponse && !choiceData?.allowupdate) {
       return false;
     }
 
     return true;
-  }, [canChoose, isGuest, availability.available, hasResponse, choiceData?.allowUpdate]);
+  }, [canChoose, isGuest, availability.available, hasResponse, choiceData?.allowupdate]);
 
   // Determine if results should be shown
   const showResults = useMemo(() => {
     if (!choiceData) return false;
 
     return shouldShowResults(
-      choiceData.showResults as ShowResultsMode,
+      choiceData.showresults,
       hasResponse,
       availability.isClosed,
       canReadResponses
@@ -449,8 +555,8 @@ const ChoiceView: React.FC<ChoiceViewProps> = ({
     if (!choiceData) return '';
 
     return getResultsAvailabilityMessage(
-      choiceData.showResults as ShowResultsMode,
-      choiceData.publish as PublishMode
+      choiceData.showresults,
+      choiceData.publish
     );
   }, [choiceData]);
 
@@ -472,6 +578,41 @@ const ChoiceView: React.FC<ChoiceViewProps> = ({
     // For now, we'll handle this based on whether groupMode is set
     return [];
   }, []);
+
+  // Transform options to ChoiceOptionForDisplay format for ChoiceOptions component
+  const transformedOptions = useMemo((): ChoiceOptionForDisplay[] => {
+    if (!choiceData?.options) return [];
+
+    const userSelectedIds = choiceData.userAnswer?.selectedOptionIds ?? [];
+
+    return choiceData.options.map((option: ChoiceOption): ChoiceOptionForDisplay => {
+      const isSelected = userSelectedIds.includes(option.id);
+      const responseCount = option.countanswers ?? 0;
+      const atLimit = choiceData.limitanswers && option.maxanswers > 0 && responseCount >= option.maxanswers;
+
+      return {
+        id: option.id,
+        choiceid: choiceId,
+        text: option.text,
+        maxanswers: option.maxanswers,
+        countanswers: responseCount,
+        timemodified: Date.now(), // Not available from API, use current time as placeholder
+        disabled: atLimit && !isSelected,
+        checked: isSelected,
+      };
+    });
+  }, [choiceData, choiceId]);
+
+  // Transform results data for ChoiceResults component
+  const transformedResults = useMemo(() => {
+    return transformResultsData(
+      choiceData,
+      resultsData,
+      canReadResponses,
+      canDeleteResponses,
+      courseModuleId
+    );
+  }, [choiceData, resultsData, canReadResponses, canDeleteResponses, courseModuleId]);
 
   // ============================================================================
   // Effect Handlers
@@ -498,11 +639,16 @@ const ChoiceView: React.FC<ChoiceViewProps> = ({
    * Wraps choice_user_submit_response() from lib.php (line 86 of view.php)
    */
   const handleSubmit = useCallback(
-    async (selectedOptionIds: number[]) => {
+    async (answer: number | number[]) => {
+      // Normalize answer to array for consistent processing
+      const selectedOptionIds = Array.isArray(answer) ? answer : [answer];
+      
       try {
         await submitResponse({
           choiceId,
-          optionIds: selectedOptionIds,
+          answer: selectedOptionIds,
+          action: 'submit',
+          courseId: choiceData?.courseId ?? 0,
         });
 
         success(
@@ -519,7 +665,7 @@ const ChoiceView: React.FC<ChoiceViewProps> = ({
         showError(errorMessage);
       }
     },
-    [choiceId, submitResponse, hasResponse, success, showError, refetch]
+    [choiceId, choiceData?.courseId, submitResponse, hasResponse, success, showError, refetch]
   );
 
   /**
@@ -531,8 +677,9 @@ const ChoiceView: React.FC<ChoiceViewProps> = ({
     try {
       await submitResponse({
         choiceId,
-        optionIds: [], // Empty array signals deletion
-        deleteResponse: true,
+        answer: [], // Empty array signals deletion
+        action: 'delete',
+        courseId: choiceData?.courseId ?? 0,
       });
 
       info('Your choice has been deleted');
@@ -546,7 +693,7 @@ const ChoiceView: React.FC<ChoiceViewProps> = ({
           : 'Failed to delete your choice';
       showError(errorMessage);
     }
-  }, [choiceId, submitResponse, info, showError, refetch]);
+  }, [choiceId, choiceData?.courseId, submitResponse, info, showError, refetch]);
 
   /**
    * Handle group selection change for results filtering
@@ -557,60 +704,6 @@ const ChoiceView: React.FC<ChoiceViewProps> = ({
     },
     []
   );
-
-  /**
-   * Handle user selection for bulk actions
-   */
-  const handleSelectUser = useCallback((userId: number) => {
-    setSelectedUsers((prev) =>
-      prev.includes(userId)
-        ? prev.filter((id) => id !== userId)
-        : [...prev, userId]
-    );
-  }, []);
-
-  /**
-   * Handle select all users
-   */
-  const handleSelectAll = useCallback(
-    (userIds: number[]) => {
-      if (selectedUsers.length === userIds.length) {
-        setSelectedUsers([]);
-      } else {
-        setSelectedUsers(userIds);
-      }
-    },
-    [selectedUsers.length]
-  );
-
-  /**
-   * Handle bulk delete action for selected responses
-   */
-  const handleBulkDelete = useCallback(async () => {
-    if (selectedUsers.length === 0) {
-      warning('Please select at least one response to delete');
-      return;
-    }
-
-    try {
-      await submitResponse({
-        choiceId,
-        optionIds: [],
-        deleteResponse: true,
-        userIds: selectedUsers,
-      });
-
-      success(`Deleted ${selectedUsers.length} response(s)`);
-      setSelectedUsers([]);
-      await refetch();
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error
-          ? err.message
-          : 'Failed to delete selected responses';
-      showError(errorMessage);
-    }
-  }, [selectedUsers, choiceId, submitResponse, success, warning, showError, refetch]);
 
   // ============================================================================
   // Render Helpers
@@ -765,7 +858,7 @@ const ChoiceView: React.FC<ChoiceViewProps> = ({
       )}
 
       {/* Choice Options Form - Reference: view.php lines 157-197 */}
-      {(canMakeChoice || availability.isPreview) && choiceData.options && (
+      {(canMakeChoice || availability.isPreview) && transformedOptions.length > 0 && (
         <Card sx={{ mb: 3 }}>
           <CardContent>
             <Typography variant="h6" gutterBottom>
@@ -773,18 +866,21 @@ const ChoiceView: React.FC<ChoiceViewProps> = ({
             </Typography>
 
             <ChoiceOptions
-              options={choiceData.options}
-              allowMultiple={choiceData.allowMultiple}
-              limitAnswers={choiceData.limitAnswers}
-              showAvailable={choiceData.showAvailable}
+              options={transformedOptions}
+              allowMultiple={choiceData.allowmultiple}
+              limitAnswers={choiceData.limitanswers}
+              showAvailable={choiceData.showavailable}
+              hascapability={canChoose}
+              allowUpdate={choiceData.allowupdate}
+              previewOnly={availability.isPreview || isSubmitting}
+              initialSelection={choiceData.userAnswer?.selectedOptionIds ?? []}
               onSubmit={handleSubmit}
-              disabled={availability.isPreview || isSubmitting}
-              displayMode={choiceData.display}
-              selectedOptionIds={choiceData.userAnswer?.selectedOptionIds}
+              onRemove={handleDeleteResponse}
+              displayLayout={choiceData.display === 1 ? 'horizontal' : 'vertical'}
             />
 
             {/* Delete Response Button (if user has responded and can update) */}
-            {hasResponse && choiceData.allowUpdate && (
+            {hasResponse && choiceData.allowupdate && (
               <Box mt={2}>
                 <Button
                   variant="outlined"
@@ -831,21 +927,16 @@ const ChoiceView: React.FC<ChoiceViewProps> = ({
           )}
 
           {/* Results Display */}
-          {choiceData.results ? (
+          {transformedResults ? (
             <ChoiceResults
-              resultsData={choiceData.results}
-              publishMode={choiceData.publish as PublishMode}
-              showCounts={true}
-              showPercentages={true}
-              showResponseColumn={
-                choiceData.publish === PublishMode.NAMES && canReadResponses
-              }
-              selectedUsers={selectedUsers}
-              onSelectUser={handleSelectUser}
-              onSelectAll={handleSelectAll}
-              bulkActionHandler={canDeleteResponses ? handleBulkDelete : undefined}
-              hasDeletePermission={canDeleteResponses}
+              results={transformedResults}
+              displayLayout={choiceData?.display === 1 ? 'horizontal' : 'vertical'}
             />
+          ) : isLoadingResults ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+              <CircularProgress size={24} />
+              <Typography sx={{ ml: 2 }}>Loading results...</Typography>
+            </Box>
           ) : (
             <Alert severity="info">
               No responses have been submitted yet.
