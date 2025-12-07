@@ -714,10 +714,18 @@ export function useAuth(): AuthHook {
 
   /**
    * Clear authentication error
+   * 
+   * Clears error from all sources:
+   * - Redux state error
+   * - Login mutation error
+   * - Refresh mutation error
    */
   const clearError = useCallback((): void => {
     dispatch(authActions.setError(null));
-  }, [dispatch]);
+    // Reset mutations to clear their error states
+    loginMutation.reset();
+    refreshMutation.reset();
+  }, [dispatch, loginMutation, refreshMutation]);
 
   // ============================================================================
   // Auto-refresh on Mount

@@ -399,8 +399,10 @@ describe('useProfile Hook', () => {
         expect(result.current.profile).toEqual(mockProfile);
       });
       
-      // Trigger update mutation
-      result.current.updateProfile(updateData);
+      // Trigger update mutation - catch expected rejection to prevent unhandled promise rejection
+      result.current.updateProfile(updateData).catch(() => {
+        // Expected error - mutation is expected to fail
+      });
 
       // Wait for error to be set (this happens after all retries complete)
       // Hook retries 3 times with exponential backoff (1s, 2s, 4s delays)
@@ -491,8 +493,10 @@ describe('useProfile Hook', () => {
         expect(result.current.profile).toEqual(mockProfile);
       });
 
-      // Trigger update
-      result.current.updateProfile(updateData);
+      // Trigger update - catch expected rejection to prevent unhandled promise rejection
+      result.current.updateProfile(updateData).catch(() => {
+        // Expected error - mutation is expected to fail for rollback test
+      });
 
       // Should see optimistic update
       await waitFor(() => {
