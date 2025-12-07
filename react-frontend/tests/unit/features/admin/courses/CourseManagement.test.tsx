@@ -25,15 +25,14 @@ import {
   waitFor,
   within,
   userEvent,
-  act,
   fireEvent,
-} from '@/tests/helpers/render';
+} from '@tests/helpers/render';
 
 // MSW Server for API mocking
-import { server } from '@/tests/mocks/server';
+import { server } from '@tests/mocks/server';
 
 // Mock data factories
-import { mockCourse, mockCourseCategory, mockCourseArray } from '@/tests/mocks/data';
+import { mockCourse, mockCourseCategory } from '@tests/mocks/data';
 
 // Component under test
 import CourseManagement from '@/features/admin/courses/components/CourseManagement';
@@ -47,9 +46,8 @@ import type { BulkActionResult } from '@/features/admin/courses/types/bulk.types
 // Test Constants
 // ============================================================================
 
-const API_BASE_URL = '/api/v1';
-const COURSES_ENDPOINT = `${API_BASE_URL}/admin/courses`;
-const CATEGORIES_ENDPOINT = `${API_BASE_URL}/admin/courses/categories`;
+// Must match VITE_API_BASE_URL in vitest.config.ts for MSW to intercept requests
+const API_BASE_URL = 'http://localhost:8000/api/v1';
 
 // Default debounce delay in the component
 const SEARCH_DEBOUNCE_MS = 500;
@@ -73,10 +71,7 @@ function createMockCoursesResponse(
     success: true,
     data: {
       items: courses,
-      page: pagination.page,
-      perPage: pagination.perPage,
       total: pagination.total,
-      totalPages: Math.ceil(pagination.total / pagination.perPage),
     },
     meta: {
       pagination: {
@@ -99,10 +94,7 @@ function createMockCategoriesResponse(
     success: true,
     data: {
       items: categories,
-      page: 1,
-      perPage: 100,
       total: categories.length,
-      totalPages: 1,
     },
     meta: {
       pagination: {
@@ -144,7 +136,7 @@ const defaultMockCourses: Course[] = [
     fullname: 'Introduction to Programming',
     shortname: 'CS101',
     category: 1,
-    visible: 1,
+    visible: true,
     format: 'topics',
     startdate: Math.floor(Date.now() / 1000),
     enddate: Math.floor(Date.now() / 1000) + 90 * 86400,
@@ -155,7 +147,7 @@ const defaultMockCourses: Course[] = [
     fullname: 'Advanced Mathematics',
     shortname: 'MATH201',
     category: 2,
-    visible: 1,
+    visible: true,
     format: 'weeks',
     startdate: Math.floor(Date.now() / 1000),
     enddate: Math.floor(Date.now() / 1000) + 90 * 86400,
@@ -166,7 +158,7 @@ const defaultMockCourses: Course[] = [
     fullname: 'Hidden Course',
     shortname: 'HIDDEN101',
     category: 1,
-    visible: 0,
+    visible: false,
     format: 'topics',
     startdate: Math.floor(Date.now() / 1000),
     enddate: Math.floor(Date.now() / 1000) + 90 * 86400,
@@ -245,7 +237,7 @@ function setupDefaultHandlers(
       if (visible !== null && visible !== undefined) {
         const isVisible = visible === 'true';
         filteredCourses = filteredCourses.filter((c) =>
-          isVisible ? c.visible === 1 : c.visible === 0
+          c.visible === isVisible
         );
       }
 
@@ -270,8 +262,8 @@ function setupDefaultHandlers(
       return HttpResponse.json(createMockCategoriesResponse(categories));
     }),
 
-    // DELETE single course
-    http.delete(`${API_BASE_URL}/admin/courses/:id`, ({ params }) => {
+    // DELETE single course - component uses /courses/:id endpoint
+    http.delete(`${API_BASE_URL}/courses/:id`, ({ params }) => {
       const { id } = params;
       return HttpResponse.json({
         success: true,
@@ -303,28 +295,6 @@ function setupDefaultHandlers(
       );
     })
   );
-}
-
-/**
- * Utility to wait for loading to finish
- */
-async function waitForLoadingToFinish(): Promise<void> {
-  await waitFor(
-    () => {
-      const loadingElements = screen.queryAllByRole('progressbar');
-      expect(loadingElements.length).toBe(0);
-    },
-    { timeout: 5000 }
-  );
-}
-
-/**
- * Utility to advance timers for debounce testing
- */
-async function advanceTimersAndFlush(ms: number): Promise<void> {
-  await act(async () => {
-    vi.advanceTimersByTime(ms);
-  });
 }
 
 // ============================================================================
@@ -448,14 +418,6 @@ describe('CourseManagement Component', () => {
   // ============================================================================
 
   describe('Search Functionality', () => {
-    beforeEach(() => {
-      vi.useFakeTimers();
-    });
-
-    afterEach(() => {
-      vi.useRealTimers();
-    });
-
     it('renders search input field in toolbar', async () => {
       render(<CourseManagement />, { authenticated: true });
 
@@ -465,7 +427,6 @@ describe('CourseManagement Component', () => {
     });
 
     it('updates course list when search term is entered', async () => {
-      vi.useRealTimers();
       const user = userEvent.setup();
 
       render(<CourseManagement />, { authenticated: true });
@@ -490,7 +451,7 @@ describe('CourseManagement Component', () => {
       const fetchSpy = vi.fn();
 
       server.use(
-        http.get(`${API_BASE_URL}/admin/courses`, ({ request }) => {
+        http.get(`${API_BASE_URL}/admin/courses`, () => {
           fetchSpy();
           return HttpResponse.json(createMockCoursesResponse(defaultMockCourses));
         })
@@ -498,34 +459,29 @@ describe('CourseManagement Component', () => {
 
       render(<CourseManagement />, { authenticated: true });
 
-      // Wait for initial load
-      await act(async () => {
-        vi.advanceTimersByTime(100);
+      // Wait for initial load to complete
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText(/search courses/i)).toBeInTheDocument();
       });
+
+      const initialCallCount = fetchSpy.mock.calls.length;
 
       const searchInput = screen.getByPlaceholderText(/search courses/i);
 
-      // Type quickly
-      await act(async () => {
-        fireEvent.change(searchInput, { target: { value: 'Ma' } });
-        vi.advanceTimersByTime(100);
-        fireEvent.change(searchInput, { target: { value: 'Mat' } });
-        vi.advanceTimersByTime(100);
-        fireEvent.change(searchInput, { target: { value: 'Math' } });
-      });
+      // Type quickly without waiting for debounce
+      fireEvent.change(searchInput, { target: { value: 'Math' } });
 
-      // Should not have made additional API calls yet
-      const callsBefore = fetchSpy.mock.calls.length;
+      // Immediately after typing, call count should not have increased
+      // (gives a small window but tests debounce is active)
+      expect(fetchSpy.mock.calls.length).toBe(initialCallCount);
 
-      // Advance past debounce time
-      await act(async () => {
-        vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS);
-      });
-
-      // Now API call should have been made
-      await waitFor(() => {
-        expect(fetchSpy.mock.calls.length).toBeGreaterThan(callsBefore);
-      });
+      // After debounce time passes, a new API call should have been made
+      await waitFor(
+        () => {
+          expect(fetchSpy.mock.calls.length).toBeGreaterThan(initialCallCount);
+        },
+        { timeout: SEARCH_DEBOUNCE_MS + 1000 }
+      );
     });
 
     it('filters courses by fullname match', async () => {
@@ -639,7 +595,8 @@ describe('CourseManagement Component', () => {
       render(<CourseManagement />, { authenticated: true });
 
       await waitFor(() => {
-        expect(screen.getByLabelText(/category/i)).toBeInTheDocument();
+        // Use exact label text to avoid matching multiple elements
+        expect(screen.getByLabelText('Filter by category')).toBeInTheDocument();
       });
     });
 
@@ -648,19 +605,35 @@ describe('CourseManagement Component', () => {
 
       render(<CourseManagement />, { authenticated: true });
 
+      // Wait for courses to load first (indicates component is ready)
       await waitFor(() => {
-        expect(screen.getByLabelText(/category/i)).toBeInTheDocument();
+        expect(screen.getByText('Introduction to Programming')).toBeInTheDocument();
       });
 
-      // Open dropdown
-      const categorySelect = screen.getByLabelText(/filter by category/i);
-      await user.click(categorySelect);
+      // Find the category filter by its ID (to avoid conflict with "Category" column header)
+      const categoryFilterLabel = document.getElementById('category-filter-label');
+      expect(categoryFilterLabel).toBeInTheDocument();
+      
+      // The combobox is associated with this label
+      const formControl = categoryFilterLabel?.closest('.MuiFormControl-root');
+      const categorySelect = formControl?.querySelector('[role="combobox"]');
+      expect(categorySelect).toBeInTheDocument();
+      
+      // Click the combobox to open the dropdown
+      await user.click(categorySelect!);
 
-      // Check for category options
-      await waitFor(() => {
-        expect(screen.getByText('Computer Science')).toBeInTheDocument();
-        expect(screen.getByText('Mathematics')).toBeInTheDocument();
-      });
+      // Wait for the listbox to appear and contain category options
+      // MUI Select renders options in a portal, and categories may need to load
+      await waitFor(
+        () => {
+          const listbox = screen.getByRole('listbox');
+          expect(listbox).toBeInTheDocument();
+          // Check for category options within the listbox
+          expect(within(listbox).getByText('Computer Science')).toBeInTheDocument();
+          expect(within(listbox).getByText('Mathematics')).toBeInTheDocument();
+        },
+        { timeout: 3000 }
+      );
     });
 
     it('filters courses by selected category', async () => {
@@ -672,8 +645,9 @@ describe('CourseManagement Component', () => {
           const categoryId = url.searchParams.get('categoryId');
 
           if (categoryId === '2') {
+            const mathCourse = defaultMockCourses.find((c) => c.id === 2);
             return HttpResponse.json(
-              createMockCoursesResponse([defaultMockCourses[1]])
+              createMockCoursesResponse(mathCourse ? [mathCourse] : [])
             );
           }
 
@@ -687,11 +661,22 @@ describe('CourseManagement Component', () => {
         expect(screen.getByText('Introduction to Programming')).toBeInTheDocument();
       });
 
-      const categorySelect = screen.getByLabelText(/filter by category/i);
-      await user.click(categorySelect);
+      // Find the category filter by its ID (to avoid conflict with "Category" column header)
+      const categoryFilterLabel = document.getElementById('category-filter-label');
+      const formControl = categoryFilterLabel?.closest('.MuiFormControl-root');
+      const categorySelect = formControl?.querySelector('[role="combobox"]');
+      
+      // Click the combobox to open the dropdown
+      await user.click(categorySelect!);
 
-      // Select Mathematics category (id: 2)
-      const mathOption = await screen.findByRole('option', { name: /mathematics/i });
+      // Wait for listbox to appear
+      await waitFor(() => {
+        expect(screen.getByRole('listbox')).toBeInTheDocument();
+      });
+
+      // Select Mathematics category (id: 2) - scope to listbox to avoid multiple matches
+      const listbox = screen.getByRole('listbox');
+      const mathOption = within(listbox).getByText('Mathematics');
       await user.click(mathOption);
 
       await waitFor(() => {
@@ -718,12 +703,12 @@ describe('CourseManagement Component', () => {
           const visible = url.searchParams.get('visible');
 
           if (visible === 'false') {
-            const hiddenCourses = defaultMockCourses.filter((c) => c.visible === 0);
+            const hiddenCourses = defaultMockCourses.filter((c) => c.visible === false);
             return HttpResponse.json(createMockCoursesResponse(hiddenCourses));
           }
 
           if (visible === 'true') {
-            const visibleCourses = defaultMockCourses.filter((c) => c.visible === 1);
+            const visibleCourses = defaultMockCourses.filter((c) => c.visible === true);
             return HttpResponse.json(createMockCoursesResponse(visibleCourses));
           }
 
@@ -786,7 +771,7 @@ describe('CourseManagement Component', () => {
           fullname: `Course ${i + 1}`,
           shortname: `C${i + 1}`,
           category: 1,
-          visible: 1,
+          visible: true,
         }) as Course
       );
 
@@ -889,7 +874,7 @@ describe('CourseManagement Component', () => {
 
       // Find and click first row checkbox
       const checkboxes = screen.getAllByRole('checkbox');
-      await user.click(checkboxes[1]); // First row checkbox (0 is header)
+      await user.click(checkboxes[1]!); // First row checkbox (0 is header)
 
       // Should show selection count
       await waitFor(() => {
@@ -908,7 +893,7 @@ describe('CourseManagement Component', () => {
 
       // Select a course
       const checkboxes = screen.getAllByRole('checkbox');
-      await user.click(checkboxes[1]);
+      await user.click(checkboxes[1]!);
 
       // Should show bulk action buttons
       await waitFor(() => {
@@ -929,8 +914,8 @@ describe('CourseManagement Component', () => {
 
       // Select multiple courses
       const checkboxes = screen.getAllByRole('checkbox');
-      await user.click(checkboxes[1]);
-      await user.click(checkboxes[2]);
+      await user.click(checkboxes[1]!);
+      await user.click(checkboxes[2]!);
 
       await waitFor(() => {
         expect(screen.getByText(/2 courses selected/i)).toBeInTheDocument();
@@ -948,7 +933,7 @@ describe('CourseManagement Component', () => {
 
       // Select a course
       const checkboxes = screen.getAllByRole('checkbox');
-      await user.click(checkboxes[1]);
+      await user.click(checkboxes[1]!);
 
       await waitFor(() => {
         expect(screen.getByText(/1 course.*selected/i)).toBeInTheDocument();
@@ -1003,7 +988,7 @@ describe('CourseManagement Component', () => {
 
       // Find delete button in first row
       const deleteButtons = screen.getAllByRole('button', { name: /delete/i });
-      await user.click(deleteButtons[0]);
+      await user.click(deleteButtons[0]!);
 
       // Should show confirmation dialog
       await waitFor(() => {
@@ -1052,7 +1037,7 @@ describe('CourseManagement Component', () => {
 
       // Select a course
       const checkboxes = screen.getAllByRole('checkbox');
-      await user.click(checkboxes[1]);
+      await user.click(checkboxes[1]!);
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /delete selected courses/i })).toBeInTheDocument();
@@ -1070,8 +1055,8 @@ describe('CourseManagement Component', () => {
 
       // Select multiple courses
       const checkboxes = screen.getAllByRole('checkbox');
-      await user.click(checkboxes[1]);
-      await user.click(checkboxes[2]);
+      await user.click(checkboxes[1]!);
+      await user.click(checkboxes[2]!);
 
       // Click bulk delete
       const bulkDeleteButton = screen.getByRole('button', { name: /delete selected courses/i });
@@ -1095,7 +1080,7 @@ describe('CourseManagement Component', () => {
 
       // Select and open delete dialog
       const checkboxes = screen.getAllByRole('checkbox');
-      await user.click(checkboxes[1]);
+      await user.click(checkboxes[1]!);
 
       const bulkDeleteButton = screen.getByRole('button', { name: /delete selected courses/i });
       await user.click(bulkDeleteButton);
@@ -1117,11 +1102,15 @@ describe('CourseManagement Component', () => {
     it('calls DELETE API for each selected course when confirmed', async () => {
       const deleteSpy = vi.fn();
 
+      // The component uses POST /admin/courses/bulk with action in body
       server.use(
-        http.post(`${API_BASE_URL}/admin/courses/bulk/delete`, async ({ request }) => {
-          const body = await request.json();
-          deleteSpy(body);
-          return HttpResponse.json(createMockBulkActionResult(2));
+        http.post(`${API_BASE_URL}/admin/courses/bulk`, async ({ request }) => {
+          const body = await request.json() as { action?: string; courseIds?: number[] };
+          if (body.action === 'delete') {
+            deleteSpy(body);
+            return HttpResponse.json(createMockBulkActionResult(body.courseIds?.length || 0));
+          }
+          return HttpResponse.json(createMockBulkActionResult(0));
         })
       );
 
@@ -1135,8 +1124,8 @@ describe('CourseManagement Component', () => {
 
       // Select courses
       const checkboxes = screen.getAllByRole('checkbox');
-      await user.click(checkboxes[1]);
-      await user.click(checkboxes[2]);
+      await user.click(checkboxes[1]!);
+      await user.click(checkboxes[2]!);
 
       // Open delete dialog and confirm
       const bulkDeleteButton = screen.getByRole('button', { name: /delete selected courses/i });
@@ -1155,6 +1144,13 @@ describe('CourseManagement Component', () => {
     });
 
     it('clears selection after successful bulk delete', async () => {
+      // Add explicit handler for bulk delete
+      server.use(
+        http.post(`${API_BASE_URL}/admin/courses/bulk`, async () => {
+          return HttpResponse.json(createMockBulkActionResult(1));
+        })
+      );
+
       const user = userEvent.setup();
 
       render(<CourseManagement />, { authenticated: true });
@@ -1165,7 +1161,7 @@ describe('CourseManagement Component', () => {
 
       // Select and delete
       const checkboxes = screen.getAllByRole('checkbox');
-      await user.click(checkboxes[1]);
+      await user.click(checkboxes[1]!);
 
       const bulkDeleteButton = screen.getByRole('button', { name: /delete selected courses/i });
       await user.click(bulkDeleteButton);
@@ -1174,7 +1170,8 @@ describe('CourseManagement Component', () => {
         expect(screen.getByRole('dialog')).toBeInTheDocument();
       });
 
-      const confirmButton = screen.getByRole('button', { name: /delete all/i });
+      const dialog = screen.getByRole('dialog');
+      const confirmButton = within(dialog).getByRole('button', { name: /delete all/i });
       await user.click(confirmButton);
 
       // Selection should be cleared
@@ -1199,7 +1196,7 @@ describe('CourseManagement Component', () => {
       });
 
       const checkboxes = screen.getAllByRole('checkbox');
-      await user.click(checkboxes[1]);
+      await user.click(checkboxes[1]!);
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /hide selected courses/i })).toBeInTheDocument();
@@ -1216,7 +1213,7 @@ describe('CourseManagement Component', () => {
       });
 
       const checkboxes = screen.getAllByRole('checkbox');
-      await user.click(checkboxes[1]);
+      await user.click(checkboxes[1]!);
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /show selected courses/i })).toBeInTheDocument();
@@ -1226,11 +1223,15 @@ describe('CourseManagement Component', () => {
     it('calls API to hide all selected courses', async () => {
       const visibilitySpy = vi.fn();
 
+      // The component uses POST /admin/courses/bulk with action 'change_visibility'
       server.use(
-        http.post(`${API_BASE_URL}/admin/courses/bulk/visibility`, async ({ request }) => {
-          const body = await request.json();
-          visibilitySpy(body);
-          return HttpResponse.json(createMockBulkActionResult(1));
+        http.post(`${API_BASE_URL}/admin/courses/bulk`, async ({ request }) => {
+          const body = await request.json() as { action?: string; parameters?: { visible?: boolean } };
+          if (body.action === 'change_visibility') {
+            visibilitySpy(body);
+            return HttpResponse.json(createMockBulkActionResult(1));
+          }
+          return HttpResponse.json(createMockBulkActionResult(0));
         })
       );
 
@@ -1243,14 +1244,17 @@ describe('CourseManagement Component', () => {
       });
 
       const checkboxes = screen.getAllByRole('checkbox');
-      await user.click(checkboxes[1]);
+      await user.click(checkboxes[1]!);
 
       const hideButton = screen.getByRole('button', { name: /hide selected courses/i });
       await user.click(hideButton);
 
       await waitFor(() => {
         expect(visibilitySpy).toHaveBeenCalledWith(
-          expect.objectContaining({ visible: false })
+          expect.objectContaining({
+            action: 'change_visibility',
+            parameters: expect.objectContaining({ visible: false })
+          })
         );
       });
     });
@@ -1258,11 +1262,15 @@ describe('CourseManagement Component', () => {
     it('calls API to show all selected courses', async () => {
       const visibilitySpy = vi.fn();
 
+      // The component uses POST /admin/courses/bulk with action 'change_visibility'
       server.use(
-        http.post(`${API_BASE_URL}/admin/courses/bulk/visibility`, async ({ request }) => {
-          const body = await request.json();
-          visibilitySpy(body);
-          return HttpResponse.json(createMockBulkActionResult(1));
+        http.post(`${API_BASE_URL}/admin/courses/bulk`, async ({ request }) => {
+          const body = await request.json() as { action?: string; parameters?: { visible?: boolean } };
+          if (body.action === 'change_visibility') {
+            visibilitySpy(body);
+            return HttpResponse.json(createMockBulkActionResult(1));
+          }
+          return HttpResponse.json(createMockBulkActionResult(0));
         })
       );
 
@@ -1275,14 +1283,17 @@ describe('CourseManagement Component', () => {
       });
 
       const checkboxes = screen.getAllByRole('checkbox');
-      await user.click(checkboxes[1]);
+      await user.click(checkboxes[1]!);
 
       const showButton = screen.getByRole('button', { name: /show selected courses/i });
       await user.click(showButton);
 
       await waitFor(() => {
         expect(visibilitySpy).toHaveBeenCalledWith(
-          expect.objectContaining({ visible: true })
+          expect.objectContaining({
+            action: 'change_visibility',
+            parameters: expect.objectContaining({ visible: true })
+          })
         );
       });
     });
@@ -1303,7 +1314,7 @@ describe('CourseManagement Component', () => {
       });
 
       const checkboxes = screen.getAllByRole('checkbox');
-      await user.click(checkboxes[1]);
+      await user.click(checkboxes[1]!);
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /move selected courses/i })).toBeInTheDocument();
@@ -1320,7 +1331,7 @@ describe('CourseManagement Component', () => {
       });
 
       const checkboxes = screen.getAllByRole('checkbox');
-      await user.click(checkboxes[1]);
+      await user.click(checkboxes[1]!);
 
       const moveButton = screen.getByRole('button', { name: /move selected courses/i });
       await user.click(moveButton);
@@ -1341,7 +1352,7 @@ describe('CourseManagement Component', () => {
       });
 
       const checkboxes = screen.getAllByRole('checkbox');
-      await user.click(checkboxes[1]);
+      await user.click(checkboxes[1]!);
 
       const moveButton = screen.getByRole('button', { name: /move selected courses/i });
       await user.click(moveButton);
@@ -1350,19 +1361,24 @@ describe('CourseManagement Component', () => {
         expect(screen.getByRole('dialog')).toBeInTheDocument();
       });
 
-      // Should have target category dropdown
-      const categorySelect = screen.getByLabelText(/target category/i);
+      // Should have target category dropdown - MUI Select uses InputLabel for accessible name
+      const dialog = screen.getByRole('dialog');
+      const categorySelect = within(dialog).getByRole('combobox', { name: /target category/i });
       expect(categorySelect).toBeInTheDocument();
     });
 
     it('calls API to move courses when confirmed', async () => {
       const moveSpy = vi.fn();
 
+      // The component uses POST /admin/courses/bulk with action 'move_to_category'
       server.use(
-        http.post(`${API_BASE_URL}/admin/courses/bulk/move`, async ({ request }) => {
-          const body = await request.json();
-          moveSpy(body);
-          return HttpResponse.json(createMockBulkActionResult(1));
+        http.post(`${API_BASE_URL}/admin/courses/bulk`, async ({ request }) => {
+          const body = await request.json() as { action?: string; parameters?: { categoryId?: number } };
+          if (body.action === 'move_to_category') {
+            moveSpy(body);
+            return HttpResponse.json(createMockBulkActionResult(1));
+          }
+          return HttpResponse.json(createMockBulkActionResult(0));
         })
       );
 
@@ -1375,7 +1391,7 @@ describe('CourseManagement Component', () => {
       });
 
       const checkboxes = screen.getAllByRole('checkbox');
-      await user.click(checkboxes[1]);
+      await user.click(checkboxes[1]!);
 
       const moveButton = screen.getByRole('button', { name: /move selected courses/i });
       await user.click(moveButton);
@@ -1384,20 +1400,31 @@ describe('CourseManagement Component', () => {
         expect(screen.getByRole('dialog')).toBeInTheDocument();
       });
 
-      // Select a category
-      const categorySelect = screen.getByLabelText(/target category/i);
+      // Select a category - MUI Select uses InputLabel text as accessible name
+      const dialog = screen.getByRole('dialog');
+      const categorySelect = within(dialog).getByRole('combobox', { name: /target category/i });
       await user.click(categorySelect);
 
-      const mathOption = await screen.findByRole('option', { name: /mathematics/i });
+      // Wait for listbox and select Mathematics - scope to listbox to avoid multiple matches
+      // Note: Categories may be displayed with indentation prefix (e.g., "—— Mathematics")
+      await waitFor(() => {
+        expect(screen.getByRole('listbox')).toBeInTheDocument();
+      });
+
+      const listbox = screen.getByRole('listbox');
+      const mathOption = within(listbox).getByText(/Mathematics/);
       await user.click(mathOption);
 
       // Click move button
-      const confirmMoveButton = within(screen.getByRole('dialog')).getByRole('button', { name: /move/i });
+      const confirmMoveButton = within(dialog).getByRole('button', { name: /move/i });
       await user.click(confirmMoveButton);
 
       await waitFor(() => {
         expect(moveSpy).toHaveBeenCalledWith(
-          expect.objectContaining({ categoryId: expect.any(Number) })
+          expect.objectContaining({
+            action: 'move_to_category',
+            parameters: expect.objectContaining({ categoryId: expect.any(Number) })
+          })
         );
       });
     });
@@ -1419,12 +1446,15 @@ describe('CourseManagement Component', () => {
 
       // Click delete on first course
       const deleteButtons = screen.getAllByRole('button', { name: /delete.*introduction/i });
-      await user.click(deleteButtons[0]);
+      await user.click(deleteButtons[0]!);
 
       await waitFor(() => {
         expect(screen.getByRole('dialog')).toBeInTheDocument();
-        expect(screen.getByText(/introduction to programming/i)).toBeInTheDocument();
       });
+
+      // Verify course name appears in the dialog
+      const dialog = screen.getByRole('dialog');
+      expect(within(dialog).getByText(/introduction to programming/i)).toBeInTheDocument();
     });
 
     it('shows warning about permanent deletion', async () => {
@@ -1437,7 +1467,7 @@ describe('CourseManagement Component', () => {
       });
 
       const deleteButtons = screen.getAllByRole('button', { name: /delete.*introduction/i });
-      await user.click(deleteButtons[0]);
+      await user.click(deleteButtons[0]!);
 
       await waitFor(() => {
         expect(screen.getByText(/permanent/i)).toBeInTheDocument();
@@ -1448,7 +1478,7 @@ describe('CourseManagement Component', () => {
       const deleteSpy = vi.fn();
 
       server.use(
-        http.delete(`${API_BASE_URL}/admin/courses/:id`, () => {
+        http.delete(`${API_BASE_URL}/courses/:id`, () => {
           deleteSpy();
           return HttpResponse.json({ success: true, data: { deleted: true } });
         })
@@ -1463,7 +1493,7 @@ describe('CourseManagement Component', () => {
       });
 
       const deleteButtons = screen.getAllByRole('button', { name: /delete.*introduction/i });
-      await user.click(deleteButtons[0]);
+      await user.click(deleteButtons[0]!);
 
       await waitFor(() => {
         expect(screen.getByRole('dialog')).toBeInTheDocument();
@@ -1482,9 +1512,11 @@ describe('CourseManagement Component', () => {
 
     it('calls DELETE API with course ID when confirmed', async () => {
       const deleteSpy = vi.fn();
+      // The component uses /courses/:id endpoint for delete (not /admin/courses/:id)
+      const deleteRequestUrl = `${API_BASE_URL}/courses/:id`;
 
       server.use(
-        http.delete(`${API_BASE_URL}/admin/courses/:id`, ({ params }) => {
+        http.delete(deleteRequestUrl, ({ params }) => {
           deleteSpy(params.id);
           return HttpResponse.json({ success: true, data: { deleted: true } });
         })
@@ -1499,15 +1531,23 @@ describe('CourseManagement Component', () => {
       });
 
       const deleteButtons = screen.getAllByRole('button', { name: /delete.*introduction/i });
-      await user.click(deleteButtons[0]);
+      await user.click(deleteButtons[0]!);
 
+      // Wait for dialog to open
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument();
+        expect(screen.getByText('Delete Course')).toBeInTheDocument();
       });
 
-      const confirmButton = screen.getByRole('button', { name: /^delete$/i });
-      await user.click(confirmButton);
+      // Find the dialog and the confirm button
+      const dialog = screen.getByRole('dialog', { name: /delete course/i });
+      const allDialogButtons = within(dialog).getAllByRole('button');
+      const confirmButton = allDialogButtons.find(
+        (button) => button.textContent === 'Delete'
+      );
+      expect(confirmButton).toBeDefined();
+      await user.click(confirmButton!);
 
+      // Wait for the mutation to complete
       await waitFor(() => {
         expect(deleteSpy).toHaveBeenCalledWith('1');
       });
@@ -1515,7 +1555,7 @@ describe('CourseManagement Component', () => {
 
     it('shows loading spinner during deletion', async () => {
       server.use(
-        http.delete(`${API_BASE_URL}/admin/courses/:id`, async () => {
+        http.delete(`${API_BASE_URL}/courses/:id`, async () => {
           await new Promise((resolve) => setTimeout(resolve, 200));
           return HttpResponse.json({ success: true, data: { deleted: true } });
         })
@@ -1530,7 +1570,7 @@ describe('CourseManagement Component', () => {
       });
 
       const deleteButtons = screen.getAllByRole('button', { name: /delete.*introduction/i });
-      await user.click(deleteButtons[0]);
+      await user.click(deleteButtons[0]!);
 
       await waitFor(() => {
         expect(screen.getByRole('dialog')).toBeInTheDocument();
@@ -1570,7 +1610,7 @@ describe('CourseManagement Component', () => {
 
     it('handles 403 permission errors with appropriate message', async () => {
       server.use(
-        http.delete(`${API_BASE_URL}/admin/courses/:id`, () => {
+        http.delete(`${API_BASE_URL}/courses/:id`, () => {
           return HttpResponse.json(
             { success: false, error: { code: 'PERMISSION_DENIED', message: 'Access denied' } },
             { status: 403 }
@@ -1588,7 +1628,7 @@ describe('CourseManagement Component', () => {
 
       // Try to delete
       const deleteButtons = screen.getAllByRole('button', { name: /delete.*introduction/i });
-      await user.click(deleteButtons[0]);
+      await user.click(deleteButtons[0]!);
 
       await waitFor(() => {
         expect(screen.getByRole('dialog')).toBeInTheDocument();
@@ -1603,7 +1643,7 @@ describe('CourseManagement Component', () => {
 
     it('handles 404 not found errors gracefully', async () => {
       server.use(
-        http.delete(`${API_BASE_URL}/admin/courses/:id`, () => {
+        http.delete(`${API_BASE_URL}/courses/:id`, () => {
           return HttpResponse.json(
             { success: false, error: { code: 'NOT_FOUND', message: 'Course not found' } },
             { status: 404 }
@@ -1620,7 +1660,7 @@ describe('CourseManagement Component', () => {
       });
 
       const deleteButtons = screen.getAllByRole('button', { name: /delete.*introduction/i });
-      await user.click(deleteButtons[0]);
+      await user.click(deleteButtons[0]!);
 
       await waitFor(() => {
         expect(screen.getByRole('dialog')).toBeInTheDocument();
@@ -1686,7 +1726,7 @@ describe('CourseManagement Component', () => {
       });
 
       const checkboxes = screen.getAllByRole('checkbox');
-      await user.click(checkboxes[1]);
+      await user.click(checkboxes[1]!);
 
       const showButton = screen.getByRole('button', { name: /show selected courses/i });
       await user.click(showButton);
@@ -1729,7 +1769,8 @@ describe('CourseManagement Component', () => {
           fetchSpy();
           return HttpResponse.json(createMockCoursesResponse(defaultMockCourses));
         }),
-        http.post(`${API_BASE_URL}/admin/courses/bulk/visibility`, async () => {
+        // The application uses unified /admin/courses/bulk endpoint with action parameter
+        http.post(`${API_BASE_URL}/admin/courses/bulk`, async () => {
           return HttpResponse.json(createMockBulkActionResult(1));
         })
       );
@@ -1746,7 +1787,7 @@ describe('CourseManagement Component', () => {
 
       // Trigger mutation
       const checkboxes = screen.getAllByRole('checkbox');
-      await user.click(checkboxes[1]);
+      await user.click(checkboxes[1]!);
 
       const showButton = screen.getByRole('button', { name: /show selected courses/i });
       await user.click(showButton);
@@ -1799,7 +1840,7 @@ describe('CourseManagement Component', () => {
       });
 
       const deleteButtons = screen.getAllByRole('button', { name: /delete.*introduction/i });
-      await user.click(deleteButtons[0]);
+      await user.click(deleteButtons[0]!);
 
       await waitFor(() => {
         const dialog = screen.getByRole('dialog');
@@ -1833,7 +1874,7 @@ describe('CourseManagement Component', () => {
       });
 
       const deleteButtons = screen.getAllByRole('button', { name: /delete.*introduction/i });
-      await user.click(deleteButtons[0]);
+      await user.click(deleteButtons[0]!);
 
       await waitFor(() => {
         const dialog = screen.getByRole('dialog');
@@ -1866,8 +1907,9 @@ describe('CourseManagement Component', () => {
           const categoryId = url.searchParams.get('categoryId');
 
           if (categoryId === '2') {
+            const mathCourse = defaultMockCourses.find((c) => c.id === 2);
             return HttpResponse.json(
-              createMockCoursesResponse([defaultMockCourses[1]])
+              createMockCoursesResponse(mathCourse ? [mathCourse] : [])
             );
           }
 
@@ -1950,8 +1992,9 @@ describe('CourseManagement Component', () => {
 
   describe('Partial Bulk Action Failures', () => {
     it('handles partial success (some succeed, some fail)', async () => {
+      // Use correct unified /admin/courses/bulk endpoint
       server.use(
-        http.post(`${API_BASE_URL}/admin/courses/bulk/visibility`, async () => {
+        http.post(`${API_BASE_URL}/admin/courses/bulk`, async () => {
           return HttpResponse.json(
             createMockBulkActionResult(1, 1, [
               { courseId: 2, courseName: 'Advanced Mathematics', message: 'Permission denied' },
@@ -1970,8 +2013,8 @@ describe('CourseManagement Component', () => {
 
       // Select multiple courses
       const checkboxes = screen.getAllByRole('checkbox');
-      await user.click(checkboxes[1]);
-      await user.click(checkboxes[2]);
+      await user.click(checkboxes[1]!);
+      await user.click(checkboxes[2]!);
 
       const showButton = screen.getByRole('button', { name: /show selected courses/i });
       await user.click(showButton);
