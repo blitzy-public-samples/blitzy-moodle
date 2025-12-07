@@ -33,15 +33,18 @@ import type {
   UpdateCategoryInput,
 } from '@/features/activities/glossary/types/glossary.types';
 
-import { createTestQueryClient } from '@/tests/helpers/render';
-import { server } from '@/tests/mocks/server';
+import { createTestQueryClient } from '@tests/helpers/render';
+import { server } from '@tests/mocks/server';
 
 // ============================================================================
 // Test Constants and Mock Data Helpers
 // ============================================================================
 
 const TEST_GLOSSARY_ID = 42;
-const API_BASE_URL = '/api/v1';
+/**
+ * Uses wildcard prefix to match full URLs like http://localhost:8000/api/v1/...
+ */
+const API_BASE_URL = '*/api/v1';
 
 /**
  * Creates a mock glossary category for testing
@@ -1558,7 +1561,7 @@ describe('useDeleteCategory', () => {
         http.delete(`${API_BASE_URL}/glossary/categories/:categoryId`, async () => {
           return HttpResponse.json({
             success: true,
-            data: true,
+            data: { deleted: true },
           });
         })
       );
@@ -2625,14 +2628,15 @@ describe('Integration Tests - CRUD Workflow', () => {
 
     server.use(
       http.put(`${API_BASE_URL}/glossary/categories/:categoryId`, async ({ request, params }) => {
-        const body = await request.json() as UpdateCategoryInput;
+        const body = await request.json() as { name: string; usedynalink: number };
         const categoryId = Number(params.categoryId);
         return HttpResponse.json({
           success: true,
           data: createMockCategory({
             id: categoryId,
             name: body.name,
-            usedynalink: body.usedynalink,
+            // API sends 1/0, convert back to boolean for response
+            usedynalink: Boolean(body.usedynalink),
           }),
         });
       })
