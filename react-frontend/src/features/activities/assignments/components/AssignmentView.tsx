@@ -62,7 +62,6 @@ import {
   ExpandMore,
   ExpandLess,
   Person,
-  Group,
   VisibilityOff,
   TextFields,
   InsertDriveFile,
@@ -70,7 +69,6 @@ import {
 import { format, formatDistanceToNow, isAfter, isBefore, differenceInDays } from 'date-fns';
 
 import type { Assignment, Submission } from '../types/assignment.types';
-import { SubmissionStatus, GradingStatus } from '../types/assignment.types';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 
 // ============================================================================
@@ -191,11 +189,11 @@ type UserSubmissionStatus = 'not-started' | 'draft' | 'submitted' | 'graded';
  * @returns Formatted string (e.g., "1.5 MB")
  */
 function formatFileSize(bytes: number): string {
-  if (bytes === 0) return '0 Bytes';
+  if (bytes === 0) {return '0 Bytes';}
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))  } ${  sizes[i]}`;
 }
 
 /**
@@ -205,7 +203,7 @@ function formatFileSize(bytes: number): string {
  * @returns Date object or null if timestamp is 0 or undefined
  */
 function timestampToDate(timestamp: number | undefined): Date | null {
-  if (!timestamp || timestamp === 0) return null;
+  if (!timestamp || timestamp === 0) {return null;}
   return new Date(timestamp * 1000);
 }
 
@@ -217,7 +215,7 @@ function timestampToDate(timestamp: number | undefined): Date | null {
  */
 function formatDate(timestamp: number | undefined): string {
   const date = timestampToDate(timestamp);
-  if (!date) return 'Not set';
+  if (!date) {return 'Not set';}
   return format(date, 'PPpp'); // e.g., "Apr 29, 2023, 9:30 AM"
 }
 
@@ -229,7 +227,7 @@ function formatDate(timestamp: number | undefined): string {
  */
 function getRelativeTime(timestamp: number | undefined): string {
   const date = timestampToDate(timestamp);
-  if (!date) return '';
+  if (!date) {return '';}
   return formatDistanceToNow(date, { addSuffix: true });
 }
 
@@ -252,7 +250,7 @@ function hasTeacherRole(roles: Array<{ shortname: string }>): boolean {
  * @returns Sanitized HTML string
  */
 function sanitizeHtml(html: string | undefined): string {
-  if (!html) return '';
+  if (!html) {return '';}
   // Remove script tags and event handlers
   return html
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
@@ -357,22 +355,22 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({
    * Determine current user's submission status
    */
   const submissionStatus = useMemo<UserSubmissionStatus>(() => {
-    if (!userSubmission) return 'not-started';
+    if (!userSubmission) {return 'not-started';}
 
-    // Check if graded
+    // Check if graded - compare with string literal matching enum value
     if (
-      userSubmission.gradingstatus === GradingStatus.GRADED ||
+      userSubmission.gradingstatus === 'graded' ||
       (userSubmission.grade !== undefined && userSubmission.grade !== null && userSubmission.grade !== '')
     ) {
       return 'graded';
     }
 
-    // Check submission status
-    if (userSubmission.status === SubmissionStatus.SUBMITTED) {
+    // Check submission status - compare with string literals matching enum values
+    if (userSubmission.status === 'submitted') {
       return 'submitted';
     }
 
-    if (userSubmission.status === SubmissionStatus.DRAFT) {
+    if (userSubmission.status === 'draft') {
       return 'draft';
     }
 
@@ -383,7 +381,7 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({
    * Determine if user has teacher/grading permissions
    */
   const isTeacher = useMemo(() => {
-    if (!user || !user.roles) return false;
+    if (!user?.roles) {return false;}
     return hasTeacherRole(user.roles);
   }, [user]);
 
@@ -399,9 +397,9 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({
       (c) => c.subtype === 'assignsubmission' && c.plugin === 'onlinetext' && c.name === 'enabled' && c.value === '1'
     );
 
-    if (fileEnabled && textEnabled) return 'File submission & Online text';
-    if (fileEnabled) return 'File submission';
-    if (textEnabled) return 'Online text';
+    if (fileEnabled && textEnabled) {return 'File submission & Online text';}
+    if (fileEnabled) {return 'File submission';}
+    if (textEnabled) {return 'Online text';}
     return 'No submission required';
   }, [assignment.configs]);
 
@@ -435,7 +433,7 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({
     const fileTypesConfig = configs.find(
       (c) => c.subtype === 'assignsubmission' && c.plugin === 'file' && c.name === 'filetypeslist'
     );
-    return fileTypesConfig && fileTypesConfig.value ? fileTypesConfig.value.split(',') : [];
+    return fileTypesConfig?.value ? fileTypesConfig.value.split(',') : [];
   }, [assignment.configs]);
 
   // ============================================================================
@@ -786,7 +784,7 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({
                     You have a draft submission.
                   </Typography>
                   <Typography variant="body2">
-                    Remember to submit your work when you're ready.
+                    Remember to submit your work when you&apos;re ready.
                   </Typography>
                 </Alert>
               )}
@@ -876,7 +874,7 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({
                         secondary={
                           <Box component="span">
                             {formatDate(attempt.timemodified)}
-                            {attempt.gradingstatus === GradingStatus.GRADED && attempt.grade && (
+                            {attempt.gradingstatus === 'graded' && attempt.grade && (
                               <Typography component="span" variant="body2" color="primary" sx={{ ml: 1 }}>
                                 Grade: {attempt.grade}
                               </Typography>
@@ -887,7 +885,7 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({
                       <Chip
                         label={attempt.status}
                         size="small"
-                        color={attempt.status === SubmissionStatus.SUBMITTED ? 'success' : 'default'}
+                        color={attempt.status === 'submitted' ? 'success' : 'default'}
                       />
                     </ListItem>
                   ))}
@@ -1176,8 +1174,7 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({
       >
         {/* Student Action Buttons */}
         {!isTeacher && isAuthenticated && (
-          <>
-            <Tooltip
+          <Tooltip
               title={
                 dateStatus.isNotYetOpen
                   ? 'Assignment not yet open'
@@ -1211,7 +1208,6 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({
                 </Button>
               </span>
             </Tooltip>
-          </>
         )}
 
         {/* Teacher Action Buttons */}
