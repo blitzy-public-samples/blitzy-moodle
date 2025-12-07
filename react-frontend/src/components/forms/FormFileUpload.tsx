@@ -59,7 +59,9 @@ import type React from 'react';
 import { useState, useCallback, useRef, useMemo } from 'react';
 import type {
   Control,
-  FieldValues} from 'react-hook-form';
+  FieldValues,
+  Path
+} from 'react-hook-form';
 import {
   Controller
 } from 'react-hook-form';
@@ -93,13 +95,15 @@ import useFileUpload from '../../hooks/useFileUpload';
  *
  * Defines all configuration options for the file upload component including
  * validation rules, upload settings, and React Hook Form integration.
+ * 
+ * @template TFieldValues - The type of form field values (extends FieldValues)
  */
-export interface FormFileUploadProps {
+export interface FormFileUploadProps<TFieldValues extends FieldValues = FieldValues> {
   /**
    * Field name for React Hook Form registration
    * Used to identify the field in form data
    */
-  name: string;
+  name: Path<TFieldValues>;
 
   /**
    * Label text displayed above the upload zone
@@ -145,7 +149,7 @@ export interface FormFileUploadProps {
    * React Hook Form control object
    * Required for integration with form state and validation
    */
-  control: Control<FieldValues>;
+  control: Control<TFieldValues>;
 
   /**
    * Helper text displayed below the upload zone
@@ -363,7 +367,7 @@ function generateFileId(file: File): string {
  * @param props - Component props as defined in FormFileUploadProps
  * @returns React component
  */
-export function FormFileUpload({
+export function FormFileUpload<TFieldValues extends FieldValues = FieldValues>({
   name,
   label,
   required = false,
@@ -375,7 +379,7 @@ export function FormFileUpload({
   helperText,
   disabled = false,
   uploadUrl,
-}: FormFileUploadProps): JSX.Element {
+}: FormFileUploadProps<TFieldValues>): JSX.Element {
   // ============================================================================
   // STATE & REFS
   // ============================================================================

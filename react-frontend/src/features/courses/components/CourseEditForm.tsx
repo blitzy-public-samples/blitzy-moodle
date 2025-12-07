@@ -71,10 +71,10 @@ import {
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { format, isAfter, parseISO } from 'date-fns';
+import { isAfter } from 'date-fns';
 
 // Internal imports from depends_on_files
-import { RichTextEditor } from '@/components/editor/RichTextEditor';
+import RichTextEditor from '@/components/editor/RichTextEditor';
 import { FormFileUpload } from '@/components/forms/FormFileUpload';
 import { useCourse } from '@/features/courses/hooks/useCourse';
 import type { CourseFormData } from '@/features/courses/types/course.types';
@@ -107,32 +107,11 @@ interface CategoryOption {
   depth?: number;
 }
 
-/**
- * Extended form data interface for internal use
- * Extends CourseFormData with additional fields for form state
- */
-interface ExtendedCourseFormData extends Omit<CourseFormData, 'startdate' | 'enddate' | 'visible'> {
-  /** Course description (full HTML content) */
-  description: string;
-  /** Course start date as Date object for DatePicker */
-  startDate: Date | null;
-  /** Course end date as Date object for DatePicker */
-  endDate: Date | null;
-  /** Course visibility as boolean */
-  visible: boolean;
-  /** Course image URL (for preview) */
-  imageUrl: string;
-  /** Enrollment key/password for self-enrollment */
-  enrollmentKey: string;
-  /** Maximum enrollment limit (0 for unlimited) */
-  maxEnrollment: number;
-  /** Whether self-enrollment is enabled */
-  selfEnrollmentEnabled: boolean;
-  /** Whether completion tracking is enabled */
-  completionEnabled: boolean;
-  /** Course language override */
-  language: string;
-}
+// Note: The extended form data structure is defined by the courseFormSchema below.
+// The form includes additional fields beyond CourseFormData such as:
+// - description (HTML content), startDate/endDate (Date objects for DatePicker)
+// - visible (boolean), imageUrl, enrollmentKey, maxEnrollment
+// - selfEnrollmentEnabled, completionEnabled, language
 
 /**
  * Props interface for CourseEditForm component
@@ -418,7 +397,7 @@ const CourseEditForm: React.FC<CourseEditFormProps> = ({
     handleSubmit,
     reset,
     watch,
-    formState: { errors, isDirty, isValid, isSubmitting },
+    formState: { isDirty, isSubmitting },
   } = useForm<CourseFormSchema>({
     resolver: zodResolver(courseFormSchema),
     defaultValues: defaultFormValues,
@@ -446,12 +425,12 @@ const CourseEditForm: React.FC<CourseEditFormProps> = ({
         format: (existingCourse.format as CourseFormatType) || 'topics',
         startDate: existingCourse.startdate ? new Date(existingCourse.startdate * 1000) : null,
         endDate: existingCourse.enddate ? new Date(existingCourse.enddate * 1000) : null,
-        visible: existingCourse.visible === 1,
+        visible: existingCourse.visible,
         imageUrl: '',
         enrollmentKey: '',
         maxEnrollment: 0,
         selfEnrollmentEnabled: false,
-        completionEnabled: existingCourse.enablecompletion === 1,
+        completionEnabled: existingCourse.enablecompletion,
         language: existingCourse.lang || '',
       };
       reset(formData);
@@ -786,8 +765,8 @@ const CourseEditForm: React.FC<CourseEditFormProps> = ({
               <Typography variant="subtitle2" gutterBottom>
                 Course Image
               </Typography>
-              <FormFileUpload
-                name="courseImage"
+              <FormFileUpload<CourseFormSchema>
+                name="imageUrl"
                 label="Upload Course Image"
                 control={control}
                 accept="image/jpeg,image/png,image/gif,image/webp"
@@ -909,7 +888,9 @@ const CourseEditForm: React.FC<CourseEditFormProps> = ({
                         error: !!fieldState.error,
                         helperText:
                           fieldState.error?.message || 'When the course becomes available',
-                        'data-testid': 'course-startdate-picker',
+                        inputProps: {
+                          'data-testid': 'course-startdate-picker',
+                        },
                       },
                     }}
                   />
@@ -935,7 +916,9 @@ const CourseEditForm: React.FC<CourseEditFormProps> = ({
                         helperText:
                           fieldState.error?.message ||
                           'When the course ends (optional)',
-                        'data-testid': 'course-enddate-picker',
+                        inputProps: {
+                          'data-testid': 'course-enddate-picker',
+                        },
                       },
                     }}
                   />
