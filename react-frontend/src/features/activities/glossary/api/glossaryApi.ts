@@ -165,6 +165,11 @@ export async function getEntries(
     if (filters.sortOrder) {params.sortorder = filters.sortOrder;}
     if (filters.page !== undefined) {params.page = filters.page;}
     if (filters.perPage !== undefined) {params.perpage = filters.perPage;}
+    // Handle search mode - send search query via 'search' param
+    if (filters.search) {
+      params.mode = 'search';
+      params.search = filters.search;
+    }
   }
 
   const response = await apiClient.get<

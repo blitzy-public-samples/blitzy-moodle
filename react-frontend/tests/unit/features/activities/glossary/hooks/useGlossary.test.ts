@@ -45,8 +45,12 @@ import { server } from '@tests/mocks/server';
 // Test Constants and Configuration
 // ============================================================================
 
-/** Base API URL for glossary endpoints */
-const API_BASE_URL = '/api/v1';
+/** 
+ * Base API URL for glossary endpoints
+ * Must match VITE_API_BASE_URL from vitest.config.ts to enable MSW interception
+ * Using wildcard pattern to match any host (localhost:8000 in test env)
+ */
+const API_BASE_URL = 'http://*/api/v1';
 
 /** Default stale time (5 minutes) for glossary queries - for reference in tests */
 const _DEFAULT_STALE_TIME = 5 * 60 * 1000;
@@ -492,7 +496,8 @@ describe('useGlossary Hook', () => {
         })
       );
 
-      const { result } = renderHook(() => useGlossary(999), {
+      // Pass retry: false to immediately surface error without retrying
+      const { result } = renderHook(() => useGlossary(999, { retry: false }), {
         wrapper: createWrapper(queryClient),
       });
 
@@ -519,7 +524,8 @@ describe('useGlossary Hook', () => {
         })
       );
 
-      const { result } = renderHook(() => useGlossary(1), {
+      // Pass retry: false to immediately surface error without retrying
+      const { result } = renderHook(() => useGlossary(1, { retry: false }), {
         wrapper: createWrapper(queryClient),
       });
 
@@ -537,7 +543,8 @@ describe('useGlossary Hook', () => {
         })
       );
 
-      const { result } = renderHook(() => useGlossary(1), {
+      // Pass retry: false to immediately surface error without retrying
+      const { result } = renderHook(() => useGlossary(1, { retry: false }), {
         wrapper: createWrapper(queryClient),
       });
 
@@ -908,7 +915,7 @@ describe('useGlossaryEntries Hook - Basic Tests', () => {
     });
 
     it('should use default pagination values (offset: 0, limit: 20)', async () => {
-      let receivedParams: Record<string, string> = {};
+      const receivedParams: Record<string, string> = {};
 
       server.use(
         http.get(`${API_BASE_URL}/glossary/:id/entries`, ({ request }) => {
@@ -1076,7 +1083,8 @@ describe('useGlossaryEntries Hook - Display Mode Tests', () => {
       server.use(
         http.get(`${API_BASE_URL}/glossary/:id/entries`, ({ request }) => {
           const url = new URL(request.url);
-          const categoryId = url.searchParams.get('categoryId');
+          // API sends 'categoryid' (lowercase) not 'categoryId'
+          const categoryId = url.searchParams.get('categoryid');
           if (categoryId === '5') {
             return HttpResponse.json({
               success: true,
@@ -1295,7 +1303,8 @@ describe('useGlossaryEntries Hook - Display Mode Tests', () => {
       server.use(
         http.get(`${API_BASE_URL}/glossary/:id/entries`, ({ request }) => {
           const url = new URL(request.url);
-          const userId = url.searchParams.get('userId');
+          // API sends 'userid' (lowercase) not 'userId'
+          const userId = url.searchParams.get('userid');
           if (userId === '25') {
             return HttpResponse.json({
               success: true,
@@ -1597,8 +1606,10 @@ describe('useGlossaryEntries Hook - Pagination Tests', () => {
       server.use(
         http.get(`${API_BASE_URL}/glossary/:id/entries`, ({ request }) => {
           const url = new URL(request.url);
-          const offset = Number(url.searchParams.get('offset') ?? 0);
-          if (offset === 20) {
+          // API converts offset to page number: page = Math.floor(offset / limit)
+          // So offset=20, limit=20 becomes page=1
+          const page = Number(url.searchParams.get('page') ?? 0);
+          if (page === 1) {
             return HttpResponse.json({
               success: true,
               data: { entries: secondPageEntries, total: 100 },
@@ -2535,8 +2546,9 @@ describe('useGlossaryEntries Hook - Loading and Error States', () => {
         })
       );
 
+      // Pass retry: false to immediately surface error without retrying
       const { result } = renderHook(
-        () => useGlossaryEntries(1),
+        () => useGlossaryEntries(1, {}, { retry: false }),
         { wrapper: createWrapper(queryClient) }
       );
 
@@ -2560,8 +2572,9 @@ describe('useGlossaryEntries Hook - Loading and Error States', () => {
         })
       );
 
+      // Pass retry: false to immediately surface error without retrying
       const { result } = renderHook(
-        () => useGlossaryEntries(1),
+        () => useGlossaryEntries(1, {}, { retry: false }),
         { wrapper: createWrapper(queryClient) }
       );
 
@@ -2583,8 +2596,9 @@ describe('useGlossaryEntries Hook - Loading and Error States', () => {
         })
       );
 
+      // Pass retry: false to immediately surface error without retrying
       const { result } = renderHook(
-        () => useGlossaryEntries(999),
+        () => useGlossaryEntries(999, {}, { retry: false }),
         { wrapper: createWrapper(queryClient) }
       );
 
@@ -2606,8 +2620,9 @@ describe('useGlossaryEntries Hook - Loading and Error States', () => {
         })
       );
 
+      // Pass retry: false to immediately surface error without retrying
       const { result } = renderHook(
-        () => useGlossaryEntries(1),
+        () => useGlossaryEntries(1, {}, { retry: false }),
         { wrapper: createWrapper(queryClient) }
       );
 
@@ -2634,8 +2649,9 @@ describe('useGlossaryEntries Hook - Loading and Error States', () => {
         })
       );
 
+      // Pass retry: false initially to get error state on first failure
       const { result } = renderHook(
-        () => useGlossaryEntries(1),
+        () => useGlossaryEntries(1, {}, { retry: false }),
         { wrapper: createWrapper(queryClient) }
       );
 
@@ -2643,7 +2659,7 @@ describe('useGlossaryEntries Hook - Loading and Error States', () => {
         expect(result.current.isError).toBe(true);
       });
 
-      // Manually trigger refetch
+      // Manually trigger refetch - this should succeed
       await act(async () => {
         await result.current.refetch();
       });
@@ -2758,6 +2774,9 @@ describe('useGlossaryEntries Hook - Performance Tests', () => {
       // Should share the same query due to identical cache keys
       expect(result1.current.data).toBeDefined();
       expect(result2.current.data).toBeDefined();
+      
+      // Verify only one fetch occurred (query deduplication working)
+      expect(fetchCount).toBe(1);
     });
   });
 
