@@ -26,7 +26,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { QueryObserverResult, UseMutationResult } from '@tanstack/react-query';
+import type { QueryObserverResult } from '@tanstack/react-query';
 
 // Internal imports from profile API
 import {
@@ -35,7 +35,7 @@ import {
 } from '../api/profileApi';
 
 // Internal imports from types
-import type { UpdateProfilePayload } from '../types/profile.types';
+import type { UpdateProfilePayload, UpdateProfileData } from '../types/profile.types';
 import type { User } from '@/types/entities';
 import type { ApiError } from '@/types/errors';
 
@@ -47,14 +47,22 @@ import { useAuth } from '@/features/auth/hooks/useAuth';
 // ============================================================================
 
 /**
+ * Input type for profile update operations (consumer-friendly)
+ * Excludes userid as the hook provides it automatically based on context
+ * This allows callers to simply pass the fields they want to update
+ */
+export type UpdateProfileInput = Omit<UpdateProfilePayload, 'userid'>;
+
+/**
  * Options for the useProfile hook
  */
 export interface UseProfileOptions {
   /**
    * User ID to fetch profile for
-   * If not provided, defaults to the current authenticated user
+   * If not provided (undefined), defaults to the current authenticated user
+   * If explicitly set to null, the query will be disabled
    */
-  userId?: number;
+  userId?: number | null;
 
   /**
    * Whether the query should be enabled
@@ -89,12 +97,32 @@ export interface UseProfileReturn {
   /**
    * User profile data, undefined while loading or if not found
    */
+  profile: User | undefined;
+
+  /**
+   * @deprecated Use `profile` instead. Alias for backward compatibility.
+   */
   user: User | undefined;
 
   /**
    * Whether the profile is currently being loaded
    */
   isLoading: boolean;
+
+  /**
+   * Whether a background refetch is in progress
+   */
+  isFetching: boolean;
+
+  /**
+   * Whether the query is in idle state (not yet triggered)
+   */
+  isIdle: boolean;
+
+  /**
+   * Whether the query was successful and data is available
+   */
+  isSuccess: boolean;
 
   /**
    * Whether an error occurred while fetching the profile
@@ -110,7 +138,30 @@ export interface UseProfileReturn {
    * Function to manually refetch the profile data
    */
   refetch: () => Promise<QueryObserverResult<User, ApiError>>;
+
+  /**
+   * Whether profile update is in progress (for combined hook usage)
+   */
+  isUpdating: boolean;
+
+  /**
+   * Error from profile update operation, null otherwise
+   */
+  updateError: ApiError | null;
+
+  /**
+   * Function to update the user profile (for combined hook usage)
+   * @param data - Profile data to update (partial update supported)
+   * userid is added automatically by the hook based on context
+   */
+  updateProfile: (data: UpdateProfileInput) => Promise<User>;
 }
+
+/**
+ * Type alias for backward compatibility
+ * @deprecated Use UseProfileReturn instead
+ */
+export type UseProfileResult = UseProfileReturn;
 
 /**
  * Options for the useUpdateProfile mutation hook
@@ -148,8 +199,9 @@ export interface UseUpdateProfileReturn {
   /**
    * Function to update the user profile
    * @param data - Profile data to update (partial update supported)
+   * userid is added automatically by the hook based on context
    */
-  updateProfile: (data: UpdateProfilePayload) => Promise<User>;
+  updateProfile: (data: UpdateProfileInput) => Promise<User>;
 
   /**
    * Whether the profile update is in progress
@@ -193,9 +245,8 @@ interface UpdateProfileContext {
 /**
  * Query key factory for profile-related queries
  * Provides consistent cache key generation for React Query
- * @internal
  */
-const profileKeys = {
+export const profileKeys = {
   /**
    * Base key for all profile queries
    */
@@ -212,6 +263,12 @@ const profileKeys = {
    * @param userId - User ID
    */
   preferences: (userId: number) => [...profileKeys.all, userId, 'preferences'] as const,
+
+  /**
+   * Key for current user's profile (used when user ID is not yet known)
+   * Returns a general key pattern for current user queries
+   */
+  current: () => ['users', 'current', 'profile'] as const,
 } as const;
 
 // ============================================================================
@@ -253,23 +310,23 @@ const DEFAULT_RETRY_COUNT = 3;
  * - Query cancellation to prevent memory leaks
  * - Permission checks handled by backend
  * 
- * @param options - Configuration options for the hook
- * @returns Profile data and query state
+ * @param userIdOrOptions - User ID (number/null) or configuration options for the hook
+ * @returns Profile data, query state, and update mutation
  * 
  * @example
  * ```tsx
  * // Fetch current user's profile
  * function MyProfile() {
- *   const { user, isLoading, isError, error, refetch } = useProfile();
+ *   const { profile, isLoading, isError, error, refetch } = useProfile();
  * 
  *   if (isLoading) return <LoadingSpinner />;
  *   if (isError) return <ErrorMessage error={error} />;
- *   if (!user) return <NotFound />;
+ *   if (!profile) return <NotFound />;
  * 
  *   return (
  *     <div>
- *       <h1>{user.fullname}</h1>
- *       <p>{user.email}</p>
+ *       <h1>{profile.fullname}</h1>
+ *       <p>{profile.email}</p>
  *       <button onClick={() => refetch()}>Refresh</button>
  *     </div>
  *   );
@@ -278,23 +335,41 @@ const DEFAULT_RETRY_COUNT = 3;
  * 
  * @example
  * ```tsx
- * // Fetch a specific user's profile
+ * // Fetch a specific user's profile by ID
  * function UserProfile({ userId }: { userId: number }) {
- *   const { user, isLoading, isError, error } = useProfile({ userId });
+ *   const { profile, isLoading, isError, error, updateProfile, isUpdating } = useProfile(userId);
  * 
  *   if (isLoading) return <LoadingSpinner />;
  *   if (isError) return <ErrorMessage error={error} />;
  * 
- *   return <ProfileCard user={user} />;
+ *   return <ProfileCard profile={profile} onSave={updateProfile} saving={isUpdating} />;
  * }
  * ```
  */
-export function useProfile(options: UseProfileOptions = {}): UseProfileReturn {
+export function useProfile(userIdOrOptions?: number | null | UseProfileOptions): UseProfileReturn {
   // Get current authenticated user from auth context
   const { user: currentUser } = useAuth();
 
+  // Get query client for cache management (used by update mutation)
+  const queryClient = useQueryClient();
+
+  // Normalize argument: support both useProfile(123) and useProfile({ userId: 123 })
+  // Note: null means "explicitly no user" (disable query), undefined means "use current user"
+  // When called as useProfile(null), we need to preserve null as explicit "no user"
+  const isOptionsObject = typeof userIdOrOptions === 'object' && userIdOrOptions !== null;
+  const hasExplicitNullArg = userIdOrOptions === null;
+  
+  const options: UseProfileOptions = isOptionsObject
+    ? userIdOrOptions
+    : { userId: hasExplicitNullArg ? null : userIdOrOptions };
+
   // Determine target user ID (from options or current user)
-  const targetUserId = options.userId ?? currentUser?.id;
+  // If userId is explicitly null, don't fall back to currentUser (query will be disabled)
+  // If userId is undefined, fall back to currentUser
+  const hasExplicitUserId = hasExplicitNullArg || ('userId' in options && options.userId !== undefined);
+  const targetUserId = hasExplicitUserId
+    ? options.userId // Use explicitly provided userId (may be null)
+    : currentUser?.id; // Fall back to current user only when userId not provided
 
   // Destructure options with defaults
   const {
@@ -303,6 +378,9 @@ export function useProfile(options: UseProfileOptions = {}): UseProfileReturn {
     staleTime = DEFAULT_STALE_TIME,
     gcTime = DEFAULT_GC_TIME,
   } = options;
+
+  // Determine if query should be enabled
+  const isQueryEnabled = enabled && targetUserId !== undefined && targetUserId !== null && targetUserId > 0;
 
   // Execute profile query
   const query = useQuery<User, ApiError>({
@@ -318,7 +396,7 @@ export function useProfile(options: UseProfileOptions = {}): UseProfileReturn {
     },
 
     // Enable query only when userId exists and enabled option is true
-    enabled: enabled && targetUserId !== undefined && targetUserId > 0,
+    enabled: isQueryEnabled,
 
     // Cache configuration
     staleTime,
@@ -328,19 +406,174 @@ export function useProfile(options: UseProfileOptions = {}): UseProfileReturn {
     refetchOnWindowFocus: true,
     refetchInterval,
 
-    // Retry configuration with exponential backoff
-    retry: DEFAULT_RETRY_COUNT,
-    retryDelay: (attemptIndex) => Math.min(1000 * Math.pow(2, attemptIndex), 30000),
+    // Note: Retry configuration uses QueryClient defaults (typically retry: 3)
+    // This allows tests and consumers to customize retry behavior
+    // If specific retry behavior is needed, pass it via QueryClient options
+  });
+
+  // Update mutation for integrated profile editing
+  const updateMutation = useMutation<User, ApiError, UpdateProfileInput, UpdateProfileContext>({
+    // Mutation function: calls API which wraps user_update_user()
+    mutationFn: async (data: UpdateProfileInput) => {
+      if (!targetUserId) {
+        throw new Error('User ID is required to update profile') as unknown as ApiError;
+      }
+      // Convert UpdateProfileInput (with booleans) to UpdateProfileData (with 0/1)
+      // Note: userid is added by the hook, not provided by caller
+      const apiData = convertPayloadToApiData({ ...data, userid: targetUserId });
+      return updateUserProfile(targetUserId, apiData);
+    },
+
+    // Optimistic update: immediately update cache with new data
+    onMutate: async (variables: UpdateProfileInput) => {
+      if (!targetUserId) {
+        return { previousProfile: undefined, userId: 0 };
+      }
+
+      const queryKey = profileKeys.detail(targetUserId);
+
+      // Cancel any outgoing refetches to prevent race conditions
+      await queryClient.cancelQueries({ queryKey });
+
+      // Snapshot previous value for rollback
+      const previousProfile = queryClient.getQueryData<User>(queryKey);
+
+      // Optimistically update to new value
+      if (previousProfile) {
+        queryClient.setQueryData<User>(queryKey, (old) => {
+          if (!old) return old;
+
+          // Merge update payload with existing data
+          const updatedProfile: User = {
+            ...old,
+            firstname: variables.firstname ?? old.firstname,
+            lastname: variables.lastname ?? old.lastname,
+            email: variables.email ?? old.email,
+            description: variables.description ?? old.description,
+            city: variables.city ?? old.city,
+            country: variables.country ?? old.country,
+            timezone: variables.timezone ?? old.timezone,
+            // Handle interests array
+            interests: variables.interests !== undefined
+              ? Array.isArray(variables.interests)
+                ? variables.interests
+                : variables.interests.split(',').map((s: string) => s.trim()).filter(Boolean)
+              : old.interests,
+            // Update computed fullname if name fields changed
+            fullname: (variables.firstname ?? old.firstname) + ' ' + (variables.lastname ?? old.lastname),
+            // Optimistically update modification time
+            timemodified: Math.floor(Date.now() / 1000),
+          };
+
+          return updatedProfile;
+        });
+      }
+
+      // Return context for rollback
+      return { previousProfile, userId: targetUserId };
+    },
+
+    // Rollback optimistic update on error
+    onError: (_error: ApiError, _variables: UpdateProfileInput, context?: UpdateProfileContext) => {
+      // Rollback to previous profile data
+      if (context?.previousProfile && context?.userId) {
+        const queryKey = profileKeys.detail(context.userId);
+        queryClient.setQueryData(queryKey, context.previousProfile);
+      }
+    },
+
+    // Update cache and invalidate on success
+    onSuccess: (data: User) => {
+      if (targetUserId) {
+        // Update cache with the server response (replaces optimistic data with real data)
+        queryClient.setQueryData(profileKeys.detail(targetUserId), data);
+
+        // Invalidate the specific user profile query to trigger background refetch
+        // This ensures data stays fresh and consistent with server state
+        void queryClient.invalidateQueries({
+          queryKey: profileKeys.detail(targetUserId),
+          exact: true,
+        });
+
+        // If updating current user, also invalidate preferences
+        if (currentUser?.id === targetUserId) {
+          void queryClient.invalidateQueries({
+            queryKey: profileKeys.preferences(targetUserId),
+            exact: true,
+          });
+        }
+      }
+    },
+
+    // onSettled: Called after success or error
+    // Note: We don't invalidate here since onSuccess already handles it
+    // This prevents duplicate refetches
+    onSettled: () => {
+      // Intentionally empty - cache management handled in onSuccess/onError
+    },
+
+    // Note: Retry configuration uses QueryClient defaults
+    // This allows tests and consumers to customize retry behavior
   });
 
   // Return structured result matching UseProfileReturn interface
   return {
-    user: query.data,
+    profile: query.data,
+    user: query.data, // Alias for backward compatibility
     isLoading: query.isLoading,
+    isFetching: query.isFetching,
+    isIdle: !query.isFetching && !query.isLoading && !query.data,
+    isSuccess: query.isSuccess,
     isError: query.isError,
     error: query.error ?? null,
     refetch: query.refetch,
+    isUpdating: updateMutation.isPending,
+    updateError: updateMutation.error ?? null,
+    updateProfile: updateMutation.mutateAsync,
   };
+}
+
+/**
+ * Helper function to convert UpdateProfilePayload (with boolean values) to 
+ * UpdateProfileData format (with 0/1 numeric literals) for the API
+ * 
+ * @param payload - The profile update payload from the component
+ * @returns The converted data in API format
+ */
+function convertPayloadToApiData(payload: UpdateProfilePayload): UpdateProfileData {
+  const apiData: UpdateProfileData = {};
+
+  // Copy string fields directly
+  if (payload.firstname !== undefined) apiData.firstname = payload.firstname;
+  if (payload.lastname !== undefined) apiData.lastname = payload.lastname;
+  if (payload.email !== undefined) apiData.email = payload.email;
+  if (payload.description !== undefined) apiData.description = payload.description;
+  if (payload.city !== undefined) apiData.city = payload.city;
+  if (payload.country !== undefined) apiData.country = payload.country;
+  if (payload.timezone !== undefined) apiData.timezone = payload.timezone;
+  if (payload.phone1 !== undefined) apiData.phone1 = payload.phone1;
+  if (payload.phone2 !== undefined) apiData.phone2 = payload.phone2;
+  if (payload.institution !== undefined) apiData.institution = payload.institution;
+  if (payload.department !== undefined) apiData.department = payload.department;
+  if (payload.address !== undefined) apiData.address = payload.address;
+  if (payload.lang !== undefined) apiData.lang = payload.lang;
+  if (payload.calendartype !== undefined) apiData.calendartype = payload.calendartype;
+  if (payload.theme !== undefined) apiData.theme = payload.theme;
+
+  // Convert boolean to 0 | 1 for API
+  if (payload.autosubscribe !== undefined) {
+    apiData.autosubscribe = payload.autosubscribe ? 1 : 0;
+  }
+  if (payload.trackforums !== undefined) {
+    apiData.trackforums = payload.trackforums ? 1 : 0;
+  }
+
+  // mailformat is already numeric, can be used directly
+  if (payload.mailformat !== undefined) {
+    apiData.mailformat = payload.mailformat as 0 | 1;
+  }
+
+  return apiData;
 }
 
 // ============================================================================
@@ -426,17 +659,20 @@ export function useUpdateProfile(
   const { onSuccess, onError, onSettled } = options;
 
   // Create mutation using React Query
-  const mutation = useMutation<User, ApiError, UpdateProfilePayload, UpdateProfileContext>({
+  const mutation = useMutation<User, ApiError, UpdateProfileInput, UpdateProfileContext>({
     // Mutation function: calls API which wraps user_update_user()
-    mutationFn: async (data: UpdateProfilePayload) => {
+    mutationFn: async (data: UpdateProfileInput) => {
       if (!targetUserId) {
         throw new Error('User ID is required to update profile') as unknown as ApiError;
       }
-      return updateUserProfile(targetUserId, data);
+      // Convert UpdateProfileInput (with booleans) to UpdateProfileData (with 0/1)
+      // Note: userid is added by the hook, not provided by caller
+      const apiData = convertPayloadToApiData({ ...data, userid: targetUserId });
+      return updateUserProfile(targetUserId, apiData);
     },
 
     // Optimistic update: immediately update cache with new data
-    onMutate: async (variables: UpdateProfilePayload) => {
+    onMutate: async (variables: UpdateProfileInput) => {
       if (!targetUserId) {
         return { previousProfile: undefined, userId: 0 };
       }
@@ -479,7 +715,7 @@ export function useUpdateProfile(
     },
 
     // Rollback optimistic update on error
-    onError: (error: ApiError, _variables: UpdateProfilePayload, context?: UpdateProfileContext) => {
+    onError: (error: ApiError, _variables: UpdateProfileInput, context?: UpdateProfileContext) => {
       // Rollback to previous profile data
       if (context?.previousProfile && context?.userId) {
         const queryKey = profileKeys.detail(context.userId);
@@ -545,4 +781,39 @@ export function useUpdateProfile(
     error: mutation.error ?? null,
     reset: mutation.reset,
   };
+}
+
+// ============================================================================
+// useCurrentUser Hook
+// ============================================================================
+
+/**
+ * Convenience hook for fetching the current authenticated user's profile
+ * 
+ * This is a shorthand for useProfile() without any arguments, which defaults
+ * to fetching the current user's profile from the auth context.
+ * 
+ * @returns Profile data and query state for the current authenticated user
+ * 
+ * @example
+ * ```tsx
+ * function CurrentUserProfile() {
+ *   const { profile, isLoading, isError, error } = useCurrentUser();
+ * 
+ *   if (isLoading) return <LoadingSpinner />;
+ *   if (isError) return <ErrorMessage error={error} />;
+ *   if (!profile) return <p>Not logged in</p>;
+ * 
+ *   return (
+ *     <div>
+ *       <h1>Welcome, {profile.fullname}</h1>
+ *       <Avatar src={profile.profileimageurl} alt={profile.fullname} />
+ *     </div>
+ *   );
+ * }
+ * ```
+ */
+export function useCurrentUser(): UseProfileReturn {
+  // Delegate to useProfile with no userId, which will use current user from auth context
+  return useProfile();
 }

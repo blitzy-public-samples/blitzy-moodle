@@ -19,12 +19,50 @@ import React from 'react';
 import type { ReactNode } from 'react';
 
 // Mock the profile API module
-vi.mock('@/features/profile/api/profileApi', () => ({
-  fetchUserProfile: vi.fn(),
-  fetchCurrentUser: vi.fn(),
-  fetchCurrentUserProfile: vi.fn(),
-  updateUserProfile: vi.fn(),
+// Note: getUserProfile is the primary function, fetchUserProfile is an alias
+vi.mock('@/features/profile/api/profileApi', () => {
+  const mockGetUserProfile = vi.fn();
+  const mockUpdateUserProfile = vi.fn();
+  return {
+    getUserProfile: mockGetUserProfile,
+    fetchUserProfile: mockGetUserProfile, // Alias to same mock
+    fetchCurrentUser: vi.fn(),
+    fetchCurrentUserProfile: vi.fn(),
+    getCurrentUserProfile: vi.fn(),
+    updateUserProfile: mockUpdateUserProfile,
+  };
+});
+
+// Mock the useAuth hook to avoid needing Redux Provider
+// The mock is configurable via mockUseAuthReturn
+const mockUseAuthReturn = {
+  user: {
+    id: 123,
+    username: 'testuser',
+    firstname: 'Test',
+    lastname: 'User',
+    fullname: 'Test User',
+    email: 'test@example.com',
+  },
+  isAuthenticated: true,
+  isLoading: false,
+  isLoginLoading: false,
+  isLogoutLoading: false,
+  error: null,
+  login: vi.fn(),
+  logout: vi.fn(),
+  refreshToken: vi.fn(),
+  checkAuth: vi.fn(),
+  getUser: vi.fn(),
+  clearError: vi.fn(),
+};
+
+vi.mock('@/features/auth/hooks/useAuth', () => ({
+  useAuth: vi.fn(() => mockUseAuthReturn),
 }));
+
+// Import useAuth to allow per-test configuration
+import { useAuth } from '@/features/auth/hooks/useAuth';
 
 // Import mocked API after mock declaration
 import { fetchUserProfile, updateUserProfile } from '@/features/profile/api/profileApi';
@@ -142,15 +180,31 @@ describe('useProfile Hook', () => {
 
      
     it('should not fetch data when userId is null', async () => {
+      // Mock useAuth to return null user so there's no fallback userId
+      vi.mocked(useAuth).mockReturnValueOnce({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        isLoginLoading: false,
+        isLogoutLoading: false,
+        error: null,
+        login: vi.fn(),
+        logout: vi.fn(),
+        refreshToken: vi.fn(),
+        checkAuth: vi.fn(),
+        getUser: vi.fn(),
+        clearError: vi.fn(),
+      } as ReturnType<typeof useAuth>);
+
       const { result } = renderHook(() => useProfile(null), {
         wrapper: createWrapper(),
       });
 
-      // Should not be loading when disabled
+      // Should not be loading when disabled (no user ID to fetch)
       expect(result.current.isLoading).toBe(false);
       expect(result.current.profile).toBeUndefined();
 
-      // API should not be called
+      // API should not be called since there's no user ID
       expect(fetchUserProfile).not.toHaveBeenCalled();
     });
 
@@ -168,7 +222,7 @@ describe('useProfile Hook', () => {
 
       expect(result.current.profile).toBeUndefined();
       expect(result.current.error).toBeTruthy();
-      expect((result.current.error as Error).message).toBe(errorMessage);
+      expect(result.current.error?.message).toBe(errorMessage);
     });
   });
 
@@ -355,7 +409,7 @@ describe('useProfile Hook', () => {
       }, { timeout: 10000 }); // Allow 10 seconds for retries to complete
 
       // Verify error is captured and mutation is no longer updating
-      expect((result.current.updateError as Error).message).toBe(errorMessage);
+      expect(result.current.updateError?.message).toBe(errorMessage);
       expect(result.current.isUpdating).toBe(false);
       
       // Verify the API was called multiple times due to retries (1 initial + 3 retries = 4 total)
@@ -424,9 +478,9 @@ describe('useProfile Hook', () => {
 
       vi.mocked(fetchUserProfile).mockResolvedValue(mockProfile);
       
-      // Mock API to fail immediately - React Query will handle retries
+      // Mock API to fail after a short delay - this gives time to observe the optimistic update
       vi.mocked(updateUserProfile).mockImplementation(() => {
-        return Promise.reject(new Error('Update failed'));
+        return new Promise((_, reject) => setTimeout(() => reject(new Error('Update failed')), 100));
       });
 
       const { result } = renderHook(() => useProfile(444), {
@@ -671,7 +725,7 @@ describe('useProfile Hook', () => {
 
       // Should have tried 3 times (initial + 2 retries)
       expect(fetchUserProfile).toHaveBeenCalledTimes(3);
-      expect((result.current.error as Error).message).toBe(errorMessage);
+      expect(result.current.error?.message).toBe(errorMessage);
 
       limitedRetryClient.clear();
     });

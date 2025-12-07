@@ -7,6 +7,7 @@ import type { User } from '@/features/profile/api/profileApi';
 import type { UseProfileResult } from '@/features/profile/hooks/useProfile';
 import type { UseAuthReturn } from '@/features/auth/hooks/useAuth';
 import type { User as AuthUser, Role, Permission } from '@/features/auth/types/auth.types';
+import { ApiErrorCode } from '@/types/errors';
 
 // Extend expect matchers
 expect.extend(toHaveNoViolations);
@@ -213,6 +214,7 @@ const createMockUseProfileResult = (
   overrides?: Partial<UseProfileResult>
 ): UseProfileResult => ({
   profile: undefined,
+  user: undefined, // Deprecated alias for profile, but required
   isLoading: false,
   error: null,
   isFetching: false,
@@ -688,7 +690,7 @@ describe('ProfileView Component', () => {
       mockUseProfile.mockReturnValue(createMockUseProfileResult({
         profile: undefined,
         isLoading: false,
-        error: new Error('Failed to fetch user data'),
+        error: { code: ApiErrorCode.SERVER_ERROR, message: 'Failed to fetch user data' },
       }));
 
       render(<ProfileView userId={123} />);
@@ -701,7 +703,7 @@ describe('ProfileView Component', () => {
       mockUseProfile.mockReturnValue(createMockUseProfileResult({
         profile: undefined,
         isLoading: false,
-        error: new Error('User has been deleted'),
+        error: { code: ApiErrorCode.NOT_FOUND, message: 'User has been deleted' },
       }));
 
       render(<ProfileView userId={123} />);
@@ -713,7 +715,7 @@ describe('ProfileView Component', () => {
       mockUseProfile.mockReturnValue(createMockUseProfileResult({
         profile: undefined,
         isLoading: false,
-        error: new Error('Invalid user ID'),
+        error: { code: ApiErrorCode.BAD_REQUEST, message: 'Invalid user ID' },
       }));
 
       render(<ProfileView userId={999999} />);
@@ -722,13 +724,10 @@ describe('ProfileView Component', () => {
     });
 
     it('should display error message for permission denied', () => {
-      const permissionError = new Error('Permission denied') as Error & { code?: string };
-      permissionError.code = 'PERMISSION_DENIED';
-      
       mockUseProfile.mockReturnValue(createMockUseProfileResult({
         profile: undefined,
         isLoading: false,
-        error: permissionError,
+        error: { code: ApiErrorCode.PERMISSION_DENIED, message: 'Permission denied' },
       }));
 
       render(<ProfileView userId={456} />);
@@ -743,7 +742,7 @@ describe('ProfileView Component', () => {
       mockUseProfile.mockReturnValue(createMockUseProfileResult({
         profile: undefined,
         isLoading: false,
-        error: new Error('Network error'),
+        error: { code: ApiErrorCode.NETWORK_ERROR, message: 'Network error' },
         refetch: mockRefetch,
       }));
 
