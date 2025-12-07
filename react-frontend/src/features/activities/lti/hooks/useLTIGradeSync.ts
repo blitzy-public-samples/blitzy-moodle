@@ -69,8 +69,8 @@
  * @see public/mod/lti/grade.php - LTI grade hook for gradebook integration
  */
 
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useCallback, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useLtiGradePassback, ltiQueryKeys } from '@/features/activities/lti/api/ltiApi';
 import type { LtiGradeResult } from '@/features/activities/lti/types/lti.types';
 import { useAuth } from '@/features/auth/hooks/useAuth';
@@ -381,7 +381,7 @@ const DEFAULT_BASE_RETRY_DELAY = 1000;
  */
 function generateUuidV4(): string {
   // Use crypto.randomUUID if available (modern browsers)
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+  if (crypto?.randomUUID) {
     return crypto.randomUUID();
   }
 
@@ -507,8 +507,9 @@ export function useLTIGradeSync({
   options = {},
 }: UseLTIGradeSyncParams): UseLTIGradeSyncResult {
   // Destructure options with defaults
+  // Note: _autoSync is prefixed with underscore as it's reserved for future implementation
   const {
-    autoSync = false,
+    autoSync: _autoSync = false,
     maxRetries = DEFAULT_MAX_RETRIES,
     baseRetryDelay = DEFAULT_BASE_RETRY_DELAY,
     onSuccess,
@@ -554,9 +555,13 @@ export function useLTIGradeSync({
 
     // Check if user has the required capability
     // The user object from useAuth contains capabilities from the JWT token
-    const capabilities = (user as unknown as { capabilities?: string[] }).capabilities;
-    if (Array.isArray(capabilities)) {
-      return capabilities.includes(requiredCapability);
+    // user.capabilities is Permission[] where Permission has: capability, contextId, granted
+    const { capabilities } = user;
+    if (Array.isArray(capabilities) && capabilities.length > 0) {
+      // Check if any permission matches the required capability and is granted
+      return capabilities.some(
+        (perm) => perm.capability === requiredCapability && perm.granted === true
+      );
     }
 
     // If no capabilities array, assume permission (server will enforce)
@@ -625,10 +630,20 @@ export function useLTIGradeSync({
    * - 422 Unprocessable Entity
    * - Any validation errors
    */
-  const isRetryableError = useCallback((error: Error | number): boolean => {
+  const isRetryableError = useCallback((error: Error | number | null | undefined): boolean => {
+    // Handle null/undefined gracefully
+    if (error === null || error === undefined) {
+      return false;
+    }
+
     // If error is a number, treat it as HTTP status code
     if (typeof error === 'number') {
       return RETRYABLE_STATUS_CODES.includes(error as typeof RETRYABLE_STATUS_CODES[number]);
+    }
+
+    // Ensure error is an Error object before extracting status
+    if (!(error instanceof Error)) {
+      return false;
     }
 
     // Extract status code if present
