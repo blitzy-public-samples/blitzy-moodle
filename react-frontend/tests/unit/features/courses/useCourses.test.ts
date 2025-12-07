@@ -20,6 +20,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
+import React from 'react';
 import type { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
@@ -27,14 +28,11 @@ import { useCourses } from '@/features/courses/hooks/useCourses';
 import type {
   UseCoursesOptions,
   CourseSortField,
-  SortOrder,
-  PaginationInfo,
 } from '@/features/courses/hooks/useCourses';
 import * as courseApi from '@/features/courses/api/courseApi';
 import type { Course } from '@/types/entities';
 import type { PaginatedResponse } from '@/types/api';
-import type { PaginationMeta } from '@/types/common';
-import { createMockCourse, generateMockArray } from '@/tests/helpers/mockData';
+import { createMockCourse } from '@tests/helpers/mockData';
 
 // ============================================================================
 // Mock Setup
@@ -79,11 +77,7 @@ function createTestQueryClient(): QueryClient {
  */
 function createWrapper(queryClient: QueryClient) {
   return function Wrapper({ children }: { children: ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
-    );
+    return React.createElement(QueryClientProvider, { client: queryClient }, children);
   };
 }
 
@@ -362,6 +356,10 @@ describe('useCourses', () => {
         ...c,
         id: c.id + 100,
       }));
+      const page3Courses = createMockCourses(20).map((c) => ({
+        ...c,
+        id: c.id + 200,
+      }));
 
       mockGetCourses
         .mockResolvedValueOnce(
@@ -372,8 +370,17 @@ describe('useCourses', () => {
             totalPages: 5,
           })
         )
+        // Prefetch of page 2 happens automatically after page 1 loads
         .mockResolvedValueOnce(
           createMockPaginatedResponse(page2Courses, {
+            page: 2,
+            perPage: 20,
+            total: 100,
+            totalPages: 5,
+          })
+        )
+        .mockResolvedValueOnce(
+          createMockPaginatedResponse(page3Courses, {
             page: 3,
             perPage: 20,
             total: 100,
@@ -394,8 +401,9 @@ describe('useCourses', () => {
         result.current.goToPage(3);
       });
 
+      // Expect 3 calls: initial page 1, prefetch page 2, goToPage page 3
       await waitFor(() => {
-        expect(mockGetCourses).toHaveBeenCalledTimes(2);
+        expect(mockGetCourses).toHaveBeenCalledTimes(3);
       });
 
       expect(mockGetCourses).toHaveBeenLastCalledWith(
@@ -405,7 +413,10 @@ describe('useCourses', () => {
 
     it('should provide nextPage helper that increments page by 1', async () => {
       const page1Courses = createMockCourses(20);
-      const page2Courses = createMockCourses(20);
+      const page2Courses = createMockCourses(20).map((c) => ({
+        ...c,
+        id: c.id + 100,
+      }));
 
       mockGetCourses
         .mockResolvedValueOnce(
@@ -416,6 +427,16 @@ describe('useCourses', () => {
             totalPages: 5,
           })
         )
+        // Prefetch of page 2 happens automatically
+        .mockResolvedValueOnce(
+          createMockPaginatedResponse(page2Courses, {
+            page: 2,
+            perPage: 20,
+            total: 100,
+            totalPages: 5,
+          })
+        )
+        // nextPage calls goToPage(2) which may trigger another fetch
         .mockResolvedValueOnce(
           createMockPaginatedResponse(page2Courses, {
             page: 2,
@@ -437,8 +458,9 @@ describe('useCourses', () => {
         result.current.nextPage();
       });
 
+      // Expect 3 calls: initial page 1, prefetch page 2, nextPage triggers page 2 fetch
       await waitFor(() => {
-        expect(mockGetCourses).toHaveBeenCalledTimes(2);
+        expect(mockGetCourses).toHaveBeenCalledTimes(3);
       });
 
       expect(mockGetCourses).toHaveBeenLastCalledWith(
@@ -448,7 +470,14 @@ describe('useCourses', () => {
 
     it('should provide prevPage helper that decrements page by 1', async () => {
       const page2Courses = createMockCourses(20);
-      const page1Courses = createMockCourses(20);
+      const page3Courses = createMockCourses(20).map((c) => ({
+        ...c,
+        id: c.id + 100,
+      }));
+      const page1Courses = createMockCourses(20).map((c) => ({
+        ...c,
+        id: c.id + 200,
+      }));
 
       mockGetCourses
         .mockResolvedValueOnce(
@@ -459,6 +488,16 @@ describe('useCourses', () => {
             totalPages: 5,
           })
         )
+        // Prefetch of page 3 happens automatically after page 2 loads
+        .mockResolvedValueOnce(
+          createMockPaginatedResponse(page3Courses, {
+            page: 3,
+            perPage: 20,
+            total: 100,
+            totalPages: 5,
+          })
+        )
+        // prevPage navigates to page 1
         .mockResolvedValueOnce(
           createMockPaginatedResponse(page1Courses, {
             page: 1,
@@ -480,8 +519,9 @@ describe('useCourses', () => {
         result.current.prevPage();
       });
 
+      // Expect 3 calls: initial page 2, prefetch page 3, prevPage triggers page 1 fetch
       await waitFor(() => {
-        expect(mockGetCourses).toHaveBeenCalledTimes(2);
+        expect(mockGetCourses).toHaveBeenCalledTimes(3);
       });
 
       expect(mockGetCourses).toHaveBeenLastCalledWith(
@@ -692,11 +732,11 @@ describe('useCourses', () => {
       );
 
       const { rerender } = renderHook(
-        ({ search, categoryId }: { search?: string; categoryId?: number }) =>
-          useCourses({ search, categoryId }),
+        (props: { search?: string; categoryId?: number }) =>
+          useCourses({ search: props.search, categoryId: props.categoryId }),
         {
           wrapper: createWrapper(queryClient),
-          initialProps: { search: 'test', categoryId: 5 },
+          initialProps: { search: 'test', categoryId: 5 } as { search?: string; categoryId?: number },
         }
       );
 
@@ -704,8 +744,8 @@ describe('useCourses', () => {
         expect(mockGetCourses).toHaveBeenCalledTimes(1);
       });
 
-      // Clear filters
-      rerender({ search: undefined, categoryId: undefined });
+      // Clear filters by omitting the properties (passing empty object)
+      rerender({});
 
       await waitFor(() => {
         expect(mockGetCourses).toHaveBeenCalledTimes(2);
@@ -845,7 +885,9 @@ describe('useCourses', () => {
       const queries = queryClient.getQueryCache().getAll();
       expect(queries.length).toBeGreaterThan(0);
 
-      const queryKey = queries[0].queryKey;
+      const firstQuery = queries[0];
+      expect(firstQuery).toBeDefined();
+      const queryKey = firstQuery!.queryKey;
       expect(queryKey[0]).toBe('courses');
       expect(queryKey[1]).toBe('list');
       expect(typeof queryKey[2]).toBe('object'); // filters object
@@ -870,7 +912,7 @@ describe('useCourses', () => {
       unmount();
 
       // Second render - should use cached data
-      const { result: result2 } = renderHook(
+      renderHook(
         () => useCourses({ page: 1, limit: 20 }),
         { wrapper: createWrapper(queryClient) }
       );
@@ -1212,8 +1254,8 @@ describe('useCourses', () => {
       });
 
       expect(result.current.data).toEqual(realisticCourses);
-      expect(result.current.data?.[0].fullname).toBe('Introduction to Computer Science');
-      expect(result.current.data?.[1].shortname).toBe('MATH201');
+      expect(result.current.data?.[0]?.fullname).toBe('Introduction to Computer Science');
+      expect(result.current.data?.[1]?.shortname).toBe('MATH201');
     });
   });
 
@@ -1326,7 +1368,7 @@ describe('useCourses', () => {
         expect(result.current.isLoading).toBe(false);
       });
 
-      expect(result.current.data?.[0].fullname).not.toContain('Updated');
+      expect(result.current.data?.[0]?.fullname).not.toContain('Updated');
 
       // Invalidate queries
       await act(async () => {
@@ -1495,7 +1537,7 @@ describe('useCourses', () => {
         expect(result.current.isLoading).toBe(false);
       });
 
-      expect(result.current.data?.[0].id).toBeLessThan(100);
+      expect(result.current.data?.[0]?.id).toBeLessThan(100);
 
       // Trigger refetch
       await act(async () => {
@@ -1515,12 +1557,13 @@ describe('useCourses', () => {
         .mockResolvedValueOnce(createMockPaginatedResponse(page1Courses))
         .mockResolvedValueOnce(createMockPaginatedResponse(filteredCourses));
 
+      type TestProps = { categoryId?: number };
       const { rerender } = renderHook(
-        ({ categoryId }: { categoryId?: number }) =>
+        ({ categoryId }: TestProps) =>
           useCourses({ categoryId }),
         {
           wrapper: createWrapper(queryClient),
-          initialProps: { categoryId: undefined },
+          initialProps: { categoryId: undefined } as TestProps,
         }
       );
 
