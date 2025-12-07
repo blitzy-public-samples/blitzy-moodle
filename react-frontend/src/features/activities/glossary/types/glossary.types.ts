@@ -245,6 +245,9 @@ export interface GlossaryEntry {
   /** Category name (optional) */
   categoryname?: string;
 
+  /** Entry aliases/keywords (newline separated) */
+  aliases?: string;
+
   /** Entry tags */
   tags: GlossaryTag[];
 
@@ -461,6 +464,9 @@ export interface CreateEntryInput {
   /** Category ID (optional) */
   categoryId?: number;
 
+  /** Entry aliases/keywords (newline separated) */
+  aliases?: string;
+
   /** File attachments (optional) */
   attachments?: File[];
 }
@@ -492,6 +498,9 @@ export interface UpdateEntryInput {
 
   /** Category ID (optional) */
   categoryId?: number;
+
+  /** Entry aliases/keywords (newline separated) */
+  aliases?: string;
 
   /** File attachments (optional) */
   attachments?: File[];

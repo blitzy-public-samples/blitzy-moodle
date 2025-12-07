@@ -23,7 +23,7 @@
  */
 
 import React, { useEffect, useMemo } from 'react';
-import { useForm, Controller, SubmitHandler } from 'react-hook-form';
+import { useForm, Controller, SubmitHandler, Control, FieldValues } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
@@ -43,7 +43,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
 
 // Internal component imports
-import { RichTextEditor } from '@/components/editor/RichTextEditor';
+import RichTextEditor from '@/components/editor/RichTextEditor';
 import { FormFileUpload } from '@/components/forms/FormFileUpload';
 import { FormInput } from '@/components/forms/FormInput';
 import { FormTextarea } from '@/components/forms/FormTextarea';
@@ -58,7 +58,6 @@ import { usePermissions } from '@/features/auth/hooks/usePermissions';
 
 // Type imports
 import type {
-  Glossary,
   GlossaryEntry,
   CreateEntryInput,
   UpdateEntryInput,
@@ -271,23 +270,23 @@ export function EntryForm({
 
   // Mutations for create and update operations
   const createMutation = useCreateEntry(glossaryId, {
-    onSuccess: (entry) => {
+    onSuccess: (entry: GlossaryEntry) => {
       showSuccessToast('Entry created successfully!');
       onSuccess?.(entry);
       navigate(`/glossary/${glossaryId}/entry/${entry.id}`);
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       showErrorToast(`Failed to create entry: ${error.message}`);
     },
   });
 
-  const updateMutation = useUpdateEntry(glossaryId, {
-    onSuccess: (entry) => {
+  const updateMutation = useUpdateEntry({
+    onSuccess: (entry: GlossaryEntry) => {
       showSuccessToast('Entry updated successfully!');
       onSuccess?.(entry);
       navigate(`/glossary/${glossaryId}/entry/${entry.id}`);
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       showErrorToast(`Failed to update entry: ${error.message}`);
     },
   });
@@ -297,7 +296,7 @@ export function EntryForm({
     control,
     handleSubmit,
     reset,
-    formState: { errors, isSubmitting, isDirty },
+    formState: { errors, isDirty },
   } = useForm<EntryFormData>({
     resolver: zodResolver(entryFormSchema),
     defaultValues: {
@@ -326,7 +325,7 @@ export function EntryForm({
         concept: initialData.concept || '',
         definition: initialData.definition || '',
         definitionformat: initialData.definitionformat ?? TEXT_FORMAT_HTML,
-        categories: initialData.categories?.map((c) => c.id) || [],
+        categories: initialData.categoryid !== undefined ? [initialData.categoryid] : [],
         aliases: initialData.aliases || '',
         attachments: [],
         usedynalink: initialData.usedynalink ?? false,
@@ -375,7 +374,7 @@ export function EntryForm({
    * Format categories for the select dropdown
    */
   const categoryOptions = useMemo(() => {
-    const categories = categoriesData?.categories || [];
+    const categories = categoriesData || [];
     return [
       { value: 0, label: 'Not Categorized' },
       ...categories.map((cat: GlossaryCategory) => ({
@@ -413,7 +412,7 @@ export function EntryForm({
       } else if (mode === 'edit' && entryId) {
         // Prepare update input
         const updateInput: UpdateEntryInput = {
-          id: entryId,
+          entryId,
           concept: data.concept.trim(),
           definition: data.definition,
           definitionformat: data.definitionformat,
@@ -524,16 +523,14 @@ export function EntryForm({
         {/* Concept Field - Required text input */}
         <FormInput
           name="concept"
-          control={control}
+          control={control as unknown as Control<FieldValues>}
           label="Concept"
           placeholder="Enter the term or concept"
           required
           fullWidth
           maxLength={FIELD_LIMITS.concept}
           helperText={errors.concept?.message || 'The term or phrase being defined'}
-          error={!!errors.concept}
           disabled={isMutating}
-          aria-describedby="concept-helper"
         />
 
         {/* Definition Field - Rich text editor */}
@@ -550,15 +547,14 @@ export function EntryForm({
             control={control}
             render={({ field }) => (
               <RichTextEditor
+                name="definition"
                 value={field.value}
                 onChange={field.onChange}
-                onBlur={field.onBlur}
                 placeholder="Enter the definition..."
-                minHeight={200}
+                height={200}
                 disabled={isMutating}
                 error={!!errors.definition}
                 helperText={errors.definition?.message}
-                aria-label="Definition editor"
               />
             )}
           />
@@ -574,20 +570,18 @@ export function EntryForm({
         {/* Categories Field - Multi-select dropdown */}
         <FormSelect
           name="categories"
-          control={control}
+          control={control as unknown as Control<FieldValues>}
           label="Categories"
           options={categoryOptions}
           multiple
-          fullWidth
           disabled={isMutating}
           helperText="Select one or more categories for this entry"
-          aria-describedby="categories-helper"
         />
 
         {/* Aliases Field - Multiline textarea */}
         <FormTextarea
           name="aliases"
-          control={control}
+          control={control as unknown as Control<FieldValues>}
           label="Aliases (Keywords)"
           placeholder="Enter alternative names or keywords, one per line"
           rows={3}
@@ -597,36 +591,21 @@ export function EntryForm({
             errors.aliases?.message ||
             'Alternative terms that will also link to this entry (one per line)'
           }
-          error={!!errors.aliases}
           disabled={isMutating}
-          aria-describedby="aliases-helper"
         />
 
         {/* File Attachments */}
         <Box>
-          <Typography
-            component="label"
-            variant="subtitle2"
-            sx={{ display: 'block', mb: 1 }}
-          >
-            Attachments
-          </Typography>
-          <Controller
+          <FormFileUpload
             name="attachments"
             control={control}
-            render={({ field }) => (
-              <FormFileUpload
-                value={field.value || []}
-                onChange={field.onChange}
-                multiple
-                accept="image/*,application/pdf,.doc,.docx,.txt"
-                maxSize={10 * 1024 * 1024} // 10MB
-                maxFiles={5}
-                disabled={isMutating}
-                helperText="Drag and drop files here, or click to browse (max 5 files, 10MB each)"
-                aria-label="File attachments"
-              />
-            )}
+            label="Attachments"
+            multiple
+            accept="image/*,application/pdf,.doc,.docx,.txt"
+            maxSize={10 * 1024 * 1024} // 10MB
+            maxFiles={5}
+            disabled={isMutating}
+            helperText="Drag and drop files here, or click to browse (max 5 files, 10MB each)"
           />
         </Box>
 
