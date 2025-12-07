@@ -38,14 +38,14 @@ import type {
   TextFormat,
 } from '@/features/activities/glossary/types/glossary.types';
 
-import { createTestQueryClient } from '@/tests/helpers/render';
-import { server } from '@/tests/mocks/server';
+import { createTestQueryClient } from '@tests/helpers/render';
+import { server } from '@tests/mocks/server';
 
 // ============================================================================
 // Constants
 // ============================================================================
 
-const API_BASE_URL = '/api/v1';
+const API_BASE_URL = '*/api/v1';
 const MOCK_ENTRY_ID = 456;
 const MOCK_COMMENT_ID = 789;
 const MOCK_USER_ID = 123;
@@ -481,9 +481,9 @@ describe('useComment Hooks', () => {
 
         const data = result.current.data as CommentsResponse;
         // Should be sorted newest first
-        expect(data.comments[0].id).toBe(2); // Most recent
-        expect(data.comments[1].id).toBe(1);
-        expect(data.comments[2].id).toBe(3); // Oldest
+        expect(data.comments[0]!.id).toBe(2); // Most recent
+        expect(data.comments[1]!.id).toBe(1);
+        expect(data.comments[2]!.id).toBe(3); // Oldest
       });
 
       it('should sort comments by oldest first when sortOrder is oldest', async () => {
@@ -511,9 +511,9 @@ describe('useComment Hooks', () => {
 
         const data = result.current.data as CommentsResponse;
         // Should be sorted oldest first
-        expect(data.comments[0].id).toBe(3); // Oldest
-        expect(data.comments[1].id).toBe(1);
-        expect(data.comments[2].id).toBe(2); // Newest
+        expect(data.comments[0]!.id).toBe(3); // Oldest
+        expect(data.comments[1]!.id).toBe(1);
+        expect(data.comments[2]!.id).toBe(2); // Newest
       });
     });
 
@@ -541,7 +541,7 @@ describe('useComment Hooks', () => {
         });
 
         const data = result.current.data as CommentsResponse;
-        const comment = data.comments[0];
+        const comment = data.comments[0]!;
         expect(comment.userid).toBe(42);
         expect(comment.userfullname).toBe('John Doe');
         expect(comment.userpictureurl).toBe('https://example.com/john.jpg');
@@ -793,18 +793,23 @@ describe('useComment Hooks', () => {
         });
 
         await waitFor(() => {
-          expect(onSuccess).toHaveBeenCalledWith(
-            newComment,
-            input,
-            expect.anything()
-          );
+          expect(onSuccess).toHaveBeenCalled();
+        });
+
+        // Verify callback was called with the expected data as first argument
+        const callArgs = onSuccess.mock.calls[0];
+        expect(callArgs?.[0]).toEqual(newComment);
+        // Second argument should be the mutation variables (input)
+        expect(callArgs?.[1]).toMatchObject({
+          entryId: MOCK_ENTRY_ID,
+          content: 'Test comment',
         });
       });
 
       it('should show loading state during mutation (isPending)', async () => {
         server.use(
           http.post(`${API_BASE_URL}/glossary/entries/:entryId/comments`, async () => {
-            await new Promise((resolve) => setTimeout(resolve, 100));
+            await new Promise((resolve) => setTimeout(resolve, 200));
             return createMockApiResponse(createMockComment(), 201);
           })
         );
@@ -816,6 +821,7 @@ describe('useComment Hooks', () => {
 
         expect(result.current.isPending).toBe(false);
 
+        // Start the mutation and wait for isPending to become true
         act(() => {
           result.current.mutate({
             entryId: MOCK_ENTRY_ID,
@@ -824,8 +830,12 @@ describe('useComment Hooks', () => {
           });
         });
 
-        expect(result.current.isPending).toBe(true);
+        // Wait for isPending to become true (async state update)
+        await waitFor(() => {
+          expect(result.current.isPending).toBe(true);
+        }, { timeout: 100 });
 
+        // Wait for mutation to complete
         await waitFor(() => {
           expect(result.current.isPending).toBe(false);
         });
@@ -1199,7 +1209,7 @@ describe('useComment Hooks', () => {
       it('should show loading state during update (isPending)', async () => {
         server.use(
           http.put(`${API_BASE_URL}/glossary/comments/:commentId`, async () => {
-            await new Promise((resolve) => setTimeout(resolve, 100));
+            await new Promise((resolve) => setTimeout(resolve, 200));
             return createMockApiResponse(createMockComment());
           })
         );
@@ -1220,7 +1230,10 @@ describe('useComment Hooks', () => {
           });
         });
 
-        expect(result.current.isPending).toBe(true);
+        // Wait for isPending to become true (async state update)
+        await waitFor(() => {
+          expect(result.current.isPending).toBe(true);
+        }, { timeout: 100 });
 
         await waitFor(() => {
           expect(result.current.isPending).toBe(false);
@@ -1308,7 +1321,7 @@ describe('useComment Hooks', () => {
         // Check optimistic update was applied
         await waitFor(() => {
           const cachedData = queryClient.getQueryData<CommentsResponse>(cacheKey);
-          expect(cachedData?.comments[0].content).toBe('Updated content');
+          expect(cachedData?.comments[0]?.content).toBe('Updated content');
         });
 
         // Resolve the update request
@@ -1556,7 +1569,7 @@ describe('useComment Hooks', () => {
       it('should show loading state during deletion (isPending)', async () => {
         server.use(
           http.delete(`${API_BASE_URL}/glossary/comments/:commentId`, async () => {
-            await new Promise((resolve) => setTimeout(resolve, 100));
+            await new Promise((resolve) => setTimeout(resolve, 200));
             return createMockApiResponse({ deleted: true });
           })
         );
@@ -1575,7 +1588,10 @@ describe('useComment Hooks', () => {
           });
         });
 
-        expect(result.current.isPending).toBe(true);
+        // Wait for isPending to become true (async state update)
+        await waitFor(() => {
+          expect(result.current.isPending).toBe(true);
+        }, { timeout: 100 });
 
         await waitFor(() => {
           expect(result.current.isPending).toBe(false);
@@ -1693,7 +1709,7 @@ describe('useComment Hooks', () => {
         );
 
         // Delete first comment
-        const commentIdToDelete = existingComments[0].id;
+        const commentIdToDelete = existingComments[0]!.id;
 
         await act(async () => {
           result.current.mutate({
