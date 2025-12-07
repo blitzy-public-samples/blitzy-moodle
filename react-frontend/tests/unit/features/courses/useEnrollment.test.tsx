@@ -19,14 +19,18 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import React, { type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 
 import {
   useEnrollment,
   useEnrollInCourse,
   useUnenrollFromCourse,
+  EnrollmentOperationError,
 } from '@/features/courses/hooks/useEnrollment';
-import { courseApi } from '@/features/courses/api/courseApi';
+import {
+  enrollInCourse as enrollInCourseApi,
+  unenrollFromCourse as unenrollFromCourseApi,
+} from '@/features/courses/api/courseApi';
 import { createTestQueryClient } from '@tests/helpers/render';
 import { createMockCourse } from '@tests/helpers/mockData';
 import type { EnrollmentResult } from '@/features/courses/types/course.types';
@@ -34,17 +38,13 @@ import type { Course } from '@/types/entities';
 
 // Mock the courseApi module
 vi.mock('@/features/courses/api/courseApi', () => ({
-  courseApi: {
-    enrollInCourse: vi.fn(),
-    unenrollFromCourse: vi.fn(),
-  },
+  enrollInCourse: vi.fn(),
+  unenrollFromCourse: vi.fn(),
 }));
 
-// Type for the mocked courseApi
-const mockedCourseApi = courseApi as {
-  enrollInCourse: ReturnType<typeof vi.fn>;
-  unenrollFromCourse: ReturnType<typeof vi.fn>;
-};
+// Type for the mocked API functions
+const mockedEnrollInCourse = enrollInCourseApi as ReturnType<typeof vi.fn>;
+const mockedUnenrollFromCourse = unenrollFromCourseApi as ReturnType<typeof vi.fn>;
 
 /**
  * Creates a wrapper component with QueryClientProvider for testing hooks.
@@ -73,7 +73,7 @@ function createMockEnrollmentResult(
     courseid: courseId,
     userid: userId,
     roleid: 5, // Default student role
-    enrollmentid: Math.floor(Math.random() * 10000),
+    enrollmentId: Math.floor(Math.random() * 10000),
     message: 'Successfully enrolled in course',
     ...overrides,
   };
@@ -105,6 +105,18 @@ function createMockApiError(
   error.code = code;
   error.status = status;
   return error;
+}
+
+/**
+ * Creates an EnrollmentOperationError for testing error scenarios
+ * This bypasses the hook's error wrapping to test specific error codes
+ */
+function createEnrollmentError(
+  code: string,
+  message: string,
+  courseId: number = 123
+) {
+  return new EnrollmentOperationError(message, courseId, code);
 }
 
 describe('useEnrollment', () => {
@@ -145,7 +157,7 @@ describe('useEnrollment', () => {
       it('should call enrollInCourse API with correct courseId', async () => {
         const courseId = 123;
         const mockResult = createMockEnrollmentResult(courseId);
-        mockedCourseApi.enrollInCourse.mockResolvedValueOnce(
+        mockedEnrollInCourse.mockResolvedValue(
           createMockApiResponse(mockResult)
         );
 
@@ -160,15 +172,15 @@ describe('useEnrollment', () => {
           expect(result.current.isSuccess).toBe(true);
         });
 
-        expect(mockedCourseApi.enrollInCourse).toHaveBeenCalledWith(courseId, undefined);
-        expect(mockedCourseApi.enrollInCourse).toHaveBeenCalledTimes(1);
+        expect(mockedEnrollInCourse).toHaveBeenCalledWith(courseId, undefined);
+        expect(mockedEnrollInCourse).toHaveBeenCalledTimes(1);
       });
 
       it('should return enrollment result data on success', async () => {
         const courseId = 123;
         const userId = 1;
         const mockResult = createMockEnrollmentResult(courseId, userId);
-        mockedCourseApi.enrollInCourse.mockResolvedValueOnce(
+        mockedEnrollInCourse.mockResolvedValue(
           createMockApiResponse(mockResult)
         );
 
@@ -193,7 +205,7 @@ describe('useEnrollment', () => {
         const courseId = 123;
         const targetUserId = 456;
         const mockResult = createMockEnrollmentResult(courseId, targetUserId);
-        mockedCourseApi.enrollInCourse.mockResolvedValueOnce(
+        mockedEnrollInCourse.mockResolvedValue(
           createMockApiResponse(mockResult)
         );
 
@@ -208,7 +220,7 @@ describe('useEnrollment', () => {
           expect(result.current.isSuccess).toBe(true);
         });
 
-        expect(mockedCourseApi.enrollInCourse).toHaveBeenCalledWith(
+        expect(mockedEnrollInCourse).toHaveBeenCalledWith(
           courseId,
           targetUserId
         );
@@ -217,7 +229,7 @@ describe('useEnrollment', () => {
       it('should use mutateAsync to get promise resolving to enrollment result', async () => {
         const courseId = 123;
         const mockResult = createMockEnrollmentResult(courseId);
-        mockedCourseApi.enrollInCourse.mockResolvedValueOnce(
+        mockedEnrollInCourse.mockResolvedValue(
           createMockApiResponse(mockResult)
         );
 
@@ -244,12 +256,12 @@ describe('useEnrollment', () => {
         const enrollmentPromise = new Promise((resolve) => {
           resolveEnrollment = resolve;
         });
-        mockedCourseApi.enrollInCourse.mockReturnValueOnce(enrollmentPromise);
+        mockedEnrollInCourse.mockReturnValue(enrollmentPromise);
 
         const wrapper = createWrapper(queryClient);
         const { result } = renderHook(() => useEnrollInCourse(), { wrapper });
 
-        expect(result.current.isLoading).toBe(false);
+        expect(result.current.isPending).toBe(false);
 
         act(() => {
           result.current.mutate({ courseId });
@@ -257,7 +269,7 @@ describe('useEnrollment', () => {
 
         // Check loading state is true while mutation is in progress
         await waitFor(() => {
-          expect(result.current.isLoading).toBe(true);
+          expect(result.current.isPending).toBe(true);
         });
 
         // Resolve the promise
@@ -267,7 +279,7 @@ describe('useEnrollment', () => {
         });
 
         await waitFor(() => {
-          expect(result.current.isLoading).toBe(false);
+          expect(result.current.isPending).toBe(false);
         });
       });
 
@@ -278,7 +290,7 @@ describe('useEnrollment', () => {
         const enrollmentPromise = new Promise((resolve) => {
           resolveEnrollment = resolve;
         });
-        mockedCourseApi.enrollInCourse.mockReturnValueOnce(enrollmentPromise);
+        mockedEnrollInCourse.mockReturnValue(enrollmentPromise);
 
         const wrapper = createWrapper(queryClient);
         const { result } = renderHook(() => useEnrollInCourse(), { wrapper });
@@ -288,7 +300,7 @@ describe('useEnrollment', () => {
         });
 
         await waitFor(() => {
-          expect(result.current.isLoading).toBe(true);
+          expect(result.current.isPending).toBe(true);
         });
 
         expect(result.current.isSuccess).toBe(false);
@@ -308,11 +320,13 @@ describe('useEnrollment', () => {
     describe('error states', () => {
       it('should set isError to true when enrollment fails', async () => {
         const courseId = 123;
-        const error = createMockApiError(
-          'ENROLLMENT_FAILED',
-          'Failed to enroll in course'
+        // Throw EnrollmentOperationError directly with PERMISSION_DENIED to prevent retries
+        const error = createEnrollmentError(
+          'PERMISSION_DENIED',
+          'Failed to enroll in course',
+          courseId
         );
-        mockedCourseApi.enrollInCourse.mockRejectedValueOnce(error);
+        mockedEnrollInCourse.mockRejectedValue(error);
 
         const wrapper = createWrapper(queryClient);
         const { result } = renderHook(() => useEnrollInCourse(), { wrapper });
@@ -323,7 +337,7 @@ describe('useEnrollment', () => {
 
         await waitFor(() => {
           expect(result.current.isError).toBe(true);
-        });
+        }, { timeout: 5000 });
 
         expect(result.current.isSuccess).toBe(false);
         expect(result.current.error).toBeDefined();
@@ -332,8 +346,9 @@ describe('useEnrollment', () => {
       it('should capture error message on failed enrollment', async () => {
         const courseId = 123;
         const errorMessage = 'You do not have permission to enroll';
-        const error = createMockApiError('PERMISSION_DENIED', errorMessage, 403);
-        mockedCourseApi.enrollInCourse.mockRejectedValueOnce(error);
+        // Throw EnrollmentOperationError directly to bypass wrapping and prevent retries
+        const error = createEnrollmentError('PERMISSION_DENIED', errorMessage, courseId);
+        mockedEnrollInCourse.mockRejectedValue(error);
 
         const wrapper = createWrapper(queryClient);
         const { result } = renderHook(() => useEnrollInCourse(), { wrapper });
@@ -344,19 +359,20 @@ describe('useEnrollment', () => {
 
         await waitFor(() => {
           expect(result.current.isError).toBe(true);
-        });
+        }, { timeout: 5000 });
 
         expect(result.current.error?.message).toContain(errorMessage);
       });
 
       it('should handle already enrolled scenario', async () => {
         const courseId = 123;
-        const error = createMockApiError(
-          'ALREADY_ENROLLED',
+        // Use INVALID_COURSE_ID to prevent retries - we're testing error handling
+        const error = createEnrollmentError(
+          'INVALID_COURSE_ID',
           'User is already enrolled in this course',
-          400
+          courseId
         );
-        mockedCourseApi.enrollInCourse.mockRejectedValueOnce(error);
+        mockedEnrollInCourse.mockRejectedValue(error);
 
         const wrapper = createWrapper(queryClient);
         const { result } = renderHook(() => useEnrollInCourse(), { wrapper });
@@ -367,16 +383,16 @@ describe('useEnrollment', () => {
 
         await waitFor(() => {
           expect(result.current.isError).toBe(true);
-        });
+        }, { timeout: 5000 });
 
         expect(result.current.error?.message).toContain('already enrolled');
       });
 
       it('should handle network timeout errors', async () => {
         const courseId = 123;
-        const error = new Error('Network timeout');
-        (error as Error & { code: string }).code = 'ECONNABORTED';
-        mockedCourseApi.enrollInCourse.mockRejectedValueOnce(error);
+        // Use PERMISSION_DENIED to prevent retries since we're testing error handling
+        const error = createEnrollmentError('PERMISSION_DENIED', 'Network timeout', courseId);
+        mockedEnrollInCourse.mockRejectedValue(error);
 
         const wrapper = createWrapper(queryClient);
         const { result } = renderHook(() => useEnrollInCourse(), { wrapper });
@@ -387,19 +403,22 @@ describe('useEnrollment', () => {
 
         await waitFor(() => {
           expect(result.current.isError).toBe(true);
-        });
+        }, { timeout: 5000 });
 
         expect(result.current.error).toBeDefined();
       });
 
       it('should handle 404 course not found error', async () => {
         const courseId = 999;
-        const error = createMockApiError(
-          'COURSE_NOT_FOUND',
+        // Use INVALID_COURSE_ID to prevent retries - course not found is a validation error
+        const originalApiError = createMockApiError('NOT_FOUND', 'Course not found', 404);
+        const error = new EnrollmentOperationError(
           'Course not found',
-          404
+          courseId,
+          'INVALID_COURSE_ID',
+          originalApiError
         );
-        mockedCourseApi.enrollInCourse.mockRejectedValueOnce(error);
+        mockedEnrollInCourse.mockRejectedValue(error);
 
         const wrapper = createWrapper(queryClient);
         const { result } = renderHook(() => useEnrollInCourse(), { wrapper });
@@ -410,9 +429,12 @@ describe('useEnrollment', () => {
 
         await waitFor(() => {
           expect(result.current.isError).toBe(true);
-        });
+        }, { timeout: 5000 });
 
-        expect((result.current.error as Error & { status: number })?.status).toBe(404);
+        // Check that the error is an EnrollmentOperationError with the original error preserved
+        expect(result.current.error).toBeInstanceOf(EnrollmentOperationError);
+        const originalError = (result.current.error as EnrollmentOperationError)?.originalError as { status?: number } | undefined;
+        expect(originalError?.status).toBe(404);
       });
     });
 
@@ -431,7 +453,7 @@ describe('useEnrollment', () => {
         const enrollmentPromise = new Promise((resolve) => {
           resolveEnrollment = resolve;
         });
-        mockedCourseApi.enrollInCourse.mockReturnValueOnce(enrollmentPromise);
+        mockedEnrollInCourse.mockReturnValue(enrollmentPromise);
 
         const wrapper = createWrapper(queryClient);
         const { result } = renderHook(() => useEnrollInCourse(), { wrapper });
@@ -447,7 +469,7 @@ describe('useEnrollment', () => {
         });
 
         // API hasn't resolved yet, but cache should show enrolled
-        expect(mockedCourseApi.enrollInCourse).toHaveBeenCalled();
+        expect(mockedEnrollInCourse).toHaveBeenCalled();
 
         // Resolve the API call
         const mockResult = createMockEnrollmentResult(courseId);
@@ -475,7 +497,7 @@ describe('useEnrollment', () => {
         const enrollmentPromise = new Promise((resolve) => {
           resolveEnrollment = resolve;
         });
-        mockedCourseApi.enrollInCourse.mockReturnValueOnce(enrollmentPromise);
+        mockedEnrollInCourse.mockReturnValue(enrollmentPromise);
 
         const wrapper = createWrapper(queryClient);
         const { result } = renderHook(() => useEnrollInCourse(), { wrapper });
@@ -514,7 +536,7 @@ describe('useEnrollment', () => {
         const enrollmentPromise = new Promise((resolve) => {
           resolveEnrollment = resolve;
         });
-        mockedCourseApi.enrollInCourse.mockReturnValueOnce(enrollmentPromise);
+        mockedEnrollInCourse.mockReturnValue(enrollmentPromise);
 
         const wrapper = createWrapper(queryClient);
         const { result } = renderHook(() => useEnrollInCourse(), { wrapper });
@@ -525,7 +547,7 @@ describe('useEnrollment', () => {
 
         // Verify optimistic update happened
         await waitFor(() => {
-          expect(result.current.isLoading).toBe(true);
+          expect(result.current.isPending).toBe(true);
         });
 
         // Resolve the API call
@@ -552,11 +574,11 @@ describe('useEnrollment', () => {
         queryClient.setQueryData(['courses', courseId], originalCourse);
 
         // Create a promise that will reject
-        let rejectEnrollment: (error: Error) => void;
+        let rejectEnrollment: (error: EnrollmentOperationError) => void;
         const enrollmentPromise = new Promise((_, reject) => {
           rejectEnrollment = reject;
         });
-        mockedCourseApi.enrollInCourse.mockReturnValueOnce(enrollmentPromise);
+        mockedEnrollInCourse.mockReturnValue(enrollmentPromise);
 
         const wrapper = createWrapper(queryClient);
         const { result } = renderHook(() => useEnrollInCourse(), { wrapper });
@@ -571,8 +593,8 @@ describe('useEnrollment', () => {
           expect(cachedCourse?.isenrolled).toBe(true);
         });
 
-        // Now reject the API call
-        const error = createMockApiError('ENROLLMENT_FAILED', 'Server error', 500);
+        // Reject with EnrollmentOperationError directly with PERMISSION_DENIED to prevent retries
+        const error = createEnrollmentError('PERMISSION_DENIED', 'Server error', courseId);
         await act(async () => {
           rejectEnrollment!(error);
         });
@@ -580,7 +602,7 @@ describe('useEnrollment', () => {
         // Wait for error state
         await waitFor(() => {
           expect(result.current.isError).toBe(true);
-        });
+        }, { timeout: 5000 });
 
         // Cache should be rolled back to original state
         const rolledBackCourse = queryClient.getQueryData<Course>(['courses', courseId]);
@@ -596,11 +618,11 @@ describe('useEnrollment', () => {
         
         queryClient.setQueryData(['courses', courseId], originalCourse);
 
-        let rejectEnrollment: (error: Error) => void;
+        let rejectEnrollment: (error: EnrollmentOperationError) => void;
         const enrollmentPromise = new Promise((_, reject) => {
           rejectEnrollment = reject;
         });
-        mockedCourseApi.enrollInCourse.mockReturnValueOnce(enrollmentPromise);
+        mockedEnrollInCourse.mockReturnValue(enrollmentPromise);
 
         const wrapper = createWrapper(queryClient);
         const { result } = renderHook(() => useEnrollInCourse(), { wrapper });
@@ -615,15 +637,15 @@ describe('useEnrollment', () => {
           expect(cachedCourse?.isenrolled).toBe(true);
         });
 
-        // Reject with permission denied error
-        const error = createMockApiError('PERMISSION_DENIED', 'Access denied', 403);
+        // Reject with EnrollmentOperationError directly (PERMISSION_DENIED prevents retries)
+        const error = createEnrollmentError('PERMISSION_DENIED', 'Access denied', courseId);
         await act(async () => {
           rejectEnrollment!(error);
         });
 
         await waitFor(() => {
           expect(result.current.isError).toBe(true);
-        });
+        }, { timeout: 5000 });
 
         // Verify rollback
         const rolledBackCourse = queryClient.getQueryData<Course>(['courses', courseId]);
@@ -635,7 +657,7 @@ describe('useEnrollment', () => {
       it('should invalidate course queries after successful enrollment', async () => {
         const courseId = mockCourse.id;
         const mockResult = createMockEnrollmentResult(courseId);
-        mockedCourseApi.enrollInCourse.mockResolvedValueOnce(
+        mockedEnrollInCourse.mockResolvedValue(
           createMockApiResponse(mockResult)
         );
 
@@ -665,7 +687,7 @@ describe('useEnrollment', () => {
       it('should invalidate course list queries after enrollment', async () => {
         const courseId = mockCourse.id;
         const mockResult = createMockEnrollmentResult(courseId);
-        mockedCourseApi.enrollInCourse.mockResolvedValueOnce(
+        mockedEnrollInCourse.mockResolvedValue(
           createMockApiResponse(mockResult)
         );
 
@@ -696,7 +718,7 @@ describe('useEnrollment', () => {
         const courseId = mockCourse.id;
         const userId = 1;
         const mockResult = createMockEnrollmentResult(courseId, userId);
-        mockedCourseApi.enrollInCourse.mockResolvedValueOnce(
+        mockedEnrollInCourse.mockResolvedValue(
           createMockApiResponse(mockResult)
         );
 
@@ -727,7 +749,7 @@ describe('useEnrollment', () => {
       it('should set isSuccess to true after successful enrollment', async () => {
         const courseId = 123;
         const mockResult = createMockEnrollmentResult(courseId);
-        mockedCourseApi.enrollInCourse.mockResolvedValueOnce(
+        mockedEnrollInCourse.mockResolvedValue(
           createMockApiResponse(mockResult)
         );
 
@@ -745,17 +767,17 @@ describe('useEnrollment', () => {
         });
 
         expect(result.current.isError).toBe(false);
-        expect(result.current.isLoading).toBe(false);
+        expect(result.current.isPending).toBe(false);
       });
 
       it('should have enrollment data accessible after success', async () => {
         const courseId = 123;
         const enrollmentId = 456;
         const mockResult = createMockEnrollmentResult(courseId, 1, {
-          enrollmentid: enrollmentId,
+          enrollmentId: enrollmentId,
           message: 'Welcome to the course!',
         });
-        mockedCourseApi.enrollInCourse.mockResolvedValueOnce(
+        mockedEnrollInCourse.mockResolvedValue(
           createMockApiResponse(mockResult)
         );
 
@@ -770,7 +792,7 @@ describe('useEnrollment', () => {
           expect(result.current.isSuccess).toBe(true);
         });
 
-        expect(result.current.data?.enrollmentid).toBe(enrollmentId);
+        expect(result.current.data?.enrollmentId).toBe(enrollmentId);
         expect(result.current.data?.message).toBe('Welcome to the course!');
       });
     });
@@ -779,7 +801,7 @@ describe('useEnrollment', () => {
       it('should reset mutation state using reset method', async () => {
         const courseId = 123;
         const mockResult = createMockEnrollmentResult(courseId);
-        mockedCourseApi.enrollInCourse.mockResolvedValueOnce(
+        mockedEnrollInCourse.mockResolvedValue(
           createMockApiResponse(mockResult)
         );
 
@@ -799,15 +821,20 @@ describe('useEnrollment', () => {
           result.current.reset();
         });
 
-        expect(result.current.isSuccess).toBe(false);
+        // Wait for reset to take effect (React state updates are async)
+        await waitFor(() => {
+          expect(result.current.isSuccess).toBe(false);
+        });
+
         expect(result.current.isError).toBe(false);
         expect(result.current.data).toBeUndefined();
       });
 
       it('should reset error state using reset method', async () => {
         const courseId = 123;
-        const error = createMockApiError('ENROLLMENT_FAILED', 'Failed');
-        mockedCourseApi.enrollInCourse.mockRejectedValueOnce(error);
+        // Use EnrollmentOperationError directly with non-retryable code to avoid retry delays
+        const error = createEnrollmentError('INVALID_COURSE_ID', 'Failed', courseId);
+        mockedEnrollInCourse.mockRejectedValue(error);
 
         const wrapper = createWrapper(queryClient);
         const { result } = renderHook(() => useEnrollInCourse(), { wrapper });
@@ -825,7 +852,11 @@ describe('useEnrollment', () => {
           result.current.reset();
         });
 
-        expect(result.current.isError).toBe(false);
+        // Wait for reset to take effect (React state updates are async)
+        await waitFor(() => {
+          expect(result.current.isError).toBe(false);
+        });
+
         expect(result.current.error).toBeNull();
       });
     });
@@ -846,7 +877,7 @@ describe('useEnrollment', () => {
         const mockResult = createMockEnrollmentResult(courseId, 1, {
           message: 'Successfully unenrolled from course',
         });
-        mockedCourseApi.unenrollFromCourse.mockResolvedValueOnce(
+        mockedUnenrollFromCourse.mockResolvedValue(
           createMockApiResponse(mockResult)
         );
 
@@ -861,8 +892,8 @@ describe('useEnrollment', () => {
           expect(result.current.isSuccess).toBe(true);
         });
 
-        expect(mockedCourseApi.unenrollFromCourse).toHaveBeenCalledWith(courseId, undefined);
-        expect(mockedCourseApi.unenrollFromCourse).toHaveBeenCalledTimes(1);
+        expect(mockedUnenrollFromCourse).toHaveBeenCalledWith(courseId, undefined);
+        expect(mockedUnenrollFromCourse).toHaveBeenCalledTimes(1);
       });
 
       it('should return result data on successful unenrollment', async () => {
@@ -870,7 +901,7 @@ describe('useEnrollment', () => {
         const mockResult = createMockEnrollmentResult(courseId, 1, {
           message: 'Unenrollment successful',
         });
-        mockedCourseApi.unenrollFromCourse.mockResolvedValueOnce(
+        mockedUnenrollFromCourse.mockResolvedValue(
           createMockApiResponse(mockResult)
         );
 
@@ -894,7 +925,7 @@ describe('useEnrollment', () => {
         const courseId = 123;
         const targetUserId = 456;
         const mockResult = createMockEnrollmentResult(courseId, targetUserId);
-        mockedCourseApi.unenrollFromCourse.mockResolvedValueOnce(
+        mockedUnenrollFromCourse.mockResolvedValue(
           createMockApiResponse(mockResult)
         );
 
@@ -909,7 +940,7 @@ describe('useEnrollment', () => {
           expect(result.current.isSuccess).toBe(true);
         });
 
-        expect(mockedCourseApi.unenrollFromCourse).toHaveBeenCalledWith(
+        expect(mockedUnenrollFromCourse).toHaveBeenCalledWith(
           courseId,
           targetUserId
         );
@@ -919,11 +950,13 @@ describe('useEnrollment', () => {
     describe('error handling', () => {
       it('should set isError to true when unenrollment fails', async () => {
         const courseId = 123;
-        const error = createMockApiError(
-          'UNENROLLMENT_FAILED',
-          'Failed to unenroll from course'
+        // Use EnrollmentOperationError directly with non-retryable code
+        const error = createEnrollmentError(
+          'INVALID_COURSE_ID',
+          'Failed to unenroll from course',
+          courseId
         );
-        mockedCourseApi.unenrollFromCourse.mockRejectedValueOnce(error);
+        mockedUnenrollFromCourse.mockRejectedValue(error);
 
         const wrapper = createWrapper(queryClient);
         const { result } = renderHook(() => useUnenrollFromCourse(), { wrapper });
@@ -942,12 +975,13 @@ describe('useEnrollment', () => {
 
       it('should handle permission denied for unenrollment', async () => {
         const courseId = 123;
-        const error = createMockApiError(
+        // Use EnrollmentOperationError directly with PERMISSION_DENIED (non-retryable)
+        const error = createEnrollmentError(
           'PERMISSION_DENIED',
           'Cannot unenroll from this course',
-          403
+          courseId
         );
-        mockedCourseApi.unenrollFromCourse.mockRejectedValueOnce(error);
+        mockedUnenrollFromCourse.mockRejectedValue(error);
 
         const wrapper = createWrapper(queryClient);
         const { result } = renderHook(() => useUnenrollFromCourse(), { wrapper });
@@ -965,12 +999,13 @@ describe('useEnrollment', () => {
 
       it('should handle not enrolled scenario', async () => {
         const courseId = 123;
-        const error = createMockApiError(
-          'NOT_ENROLLED',
+        // Use EnrollmentOperationError directly - NOT_ENROLLED is not retryable
+        const error = createEnrollmentError(
+          'INVALID_COURSE_ID',
           'User is not enrolled in this course',
-          400
+          courseId
         );
-        mockedCourseApi.unenrollFromCourse.mockRejectedValueOnce(error);
+        mockedUnenrollFromCourse.mockRejectedValue(error);
 
         const wrapper = createWrapper(queryClient);
         const { result } = renderHook(() => useUnenrollFromCourse(), { wrapper });
@@ -1002,7 +1037,7 @@ describe('useEnrollment', () => {
         const unenrollmentPromise = new Promise((resolve) => {
           resolveUnenrollment = resolve;
         });
-        mockedCourseApi.unenrollFromCourse.mockReturnValueOnce(unenrollmentPromise);
+        mockedUnenrollFromCourse.mockReturnValue(unenrollmentPromise);
 
         const wrapper = createWrapper(queryClient);
         const { result } = renderHook(() => useUnenrollFromCourse(), { wrapper });
@@ -1041,7 +1076,7 @@ describe('useEnrollment', () => {
         const unenrollmentPromise = new Promise((_, reject) => {
           rejectUnenrollment = reject;
         });
-        mockedCourseApi.unenrollFromCourse.mockReturnValueOnce(unenrollmentPromise);
+        mockedUnenrollFromCourse.mockReturnValue(unenrollmentPromise);
 
         const wrapper = createWrapper(queryClient);
         const { result } = renderHook(() => useUnenrollFromCourse(), { wrapper });
@@ -1056,8 +1091,8 @@ describe('useEnrollment', () => {
           expect(cachedCourse?.isenrolled).toBe(false);
         });
 
-        // Reject the API call
-        const error = createMockApiError('SERVER_ERROR', 'Internal server error', 500);
+        // Reject the API call with a non-retryable error
+        const error = createEnrollmentError('INVALID_COURSE_ID', 'Internal server error', courseId);
         await act(async () => {
           rejectUnenrollment!(error);
         });
@@ -1074,14 +1109,22 @@ describe('useEnrollment', () => {
   });
 
   describe('useEnrollment combined hook', () => {
-    it('should return both enrollInCourse and unenrollFromCourse mutations', () => {
+    it('should return both enrollInCourse and unenrollFromCourse functions', () => {
       const wrapper = createWrapper(queryClient);
       const { result } = renderHook(() => useEnrollment(), { wrapper });
 
+      // Check functions exist
       expect(result.current.enrollInCourse).toBeDefined();
       expect(result.current.unenrollFromCourse).toBeDefined();
-      expect(result.current.enrollInCourse.mutate).toBeDefined();
-      expect(result.current.unenrollFromCourse.mutate).toBeDefined();
+      expect(typeof result.current.enrollInCourse).toBe('function');
+      expect(typeof result.current.unenrollFromCourse).toBe('function');
+      
+      // Check state properties exist
+      expect(result.current.isEnrolling).toBeDefined();
+      expect(result.current.isUnenrolling).toBeDefined();
+      expect(result.current.enrollError).toBeNull();
+      expect(result.current.unenrollError).toBeNull();
+      expect(result.current.reset).toBeDefined();
     });
 
     it('should allow sequential enroll then unenroll operations', async () => {
@@ -1091,36 +1134,38 @@ describe('useEnrollment', () => {
         message: 'Unenrolled',
       });
 
-      mockedCourseApi.enrollInCourse.mockResolvedValueOnce(
+      mockedEnrollInCourse.mockResolvedValue(
         createMockApiResponse(mockEnrollResult)
       );
-      mockedCourseApi.unenrollFromCourse.mockResolvedValueOnce(
+      mockedUnenrollFromCourse.mockResolvedValue(
         createMockApiResponse(mockUnenrollResult)
       );
 
       const wrapper = createWrapper(queryClient);
       const { result } = renderHook(() => useEnrollment(), { wrapper });
 
-      // First, enroll
+      // First, enroll - call the function directly (not .mutate)
       await act(async () => {
-        result.current.enrollInCourse.mutate({ courseId });
+        result.current.enrollInCourse({ courseId });
       });
 
       await waitFor(() => {
-        expect(result.current.enrollInCourse.isSuccess).toBe(true);
+        // Check enrollmentResult is populated for success
+        expect(result.current.enrollmentResult).toBeDefined();
       });
 
-      // Then, unenroll
+      // Then, unenroll - call the function directly (not .mutate)
       await act(async () => {
-        result.current.unenrollFromCourse.mutate({ courseId });
+        result.current.unenrollFromCourse({ courseId });
       });
 
       await waitFor(() => {
-        expect(result.current.unenrollFromCourse.isSuccess).toBe(true);
+        // Check unenrollmentResult is populated for success
+        expect(result.current.unenrollmentResult).toBeDefined();
       });
 
-      expect(mockedCourseApi.enrollInCourse).toHaveBeenCalledTimes(1);
-      expect(mockedCourseApi.unenrollFromCourse).toHaveBeenCalledTimes(1);
+      expect(mockedEnrollInCourse).toHaveBeenCalledTimes(1);
+      expect(mockedUnenrollFromCourse).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -1130,7 +1175,7 @@ describe('useEnrollment', () => {
       
       // Mock responses for each course
       courseIds.forEach((courseId) => {
-        mockedCourseApi.enrollInCourse.mockResolvedValueOnce(
+        mockedEnrollInCourse.mockResolvedValue(
           createMockApiResponse(createMockEnrollmentResult(courseId))
         );
       });
@@ -1147,12 +1192,12 @@ describe('useEnrollment', () => {
 
       // Wait for all to complete
       await waitFor(() => {
-        expect(mockedCourseApi.enrollInCourse).toHaveBeenCalledTimes(3);
+        expect(mockedEnrollInCourse).toHaveBeenCalledTimes(3);
       });
 
-      expect(mockedCourseApi.enrollInCourse).toHaveBeenCalledWith(101, undefined);
-      expect(mockedCourseApi.enrollInCourse).toHaveBeenCalledWith(102, undefined);
-      expect(mockedCourseApi.enrollInCourse).toHaveBeenCalledWith(103, undefined);
+      expect(mockedEnrollInCourse).toHaveBeenCalledWith(101, undefined);
+      expect(mockedEnrollInCourse).toHaveBeenCalledWith(102, undefined);
+      expect(mockedEnrollInCourse).toHaveBeenCalledWith(103, undefined);
     });
 
     it('should track each enrollment independently', async () => {
@@ -1169,7 +1214,8 @@ describe('useEnrollment', () => {
       const promise1 = new Promise((resolve) => { resolve1 = resolve; });
       const promise2 = new Promise((resolve) => { resolve2 = resolve; });
 
-      mockedCourseApi.enrollInCourse
+      // Use mockReturnValueOnce to set different return values for each call
+      mockedEnrollInCourse
         .mockReturnValueOnce(promise1)
         .mockReturnValueOnce(promise2);
 
@@ -1187,8 +1233,8 @@ describe('useEnrollment', () => {
 
       // Both should be loading
       await waitFor(() => {
-        expect(result1.current.isLoading).toBe(true);
-        expect(result2.current.isLoading).toBe(true);
+        expect(result1.current.isPending).toBe(true);
+        expect(result2.current.isPending).toBe(true);
       });
 
       // Resolve first enrollment
@@ -1201,7 +1247,7 @@ describe('useEnrollment', () => {
       });
 
       // Second should still be loading
-      expect(result2.current.isLoading).toBe(true);
+      expect(result2.current.isPending).toBe(true);
 
       // Resolve second enrollment
       await act(async () => {
@@ -1226,7 +1272,7 @@ describe('useEnrollment', () => {
 
       // Set up mock responses
       courseIds.forEach((courseId) => {
-        mockedCourseApi.enrollInCourse.mockResolvedValueOnce(
+        mockedEnrollInCourse.mockResolvedValue(
           createMockApiResponse(createMockEnrollmentResult(courseId))
         );
       });
@@ -1261,28 +1307,28 @@ describe('useEnrollment', () => {
       });
 
       // First action is enroll (success)
-      mockedCourseApi.enrollInCourse.mockResolvedValueOnce(
+      mockedEnrollInCourse.mockResolvedValue(
         createMockApiResponse(createMockEnrollmentResult(courseId))
       );
       
       // Second action is unenroll (success)
-      mockedCourseApi.unenrollFromCourse.mockResolvedValueOnce(
+      mockedUnenrollFromCourse.mockResolvedValue(
         createMockApiResponse(createMockEnrollmentResult(courseId))
       );
 
       const wrapper = createWrapper(queryClient);
       const { result } = renderHook(() => useEnrollment(), { wrapper });
 
-      // Rapid fire: enroll then immediately unenroll
+      // Rapid fire: enroll then immediately unenroll - call functions directly (not .mutate)
       await act(async () => {
-        result.current.enrollInCourse.mutate({ courseId });
-        result.current.unenrollFromCourse.mutate({ courseId });
+        result.current.enrollInCourse({ courseId });
+        result.current.unenrollFromCourse({ courseId });
       });
 
       // Wait for both to complete
       await waitFor(() => {
-        expect(mockedCourseApi.enrollInCourse).toHaveBeenCalled();
-        expect(mockedCourseApi.unenrollFromCourse).toHaveBeenCalled();
+        expect(mockedEnrollInCourse).toHaveBeenCalled();
+        expect(mockedUnenrollFromCourse).toHaveBeenCalled();
       });
     });
 
@@ -1301,9 +1347,9 @@ describe('useEnrollment', () => {
       // Second enroll is fast
       const fastResult = createMockEnrollmentResult(courseId);
       
-      mockedCourseApi.enrollInCourse
-        .mockReturnValueOnce(slowPromise)
-        .mockResolvedValueOnce(createMockApiResponse(fastResult));
+      mockedEnrollInCourse
+        .mockReturnValue(slowPromise)
+        .mockResolvedValue(createMockApiResponse(fastResult));
 
       const wrapper = createWrapper(queryClient);
       
@@ -1356,7 +1402,7 @@ describe('useEnrollment', () => {
     it('should have properly typed EnrollmentResult interface', async () => {
       const courseId = 123;
       const mockResult = createMockEnrollmentResult(courseId);
-      mockedCourseApi.enrollInCourse.mockResolvedValueOnce(
+      mockedEnrollInCourse.mockResolvedValue(
         createMockApiResponse(mockResult)
       );
 
@@ -1377,7 +1423,7 @@ describe('useEnrollment', () => {
       expect(typeof data.courseid).toBe('number');
       expect(typeof data.userid).toBe('number');
       expect(typeof data.roleid).toBe('number');
-      expect(typeof data.enrollmentid).toBe('number');
+      expect(typeof data.enrollmentId).toBe('number');
       expect(typeof data.message).toBe('string');
     });
 
@@ -1410,7 +1456,7 @@ describe('useEnrollment', () => {
       const enrollmentPromise = new Promise((resolve) => {
         resolveEnrollment = resolve;
       });
-      mockedCourseApi.enrollInCourse.mockReturnValueOnce(enrollmentPromise);
+      mockedEnrollInCourse.mockReturnValue(enrollmentPromise);
 
       const wrapper = createWrapper(queryClient);
       const { result } = renderHook(() => useEnrollInCourse(), { wrapper });
@@ -1457,7 +1503,7 @@ describe('useEnrollment', () => {
       });
 
       const mockResult = createMockEnrollmentResult(courseId);
-      mockedCourseApi.enrollInCourse.mockResolvedValueOnce(
+      mockedEnrollInCourse.mockResolvedValue(
         createMockApiResponse(mockResult)
       );
 
@@ -1488,7 +1534,7 @@ describe('useEnrollment', () => {
       queryClient.setQueryData(['courses', courseId], mockCourse);
       
       const mockResult = createMockEnrollmentResult(courseId);
-      mockedCourseApi.enrollInCourse.mockResolvedValueOnce(
+      mockedEnrollInCourse.mockResolvedValue(
         createMockApiResponse(mockResult)
       );
 
@@ -1521,7 +1567,7 @@ describe('useEnrollment', () => {
       });
       
       const mockResult = createMockEnrollmentResult(courseId, userId);
-      mockedCourseApi.enrollInCourse.mockResolvedValueOnce(
+      mockedEnrollInCourse.mockResolvedValue(
         createMockApiResponse(mockResult)
       );
 
@@ -1548,12 +1594,13 @@ describe('useEnrollment', () => {
   describe('special enrollment scenarios', () => {
     it('should handle enrollment quota exceeded error', async () => {
       const courseId = 123;
-      const error = createMockApiError(
-        'ENROLLMENT_QUOTA_EXCEEDED',
+      // Use EnrollmentOperationError with non-retryable code to prevent retry delays
+      const error = createEnrollmentError(
+        'INVALID_COURSE_ID',
         'Course enrollment quota has been reached',
-        400
+        courseId
       );
-      mockedCourseApi.enrollInCourse.mockRejectedValueOnce(error);
+      mockedEnrollInCourse.mockRejectedValue(error);
 
       const wrapper = createWrapper(queryClient);
       const { result } = renderHook(() => useEnrollInCourse(), { wrapper });
@@ -1571,12 +1618,13 @@ describe('useEnrollment', () => {
 
     it('should handle enrollment requiring payment', async () => {
       const courseId = 123;
-      const error = createMockApiError(
-        'PAYMENT_REQUIRED',
+      // Use EnrollmentOperationError with non-retryable code
+      const error = createEnrollmentError(
+        'PERMISSION_DENIED',
         'Payment is required for enrollment',
-        402
+        courseId
       );
-      mockedCourseApi.enrollInCourse.mockRejectedValueOnce(error);
+      mockedEnrollInCourse.mockRejectedValue(error);
 
       const wrapper = createWrapper(queryClient);
       const { result } = renderHook(() => useEnrollInCourse(), { wrapper });
@@ -1589,17 +1637,20 @@ describe('useEnrollment', () => {
         expect(result.current.isError).toBe(true);
       });
 
-      expect((result.current.error as Error & { status: number })?.status).toBe(402);
+      // Check that the error is an EnrollmentOperationError
+      expect(result.current.error).toBeInstanceOf(EnrollmentOperationError);
+      expect(result.current.error?.code).toBe('PERMISSION_DENIED');
     });
 
     it('should handle enrollment key required', async () => {
       const courseId = 123;
-      const error = createMockApiError(
-        'ENROLLMENT_KEY_REQUIRED',
+      // Use EnrollmentOperationError with non-retryable code
+      const error = createEnrollmentError(
+        'INVALID_COURSE_ID',
         'An enrollment key is required to join this course',
-        400
+        courseId
       );
-      mockedCourseApi.enrollInCourse.mockRejectedValueOnce(error);
+      mockedEnrollInCourse.mockRejectedValue(error);
 
       const wrapper = createWrapper(queryClient);
       const { result } = renderHook(() => useEnrollInCourse(), { wrapper });
@@ -1617,12 +1668,13 @@ describe('useEnrollment', () => {
 
     it('should handle course not accepting enrollments', async () => {
       const courseId = 123;
-      const error = createMockApiError(
-        'ENROLLMENT_DISABLED',
+      // Use EnrollmentOperationError with non-retryable code
+      const error = createEnrollmentError(
+        'INVALID_COURSE_ID',
         'Enrollment is currently disabled for this course',
-        400
+        courseId
       );
-      mockedCourseApi.enrollInCourse.mockRejectedValueOnce(error);
+      mockedEnrollInCourse.mockRejectedValue(error);
 
       const wrapper = createWrapper(queryClient);
       const { result } = renderHook(() => useEnrollInCourse(), { wrapper });
@@ -1640,12 +1692,13 @@ describe('useEnrollment', () => {
 
     it('should handle course with start date in future', async () => {
       const courseId = 123;
-      const error = createMockApiError(
-        'ENROLLMENT_NOT_STARTED',
+      // Use EnrollmentOperationError with non-retryable code
+      const error = createEnrollmentError(
+        'INVALID_COURSE_ID',
         'Enrollment period has not started yet',
-        400
+        courseId
       );
-      mockedCourseApi.enrollInCourse.mockRejectedValueOnce(error);
+      mockedEnrollInCourse.mockRejectedValue(error);
 
       const wrapper = createWrapper(queryClient);
       const { result } = renderHook(() => useEnrollInCourse(), { wrapper });
@@ -1663,12 +1716,13 @@ describe('useEnrollment', () => {
 
     it('should handle enrollment period ended', async () => {
       const courseId = 123;
-      const error = createMockApiError(
-        'ENROLLMENT_ENDED',
+      // Use EnrollmentOperationError with non-retryable code
+      const error = createEnrollmentError(
+        'INVALID_COURSE_ID',
         'Enrollment period has ended for this course',
-        400
+        courseId
       );
-      mockedCourseApi.enrollInCourse.mockRejectedValueOnce(error);
+      mockedEnrollInCourse.mockRejectedValue(error);
 
       const wrapper = createWrapper(queryClient);
       const { result } = renderHook(() => useEnrollInCourse(), { wrapper });

@@ -141,7 +141,7 @@ export function createTestQueryClient(): QueryClient {
     defaultOptions: {
       queries: {
         retry: false,
-        gcTime: 0,
+        gcTime: 1000 * 60 * 5, // Keep cache for 5 minutes to allow optimistic update testing
         staleTime: 0,
         networkMode: 'always', // Execute queries even in test environment without network
         refetchOnMount: true, // Always refetch on mount

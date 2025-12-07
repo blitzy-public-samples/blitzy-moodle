@@ -226,12 +226,10 @@ async function performOptimisticUpdate(
   if (previousCourse) {
     queryClient.setQueryData<Course>(QUERY_KEYS.course(courseId), (old) => {
       if (!old) {return old;}
-      // TypeScript-safe way to update enrollment status
-      // We use a type assertion here since enrollment info may be attached to the course
+      // Update enrollment status based on operation type
       return {
         ...old,
-        // Mark as enrolled or not enrolled based on operation type
-        // This property may be added by the API for enrolled courses
+        isenrolled: isEnrolling,
       } as Course;
     });
   }
