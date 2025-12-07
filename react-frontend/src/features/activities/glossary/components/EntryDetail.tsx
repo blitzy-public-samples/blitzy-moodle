@@ -166,7 +166,9 @@ const AttachmentItem: React.FC<AttachmentItemProps> = ({
    * Format file size for human-readable display
    */
   const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 B';
+    if (bytes === 0) {
+      return '0 B';
+    }
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -481,12 +483,16 @@ export const EntryDetail: React.FC<EntryDetailProps> = ({
    * Moodle timestamps are in seconds, so we multiply by 1000 for JavaScript.
    */
   const formattedCreatedDate = useMemo(() => {
-    if (!entry.timecreated) return null;
+    if (!entry.timecreated) {
+      return null;
+    }
     return formatDate(entry.timecreated * 1000, 'PPP');
   }, [entry.timecreated]);
 
   const formattedModifiedDate = useMemo(() => {
-    if (!entry.timemodified) return null;
+    if (!entry.timemodified) {
+      return null;
+    }
     return formatDate(entry.timemodified * 1000, 'PPP');
   }, [entry.timemodified]);
 
@@ -494,12 +500,16 @@ export const EntryDetail: React.FC<EntryDetailProps> = ({
    * Tooltip content for dates showing precise timestamp
    */
   const createdDateTooltip = useMemo(() => {
-    if (!entry.timecreated) return '';
+    if (!entry.timecreated) {
+      return '';
+    }
     return formatDate(entry.timecreated * 1000, 'PPPPpppp');
   }, [entry.timecreated]);
 
   const modifiedDateTooltip = useMemo(() => {
-    if (!entry.timemodified) return '';
+    if (!entry.timemodified) {
+      return '';
+    }
     return formatDate(entry.timemodified * 1000, 'PPPPpppp');
   }, [entry.timemodified]);
 
@@ -647,7 +657,9 @@ export const EntryDetail: React.FC<EntryDetailProps> = ({
    * Render the attachments section
    */
   const renderAttachments = () => {
-    if (!hasAttachments) return null;
+    if (!hasAttachments) {
+      return null;
+    }
 
     return (
       <Box sx={{ mt: 3 }}>
@@ -680,7 +692,9 @@ export const EntryDetail: React.FC<EntryDetailProps> = ({
    * Render the aliases section
    */
   const renderAliases = () => {
-    if (!hasAliases) return null;
+    if (!hasAliases) {
+      return null;
+    }
 
     return (
       <Box sx={{ mt: 3 }}>
