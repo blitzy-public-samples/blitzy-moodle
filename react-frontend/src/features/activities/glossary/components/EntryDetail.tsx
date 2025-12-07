@@ -471,6 +471,12 @@ export const EntryDetail: React.FC<EntryDetailProps> = ({
   className,
 }) => {
   /**
+   * Determine if we're in search result display mode.
+   * In search mode, we show a slightly different header indicating
+   * the entry was found via concept search rather than direct navigation.
+   */
+  const isSearchMode = displayMode === 'search';
+  /**
    * Format timestamps to display dates with human-readable format.
    * Moodle timestamps are in seconds, so we multiply by 1000 for JavaScript.
    */
@@ -532,6 +538,15 @@ export const EntryDetail: React.FC<EntryDetailProps> = ({
             {entry.concept}
           </Typography>
           <ApprovalStatus approved={entry.approved} />
+          {isSearchMode && (
+            <Chip
+              label="Search Result"
+              size="small"
+              variant="outlined"
+              color="info"
+              sx={{ ml: 1 }}
+            />
+          )}
         </Box>
       }
       subheader={
