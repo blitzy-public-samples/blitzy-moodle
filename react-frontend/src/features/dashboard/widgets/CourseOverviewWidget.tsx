@@ -647,7 +647,9 @@ const CourseOverviewWidget: React.FC = () => {
    * Get paginated courses for display
    */
   const displayedCourses = useMemo(() => {
-    if (!courseData?.courses) return [];
+    if (!courseData?.courses) {
+      return [];
+    }
     return courseData.courses.slice(pagination.startIndex, pagination.endIndex);
   }, [courseData?.courses, pagination.startIndex, pagination.endIndex]);
 
@@ -940,7 +942,7 @@ const CourseOverviewWidget: React.FC = () => {
           {preferences.view === 'card' ? (
             <Grid container spacing={2}>
               {displayedCourses.map((course) => (
-                <Grid item {...gridColumns} key={course.id}>
+                <Grid key={course.id} item {...gridColumns}>
                   <CourseCard course={course} viewMode={preferences.view} />
                 </Grid>
               ))}

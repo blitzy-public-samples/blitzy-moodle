@@ -67,9 +67,7 @@ import {
 } from '@/features/dashboard/api/dashboardApi';
 import type {
   DashboardData,
-  Widget,
   WidgetConfig,
-  BlockType,
   UserRole,
 } from '@/features/dashboard/types/dashboard.types';
 
@@ -380,10 +378,14 @@ export default function useDashboard(): DashboardHookReturn {
   const userId = user?.id ?? 0;
 
   // Determine user's primary role and layout
-  const userRoles = user?.roles ?? [];
+  // Extract role shortnames from Role objects for role matching
+  const userRoleShortnames = useMemo(
+    () => (user?.roles ?? []).map((role) => role.shortname),
+    [user?.roles]
+  );
   const primaryRole = useMemo(
-    () => getPrimaryRole(userRoles),
-    [userRoles]
+    () => getPrimaryRole(userRoleShortnames),
+    [userRoleShortnames]
   );
 
   const layout = useMemo(
@@ -651,7 +653,9 @@ export default function useDashboard(): DashboardHookReturn {
       queryClient.setQueryData<DashboardData>(
         dashboardQueryKeys.dashboard(userId),
         (oldData) => {
-          if (!oldData) return oldData;
+          if (!oldData) {
+            return oldData;
+          }
 
           return {
             ...oldData,
@@ -710,7 +714,9 @@ export default function useDashboard(): DashboardHookReturn {
       queryClient.setQueryData<DashboardData>(
         dashboardQueryKeys.dashboard(userId),
         (oldData) => {
-          if (!oldData) return oldData;
+          if (!oldData) {
+            return oldData;
+          }
 
           return {
             ...oldData,
