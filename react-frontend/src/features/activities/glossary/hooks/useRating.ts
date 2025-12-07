@@ -191,11 +191,14 @@ export function useEntryRatings(
     placeholderData: (previousData) => previousData,
     // Retry failed requests up to 3 times with exponential backoff
     retry: (failureCount, error) => {
-      // Don't retry on permission errors or validation errors
+      // Don't retry on permission errors, validation errors, or known server errors
+      // NETWORK_ERROR is used for 500/503 errors - don't retry as it burdens the server
       if (
         error.code === 'PERMISSION_DENIED' ||
         error.code === 'ENTRY_NOT_FOUND' ||
-        error.code === 'RATING_DISABLED'
+        error.code === 'RATING_DISABLED' ||
+        error.code === 'NETWORK_ERROR' ||
+        error.code === 'UNKNOWN_ERROR'
       ) {
         return false;
       }
@@ -347,12 +350,26 @@ export function useRateEntry(
     // Retry configuration for mutations
     retry: (failureCount, error) => {
       // Don't retry on validation or permission errors
+      // IMPORTANT: Check customError.code FIRST (from API interceptor), then fall back to
+      // error.code. The error.code is the Axios code (ERR_BAD_REQUEST), while customError.code
+      // contains the actual API error code (PERMISSION_DENIED, RATING_DISABLED, etc.)
+      const errorCode =
+        (error as unknown as { customError?: { code?: string } }).customError?.code ||
+        error.code;
+      
       if (
-        error.code === 'PERMISSION_DENIED' ||
-        error.code === 'INVALID_RATING' ||
-        error.code === 'OUT_OF_SCALE' ||
-        error.code === 'OWN_ENTRY' ||
-        error.code === 'RATING_DISABLED'
+        errorCode === 'PERMISSION_DENIED' ||
+        errorCode === 'INVALID_RATING' ||
+        errorCode === 'OUT_OF_SCALE' ||
+        errorCode === 'OWN_ENTRY' ||
+        errorCode === 'RATING_DISABLED' ||
+        errorCode === 'ENTRY_NOT_FOUND' ||
+        errorCode === 'RATING_DISABLED' ||
+        errorCode === 'FORBIDDEN' ||
+        errorCode === 'ACCESS_DENIED' ||
+        errorCode === 'NOT_FOUND' ||
+        errorCode === 'NETWORK_ERROR' ||
+        errorCode === 'UNKNOWN_ERROR'
       ) {
         return false;
       }
@@ -463,8 +480,49 @@ function transformToRatingError(error: unknown): RatingError {
     return error;
   }
 
-  // Handle standard Error objects
+  // Handle standard Error objects (including SerializableError with data property)
   if (error instanceof Error) {
+    // Check if error has attached data property (SerializableError from API interceptor)
+    const errorWithData = error as Error & {
+      data?: { success?: boolean; error?: { code?: string; message?: string; details?: unknown } };
+      status?: number;
+      code?: string;
+    };
+
+    // First, check for server error data attached directly to the error
+    if (errorWithData.data?.error) {
+      const serverError = errorWithData.data.error;
+      const ratingError: RatingError = new Error(
+        serverError.message || error.message || 'Rating operation failed'
+      );
+      ratingError.code = mapServerErrorCode(serverError.code);
+
+      if (serverError.details) {
+        ratingError.details = serverError.details as RatingError['details'];
+      }
+
+      return ratingError;
+    }
+
+    // Check for HTTP status code on the error object
+    if (errorWithData.status) {
+      const ratingError: RatingError = new Error(
+        getErrorMessageForStatus(errorWithData.status)
+      );
+      ratingError.code = mapHttpStatusToCode(errorWithData.status);
+      return ratingError;
+    }
+
+    // Check for network errors by code
+    if (errorWithData.code === 'ERR_NETWORK' || errorWithData.code === 'ECONNABORTED') {
+      const ratingError: RatingError = new Error(
+        'Network error. Please check your connection.'
+      );
+      ratingError.code = 'NETWORK_ERROR';
+      return ratingError;
+    }
+
+    // Fallback to message-based mapping
     const ratingError: RatingError = new Error(error.message);
     ratingError.code = mapErrorMessageToCode(error.message);
     return ratingError;
@@ -522,11 +580,32 @@ function transformToRatingError(error: unknown): RatingError {
  * Type guard to check if an error is a RatingError
  */
 function isRatingError(error: unknown): error is RatingError {
-  return (
-    error instanceof Error &&
-    'code' in error &&
-    typeof (error as RatingError).code === 'string'
-  );
+  // Valid RatingErrorCode values - must match the actual type definition
+  const validCodes: RatingErrorCode[] = [
+    'PERMISSION_DENIED',
+    'INVALID_RATING',
+    'OUT_OF_SCALE',
+    'OWN_ENTRY',
+    'RATING_DISABLED',
+    'ENTRY_NOT_FOUND',
+    'NETWORK_ERROR',
+    'UNKNOWN_ERROR',
+  ];
+  
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  
+  if (!('code' in error)) {
+    return false;
+  }
+  
+  const code = (error as RatingError).code;
+  
+  // Only consider it a RatingError if the code is one of our valid codes
+  // This prevents raw API errors (with codes like 'ERR_BAD_REQUEST') from
+  // being incorrectly treated as already-transformed RatingErrors
+  return typeof code === 'string' && validCodes.includes(code as RatingErrorCode);
 }
 
 /**
