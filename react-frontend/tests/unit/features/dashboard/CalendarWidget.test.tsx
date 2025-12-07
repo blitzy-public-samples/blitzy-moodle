@@ -21,17 +21,18 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { screen, waitFor, fireEvent } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
-import { setupServer } from 'msw/node';
-import { format, addMonths, startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import { format, addMonths, subMonths } from 'date-fns';
+
+// Import the global MSW server from test mocks
+import { server } from '@tests/mocks/server';
 
 // Internal imports from depends_on_files
-import { CalendarWidget } from '@/features/dashboard/widgets/CalendarWidget';
-import { render, userEvent } from '@tests/helpers/render';
+import CalendarWidget from '@/features/dashboard/widgets/CalendarWidget';
+import { render } from '@tests/helpers/render';
 import { generateMockDate } from '@tests/helpers/mockData';
-import { formatDate } from '@/utils/date';
 import { CalendarEventType } from '@/features/dashboard/types/dashboard.types';
 import type { CalendarEvent } from '@/features/dashboard/types/dashboard.types';
 import type { CalendarWidgetData } from '@/features/dashboard/api/dashboardApi';
@@ -41,9 +42,9 @@ import type { CalendarWidgetData } from '@/features/dashboard/api/dashboardApi';
 // ============================================================================
 
 /**
- * Base API URL for mock server
+ * Base API URL for mock server - matches VITE_API_BASE_URL in vitest.config.ts
  */
-const API_BASE_URL = '/api/v1';
+const API_BASE_URL = 'http://localhost:8000/api/v1';
 
 /**
  * Calendar endpoint path
@@ -175,6 +176,7 @@ function createEventsOnSameDay(date: Date, count: number = 3): CalendarEvent[] {
 
 /**
  * Default successful response handler for calendar endpoint
+ * This handler is added to the global MSW server at the start of each test
  */
 const defaultCalendarHandler = http.get(CALENDAR_ENDPOINT, () => {
   const events = createEventsForMonth(5);
@@ -185,30 +187,34 @@ const defaultCalendarHandler = http.get(CALENDAR_ENDPOINT, () => {
   });
 });
 
+// ============================================================================
+// Test Configuration Constants
+// ============================================================================
+
 /**
- * Mock server instance for API interception
+ * Timeout for waitFor when testing error states.
+ * React Query's useCalendarWidget hook has retry: 2 with retryDelay: 1000,
+ * so the component takes ~3 seconds before showing error state.
+ * We use 5 seconds to provide margin for test stability.
  */
-const server = setupServer(defaultCalendarHandler);
+const ERROR_WAIT_TIMEOUT = { timeout: 5000 };
 
 // ============================================================================
 // Test Suite
 // ============================================================================
 
 describe('CalendarWidget', () => {
-  // Start server before all tests
-  beforeAll(() => {
-    server.listen({ onUnhandledRequest: 'bypass' });
+  // Setup default calendar handler before each test
+  // The global server is already started by tests/setup.ts
+  beforeEach(() => {
+    // Add the default calendar handler to the global server
+    server.use(defaultCalendarHandler);
   });
 
-  // Reset handlers after each test
+  // Clear mocks after each test
+  // Note: server.resetHandlers() is called by the global afterEach in setup.ts
   afterEach(() => {
-    server.resetHandlers();
     vi.clearAllMocks();
-  });
-
-  // Close server after all tests
-  afterAll(() => {
-    server.close();
   });
 
   // ==========================================================================
@@ -249,8 +255,11 @@ describe('CalendarWidget', () => {
       });
 
       // Check that day numbers are rendered (at least 28 days in any month)
+      // Note: We use getAllByText because the calendar displays padding days from 
+      // adjacent months, so some day numbers (like "1") may appear multiple times
       for (let day = 1; day <= 28; day++) {
-        expect(screen.getByText(String(day))).toBeInTheDocument();
+        const dayElements = screen.getAllByText(String(day));
+        expect(dayElements.length).toBeGreaterThan(0);
       }
     });
 
@@ -674,7 +683,8 @@ describe('CalendarWidget', () => {
       const monthName = format(now, 'MMMM');
       
       // First letter should be capitalized
-      expect(monthName[0]).toBe(monthName[0].toUpperCase());
+      expect(monthName.length).toBeGreaterThan(0);
+      expect(monthName.charAt(0)).toBe(monthName.charAt(0).toUpperCase());
       expect(screen.getByText(new RegExp(monthName))).toBeInTheDocument();
     });
 
@@ -939,7 +949,7 @@ describe('CalendarWidget', () => {
 
       await waitFor(() => {
         expect(screen.getByRole('alert')).toBeInTheDocument();
-      });
+      }, ERROR_WAIT_TIMEOUT);
     });
 
     it('shows user-friendly error text', async () => {
@@ -958,7 +968,7 @@ describe('CalendarWidget', () => {
         const alert = screen.getByRole('alert');
         expect(alert).toBeInTheDocument();
         expect(alert).toHaveTextContent(/failed|error/i);
-      });
+      }, ERROR_WAIT_TIMEOUT);
     });
 
     it('shows retry button on error', async () => {
@@ -975,35 +985,43 @@ describe('CalendarWidget', () => {
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
-      });
+      }, ERROR_WAIT_TIMEOUT);
     });
 
     it('refetches data when retry button is clicked', async () => {
-      let requestCount = 0;
+      let errorRequestCount = 0;
+      let successAfterRetry = false;
       
       server.use(
         http.get(CALENDAR_ENDPOINT, () => {
-          requestCount++;
-          if (requestCount === 1) {
-            return HttpResponse.json(
-              { success: false, error: { message: 'Error' } },
-              { status: 500 }
-            );
+          // React Query retries 2 times, so 3 total requests for initial error
+          // After retry button click, we want success
+          errorRequestCount++;
+          
+          if (successAfterRetry) {
+            return HttpResponse.json({
+              success: true,
+              data: createMockCalendarData([]),
+              meta: {},
+            });
           }
-          return HttpResponse.json({
-            success: true,
-            data: createMockCalendarData([]),
-            meta: {},
-          });
+          
+          return HttpResponse.json(
+            { success: false, error: { message: 'Error' } },
+            { status: 500 }
+          );
         })
       );
 
       const { user } = render(<CalendarWidget />);
 
-      // Wait for error state
+      // Wait for error state (after all retries exhausted)
       await waitFor(() => {
         expect(screen.getByRole('alert')).toBeInTheDocument();
-      });
+      }, ERROR_WAIT_TIMEOUT);
+
+      // Set flag to return success on next request
+      successAfterRetry = true;
 
       // Click retry
       const retryButton = screen.getByRole('button', { name: /retry/i });
@@ -1014,7 +1032,8 @@ describe('CalendarWidget', () => {
         expect(screen.queryByRole('alert')).not.toBeInTheDocument();
       });
 
-      expect(requestCount).toBe(2);
+      // Should have made at least 4 requests (3 initial retries + 1 manual retry)
+      expect(errorRequestCount).toBeGreaterThanOrEqual(4);
     });
 
     it('does not crash on malformed data', async () => {
@@ -1047,7 +1066,7 @@ describe('CalendarWidget', () => {
 
       await waitFor(() => {
         expect(screen.getByRole('alert')).toBeInTheDocument();
-      });
+      }, ERROR_WAIT_TIMEOUT);
     });
   });
 
@@ -1271,7 +1290,7 @@ describe('CalendarWidget', () => {
     });
 
     it('has proper focus indicators', async () => {
-      const { container } = render(<CalendarWidget />);
+      render(<CalendarWidget />);
 
       await waitFor(() => {
         expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
@@ -1320,7 +1339,7 @@ describe('CalendarWidget', () => {
         const alert = screen.getByRole('alert');
         expect(alert).toBeInTheDocument();
         // MUI Alert has role="alert" which is automatically announced
-      });
+      }, ERROR_WAIT_TIMEOUT);
     });
   });
 
@@ -1546,7 +1565,7 @@ describe('CalendarWidget', () => {
     });
 
     it('dims dates from adjacent months', async () => {
-      const { container } = render(<CalendarWidget />);
+      render(<CalendarWidget />);
 
       await waitFor(() => {
         expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
