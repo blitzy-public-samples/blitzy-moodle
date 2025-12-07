@@ -28,7 +28,7 @@ import '@testing-library/jest-dom';
 
 import { BBBRoomStatus } from '@/features/activities/bigbluebuttonbn/components/BBBRoomStatus';
 import { useBBBMeetingInfo } from '@/features/activities/bigbluebuttonbn/hooks/useBBB';
-import { render, screen, waitFor } from '@/tests/helpers/render';
+import { render, screen, waitFor } from '@tests/helpers/render';
 
 // ============================================================================
 // Mock Setup
@@ -96,23 +96,32 @@ interface MockMeetingInfoResult {
  * @returns Complete mock meeting info result
  */
 function createMockMeetingInfo(
-  overrides: Partial<MockMeetingInfoResult> = {}
+  overrides: {
+    data?: MockMeetingInfoResult['data'];
+    isLoading?: boolean;
+    isError?: boolean;
+    error?: Error | null;
+    refetch?: () => void;
+  } = {}
 ): MockMeetingInfoResult {
+  const defaultData: NonNullable<MockMeetingInfoResult['data']> = {
+    statusRunning: false,
+    statusMessage: 'Meeting not started',
+    moderatorCount: 0,
+    participantCount: 0,
+    moderatorPlural: false,
+    participantPlural: false,
+    canJoin: false,
+    startedAt: null,
+  };
+
   return {
-    data: {
-      statusRunning: false,
-      statusMessage: 'Meeting not started',
-      moderatorCount: 0,
-      participantCount: 0,
-      moderatorPlural: false,
-      participantPlural: false,
-      canJoin: false,
-      startedAt: null,
-    },
-    isLoading: false,
-    isError: false,
-    error: null,
-    ...overrides,
+    // Use 'data' in overrides to check if key was explicitly provided (even if undefined)
+    data: 'data' in overrides ? overrides.data : defaultData,
+    isLoading: overrides.isLoading ?? false,
+    isError: overrides.isError ?? false,
+    error: overrides.error ?? null,
+    refetch: overrides.refetch,
   };
 }
 
@@ -127,7 +136,7 @@ function createRunningMeetingData(
   moderators: number,
   participants: number,
   startedAt: number = 1700000000000 // Fixed timestamp for testing
-): MockMeetingInfoResult['data'] {
+): NonNullable<MockMeetingInfoResult['data']> {
   return {
     statusRunning: true,
     statusMessage: 'Meeting is in progress',
@@ -1257,8 +1266,11 @@ describe('BBBRoomStatus', () => {
       render(<BBBRoomStatus instanceId={1} />);
 
       const statusContainer = screen.getByTestId('bbb-room-status');
-      // Should have inline styles applied from sx prop
-      expect(statusContainer).toHaveStyle({ padding: expect.any(String) });
+      // MUI's sx prop generates CSS classes, so we verify computed styles exist
+      // The p: 2 in STATUS_CONTAINER_SX becomes 16px padding (2 * 8px theme spacing)
+      const computedStyle = window.getComputedStyle(statusContainer);
+      // Verify padding is applied (MUI's theme spacing unit is 8px, so p: 2 = 16px)
+      expect(computedStyle.padding).toBeTruthy();
     });
   });
 
