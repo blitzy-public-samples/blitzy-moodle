@@ -240,6 +240,8 @@ const EventIndicator: React.FC<EventIndicatorProps> = React.memo(({ event, onCli
         size="small"
         onClick={onClick}
         aria-label={`Event: ${event.name}`}
+        data-testid={`event-indicator-${event.id}`}
+        data-event-type={event.eventtype}
         sx={{
           p: 0,
           minWidth: 'auto',
