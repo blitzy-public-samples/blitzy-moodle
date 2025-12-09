@@ -23,7 +23,7 @@
  * @module tests/unit/features/activities/choice/hooks/useChoiceResponse.test
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse, delay } from 'msw';
@@ -36,7 +36,6 @@ import { server } from '@tests/mocks/server';
 // Import the hook under test
 import {
   useChoiceResponse,
-  type ChoiceResponseInput,
   type ChoiceResponseResult,
 } from '@/features/activities/choice/hooks/useChoiceResponse';
 
@@ -562,13 +561,13 @@ describe('useChoiceResponse Hook', () => {
       const choice = createMockChoice();
       seedChoiceCache(queryClient, choice);
 
-      const originalCount = choice.options[1].countanswers; // Option B
+      const originalCount = choice.options[1]!.countanswers; // Option B
 
       server.use(
         http.post(`*${API_BASE_URL}/choices/:id/respond`, async () => {
           await delay(200);
           const updatedChoice = createMockChoice();
-          updatedChoice.options[1].countanswers = originalCount + 1;
+          updatedChoice.options[1]!.countanswers = originalCount + 1;
           return HttpResponse.json(
             createApiResponse(createSuccessResult(updatedChoice))
           );
@@ -680,8 +679,8 @@ describe('useChoiceResponse Hook', () => {
       const choice = createMockAnsweredChoice();
       seedChoiceCache(queryClient, choice);
 
-      const originalOption1Count = choice.options[0].countanswers;
-      const originalOption2Count = choice.options[1].countanswers;
+      const originalOption1Count = choice.options[0]!.countanswers;
+      const originalOption2Count = choice.options[1]!.countanswers;
 
       server.use(
         http.post(`*${API_BASE_URL}/choices/:id/respond`, async () => {
@@ -906,9 +905,9 @@ describe('useChoiceResponse Hook', () => {
 
       // Assert
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(capturedRequest).toBeDefined();
-      expect(capturedRequest?.answer).toEqual([3]);
-      expect(capturedRequest?.action).toBe('submit');
+      expect(capturedRequest).not.toBeNull();
+      expect(capturedRequest!.answer).toEqual([3]);
+      expect(capturedRequest!.action).toBe('submit');
     });
   });
 
@@ -1333,7 +1332,7 @@ describe('useChoiceResponse Hook', () => {
       const choice = createMockAnsweredChoice();
       seedChoiceCache(queryClient, choice);
 
-      const originalCount = choice.options[0].countanswers;
+      const originalCount = choice.options[0]!.countanswers;
 
       server.use(
         http.post(`*${API_BASE_URL}/choices/:id/respond`, async () => {
@@ -2192,7 +2191,7 @@ describe('useChoiceResponse Hook', () => {
       const choice = createMockChoice();
       seedChoiceCache(queryClient, choice);
 
-      const originalCount = choice.options[1].countanswers;
+      const originalCount = choice.options[1]!.countanswers;
 
       const { result } = renderHook(() => useChoiceResponse(), { wrapper });
 
