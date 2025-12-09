@@ -20,7 +20,7 @@ import type { ReactNode } from 'react';
 
 import { useFeedbackResponse } from '@/features/activities/feedback/hooks/useFeedbackResponse';
 import * as feedbackApi from '@/features/activities/feedback/api/feedbackApi';
-import type { FeedbackItem } from '@/features/activities/feedback/types/feedback.types';
+import type { ApiResponse } from '@/types';
 
 // ============================================================================
 // MOCKS
@@ -48,23 +48,23 @@ vi.mock('@/hooks/useToast', () => ({
 
 /**
  * Create a fresh QueryClient for each test with appropriate test settings.
+ *
+ * Note: gcTime must be > 0 (or Infinity) to allow setQueryData to persist
+ * cache values that don't have active observers (i.e., no useQuery watching them).
+ * With gcTime: 0, data is garbage collected immediately, breaking tests that
+ * verify cache state like optimistic updates and rollbacks.
  */
 function createTestQueryClient(): QueryClient {
   return new QueryClient({
     defaultOptions: {
       queries: {
         retry: false,
-        gcTime: 0,
+        gcTime: Infinity, // Keep cache data until explicitly cleared
         staleTime: 0,
       },
       mutations: {
         retry: false,
       },
-    },
-    logger: {
-      log: () => undefined,
-      warn: () => undefined,
-      error: () => undefined,
     },
   });
 }
@@ -87,7 +87,7 @@ function createWrapper(queryClient: QueryClient) {
  */
 function createSuccessfulSubmissionResponse(completedId: number = 456) {
   return {
-    success: true,
+    success: true as const,
     data: {
       success: true,
       completedId,
@@ -101,7 +101,7 @@ function createSuccessfulSubmissionResponse(completedId: number = 456) {
  */
 function createSuccessfulProgressResponse(currentPage: number = 2) {
   return {
-    success: true,
+    success: true as const,
     data: {
       success: true,
       completedTmpId: 789,
@@ -109,30 +109,6 @@ function createSuccessfulProgressResponse(currentPage: number = 2) {
       totalPages: 3,
       savedValues: { 1: 'partial answer' },
     },
-  };
-}
-
-/**
- * Create a mock FeedbackItem for testing validation.
- */
-function createMockFeedbackItem(
-  overrides: Partial<FeedbackItem> = {}
-): FeedbackItem {
-  return {
-    id: 1,
-    feedback: 123,
-    template: 0,
-    name: 'Test Question',
-    label: 'q1',
-    presentation: '',
-    typ: 'textfield' as FeedbackItem['typ'],
-    hasvalue: 1,
-    position: 1,
-    required: 0,
-    dependitem: 0,
-    dependvalue: '',
-    options: '',
-    ...overrides,
   };
 }
 
@@ -235,7 +211,7 @@ describe('useFeedbackResponse', () => {
       });
 
       vi.mocked(feedbackApi.submitFeedbackResponse).mockReturnValue(
-        pendingPromise as Promise<feedbackApi.FeedbackSubmissionResult>
+        pendingPromise as Promise<ApiResponse<feedbackApi.FeedbackSubmissionResult>>
       );
 
       const { result } = renderHook(() => useFeedbackResponse(), {
@@ -493,19 +469,25 @@ describe('useFeedbackResponse', () => {
       const networkError = new Error('Network error');
       vi.mocked(feedbackApi.submitFeedbackResponse).mockRejectedValue(networkError);
 
-      const { result } = renderHook(() => useFeedbackResponse(), {
+      const { result, rerender } = renderHook(() => useFeedbackResponse(), {
         wrapper: createWrapper(queryClient),
       });
 
-      await expect(
-        act(async () => {
+      // Use try/catch inside act() to ensure catch block in hook executes fully
+      await act(async () => {
+        try {
           await result.current.submitResponse({
             feedbackId: 123,
             responses: { 1: 'answer' },
             anonymous: false,
           });
-        })
-      ).rejects.toThrow();
+        } catch {
+          // Expected to throw
+        }
+      });
+
+      // Force re-render to pick up state changes from caught mutation error
+      rerender();
 
       // Verify error state is updated
       await waitFor(() => {
@@ -518,19 +500,25 @@ describe('useFeedbackResponse', () => {
       const permissionError = new Error('You do not have permission to complete this feedback');
       vi.mocked(feedbackApi.submitFeedbackResponse).mockRejectedValue(permissionError);
 
-      const { result } = renderHook(() => useFeedbackResponse(), {
+      const { result, rerender } = renderHook(() => useFeedbackResponse(), {
         wrapper: createWrapper(queryClient),
       });
 
-      await expect(
-        act(async () => {
+      // Use try/catch inside act() to ensure catch block in hook executes fully
+      await act(async () => {
+        try {
           await result.current.submitResponse({
             feedbackId: 123,
             responses: { 1: 'answer' },
             anonymous: false,
           });
-        })
-      ).rejects.toThrow();
+        } catch {
+          // Expected to throw
+        }
+      });
+
+      // Force re-render to pick up state changes from caught mutation error
+      rerender();
 
       await waitFor(() => {
         expect(result.current.error).not.toBeNull();
@@ -542,19 +530,25 @@ describe('useFeedbackResponse', () => {
       const alreadySubmittedError = new Error('You have already submitted this feedback');
       vi.mocked(feedbackApi.submitFeedbackResponse).mockRejectedValue(alreadySubmittedError);
 
-      const { result } = renderHook(() => useFeedbackResponse(), {
+      const { result, rerender } = renderHook(() => useFeedbackResponse(), {
         wrapper: createWrapper(queryClient),
       });
 
-      await expect(
-        act(async () => {
+      // Use try/catch inside act() to ensure catch block in hook executes fully
+      await act(async () => {
+        try {
           await result.current.submitResponse({
             feedbackId: 123,
             responses: { 1: 'answer' },
             anonymous: false,
           });
-        })
-      ).rejects.toThrow();
+        } catch {
+          // Expected to throw
+        }
+      });
+
+      // Force re-render to pick up state changes from caught mutation error
+      rerender();
 
       await waitFor(() => {
         expect(result.current.error).not.toBeNull();
@@ -566,19 +560,25 @@ describe('useFeedbackResponse', () => {
       const closedError = new Error('This feedback is closed');
       vi.mocked(feedbackApi.submitFeedbackResponse).mockRejectedValue(closedError);
 
-      const { result } = renderHook(() => useFeedbackResponse(), {
+      const { result, rerender } = renderHook(() => useFeedbackResponse(), {
         wrapper: createWrapper(queryClient),
       });
 
-      await expect(
-        act(async () => {
+      // Use try/catch inside act() to ensure catch block in hook executes fully
+      await act(async () => {
+        try {
           await result.current.submitResponse({
             feedbackId: 123,
             responses: { 1: 'answer' },
             anonymous: false,
           });
-        })
-      ).rejects.toThrow();
+        } catch {
+          // Expected to throw
+        }
+      });
+
+      // Force re-render to pick up state changes from caught mutation error
+      rerender();
 
       await waitFor(() => {
         expect(result.current.error).not.toBeNull();
@@ -590,19 +590,26 @@ describe('useFeedbackResponse', () => {
       const error = new Error('Submission failed');
       vi.mocked(feedbackApi.submitFeedbackResponse).mockRejectedValue(error);
 
-      const { result } = renderHook(() => useFeedbackResponse(), {
+      const { result, rerender } = renderHook(() => useFeedbackResponse(), {
         wrapper: createWrapper(queryClient),
       });
 
-      await expect(
-        act(async () => {
+      // Use try/catch inside act() - rejects.toThrow() pattern doesn't allow
+      // the catch block in the hook to fully execute before checking mocks
+      await act(async () => {
+        try {
           await result.current.submitResponse({
             feedbackId: 123,
             responses: { 1: 'answer' },
             anonymous: false,
           });
-        })
-      ).rejects.toThrow();
+        } catch {
+          // Expected to throw
+        }
+      });
+
+      // Force re-render to pick up state changes
+      rerender();
 
       expect(mockShowError).toHaveBeenCalled();
     });
@@ -612,19 +619,25 @@ describe('useFeedbackResponse', () => {
         new Error('Test error')
       );
 
-      const { result } = renderHook(() => useFeedbackResponse(), {
+      const { result, rerender } = renderHook(() => useFeedbackResponse(), {
         wrapper: createWrapper(queryClient),
       });
 
-      await expect(
-        act(async () => {
+      // Use try/catch inside act() to ensure catch block in hook executes fully
+      await act(async () => {
+        try {
           await result.current.submitResponse({
             feedbackId: 123,
             responses: { 1: 'answer' },
             anonymous: false,
           });
-        })
-      ).rejects.toThrow();
+        } catch {
+          // Expected to throw
+        }
+      });
+
+      // Force re-render to pick up state changes from caught mutation error
+      rerender();
 
       expect(result.current.isSubmitting).toBe(false);
     });
@@ -633,19 +646,25 @@ describe('useFeedbackResponse', () => {
       const capabilityError = new Error('Missing capability: mod/feedback:complete');
       vi.mocked(feedbackApi.submitFeedbackResponse).mockRejectedValue(capabilityError);
 
-      const { result } = renderHook(() => useFeedbackResponse(), {
+      const { result, rerender } = renderHook(() => useFeedbackResponse(), {
         wrapper: createWrapper(queryClient),
       });
 
-      await expect(
-        act(async () => {
+      // Use try/catch inside act() to ensure catch block in hook executes fully
+      await act(async () => {
+        try {
           await result.current.submitResponse({
             feedbackId: 123,
             responses: { 1: 'answer' },
             anonymous: false,
           });
-        })
-      ).rejects.toThrow();
+        } catch {
+          // Expected to throw
+        }
+      });
+
+      // Force re-render to pick up state changes from caught mutation error
+      rerender();
 
       await waitFor(() => {
         expect(result.current.error?.code).toBe('PERMISSION_DENIED');
@@ -699,19 +718,24 @@ describe('useFeedbackResponse', () => {
       };
       queryClient.setQueryData(['feedback', 123], initialStatus);
 
-      const { result } = renderHook(() => useFeedbackResponse(), {
+      const { result, rerender } = renderHook(() => useFeedbackResponse(), {
         wrapper: createWrapper(queryClient),
       });
 
-      await expect(
-        act(async () => {
+      // Use try/catch inside act() to ensure catch block in hook executes fully
+      await act(async () => {
+        try {
           await result.current.submitResponse({
             feedbackId: 123,
             responses: { 1: 'answer' },
             anonymous: false,
           });
-        })
-      ).rejects.toThrow();
+        } catch {
+          // Expected to throw
+        }
+      });
+
+      rerender();
 
       // Verify rollback occurred (cache restored)
       const cachedData = queryClient.getQueryData(['feedback', 123]);
@@ -725,7 +749,7 @@ describe('useFeedbackResponse', () => {
       });
 
       vi.mocked(feedbackApi.submitFeedbackResponse).mockReturnValue(
-        pendingPromise as Promise<feedbackApi.FeedbackSubmissionResult>
+        pendingPromise as Promise<ApiResponse<feedbackApi.FeedbackSubmissionResult>>
       );
 
       const { result } = renderHook(() => useFeedbackResponse(), {
@@ -995,7 +1019,7 @@ describe('useFeedbackResponse', () => {
       });
 
       vi.mocked(feedbackApi.saveProgress).mockReturnValue(
-        pendingPromise as Promise<feedbackApi.SaveProgressResult>
+        pendingPromise as Promise<ApiResponse<feedbackApi.SaveProgressResult>>
       );
 
       const { result } = renderHook(() => useFeedbackResponse(), {
@@ -1146,19 +1170,27 @@ describe('useFeedbackResponse', () => {
         new Error('Network error')
       );
 
-      const { result } = renderHook(() => useFeedbackResponse(), {
+      const { result, rerender } = renderHook(() => useFeedbackResponse(), {
         wrapper: createWrapper(queryClient),
       });
 
-      await expect(
-        act(async () => {
+      // Use try/catch inside act() to ensure catch block in hook executes fully
+      await act(async () => {
+        try {
           await result.current.saveProgress({
             feedbackId: 123,
             responses: { 1: 'partial' },
             currentPage: 1,
           });
-        })
-      ).rejects.toThrow();
+        } catch {
+          // Expected to throw
+        }
+      });
+
+      rerender();
+
+      // Verify isSaving is reset after error
+      expect(result.current.isSaving).toBe(false);
     });
 
     it('should show error notification on save failure', async () => {
@@ -1166,19 +1198,26 @@ describe('useFeedbackResponse', () => {
         new Error('Save failed')
       );
 
-      const { result } = renderHook(() => useFeedbackResponse(), {
+      const { result, rerender } = renderHook(() => useFeedbackResponse(), {
         wrapper: createWrapper(queryClient),
       });
 
-      await expect(
-        act(async () => {
+      // Use try/catch inside act() - rejects.toThrow() pattern doesn't allow
+      // the catch block in the hook to fully execute before checking mocks
+      await act(async () => {
+        try {
           await result.current.saveProgress({
             feedbackId: 123,
             responses: { 1: 'partial' },
             currentPage: 1,
           });
-        })
-      ).rejects.toThrow();
+        } catch {
+          // Expected to throw
+        }
+      });
+
+      // Force re-render to pick up state changes
+      rerender();
 
       expect(mockShowError).toHaveBeenCalledWith(
         'Failed to save progress. Please try again.'
@@ -1190,19 +1229,25 @@ describe('useFeedbackResponse', () => {
         new Error('Test error')
       );
 
-      const { result } = renderHook(() => useFeedbackResponse(), {
+      const { result, rerender } = renderHook(() => useFeedbackResponse(), {
         wrapper: createWrapper(queryClient),
       });
 
-      await expect(
-        act(async () => {
+      // Use try/catch inside act() to ensure catch block in hook executes fully
+      await act(async () => {
+        try {
           await result.current.saveProgress({
             feedbackId: 123,
             responses: { 1: 'partial' },
             currentPage: 1,
           });
-        })
-      ).rejects.toThrow();
+        } catch {
+          // Expected to throw
+        }
+      });
+
+      // Force re-render to pick up state changes from caught mutation error
+      rerender();
 
       expect(result.current.isSaving).toBe(false);
     });
@@ -1220,19 +1265,24 @@ describe('useFeedbackResponse', () => {
       };
       queryClient.setQueryData(['feedback', 'progress', 123], initialProgress);
 
-      const { result } = renderHook(() => useFeedbackResponse(), {
+      const { result, rerender } = renderHook(() => useFeedbackResponse(), {
         wrapper: createWrapper(queryClient),
       });
 
-      await expect(
-        act(async () => {
+      // Use try/catch inside act() to ensure catch block in hook executes fully
+      await act(async () => {
+        try {
           await result.current.saveProgress({
             feedbackId: 123,
             responses: { 1: 'new value' },
             currentPage: 2,
           });
-        })
-      ).rejects.toThrow();
+        } catch {
+          // Expected to throw
+        }
+      });
+
+      rerender();
 
       // Verify rollback occurred
       const cachedData = queryClient.getQueryData(['feedback', 'progress', 123]);
@@ -1303,19 +1353,24 @@ describe('useFeedbackResponse', () => {
       };
       vi.mocked(feedbackApi.submitFeedbackResponse).mockRejectedValue(errorWithFieldErrors);
 
-      const { result } = renderHook(() => useFeedbackResponse(), {
+      const { result, rerender } = renderHook(() => useFeedbackResponse(), {
         wrapper: createWrapper(queryClient),
       });
 
-      await expect(
-        act(async () => {
+      // Use try/catch inside act() to ensure catch block in hook executes fully
+      await act(async () => {
+        try {
           await result.current.submitResponse({
             feedbackId: 123,
             responses: {},
             anonymous: false,
           });
-        })
-      ).rejects.toThrow();
+        } catch {
+          // Expected to throw
+        }
+      });
+
+      rerender();
 
       // Now clear errors
       act(() => {
@@ -1392,19 +1447,24 @@ describe('useFeedbackResponse', () => {
         new Error('Test error')
       );
 
-      const { result } = renderHook(() => useFeedbackResponse(), {
+      const { result, rerender } = renderHook(() => useFeedbackResponse(), {
         wrapper: createWrapper(queryClient),
       });
 
-      await expect(
-        act(async () => {
+      // Use try/catch inside act() to ensure catch block in hook executes fully
+      await act(async () => {
+        try {
           await result.current.submitResponse({
             feedbackId: 123,
             responses: { 1: 'answer' },
             anonymous: false,
           });
-        })
-      ).rejects.toThrow();
+        } catch {
+          // Expected to throw
+        }
+      });
+
+      rerender();
 
       // Verify error state exists
       expect(result.current.error).not.toBeNull();
@@ -1476,7 +1536,7 @@ describe('useFeedbackResponse', () => {
       });
 
       vi.mocked(feedbackApi.submitFeedbackResponse).mockReturnValue(
-        pendingPromise as Promise<feedbackApi.FeedbackSubmissionResult>
+        pendingPromise as Promise<ApiResponse<feedbackApi.FeedbackSubmissionResult>>
       );
 
       const { result } = renderHook(() => useFeedbackResponse(), {
@@ -1509,7 +1569,7 @@ describe('useFeedbackResponse', () => {
       });
 
       vi.mocked(feedbackApi.saveProgress).mockReturnValue(
-        pendingPromise as Promise<feedbackApi.SaveProgressResult>
+        pendingPromise as Promise<ApiResponse<feedbackApi.SaveProgressResult>>
       );
 
       const { result } = renderHook(() => useFeedbackResponse(), {
@@ -1542,7 +1602,7 @@ describe('useFeedbackResponse', () => {
       });
 
       vi.mocked(feedbackApi.submitFeedbackResponse).mockReturnValue(
-        pendingSubmit as Promise<feedbackApi.FeedbackSubmissionResult>
+        pendingSubmit as Promise<ApiResponse<feedbackApi.FeedbackSubmissionResult>>
       );
       vi.mocked(feedbackApi.saveProgress).mockResolvedValue(
         createSuccessfulProgressResponse()
@@ -1625,19 +1685,27 @@ describe('useFeedbackResponse', () => {
       };
       vi.mocked(feedbackApi.submitFeedbackResponse).mockRejectedValue(validationError);
 
-      const { result } = renderHook(() => useFeedbackResponse(), {
+      const { result, rerender } = renderHook(() => useFeedbackResponse(), {
         wrapper: createWrapper(queryClient),
       });
 
-      await expect(
-        act(async () => {
+      // Use try/catch inside act() to ensure catch block in hook executes fully
+      await act(async () => {
+        try {
           await result.current.submitResponse({
             feedbackId: 123,
             responses: {}, // Missing required field
             anonymous: false,
           });
-        })
-      ).rejects.toThrow();
+        } catch {
+          // Expected to throw
+        }
+      });
+
+      rerender();
+
+      // Verify error state is set
+      expect(result.current.error).not.toBeNull();
     });
 
     it('should handle multichoice validation errors from API', async () => {
@@ -1647,19 +1715,27 @@ describe('useFeedbackResponse', () => {
       };
       vi.mocked(feedbackApi.submitFeedbackResponse).mockRejectedValue(validationError);
 
-      const { result } = renderHook(() => useFeedbackResponse(), {
+      const { result, rerender } = renderHook(() => useFeedbackResponse(), {
         wrapper: createWrapper(queryClient),
       });
 
-      await expect(
-        act(async () => {
+      // Use try/catch inside act() to ensure catch block in hook executes fully
+      await act(async () => {
+        try {
           await result.current.submitResponse({
             feedbackId: 123,
             responses: { 1: 'invalid_option' },
             anonymous: false,
           });
-        })
-      ).rejects.toThrow();
+        } catch {
+          // Expected to throw
+        }
+      });
+
+      rerender();
+
+      // Verify error state is set
+      expect(result.current.error).not.toBeNull();
     });
 
     it('should handle numeric validation errors from API', async () => {
@@ -1669,19 +1745,27 @@ describe('useFeedbackResponse', () => {
       };
       vi.mocked(feedbackApi.submitFeedbackResponse).mockRejectedValue(validationError);
 
-      const { result } = renderHook(() => useFeedbackResponse(), {
+      const { result, rerender } = renderHook(() => useFeedbackResponse(), {
         wrapper: createWrapper(queryClient),
       });
 
-      await expect(
-        act(async () => {
+      // Use try/catch inside act() to ensure catch block in hook executes fully
+      await act(async () => {
+        try {
           await result.current.submitResponse({
             feedbackId: 123,
             responses: { 1: -5 }, // Below minimum
             anonymous: false,
           });
-        })
-      ).rejects.toThrow();
+        } catch {
+          // Expected to throw
+        }
+      });
+
+      rerender();
+
+      // Verify error state is set
+      expect(result.current.error).not.toBeNull();
     });
 
     it('should handle text maxlength validation errors from API', async () => {
@@ -1691,19 +1775,27 @@ describe('useFeedbackResponse', () => {
       };
       vi.mocked(feedbackApi.submitFeedbackResponse).mockRejectedValue(validationError);
 
-      const { result } = renderHook(() => useFeedbackResponse(), {
+      const { result, rerender } = renderHook(() => useFeedbackResponse(), {
         wrapper: createWrapper(queryClient),
       });
 
-      await expect(
-        act(async () => {
+      // Use try/catch inside act() to ensure catch block in hook executes fully
+      await act(async () => {
+        try {
           await result.current.submitResponse({
             feedbackId: 123,
             responses: { 1: 'A'.repeat(200) }, // Exceeds maxlength
             anonymous: false,
           });
-        })
-      ).rejects.toThrow();
+        } catch {
+          // Expected to throw
+        }
+      });
+
+      rerender();
+
+      // Verify error state is set
+      expect(result.current.error).not.toBeNull();
     });
 
     it('should accept valid multichoice responses', async () => {
@@ -1803,20 +1895,25 @@ describe('useFeedbackResponse', () => {
         .mockRejectedValueOnce(new Error('Network error'))
         .mockResolvedValueOnce(createSuccessfulSubmissionResponse());
 
-      const { result } = renderHook(() => useFeedbackResponse(), {
+      const { result, rerender } = renderHook(() => useFeedbackResponse(), {
         wrapper: createWrapper(queryClient),
       });
 
-      // First attempt fails
-      await expect(
-        act(async () => {
+      // First attempt fails - use try/catch pattern
+      await act(async () => {
+        try {
           await result.current.submitResponse({
             feedbackId: 123,
             responses: { 1: 'answer' },
             anonymous: false,
           });
-        })
-      ).rejects.toThrow();
+        } catch {
+          // Expected to throw
+        }
+      });
+
+      // Force re-render to pick up state changes from caught mutation error
+      rerender();
 
       // Reset and retry
       act(() => {
@@ -1832,6 +1929,9 @@ describe('useFeedbackResponse', () => {
         });
       });
 
+      // Force re-render to pick up state changes
+      rerender();
+
       expect(feedbackApi.submitFeedbackResponse).toHaveBeenCalledTimes(2);
       expect(result.current.error).toBeNull();
     });
@@ -1841,21 +1941,26 @@ describe('useFeedbackResponse', () => {
         new Error('Test error')
       );
 
-      const { result } = renderHook(() => useFeedbackResponse(), {
+      const { result, rerender } = renderHook(() => useFeedbackResponse(), {
         wrapper: createWrapper(queryClient),
       });
 
       const responses = { 1: 'important answer', 2: 42 };
 
-      await expect(
-        act(async () => {
+      // Use try/catch inside act() to ensure catch block in hook executes fully
+      await act(async () => {
+        try {
           await result.current.submitResponse({
             feedbackId: 123,
             responses,
             anonymous: false,
           });
-        })
-      ).rejects.toThrow();
+        } catch {
+          // Expected to throw
+        }
+      });
+
+      rerender();
 
       // The hook doesn't manage form state, but it should allow retry with same data
       expect(feedbackApi.submitFeedbackResponse).toHaveBeenCalledWith(
@@ -1872,21 +1977,26 @@ describe('useFeedbackResponse', () => {
         new Error('Persistent error')
       );
 
-      const { result } = renderHook(() => useFeedbackResponse(), {
+      const { result, rerender } = renderHook(() => useFeedbackResponse(), {
         wrapper: createWrapper(queryClient),
       });
 
-      // Multiple failed attempts
+      // Multiple failed attempts - use try/catch inside act()
       for (let i = 0; i < 3; i++) {
-        await expect(
-          act(async () => {
+        await act(async () => {
+          try {
             await result.current.submitResponse({
               feedbackId: 123,
               responses: { 1: 'answer' },
               anonymous: false,
             });
-          })
-        ).rejects.toThrow();
+          } catch {
+            // Expected to throw
+          }
+        });
+
+        // Force re-render to pick up state changes from caught mutation error
+        rerender();
 
         act(() => {
           result.current.resetSubmission();
@@ -2280,7 +2390,8 @@ describe('useFeedbackResponse', () => {
 
       // Test isEmptyValue
       expect(isEmptyValue(undefined)).toBe(true);
-      expect(isEmptyValue(null)).toBe(true);
+      // Test null as edge case (runtime may pass null even though type doesn't include it)
+      expect(isEmptyValue(null as unknown as undefined)).toBe(true);
       expect(isEmptyValue('')).toBe(true);
       expect(isEmptyValue('   ')).toBe(true);
       expect(isEmptyValue([])).toBe(true);

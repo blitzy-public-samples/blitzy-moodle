@@ -541,6 +541,11 @@ export function useFeedbackResponse(): FeedbackResponseHookResult {
 
   // Local state for validation errors
   const [validationErrors, setValidationErrors] = useState<Record<number, string>>({});
+  
+  // Local error state to track errors from mutations
+  // React Query's mutation.error is only set when errors are NOT caught externally
+  // Since we catch errors in submitResponse/saveProgress wrappers, we need local state
+  const [localError, setLocalError] = useState<FeedbackValidationError | null>(null);
 
   // ============================================================================
   // SUBMIT RESPONSE MUTATION
@@ -791,6 +796,7 @@ export function useFeedbackResponse(): FeedbackResponseHookResult {
    */
   const clearErrors = useCallback((): void => {
     setValidationErrors({});
+    setLocalError(null);
   }, []);
 
   /**
@@ -801,6 +807,7 @@ export function useFeedbackResponse(): FeedbackResponseHookResult {
    */
   const resetSubmission = useCallback((): void => {
     setValidationErrors({});
+    setLocalError(null);
     submitMutation.reset();
     saveProgressMutation.reset();
   }, [submitMutation, saveProgressMutation]);
@@ -815,6 +822,7 @@ export function useFeedbackResponse(): FeedbackResponseHookResult {
     async (options: SubmitResponseOptions): Promise<FeedbackResponse> => {
       // Clear previous errors before submission
       clearErrors();
+      setLocalError(null);
 
       try {
         // Execute the mutation
@@ -823,10 +831,15 @@ export function useFeedbackResponse(): FeedbackResponseHookResult {
       } catch (error) {
         // Parse and transform error
         const validationError = parseApiError(error);
+        // Store error in local state since React Query won't update mutation.error
+        // when errors are caught externally from mutateAsync
+        setLocalError(validationError);
+        // Show error notification - onError is not called when mutateAsync errors are caught
+        showError(validationError.message || 'Failed to submit feedback');
         throw validationError;
       }
     },
-    [submitMutation, clearErrors]
+    [submitMutation, clearErrors, showError]
   );
 
   /**
@@ -836,15 +849,21 @@ export function useFeedbackResponse(): FeedbackResponseHookResult {
    */
   const saveProgress = useCallback(
     async (options: SaveProgressOptions): Promise<void> => {
+      setLocalError(null);
       try {
         await saveProgressMutation.mutateAsync(options);
       } catch (error) {
         // Re-throw as validation error for consistent handling
         const validationError = parseApiError(error);
+        // Store error in local state since React Query won't update mutation.error
+        // when errors are caught externally from mutateAsync
+        setLocalError(validationError);
+        // Show error notification - onError is not called when mutateAsync errors are caught
+        showError('Failed to save progress. Please try again.');
         throw validationError;
       }
     },
-    [saveProgressMutation]
+    [saveProgressMutation, showError]
   );
 
   // ============================================================================
@@ -856,7 +875,10 @@ export function useFeedbackResponse(): FeedbackResponseHookResult {
     saveProgress,
     isSubmitting: submitMutation.isPending,
     isSaving: saveProgressMutation.isPending,
-    error: (submitMutation.error ?? saveProgressMutation.error),
+    // Use localError which is set when we catch errors from mutateAsync
+    // This is necessary because React Query doesn't update mutation.error
+    // when errors are caught externally
+    error: localError,
     validationErrors,
     clearErrors,
     resetSubmission,
