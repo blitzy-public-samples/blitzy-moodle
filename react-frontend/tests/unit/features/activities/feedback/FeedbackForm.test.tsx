@@ -19,7 +19,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { axe, toHaveNoViolations } from 'jest-axe';
@@ -29,7 +29,7 @@ import type { ReactNode } from 'react';
 import { FeedbackForm } from '@/features/activities/feedback/components/FeedbackForm';
 import type { FeedbackFormProps } from '@/features/activities/feedback/components/FeedbackForm';
 import { FeedbackQuestionType } from '@/features/activities/feedback/types/feedback.types';
-import type { FeedbackItem, FeedbackResponse } from '@/features/activities/feedback/types/feedback.types';
+import type { FeedbackItem } from '@/features/activities/feedback/types/feedback.types';
 
 // Extend Vitest matchers with jest-axe
 expect.extend(toHaveNoViolations);
@@ -83,7 +83,7 @@ vi.mock('@/hooks/useToast', () => ({
 
 // Mock Alert component
 vi.mock('@/components/feedback/Alert', () => ({
-  Alert: vi.fn(({ severity, message, title, action, sx }) => (
+  Alert: vi.fn(({ severity, message, title, action }) => (
     <div
       data-testid={`alert-${severity}`}
       role="alert"
@@ -107,7 +107,9 @@ vi.mock('@/components/feedback/LoadingSpinner', () => ({
 
 // Import mocked modules for assertion
 import { submitFeedbackResponse, saveProgress } from '@/features/activities/feedback/api/feedbackApi';
+import type { FeedbackSubmissionResult } from '@/features/activities/feedback/api/feedbackApi';
 import { QuestionRenderer } from '@/features/activities/feedback/components/QuestionRenderer';
+import type { ApiResponse } from '@/types/api';
 
 // ============================================================================
 // TEST UTILITIES
@@ -327,6 +329,7 @@ describe('FeedbackForm Component', () => {
     vi.mocked(submitFeedbackResponse).mockResolvedValue({
       success: true,
       data: {
+        success: true,
         completedId: 123,
         message: 'Feedback submitted successfully',
       },
@@ -335,7 +338,10 @@ describe('FeedbackForm Component', () => {
     vi.mocked(saveProgress).mockResolvedValue({
       success: true,
       data: {
-        message: 'Draft saved successfully',
+        success: true,
+        completedTmpId: 456,
+        currentPage: 1,
+        totalPages: 2,
       },
     });
   });
@@ -383,17 +389,19 @@ describe('FeedbackForm Component', () => {
       renderWithProviders(<FeedbackForm {...props} />);
 
       // Initially only Next button visible (first page)
-      expect(screen.queryByRole('button', { name: /previous/i })).not.toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /next|review/i })).toBeInTheDocument();
+      // Previous button has aria-label "Go to previous page"
+      expect(screen.queryByRole('button', { name: /go to previous page/i })).not.toBeInTheDocument();
+      // Next button has aria-label "Go to page X" or "Review your answers"
+      expect(screen.getByRole('button', { name: /go to page|review your answers/i })).toBeInTheDocument();
 
       // Fill required field and go to next page
       const input = screen.getByTestId('question-input-1');
       await user.type(input, 'Test value');
-      await user.click(screen.getByRole('button', { name: /next/i }));
+      await user.click(screen.getByRole('button', { name: /go to page|review your answers/i }));
 
       // Now Previous button should be visible
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /previous/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /go to previous page/i })).toBeInTheDocument();
       });
     });
 
@@ -408,7 +416,7 @@ describe('FeedbackForm Component', () => {
       // Navigate to page 2
       const input = screen.getByTestId('question-input-1');
       await user.type(input, 'Test value');
-      await user.click(screen.getByRole('button', { name: /next/i }));
+      await user.click(screen.getByRole('button', { name: /go to page/i }));
 
       await waitFor(() => {
         expect(screen.getByText(/Page 2 of 3/i)).toBeInTheDocument();
@@ -423,21 +431,21 @@ describe('FeedbackForm Component', () => {
       // Navigate through all pages to review
       // Page 1 - fill required field
       await user.type(screen.getByTestId('question-input-1'), 'Test');
-      await user.click(screen.getByRole('button', { name: /next/i }));
+      await user.click(screen.getByRole('button', { name: /go to page/i }));
 
       // Page 2 - fill required field
       await waitFor(() => {
         expect(screen.getByTestId('question-input-3')).toBeInTheDocument();
       });
       await user.type(screen.getByTestId('question-input-3'), '5');
-      await user.click(screen.getByRole('button', { name: /next/i }));
+      await user.click(screen.getByRole('button', { name: /go to page/i }));
 
       // Page 3 - fill required field
       await waitFor(() => {
         expect(screen.getByTestId('question-input-5')).toBeInTheDocument();
       });
       await user.type(screen.getByTestId('question-input-5'), '3');
-      await user.click(screen.getByRole('button', { name: /review/i }));
+      await user.click(screen.getByRole('button', { name: /review your answers/i }));
 
       // Should now show Submit button on review page
       await waitFor(() => {
@@ -460,7 +468,6 @@ describe('FeedbackForm Component', () => {
       renderWithProviders(<FeedbackForm {...createBaseProps()} />);
 
       // Single page forms shouldn't show the stepper
-      const stepLabels = screen.queryAllByText(/Page \d/);
       // May show page indicator but no stepper steps for navigation
       // Check for absence of step buttons/indicators
       expect(screen.queryByRole('button', { name: /step/i })).not.toBeInTheDocument();
@@ -475,17 +482,17 @@ describe('FeedbackForm Component', () => {
       await user.type(input, '1');
 
       // Should show Review button (which leads to review page, then submit)
-      await user.click(screen.getByRole('button', { name: /review/i }));
+      await user.click(screen.getByRole('button', { name: /review your answers/i }));
 
       await waitFor(() => {
-        expect(screen.getByText(/Review Your Answers/i)).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /Review Your Answers/i })).toBeInTheDocument();
       });
     });
 
     it('no Previous button on single page form initial view', () => {
       renderWithProviders(<FeedbackForm {...createBaseProps()} />);
 
-      expect(screen.queryByRole('button', { name: /previous/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /go to previous page/i })).not.toBeInTheDocument();
     });
   });
 
@@ -500,7 +507,7 @@ describe('FeedbackForm Component', () => {
 
       // Fill required field on page 1
       await user.type(screen.getByTestId('question-input-1'), 'Test');
-      await user.click(screen.getByRole('button', { name: /next/i }));
+      await user.click(screen.getByRole('button', { name: /go to page/i }));
 
       // Should be on page 2
       await waitFor(() => {
@@ -515,14 +522,14 @@ describe('FeedbackForm Component', () => {
 
       // Navigate to page 2
       await user.type(screen.getByTestId('question-input-1'), 'Test');
-      await user.click(screen.getByRole('button', { name: /next/i }));
+      await user.click(screen.getByRole('button', { name: /go to page/i }));
 
       await waitFor(() => {
         expect(screen.getByText(/Page 2 of 3/i)).toBeInTheDocument();
       });
 
       // Go back to page 1
-      await user.click(screen.getByRole('button', { name: /previous/i }));
+      await user.click(screen.getByRole('button', { name: /go to previous page/i }));
 
       await waitFor(() => {
         expect(screen.getByText(/Page 1 of 3/i)).toBeInTheDocument();
@@ -534,7 +541,7 @@ describe('FeedbackForm Component', () => {
       renderWithProviders(<FeedbackForm {...props} />);
 
       // Previous button should not exist on first page
-      expect(screen.queryByRole('button', { name: /previous/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /go to previous page/i })).not.toBeInTheDocument();
     });
 
     it('stepper highlights current page', async () => {
@@ -549,7 +556,7 @@ describe('FeedbackForm Component', () => {
 
       // Navigate and verify page indicator updates
       await user.type(screen.getByTestId('question-input-1'), 'Test');
-      await user.click(screen.getByRole('button', { name: /next/i }));
+      await user.click(screen.getByRole('button', { name: /go to page/i }));
 
       await waitFor(() => {
         expect(screen.getByText(/Page 2 of 3/i)).toBeInTheDocument();
@@ -564,7 +571,7 @@ describe('FeedbackForm Component', () => {
       expect(screen.getByText(/Page 1 of 3/i)).toBeInTheDocument();
 
       await user.type(screen.getByTestId('question-input-1'), 'Test');
-      await user.click(screen.getByRole('button', { name: /next/i }));
+      await user.click(screen.getByRole('button', { name: /go to page/i }));
 
       await waitFor(() => {
         expect(screen.getByText(/Page 2 of 3/i)).toBeInTheDocument();
@@ -579,7 +586,7 @@ describe('FeedbackForm Component', () => {
       await user.type(screen.getByTestId('question-input-1'), 'Test');
 
       // Focus on Next button and press Enter
-      const nextButton = screen.getByRole('button', { name: /next/i });
+      const nextButton = screen.getByRole('button', { name: /go to page/i });
       nextButton.focus();
       await user.keyboard('{Enter}');
 
@@ -599,7 +606,7 @@ describe('FeedbackForm Component', () => {
       renderWithProviders(<FeedbackForm {...props} />);
 
       // Try to navigate without filling required field
-      await user.click(screen.getByRole('button', { name: /next/i }));
+      await user.click(screen.getByRole('button', { name: /go to page/i }));
 
       // Should still be on page 1 and show warning
       await waitFor(() => {
@@ -614,7 +621,7 @@ describe('FeedbackForm Component', () => {
       renderWithProviders(<FeedbackForm {...props} />);
 
       // Click Next without filling required field
-      await user.click(screen.getByRole('button', { name: /next/i }));
+      await user.click(screen.getByRole('button', { name: /go to page/i }));
 
       // Toast warning should be shown
       await waitFor(() => {
@@ -631,7 +638,7 @@ describe('FeedbackForm Component', () => {
 
       // Fill required field
       await user.type(screen.getByTestId('question-input-1'), 'Valid input');
-      await user.click(screen.getByRole('button', { name: /next/i }));
+      await user.click(screen.getByRole('button', { name: /go to page/i }));
 
       // Should successfully navigate to page 2
       await waitFor(() => {
@@ -646,7 +653,7 @@ describe('FeedbackForm Component', () => {
 
       // Navigate to page 2
       await user.type(screen.getByTestId('question-input-1'), 'Test');
-      await user.click(screen.getByRole('button', { name: /next/i }));
+      await user.click(screen.getByRole('button', { name: /go to page/i }));
 
       await waitFor(() => {
         expect(screen.getByText(/Page 2 of 3/i)).toBeInTheDocument();
@@ -656,7 +663,7 @@ describe('FeedbackForm Component', () => {
       mockToast.warning.mockClear();
 
       // Go back without filling page 2's required field
-      await user.click(screen.getByRole('button', { name: /previous/i }));
+      await user.click(screen.getByRole('button', { name: /go to previous page/i }));
 
       // Should successfully go back without validation warning
       await waitFor(() => {
@@ -727,7 +734,12 @@ describe('FeedbackForm Component', () => {
       ];
       renderWithProviders(<FeedbackForm {...createBaseProps({ items })} />);
 
-      expect(screen.getByLabelText(/required/i)).toBeInTheDocument();
+      // Check that required field has aria-required attribute
+      const input = screen.getByTestId('question-input-1');
+      expect(input).toHaveAttribute('aria-required', 'true');
+      // Also verify there's a visual required indicator (the * span with aria-label)
+      const requiredIndicators = screen.getAllByLabelText(/required/i);
+      expect(requiredIndicators.length).toBeGreaterThan(0);
     });
   });
 
@@ -751,7 +763,7 @@ describe('FeedbackForm Component', () => {
       renderWithProviders(<FeedbackForm {...props} />);
 
       // Try to go to review without filling
-      await user.click(screen.getByRole('button', { name: /review/i }));
+      await user.click(screen.getByRole('button', { name: /review your answers/i }));
 
       // Should show validation warning
       await waitFor(() => {
@@ -772,7 +784,7 @@ describe('FeedbackForm Component', () => {
       renderWithProviders(<FeedbackForm {...createBaseProps({ items })} />);
 
       // Trigger validation
-      await user.click(screen.getByRole('button', { name: /review/i }));
+      await user.click(screen.getByRole('button', { name: /review your answers/i }));
 
       // The input should be marked as invalid
       await waitFor(() => {
@@ -834,7 +846,10 @@ describe('FeedbackForm Component', () => {
       
       // Make saveProgress slow
       vi.mocked(saveProgress).mockImplementation(() => 
-        new Promise(resolve => setTimeout(() => resolve({ success: true, data: {} }), 100))
+        new Promise(resolve => setTimeout(() => resolve({ 
+          success: true, 
+          data: { success: true, completedTmpId: 456, currentPage: 1, totalPages: 2 } 
+        }), 100))
       );
 
       renderWithProviders(<FeedbackForm {...createBaseProps()} />);
@@ -842,8 +857,11 @@ describe('FeedbackForm Component', () => {
       await user.type(screen.getByTestId('question-input-1'), 'Test');
       await user.click(screen.getByRole('button', { name: /save draft/i }));
 
-      // Button should show "Saving..." state
-      expect(screen.getByRole('button', { name: /saving/i })).toBeInTheDocument();
+      // Button should show spinner during save - the aria-label stays "Save draft"
+      // but a CircularProgress spinner should be visible (button shows "Saving..." text)
+      expect(screen.getByText('Saving...')).toBeInTheDocument();
+      // Spinner should be visible (CircularProgress creates a progressbar role)
+      expect(screen.getByRole('progressbar', { name: '' })).toBeInTheDocument();
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /save draft/i })).toBeInTheDocument();
@@ -854,7 +872,10 @@ describe('FeedbackForm Component', () => {
       const user = userEvent.setup();
       
       vi.mocked(saveProgress).mockImplementation(() => 
-        new Promise(resolve => setTimeout(() => resolve({ success: true, data: {} }), 100))
+        new Promise(resolve => setTimeout(() => resolve({ 
+          success: true, 
+          data: { success: true, completedTmpId: 456, currentPage: 1, totalPages: 2 } 
+        }), 100))
       );
 
       renderWithProviders(<FeedbackForm {...createBaseProps()} />);
@@ -862,8 +883,9 @@ describe('FeedbackForm Component', () => {
       await user.type(screen.getByTestId('question-input-1'), 'Test');
       await user.click(screen.getByRole('button', { name: /save draft/i }));
 
-      const savingButton = screen.getByRole('button', { name: /saving/i });
-      expect(savingButton).toBeDisabled();
+      // The button keeps aria-label="Save draft" even while saving, but should be disabled
+      const saveDraftButton = screen.getByRole('button', { name: /save draft/i });
+      expect(saveDraftButton).toBeDisabled();
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /save draft/i })).toBeEnabled();
@@ -882,7 +904,7 @@ describe('FeedbackForm Component', () => {
 
       // Fill required field and go to review
       await user.type(screen.getByTestId('question-input-1'), '1');
-      await user.click(screen.getByRole('button', { name: /review/i }));
+      await user.click(screen.getByRole('button', { name: /review your answers/i }));
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /submit/i })).toBeInTheDocument();
@@ -898,7 +920,7 @@ describe('FeedbackForm Component', () => {
 
       // Fill and submit
       await user.type(screen.getByTestId('question-input-1'), '1');
-      await user.click(screen.getByRole('button', { name: /review/i }));
+      await user.click(screen.getByRole('button', { name: /review your answers/i }));
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /submit/i })).toBeInTheDocument();
@@ -921,21 +943,21 @@ describe('FeedbackForm Component', () => {
 
       // Page 1
       await user.type(screen.getByTestId('question-input-1'), 'Page 1 Answer');
-      await user.click(screen.getByRole('button', { name: /next/i }));
+      await user.click(screen.getByRole('button', { name: /go to page/i }));
 
       // Page 2
       await waitFor(() => {
         expect(screen.getByTestId('question-input-3')).toBeInTheDocument();
       });
       await user.type(screen.getByTestId('question-input-3'), '5');
-      await user.click(screen.getByRole('button', { name: /next/i }));
+      await user.click(screen.getByRole('button', { name: /go to page/i }));
 
       // Page 3
       await waitFor(() => {
         expect(screen.getByTestId('question-input-5')).toBeInTheDocument();
       });
       await user.type(screen.getByTestId('question-input-5'), '3');
-      await user.click(screen.getByRole('button', { name: /review/i }));
+      await user.click(screen.getByRole('button', { name: /review your answers/i }));
 
       // Submit
       await waitFor(() => {
@@ -948,7 +970,8 @@ describe('FeedbackForm Component', () => {
           42,
           expect.objectContaining({
             1: 'Page 1 Answer',
-            3: '5',
+            // Question 3 is NUMERIC type, so the value is converted to number
+            3: 5,
             5: '3',
           })
         );
@@ -958,17 +981,19 @@ describe('FeedbackForm Component', () => {
     it('loading state during submission', async () => {
       const user = userEvent.setup();
       
+      // Make the mock resolve slowly to allow checking loading state
+      let resolveSubmit: ((value: ApiResponse<FeedbackSubmissionResult>) => void) | undefined;
       vi.mocked(submitFeedbackResponse).mockImplementation(() =>
-        new Promise(resolve =>
-          setTimeout(() => resolve({ success: true, data: { completedId: 123 } }), 100)
-        )
+        new Promise<ApiResponse<FeedbackSubmissionResult>>(resolve => {
+          resolveSubmit = resolve;
+        })
       );
 
       const items = createSinglePageItems();
       renderWithProviders(<FeedbackForm {...createBaseProps({ items })} />);
 
       await user.type(screen.getByTestId('question-input-1'), '1');
-      await user.click(screen.getByRole('button', { name: /review/i }));
+      await user.click(screen.getByRole('button', { name: /review your answers/i }));
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /submit/i })).toBeInTheDocument();
@@ -976,11 +1001,21 @@ describe('FeedbackForm Component', () => {
 
       await user.click(screen.getByRole('button', { name: /submit/i }));
 
-      // Should show submitting state
-      expect(screen.getByRole('button', { name: /submitting/i })).toBeInTheDocument();
+      // Should show submitting state - button shows "Submitting..." text
+      await waitFor(() => {
+        expect(screen.getByText('Submitting...')).toBeInTheDocument();
+      });
+      // Submit button should be disabled during submission
+      expect(screen.getByRole('button', { name: /submit feedback/i })).toBeDisabled();
+
+      // Now resolve the promise
+      resolveSubmit!({ 
+        success: true, 
+        data: { success: true, completedId: 123, message: 'Submitted' } 
+      });
 
       await waitFor(() => {
-        expect(screen.getByText(/Thank You/i)).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /Thank You/i })).toBeInTheDocument();
       });
     });
 
@@ -992,7 +1027,7 @@ describe('FeedbackForm Component', () => {
       );
 
       await user.type(screen.getByTestId('question-input-1'), '1');
-      await user.click(screen.getByRole('button', { name: /review/i }));
+      await user.click(screen.getByRole('button', { name: /review your answers/i }));
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /submit/i })).toBeInTheDocument();
@@ -1018,10 +1053,10 @@ describe('FeedbackForm Component', () => {
 
       await user.type(screen.getByTestId('question-input-1'), '2');
       await user.type(screen.getByTestId('question-input-2'), 'Great service!');
-      await user.click(screen.getByRole('button', { name: /review/i }));
+      await user.click(screen.getByRole('button', { name: /review your answers/i }));
 
       await waitFor(() => {
-        expect(screen.getByText(/Review Your Answers/i)).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /Review Your Answers/i })).toBeInTheDocument();
         expect(screen.getByText('2')).toBeInTheDocument();
         expect(screen.getByText('Great service!')).toBeInTheDocument();
       });
@@ -1033,7 +1068,7 @@ describe('FeedbackForm Component', () => {
       renderWithProviders(<FeedbackForm {...createBaseProps({ items })} />);
 
       await user.type(screen.getByTestId('question-input-1'), 'My answer');
-      await user.click(screen.getByRole('button', { name: /review/i }));
+      await user.click(screen.getByRole('button', { name: /review your answers/i }));
 
       await waitFor(() => {
         expect(screen.getByText(/Rate our service/i)).toBeInTheDocument();
@@ -1047,13 +1082,13 @@ describe('FeedbackForm Component', () => {
       renderWithProviders(<FeedbackForm {...createBaseProps({ items })} />);
 
       await user.type(screen.getByTestId('question-input-1'), '1');
-      await user.click(screen.getByRole('button', { name: /review/i }));
+      await user.click(screen.getByRole('button', { name: /review your answers/i }));
 
       await waitFor(() => {
-        expect(screen.getByText(/Review Your Answers/i)).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /Review Your Answers/i })).toBeInTheDocument();
       });
 
-      await user.click(screen.getByRole('button', { name: /previous/i }));
+      await user.click(screen.getByRole('button', { name: /go to previous page/i }));
 
       await waitFor(() => {
         expect(screen.queryByText(/Review Your Answers/i)).not.toBeInTheDocument();
@@ -1105,7 +1140,7 @@ describe('FeedbackForm Component', () => {
 
       // Fill page 1
       await user.type(screen.getByTestId('question-input-1'), 'Page 1 value');
-      await user.click(screen.getByRole('button', { name: /next/i }));
+      await user.click(screen.getByRole('button', { name: /go to page/i }));
 
       // Wait for page 2
       await waitFor(() => {
@@ -1113,7 +1148,7 @@ describe('FeedbackForm Component', () => {
       });
 
       // Go back to page 1
-      await user.click(screen.getByRole('button', { name: /previous/i }));
+      await user.click(screen.getByRole('button', { name: /go to previous page/i }));
 
       // Value should be preserved
       await waitFor(() => {
@@ -1129,14 +1164,14 @@ describe('FeedbackForm Component', () => {
       // Fill and navigate
       await user.type(screen.getByTestId('question-input-1'), 'Answer 1');
       await user.type(screen.getByTestId('question-input-2'), '2');
-      await user.click(screen.getByRole('button', { name: /next/i }));
+      await user.click(screen.getByRole('button', { name: /go to page/i }));
 
       await waitFor(() => {
         expect(screen.getByText(/Page 2 of 3/i)).toBeInTheDocument();
       });
 
       // Return and check values
-      await user.click(screen.getByRole('button', { name: /previous/i }));
+      await user.click(screen.getByRole('button', { name: /go to previous page/i }));
 
       await waitFor(() => {
         expect(screen.getByTestId('question-input-1')).toHaveValue('Answer 1');
@@ -1154,7 +1189,10 @@ describe('FeedbackForm Component', () => {
       
       vi.mocked(submitFeedbackResponse).mockImplementation(() =>
         new Promise(resolve =>
-          setTimeout(() => resolve({ success: true, data: { completedId: 123 } }), 200)
+          setTimeout(() => resolve({ 
+            success: true, 
+            data: { success: true, completedId: 123, message: 'Submitted' } 
+          }), 200)
         )
       );
 
@@ -1162,7 +1200,7 @@ describe('FeedbackForm Component', () => {
       renderWithProviders(<FeedbackForm {...createBaseProps({ items })} />);
 
       await user.type(screen.getByTestId('question-input-1'), '1');
-      await user.click(screen.getByRole('button', { name: /review/i }));
+      await user.click(screen.getByRole('button', { name: /review your answers/i }));
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /submit/i })).toBeInTheDocument();
@@ -1173,24 +1211,26 @@ describe('FeedbackForm Component', () => {
       expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
 
       await waitFor(() => {
-        expect(screen.getByText(/Thank You/i)).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /Thank You/i })).toBeInTheDocument();
       });
     });
 
     it('buttons disabled during submission', async () => {
       const user = userEvent.setup();
       
+      // Use manual promise control to check disabled state during submission
+      let resolveSubmit: ((value: ApiResponse<FeedbackSubmissionResult>) => void) | undefined;
       vi.mocked(submitFeedbackResponse).mockImplementation(() =>
-        new Promise(resolve =>
-          setTimeout(() => resolve({ success: true, data: { completedId: 123 } }), 100)
-        )
+        new Promise<ApiResponse<FeedbackSubmissionResult>>(resolve => {
+          resolveSubmit = resolve;
+        })
       );
 
       const items = createSinglePageItems();
       renderWithProviders(<FeedbackForm {...createBaseProps({ items })} />);
 
       await user.type(screen.getByTestId('question-input-1'), '1');
-      await user.click(screen.getByRole('button', { name: /review/i }));
+      await user.click(screen.getByRole('button', { name: /review your answers/i }));
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /submit/i })).toBeInTheDocument();
@@ -1198,13 +1238,25 @@ describe('FeedbackForm Component', () => {
 
       await user.click(screen.getByRole('button', { name: /submit/i }));
 
-      // Buttons should be disabled
-      expect(screen.getByRole('button', { name: /submitting/i })).toBeDisabled();
-      expect(screen.getByRole('button', { name: /previous/i })).toBeDisabled();
+      // Wait for the submission loading state to be active
+      await waitFor(() => {
+        expect(screen.getByText('Submitting...')).toBeInTheDocument();
+      });
+
+      // Buttons should be disabled during submission
+      // The submit button has aria-label="Submit feedback" even when showing "Submitting..." text
+      expect(screen.getByRole('button', { name: /submit feedback/i })).toBeDisabled();
+      expect(screen.getByRole('button', { name: /go to previous page/i })).toBeDisabled();
       expect(screen.getByRole('button', { name: /save draft/i })).toBeDisabled();
 
+      // Now resolve the promise
+      resolveSubmit!({ 
+        success: true, 
+        data: { success: true, completedId: 123, message: 'Submitted' } 
+      });
+
       await waitFor(() => {
-        expect(screen.getByText(/Thank You/i)).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /Thank You/i })).toBeInTheDocument();
       });
     });
   });
@@ -1224,7 +1276,7 @@ describe('FeedbackForm Component', () => {
       renderWithProviders(<FeedbackForm {...createBaseProps({ items })} />);
 
       await user.type(screen.getByTestId('question-input-1'), '1');
-      await user.click(screen.getByRole('button', { name: /review/i }));
+      await user.click(screen.getByRole('button', { name: /review your answers/i }));
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /submit/i })).toBeInTheDocument();
@@ -1249,7 +1301,7 @@ describe('FeedbackForm Component', () => {
       renderWithProviders(<FeedbackForm {...createBaseProps({ items })} />);
 
       await user.type(screen.getByTestId('question-input-1'), '1');
-      await user.click(screen.getByRole('button', { name: /review/i }));
+      await user.click(screen.getByRole('button', { name: /review your answers/i }));
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /submit/i })).toBeInTheDocument();
@@ -1273,7 +1325,7 @@ describe('FeedbackForm Component', () => {
       renderWithProviders(<FeedbackForm {...createBaseProps({ items })} />);
 
       await user.type(screen.getByTestId('question-input-1'), 'My data');
-      await user.click(screen.getByRole('button', { name: /review/i }));
+      await user.click(screen.getByRole('button', { name: /review your answers/i }));
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /submit/i })).toBeInTheDocument();
@@ -1286,7 +1338,7 @@ describe('FeedbackForm Component', () => {
       });
 
       // Go back and verify data is still there
-      await user.click(screen.getByRole('button', { name: /previous/i }));
+      await user.click(screen.getByRole('button', { name: /go to previous page/i }));
 
       await waitFor(() => {
         expect(screen.getByTestId('question-input-1')).toHaveValue('My data');
@@ -1298,13 +1350,16 @@ describe('FeedbackForm Component', () => {
       
       vi.mocked(submitFeedbackResponse)
         .mockRejectedValueOnce(new Error('First attempt failed'))
-        .mockResolvedValueOnce({ success: true, data: { completedId: 123 } });
+        .mockResolvedValueOnce({ 
+          success: true, 
+          data: { success: true, completedId: 123, message: 'Submitted' } 
+        });
 
       const items = createSinglePageItems();
       renderWithProviders(<FeedbackForm {...createBaseProps({ items })} />);
 
       await user.type(screen.getByTestId('question-input-1'), '1');
-      await user.click(screen.getByRole('button', { name: /review/i }));
+      await user.click(screen.getByRole('button', { name: /review your answers/i }));
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /submit/i })).toBeInTheDocument();
@@ -1321,7 +1376,7 @@ describe('FeedbackForm Component', () => {
       await user.click(screen.getByRole('button', { name: /retry/i }));
 
       await waitFor(() => {
-        expect(screen.getByText(/Thank You/i)).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /Thank You/i })).toBeInTheDocument();
       });
     });
   });
@@ -1331,8 +1386,11 @@ describe('FeedbackForm Component', () => {
   // ==========================================================================
   describe('Autosave Functionality', () => {
     it('autosave triggers after 60 seconds of inactivity', async () => {
-      vi.useFakeTimers();
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      const user = userEvent.setup({ 
+        advanceTimers: vi.advanceTimersByTime,
+        delay: null 
+      });
 
       renderWithProviders(<FeedbackForm {...createBaseProps()} />);
 
@@ -1340,32 +1398,39 @@ describe('FeedbackForm Component', () => {
       const input = screen.getByTestId('question-input-1');
       await user.type(input, 'Test');
 
-      // Fast-forward 60 seconds
-      vi.advanceTimersByTime(60000);
+      // Fast-forward 60 seconds and flush promises
+      await vi.advanceTimersByTimeAsync(60000);
 
-      await waitFor(() => {
-        expect(saveProgress).toHaveBeenCalled();
-      });
+      expect(saveProgress).toHaveBeenCalled();
+      
+      vi.useRealTimers();
     });
 
     it('autosave uses saveProgress mutation', async () => {
-      vi.useFakeTimers();
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      const user = userEvent.setup({ 
+        advanceTimers: vi.advanceTimersByTime,
+        delay: null 
+      });
 
       renderWithProviders(<FeedbackForm {...createBaseProps()} />);
 
       await user.type(screen.getByTestId('question-input-1'), 'Auto');
 
-      vi.advanceTimersByTime(60000);
+      // Fast-forward 60 seconds and flush promises  
+      await vi.advanceTimersByTimeAsync(60000);
 
-      await waitFor(() => {
-        expect(saveProgress).toHaveBeenCalledWith(42, expect.any(Object));
-      });
+      expect(saveProgress).toHaveBeenCalledWith(42, expect.any(Object));
+      
+      vi.useRealTimers();
     });
 
     it('autosave does not interfere with manual save', async () => {
-      vi.useFakeTimers();
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      const user = userEvent.setup({ 
+        advanceTimers: vi.advanceTimersByTime,
+        delay: null 
+      });
 
       renderWithProviders(<FeedbackForm {...createBaseProps()} />);
 
@@ -1375,11 +1440,11 @@ describe('FeedbackForm Component', () => {
       expect(saveProgress).toHaveBeenCalledTimes(1);
 
       // Autosave should still work after manual save
-      vi.advanceTimersByTime(60000);
+      await vi.advanceTimersByTimeAsync(60000);
 
-      await waitFor(() => {
-        expect(saveProgress).toHaveBeenCalledTimes(2);
-      });
+      expect(saveProgress).toHaveBeenCalledTimes(2);
+      
+      vi.useRealTimers();
     });
   });
 
@@ -1409,7 +1474,7 @@ describe('FeedbackForm Component', () => {
       );
 
       await user.type(screen.getByTestId('question-input-1'), '1');
-      await user.click(screen.getByRole('button', { name: /review/i }));
+      await user.click(screen.getByRole('button', { name: /review your answers/i }));
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /submit/i })).toBeInTheDocument();
@@ -1430,7 +1495,7 @@ describe('FeedbackForm Component', () => {
       renderWithProviders(<FeedbackForm {...props} />);
 
       await user.type(screen.getByTestId('question-input-1'), 'Test');
-      await user.click(screen.getByRole('button', { name: /next/i }));
+      await user.click(screen.getByRole('button', { name: /go to page/i }));
 
       // After navigation, focus should be manageable on new page
       await waitFor(() => {
@@ -1459,7 +1524,7 @@ describe('FeedbackForm Component', () => {
       renderWithProviders(<FeedbackForm {...props} />);
 
       await user.type(screen.getByTestId('question-input-1'), 'Test');
-      await user.click(screen.getByRole('button', { name: /next/i }));
+      await user.click(screen.getByRole('button', { name: /go to page/i }));
 
       // Screen reader announcement area exists
       await waitFor(() => {
@@ -1474,7 +1539,7 @@ describe('FeedbackForm Component', () => {
       renderWithProviders(<FeedbackForm {...createBaseProps({ items })} />);
 
       await user.type(screen.getByTestId('question-input-1'), '1');
-      await user.click(screen.getByRole('button', { name: /review/i }));
+      await user.click(screen.getByRole('button', { name: /review your answers/i }));
 
       await waitFor(() => {
         const submitButton = screen.getByRole('button', { name: /submit feedback/i });
@@ -1534,7 +1599,7 @@ describe('FeedbackForm Component', () => {
       expect(screen.getByText(/Page 1 of 3/i)).toBeInTheDocument();
       await user.type(screen.getByTestId('question-input-1'), 'Page 1 answer');
       await user.type(screen.getByTestId('question-input-2'), '1');
-      await user.click(screen.getByRole('button', { name: /next/i }));
+      await user.click(screen.getByRole('button', { name: /go to page/i }));
 
       // Page 2
       await waitFor(() => {
@@ -1542,18 +1607,18 @@ describe('FeedbackForm Component', () => {
       });
       await user.type(screen.getByTestId('question-input-3'), '5');
       await user.type(screen.getByTestId('question-input-4'), 'Page 2 comment');
-      await user.click(screen.getByRole('button', { name: /next/i }));
+      await user.click(screen.getByRole('button', { name: /go to page/i }));
 
       // Page 3
       await waitFor(() => {
         expect(screen.getByText(/Page 3 of 3/i)).toBeInTheDocument();
       });
       await user.type(screen.getByTestId('question-input-5'), '4');
-      await user.click(screen.getByRole('button', { name: /review/i }));
+      await user.click(screen.getByRole('button', { name: /review your answers/i }));
 
       // Review page
       await waitFor(() => {
-        expect(screen.getByText(/Review Your Answers/i)).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /Review Your Answers/i })).toBeInTheDocument();
       });
 
       // Submit
@@ -1562,7 +1627,7 @@ describe('FeedbackForm Component', () => {
       await waitFor(() => {
         expect(submitFeedbackResponse).toHaveBeenCalled();
         expect(mockOnSubmit).toHaveBeenCalled();
-        expect(screen.getByText(/Thank You/i)).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /Thank You/i })).toBeInTheDocument();
       });
     });
 
@@ -1572,7 +1637,7 @@ describe('FeedbackForm Component', () => {
       renderWithProviders(<FeedbackForm {...props} />);
 
       // Try to proceed without filling required field
-      await user.click(screen.getByRole('button', { name: /next/i }));
+      await user.click(screen.getByRole('button', { name: /go to page/i }));
 
       await waitFor(() => {
         expect(mockToast.warning).toHaveBeenCalled();
@@ -1581,7 +1646,7 @@ describe('FeedbackForm Component', () => {
 
       // Fix the error
       await user.type(screen.getByTestId('question-input-1'), 'Fixed value');
-      await user.click(screen.getByRole('button', { name: /next/i }));
+      await user.click(screen.getByRole('button', { name: /go to page/i }));
 
       // Should now proceed to page 2
       await waitFor(() => {
@@ -1607,7 +1672,7 @@ describe('FeedbackForm Component', () => {
 
       // Fill and submit
       await user.type(screen.getByTestId('question-input-1'), '1');
-      await user.click(screen.getByRole('button', { name: /review/i }));
+      await user.click(screen.getByRole('button', { name: /review your answers/i }));
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /submit/i })).toBeInTheDocument();
@@ -1617,7 +1682,7 @@ describe('FeedbackForm Component', () => {
 
       await waitFor(() => {
         expect(submitFeedbackResponse).toHaveBeenCalled();
-        expect(screen.getByText(/Thank You/i)).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /Thank You/i })).toBeInTheDocument();
         // Success message should mention anonymous
         expect(screen.getByText(/anonymously/i)).toBeInTheDocument();
       });
@@ -1663,7 +1728,7 @@ describe('FeedbackForm Component', () => {
       );
 
       await user.type(screen.getByTestId('question-input-1'), '1');
-      await user.click(screen.getByRole('button', { name: /review/i }));
+      await user.click(screen.getByRole('button', { name: /review your answers/i }));
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /submit/i })).toBeInTheDocument();
@@ -1726,7 +1791,7 @@ describe('FeedbackForm Component', () => {
       );
 
       await user.type(screen.getByTestId('question-input-1'), '1');
-      await user.click(screen.getByRole('button', { name: /review/i }));
+      await user.click(screen.getByRole('button', { name: /review your answers/i }));
 
       await waitFor(() => {
         const submitButton = screen.getByRole('button', { name: /submit/i });
@@ -1742,7 +1807,7 @@ describe('FeedbackForm Component', () => {
       );
 
       await user.type(screen.getByTestId('question-input-1'), '1');
-      await user.click(screen.getByRole('button', { name: /review/i }));
+      await user.click(screen.getByRole('button', { name: /review your answers/i }));
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /submit/i })).toBeDisabled();
@@ -1783,7 +1848,7 @@ describe('FeedbackForm Component', () => {
       );
 
       await user.type(screen.getByTestId('question-input-1'), '1');
-      await user.click(screen.getByRole('button', { name: /review/i }));
+      await user.click(screen.getByRole('button', { name: /review your answers/i }));
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /submit/i })).toBeInTheDocument();
@@ -1792,7 +1857,7 @@ describe('FeedbackForm Component', () => {
       await user.click(screen.getByRole('button', { name: /submit/i }));
 
       await waitFor(() => {
-        expect(screen.getByText(/Thank You/i)).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /Thank You/i })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /return to course/i })).toBeInTheDocument();
       });
 
