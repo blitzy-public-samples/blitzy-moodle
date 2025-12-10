@@ -164,8 +164,9 @@ const STATUS_LABELS: Record<GradeStatus, string> = {
 
 /**
  * Status icons for visual indication
+ * Using React.ReactElement type for compatibility with MUI Chip's icon prop
  */
-const STATUS_ICONS: Record<GradeStatus, React.ReactNode> = {
+const STATUS_ICONS: Record<GradeStatus, React.ReactElement> = {
   completed: <CheckCircleIcon fontSize="small" />,
   pending: <ScheduleIcon fontSize="small" />,
   not_submitted: <HelpOutlineIcon fontSize="small" />,
