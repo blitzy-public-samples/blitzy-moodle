@@ -22,13 +22,12 @@ import { http, HttpResponse } from 'msw';
 import React from 'react';
 
 import useRecord from '@/features/activities/data/hooks/useRecord';
-import type { RecordData } from '@/features/activities/data/hooks/useRecord';
-import { dataQueryKeys, getRecord } from '@/features/activities/data/api/dataApi';
+import { dataQueryKeys } from '@/features/activities/data/api/dataApi';
 import type { RecordWithContents, RecordComment } from '@/features/activities/data/api/dataApi';
-import type { DatabaseRecord, FieldContent, FieldType } from '@/features/activities/data/types/data.types';
+import type { FieldContent } from '@/features/activities/data/types/data.types';
 
 // Import MSW server from test setup
-import { server } from '../../../../mocks/server';
+import { server } from '@tests/mocks/server';
 
 // ============================================================================
 // Test Constants
@@ -152,10 +151,10 @@ function createTestQueryClient(): QueryClient {
  */
 function createWrapper(queryClient: QueryClient) {
   return function Wrapper({ children }: { children: React.ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
+    return React.createElement(
+      QueryClientProvider,
+      { client: queryClient },
+      children
     );
   };
 }
@@ -342,9 +341,9 @@ describe('useRecord Hook', () => {
 
       // Verify tags
       expect(recordData.tags).toHaveLength(3);
-      expect(recordData.tags![0].name).toBe('urgent');
-      expect(recordData.tags![1].name).toBe('review');
-      expect(recordData.tags![2].name).toBe('approved');
+      expect(recordData.tags![0]!.name).toBe('urgent');
+      expect(recordData.tags![1]!.name).toBe('review');
+      expect(recordData.tags![2]!.name).toBe('approved');
 
       // Verify rating
       expect(recordData.rating).toBeDefined();
@@ -354,8 +353,8 @@ describe('useRecord Hook', () => {
 
       // Verify comments
       expect(recordData.comments).toHaveLength(2);
-      expect(recordData.comments![0].content).toBe('First comment');
-      expect(recordData.comments![1].content).toBe('Second comment');
+      expect(recordData.comments![0]!.content).toBe('First comment');
+      expect(recordData.comments![1]!.content).toBe('Second comment');
     });
 
     it('should provide helper flags (canEdit, canDelete, isApproved, isPending)', async () => {
@@ -694,35 +693,35 @@ describe('useRecord Hook', () => {
       expect(recordData.contents).toHaveLength(9);
 
       // Verify text field
-      expect(recordData.contents[0].content).toBe('Text Value');
+      expect(recordData.contents[0]!.content).toBe('Text Value');
 
       // Verify number field
-      expect(recordData.contents[1].content).toBe('123.45');
+      expect(recordData.contents[1]!.content).toBe('123.45');
 
       // Verify date field
-      expect(recordData.contents[2].content).toBe('2024-03-15');
+      expect(recordData.contents[2]!.content).toBe('2024-03-15');
 
       // Verify file field with metadata
-      expect(recordData.contents[3].content).toBe('https://example.com/file.pdf');
-      expect(recordData.contents[3].content1).toBe('file.pdf');
-      expect(recordData.contents[3].content2).toBe('application/pdf');
+      expect(recordData.contents[3]!.content).toBe('https://example.com/file.pdf');
+      expect(recordData.contents[3]!.content1).toBe('file.pdf');
+      expect(recordData.contents[3]!.content2).toBe('application/pdf');
 
       // Verify picture/image field
-      expect(recordData.contents[4].content).toBe('https://example.com/image.jpg');
-      expect(recordData.contents[4].content1).toBe('image.jpg');
+      expect(recordData.contents[4]!.content).toBe('https://example.com/image.jpg');
+      expect(recordData.contents[4]!.content1).toBe('image.jpg');
 
       // Verify URL field
-      expect(recordData.contents[5].content).toBe('https://example.com');
+      expect(recordData.contents[5]!.content).toBe('https://example.com');
 
       // Verify checkbox field
-      expect(recordData.contents[6].content).toBe('1');
+      expect(recordData.contents[6]!.content).toBe('1');
 
       // Verify menu/radiobutton field
-      expect(recordData.contents[7].content).toBe('Option A');
+      expect(recordData.contents[7]!.content).toBe('Option A');
 
       // Verify latlong field
-      expect(recordData.contents[8].content).toBe('40.7128');
-      expect(recordData.contents[8].content1).toBe('-74.0060');
+      expect(recordData.contents[8]!.content).toBe('40.7128');
+      expect(recordData.contents[8]!.content1).toBe('-74.0060');
     });
 
     it('should handle empty/null field values', async () => {
@@ -753,8 +752,8 @@ describe('useRecord Hook', () => {
 
       const recordData = result.current.record!;
 
-      expect(recordData.contents[0].content).toBe('');
-      expect(recordData.contents[1].content).toBeUndefined();
+      expect(recordData.contents[0]!.content).toBe('');
+      expect(recordData.contents[1]!.content).toBeUndefined();
     });
   });
 
@@ -948,7 +947,7 @@ describe('useRecord Hook', () => {
   describe('Error Handling', () => {
     it('should handle 404 not found error', async () => {
       server.use(
-        http.get(`*/api/v1${DATA_API_BASE}/databases/:databaseId/entries/:recordId`, () => {
+        http.get(`http://localhost:8000/api/v1${DATA_API_BASE}/databases/:databaseId/entries/:recordId`, () => {
           return HttpResponse.json(
             {
               success: false,
@@ -963,7 +962,11 @@ describe('useRecord Hook', () => {
       );
 
       const { result } = renderHook(
-        () => useRecord({ dataId: TEST_DATABASE_ID, recordId: 99999 }),
+        () => useRecord({ 
+          dataId: TEST_DATABASE_ID, 
+          recordId: 99999,
+          options: { retry: false }  // Disable retries to avoid test timeout
+        }),
         { wrapper: createWrapper(queryClient) }
       );
 
@@ -979,7 +982,7 @@ describe('useRecord Hook', () => {
 
     it('should handle 403 permission denied error', async () => {
       server.use(
-        http.get(`*/api/v1${DATA_API_BASE}/databases/:databaseId/entries/:recordId`, () => {
+        http.get(`http://localhost:8000/api/v1${DATA_API_BASE}/databases/:databaseId/entries/:recordId`, () => {
           return HttpResponse.json(
             {
               success: false,
@@ -994,7 +997,11 @@ describe('useRecord Hook', () => {
       );
 
       const { result } = renderHook(
-        () => useRecord({ dataId: TEST_DATABASE_ID, recordId: TEST_RECORD_ID }),
+        () => useRecord({ 
+          dataId: TEST_DATABASE_ID, 
+          recordId: TEST_RECORD_ID,
+          options: { retry: false }  // Disable retries to avoid test timeout
+        }),
         { wrapper: createWrapper(queryClient) }
       );
 
@@ -1008,13 +1015,17 @@ describe('useRecord Hook', () => {
 
     it('should handle network errors', async () => {
       server.use(
-        http.get(`*/api/v1${DATA_API_BASE}/databases/:databaseId/entries/:recordId`, () => {
+        http.get(`http://localhost:8000/api/v1${DATA_API_BASE}/databases/:databaseId/entries/:recordId`, () => {
           return HttpResponse.error();
         })
       );
 
       const { result } = renderHook(
-        () => useRecord({ dataId: TEST_DATABASE_ID, recordId: TEST_RECORD_ID }),
+        () => useRecord({ 
+          dataId: TEST_DATABASE_ID, 
+          recordId: TEST_RECORD_ID,
+          options: { retry: false }  // Disable retries to avoid test timeout
+        }),
         { wrapper: createWrapper(queryClient) }
       );
 
@@ -1028,7 +1039,7 @@ describe('useRecord Hook', () => {
 
     it('should handle 500 server error', async () => {
       server.use(
-        http.get(`*/api/v1${DATA_API_BASE}/databases/:databaseId/entries/:recordId`, () => {
+        http.get(`http://localhost:8000/api/v1${DATA_API_BASE}/databases/:databaseId/entries/:recordId`, () => {
           return HttpResponse.json(
             {
               success: false,
@@ -1043,7 +1054,11 @@ describe('useRecord Hook', () => {
       );
 
       const { result } = renderHook(
-        () => useRecord({ dataId: TEST_DATABASE_ID, recordId: TEST_RECORD_ID }),
+        () => useRecord({ 
+          dataId: TEST_DATABASE_ID, 
+          recordId: TEST_RECORD_ID,
+          options: { retry: false }  // Disable retries to avoid test timeout
+        }),
         { wrapper: createWrapper(queryClient) }
       );
 
@@ -1285,7 +1300,7 @@ describe('useRecord Hook', () => {
       const rolledBackData = queryClient.getQueryData<RecordWithContents>(
         dataQueryKeys.record(TEST_DATABASE_ID, TEST_RECORD_ID)
       );
-      expect(rolledBackData?.contents[0].content).toBe('Original Value');
+      expect(rolledBackData?.contents[0]!.content).toBe('Original Value');
     });
 
     it('should support cache prefetching for optimistic navigation', async () => {
