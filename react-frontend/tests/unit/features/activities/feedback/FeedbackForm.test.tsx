@@ -1208,7 +1208,10 @@ describe('FeedbackForm Component', () => {
 
       await user.click(screen.getByRole('button', { name: /submit/i }));
 
-      expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
+      // Need to wait for React to re-render with isSubmitting=true
+      await waitFor(() => {
+        expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
+      });
 
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: /Thank You/i })).toBeInTheDocument();
