@@ -21,11 +21,11 @@
  * @module features/activities/data/components/RecordForm
  */
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useForm, Controller, type FieldValues, type SubmitHandler } from 'react-hook-form';
+import React, { useEffect, useMemo, useCallback } from 'react';
+import { useForm, Controller, type SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useQueryClient } from '@tanstack/react-query';
+
 import {
   Box,
   Button,
@@ -45,12 +45,12 @@ import {
   Divider,
   FormHelperText,
 } from '@mui/material';
-import { Save, Cancel, CloudUpload } from '@mui/icons-material';
+import { Save, Cancel } from '@mui/icons-material';
 
 // Internal imports from dependencies
 import { useDatabase } from '@/features/activities/data/hooks/useDatabase';
 import { useCreateRecord, useUpdateRecord } from '@/features/activities/data/hooks/useDatabaseMutation';
-import { useRecord } from '@/features/activities/data/hooks/useRecord';
+import useRecord from '@/features/activities/data/hooks/useRecord';
 import { useToast } from '@/hooks/useToast';
 import type {
   DatabaseField,
@@ -103,13 +103,6 @@ type FieldValue =
  */
 interface FormData {
   [fieldId: string]: FieldValue;
-}
-
-/**
- * File upload state for tracking uploaded files per field
- */
-interface FileUploadState {
-  [fieldId: string]: File[];
 }
 
 // ============================================================================
@@ -282,16 +275,14 @@ const createFieldSchema = (field: DatabaseField): z.ZodTypeAny => {
     }
 
     case 'url': {
-      let schema = z.string();
       if (isRequired) {
-        schema = schema.min(1, `${field.name} is required`).url(`${field.name} must be a valid URL`);
-      } else {
-        schema = schema.refine(
-          (val) => !val || val.length === 0 || z.string().url().safeParse(val).success,
-          { message: `${field.name} must be a valid URL` }
-        );
+        return z.string().min(1, `${field.name} is required`).url(`${field.name} must be a valid URL`);
       }
-      return schema;
+      // For optional URL, allow empty string or valid URL
+      return z.string().refine(
+        (val) => !val || val.length === 0 || z.string().url().safeParse(val).success,
+        { message: `${field.name} must be a valid URL` }
+      );
     }
 
     case 'latlong': {
@@ -519,7 +510,6 @@ const RecordForm: React.FC<RecordFormProps> = ({
   // ============================================================================
 
   const toast = useToast();
-  const queryClient = useQueryClient();
 
   // Determine if we're in edit mode
   const isEditMode = Boolean(recordId);
@@ -536,7 +526,7 @@ const RecordForm: React.FC<RecordFormProps> = ({
     data: existingRecord,
     isLoading: isRecordLoading,
     error: recordError,
-  } = useRecord(databaseId, recordId ?? 0, { enabled: isEditMode });
+  } = useRecord({ dataId: databaseId, recordId: recordId ?? 0, options: { enabled: isEditMode } });
 
   // Mutation hooks for create/update operations
   const createRecordMutation = useCreateRecord({
@@ -561,9 +551,6 @@ const RecordForm: React.FC<RecordFormProps> = ({
     },
   });
 
-  // File upload state
-  const [uploadedFiles, setUploadedFiles] = useState<FileUploadState>({});
-
   // Build validation schema from field definitions
   const validationSchema = useMemo(() => {
     if (!database?.fields || database.fields.length === 0) {
@@ -578,8 +565,6 @@ const RecordForm: React.FC<RecordFormProps> = ({
     handleSubmit,
     reset,
     formState: { errors, isSubmitting, isDirty },
-    setValue,
-    watch,
   } = useForm<FormData>({
     resolver: zodResolver(validationSchema),
     defaultValues: {},
@@ -602,22 +587,6 @@ const RecordForm: React.FC<RecordFormProps> = ({
   // ============================================================================
 
   /**
-   * Handles file selection/upload for file fields
-   */
-  const handleFileChange = useCallback(
-    (fieldId: number, files: File[]) => {
-      const fieldKey = `field_${fieldId}`;
-      setUploadedFiles((prev) => ({
-        ...prev,
-        [fieldKey]: files,
-      }));
-      // Store file reference in form
-      setValue(fieldKey, files.length > 0 ? files[0].name : '');
-    },
-    [setValue]
-  );
-
-  /**
    * Handles form submission for both create and update operations
    */
   const onSubmit: SubmitHandler<FormData> = useCallback(
@@ -631,13 +600,23 @@ const RecordForm: React.FC<RecordFormProps> = ({
         // Transform form data to API format
         const submissionData = transformFormDataForSubmission(database.fields, formData);
 
-        // Collect files for upload
+        // Collect files for upload from form data
+        // Files are stored in form data by FormFileUpload component as File or FileList
         const filesToUpload: Array<{ fieldId: number; file: File }> = [];
-        Object.entries(uploadedFiles).forEach(([fieldKey, files]) => {
-          const fieldId = parseInt(fieldKey.replace('field_', ''), 10);
-          files.forEach((file) => {
-            filesToUpload.push({ fieldId, file });
-          });
+        database.fields.forEach((field) => {
+          const fieldType = getFieldTypeString(field.type);
+          if (fieldType === 'file' || fieldType === 'picture') {
+            const fieldKey = `field_${field.id}`;
+            const fieldValue = formData[fieldKey];
+            
+            if (fieldValue instanceof File) {
+              filesToUpload.push({ fieldId: field.id, file: fieldValue });
+            } else if (fieldValue instanceof FileList) {
+              Array.from(fieldValue).forEach((file) => {
+                filesToUpload.push({ fieldId: field.id, file });
+              });
+            }
+          }
         });
 
         if (isEditMode && recordId) {
@@ -664,7 +643,6 @@ const RecordForm: React.FC<RecordFormProps> = ({
     },
     [
       database?.fields,
-      uploadedFiles,
       isEditMode,
       recordId,
       databaseId,
@@ -709,8 +687,6 @@ const RecordForm: React.FC<RecordFormProps> = ({
               required={field.required}
               placeholder={field.description || `Enter ${field.name}`}
               helperText={field.description}
-              error={Boolean(error)}
-              errorMessage={errorMessage}
               fullWidth
             />
           );
@@ -724,8 +700,6 @@ const RecordForm: React.FC<RecordFormProps> = ({
               required={field.required}
               placeholder={field.description || `Enter ${field.name}`}
               helperText={field.description}
-              error={Boolean(error)}
-              errorMessage={errorMessage}
               rows={4}
               fullWidth
             />
@@ -741,8 +715,6 @@ const RecordForm: React.FC<RecordFormProps> = ({
               type="number"
               placeholder={field.description || `Enter ${field.name}`}
               helperText={field.description}
-              error={Boolean(error)}
-              errorMessage={errorMessage}
               fullWidth
             />
           );
@@ -755,8 +727,6 @@ const RecordForm: React.FC<RecordFormProps> = ({
               label={field.name}
               required={field.required}
               helperText={field.description}
-              error={Boolean(error)}
-              errorMessage={errorMessage}
             />
           );
 
@@ -809,9 +779,6 @@ const RecordForm: React.FC<RecordFormProps> = ({
               options={options}
               placeholder={`Select ${field.name}`}
               helperText={field.description}
-              error={Boolean(error)}
-              errorMessage={errorMessage}
-              fullWidth
             />
           );
         }
@@ -829,9 +796,6 @@ const RecordForm: React.FC<RecordFormProps> = ({
               multiple
               placeholder={`Select ${field.name}`}
               helperText={field.description}
-              error={Boolean(error)}
-              errorMessage={errorMessage}
-              fullWidth
             />
           );
         }
@@ -887,9 +851,6 @@ const RecordForm: React.FC<RecordFormProps> = ({
               label={field.name}
               required={field.required}
               helperText={field.description}
-              error={Boolean(error)}
-              errorMessage={errorMessage}
-              onFilesChange={(files) => handleFileChange(field.id, files)}
               accept="*/*"
               maxFiles={1}
             />
@@ -903,9 +864,6 @@ const RecordForm: React.FC<RecordFormProps> = ({
               label={field.name}
               required={field.required}
               helperText={field.description || 'Upload an image file'}
-              error={Boolean(error)}
-              errorMessage={errorMessage}
-              onFilesChange={(files) => handleFileChange(field.id, files)}
               accept="image/*"
               maxFiles={1}
             />
@@ -921,8 +879,6 @@ const RecordForm: React.FC<RecordFormProps> = ({
               type="url"
               placeholder="https://example.com"
               helperText={field.description || 'Enter a valid URL'}
-              error={Boolean(error)}
-              errorMessage={errorMessage}
               fullWidth
             />
           );
@@ -991,14 +947,12 @@ const RecordForm: React.FC<RecordFormProps> = ({
               required={field.required}
               placeholder={`Enter ${field.name}`}
               helperText={field.description}
-              error={Boolean(error)}
-              errorMessage={errorMessage}
               fullWidth
             />
           );
       }
     },
-    [control, errors, handleFileChange]
+    [control, errors]
   );
 
   // ============================================================================

@@ -136,6 +136,13 @@ interface BaseField {
    * 0 = optional, 1 = required
    */
   required: boolean;
+
+  /**
+   * Field display position/order
+   * Determines the order fields are displayed in forms and views
+   * Lower values appear first
+   */
+  position?: number;
 }
 
 // ============================================================================
@@ -732,6 +739,13 @@ export interface Database {
    * 0 = completion not based on entries
    */
   completionentries: number;
+
+  /**
+   * Field definitions for this database activity
+   * Populated from mdl_data_fields table
+   * Used for dynamic form generation and record display
+   */
+  fields?: DatabaseField[];
 }
 
 // ============================================================================
