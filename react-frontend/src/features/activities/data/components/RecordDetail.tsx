@@ -21,7 +21,7 @@
  * @module features/activities/data/components/RecordDetail
  */
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   Card,
   CardHeader,
@@ -61,15 +61,16 @@ import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 
 // Internal imports
-import { FieldRenderer } from '@/features/activities/data/components/FieldRenderer';
-import { useRecord } from '@/features/activities/data/hooks/useRecord';
+import FieldRenderer from '@/features/activities/data/components/FieldRenderer';
+import useRecord from '@/features/activities/data/hooks/useRecord';
 import { useDatabase } from '@/features/activities/data/hooks/useDatabase';
 import {
   useDeleteRecord,
   useApproveRecord,
 } from '@/features/activities/data/hooks/useDatabaseMutation';
 import { usePermissions } from '@/features/auth/hooks/usePermissions';
-import type { DatabaseField } from '@/features/activities/data/types/data.types';
+import type { DatabaseField, FieldContent } from '@/features/activities/data/types/data.types';
+import type { RecordComment } from '@/features/activities/data/api/dataApi';
 import { useToast } from '@/hooks/useToast';
 
 // ============================================================================
@@ -137,8 +138,10 @@ interface FieldValueEntry {
 
   /**
    * Field content value (may be undefined if no content)
+   * This is the full FieldContent object, not just the string content,
+   * because different field types may use content1, content2, etc.
    */
-  value: string | undefined;
+  value: FieldContent | undefined;
 }
 
 // ============================================================================
@@ -185,12 +188,12 @@ function formatTimestamp(timestamp: number | undefined): string {
  * Builds the field values array by mapping field definitions to their content.
  *
  * @param fields - Array of field definitions
- * @param contents - Array of field content objects
+ * @param contents - Array of field content objects (full FieldContent with content1, content2, etc.)
  * @returns Array of field-value pairs for rendering
  */
 function buildFieldValues(
   fields: DatabaseField[] | undefined,
-  contents: Array<{ fieldid: number; content?: string }> | undefined
+  contents: FieldContent[] | undefined
 ): FieldValueEntry[] {
   if (!fields || fields.length === 0) {
     return [];
@@ -200,10 +203,13 @@ function buildFieldValues(
     .slice() // Create a copy to avoid mutating
     .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
     .map((field) => {
+      // Find the full content object to pass to FieldRenderer
+      // FieldRenderer needs the complete FieldContent because different
+      // field types use content, content1, content2, etc.
       const content = contents?.find((c) => c.fieldid === field.id);
       return {
         field,
-        value: content?.content,
+        value: content, // Pass full FieldContent object, not just content string
       };
     });
 }
@@ -234,9 +240,9 @@ function parseTemplate(
   // Replace field placeholders [[fieldname]]
   fieldValues.forEach(({ field, value }) => {
     const placeholder = new RegExp(`\\[\\[${field.name}\\]\\]`, 'gi');
-    // For template rendering, we use the raw value; actual rendering happens
-    // via React components for rich content
-    parsed = parsed.replace(placeholder, value ?? '');
+    // For template rendering, we extract the string content from FieldContent.
+    // Actual rich rendering (images, files, etc.) happens via React components.
+    parsed = parsed.replace(placeholder, value?.content ?? '');
   });
 
   // Replace special placeholders
@@ -283,7 +289,7 @@ function parseTemplate(
 function RecordDetail({
   databaseId,
   recordId,
-  courseId,
+  courseId: _courseId,
   cmid,
   previousRecordId,
   nextRecordId,
@@ -314,11 +320,11 @@ function RecordDetail({
 
   // Fetch database configuration
   const {
-    database,
+    data: database,
     isLoading: isLoadingDatabase,
     isError: isDatabaseError,
     error: databaseError,
-  } = useDatabase({ databaseId });
+  } = useDatabase(databaseId);
 
   // Mutations
   const deleteRecordMutation = useDeleteRecord();
@@ -679,7 +685,7 @@ function RecordDetail({
               <Typography variant="h6" gutterBottom>
                 Comments ({record.comments.length})
               </Typography>
-              {record.comments.map((comment) => (
+              {record.comments.map((comment: RecordComment) => (
                 <Box key={comment.id} sx={{ mb: 2 }}>
                   <Typography variant="subtitle2">
                     {comment.userfullname}
@@ -852,29 +858,40 @@ function RecordDetail({
           </Typography>
         ) : (
           <Grid container spacing={2}>
-            {fieldValues.map(({ field, value }) => (
-              <Grid item xs={12} sm={6} md={4} key={field.id}>
-                <Box>
-                  <Typography
-                    variant="subtitle2"
-                    color="text.secondary"
-                    gutterBottom
-                  >
-                    {field.name}
-                    {field.required && (
-                      <Typography
-                        component="span"
-                        color="error"
-                        sx={{ ml: 0.5 }}
-                      >
-                        *
-                      </Typography>
-                    )}
-                  </Typography>
-                  <FieldRenderer field={field} value={value} mode="view" />
-                </Box>
-              </Grid>
-            ))}
+            {fieldValues.map(({ field, value }) => {
+              // Create a default empty FieldContent if none exists.
+              // FieldRenderer handles empty content gracefully but requires
+              // a FieldContent object for type safety.
+              const fieldContent: FieldContent = value ?? {
+                id: 0,
+                fieldid: field.id,
+                recordid: recordId,
+                content: undefined,
+              };
+              return (
+                <Grid item xs={12} sm={6} md={4} key={field.id}>
+                  <Box>
+                    <Typography
+                      variant="subtitle2"
+                      color="text.secondary"
+                      gutterBottom
+                    >
+                      {field.name}
+                      {field.required && (
+                        <Typography
+                          component="span"
+                          color="error"
+                          sx={{ ml: 0.5 }}
+                        >
+                          *
+                        </Typography>
+                      )}
+                    </Typography>
+                    <FieldRenderer field={field} value={fieldContent} mode="view" />
+                  </Box>
+                </Grid>
+              );
+            })}
           </Grid>
         )}
       </CardContent>
@@ -888,7 +905,7 @@ function RecordDetail({
               Tags
             </Typography>
             <Box display="flex" gap={0.5} flexWrap="wrap">
-              {record.tags.map((tag) => (
+              {record.tags.map((tag: { id: number; name: string }) => (
                 <Chip key={tag.id} label={tag.name} size="small" />
               ))}
             </Box>
@@ -904,7 +921,7 @@ function RecordDetail({
             <Typography variant="h6" gutterBottom>
               Comments ({record.comments.length})
             </Typography>
-            {record.comments.map((comment) => (
+            {record.comments.map((comment: RecordComment) => (
               <Box
                 key={comment.id}
                 sx={{
