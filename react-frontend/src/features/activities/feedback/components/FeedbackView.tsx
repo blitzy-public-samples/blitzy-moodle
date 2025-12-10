@@ -23,9 +23,9 @@
  * @see public/mod/feedback/lib.php - Core feedback functions
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { format, parseISO, isAfter, isBefore } from 'date-fns';
+import { useState, useMemo } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { format } from 'date-fns';
 import {
   Typography,
   Card,
@@ -36,7 +36,6 @@ import {
   Box,
   Skeleton,
   Avatar,
-  CardMedia,
 } from '@mui/material';
 import {
   Assignment,
@@ -51,7 +50,7 @@ import {
 import { useFeedback } from '../hooks/useFeedback';
 import { FeedbackForm } from './FeedbackForm';
 import { FeedbackAnalysis } from './FeedbackAnalysis';
-import type { Feedback, FeedbackPermissions } from '../types';
+import type { Feedback, FeedbackResponse } from '../types';
 import Breadcrumbs from '@/components/navigation/Breadcrumbs';
 import { LoadingSpinner } from '@/components/feedback/LoadingSpinner';
 import { Alert } from '@/components/feedback/Alert';
@@ -129,9 +128,6 @@ export interface FeedbackViewProps {
 // ============================================================================
 // CONSTANTS
 // ============================================================================
-
-/** Anonymous feedback mode constant (matches FEEDBACK_ANONYMOUS_YES from lib.php) */
-const FEEDBACK_ANONYMOUS_YES = 1;
 
 /** Status chip color mapping */
 const STATUS_COLORS: Record<FeedbackStatus, 'success' | 'error' | 'warning'> = {
@@ -225,9 +221,8 @@ export function FeedbackView({
   // ============================================================================
 
   const navigate = useNavigate();
-  const location = useLocation();
   const params = useParams<{ feedbackId?: string; courseId?: string }>();
-  const { hasCapability, isTeacher, isAdmin, isStudent } = usePermissions();
+  const { hasCapability, isTeacher, isAdmin } = usePermissions();
   const { success, error: showError, info } = useToast();
 
   // Extract IDs from props or route params
@@ -268,14 +263,14 @@ export function FeedbackView({
     const canCompleteCalc = propCanComplete ?? hookCanComplete;
     const canViewAnalysisCalc =
       propCanViewAnalysis ??
-      hasCapability('mod/feedback:viewanalysepage') ||
-      isTeacher ||
-      isAdmin;
+      (hasCapability('mod/feedback:viewanalysepage') ||
+        isTeacher ||
+        isAdmin);
     const canViewResponsesCalc =
       propCanViewResponses ??
-      hasCapability('mod/feedback:viewreports') ||
-      isTeacher ||
-      isAdmin;
+      (hasCapability('mod/feedback:viewreports') ||
+        isTeacher ||
+        isAdmin);
     const canEditResponses =
       hasResponded && canCompleteCalc && feedback?.multiple_submit === 1;
     const canManage = hasCapability('mod/feedback:edititems') || isAdmin;
@@ -374,8 +369,9 @@ export function FeedbackView({
 
   /**
    * Handle form submission completion
+   * @param _response - The submission response data (unused but required by interface)
    */
-  const handleFormComplete = (): void => {
+  const handleFormComplete = (_response: FeedbackResponse): void => {
     success('Thank you! Your feedback has been submitted successfully.');
     setViewMode('view');
     refetch();
@@ -851,10 +847,10 @@ export function FeedbackView({
         <FeedbackForm
           feedbackId={feedbackId}
           courseId={courseId}
-          questions={questions}
+          items={questions}
           isAnonymous={isAnonymous}
-          existingResponses={hasResponded ? completion : undefined}
-          onComplete={handleFormComplete}
+          canSubmit={canSubmit}
+          onSubmit={handleFormComplete}
           onCancel={handleReturnToView}
         />
       </Box>
