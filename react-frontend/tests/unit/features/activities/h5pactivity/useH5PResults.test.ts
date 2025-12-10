@@ -669,12 +669,12 @@ describe('useH5PResults Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data?.attempts[0].rawscore).toBe(50);
+      expect(result.current.data?.attempts[0]?.rawscore).toBe(50);
 
       await result.current.refetch();
 
       await waitFor(() => {
-        expect(result.current.data?.attempts[0].rawscore).toBe(100);
+        expect(result.current.data?.attempts[0]?.rawscore).toBe(100);
       });
     });
 
@@ -775,8 +775,8 @@ describe('useH5PResults Hook', () => {
       });
 
       expect(mockedH5pApi.getResults).toHaveBeenCalledTimes(2);
-      expect(result1.current.data?.attempts[0].id).toBe(1);
-      expect(result2.current.data?.attempts[0].id).toBe(2);
+      expect(result1.current.data?.attempts[0]?.id).toBe(1);
+      expect(result2.current.data?.attempts[0]?.id).toBe(2);
     });
 
     it('caches results with attemptIds separately', async () => {
@@ -881,7 +881,7 @@ describe('useH5PResults Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      const attemptResult = result.current.data?.attempts[0].results[0];
+      const attemptResult = result.current.data?.attempts[0]?.results[0];
       expect(attemptResult?.interactiontype).toBe('choice');
       expect(attemptResult?.description).toBe('What is 2+2?');
       expect(attemptResult?.correctpattern).toBe('["4"]');
@@ -905,10 +905,10 @@ describe('useH5PResults Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      const attemptResults = result.current.data?.attempts[0].results;
+      const attemptResults = result.current.data?.attempts[0]?.results;
       expect(attemptResults).toHaveLength(4);
       interactionTypes.forEach((type, idx) => {
-        expect(attemptResults?.[idx].interactiontype).toBe(type);
+        expect(attemptResults?.[idx]?.interactiontype).toBe(type);
       });
     });
 
@@ -930,7 +930,7 @@ describe('useH5PResults Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      const attemptResult = result.current.data?.attempts[0].results[0];
+      const attemptResult = result.current.data?.attempts[0]?.results[0];
       expect(attemptResult?.correctpattern).toBe('["Paris"]');
       expect(attemptResult?.response).toBe('London');
       expect(attemptResult?.success).toBe(0);
@@ -953,7 +953,7 @@ describe('useH5PResults Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      const attemptResult = result.current.data?.attempts[0].results[0];
+      const attemptResult = result.current.data?.attempts[0]?.results[0];
       expect(attemptResult?.rawscore).toBe(3);
       expect(attemptResult?.maxscore).toBe(5);
     });
@@ -973,7 +973,7 @@ describe('useH5PResults Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      const attemptResult = result.current.data?.attempts[0].results[0];
+      const attemptResult = result.current.data?.attempts[0]?.results[0];
       expect(attemptResult?.additionals).toBe(additionalData);
       expect(JSON.parse(attemptResult?.additionals || '{}')).toHaveProperty('hint');
     });
@@ -996,7 +996,7 @@ describe('useH5PResults Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data?.attempts[0].attempt).toBe(3);
+      expect(result.current.data?.attempts[0]?.attempt).toBe(3);
     });
 
     it('includes timestamps (created, modified)', async () => {
@@ -1016,8 +1016,8 @@ describe('useH5PResults Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data?.attempts[0].timecreated).toBe(now);
-      expect(result.current.data?.attempts[0].timemodified).toBe(now + 100);
+      expect(result.current.data?.attempts[0]?.timecreated).toBe(now);
+      expect(result.current.data?.attempts[0]?.timemodified).toBe(now + 100);
     });
 
     it('contains score data (raw, max, scaled)', async () => {
@@ -1056,7 +1056,7 @@ describe('useH5PResults Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data?.attempts[0].duration).toBe(300);
+      expect(result.current.data?.attempts[0]?.duration).toBe(300);
     });
 
     it('has completion status (number)', async () => {
@@ -1072,7 +1072,7 @@ describe('useH5PResults Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data?.attempts[0].completion).toBe(1);
+      expect(result.current.data?.attempts[0]?.completion).toBe(1);
     });
 
     it('has success status (number)', async () => {
@@ -1088,7 +1088,7 @@ describe('useH5PResults Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data?.attempts[0].success).toBe(0);
+      expect(result.current.data?.attempts[0]?.success).toBe(0);
     });
   });
 
@@ -1360,7 +1360,7 @@ describe('useH5PUserAttempts Hook', () => {
       });
 
       expect(result.current.data?.usersattempts).toHaveLength(10);
-      expect(result.current.data?.usersattempts[0].userid).toBe(1);
+      expect(result.current.data?.usersattempts[0]?.userid).toBe(1);
     });
 
     it('pagination pages cached separately', async () => {
@@ -1718,7 +1718,7 @@ describe('useH5PAttemptResults Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data?.results[0].interactiontype).toBe('fill-in');
+      expect(result.current.data?.results[0]?.interactiontype).toBe('fill-in');
     });
 
     it('includes correct answer and user response', async () => {
@@ -1737,8 +1737,8 @@ describe('useH5PAttemptResults Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data?.results[0].correctpattern).toBe('["42"]');
-      expect(result.current.data?.results[0].response).toBe('42');
+      expect(result.current.data?.results[0]?.correctpattern).toBe('["42"]');
+      expect(result.current.data?.results[0]?.response).toBe('42');
     });
 
     it('contains scoring information', async () => {
@@ -1757,8 +1757,8 @@ describe('useH5PAttemptResults Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data?.results[0].rawscore).toBe(2);
-      expect(result.current.data?.results[0].maxscore).toBe(3);
+      expect(result.current.data?.results[0]?.rawscore).toBe(2);
+      expect(result.current.data?.results[0]?.maxscore).toBe(3);
     });
 
     it('tests getAttemptResults API method', async () => {
@@ -1797,7 +1797,7 @@ describe('useH5PAttemptResults Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data?.results[0].description).toBe('Select the correct answer');
+      expect(result.current.data?.results[0]?.description).toBe('Select the correct answer');
     });
 
     it('contains interaction type', async () => {
@@ -1813,7 +1813,7 @@ describe('useH5PAttemptResults Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data?.results[0].interactiontype).toBe('matching');
+      expect(result.current.data?.results[0]?.interactiontype).toBe('matching');
     });
 
     it('has description text', async () => {
@@ -1831,7 +1831,7 @@ describe('useH5PAttemptResults Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data?.results[0].description).toContain('Match the capitals');
+      expect(result.current.data?.results[0]?.description).toContain('Match the capitals');
     });
 
     it('includes correct pattern', async () => {
@@ -1849,7 +1849,7 @@ describe('useH5PAttemptResults Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data?.results[0].correctpattern).toContain('France');
+      expect(result.current.data?.results[0]?.correctpattern).toContain('France');
     });
 
     it('contains user response', async () => {
@@ -1867,7 +1867,7 @@ describe('useH5PAttemptResults Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data?.results[0].response).toContain('Madrid');
+      expect(result.current.data?.results[0]?.response).toContain('Madrid');
     });
 
     it('has additionals field for extra data', async () => {
@@ -1887,7 +1887,7 @@ describe('useH5PAttemptResults Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      const parsed = JSON.parse(result.current.data?.results[0].additionals || '{}');
+      const parsed = JSON.parse(result.current.data?.results[0]?.additionals || '{}');
       expect(parsed.extensions.difficulty).toBe('hard');
     });
   });
@@ -2393,7 +2393,7 @@ describe('Edge Cases', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(result.current.data?.attempts[0].id).toBe(1);
+    expect(result.current.data?.attempts[0]?.id).toBe(1);
   });
 
   it('handles empty string for filter initials', async () => {
@@ -2515,13 +2515,13 @@ describe('Edge Cases', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(result.current.data?.attempts[0].id).toBe(1);
+    expect(result.current.data?.attempts[0]?.id).toBe(1);
 
     // Change activity ID
     rerender({ id: 2 });
 
     await waitFor(() => {
-      expect(result.current.data?.attempts[0].id).toBe(2);
+      expect(result.current.data?.attempts[0]?.id).toBe(2);
     });
   });
 });
