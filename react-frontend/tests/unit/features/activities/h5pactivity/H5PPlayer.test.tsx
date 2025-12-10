@@ -35,7 +35,6 @@ import {
   waitFor,
   act,
   cleanup,
-  within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
@@ -400,8 +399,10 @@ const dispatchResizeMessage = (height: number) => {
 
 /**
  * Dispatch a content loaded message from H5P
+ * Used in tests that verify content load handling
  */
-const dispatchContentLoadedMessage = () => {
+// @ts-ignore - Reserved for future use in content load tests
+const _dispatchContentLoadedMessage = () => {
   const messageEvent = new MessageEvent('message', {
     data: {
       type: 'contentLoaded',
@@ -549,8 +550,9 @@ describe('H5PPlayer', () => {
       renderH5PPlayer();
 
       // The component shows loading state until iframe loads
-      const progressbar = screen.queryByRole('progressbar');
-      // May or may not be present depending on component state
+      // The progressbar may or may not be present depending on component state
+      // This test verifies the component renders without error
+      expect(screen.queryByTitle(/H5P Activity:/i)).toBeInTheDocument();
     });
 
     it('hides loading when iframe loads successfully', async () => {
@@ -1867,7 +1869,7 @@ describe('H5PPlayer', () => {
       await act(async () => {
         for (let i = 0; i < 50; i++) {
           const statement = createMockXAPIStatement({
-            id: `urn:uuid:rapid-${i}`,
+            timestamp: new Date(Date.now() + i).toISOString(),
           });
           dispatchXAPIMessage(statement);
         }
