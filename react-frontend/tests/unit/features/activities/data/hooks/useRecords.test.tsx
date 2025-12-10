@@ -16,18 +16,15 @@
  * - Error handling and retry behavior
  */
 
-import React, { ReactNode } from 'react';
-import { describe, it, expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
+import { type ReactNode } from 'react';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor, cleanup, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
-import { server } from '../../../../mocks/server';
-import { useRecords, useRecordsInfinite } from '@/features/activities/data/hooks/useRecords';
+import { server } from '../../../../../mocks/server';
+import useRecords, { useRecordsInfinite } from '@/features/activities/data/hooks/useRecords';
 import type {
   DatabaseRecord,
-  DatabaseRecordsResponse,
-  SearchCriteria,
-  FieldType,
 } from '@/features/activities/data/types/data.types';
 
 // ============================================================================
@@ -48,32 +45,6 @@ function createMockRecord(overrides: Partial<DatabaseRecord> = {}): DatabaseReco
     timemodified: overrides.timemodified ?? Math.floor(Date.now() / 1000),
     approved: overrides.approved ?? true,
     ...overrides,
-  };
-}
-
-/**
- * Creates a paginated records response
- */
-function createMockRecordsResponse(
-  records: DatabaseRecord[],
-  options: {
-    page?: number;
-    perPage?: number;
-    total?: number;
-  } = {}
-): DatabaseRecordsResponse {
-  const page = options.page ?? 1;
-  const perPage = options.perPage ?? 10;
-  const total = options.total ?? records.length;
-  
-  return {
-    records,
-    pagination: {
-      page,
-      perPage,
-      total,
-      totalPages: Math.ceil(total / perPage),
-    },
   };
 }
 
@@ -109,11 +80,6 @@ function createTestQueryClient(): QueryClient {
       mutations: {
         retry: false,
       },
-    },
-    logger: {
-      log: () => {},
-      warn: () => {},
-      error: () => {},
     },
   });
 }
@@ -155,11 +121,11 @@ describe('useRecords', () => {
   describe('basic record fetching', () => {
     it('should fetch records successfully with default parameters', async () => {
       const mockRecords = createMockRecordSet(5, { dataid: 1, approved: true });
-      const mockResponse = createMockRecordsResponse(mockRecords, { total: 5 });
 
       server.use(
         http.get('*/api/v1/data/databases/1/entries', () => {
           return HttpResponse.json({
+            success: true,
             data: {
               entries: mockRecords.map(r => ({
                 ...r,
@@ -184,9 +150,9 @@ describe('useRecords', () => {
       });
 
       expect(result.current.isError).toBe(false);
-      expect(result.current.data).toBeDefined();
-      expect(result.current.data?.records).toHaveLength(5);
-      expect(result.current.data?.pagination.total).toBe(5);
+      expect(result.current.isSuccess).toBe(true);
+      expect(result.current.records).toHaveLength(5);
+      expect(result.current.totalCount).toBe(5);
     });
 
     it('should return correct loading states', async () => {
@@ -196,6 +162,7 @@ describe('useRecords', () => {
         http.get('*/api/v1/data/databases/1/entries', async () => {
           await new Promise(resolve => setTimeout(resolve, 50));
           return HttpResponse.json({
+            success: true,
             data: {
               entries: mockRecords,
               totalcount: 3,
@@ -212,7 +179,7 @@ describe('useRecords', () => {
       // Check initial loading state
       expect(result.current.isLoading).toBe(true);
       expect(result.current.isFetching).toBe(true);
-      expect(result.current.data).toBeUndefined();
+      expect(result.current.records).toHaveLength(0);
 
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false);
@@ -228,6 +195,7 @@ describe('useRecords', () => {
       server.use(
         http.get('*/api/v1/data/databases/1/entries', () => {
           return HttpResponse.json({
+            success: true,
             data: {
               entries: [],
               totalcount: 0,
@@ -245,8 +213,8 @@ describe('useRecords', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data?.records).toHaveLength(0);
-      expect(result.current.data?.pagination.total).toBe(0);
+      expect(result.current.records).toHaveLength(0);
+      expect(result.current.totalCount).toBe(0);
     });
 
     it('should include record metadata in response', async () => {
@@ -264,6 +232,7 @@ describe('useRecords', () => {
       server.use(
         http.get('*/api/v1/data/databases/1/entries', () => {
           return HttpResponse.json({
+            success: true,
             data: {
               entries: [mockRecord],
               totalcount: 1,
@@ -281,7 +250,7 @@ describe('useRecords', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      const record = result.current.data?.records[0];
+      const record = result.current.records[0];
       expect(record?.id).toBe(42);
       expect(record?.userid).toBe(5);
       expect(record?.groupid).toBe(3);
@@ -298,14 +267,12 @@ describe('useRecords', () => {
 
   describe('search filtering', () => {
     it('should apply search filter parameter', async () => {
-      let capturedParams: Record<string, string> | null = null;
       const mockRecords = createMockRecordSet(2, { dataid: 1 });
 
       server.use(
-        http.get('*/api/v1/data/databases/1/entries', ({ request }) => {
-          const url = new URL(request.url);
-          capturedParams = Object.fromEntries(url.searchParams);
+        http.get('*/api/v1/data/databases/1/entries', () => {
           return HttpResponse.json({
+            success: true,
             data: {
               entries: mockRecords,
               totalcount: 2,
@@ -327,7 +294,7 @@ describe('useRecords', () => {
       });
 
       // Search is applied client-side in the hook, but verify results
-      expect(result.current.data?.records).toBeDefined();
+      expect(result.current.records).toBeDefined();
     });
 
     it('should return all records when search is empty string', async () => {
@@ -336,6 +303,7 @@ describe('useRecords', () => {
       server.use(
         http.get('*/api/v1/data/databases/1/entries', () => {
           return HttpResponse.json({
+            success: true,
             data: {
               entries: mockRecords,
               totalcount: 5,
@@ -356,7 +324,7 @@ describe('useRecords', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data?.records).toHaveLength(5);
+      expect(result.current.records).toHaveLength(5);
     });
 
     it('should be case-insensitive in search', async () => {
@@ -365,6 +333,7 @@ describe('useRecords', () => {
       server.use(
         http.get('*/api/v1/data/databases/1/entries', () => {
           return HttpResponse.json({
+            success: true,
             data: {
               entries: mockRecords,
               totalcount: 3,
@@ -399,9 +368,9 @@ describe('useRecords', () => {
         expect(result2.current.isSuccess).toBe(true);
       });
 
-      // Both should return data (client-side filtering)
-      expect(result1.current.data).toBeDefined();
-      expect(result2.current.data).toBeDefined();
+      // Both should have loaded successfully
+      expect(result1.current.isSuccess).toBe(true);
+      expect(result2.current.isSuccess).toBe(true);
     });
   });
 
@@ -419,6 +388,7 @@ describe('useRecords', () => {
       server.use(
         http.get('*/api/v1/data/databases/1/entries', () => {
           return HttpResponse.json({
+            success: true,
             data: {
               entries: allRecords,
               totalcount: 5,
@@ -440,19 +410,20 @@ describe('useRecords', () => {
       });
 
       // Client-side filtering should show only approved records
-      const records = result.current.data?.records ?? [];
+      const records = result.current.records ?? [];
       expect(records.every(r => r.approved === true)).toBe(true);
     });
 
     it('should filter by pending status', async () => {
       const approvedRecords = createMockRecordSet(3, { dataid: 1, approved: true });
       const pendingRecords = createMockRecordSet(2, { dataid: 1, approved: false });
-      pendingRecords.forEach((r, i) => { r.id = 100 + i; });
+      pendingRecords.forEach((r: DatabaseRecord, i: number) => { r.id = 100 + i; });
       const allRecords = [...approvedRecords, ...pendingRecords];
 
       server.use(
         http.get('*/api/v1/data/databases/1/entries', () => {
           return HttpResponse.json({
+            success: true,
             data: {
               entries: allRecords,
               totalcount: 5,
@@ -474,19 +445,20 @@ describe('useRecords', () => {
       });
 
       // Client-side filtering should show only pending records
-      const records = result.current.data?.records ?? [];
+      const records = result.current.records ?? [];
       expect(records.every(r => r.approved === false)).toBe(true);
     });
 
     it('should return all records when approval status is "all"', async () => {
       const approvedRecords = createMockRecordSet(3, { dataid: 1, approved: true });
       const pendingRecords = createMockRecordSet(2, { dataid: 1, approved: false });
-      pendingRecords.forEach((r, i) => { r.id = 100 + i; });
+      pendingRecords.forEach((r: DatabaseRecord, i: number) => { r.id = 100 + i; });
       const allRecords = [...approvedRecords, ...pendingRecords];
 
       server.use(
         http.get('*/api/v1/data/databases/1/entries', () => {
           return HttpResponse.json({
+            success: true,
             data: {
               entries: allRecords,
               totalcount: 5,
@@ -507,7 +479,7 @@ describe('useRecords', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data?.records).toHaveLength(5);
+      expect(result.current.records).toHaveLength(5);
     });
   });
 
@@ -525,6 +497,7 @@ describe('useRecords', () => {
       server.use(
         http.get('*/api/v1/data/databases/1/entries', () => {
           return HttpResponse.json({
+            success: true,
             data: {
               entries: allRecords,
               totalcount: 5,
@@ -546,7 +519,7 @@ describe('useRecords', () => {
       });
 
       // Client-side filtering should show only user 1's records
-      const records = result.current.data?.records ?? [];
+      const records = result.current.records ?? [];
       expect(records.every(r => r.userid === 1)).toBe(true);
       expect(records).toHaveLength(3);
     });
@@ -554,12 +527,13 @@ describe('useRecords', () => {
     it('should filter by group ID', async () => {
       const group1Records = createMockRecordSet(3, { dataid: 1, groupid: 1 });
       const group2Records = createMockRecordSet(2, { dataid: 1, groupid: 2 });
-      group2Records.forEach((r, i) => { r.id = 100 + i; });
+      group2Records.forEach((r: DatabaseRecord, i: number) => { r.id = 100 + i; });
       const allRecords = [...group1Records, ...group2Records];
 
       server.use(
         http.get('*/api/v1/data/databases/1/entries', () => {
           return HttpResponse.json({
+            success: true,
             data: {
               entries: allRecords,
               totalcount: 5,
@@ -581,7 +555,7 @@ describe('useRecords', () => {
       });
 
       // Client-side filtering should show only group 1's records
-      const records = result.current.data?.records ?? [];
+      const records = result.current.records ?? [];
       expect(records.every(r => r.groupid === 1)).toBe(true);
       expect(records).toHaveLength(3);
     });
@@ -597,6 +571,7 @@ describe('useRecords', () => {
       server.use(
         http.get('*/api/v1/data/databases/1/entries', () => {
           return HttpResponse.json({
+            success: true,
             data: {
               entries: records,
               totalcount: 4,
@@ -619,10 +594,10 @@ describe('useRecords', () => {
       });
 
       // Should only return records matching both user 1 AND group 1
-      const filteredRecords = result.current.data?.records ?? [];
+      const filteredRecords = result.current.records ?? [];
       expect(filteredRecords).toHaveLength(1);
-      expect(filteredRecords[0].userid).toBe(1);
-      expect(filteredRecords[0].groupid).toBe(1);
+      expect(filteredRecords[0]!.userid).toBe(1);
+      expect(filteredRecords[0]!.groupid).toBe(1);
     });
   });
 
@@ -645,6 +620,7 @@ describe('useRecords', () => {
       server.use(
         http.get('*/api/v1/data/databases/1/entries', () => {
           return HttpResponse.json({
+            success: true,
             data: {
               entries: records,
               totalcount: 3,
@@ -669,7 +645,7 @@ describe('useRecords', () => {
       });
 
       // Should filter to records created within last 2 days
-      const filteredRecords = result.current.data?.records ?? [];
+      const filteredRecords = result.current.records ?? [];
       expect(filteredRecords.every(r => 
         r.timecreated >= now - (oneDay * 2) && r.timecreated <= now + oneDay
       )).toBe(true);
@@ -685,6 +661,7 @@ describe('useRecords', () => {
       server.use(
         http.get('*/api/v1/data/databases/1/entries', () => {
           return HttpResponse.json({
+            success: true,
             data: {
               entries: records,
               totalcount: 3,
@@ -708,7 +685,7 @@ describe('useRecords', () => {
       });
 
       // Should filter to records created in last 2 days
-      const filteredRecords = result.current.data?.records ?? [];
+      const filteredRecords = result.current.records ?? [];
       expect(filteredRecords.every(r => r.timecreated >= now - (oneDay * 2))).toBe(true);
     });
 
@@ -722,6 +699,7 @@ describe('useRecords', () => {
       server.use(
         http.get('*/api/v1/data/databases/1/entries', () => {
           return HttpResponse.json({
+            success: true,
             data: {
               entries: records,
               totalcount: 3,
@@ -746,7 +724,7 @@ describe('useRecords', () => {
       });
 
       // Should filter by modified date
-      const filteredRecords = result.current.data?.records ?? [];
+      const filteredRecords = result.current.records ?? [];
       expect(filteredRecords.every(r =>
         r.timemodified >= now - (oneDay * 2) && r.timemodified <= now + oneDay
       )).toBe(true);
@@ -767,6 +745,7 @@ describe('useRecords', () => {
           const url = new URL(request.url);
           capturedParams = Object.fromEntries(url.searchParams);
           return HttpResponse.json({
+            success: true,
             data: {
               entries: records,
               totalcount: 3,
@@ -791,8 +770,8 @@ describe('useRecords', () => {
       });
 
       // Verify sort params were sent
-      expect(capturedParams?.sort).toBe('0');
-      expect(capturedParams?.order).toBe('ASC');
+      expect(capturedParams!.sort).toBe('0');
+      expect(capturedParams!.order).toBe('ASC');
     });
 
     it('should sort by timeadded descending', async () => {
@@ -804,6 +783,7 @@ describe('useRecords', () => {
           const url = new URL(request.url);
           capturedParams = Object.fromEntries(url.searchParams);
           return HttpResponse.json({
+            success: true,
             data: {
               entries: records,
               totalcount: 3,
@@ -827,7 +807,7 @@ describe('useRecords', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(capturedParams?.order).toBe('DESC');
+      expect(capturedParams!.order).toBe('DESC');
     });
 
     it('should sort by field ID', async () => {
@@ -839,6 +819,7 @@ describe('useRecords', () => {
           const url = new URL(request.url);
           capturedParams = Object.fromEntries(url.searchParams);
           return HttpResponse.json({
+            success: true,
             data: {
               entries: records,
               totalcount: 3,
@@ -862,18 +843,16 @@ describe('useRecords', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(capturedParams?.sort).toBe('5');
+      expect(capturedParams!.sort).toBe('5');
     });
 
     it('should use default sort when not specified', async () => {
-      let capturedParams: Record<string, string> | null = null;
       const records = createMockRecordSet(3, { dataid: 1 });
 
       server.use(
-        http.get('*/api/v1/data/databases/1/entries', ({ request }) => {
-          const url = new URL(request.url);
-          capturedParams = Object.fromEntries(url.searchParams);
+        http.get('*/api/v1/data/databases/1/entries', () => {
           return HttpResponse.json({
+            success: true,
             data: {
               entries: records,
               totalcount: 3,
@@ -892,7 +871,7 @@ describe('useRecords', () => {
       });
 
       // Default sort may or may not be included in params
-      expect(result.current.data?.records).toHaveLength(3);
+      expect(result.current.records).toHaveLength(3);
     });
   });
 
@@ -914,6 +893,7 @@ describe('useRecords', () => {
           const start = (page - 1) * perPage;
           const paginatedRecords = records.slice(start, start + perPage);
           return HttpResponse.json({
+            success: true,
             data: {
               entries: paginatedRecords,
               totalcount: records.length,
@@ -935,10 +915,10 @@ describe('useRecords', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(capturedParams?.page).toBe('1');
-      expect(capturedParams?.perpage).toBe('5');
-      expect(result.current.data?.pagination.page).toBe(1);
-      expect(result.current.data?.pagination.perPage).toBe(5);
+      expect(capturedParams!.page).toBe('1');
+      expect(capturedParams!.perpage).toBe('5');
+      expect(result.current.currentPage).toBe(1);
+      expect(result.current.pageSize).toBe(5);
     });
 
     it('should calculate totalPages correctly', async () => {
@@ -947,6 +927,7 @@ describe('useRecords', () => {
       server.use(
         http.get('*/api/v1/data/databases/1/entries', () => {
           return HttpResponse.json({
+            success: true,
             data: {
               entries: records.slice(0, 10),
               totalcount: 25,
@@ -968,8 +949,8 @@ describe('useRecords', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data?.pagination.total).toBe(25);
-      expect(result.current.data?.pagination.totalPages).toBe(3); // ceil(25/10) = 3
+      expect(result.current.totalCount).toBe(25);
+      expect(result.current.totalPages).toBe(3); // ceil(25/10) = 3
     });
 
     it('should detect hasMore flag on pages with more data', async () => {
@@ -978,6 +959,7 @@ describe('useRecords', () => {
       server.use(
         http.get('*/api/v1/data/databases/1/entries', () => {
           return HttpResponse.json({
+            success: true,
             data: {
               entries: records.slice(0, 10),
               totalcount: 25,
@@ -999,9 +981,7 @@ describe('useRecords', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      const pagination = result.current.data?.pagination;
-      const hasMore = pagination ? pagination.page < pagination.totalPages : false;
-      expect(hasMore).toBe(true);
+      expect(result.current.hasMore).toBe(true);
     });
 
     it('should detect no more pages on last page', async () => {
@@ -1010,6 +990,7 @@ describe('useRecords', () => {
       server.use(
         http.get('*/api/v1/data/databases/1/entries', () => {
           return HttpResponse.json({
+            success: true,
             data: {
               entries: records.slice(10, 15),
               totalcount: 15,
@@ -1031,9 +1012,7 @@ describe('useRecords', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      const pagination = result.current.data?.pagination;
-      const hasMore = pagination ? pagination.page < pagination.totalPages : false;
-      expect(hasMore).toBe(false);
+      expect(result.current.hasMore).toBe(false);
     });
 
     it('should handle page size changes', async () => {
@@ -1044,6 +1023,7 @@ describe('useRecords', () => {
           const url = new URL(request.url);
           const perPage = parseInt(url.searchParams.get('perpage') ?? '10');
           return HttpResponse.json({
+            success: true,
             data: {
               entries: records.slice(0, perPage),
               totalcount: 30,
@@ -1069,13 +1049,13 @@ describe('useRecords', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data?.pagination.perPage).toBe(10);
+      expect(result.current.pageSize).toBe(10);
 
       // Rerender with perPage=20
       rerender({ perPage: 20 });
 
       await waitFor(() => {
-        expect(result.current.data?.pagination.perPage).toBe(20);
+        expect(result.current.pageSize).toBe(20);
       });
     });
   });
@@ -1093,6 +1073,7 @@ describe('useRecords', () => {
         http.get('*/api/v1/data/databases/1/entries', () => {
           requestCount++;
           return HttpResponse.json({
+            success: true,
             data: {
               entries: records,
               totalcount: 5,
@@ -1139,6 +1120,7 @@ describe('useRecords', () => {
         http.get('*/api/v1/data/databases/1/entries', () => {
           requestCount++;
           return HttpResponse.json({
+            success: true,
             data: {
               entries: records,
               totalcount: 5,
@@ -1179,6 +1161,7 @@ describe('useRecords', () => {
         http.get('*/api/v1/data/databases/1/entries', () => {
           requestCount++;
           return HttpResponse.json({
+            success: true,
             data: {
               entries: records,
               totalcount: 5,
@@ -1236,6 +1219,7 @@ describe('useRecords', () => {
         http.get('*/api/v1/data/databases/1/entries', () => {
           requestCount++;
           return HttpResponse.json({
+            success: true,
             data: {
               entries: records,
               totalcount: 5,
@@ -1287,9 +1271,10 @@ describe('useRecords', () => {
         { wrapper: createWrapper(queryClient) }
       );
 
+      // Hook has retry: 2 with delays, so wait longer for error state
       await waitFor(() => {
         expect(result.current.isError).toBe(true);
-      });
+      }, { timeout: 10000 });
 
       expect(result.current.error).toBeDefined();
     });
@@ -1312,9 +1297,10 @@ describe('useRecords', () => {
         { wrapper: createWrapper(queryClient) }
       );
 
+      // Hook has retry: 2 with delays, so wait longer for error state
       await waitFor(() => {
         expect(result.current.isError).toBe(true);
-      });
+      }, { timeout: 10000 });
     });
 
     it('should handle 403 permission denied', async () => {
@@ -1335,9 +1321,10 @@ describe('useRecords', () => {
         { wrapper: createWrapper(queryClient) }
       );
 
+      // Hook has retry: 2 with delays, so wait longer for error state
       await waitFor(() => {
         expect(result.current.isError).toBe(true);
-      });
+      }, { timeout: 10000 });
     });
 
     it('should handle malformed response', async () => {
@@ -1352,13 +1339,14 @@ describe('useRecords', () => {
         { wrapper: createWrapper(queryClient) }
       );
 
+      // Hook has retry: 2 with delays, so wait longer for loading to complete
       await waitFor(() => {
         // May succeed with empty/undefined data or error depending on implementation
         expect(result.current.isLoading).toBe(false);
-      });
+      }, { timeout: 10000 });
     });
 
-    it('should not retry on failure when retry is disabled', async () => {
+    it('should retry on failure according to hook retry policy', async () => {
       let requestCount = 0;
       server.use(
         http.get('*/api/v1/data/databases/1/entries', () => {
@@ -1372,12 +1360,14 @@ describe('useRecords', () => {
         { wrapper: createWrapper(queryClient) }
       );
 
+      // Hook has retry: 2 with delays, so wait longer for error state
       await waitFor(() => {
         expect(result.current.isError).toBe(true);
-      });
+      }, { timeout: 10000 });
 
-      // With retry disabled in test QueryClient, should only make 1 request
-      expect(requestCount).toBe(1);
+      // Hook explicitly sets retry: 2, so expect 3 requests (1 initial + 2 retries)
+      // Note: The hook's retry policy overrides the QueryClient's retry: false
+      expect(requestCount).toBe(3);
     });
   });
 
@@ -1392,6 +1382,7 @@ describe('useRecords', () => {
         http.get('*/api/v1/data/databases/1/entries', () => {
           requestCount++;
           return HttpResponse.json({
+            success: true,
             data: { entries: [], totalcount: 0 },
           });
         })
@@ -1410,7 +1401,7 @@ describe('useRecords', () => {
 
       expect(requestCount).toBe(0);
       expect(result.current.isLoading).toBe(false);
-      expect(result.current.data).toBeUndefined();
+      expect(result.current.records).toHaveLength(0);
     });
 
     it('should fetch when enabled changes to true', async () => {
@@ -1421,6 +1412,7 @@ describe('useRecords', () => {
         http.get('*/api/v1/data/databases/1/entries', () => {
           requestCount++;
           return HttpResponse.json({
+            success: true,
             data: {
               entries: records,
               totalcount: 3,
@@ -1478,6 +1470,7 @@ describe('useRecordsInfinite', () => {
       server.use(
         http.get('*/api/v1/data/databases/1/entries', () => {
           return HttpResponse.json({
+            success: true,
             data: {
               entries: page1Records,
               totalcount: 25,
@@ -1495,8 +1488,7 @@ describe('useRecordsInfinite', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data?.pages).toHaveLength(1);
-      expect(result.current.data?.pages[0].records).toHaveLength(10);
+      expect(result.current.records).toHaveLength(10);
     });
 
     it('should fetch next page with fetchNextPage', async () => {
@@ -1512,6 +1504,7 @@ describe('useRecordsInfinite', () => {
           pageRequested = parseInt(url.searchParams.get('page') ?? '1');
           const records = pageRequested === 1 ? page1Records : page2Records;
           return HttpResponse.json({
+            success: true,
             data: {
               entries: records,
               totalcount: 25,
@@ -1537,10 +1530,8 @@ describe('useRecordsInfinite', () => {
       });
 
       await waitFor(() => {
-        expect(result.current.data?.pages).toHaveLength(2);
+        expect(result.current.records).toHaveLength(20); // All records from both pages
       });
-
-      expect(result.current.data?.pages[1].records).toHaveLength(10);
     });
 
     it('should calculate hasNextPage correctly', async () => {
@@ -1551,6 +1542,7 @@ describe('useRecordsInfinite', () => {
           const url = new URL(request.url);
           const page = parseInt(url.searchParams.get('page') ?? '1');
           return HttpResponse.json({
+            success: true,
             data: {
               entries: page === 3 ? records.slice(0, 5) : records, // Last page has 5 records
               totalcount: 25,
@@ -1578,6 +1570,7 @@ describe('useRecordsInfinite', () => {
       server.use(
         http.get('*/api/v1/data/databases/1/entries', () => {
           return HttpResponse.json({
+            success: true,
             data: {
               entries: records,
               totalcount: 5, // Total equals current records
@@ -1608,6 +1601,7 @@ describe('useRecordsInfinite', () => {
           const records = createMockRecordSet(10, { dataid: 1 });
           records.forEach((r, i) => { r.id = (requestedPage - 1) * 10 + i + 1; });
           return HttpResponse.json({
+            success: true,
             data: {
               entries: records,
               totalcount: 35,
@@ -1625,27 +1619,26 @@ describe('useRecordsInfinite', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      // Fetch pages 2 and 3
+      // Initial page has 10 records
+      expect(result.current.records).toHaveLength(10);
+
+      // Fetch page 2
       await act(async () => {
         await result.current.fetchNextPage();
       });
 
       await waitFor(() => {
-        expect(result.current.data?.pages).toHaveLength(2);
+        expect(result.current.records).toHaveLength(20);
       });
 
+      // Fetch page 3
       await act(async () => {
         await result.current.fetchNextPage();
       });
 
       await waitFor(() => {
-        expect(result.current.data?.pages).toHaveLength(3);
+        expect(result.current.records).toHaveLength(30);
       });
-
-      // Verify all pages are accumulated
-      expect(result.current.data?.pages[0].records).toHaveLength(10);
-      expect(result.current.data?.pages[1].records).toHaveLength(10);
-      expect(result.current.data?.pages[2].records).toHaveLength(10);
     });
 
     it('should apply filters to infinite query', async () => {
@@ -1657,6 +1650,7 @@ describe('useRecordsInfinite', () => {
       server.use(
         http.get('*/api/v1/data/databases/1/entries', () => {
           return HttpResponse.json({
+            success: true,
             data: {
               entries: allRecords,
               totalcount: 15,
@@ -1679,21 +1673,29 @@ describe('useRecordsInfinite', () => {
       });
 
       // Should filter to only approved records (client-side filtering)
-      const records = result.current.data?.pages[0].records ?? [];
-      expect(records.every(r => r.approved === true)).toBe(true);
+      const records = result.current.records;
+      expect(records.every((r: DatabaseRecord) => r.approved === true)).toBe(true);
     });
 
     it('should handle isFetchingNextPage state', async () => {
+      let resolveSecondPage: (() => void) | null = null;
+      
       server.use(
         http.get('*/api/v1/data/databases/1/entries', async ({ request }) => {
           const url = new URL(request.url);
           const page = parseInt(url.searchParams.get('page') ?? '1');
           if (page > 1) {
-            await new Promise(resolve => setTimeout(resolve, 50));
+            // Use a promise that we can control to ensure we can observe the fetching state
+            await new Promise<void>(resolve => {
+              resolveSecondPage = resolve;
+              // Auto-resolve after a bit in case test moves on
+              setTimeout(resolve, 500);
+            });
           }
           const records = createMockRecordSet(10, { dataid: 1 });
           records.forEach((r, i) => { r.id = (page - 1) * 10 + i + 1; });
           return HttpResponse.json({
+            success: true,
             data: {
               entries: records,
               totalcount: 25,
@@ -1716,8 +1718,15 @@ describe('useRecordsInfinite', () => {
         result.current.fetchNextPage();
       });
 
-      // Should be fetching next page
-      expect(result.current.isFetchingNextPage).toBe(true);
+      // Wait for isFetchingNextPage to become true
+      await waitFor(() => {
+        expect(result.current.isFetchingNextPage).toBe(true);
+      }, { timeout: 2000 });
+
+      // Now resolve the second page request
+      if (resolveSecondPage) {
+        (resolveSecondPage as () => void)();
+      }
 
       await waitFor(() => {
         expect(result.current.isFetchingNextPage).toBe(false);
@@ -1727,13 +1736,14 @@ describe('useRecordsInfinite', () => {
     it('should handle error during fetchNextPage', async () => {
       let requestCount = 0;
       server.use(
-        http.get('*/api/v1/data/databases/1/entries', ({ request }) => {
+        http.get('*/api/v1/data/databases/1/entries', () => {
           requestCount++;
           if (requestCount > 1) {
             return HttpResponse.error();
           }
           const records = createMockRecordSet(10, { dataid: 1 });
           return HttpResponse.json({
+            success: true,
             data: {
               entries: records,
               totalcount: 25,
@@ -1765,7 +1775,7 @@ describe('useRecordsInfinite', () => {
       });
 
       // First page data should still be intact
-      expect(result.current.data?.pages).toHaveLength(1);
+      expect(result.current.records).toHaveLength(10);
     });
   });
 
@@ -1780,6 +1790,7 @@ describe('useRecordsInfinite', () => {
           const records = createMockRecordSet(10, { dataid: 1 });
           records.forEach((r, i) => { r.id = (requestedPage - 1) * 10 + i + 1; });
           return HttpResponse.json({
+            success: true,
             data: {
               entries: records,
               totalcount: 25,
@@ -1803,12 +1814,11 @@ describe('useRecordsInfinite', () => {
       });
 
       await waitFor(() => {
-        expect(result.current.data?.pages).toHaveLength(2);
+        expect(result.current.records).toHaveLength(20);
       });
 
-      // Access allRecords if available
-      const allRecords = result.current.data?.pages.flatMap(p => p.records) ?? [];
-      expect(allRecords).toHaveLength(20);
+      // All records accumulated
+      expect(result.current.records).toHaveLength(20);
     });
   });
 });
@@ -1842,7 +1852,8 @@ describe('combined filters', () => {
     server.use(
       http.get('*/api/v1/data/databases/1/entries', () => {
         return HttpResponse.json({
-          data: {
+          success: true,
+            data: {
             entries: records,
             totalcount: 5,
           },
@@ -1865,9 +1876,9 @@ describe('combined filters', () => {
     });
 
     // Should only return record 1 (user=1, group=1, approved=true)
-    const filteredRecords = result.current.data?.records ?? [];
+    const filteredRecords = result.current.records ?? [];
     expect(filteredRecords).toHaveLength(1);
-    expect(filteredRecords[0].id).toBe(1);
+    expect(filteredRecords[0]!.id).toBe(1);
   });
 
   it('should apply date range with other filters', async () => {
@@ -1883,7 +1894,8 @@ describe('combined filters', () => {
     server.use(
       http.get('*/api/v1/data/databases/1/entries', () => {
         return HttpResponse.json({
-          data: {
+          success: true,
+            data: {
             entries: records,
             totalcount: 3,
           },
@@ -1908,8 +1920,8 @@ describe('combined filters', () => {
     });
 
     // Should only return record 1 (user=1 AND within date range)
-    const filteredRecords = result.current.data?.records ?? [];
+    const filteredRecords = result.current.records ?? [];
     expect(filteredRecords).toHaveLength(1);
-    expect(filteredRecords[0].id).toBe(1);
+    expect(filteredRecords[0]!.id).toBe(1);
   });
 });
