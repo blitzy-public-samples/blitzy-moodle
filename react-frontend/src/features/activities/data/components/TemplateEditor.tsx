@@ -53,15 +53,14 @@ import {
   Info as InfoIcon,
   ExpandMore as ExpandMoreIcon,
   ContentCopy as ContentCopyIcon,
-  JavaScript as JavaScriptIcon,
-  RssFeed as RssFeedIcon,
+  Javascript as JavaScriptIcon,
 } from '@mui/icons-material';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 
 // Internal imports
 import { useDatabase } from '../hooks/useDatabase';
-import { Database, TemplateType, DatabaseField } from '../types/data.types';
-import { RichTextEditor } from '../../../../components/editor/RichTextEditor';
+import { TemplateType, DatabaseField } from '../types/data.types';
+import RichTextEditor from '../../../../components/editor/RichTextEditor';
 import { useToast } from '../../../../hooks/useToast';
 import { updateTemplate, resetTemplate, getFields } from '../api/dataApi';
 
@@ -756,7 +755,7 @@ Example: document.querySelectorAll('.entry').forEach(e => { ... });`,
  */
 const TemplateEditor: React.FC<TemplateEditorProps> = ({
   databaseId,
-  cmid,
+  cmid: _cmid,
   initialTab = TemplateType.List,
   onSave,
   readOnly = false,
@@ -1144,6 +1143,7 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({
         <Box sx={{ flex: 1, p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
           {currentTabConfig?.usesRichEditor ? (
             <RichTextEditor
+              name={`template-${activeTab}`}
               value={currentTemplate}
               onChange={handleTemplateChange}
               height={showPreview ? 250 : 400}
