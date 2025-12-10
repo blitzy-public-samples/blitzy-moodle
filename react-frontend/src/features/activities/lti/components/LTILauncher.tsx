@@ -473,9 +473,13 @@ function LTILauncher({
 
   /**
    * Execute the tool launch
+   * Note: We track `hasLaunched` to prevent auto-launch from re-triggering.
+   * This flag is only reset by explicit retry action (handleRetry), not on error.
+   * This prevents infinite loops when autoLaunch is enabled and errors occur.
    */
   const executeLaunch = useCallback(async () => {
-    if (hasLaunched.current && !error) {
+    // Prevent re-launch if we've already attempted (successful or not)
+    if (hasLaunched.current) {
       return;
     }
 
@@ -491,7 +495,8 @@ function LTILauncher({
 
       onLaunchSuccess?.(data);
     } catch (launchError) {
-      hasLaunched.current = false; // Allow retry
+      // Do NOT reset hasLaunched.current here!
+      // The retry should only be triggered via handleRetry, not auto-launch.
       const err = launchError instanceof Error ? launchError : new Error(String(launchError));
       onLaunchError?.(err);
     }
@@ -503,7 +508,7 @@ function LTILauncher({
     launchTool,
     onLaunchSuccess,
     onLaunchError,
-    error,
+    // Note: removed `error` from dependencies - it was causing infinite re-renders
   ]);
 
   /**
