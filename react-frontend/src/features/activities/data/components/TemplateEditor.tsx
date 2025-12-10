@@ -59,7 +59,7 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 
 // Internal imports
 import { useDatabase } from '../hooks/useDatabase';
-import { TemplateType, DatabaseField } from '../types/data.types';
+import { TemplateType, DatabaseField, FieldType } from '../types/data.types';
 import RichTextEditor from '../../../../components/editor/RichTextEditor';
 import { useToast } from '../../../../hooks/useToast';
 import { updateTemplate, resetTemplate, getFields } from '../api/dataApi';
@@ -413,7 +413,7 @@ const PlaceholderPanel: React.FC<PlaceholderPanelProps> = ({
   const handleCopyClick = useCallback(
     (tag: string) => (event: React.MouseEvent) => {
       event.stopPropagation();
-      navigator.clipboard.writeText(tag);
+      void navigator.clipboard.writeText(tag);
     },
     []
   );
@@ -628,31 +628,34 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
  * Helper function to generate sample values for field preview
  */
 function getSampleValueForField(field: DatabaseField, index: number): string {
+  // Extract field name early for use in default case (TypeScript exhaustive checking)
+  const fieldName = field.name;
+  
   switch (field.type) {
-    case 'text':
+    case FieldType.Text:
       return `Sample Text ${index + 1}`;
-    case 'textarea':
-      return `This is sample paragraph content for the ${field.name} field.`;
-    case 'number':
+    case FieldType.Textarea:
+      return `This is sample paragraph content for the ${fieldName} field.`;
+    case FieldType.Number:
       return String((index + 1) * 10);
-    case 'date':
+    case FieldType.Date:
       return new Date().toLocaleDateString();
-    case 'menu':
-    case 'radiobutton':
+    case FieldType.Menu:
+    case FieldType.RadioButton:
       return 'Option 1';
-    case 'checkbox':
-    case 'multimenu':
+    case FieldType.Checkbox:
+    case FieldType.MultiMenu:
       return 'Option A, Option B';
-    case 'file':
+    case FieldType.File:
       return '<a href="#">document.pdf</a>';
-    case 'picture':
+    case FieldType.Picture:
       return '<img src="data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'100\' height=\'100\'%3E%3Crect fill=\'%23ddd\' width=\'100\' height=\'100\'/%3E%3Ctext x=\'50\' y=\'50\' text-anchor=\'middle\' dy=\'.3em\'%3E🖼️%3C/text%3E%3C/svg%3E" alt="Sample Image" style="max-width: 100px;" />';
-    case 'url':
+    case FieldType.URL:
       return '<a href="#">https://example.com</a>';
-    case 'latlong':
+    case FieldType.LatLong:
       return '40.7128° N, 74.0060° W';
     default:
-      return `Sample ${field.name}`;
+      return `Sample ${fieldName}`;
   }
 }
 
@@ -814,7 +817,7 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({
       });
     },
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['database', databaseId] });
+      void queryClient.invalidateQueries({ queryKey: ['database', databaseId] });
       toast.success(`${variables.type} template saved successfully`);
     },
     onError: (error: Error) => {
@@ -831,7 +834,7 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({
         ...prev,
         [templateType]: defaultContent,
       }));
-      queryClient.invalidateQueries({ queryKey: ['database', databaseId] });
+      void queryClient.invalidateQueries({ queryKey: ['database', databaseId] });
       toast.success(`${templateType} template reset to default`);
     },
     onError: (error: Error) => {
