@@ -23,8 +23,8 @@
  */
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import type { SubmitHandler, FieldValues } from 'react-hook-form';
-import { useForm, Controller } from 'react-hook-form';
+import type { FieldValues, Control } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import {
   Box,
   Stack,
@@ -40,8 +40,6 @@ import {
   Chip,
   ToggleButton,
   ToggleButtonGroup,
-  FormControl,
-  FormLabel,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -337,12 +335,15 @@ function SearchForm({
   const debouncedSimpleSearch = useDebounce(simpleSearchValue, debounceDelay);
 
   /** React Hook Form setup */
-  const { control, handleSubmit, reset, setValue, watch } = useForm<SearchFormValues>({
+  const { control, reset } = useForm<SearchFormValues>({
     defaultValues: {
       simpleSearch: initialSearch,
       advancedFilters: {},
     },
   });
+
+  /** Type-cast control for compatibility with generic form components */
+  const formControl = control as unknown as Control<FieldValues>;
 
   // ============================================================================
   // Derived State
@@ -352,14 +353,6 @@ function SearchForm({
   const fields = useMemo<DatabaseField[]>(() => {
     return database?.fields ?? [];
   }, [database?.fields]);
-
-  /** Field options for dropdown selection when adding new filter */
-  const fieldOptions = useMemo<SelectOption[]>(() => {
-    return fields.map((field) => ({
-      value: field.id,
-      label: field.name,
-    }));
-  }, [fields]);
 
   /** Check if there are any active filters */
   const hasActiveFilters = useMemo(() => {
@@ -428,16 +421,6 @@ function SearchForm({
   );
 
   /**
-   * Handles simple search input change
-   */
-  const handleSimpleSearchChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      setSimpleSearchValue(event.target.value);
-    },
-    []
-  );
-
-  /**
    * Adds a new empty filter for a specific field
    */
   const handleAddFilter = useCallback(
@@ -472,36 +455,6 @@ function SearchForm({
       return newSet;
     });
   }, []);
-
-  /**
-   * Updates a filter's operator
-   */
-  const handleFilterOperatorChange = useCallback(
-    (fieldId: number, operator: SearchOperator) => {
-      setActiveFilters((prev) =>
-        prev.map((filter) =>
-          filter.fieldId === fieldId ? { ...filter, operator } : filter
-        )
-      );
-    },
-    []
-  );
-
-  /**
-   * Updates a filter's value
-   */
-  const handleFilterValueChange = useCallback(
-    (fieldId: number, value: string, valueTo?: string) => {
-      setActiveFilters((prev) =>
-        prev.map((filter) =>
-          filter.fieldId === fieldId
-            ? { ...filter, value, ...(valueTo !== undefined && { valueTo }) }
-            : filter
-        )
-      );
-    },
-    []
-  );
 
   /**
    * Handles accordion panel expansion toggle
@@ -566,61 +519,11 @@ function SearchForm({
   // ============================================================================
 
   /**
-   * Renders the appropriate input component for a field type
-   */
-  const renderFieldInput = useCallback(
-    (filter: SearchFilter, field: DatabaseField) => {
-      const operators = getOperatorsForFieldType(field.type);
-      const operatorOptions = operatorsToSelectOptions(operators);
-      const needsSecondValue = filter.operator === 'between';
-      const isEmptyOperator = filter.operator === 'is_empty' || filter.operator === 'is_not_empty';
-
-      return (
-        <Stack spacing={2} sx={{ width: '100%' }}>
-          {/* Operator selection */}
-          <FormControl fullWidth size="small">
-            <FormLabel id={`operator-label-${field.id}`} sx={{ mb: 1 }}>
-              Operator
-            </FormLabel>
-            <FormSelect
-              name={`operator-${field.id}`}
-              label=""
-              control={control}
-              options={operatorOptions}
-              placeholder="Select operator"
-              disabled={disabled}
-            />
-          </FormControl>
-
-          {/* Value input - only show if not an empty operator */}
-          {!isEmptyOperator && (
-            <>
-              {renderValueInput(filter, field, 'value')}
-
-              {/* Secondary value for range operators */}
-              {needsSecondValue && (
-                <>
-                  <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center' }}>
-                    and
-                  </Typography>
-                  {renderValueInput(filter, field, 'valueTo')}
-                </>
-              )}
-            </>
-          )}
-        </Stack>
-      );
-    },
-    [control, disabled]
-  );
-
-  /**
    * Renders the value input based on field type
    */
   const renderValueInput = useCallback(
-    (filter: SearchFilter, field: DatabaseField, valueKey: 'value' | 'valueTo') => {
+    (_filter: SearchFilter, field: DatabaseField, valueKey: 'value' | 'valueTo') => {
       const inputName = `${field.id}-${valueKey}`;
-      const currentValue = valueKey === 'value' ? filter.value : (filter.valueTo ?? '');
 
       switch (field.type) {
         case FieldType.Number:
@@ -629,7 +532,7 @@ function SearchForm({
               name={inputName}
               label={valueKey === 'value' ? 'Value' : 'To value'}
               type="number"
-              control={control}
+              control={formControl}
               placeholder="Enter number..."
               disabled={disabled}
             />
@@ -640,7 +543,7 @@ function SearchForm({
             <FormDatePicker
               name={inputName}
               label={valueKey === 'value' ? 'Date' : 'To date'}
-              control={control}
+              control={formControl}
               disabled={disabled}
             />
           );
@@ -652,7 +555,7 @@ function SearchForm({
             <FormSelect
               name={inputName}
               label={valueKey === 'value' ? 'Value' : 'To value'}
-              control={control}
+              control={formControl}
               options={menuOptions}
               placeholder="Select option..."
               disabled={disabled}
@@ -665,7 +568,7 @@ function SearchForm({
             <FormSelect
               name={inputName}
               label={valueKey === 'value' ? 'Value' : 'To value'}
-              control={control}
+              control={formControl}
               options={multiMenuOptions}
               multiple
               placeholder="Select options..."
@@ -678,7 +581,7 @@ function SearchForm({
             <FormSelect
               name={inputName}
               label="Value"
-              control={control}
+              control={formControl}
               options={[
                 { value: '1', label: 'Checked' },
                 { value: '0', label: 'Unchecked' },
@@ -700,14 +603,14 @@ function SearchForm({
               name={inputName}
               label={valueKey === 'value' ? 'Value' : 'To value'}
               type="text"
-              control={control}
+              control={formControl}
               placeholder={`Enter ${field.name.toLowerCase()}...`}
               disabled={disabled}
             />
           );
       }
     },
-    [control, disabled]
+    [formControl, disabled]
   );
 
   /**
@@ -802,7 +705,7 @@ function SearchForm({
               name="simpleSearch"
               label=""
               type="text"
-              control={control}
+              control={formControl}
               placeholder={placeholder}
               disabled={disabled}
               fullWidth
@@ -903,7 +806,7 @@ function SearchForm({
                             <FormSelect
                               name={`filter-${filter.fieldId}-operator`}
                               label="Operator"
-                              control={control}
+                              control={formControl}
                               options={operatorsToSelectOptions(getOperatorsForFieldType(field.type))}
                               disabled={disabled}
                             />
