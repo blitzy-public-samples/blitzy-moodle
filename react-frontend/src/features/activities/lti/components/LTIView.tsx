@@ -25,13 +25,11 @@
  * @see {@link https://www.imsglobal.org/activity/learning-tools-interoperability|LTI Specification}
  */
 
-import type React from 'react';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box,
   Card,
   CardContent,
-  CardActions,
   Typography,
   Button,
   Divider,
@@ -47,7 +45,7 @@ import {
   Extension as ExtensionIcon,
 } from '@mui/icons-material';
 
-import { LTILauncher } from './LTILauncher';
+import LTILauncher from './LTILauncher';
 import { useLTI } from '../hooks/useLTI';
 import type { LtiTool } from '../types/lti.types';
 import { LaunchContainer } from '../types/lti.types';
@@ -113,11 +111,6 @@ interface ViewState {
 // ============================================================================
 // Constants
 // ============================================================================
-
-/**
- * Default description format (Moodle HTML format)
- */
-const DEFAULT_INTRO_FORMAT = 1;
 
 /**
  * Launch container display names for UI
@@ -351,7 +344,7 @@ interface LaunchActionsProps {
 }
 
 function LaunchActions({
-  tool,
+  tool: _tool,
   onLaunch,
   isLaunching,
   containerType,
@@ -468,7 +461,7 @@ function LaunchActions({
  */
 function LTIView({
   ltiId,
-  courseId,
+  courseId: _courseId,
   forUserId,
   action = '',
 }: LTIViewProps): JSX.Element {
@@ -482,7 +475,7 @@ function LTIView({
   // ============ Data Fetching ============
   const {
     tool: toolData,
-    toolConfig,
+    toolConfig: _toolConfig,
     isLoading,
     error,
     hasToolData,
@@ -561,7 +554,7 @@ function LTIView({
       showLaunchConfirmation: false,
       launchError: null,
     });
-    refetchTool();
+    void refetchTool();
   }, [refetchTool]);
 
   // ============ Effects ============
@@ -760,11 +753,11 @@ function LTIView({
             forUserId={forUserId}
             onLaunchSuccess={handleLaunchSuccess}
             onLaunchError={handleLaunchError}
-            autoLaunch={true}
+            autoLaunch
             iframeHeight={isEmbeddedContainer(launchContainer) ? '600px' : undefined}
-            showLoading={true}
-            showErrors={true}
-            triggerView={true}
+            showLoading
+            showErrors
+            triggerView
           />
         </Box>
       )}
