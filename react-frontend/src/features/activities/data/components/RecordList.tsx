@@ -35,7 +35,6 @@ import {
   Menu,
   MenuItem,
   FormControlLabel,
-  TableSortLabel,
   Divider,
   TextField,
   InputAdornment,
@@ -51,7 +50,6 @@ import {
   Check as CheckIcon,
   Close as CloseIcon,
   MoreVert as MoreVertIcon,
-  FilterList as FilterListIcon,
   ArrowUpward as ArrowUpwardIcon,
   ArrowDownward as ArrowDownwardIcon,
   Search as SearchIcon,
@@ -59,20 +57,19 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 
 // Internal imports from depends_on_files
-import { FieldRenderer } from './FieldRenderer';
-import { useRecords } from '../hooks/useRecords';
+import FieldRenderer from './FieldRenderer';
+import useRecords from '../hooks/useRecords';
 import { useDatabase } from '../hooks/useDatabase';
 import { useApproveRecord, useDeleteRecord } from '../hooks/useDatabaseMutation';
 import { usePermissions } from '@/features/auth/hooks/usePermissions';
-import { Pagination } from '@/components/data-display/Pagination';
-import { Card } from '@/components/data-display/Card';
-import { useDebounce } from '@/hooks/useDebounce';
+import Pagination from '@/components/data-display/Pagination';
+import Card from '@/components/data-display/Card';
+import useDebounce from '@/hooks/useDebounce';
 import { useToast } from '@/hooks/useToast';
 import type {
   DatabaseField,
   DatabaseRecord,
   FieldContent,
-  Database,
 } from '../types/data.types';
 
 // ============================================================================
@@ -214,16 +211,16 @@ const SORT_BY_LAST_NAME = -3;
 function RecordList({
   databaseId,
   cmId,
-  viewMode = 'list',
+  viewMode: _viewMode = 'list',
   onViewModeChange,
   onRecordSelect,
-  selectedRecordId,
+  selectedRecordId: _selectedRecordId,
   initialPage = 1,
   initialPerPage = 10,
   fileBaseUrl,
   showSearch = true,
   showFilters = true,
-  useCustomTemplate = false,
+  useCustomTemplate: _useCustomTemplate = false,
 }: RecordListProps): React.ReactElement {
   // =========================================================================
   // State Management
@@ -297,40 +294,30 @@ function RecordList({
   // Build records query params
   const recordsParams = useMemo(() => ({
     databaseId,
-    filters: {
-      search: debouncedSearchTerm || undefined,
-      approvalStatus: approvalFilter,
-    },
+    search: debouncedSearchTerm || undefined,
+    approvalStatus: approvalFilter,
     sort: {
-      fieldId: sortFieldId,
-      direction: sortDirection,
+      field: sortFieldId,
+      direction: (sortDirection === 'asc' ? 0 : 1) as 0 | 1,
     },
-    pagination: {
-      page: currentPage,
-      perPage,
-    },
+    page: currentPage,
+    perPage,
   }), [databaseId, debouncedSearchTerm, approvalFilter, sortFieldId, sortDirection, currentPage, perPage]);
 
   // Fetch records
   const {
-    data: recordsData,
+    records,
+    totalCount,
+    totalPages: _totalPages,
     isLoading: isRecordsLoading,
     isError: isRecordsError,
     error: recordsError,
-    refetch: refetchRecords,
+    refetch: _refetchRecords,
   } = useRecords(recordsParams);
 
   // Mutation hooks
-  const { mutateAsync: approveRecord, isPending: isApproving } = useApproveRecord(databaseId);
-  const { mutateAsync: deleteRecord, isPending: isDeleting } = useDeleteRecord(databaseId);
-
-  // =========================================================================
-  // Derived State
-  // =========================================================================
-
-  const records = recordsData?.records ?? [];
-  const totalCount = recordsData?.totalCount ?? 0;
-  const totalPages = recordsData?.totalPages ?? 0;
+  const { mutateAsync: approveRecord, isPending: isApproving } = useApproveRecord();
+  const { mutateAsync: deleteRecord, isPending: isDeleting } = useDeleteRecord();
 
   // Fields available for display and sorting
   const fields: DatabaseField[] = database?.fields ?? [];
@@ -489,7 +476,7 @@ function RecordList({
   const handleDeleteRecord = useCallback(async (recordId: number) => {
     handleActionMenuClose();
     try {
-      await deleteRecord({ recordId });
+      await deleteRecord({ databaseId, recordId });
       success('Record deleted successfully');
       // Invalidate queries to refetch
       queryClient.invalidateQueries({ queryKey: ['database-records', databaseId] });
@@ -510,7 +497,7 @@ function RecordList({
   const handleApproveRecord = useCallback(async (recordId: number, approve: boolean) => {
     handleActionMenuClose();
     try {
-      await approveRecord({ recordId, approved: approve });
+      await approveRecord({ databaseId, recordId, approved: approve });
       success(approve ? 'Record approved' : 'Record disapproved');
       queryClient.invalidateQueries({ queryKey: ['database-records', databaseId] });
     } catch (err) {
@@ -529,8 +516,8 @@ function RecordList({
 
     try {
       // Delete records one by one (could be optimized with batch API)
-      const deletePromises = Array.from(selectedRecordIds).map((recordId) =>
-        deleteRecord({ recordId })
+      const deletePromises = Array.from(selectedRecordIds).map((recordId: number) =>
+        deleteRecord({ databaseId, recordId })
       );
       await Promise.all(deletePromises);
 
@@ -552,8 +539,8 @@ function RecordList({
     }
 
     try {
-      const approvePromises = Array.from(selectedRecordIds).map((recordId) =>
-        approveRecord({ recordId, approved: approve })
+      const approvePromises = Array.from(selectedRecordIds).map((recordId: number) =>
+        approveRecord({ databaseId, recordId, approved: approve })
       );
       await Promise.all(approvePromises);
 
@@ -847,7 +834,7 @@ function RecordList({
                 <Box>
                   <FieldRenderer
                     field={field}
-                    value={contents[field.id] ?? null}
+                    value={contents[field.id] ?? { id: 0, fieldid: field.id, recordid: record.id }}
                     mode="list"
                     fileBaseUrl={fileBaseUrl}
                   />
