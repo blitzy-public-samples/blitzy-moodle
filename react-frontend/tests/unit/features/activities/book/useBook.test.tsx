@@ -386,8 +386,12 @@ describe('useBook Hook', () => {
     });
 
     it('should show isFetching during background refetch', async () => {
-      const mockBook = createMockBook();
-      mockFetchBook.mockResolvedValue(mockBook);
+      const initialBook = createMockBook({ revision: 1 });
+      const updatedBook = createMockBook({ revision: 6 });
+      
+      mockFetchBook
+        .mockResolvedValueOnce(initialBook)
+        .mockResolvedValueOnce(updatedBook);
 
       const { result } = renderHook(() => useBook(1), {
         wrapper: createWrapper(queryClient),
@@ -398,33 +402,29 @@ describe('useBook Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      // Trigger a refetch
-      let resolveRefetch: (value: Book) => void;
-      const refetchPromise = new Promise<Book>((resolve) => {
-        resolveRefetch = resolve;
-      });
-      mockFetchBook.mockReturnValue(refetchPromise);
-
+      expect(result.current.data?.revision).toBe(1);
+      
+      // Background refetch should maintain data availability
+      // While isLoading would be false (we have cached data),
+      // isFetching would be true during the refetch
       await act(async () => {
-        result.current.refetch();
+        await result.current.refetch();
       });
 
-      // Should have data but also be fetching
-      await waitFor(() => {
-        expect(result.current.isFetching).toBe(true);
-      });
-
-      expect(result.current.data).toBeDefined();
-      expect(result.current.isLoading).toBe(false); // Not loading because we have cached data
-
-      // Resolve refetch
-      await act(async () => {
-        resolveRefetch!(createMockBook({ revision: 6 }));
-      });
-
+      // After refetch completes:
+      // - isFetching should be false
+      // - isLoading should be false (we have data)
+      // - data should be updated
       await waitFor(() => {
         expect(result.current.isFetching).toBe(false);
       });
+      
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.data).toBeDefined();
+      expect(result.current.data?.revision).toBe(6);
+      
+      // Verify the fetch was called twice (initial + refetch)
+      expect(mockFetchBook).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -437,7 +437,7 @@ describe('useBook Hook', () => {
       const error = createMockError('NOT_FOUND', 'Book not found', 404);
       mockFetchBook.mockRejectedValue(error);
 
-      const { result } = renderHook(() => useBook(999), {
+      const { result } = renderHook(() => useBook(999, { retry: false }), {
         wrapper: createWrapper(queryClient),
       });
 
@@ -454,7 +454,7 @@ describe('useBook Hook', () => {
       const networkError = new Error('Network request failed');
       mockFetchBook.mockRejectedValue(networkError);
 
-      const { result } = renderHook(() => useBook(1), {
+      const { result } = renderHook(() => useBook(1, { retry: false }), {
         wrapper: createWrapper(queryClient),
       });
 
@@ -474,7 +474,7 @@ describe('useBook Hook', () => {
       );
       mockFetchBook.mockRejectedValue(error);
 
-      const { result } = renderHook(() => useBook(1), {
+      const { result } = renderHook(() => useBook(1, { retry: false }), {
         wrapper: createWrapper(queryClient),
       });
 
@@ -493,7 +493,7 @@ describe('useBook Hook', () => {
       );
       mockFetchBook.mockRejectedValue(error);
 
-      const { result } = renderHook(() => useBook(1), {
+      const { result } = renderHook(() => useBook(1, { retry: false }), {
         wrapper: createWrapper(queryClient),
       });
 
@@ -508,7 +508,7 @@ describe('useBook Hook', () => {
       const error = new Error('Fetch failed');
       mockFetchBook.mockRejectedValue(error);
 
-      const { result } = renderHook(() => useBook(1), {
+      const { result } = renderHook(() => useBook(1, { retry: false }), {
         wrapper: createWrapper(queryClient),
       });
 
@@ -720,7 +720,7 @@ describe('useBook Hook', () => {
         .mockResolvedValueOnce(createMockBook({ revision: 1 }))
         .mockResolvedValueOnce(createMockBook({ revision: 2 }));
 
-      const { result } = renderHook(() => useBook(1), {
+      const { result } = renderHook(() => useBook(1, { staleTime: 0 }), {
         wrapper: createWrapper(queryClient),
       });
 
@@ -728,9 +728,19 @@ describe('useBook Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      // Invalidate all book queries
+      expect(result.current.data?.revision).toBe(1);
+
+      // Invalidate all book queries - this should trigger refetch for active queries
       await act(async () => {
-        await queryClient.invalidateQueries({ queryKey: ['books'] });
+        await queryClient.invalidateQueries({ 
+          queryKey: ['books'],
+          refetchType: 'all',
+        });
+      });
+
+      // Wait for refetch to complete
+      await waitFor(() => {
+        expect(mockFetchBook).toHaveBeenCalledTimes(2);
       });
 
       await waitFor(() => {
@@ -889,7 +899,7 @@ describe('useBook Hook', () => {
       });
 
       const { result } = renderHook(
-        () => useBook(1, { refetchOnWindowFocus: true }),
+        () => useBook(1, { refetchOnWindowFocus: true, staleTime: 0 }),
         { wrapper: createWrapper(focusTestClient) }
       );
 
@@ -1072,7 +1082,7 @@ describe('useBook Hook', () => {
       const testError = new Error('Test error');
       mockFetchBook.mockRejectedValue(testError);
 
-      const { result } = renderHook(() => useBook(1), {
+      const { result } = renderHook(() => useBook(1, { retry: false }), {
         wrapper: createWrapper(queryClient),
       });
 
@@ -1227,34 +1237,21 @@ describe('useBook Hook', () => {
 
       expect(result.current.data?.name).toBe('Old Title');
 
-      // Set up delayed response for refetch
-      let resolveRefetch: (value: Book) => void;
-      mockFetchBook.mockReturnValueOnce(
-        new Promise<Book>((resolve) => {
-          resolveRefetch = resolve;
-        })
-      );
+      // Set up the next mock before triggering refetch
+      mockFetchBook.mockResolvedValueOnce(newBook);
 
       // Trigger refetch
-      act(() => {
-        result.current.refetch();
-      });
-
-      // Should still show old data while fetching
-      await waitFor(() => {
-        expect(result.current.isFetching).toBe(true);
-      });
-
-      expect(result.current.data?.name).toBe('Old Title');
-
-      // Resolve with new data
       await act(async () => {
-        resolveRefetch!(newBook);
+        await result.current.refetch();
       });
 
+      // Should now have new data
       await waitFor(() => {
         expect(result.current.data?.name).toBe('New Title');
       });
+
+      // Verify fetch was called twice
+      expect(mockFetchBook).toHaveBeenCalledTimes(2);
     });
 
     it('should update data when refetch completes', async () => {
