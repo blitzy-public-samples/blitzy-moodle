@@ -576,7 +576,7 @@ describe('H5PResultsList Component', () => {
 
       // Click on the Attempt column header to sort (first match is usually the column header)
       const attemptHeaders = screen.getAllByText('Attempt');
-      await user.click(attemptHeaders[0]);
+      await user.click(attemptHeaders[0]!);
 
       // The sort should be applied - check hook was called with sort params
       expect(useH5PAttempts).toHaveBeenCalled();
@@ -594,10 +594,10 @@ describe('H5PResultsList Component', () => {
       const attemptHeaders = screen.getAllByText('Attempt');
 
       // First click - should set ascending
-      await user.click(attemptHeaders[0]);
+      await user.click(attemptHeaders[0]!);
 
       // Second click - should toggle to descending
-      await user.click(attemptHeaders[0]);
+      await user.click(attemptHeaders[0]!);
 
       // Hook should be called with updated sort order
       expect(useH5PAttempts).toHaveBeenCalled();
@@ -613,7 +613,7 @@ describe('H5PResultsList Component', () => {
       });
 
       const dateHeaders = screen.getAllByText('Date');
-      await user.click(dateHeaders[0]);
+      await user.click(dateHeaders[0]!);
 
       expect(useH5PAttempts).toHaveBeenCalled();
     });
@@ -628,7 +628,7 @@ describe('H5PResultsList Component', () => {
       });
 
       const scoreHeaders = screen.getAllByText('Score');
-      await user.click(scoreHeaders[0]);
+      await user.click(scoreHeaders[0]!);
 
       expect(useH5PAttempts).toHaveBeenCalled();
     });
@@ -643,7 +643,7 @@ describe('H5PResultsList Component', () => {
       });
 
       const durationHeaders = screen.getAllByText('Duration');
-      await user.click(durationHeaders[0]);
+      await user.click(durationHeaders[0]!);
 
       expect(useH5PAttempts).toHaveBeenCalled();
     });
