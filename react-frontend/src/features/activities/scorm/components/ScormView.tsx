@@ -30,7 +30,7 @@
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import {
   Box,
   Button,
@@ -52,7 +52,6 @@ import {
   Refresh as RefreshIcon,
   Delete as DeleteIcon,
   Info as InfoIcon,
-  Warning as WarningIcon,
   AccessTime as AccessTimeIcon,
   Grade as GradeIcon,
   Assignment as AssignmentIcon,
@@ -62,13 +61,13 @@ import {
 } from '@mui/icons-material';
 
 // Internal imports from depends_on_files
-import type { ScormAttempt } from '../types/scorm.types';
-import { ScormStatus, ScormPopup, ScormSkipView, ScormForceAttempt } from '../types/scorm.types';
+import type { ScormPopupOptions } from '../types/scorm.types';
+import { ScormStatus, ScormSkipView, ScormForceAttempt } from '../types/scorm.types';
 import { useScorm } from '../hooks/useScorm';
 import useScormAttempt from '../hooks/useScormAttempt';
 import ScormPlayer from './ScormPlayer';
 import ScormTOC from './ScormTOC';
-import ScormReportCard from './ScormReportCard';
+import { ScormReportCard } from './ScormReportCard';
 import { usePermissions } from '../../../auth/hooks/usePermissions';
 import { Alert } from '../../../../components/feedback/Alert';
 import { Modal } from '../../../../components/feedback/Modal';
@@ -88,18 +87,6 @@ const SCORM_CAPABILITIES = {
   SAVE_TRACK: 'mod/scorm:savetrack',
   VIEW_SCORES: 'mod/scorm:viewscores',
 } as const;
-
-/**
- * Status color mapping for attempt status display
- */
-const STATUS_COLORS: Record<ScormStatus, 'success' | 'error' | 'warning' | 'info' | 'default'> = {
-  [ScormStatus.COMPLETED]: 'success',
-  [ScormStatus.PASSED]: 'success',
-  [ScormStatus.FAILED]: 'error',
-  [ScormStatus.INCOMPLETE]: 'warning',
-  [ScormStatus.BROWSED]: 'info',
-  [ScormStatus.NOT_ATTEMPTED]: 'default',
-};
 
 // ============================================================================
 // TYPES AND INTERFACES
@@ -262,25 +249,6 @@ function getStatusDisplay(status: ScormStatus | undefined): {
   }
 }
 
-/**
- * Format score for display
- * @param score - Raw score value
- * @param maxScore - Maximum possible score
- * @returns Formatted score string
- */
-function formatScore(
-  score: number | undefined | null,
-  maxScore?: number | null
-): string {
-  if (score === undefined || score === null) {
-    return '-';
-  }
-  if (maxScore) {
-    return `${score} / ${maxScore}`;
-  }
-  return `${score}`;
-}
-
 // ============================================================================
 // MAIN COMPONENT
 // ============================================================================
@@ -294,16 +262,13 @@ function formatScore(
  */
 const ScormView: React.FC<ScormViewProps> = ({
   scormId: propScormId,
-  courseId,
+  courseId: _courseId,
   userId,
   organization: initialOrganization,
 }) => {
   // Get scormId from URL params if not provided as prop
   const params = useParams<{ scormId?: string }>();
   const scormId = propScormId || (params.scormId ? parseInt(params.scormId, 10) : 0);
-
-  // Navigation hook
-  const navigate = useNavigate();
 
   // Permission checking hook
   const { hasCapability } = usePermissions();
@@ -316,7 +281,7 @@ const ScormView: React.FC<ScormViewProps> = ({
   const [showPlayer, setShowPlayer] = useState(false);
 
   // Selected organization for multi-org packages
-  const [organization, setOrganization] = useState(initialOrganization);
+  const [organization] = useState(initialOrganization);
 
   // Modal states for confirmations
   const [showNewAttemptDialog, setShowNewAttemptDialog] = useState(false);
@@ -334,8 +299,6 @@ const ScormView: React.FC<ScormViewProps> = ({
   const {
     scorm,
     scoes,
-    attempts,
-    userData,
     isLoading: isScormLoading,
     error: scormError,
     refetch: refetchScorm,
@@ -344,14 +307,12 @@ const ScormView: React.FC<ScormViewProps> = ({
   // Fetch attempt management data using useScormAttempt hook
   const {
     attempt: currentAttempt,
-    allAttempts,
     totalAttempts,
     attemptsLeft,
     canStartNewAttempt,
-    scormConfig,
     isCreating: isCreatingAttempt,
     createAttempt,
-  } = useScormAttempt(scormId, userId);
+  } = useScormAttempt(scormId, userId ?? 0);
 
   // ============================================================================
   // COMPUTED VALUES
@@ -378,7 +339,7 @@ const ScormView: React.FC<ScormViewProps> = ({
     }
     
     // Skip on first access (when no attempts exist)
-    if (skipViewSetting === ScormSkipView.FIRST_ACCESS) {
+    if (skipViewSetting === ScormSkipView.FIRST) {
       return totalAttempts === 0;
     }
     
@@ -387,24 +348,24 @@ const ScormView: React.FC<ScormViewProps> = ({
 
   // Check if user has permission to skip view
   const hasSkipViewCapability = useMemo(
-    () => hasCapability(SCORM_CAPABILITIES.SKIP_VIEW, { courseId }),
-    [hasCapability, courseId]
+    () => hasCapability(SCORM_CAPABILITIES.SKIP_VIEW, { type: 'module', contextId: scormId }),
+    [hasCapability, scormId]
   );
 
   // Check if user can delete own responses
   const canDeleteOwnResponses = useMemo(
-    () => hasCapability(SCORM_CAPABILITIES.DELETE_RESPONSES, { courseId }),
-    [hasCapability, courseId]
+    () => hasCapability(SCORM_CAPABILITIES.DELETE_RESPONSES, { type: 'module', contextId: scormId }),
+    [hasCapability, scormId]
   );
 
   // Determine if force new attempt should be applied
   const shouldForceNewAttempt = useMemo(() => {
     if (!scorm || !currentAttempt) {return false;}
     
-    const forceAttempt = scorm.forceattempt ?? ScormForceAttempt.NONE;
+    const forceAttempt = scorm.forcenewattempt ?? ScormForceAttempt.NO;
     
     // Check if the current attempt is completed and force new attempt is enabled
-    if (forceAttempt === ScormForceAttempt.ON_COMPLETE) {
+    if (forceAttempt === ScormForceAttempt.ONCOMPLETE) {
       return currentAttempt.status === ScormStatus.COMPLETED || 
              currentAttempt.status === ScormStatus.PASSED;
     }
@@ -432,33 +393,37 @@ const ScormView: React.FC<ScormViewProps> = ({
   }, []);
 
   // Calculate grade display
+  // Note: ScormAttempt interface has limited properties. Grade data comes from 
+  // ScormReportCard component which fetches detailed attempt summaries with scores.
   const gradeDisplay = useMemo(() => {
-    if (!currentAttempt) {return null;}
-    
-    const score = currentAttempt.scoreRaw ?? currentAttempt.score;
-    const maxScore = currentAttempt.scoreMax ?? scorm?.maxgrade;
-    
-    if (score !== undefined && score !== null) {
-      return formatScore(score, maxScore);
-    }
-    
+    // Grade display is handled by ScormReportCard component for detailed view
+    // Return null here - full grade info is shown via the report card
+    if (!currentAttempt || !scorm) {return null;}
     return null;
   }, [currentAttempt, scorm]);
 
   // Determine popup options from SCORM settings
-  const popupOptions = useMemo(() => {
+  const popupOptions: ScormPopupOptions | null = useMemo(() => {
     if (!scorm) {return null;}
     
-    if (scorm.popup === ScormPopup.POPUP) {
+    if (scorm.popup) {
+      // Parse options from the options string or use defaults
+      // Options string format: "scrollbars=1,directories=0,location=0,menubar=0,toolbar=0,status=0"
+      const parseOption = (optionStr: string, key: string, defaultVal: boolean): boolean => {
+        const match = optionStr.match(new RegExp(`${key}=(\\d)`));
+        return match ? match[1] === '1' : defaultVal;
+      };
+      
+      const opts = scorm.options || '';
       return {
         width: scorm.width || 800,
         height: scorm.height || 600,
-        scrollbars: scorm.scrollbars ?? true,
-        directories: scorm.directories ?? false,
-        location: scorm.location ?? false,
-        menubar: scorm.menubar ?? false,
-        toolbar: scorm.toolbar ?? false,
-        status: scorm.statusbar ?? false,
+        scrollbars: parseOption(opts, 'scrollbars', true),
+        directories: parseOption(opts, 'directories', false),
+        location: parseOption(opts, 'location', false),
+        menubar: parseOption(opts, 'menubar', false),
+        toolbar: parseOption(opts, 'toolbar', false),
+        status: parseOption(opts, 'status', false),
       };
     }
     
@@ -643,10 +608,11 @@ const ScormView: React.FC<ScormViewProps> = ({
             ? scormError.message
             : 'Failed to load SCORM package. Please try again.'
         }
-        action={{
-          label: 'Retry',
-          onClick: () => refetchScorm(),
-        }}
+        action={
+          <Button variant="outlined" size="small" onClick={() => refetchScorm()}>
+            Retry
+          </Button>
+        }
       />
     );
   }
@@ -657,7 +623,7 @@ const ScormView: React.FC<ScormViewProps> = ({
       <ScormPlayer
         scormId={scormId}
         userId={userId || 0}
-        attempt={currentAttempt?.attempt}
+        attempt={currentAttempt?.attemptNumber}
         mode={launchMode}
         displayMode="embedded"
         onExit={handlePlayerExit}
@@ -748,7 +714,7 @@ const ScormView: React.FC<ScormViewProps> = ({
                       Current Attempt:
                     </Typography>
                     <Typography variant="body2" fontWeight="medium">
-                      {currentAttempt?.attempt || 'None'}
+                      {currentAttempt?.attemptNumber || 'None'}
                     </Typography>
                   </Box>
                   
@@ -824,7 +790,7 @@ const ScormView: React.FC<ScormViewProps> = ({
                         Time Spent:
                       </Typography>
                       <Typography variant="body2" fontWeight="medium">
-                        {formatDuration(currentAttempt.totalTime)}
+                        {formatDuration(parseInt(currentAttempt.totalTime, 10) || 0)}
                       </Typography>
                     </Box>
                   )}
@@ -944,7 +910,7 @@ const ScormView: React.FC<ScormViewProps> = ({
               <IconButton
                 color="error"
                 onClick={() => {
-                  setAttemptToDelete(currentAttempt.attempt || null);
+                  setAttemptToDelete(currentAttempt.attemptNumber || null);
                   setShowDeleteAttemptDialog(true);
                 }}
               >
@@ -964,7 +930,7 @@ const ScormView: React.FC<ScormViewProps> = ({
             </Typography>
             <ScormTOC
               scormId={scormId}
-              attempt={currentAttempt?.attempt}
+              attempt={currentAttempt?.attemptNumber}
               scorm={scorm}
               organization={organization}
               onScoSelect={(scoId) => {
@@ -981,7 +947,7 @@ const ScormView: React.FC<ScormViewProps> = ({
         <ScormReportCard
           scormId={scormId}
           userId={userId}
-          attemptNumber={currentAttempt.attempt}
+          attemptNumber={currentAttempt.attemptNumber}
           showDetailed={false}
         />
       )}
@@ -1010,7 +976,7 @@ const ScormView: React.FC<ScormViewProps> = ({
           Starting a new attempt will begin fresh. Your previous attempt data will be
           preserved but you will start from the beginning of the SCORM package.
         </Typography>
-        {attemptsLeft !== undefined && attemptsLeft > 0 && (
+        {attemptsLeft !== undefined && attemptsLeft !== null && attemptsLeft > 0 && (
           <Alert
             severity="info"
             message={`You have ${attemptsLeft} attempt${attemptsLeft === 1 ? '' : 's'} remaining.`}
