@@ -919,6 +919,14 @@ describe('RecentActivityWidget', () => {
     });
 
     it('displays "Yesterday" for activities from yesterday', async () => {
+      // Calculate yesterday's date at noon to ensure it's reliably "yesterday"
+      // regardless of what time the test runs
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      yesterday.setHours(12, 0, 0, 0); // Set to noon yesterday
+      const yesterdayTimestamp = Math.floor(yesterday.getTime() / 1000);
+
       server.use(
         http.get(`${API_BASE_URL}/blocks/recent`, () => {
           return HttpResponse.json({
@@ -927,12 +935,12 @@ describe('RecentActivityWidget', () => {
               items: [
                 createMockActivity({
                   id: 1,
-                  timestamp: Math.floor(Date.now() / 1000) - 30 * 60 * 60, // ~30 hours ago
+                  timestamp: yesterdayTimestamp,
                 }),
                 ...Array.from({ length: 14 }, (_, i) =>
                   createMockActivity({
                     id: i + 2,
-                    timestamp: Math.floor(Date.now() / 1000) - (28 + i) * 60 * 60,
+                    timestamp: yesterdayTimestamp - i * 60 * 60, // Space out by hours within yesterday
                   })
                 ),
               ],
