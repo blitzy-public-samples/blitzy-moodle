@@ -17,7 +17,7 @@
  * @see react-frontend/src/features/activities/h5pactivity/hooks/useH5P.ts
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React, { type ReactNode } from 'react';
@@ -32,7 +32,6 @@ import * as h5pApi from '@/features/activities/h5pactivity/api/h5pApi';
 import type {
   H5PActivity,
   H5PAccessInfo,
-  H5PDisplayOptions,
 } from '@/features/activities/h5pactivity/types/h5p.types';
 import { H5PGradeMethod, H5PReviewMode } from '@/features/activities/h5pactivity/types/h5p.types';
 
@@ -46,6 +45,24 @@ vi.mock('@/features/activities/h5pactivity/api/h5pApi', () => ({
   getAccessInformation: vi.fn(),
   viewH5PActivity: vi.fn(),
   getAttempts: vi.fn(),
+  // Include parseDisplayOptions as actual implementation (pure function, no side effects)
+  parseDisplayOptions: (displayoptions: number) => ({
+    frame: (displayoptions & 1) !== 0,
+    download: (displayoptions & 2) !== 0,
+    embed: (displayoptions & 4) !== 0,
+    copyright: (displayoptions & 8) !== 0,
+    about: (displayoptions & 16) !== 0,
+  }),
+  // Include buildDisplayOptions for completeness
+  buildDisplayOptions: (options: Partial<{ frame?: boolean; download?: boolean; embed?: boolean; copyright?: boolean; about?: boolean }>) => {
+    let bitmask = 0;
+    if (options.frame) bitmask |= 1;
+    if (options.download) bitmask |= 2;
+    if (options.embed) bitmask |= 4;
+    if (options.copyright) bitmask |= 8;
+    if (options.about) bitmask |= 16;
+    return bitmask;
+  },
 }));
 
 // ============================================================================
@@ -58,34 +75,17 @@ vi.mock('@/features/activities/h5pactivity/api/h5pApi', () => ({
 function createMockH5PActivity(overrides: Partial<H5PActivity> = {}): H5PActivity {
   return {
     id: 1,
-    courseId: 100,
+    course: 100,
     name: 'Test H5P Activity',
     intro: '<p>This is a test H5P interactive content.</p>',
     introformat: 1,
+    timecreated: 1699000000,
+    timemodified: 1699999999,
     grade: 100,
     displayoptions: 15, // Frame, Download, Embed, Copyright all enabled
     enabletracking: 1,
-    grademethod: H5PGradeMethod.HIGHEST,
-    reviewmode: H5PReviewMode.WHEN_FINISHED,
-    timemodified: 1699999999,
-    deployedfile: {
-      id: 1,
-      filesize: 1024000,
-      filename: 'content.h5p',
-      filepath: '/mod/h5pactivity/1/',
-    },
-    package: {
-      id: 1,
-      filesize: 1024000,
-      filename: 'package.h5p',
-      filepath: '/mod/h5pactivity/1/',
-    },
-    context: {
-      id: 200,
-      contextlevel: 70,
-      instanceid: 1,
-    },
-    coursemodule: 500,
+    grademethod: H5PGradeMethod.HIGHEST_ATTEMPT,
+    reviewmode: H5PReviewMode.COMPLETION,
     ...overrides,
   };
 }
@@ -98,21 +98,6 @@ function createMockH5PAccessInfo(overrides: Partial<H5PAccessInfo> = {}): H5PAcc
     canview: true,
     cansubmit: true,
     canreviewattempts: false,
-    warnings: [],
-    ...overrides,
-  };
-}
-
-/**
- * Creates mock display options object
- */
-function createMockDisplayOptions(overrides: Partial<H5PDisplayOptions> = {}): H5PDisplayOptions {
-  return {
-    frame: true,
-    export: true,
-    embed: true,
-    copyright: true,
-    icon: true,
     ...overrides,
   };
 }
@@ -160,8 +145,8 @@ function createWrapper(queryClient: QueryClient) {
 
 describe('useH5P Hook', () => {
   let queryClient: QueryClient;
-  let mockGetH5PActivity: ReturnType<typeof vi.fn>;
-  let mockGetAccessInformation: ReturnType<typeof vi.fn>;
+  let mockGetH5PActivity: ReturnType<typeof vi.mocked<typeof h5pApi.getH5PActivity>>;
+  let mockGetAccessInformation: ReturnType<typeof vi.mocked<typeof h5pApi.getAccessInformation>>;
 
   beforeEach(() => {
     // Create fresh query client for each test
@@ -202,8 +187,8 @@ describe('useH5P Hook', () => {
         expect(result.current.isLoading).toBe(false);
       });
 
-      expect(result.current.data).toBeDefined();
-      expect(result.current.data?.activity).toEqual(mockActivity);
+      expect(result.current.activityData).toBeDefined();
+      expect(result.current.activityData?.activity).toEqual(mockActivity);
     });
 
     it('should call h5pApi.getH5PActivity with correct ID', async () => {
@@ -235,7 +220,7 @@ describe('useH5P Hook', () => {
       });
 
       // Check all expected properties exist
-      expect(result.current).toHaveProperty('data');
+      expect(result.current).toHaveProperty('activityData');
       expect(result.current).toHaveProperty('isLoading');
       expect(result.current).toHaveProperty('error');
       expect(result.current).toHaveProperty('refetch');
@@ -257,7 +242,7 @@ describe('useH5P Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data?.activity.id).toBe(999);
+      expect(result.current.activityData?.activity.id).toBe(999);
     });
 
     it('should return activity data matching H5PActivity interface', async () => {
@@ -275,7 +260,7 @@ describe('useH5P Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      const activity = result.current.data?.activity;
+      const activity = result.current.activityData?.activity;
       expect(activity).toBeDefined();
       expect(activity).toHaveProperty('id');
       expect(activity).toHaveProperty('name');
@@ -312,7 +297,7 @@ describe('useH5P Hook', () => {
         wrapper: createWrapper(queryClient),
       });
 
-      expect(result.current.data).toBeUndefined();
+      expect(result.current.activityData).toBeUndefined();
     });
 
     it('should have error null during loading', () => {
@@ -409,8 +394,8 @@ describe('useH5P Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data).toBeDefined();
-      expect(result.current.data?.activity).toEqual(mockActivity);
+      expect(result.current.activityData).toBeDefined();
+      expect(result.current.activityData?.activity).toEqual(mockActivity);
     });
 
     it('should have error null on success', async () => {
@@ -439,8 +424,8 @@ describe('useH5P Hook', () => {
         grade: 100,
         displayoptions: 15,
         enabletracking: 1,
-        grademethod: H5PGradeMethod.HIGHEST,
-        reviewmode: H5PReviewMode.WHEN_FINISHED,
+        grademethod: H5PGradeMethod.HIGHEST_ATTEMPT,
+        reviewmode: H5PReviewMode.COMPLETION,
       });
       const mockAccessInfo = createMockH5PAccessInfo();
 
@@ -455,15 +440,15 @@ describe('useH5P Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      const activity = result.current.data?.activity;
+      const activity = result.current.activityData?.activity;
       expect(activity?.id).toBe(123);
       expect(activity?.name).toBe('Complete H5P Activity');
       expect(activity?.intro).toBe('<p>Full description</p>');
       expect(activity?.grade).toBe(100);
       expect(activity?.displayoptions).toBe(15);
       expect(activity?.enabletracking).toBe(1);
-      expect(activity?.grademethod).toBe(H5PGradeMethod.HIGHEST);
-      expect(activity?.reviewmode).toBe(H5PReviewMode.WHEN_FINISHED);
+      expect(activity?.grademethod).toBe(H5PGradeMethod.HIGHEST_ATTEMPT);
+      expect(activity?.reviewmode).toBe(H5PReviewMode.COMPLETION);
     });
 
     it('should include tracking status in response', async () => {
@@ -481,7 +466,7 @@ describe('useH5P Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data?.trackingStatus).toBeDefined();
+      expect(result.current.trackingStatus).toBeDefined();
     });
   });
 
@@ -490,6 +475,12 @@ describe('useH5P Hook', () => {
   // ==========================================================================
 
   describe('Error State', () => {
+    // The hook has retry: 3 with exponential backoff, so error tests need
+    // extended timeout to wait for all retries to complete (~7 seconds)
+    // Need both waitFor timeout AND test-level timeout
+    const ERROR_TEST_TIMEOUT = 10000;
+    const TEST_TIMEOUT = 15000;
+
     it('should have isLoading false after error', async () => {
       mockGetH5PActivity.mockRejectedValue(new Error('API Error'));
       mockGetAccessInformation.mockRejectedValue(new Error('API Error'));
@@ -500,10 +491,10 @@ describe('useH5P Hook', () => {
 
       await waitFor(() => {
         expect(result.current.isError).toBe(true);
-      });
+      }, { timeout: ERROR_TEST_TIMEOUT });
 
       expect(result.current.isLoading).toBe(false);
-    });
+    }, TEST_TIMEOUT);
 
     it('should have error object containing error details', async () => {
       const errorMessage = 'Failed to fetch H5P activity';
@@ -516,11 +507,11 @@ describe('useH5P Hook', () => {
 
       await waitFor(() => {
         expect(result.current.isError).toBe(true);
-      });
+      }, { timeout: ERROR_TEST_TIMEOUT });
 
       expect(result.current.error).toBeDefined();
       expect(result.current.error?.message).toBe(errorMessage);
-    });
+    }, TEST_TIMEOUT);
 
     it('should have data undefined on error', async () => {
       mockGetH5PActivity.mockRejectedValue(new Error('API Error'));
@@ -532,10 +523,10 @@ describe('useH5P Hook', () => {
 
       await waitFor(() => {
         expect(result.current.isError).toBe(true);
-      });
+      }, { timeout: ERROR_TEST_TIMEOUT });
 
-      expect(result.current.data).toBeUndefined();
-    });
+      expect(result.current.activityData).toBeUndefined();
+    }, TEST_TIMEOUT);
 
     it('should handle 404 Not Found error', async () => {
       const notFoundError = new Error('Activity not found');
@@ -549,10 +540,10 @@ describe('useH5P Hook', () => {
 
       await waitFor(() => {
         expect(result.current.isError).toBe(true);
-      });
+      }, { timeout: ERROR_TEST_TIMEOUT });
 
       expect(result.current.error?.message).toBe('Activity not found');
-    });
+    }, TEST_TIMEOUT);
 
     it('should handle 403 Forbidden error', async () => {
       const forbiddenError = new Error('Access denied');
@@ -566,10 +557,10 @@ describe('useH5P Hook', () => {
 
       await waitFor(() => {
         expect(result.current.isError).toBe(true);
-      });
+      }, { timeout: ERROR_TEST_TIMEOUT });
 
       expect(result.current.error?.message).toBe('Access denied');
-    });
+    }, TEST_TIMEOUT);
 
     it('should handle network error', async () => {
       const networkError = new Error('Network Error');
@@ -583,10 +574,10 @@ describe('useH5P Hook', () => {
 
       await waitFor(() => {
         expect(result.current.isError).toBe(true);
-      });
+      }, { timeout: ERROR_TEST_TIMEOUT });
 
       expect(result.current.error?.message).toBe('Network Error');
-    });
+    }, TEST_TIMEOUT);
 
     it('should handle timeout error', async () => {
       const timeoutError = new Error('Request timeout');
@@ -600,10 +591,10 @@ describe('useH5P Hook', () => {
 
       await waitFor(() => {
         expect(result.current.isError).toBe(true);
-      });
+      }, { timeout: ERROR_TEST_TIMEOUT });
 
       expect(result.current.error?.message).toBe('Request timeout');
-    });
+    }, TEST_TIMEOUT);
   });
 
   // ==========================================================================
@@ -669,7 +660,7 @@ describe('useH5P Hook', () => {
       });
 
       await waitFor(() => {
-        expect(result.current.data?.activity.name).toBe('Initial Name');
+        expect(result.current.activityData?.activity.name).toBe('Initial Name');
       });
 
       // Setup mock for refetch
@@ -681,7 +672,7 @@ describe('useH5P Hook', () => {
       });
 
       await waitFor(() => {
-        expect(result.current.data?.activity.name).toBe('Updated Name');
+        expect(result.current.activityData?.activity.name).toBe('Updated Name');
       });
     });
 
@@ -766,7 +757,7 @@ describe('useH5P Hook', () => {
       });
 
       // Should immediately have data from cache
-      expect(result2.current.data).toBeDefined();
+      expect(result2.current.activityData).toBeDefined();
     });
 
     it('should have separate caches for different IDs', async () => {
@@ -798,8 +789,8 @@ describe('useH5P Hook', () => {
       });
 
       // Verify they have different data
-      expect(result1.current.data?.activity.name).toBe('Activity 1');
-      expect(result2.current.data?.activity.name).toBe('Activity 2');
+      expect(result1.current.activityData?.activity.name).toBe('Activity 1');
+      expect(result2.current.activityData?.activity.name).toBe('Activity 2');
     });
 
     it('should cache data for 5 minutes (stale time)', async () => {
@@ -828,8 +819,9 @@ describe('useH5P Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      // Verify data is not stale immediately
-      expect(result.current.isStale).toBe(false);
+      // Verify data is not stale immediately by checking the underlying query
+      // The hook exposes activityQuery which contains the isStale property
+      expect(result.current.activityQuery.isStale).toBe(false);
     });
 
     it('should persist cache across component unmounts', async () => {
@@ -859,7 +851,7 @@ describe('useH5P Hook', () => {
       });
 
       // Should have cached data immediately
-      expect(result2.current.data).toBeDefined();
+      expect(result2.current.activityData).toBeDefined();
     });
   });
 
@@ -894,11 +886,11 @@ describe('useH5P Hook', () => {
       });
 
       // Should still have original data during refetch
-      expect(result.current.data?.activity.name).toBe('Original Data');
+      expect(result.current.activityData?.activity.name).toBe('Original Data');
 
       // Wait for refetch to complete
       await waitFor(() => {
-        expect(result.current.data?.activity.name).toBe('New Data');
+        expect(result.current.activityData?.activity.name).toBe('New Data');
       }, { timeout: 500 });
     });
 
@@ -1046,10 +1038,10 @@ describe('useH5P Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data?.accessInfo).toBeDefined();
-      expect(result.current.data?.accessInfo.canview).toBe(true);
-      expect(result.current.data?.accessInfo.cansubmit).toBe(true);
-      expect(result.current.data?.accessInfo.canreviewattempts).toBe(false);
+      expect(result.current.accessInfo).toBeDefined();
+      expect(result.current.accessInfo?.canview).toBe(true);
+      expect(result.current.accessInfo?.cansubmit).toBe(true);
+      expect(result.current.accessInfo?.canreviewattempts).toBe(false);
     });
 
     it('should return canview, canreviewattempts, cansubmit flags', async () => {
@@ -1071,7 +1063,7 @@ describe('useH5P Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      const accessInfo = result.current.data?.accessInfo;
+      const accessInfo = result.current.accessInfo;
       expect(accessInfo).toHaveProperty('canview', true);
       expect(accessInfo).toHaveProperty('cansubmit', false);
       expect(accessInfo).toHaveProperty('canreviewattempts', true);
@@ -1112,7 +1104,7 @@ describe('useH5P Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      const accessInfo = result.current.data?.accessInfo;
+      const accessInfo = result.current.accessInfo;
       expect(accessInfo?.canview).toBe(false);
       expect(accessInfo?.cansubmit).toBe(false);
       expect(accessInfo?.canreviewattempts).toBe(false);
@@ -1143,7 +1135,7 @@ describe('useH5P Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data?.isPreviewMode).toBe(true);
+      expect(result.current.trackingStatus?.isPreviewMode).toBe(true);
     });
 
     it('should return isPreviewMode boolean', async () => {
@@ -1163,8 +1155,8 @@ describe('useH5P Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(typeof result.current.data?.isPreviewMode).toBe('boolean');
-      expect(result.current.data?.isPreviewMode).toBe(false);
+      expect(typeof result.current.trackingStatus?.isPreviewMode).toBe('boolean');
+      expect(result.current.trackingStatus?.isPreviewMode).toBe(false);
     });
 
     it('should indicate preview mode disables tracking submission', async () => {
@@ -1186,7 +1178,7 @@ describe('useH5P Hook', () => {
       });
 
       // In preview mode, even with tracking enabled, should be preview
-      expect(result.current.data?.isPreviewMode).toBe(true);
+      expect(result.current.trackingStatus?.isPreviewMode).toBe(true);
     });
 
     it('should test with different permission combinations', async () => {
@@ -1206,7 +1198,7 @@ describe('useH5P Hook', () => {
         expect(result1.current.isSuccess).toBe(true);
       });
 
-      expect(result1.current.data?.isPreviewMode).toBe(false);
+      expect(result1.current.trackingStatus?.isPreviewMode).toBe(false);
 
       // Test case 2: View only (preview mode)
       const queryClient2 = createTestQueryClient();
@@ -1222,7 +1214,7 @@ describe('useH5P Hook', () => {
         expect(result2.current.isSuccess).toBe(true);
       });
 
-      expect(result2.current.data?.isPreviewMode).toBe(true);
+      expect(result2.current.trackingStatus?.isPreviewMode).toBe(true);
     });
   });
 
@@ -1246,8 +1238,8 @@ describe('useH5P Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data?.trackingStatus).toBeDefined();
-      expect(result.current.data?.trackingStatus.enabled).toBe(true);
+      expect(result.current.trackingStatus).toBeDefined();
+      expect(result.current.trackingStatus?.isTrackingEnabled).toBe(true);
     });
 
     it('should reflect tracking disabled status', async () => {
@@ -1265,7 +1257,7 @@ describe('useH5P Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data?.trackingStatus.enabled).toBe(false);
+      expect(result.current.trackingStatus?.isTrackingEnabled).toBe(false);
     });
 
     it('should affect statement submission based on tracking status', async () => {
@@ -1284,8 +1276,8 @@ describe('useH5P Hook', () => {
       });
 
       // When tracking is enabled and user can submit
-      expect(result.current.data?.trackingStatus.enabled).toBe(true);
-      expect(result.current.data?.trackingStatus.canSubmit).toBe(true);
+      expect(result.current.trackingStatus?.isTrackingEnabled).toBe(true);
+      expect(result.current.trackingStatus?.canSubmit).toBe(true);
     });
   });
 
@@ -1309,7 +1301,7 @@ describe('useH5P Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data?.displayOptions).toBeDefined();
+      expect(result.current.activityData?.displayOptions).toBeDefined();
     });
 
     it('should decode display options from integer value', async () => {
@@ -1328,9 +1320,9 @@ describe('useH5P Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      const options = result.current.data?.displayOptions;
+      const options = result.current.activityData?.displayOptions;
       expect(options?.frame).toBe(true);
-      expect(options?.export).toBe(true);
+      expect(options?.download).toBe(true);
       expect(options?.embed).toBe(true);
       expect(options?.copyright).toBe(true);
     });
@@ -1351,9 +1343,9 @@ describe('useH5P Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      const options = result.current.data?.displayOptions;
+      const options = result.current.activityData?.displayOptions;
       expect(options?.frame).toBe(true);
-      expect(options?.export).toBe(false);
+      expect(options?.download).toBe(false);
       expect(options?.embed).toBe(true);
       expect(options?.copyright).toBe(false);
     });
@@ -1373,9 +1365,9 @@ describe('useH5P Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      const options = result.current.data?.displayOptions;
+      const options = result.current.activityData?.displayOptions;
       expect(options?.frame).toBe(false);
-      expect(options?.export).toBe(false);
+      expect(options?.download).toBe(false);
       expect(options?.embed).toBe(false);
       expect(options?.copyright).toBe(false);
     });
@@ -1456,7 +1448,7 @@ describe('useH5P Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data).toBeDefined();
+      expect(result.current.activityData).toBeDefined();
     });
 
     it('should integrate with global query cache', async () => {
@@ -1500,7 +1492,7 @@ describe('useH5P Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data).toBeDefined();
+      expect(result.current.activityData).toBeDefined();
     });
 
     it('should work with other React Query hooks in same provider', async () => {
@@ -1550,7 +1542,7 @@ describe('useH5P Hook', () => {
       });
 
       // TypeScript should ensure activity has correct type
-      const activity = result.current.data?.activity;
+      const activity = result.current.activityData?.activity;
       expect(activity?.id).toBeDefined();
       expect(typeof activity?.id).toBe('number');
       expect(typeof activity?.name).toBe('string');
@@ -1558,6 +1550,8 @@ describe('useH5P Hook', () => {
     });
 
     it('should have error typed as Error object', async () => {
+      // Error tests need extended timeout due to hook's retry: 3 with exponential backoff
+      const ERROR_TEST_TIMEOUT = 10000;
       const errorMessage = 'Typed Error';
       mockGetH5PActivity.mockRejectedValue(new Error(errorMessage));
       mockGetAccessInformation.mockRejectedValue(new Error(errorMessage));
@@ -1568,11 +1562,11 @@ describe('useH5P Hook', () => {
 
       await waitFor(() => {
         expect(result.current.isError).toBe(true);
-      });
+      }, { timeout: ERROR_TEST_TIMEOUT });
 
       expect(result.current.error).toBeInstanceOf(Error);
       expect(result.current.error?.message).toBe(errorMessage);
-    });
+    }, 15000);
 
     it('should accept valid activity ID types', async () => {
       const mockActivity = createMockH5PActivity();
@@ -1621,8 +1615,8 @@ describe('useH5P Hook', () => {
     it('should not update state after unmount', async () => {
       const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
       
-      let resolvePromise: (value: any) => void;
-      const pendingPromise = new Promise((resolve) => {
+      let resolvePromise: (value: H5PActivity) => void;
+      const pendingPromise = new Promise<H5PActivity>((resolve) => {
         resolvePromise = resolve;
       });
 
@@ -1724,7 +1718,7 @@ describe('useH5P Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data?.activity.id).toBe(largeId);
+      expect(result.current.activityData?.activity.id).toBe(largeId);
     });
 
     it('should handle rapid ID changes', async () => {
@@ -1773,7 +1767,7 @@ describe('useH5P Hook', () => {
       ];
 
       await waitFor(() => {
-        const allSuccess = promises.every((p) => p.result.current.isSuccess || p.result.current.data);
+        const allSuccess = promises.every((p) => p.result.current.isSuccess || p.result.current.activityData);
         expect(allSuccess).toBe(true);
       });
     });
@@ -1784,6 +1778,12 @@ describe('useH5P Hook', () => {
   // ==========================================================================
 
   describe('API Error Scenarios', () => {
+    // The hook has retry: 3 with exponential backoff, so error tests need
+    // extended timeout to wait for all retries to complete (~7 seconds)
+    // Need both waitFor timeout AND test-level timeout
+    const ERROR_TEST_TIMEOUT = 10000;
+    const TEST_TIMEOUT = 15000;
+
     it('should handle activity not found (404)', async () => {
       const error = new Error('Activity not found');
       (error as any).response = { status: 404 };
@@ -1796,10 +1796,10 @@ describe('useH5P Hook', () => {
 
       await waitFor(() => {
         expect(result.current.isError).toBe(true);
-      });
+      }, { timeout: ERROR_TEST_TIMEOUT });
 
       expect(result.current.error?.message).toContain('not found');
-    });
+    }, TEST_TIMEOUT);
 
     it('should handle unauthorized access (401)', async () => {
       const error = new Error('Unauthorized');
@@ -1813,10 +1813,10 @@ describe('useH5P Hook', () => {
 
       await waitFor(() => {
         expect(result.current.isError).toBe(true);
-      });
+      }, { timeout: ERROR_TEST_TIMEOUT });
 
       expect(result.current.error?.message).toBe('Unauthorized');
-    });
+    }, TEST_TIMEOUT);
 
     it('should handle forbidden access (403)', async () => {
       const error = new Error('Forbidden');
@@ -1830,10 +1830,10 @@ describe('useH5P Hook', () => {
 
       await waitFor(() => {
         expect(result.current.isError).toBe(true);
-      });
+      }, { timeout: ERROR_TEST_TIMEOUT });
 
       expect(result.current.error?.message).toBe('Forbidden');
-    });
+    }, TEST_TIMEOUT);
 
     it('should handle server error (500)', async () => {
       const error = new Error('Internal Server Error');
@@ -1847,14 +1847,15 @@ describe('useH5P Hook', () => {
 
       await waitFor(() => {
         expect(result.current.isError).toBe(true);
-      });
+      }, { timeout: ERROR_TEST_TIMEOUT });
 
       expect(result.current.error?.message).toBe('Internal Server Error');
-    });
+    }, TEST_TIMEOUT);
 
     it('should handle invalid response format', async () => {
-      // Mock API returning invalid data
-      mockGetH5PActivity.mockResolvedValue(null);
+      // Mock API returning invalid data (simulating a malformed response)
+      // Use type assertion to test edge case where API returns unexpected null
+      mockGetH5PActivity.mockResolvedValue(null as unknown as H5PActivity);
       mockGetAccessInformation.mockResolvedValue(createMockH5PAccessInfo());
 
       const { result } = renderHook(() => useH5P(1), {
@@ -1884,7 +1885,7 @@ describe('useH5P Hook', () => {
       });
 
       // Should handle gracefully even with missing fields
-      expect(result.current.data?.activity.id).toBe(1);
+      expect(result.current.activityData?.activity.id).toBe(1);
     });
 
     it('should handle access info API failure with activity success', async () => {
@@ -1900,7 +1901,7 @@ describe('useH5P Hook', () => {
       await waitFor(() => {
         // Should either error or succeed with partial data
         expect(result.current.isLoading).toBe(false);
-      });
-    });
+      }, { timeout: ERROR_TEST_TIMEOUT });
+    }, TEST_TIMEOUT);
   });
 });
