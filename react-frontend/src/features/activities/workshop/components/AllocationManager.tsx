@@ -491,7 +491,30 @@ function AllocationManager({
       void queryClient.invalidateQueries({ queryKey: ['workshops', workshopId] });
       void fetchAllocations(workshopId).then(setAllocations);
 
-      // Update history for undo support
+      // Update history for undo support - track the operation
+      const historyItem: HistoryItem = {
+        type: variables.action,
+        allocation: {
+          id: 0, // ID not known yet for new allocations
+          submissionId: variables.submissionId,
+          submissionTitle: '', // Not tracked in this context
+          authorId: 0,
+          authorName: '',
+          reviewerId: variables.reviewerId,
+          reviewerName: '',
+          grade: null,
+          timeCreated: Math.floor(Date.now() / 1000),
+        },
+        timestamp: Date.now(),
+      };
+      
+      setUndoHistory((prev) => {
+        const newHistory = [...prev, historyItem];
+        return newHistory.slice(-MAX_HISTORY_SIZE);
+      });
+      // Clear redo history when new action is performed
+      setRedoHistory([]);
+
       if (variables.action === 'add') {
         showSuccess(`Allocation created successfully (${result.allocated} allocation(s))`);
       } else {

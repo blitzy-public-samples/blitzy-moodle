@@ -312,9 +312,47 @@ export function createMockUserPlan(
 }
 
 /**
- * Creates mock allocation result
+ * Allocation record representing a submission-reviewer pair.
+ * This matches the Allocation interface in AllocationManager.tsx
+ */
+export interface Allocation {
+  id: number;
+  submissionId: number;
+  submissionTitle: string;
+  authorId: number;
+  authorName: string;
+  reviewerId: number;
+  reviewerName: string;
+  grade: number | null;
+  timeCreated: number;
+}
+
+/**
+ * Creates mock allocation record (submission-reviewer pair)
+ * Used for testing AllocationManager component
  */
 export function createMockAllocation(
+  overrides?: Partial<Allocation>
+): Allocation {
+  const now = Math.floor(Date.now() / 1000);
+  return {
+    id: 1,
+    submissionId: 1,
+    submissionTitle: 'Test Submission',
+    authorId: 100,
+    authorName: 'Test Author',
+    reviewerId: 101,
+    reviewerName: 'Test Reviewer',
+    grade: null,
+    timeCreated: now,
+    ...overrides,
+  };
+}
+
+/**
+ * Creates mock allocation result (API operation result)
+ */
+export function createMockAllocationResult(
   overrides?: Partial<AllocationResult>
 ): AllocationResult {
   return {
@@ -741,7 +779,7 @@ export function setupWorkshopHandlers(workshopId: number = 1) {
       if (Number(id) === workshopId) {
         return HttpResponse.json({
           success: true,
-          data: createMockAllocation(),
+          data: { allocation: createMockAllocation() },
         });
       }
       return HttpResponse.json(
