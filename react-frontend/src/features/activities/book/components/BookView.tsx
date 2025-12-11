@@ -21,15 +21,13 @@
  * @module features/activities/book/components/BookView
  */
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Grid,
   Paper,
   Typography,
-  CircularProgress,
-  Skeleton,
   useTheme,
   useMediaQuery,
   Drawer,
@@ -38,10 +36,10 @@ import {
 } from '@mui/material';
 import { Menu as MenuIcon, Close as CloseIcon, Edit as EditIcon } from '@mui/icons-material';
 
-// Internal component imports
-import { BookNavigation } from './BookNavigation';
-import { ChapterList } from './ChapterList';
-import { ChapterContent } from './ChapterContent';
+// Internal component imports - using default imports
+import BookNavigation from './BookNavigation';
+import ChapterList from './ChapterList';
+import ChapterContent from './ChapterContent';
 
 // Hook imports
 import { useBook } from '../hooks/useBook';
@@ -50,9 +48,6 @@ import { usePermissions } from '@/hooks/usePermissions';
 
 // API imports
 import { recordBookView } from '../api/bookApi';
-
-// Type imports
-import type { Chapter } from '../types/book.types';
 
 // Feedback component imports
 import { LoadingSpinner } from '@/components/feedback/LoadingSpinner';
@@ -110,7 +105,7 @@ export default function BookView({
   bookId,
   courseModuleId,
   initialChapterId,
-  courseId,
+  courseId: _courseId,
 }: BookViewProps): JSX.Element {
   const theme = useTheme();
   const navigate = useNavigate();
@@ -124,8 +119,8 @@ export default function BookView({
   // State for mobile drawer (TOC sidebar)
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState<boolean>(false);
 
-  // State for edit mode toggle
-  const [isEditing, setIsEditing] = useState<boolean>(false);
+  // State for edit mode toggle (setIsEditing reserved for future toggle functionality)
+  const [isEditing, _setIsEditing] = useState<boolean>(false);
 
   // State for tracking if view has been recorded
   const [viewRecorded, setViewRecorded] = useState<boolean>(false);
@@ -141,10 +136,6 @@ export default function BookView({
   // Fetch chapters data using React Query hook
   const {
     chapters,
-    mainChapters,
-    getNavigationChapters,
-    isFirstChapter,
-    isLastChapter,
     isLoading: isChaptersLoading,
     error: chaptersError,
     isError: isChaptersError,
@@ -174,7 +165,9 @@ export default function BookView({
    * Hidden chapters only visible to users with viewhiddenchapters capability
    */
   const visibleChapters = useMemo(() => {
-    if (!chapters) return [];
+    if (!chapters) {
+      return [];
+    }
     return canViewHidden
       ? chapters
       : chapters.filter((chapter) => !chapter.hidden);
@@ -185,27 +178,23 @@ export default function BookView({
    * Falls back to first visible chapter if current chapter is invalid
    */
   const currentChapter = useMemo(() => {
-    if (!visibleChapters.length) return null;
+    if (!visibleChapters.length) {
+      return null;
+    }
 
     // If currentChapterId is set, find that chapter
     if (currentChapterId !== null) {
       const chapter = visibleChapters.find((c) => c.id === currentChapterId);
-      if (chapter) return chapter;
+      if (chapter) {
+        return chapter;
+      }
     }
 
     // Fall back to first visible chapter
-    return visibleChapters[0] || null;
+    return visibleChapters[0] ?? null;
   }, [visibleChapters, currentChapterId]);
 
-  /**
-   * Get navigation chapters (previous and next) for BookNavigation component
-   */
-  const navigationChapters = useMemo(() => {
-    if (!currentChapter || !getNavigationChapters) {
-      return { previous: null, next: null };
-    }
-    return getNavigationChapters(currentChapter.id);
-  }, [currentChapter, getNavigationChapters]);
+
 
   /**
    * Effect: Initialize currentChapterId with first chapter if not set
@@ -214,7 +203,9 @@ export default function BookView({
   useEffect(() => {
     if (currentChapterId === null && visibleChapters.length > 0) {
       const firstChapter = visibleChapters[0];
-      setCurrentChapterId(firstChapter.id);
+      if (firstChapter) {
+        setCurrentChapterId(firstChapter.id);
+      }
     }
   }, [currentChapterId, visibleChapters]);
 
@@ -225,7 +216,9 @@ export default function BookView({
    */
   useEffect(() => {
     const recordView = async () => {
-      if (viewRecorded || !currentChapter) return;
+      if (viewRecorded || !currentChapter) {
+        return;
+      }
 
       try {
         await recordBookView(bookId, currentChapter.id);
@@ -236,7 +229,7 @@ export default function BookView({
       }
     };
 
-    recordView();
+    void recordView();
   }, [bookId, currentChapter, viewRecorded]);
 
   /**
@@ -497,7 +490,7 @@ export default function BookView({
             {currentChapter && (
               <ChapterContent
                 chapter={currentChapter}
-                customTitles={book.customtitles}
+                customTitles={Boolean(book.customtitles)}
                 chapters={visibleChapters}
               />
             )}
