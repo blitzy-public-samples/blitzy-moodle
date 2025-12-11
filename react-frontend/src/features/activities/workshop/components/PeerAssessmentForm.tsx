@@ -169,11 +169,13 @@ function isAssessmentPhaseActive(phase: number | undefined): boolean {
  *
  * @param dimensions - Array of dimension grades to validate
  * @param strategy - Workshop grading strategy type
+ * @param dimensionDefinitions - Array of dimension definitions with max grades
  * @returns Array of validation error messages (empty if valid)
  */
 function validateDimensions(
   dimensions: FormDimensionGrade[],
-  strategy: string | undefined
+  strategy: string | undefined,
+  dimensionDefinitions?: GradingDimension[]
 ): string[] {
   const errors: string[] = [];
 
@@ -184,6 +186,10 @@ function validateDimensions(
 
   dimensions.forEach((dimension, index) => {
     const dimNumber = index + 1;
+    
+    // Get max grade from dimension definitions (by matching index or ID)
+    const definition = dimensionDefinitions?.[index];
+    const maxGrade = dimension.maxgrade ?? definition?.grade;
 
     // Check required grade for strategies that require it
     if (strategy !== 'comments') {
@@ -202,11 +208,11 @@ function validateDimensions(
       if (
         dimension.grade !== null &&
         dimension.grade !== undefined &&
-        dimension.maxgrade !== undefined &&
-        dimension.grade > dimension.maxgrade
+        maxGrade !== undefined &&
+        dimension.grade > maxGrade
       ) {
         errors.push(
-          `Grade for dimension ${dimNumber} exceeds maximum (${dimension.maxgrade})`
+          `Grade for dimension ${dimNumber} exceeds maximum (${maxGrade})`
         );
       }
     }
@@ -495,10 +501,11 @@ function PeerAssessmentForm({
   const validateForm = useCallback((): string[] => {
     const errors: string[] = [];
 
-    // Validate dimensions
+    // Validate dimensions (pass dimensionDefinitions for max grade lookup)
     const dimensionErrors = validateDimensions(
       watchedDimensions,
-      workshop?.strategy
+      workshop?.strategy,
+      dimensionDefinitions
     );
     errors.push(...dimensionErrors);
 
@@ -508,7 +515,7 @@ function PeerAssessmentForm({
     }
 
     return errors;
-  }, [watchedDimensions, watchedFeedback, workshop?.strategy, isFeedbackRequired]);
+  }, [watchedDimensions, watchedFeedback, workshop?.strategy, isFeedbackRequired, dimensionDefinitions]);
 
   /**
    * Saves the assessment as a draft (without finalizing)
