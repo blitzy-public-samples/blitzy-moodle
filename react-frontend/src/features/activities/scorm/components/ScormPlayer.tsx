@@ -335,6 +335,16 @@ function ScormPlayer({
   // Reference to prevent multiple initializations
   const apiInitializedRef = useRef<boolean>(false);
 
+  // Reference to track apiState for use in closure-bound functions
+  // This avoids stale closure issues where API methods see old state
+  const apiStateRef = useRef<ScormApiState>(apiState);
+  apiStateRef.current = apiState;
+
+  // Reference to track cmiDataStore for use in closure-bound functions
+  // This avoids stale closure issues where GetValue sees old state after SetValue
+  const cmiDataStoreRef = useRef<CmiDataStore>(cmiDataStore);
+  cmiDataStoreRef.current = cmiDataStore;
+
   // ========================================================================
   // HOOKS - Data fetching
   // ========================================================================
@@ -434,7 +444,9 @@ function ScormPlayer({
   // Whether TOC should be available
   const showToc = useMemo(() => {
     if (!scorm) {return true;}
-    return scorm.hidetoc !== ScormTocDisplay.DISABLED;
+    // Hide TOC for both DISABLED and HIDDEN modes
+    return scorm.hidetoc !== ScormTocDisplay.DISABLED && 
+           scorm.hidetoc !== ScormTocDisplay.HIDDEN;
   }, [scorm]);
 
   // Build iframe source URL
@@ -449,14 +461,18 @@ function ScormPlayer({
 
   /**
    * Save tracking data to server
+   * Uses cmiDataStoreRef to get the current state (avoid stale closure)
    */
   const commitTrackingData = useCallback(async () => {
-    if (currentScoId === null || Object.keys(cmiDataStore).length === 0) {
+    // Use ref for current data (avoid stale closure)
+    const currentCmiData = cmiDataStoreRef.current;
+    
+    if (currentScoId === null || Object.keys(currentCmiData).length === 0) {
       return true;
     }
 
     try {
-      const tracks: ScormTrackingElement[] = Object.entries(cmiDataStore).map(
+      const tracks: ScormTrackingElement[] = Object.entries(currentCmiData).map(
         ([element, value]) => ({ element, value })
       );
 
@@ -472,7 +488,7 @@ function ScormPlayer({
       console.error('Failed to commit tracking data:', error);
       return false;
     }
-  }, [cmiDataStore, currentScoId, currentAttempt, scormId, saveTrackingAsync]);
+  }, [currentScoId, currentAttempt, scormId, saveTrackingAsync]);
 
   /**
    * SCORM 1.2 API Implementation
@@ -480,22 +496,30 @@ function ScormPlayer({
   const createScorm12Api = useCallback(() => {
     return {
       LMSInitialize: (_param: string): string => {
-        if (apiState.initialized) {
-          setApiState((prev) => ({
-            ...prev,
+        // Use ref to get current state (avoid stale closure)
+        const currentState = apiStateRef.current;
+        
+        if (currentState.initialized) {
+          const newState = {
+            ...currentState,
             lastError: SCORM_12_ERRORS.GENERAL_EXCEPTION,
             diagnosticMessage: 'Already initialized',
-          }));
+          };
+          apiStateRef.current = newState;
+          setApiState(newState);
           return 'false';
         }
 
-        setApiState((prev) => ({
-          ...prev,
+        // Update both ref and state for immediate availability
+        const newState: ScormApiState = {
+          ...currentState,
           initialized: true,
           terminated: false,
           lastError: SCORM_12_ERRORS.NO_ERROR,
           diagnosticMessage: '',
-        }));
+        };
+        apiStateRef.current = newState;
+        setApiState(newState);
 
         // Initialize default CMI values for SCORM 1.2
         // Note: userData contains attempt metadata, not CMI tracking data.
@@ -515,21 +539,28 @@ function ScormPlayer({
       },
 
       LMSFinish: (_param: string): string => {
-        if (!apiState.initialized) {
-          setApiState((prev) => ({
-            ...prev,
+        // Use ref to get current state (avoid stale closure)
+        const currentState = apiStateRef.current;
+        
+        if (!currentState.initialized) {
+          const newState = {
+            ...currentState,
             lastError: SCORM_12_ERRORS.NOT_INITIALIZED,
             diagnosticMessage: 'Not initialized',
-          }));
+          };
+          apiStateRef.current = newState;
+          setApiState(newState);
           return 'false';
         }
 
-        if (apiState.terminated) {
-          setApiState((prev) => ({
-            ...prev,
+        if (currentState.terminated) {
+          const newState = {
+            ...currentState,
             lastError: SCORM_12_ERRORS.GENERAL_EXCEPTION,
             diagnosticMessage: 'Already terminated',
-          }));
+          };
+          apiStateRef.current = newState;
+          setApiState(newState);
           return 'false';
         }
 
@@ -544,46 +575,63 @@ function ScormPlayer({
         // Commit data before termination
         void commitTrackingData();
 
-        setApiState((prev) => ({
-          ...prev,
-          initialized: false,
+        // Update both ref and state for immediate availability
+        // Keep initialized=true so that the terminated check is reached on subsequent calls
+        const terminatedState: ScormApiState = {
+          ...currentState,
+          initialized: true, // Keep true so "terminated" check is reached on subsequent calls
           terminated: true,
           lastError: SCORM_12_ERRORS.NO_ERROR,
           diagnosticMessage: '',
-        }));
+        };
+        apiStateRef.current = terminatedState;
+        setApiState(terminatedState);
 
         return 'true';
       },
 
       LMSGetValue: (element: string): string => {
-        if (!apiState.initialized) {
-          setApiState((prev) => ({
-            ...prev,
+        // Use ref to get current state (avoid stale closure)
+        const currentState = apiStateRef.current;
+        
+        if (!currentState.initialized) {
+          const newState = {
+            ...currentState,
             lastError: SCORM_12_ERRORS.NOT_INITIALIZED,
             diagnosticMessage: 'Not initialized',
-          }));
+          };
+          apiStateRef.current = newState;
+          setApiState(newState);
           return '';
         }
 
-        setApiState((prev) => ({
-          ...prev,
+        // Update both ref and state for immediate availability
+        const successState = {
+          ...currentState,
           lastError: SCORM_12_ERRORS.NO_ERROR,
           diagnosticMessage: '',
-        }));
+        };
+        apiStateRef.current = successState;
+        setApiState(successState);
 
-        // Get value from local CMI data store
+        // Get value from local CMI data store ref (for synchronous access after SetValue)
         // Note: Server tracking data would need separate API call and integration
-        const value = cmiDataStore[element] ?? '';
+        const value = cmiDataStoreRef.current[element] ?? '';
         return String(value);
       },
 
       LMSSetValue: (element: string, value: string): string => {
-        if (!apiState.initialized) {
-          setApiState((prev) => ({
-            ...prev,
+        // Use ref to get current state (avoid stale closure)
+        const currentState = apiStateRef.current;
+        
+        if (!currentState.initialized) {
+          const newState = {
+            ...currentState,
             lastError: SCORM_12_ERRORS.NOT_INITIALIZED,
             diagnosticMessage: 'Not initialized',
-          }));
+          };
+          apiStateRef.current = newState;
+          setApiState(newState);
           return 'false';
         }
 
@@ -607,52 +655,67 @@ function ScormPlayer({
         ];
 
         if (readOnlyElements.includes(element)) {
-          setApiState((prev) => ({
-            ...prev,
+          const newState = {
+            ...currentState,
             lastError: SCORM_12_ERRORS.ELEMENT_IS_READ_ONLY,
             diagnosticMessage: `${element} is read-only`,
-          }));
+          };
+          apiStateRef.current = newState;
+          setApiState(newState);
           return 'false';
         }
 
-        // Store the value
-        setCmiDataStore((prev) => ({
-          ...prev,
+        // Store the value - update ref immediately for synchronous access
+        const newCmiData = {
+          ...cmiDataStoreRef.current,
           [element]: value,
-        }));
+        };
+        cmiDataStoreRef.current = newCmiData;
+        setCmiDataStore(newCmiData);
 
-        setApiState((prev) => ({
-          ...prev,
+        // Update both ref and state for immediate availability
+        const successState = {
+          ...currentState,
           lastError: SCORM_12_ERRORS.NO_ERROR,
           diagnosticMessage: '',
-        }));
+        };
+        apiStateRef.current = successState;
+        setApiState(successState);
 
         return 'true';
       },
 
       LMSCommit: (_param: string): string => {
-        if (!apiState.initialized) {
-          setApiState((prev) => ({
-            ...prev,
+        // Use ref to get current state (avoid stale closure)
+        const currentState = apiStateRef.current;
+        
+        if (!currentState.initialized) {
+          const newState = {
+            ...currentState,
             lastError: SCORM_12_ERRORS.NOT_INITIALIZED,
             diagnosticMessage: 'Not initialized',
-          }));
+          };
+          apiStateRef.current = newState;
+          setApiState(newState);
           return 'false';
         }
 
         void commitTrackingData();
 
-        setApiState((prev) => ({
-          ...prev,
+        // Update both ref and state for immediate availability
+        const successState = {
+          ...currentState,
           lastError: SCORM_12_ERRORS.NO_ERROR,
           diagnosticMessage: '',
-        }));
+        };
+        apiStateRef.current = successState;
+        setApiState(successState);
 
         return 'true';
       },
 
       LMSGetLastError: (): string => {
-        return apiState.lastError;
+        return apiStateRef.current.lastError;
       },
 
       LMSGetErrorString: (errorCode: string): string => {
@@ -660,10 +723,10 @@ function ScormPlayer({
       },
 
       LMSGetDiagnostic: (_errorCode: string): string => {
-        return apiState.diagnosticMessage;
+        return apiStateRef.current.diagnosticMessage;
       },
     };
-  }, [apiState, sessionStartTime, commitTrackingData, cmiDataStore, userId]);
+  }, [sessionStartTime, commitTrackingData, cmiDataStore, userId]);
 
   /**
    * SCORM 2004 API Implementation
@@ -671,31 +734,41 @@ function ScormPlayer({
   const createScorm2004Api = useCallback(() => {
     return {
       Initialize: (_param: string): string => {
-        if (apiState.initialized) {
-          setApiState((prev) => ({
-            ...prev,
+        // Use ref to get current state (avoid stale closure)
+        const currentState = apiStateRef.current;
+        
+        if (currentState.initialized) {
+          const newState = {
+            ...currentState,
             lastError: SCORM_2004_ERRORS.ALREADY_INITIALIZED,
             diagnosticMessage: 'Already initialized',
-          }));
+          };
+          apiStateRef.current = newState;
+          setApiState(newState);
           return 'false';
         }
 
-        if (apiState.terminated) {
-          setApiState((prev) => ({
-            ...prev,
+        if (currentState.terminated) {
+          const newState = {
+            ...currentState,
             lastError: SCORM_2004_ERRORS.CONTENT_INSTANCE_TERMINATED,
             diagnosticMessage: 'Content instance terminated',
-          }));
+          };
+          apiStateRef.current = newState;
+          setApiState(newState);
           return 'false';
         }
 
-        setApiState((prev) => ({
-          ...prev,
+        // Update both ref and state for immediate availability
+        const newState: ScormApiState = {
+          ...currentState,
           initialized: true,
           terminated: false,
           lastError: SCORM_2004_ERRORS.NO_ERROR,
           diagnosticMessage: '',
-        }));
+        };
+        apiStateRef.current = newState;
+        setApiState(newState);
 
         // Initialize default CMI values for SCORM 2004
         // Note: userData contains attempt metadata, not CMI tracking data.
@@ -715,21 +788,28 @@ function ScormPlayer({
       },
 
       Terminate: (_param: string): string => {
-        if (!apiState.initialized) {
-          setApiState((prev) => ({
-            ...prev,
+        // Use ref to get current state (avoid stale closure)
+        const currentState = apiStateRef.current;
+        
+        if (!currentState.initialized) {
+          const newState = {
+            ...currentState,
             lastError: SCORM_2004_ERRORS.TERMINATION_BEFORE_INITIALIZATION,
             diagnosticMessage: 'Termination before initialization',
-          }));
+          };
+          apiStateRef.current = newState;
+          setApiState(newState);
           return 'false';
         }
 
-        if (apiState.terminated) {
-          setApiState((prev) => ({
-            ...prev,
+        if (currentState.terminated) {
+          const newState = {
+            ...currentState,
             lastError: SCORM_2004_ERRORS.TERMINATION_AFTER_TERMINATION,
             diagnosticMessage: 'Termination after termination',
-          }));
+          };
+          apiStateRef.current = newState;
+          setApiState(newState);
           return 'false';
         }
 
@@ -744,64 +824,132 @@ function ScormPlayer({
         // Commit data before termination
         void commitTrackingData();
 
-        setApiState((prev) => ({
-          ...prev,
-          initialized: false,
+        // Update both ref and state for immediate availability
+        // Keep initialized=true so that the terminated check is reached on subsequent calls
+        const terminatedState: ScormApiState = {
+          ...currentState,
+          initialized: true, // Keep true so "terminated" check is reached on subsequent calls
           terminated: true,
           lastError: SCORM_2004_ERRORS.NO_ERROR,
           diagnosticMessage: '',
-        }));
+        };
+        apiStateRef.current = terminatedState;
+        setApiState(terminatedState);
 
         return 'true';
       },
 
       GetValue: (element: string): string => {
-        if (!apiState.initialized) {
-          setApiState((prev) => ({
-            ...prev,
+        // Use ref to get current state (avoid stale closure)
+        const currentState = apiStateRef.current;
+        
+        if (!currentState.initialized) {
+          const newState = {
+            ...currentState,
             lastError: SCORM_2004_ERRORS.RETRIEVE_DATA_BEFORE_INITIALIZATION,
             diagnosticMessage: 'Retrieve data before initialization',
-          }));
+          };
+          apiStateRef.current = newState;
+          setApiState(newState);
           return '';
         }
 
-        if (apiState.terminated) {
-          setApiState((prev) => ({
-            ...prev,
+        if (currentState.terminated) {
+          const newState = {
+            ...currentState,
             lastError: SCORM_2004_ERRORS.RETRIEVE_DATA_AFTER_TERMINATION,
             diagnosticMessage: 'Retrieve data after termination',
-          }));
+          };
+          apiStateRef.current = newState;
+          setApiState(newState);
           return '';
         }
 
-        setApiState((prev) => ({
-          ...prev,
+        // Validate element name - must start with 'cmi.' for SCORM 2004
+        // Check against valid SCORM 2004 CMI element patterns
+        const validScorm2004Elements = [
+          'cmi._version',
+          'cmi.comments_from_learner',
+          'cmi.comments_from_lms',
+          'cmi.completion_status',
+          'cmi.completion_threshold',
+          'cmi.credit',
+          'cmi.entry',
+          'cmi.exit',
+          'cmi.interactions',
+          'cmi.launch_data',
+          'cmi.learner_id',
+          'cmi.learner_name',
+          'cmi.learner_preference',
+          'cmi.location',
+          'cmi.max_time_allowed',
+          'cmi.mode',
+          'cmi.objectives',
+          'cmi.progress_measure',
+          'cmi.scaled_passing_score',
+          'cmi.score',
+          'cmi.session_time',
+          'cmi.success_status',
+          'cmi.suspend_data',
+          'cmi.time_limit_action',
+          'cmi.total_time',
+          'adl.nav',
+        ];
+
+        // Check if element starts with valid prefix (cmi. or adl.)
+        const isValidElementName = validScorm2004Elements.some(validEl => 
+          element === validEl || element.startsWith(validEl + '.')
+        );
+
+        if (!isValidElementName) {
+          const newState = {
+            ...currentState,
+            lastError: SCORM_2004_ERRORS.UNDEFINED_DATA_MODEL,
+            diagnosticMessage: `Undefined data model element: ${element}`,
+          };
+          apiStateRef.current = newState;
+          setApiState(newState);
+          return '';
+        }
+
+        // Update both ref and state for immediate availability
+        const successState = {
+          ...currentState,
           lastError: SCORM_2004_ERRORS.NO_ERROR,
           diagnosticMessage: '',
-        }));
+        };
+        apiStateRef.current = successState;
+        setApiState(successState);
 
-        // Get value from local CMI data store
+        // Get value from local CMI data store ref (for synchronous access after SetValue)
         // Note: Server tracking data would need separate API call and integration
-        const value = cmiDataStore[element] ?? '';
+        const value = cmiDataStoreRef.current[element] ?? '';
         return String(value);
       },
 
       SetValue: (element: string, value: string): string => {
-        if (!apiState.initialized) {
-          setApiState((prev) => ({
-            ...prev,
+        // Use ref to get current state (avoid stale closure)
+        const currentState = apiStateRef.current;
+        
+        if (!currentState.initialized) {
+          const newState = {
+            ...currentState,
             lastError: SCORM_2004_ERRORS.STORE_DATA_BEFORE_INITIALIZATION,
             diagnosticMessage: 'Store data before initialization',
-          }));
+          };
+          apiStateRef.current = newState;
+          setApiState(newState);
           return 'false';
         }
 
-        if (apiState.terminated) {
-          setApiState((prev) => ({
-            ...prev,
+        if (currentState.terminated) {
+          const newState = {
+            ...currentState,
             lastError: SCORM_2004_ERRORS.STORE_DATA_AFTER_TERMINATION,
             diagnosticMessage: 'Store data after termination',
-          }));
+          };
+          apiStateRef.current = newState;
+          setApiState(newState);
           return 'false';
         }
 
@@ -821,61 +969,78 @@ function ScormPlayer({
         ];
 
         if (readOnlyElements.includes(element)) {
-          setApiState((prev) => ({
-            ...prev,
+          const newState = {
+            ...currentState,
             lastError: SCORM_2004_ERRORS.DATA_MODEL_READ_ONLY,
             diagnosticMessage: `${element} is read-only`,
-          }));
+          };
+          apiStateRef.current = newState;
+          setApiState(newState);
           return 'false';
         }
 
-        // Store the value
-        setCmiDataStore((prev) => ({
-          ...prev,
+        // Store the value - update ref immediately for synchronous access
+        const newCmiData = {
+          ...cmiDataStoreRef.current,
           [element]: value,
-        }));
+        };
+        cmiDataStoreRef.current = newCmiData;
+        setCmiDataStore(newCmiData);
 
-        setApiState((prev) => ({
-          ...prev,
+        // Update both ref and state for immediate availability
+        const successState = {
+          ...currentState,
           lastError: SCORM_2004_ERRORS.NO_ERROR,
           diagnosticMessage: '',
-        }));
+        };
+        apiStateRef.current = successState;
+        setApiState(successState);
 
         return 'true';
       },
 
       Commit: (_param: string): string => {
-        if (!apiState.initialized) {
-          setApiState((prev) => ({
-            ...prev,
+        // Use ref to get current state (avoid stale closure)
+        const currentState = apiStateRef.current;
+        
+        if (!currentState.initialized) {
+          const newState = {
+            ...currentState,
             lastError: SCORM_2004_ERRORS.COMMIT_BEFORE_INITIALIZATION,
             diagnosticMessage: 'Commit before initialization',
-          }));
+          };
+          apiStateRef.current = newState;
+          setApiState(newState);
           return 'false';
         }
 
-        if (apiState.terminated) {
-          setApiState((prev) => ({
-            ...prev,
+        if (currentState.terminated) {
+          const newState = {
+            ...currentState,
             lastError: SCORM_2004_ERRORS.COMMIT_AFTER_TERMINATION,
             diagnosticMessage: 'Commit after termination',
-          }));
+          };
+          apiStateRef.current = newState;
+          setApiState(newState);
           return 'false';
         }
 
         void commitTrackingData();
 
-        setApiState((prev) => ({
-          ...prev,
+        // Update both ref and state for immediate availability
+        const successState = {
+          ...currentState,
           lastError: SCORM_2004_ERRORS.NO_ERROR,
           diagnosticMessage: '',
-        }));
+        };
+        apiStateRef.current = successState;
+        setApiState(successState);
 
         return 'true';
       },
 
       GetLastError: (): string => {
-        return apiState.lastError;
+        return apiStateRef.current.lastError;
       },
 
       GetErrorString: (errorCode: string): string => {
@@ -883,10 +1048,10 @@ function ScormPlayer({
       },
 
       GetDiagnostic: (_errorCode: string): string => {
-        return apiState.diagnosticMessage;
+        return apiStateRef.current.diagnosticMessage;
       },
     };
-  }, [apiState, sessionStartTime, commitTrackingData, cmiDataStore, userId]);
+  }, [sessionStartTime, commitTrackingData, cmiDataStore, userId]);
 
   // ========================================================================
   // EVENT HANDLERS
@@ -897,6 +1062,9 @@ function ScormPlayer({
    */
   const navigateToSco = useCallback(
     (scoId: number) => {
+      // Commit current tracking data before navigating away
+      void commitTrackingData();
+      
       // Reset API state for new SCO
       setApiState({
         initialized: false,
@@ -904,9 +1072,17 @@ function ScormPlayer({
         lastError: '0',
         diagnosticMessage: '',
       });
+      // Update ref to match
+      apiStateRef.current = {
+        initialized: false,
+        terminated: false,
+        lastError: '0',
+        diagnosticMessage: '',
+      };
 
       // Clear CMI data store for new SCO
       setCmiDataStore({});
+      cmiDataStoreRef.current = {};
 
       // Set loading state
       setIsIframeLoading(true);
@@ -919,7 +1095,7 @@ function ScormPlayer({
         onScoChange(scoId);
       }
     },
-    [onScoChange]
+    [onScoChange, commitTrackingData]
   );
 
   /**
@@ -1026,24 +1202,26 @@ function ScormPlayer({
     if (apiInitializedRef.current) {return;}
     apiInitializedRef.current = true;
 
-    // Create API objects based on SCORM version
-    const scorm12Api = createScorm12Api();
-    const scorm2004Api = createScorm2004Api();
-
-    // Expose APIs on window for iframe content to access
-    // SCORM 1.2 uses window.API
-    (window as unknown as Record<string, unknown>)['API'] = scorm12Api;
-
-    // SCORM 2004 uses window.API_1484_11
-    (window as unknown as Record<string, unknown>)['API_1484_11'] = scorm2004Api;
+    // Create and expose API based on SCORM version
+    const windowObj = window as unknown as Record<string, unknown>;
+    
+    if (scormVersionEnum === ScormVersion.SCORM_12) {
+      // SCORM 1.2 uses window.API
+      const scorm12Api = createScorm12Api();
+      windowObj['API'] = scorm12Api;
+    } else {
+      // SCORM 2004 uses window.API_1484_11
+      const scorm2004Api = createScorm2004Api();
+      windowObj['API_1484_11'] = scorm2004Api;
+    }
 
     // Cleanup on unmount
     return () => {
-      delete (window as unknown as Record<string, unknown>)['API'];
-      delete (window as unknown as Record<string, unknown>)['API_1484_11'];
+      delete windowObj['API'];
+      delete windowObj['API_1484_11'];
       apiInitializedRef.current = false;
     };
-  }, [createScorm12Api, createScorm2004Api]);
+  }, [createScorm12Api, createScorm2004Api, scormVersionEnum]);
 
   /**
    * Update SCORM APIs when callbacks change
@@ -1051,13 +1229,17 @@ function ScormPlayer({
   useEffect(() => {
     if (!apiInitializedRef.current) {return;}
 
-    // Update API objects with new callbacks
-    const scorm12Api = createScorm12Api();
-    const scorm2004Api = createScorm2004Api();
-
-    (window as unknown as Record<string, unknown>)['API'] = scorm12Api;
-    (window as unknown as Record<string, unknown>)['API_1484_11'] = scorm2004Api;
-  }, [createScorm12Api, createScorm2004Api]);
+    // Update API object based on SCORM version
+    const windowObj = window as unknown as Record<string, unknown>;
+    
+    if (scormVersionEnum === ScormVersion.SCORM_12) {
+      const scorm12Api = createScorm12Api();
+      windowObj['API'] = scorm12Api;
+    } else {
+      const scorm2004Api = createScorm2004Api();
+      windowObj['API_1484_11'] = scorm2004Api;
+    }
+  }, [createScorm12Api, createScorm2004Api, scormVersionEnum]);
 
   /**
    * Set initial SCO when SCO list loads
@@ -1113,6 +1295,7 @@ function ScormPlayer({
    */
   const renderLoading = () => (
     <Box
+      data-testid="scorm-loading-state"
       sx={{
         display: 'flex',
         flexDirection: 'column',
@@ -1135,6 +1318,7 @@ function ScormPlayer({
    */
   const renderError = (errorMessage: string) => (
     <Box
+      data-testid="scorm-error-state"
       sx={{
         display: 'flex',
         flexDirection: 'column',
@@ -1253,19 +1437,46 @@ function ScormPlayer({
           </IconButton>
         )}
 
-        {/* Current SCO Title */}
+        {/* SCORM Package Name */}
         <Typography
           variant="subtitle1"
           component="div"
           noWrap
+          data-testid="scorm-package-name"
           sx={{
             flexGrow: 0,
-            maxWidth: isMobile ? 150 : 300,
-            mr: 2,
+            maxWidth: isMobile ? 100 : 200,
+            mr: 1,
+            fontWeight: 'bold',
           }}
         >
-          {currentSco?.title ?? 'SCORM Player'}
+          {scorm?.name ?? 'SCORM Player'}
         </Typography>
+
+        {/* Separator */}
+        {currentSco && !isMobile && (
+          <Typography variant="subtitle1" color="text.secondary" sx={{ mx: 1 }}>
+            -
+          </Typography>
+        )}
+
+        {/* Current SCO Title */}
+        {currentSco && (
+          <Typography
+            variant="subtitle1"
+            component="div"
+            noWrap
+            data-testid="current-sco-title"
+            sx={{
+              flexGrow: 0,
+              maxWidth: isMobile ? 150 : 200,
+              mr: 2,
+              color: 'text.secondary',
+            }}
+          >
+            {currentSco.title}
+          </Typography>
+        )}
 
         {/* Navigation Controls (if enabled and not mobile) */}
         {showNavigation && !isMobile && renderNavigationControls()}
@@ -1361,6 +1572,7 @@ function ScormPlayer({
           title={currentSco?.title ?? 'SCORM Content'}
           onLoad={handleIframeLoad}
           onError={handleIframeError}
+          data-testid="scorm-content-iframe"
           style={{
             border: 'none',
             width: '100%',
@@ -1401,6 +1613,7 @@ function ScormPlayer({
   return (
     <Box
       ref={playerContainerRef}
+      data-testid="scorm-player-container"
       sx={{
         display: 'flex',
         flexDirection: 'column',
