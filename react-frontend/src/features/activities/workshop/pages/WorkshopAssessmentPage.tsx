@@ -36,42 +36,67 @@ import {
 } from '@mui/material';
 
 // Internal imports from workshop hooks
-import { useAssessment } from '../hooks/useAssessment';
+import { useAssessment, useCreateAssessment, useUpdateAssessment } from '../hooks/useAssessment';
 import { useWorkshop } from '../hooks/useWorkshop';
 import { useSubmission } from '../hooks/useSubmission';
 
 // Internal imports from workshop components
-import { AssessmentForm } from '../components/AssessmentForm';
-import { SubmissionDisplay } from '../components/SubmissionDisplay';
+import AssessmentForm, {
+  type Workshop as AssessmentFormWorkshop,
+  type WorkshopAssessment,
+  type AssessmentFormData,
+  type AssessmentDimension,
+} from '../components/AssessmentForm';
+import SubmissionDisplay from '../components/SubmissionDisplay';
 
 // Internal imports from workshop types
 import type {
-  Workshop,
   WorkshopSubmission,
-  WorkshopAssessment,
-  WorkshopPhase,
-  GradingStrategy,
-  AssessmentDimension,
 } from '../types/workshop.types';
+
+// Import Assessment type from hooks
+import type { Assessment } from '../hooks/useAssessment';
 
 // Global hooks
 import { usePermissions } from '@/hooks/usePermissions';
 import { useToast } from '@/hooks/useToast';
+import { useAuth } from '@/features/auth/hooks/useAuth';
+
+/**
+ * Reference assessment structure for teacher-provided example assessments
+ * Used for comparison with peer assessments
+ */
+interface ReferenceAssessment {
+  dimensionGrades?: Array<{
+    dimensionId: number;
+    grade: number;
+    comment?: string;
+  }>;
+  feedbackAuthor?: string;
+}
+
+/**
+ * Extended workshop data type that may include reference assessments
+ * Reference assessments are optional and only available in certain workshops
+ */
+interface ExtendedWorkshopData {
+  referenceAssessment?: ReferenceAssessment;
+}
 
 /**
  * URL parameters expected by the WorkshopAssessmentPage
  * The asid (assessment ID) can be for an existing assessment or a new one
  */
-interface WorkshopAssessmentPageParams {
-  /** Course module ID (cmid) */
-  cmid: string;
-  /** Workshop ID */
-  workshopId: string;
-  /** Assessment ID (existing) or submission ID (for new assessments) */
-  asid: string;
-  /** Optional: Submission ID when creating a new assessment */
-  submissionId?: string;
-}
+/**
+ * Type definition for URL parameters (used as documentation)
+ * Parameters are extracted via useParams<Record<string, string | undefined>>()
+ * 
+ * Expected parameters:
+ * - cmid: Course module ID
+ * - workshopId: Workshop ID
+ * - asid: Assessment ID (existing) or submission ID (for new assessments)
+ * - submissionId: Optional submission ID when creating a new assessment
+ */
 
 /**
  * Represents the assessment mode - whether viewing, editing, or creating
@@ -102,10 +127,12 @@ interface ValidationResult {
  */
 const WorkshopAssessmentPage: React.FC = () => {
   // Extract URL parameters
-  const params = useParams<WorkshopAssessmentPageParams>();
+  const params = useParams<Record<string, string | undefined>>();
   const navigate = useNavigate();
-  const { success, error, warning, info } = useToast();
+  const { success, error: _showError, info } = useToast();
   const { hasCapability, isTeacher } = usePermissions();
+  const { user } = useAuth();
+  const currentUserId = user?.id ?? 0;
 
   // Parse URL parameters with defaults
   const cmid = params.cmid ? parseInt(params.cmid, 10) : 0;
@@ -117,7 +144,7 @@ const WorkshopAssessmentPage: React.FC = () => {
 
   // Local state management
   const [assessmentMode, setAssessmentMode] = useState<AssessmentMode>('view');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [_isSubmitting, setIsSubmitting] = useState(false);
   const [validationResult, setValidationResult] = useState<ValidationResult>({
     isValid: true,
     errorMessage: null,
@@ -135,39 +162,54 @@ const WorkshopAssessmentPage: React.FC = () => {
   });
 
   // Fetch assessment data if we have an assessment ID
+  // useAssessment hook already internally handles enabled based on assessmentId
   const {
     data: assessmentData,
     isLoading: isAssessmentLoading,
     error: assessmentError,
     refetch: refetchAssessment,
-  } = useAssessment(asid, {
-    enabled: asid > 0 && !submissionIdParam,
-  });
+  } = useAssessment(asid > 0 && !submissionIdParam ? asid : null);
 
   // Determine the submission ID to load
   const submissionIdToLoad = useMemo(() => {
     if (submissionIdParam) {
       return submissionIdParam;
     }
-    if (assessmentData?.assessment?.submissionId) {
-      return assessmentData.assessment.submissionId;
+    // assessmentData IS the Assessment directly, use lowercase property names
+    if (assessmentData?.submissionid) {
+      return assessmentData.submissionid;
     }
     return 0;
   }, [submissionIdParam, assessmentData]);
 
   // Fetch submission data
+  // useSubmission signature: (workshopId, submissionId?, options?)
   const {
     data: submissionData,
     isLoading: isSubmissionLoading,
     error: submissionError,
-  } = useSubmission(submissionIdToLoad, {
-    enabled: submissionIdToLoad > 0,
+  } = useSubmission(workshopId, submissionIdToLoad > 0 ? submissionIdToLoad : undefined, {
+    enabled: submissionIdToLoad > 0 && workshopId > 0,
   });
 
   // Extract the workshop and assessment objects from query results
+  // workshopData.workshop contains the Workshop, but assessment and submission data are returned directly
   const workshop = workshopData?.workshop ?? null;
-  const assessment = assessmentData?.assessment ?? null;
-  const submission = submissionData?.submission ?? null;
+  const assessment: Assessment | null = assessmentData ?? null;
+  // Type assertion needed because useSubmission returns entities.WorkshopSubmission
+  // but component uses local WorkshopSubmission type with additional properties
+  const submission: WorkshopSubmission | null = (submissionData as unknown as WorkshopSubmission) ?? null;
+
+  // Mutation hooks for creating and updating assessments
+  const {
+    createAssessmentAsync,
+    isLoading: _isCreating,
+  } = useCreateAssessment(workshopId);
+  
+  const {
+    updateAssessmentAsync,
+    isLoading: _isUpdating,
+  } = useUpdateAssessment(asid > 0 ? asid : 0);
 
   /**
    * Validates whether the current user can perform assessments
@@ -219,7 +261,7 @@ const WorkshopAssessmentPage: React.FC = () => {
     }
 
     // Check example assessment requirements
-    if (examplesAssessed === false && workshop.useexamples) {
+    if (examplesAssessed === false && workshop.useExamples) {
       return {
         isValid: false,
         errorMessage:
@@ -312,20 +354,22 @@ const WorkshopAssessmentPage: React.FC = () => {
     }
 
     // If workshop doesn't use examples, mark as assessed
-    if (!workshop.useexamples || workshop.examplesMode === 0) {
+    if (!workshop.useExamples || workshop.examplesMode === 0) {
       setExamplesAssessed(true);
       return;
     }
 
-    // In a real implementation, this would check against the API
-    // For now, we assume examples are assessed if the user has gotten this far
-    // The API should return this information as part of the workshop data
-    const hasAssessedExamples =
-      workshopData?.examplesAssessed !== undefined
-        ? workshopData.examplesAssessed
-        : true;
+    // Check if workshopData includes examplesAssessed property
+    // This property should be returned by the API when examples are required
+    const extendedWorkshopData = workshopData as unknown as { examplesAssessed?: boolean };
+    if (typeof extendedWorkshopData?.examplesAssessed === 'boolean') {
+      setExamplesAssessed(extendedWorkshopData.examplesAssessed);
+      return;
+    }
 
-    setExamplesAssessed(hasAssessedExamples);
+    // Default to true to allow the user to proceed, relying on backend validation
+    // for cases where the API doesn't provide this information
+    setExamplesAssessed(true);
   }, [workshop, workshopData]);
 
   /**
@@ -356,23 +400,55 @@ const WorkshopAssessmentPage: React.FC = () => {
    * Handle assessment submission errors
    */
   const handleAssessmentError = (errorMessage: string): void => {
-    error(`Failed to save assessment: ${errorMessage}`);
+    _showError(`Failed to save assessment: ${errorMessage}`);
     setIsSubmitting(false);
   };
 
   /**
    * Handle form submission from AssessmentForm component
+   * @param formData - Assessment form data containing dimensions and feedback
+   * @param isDraft - Whether this is a draft save or final submission
    */
   const handleFormSubmit = async (
-    formData: Record<string, unknown>,
-    action: string
+    formData: AssessmentFormData,
+    isDraft: boolean
   ): Promise<void> => {
     setIsSubmitting(true);
 
     try {
-      // The AssessmentForm will handle the actual API call
-      // We just need to show the appropriate feedback
+      // Convert dimensions from Record<string, number | string> to WorkshopAssessmentDimension[]
+      const dimensionsArray = Object.entries(formData.dimensions || {}).map(([dimId, value]) => ({
+        dimensionid: parseInt(dimId, 10),
+        grade: typeof value === 'number' ? value : parseInt(String(value), 10),
+        peercomment: '',
+        peercommentformat: 1,
+      }));
+
+      if (assessmentMode === 'create') {
+        // Create new assessment - the mutation creates the assessment record
+        // Note: createAssessment needs submissionid and reviewerid
+        // The API will handle linking grades to the new assessment
+        await createAssessmentAsync({
+          submissionid: submissionIdToLoad,
+          reviewerid: currentUserId,
+          weight: formData.weight ?? 1,
+        });
+      } else if (assessmentMode === 'edit' && assessment) {
+        // Update existing assessment with grades and feedback
+        await updateAssessmentAsync({
+          feedbackauthor: formData.feedbackauthor || '',
+          feedbackauthorformat: 1, // HTML format
+          weight: formData.weight,
+          dimensions: dimensionsArray,
+        });
+      }
+
+      // Show success feedback
+      const action = isDraft ? 'draft' : 'final';
       handleAssessmentSuccess(action);
+      
+      // Refetch assessment data after successful save
+      await refetchAssessment();
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Unknown error occurred';
       handleAssessmentError(errorMsg);
@@ -483,7 +559,7 @@ const WorkshopAssessmentPage: React.FC = () => {
         <Typography color="textSecondary">Dashboard</Typography>
       </Link>
       <Link
-        to={`/course/view.php?id=${workshop?.course || 0}`}
+        to={`/course/view.php?id=${workshop?.courseId || 0}`}
         style={{ textDecoration: 'none', color: 'inherit' }}
       >
         <Typography color="textSecondary">Course</Typography>
@@ -556,7 +632,7 @@ const WorkshopAssessmentPage: React.FC = () => {
         )}
 
         {/* Example assessment requirement notice */}
-        {workshop?.useexamples && examplesAssessed === false && (
+        {workshop?.useExamples && examplesAssessed === false && (
           <Alert severity="info" sx={{ mt: 2 }}>
             <Typography variant="body2">
               This workshop requires you to assess example submissions before
@@ -599,12 +675,29 @@ const WorkshopAssessmentPage: React.FC = () => {
           </Typography>
           <Divider sx={{ mb: 2 }} />
           <SubmissionDisplay
-            submission={submission}
-            workshop={workshop}
-            showGrade={assessmentMode === 'view' && Boolean(assessment?.grade)}
-            showFeedback={false}
-            showAuthor={!workshop.assessmentAnonymous}
-            compact={false}
+            submission={{
+              id: submission.id,
+              title: submission.title,
+              content: submission.content,
+              contentformat: 1,
+              timecreated: Math.floor(Date.now() / 1000),
+              timemodified: Math.floor(Date.now() / 1000),
+              grade: submission.grade ?? undefined,
+              gradeover: submission.gradeOver ?? undefined,
+              published: submission.published,
+              late: submission.late,
+              feedbackauthor: submission.feedbackAuthor ?? undefined,
+              feedbackauthorformat: submission.feedbackAuthorFormat,
+              attachments: [],
+            }}
+            workshop={{
+              id: workshop.id,
+              name: workshop.name,
+              grade: workshop.grade,
+              anonymoussubmissions: false,
+            }}
+            showAuthor={true}
+            isExample={submission.example || false}
           />
         </CardContent>
       </Card>
@@ -650,13 +743,18 @@ const WorkshopAssessmentPage: React.FC = () => {
           )}
 
           <AssessmentForm
-            workshop={workshop}
-            submission={submission}
-            assessment={assessment || undefined}
+            workshop={workshop as unknown as AssessmentFormWorkshop}
+            assessment={assessment as unknown as WorkshopAssessment | null}
+            dimensions={assessment?.dimensions?.map(d => ({
+              id: d.dimensionid ?? 0,
+              description: '',
+              descriptionformat: 0,
+              grade: d.grade ?? 0,
+              weight: 1,
+            })) as AssessmentDimension[] || []}
             isEditable={isEditable}
             onSubmit={handleFormSubmit}
             onCancel={handleFormCancel}
-            isSubmitting={isSubmitting}
           />
         </CardContent>
       </Card>
@@ -670,11 +768,13 @@ const WorkshopAssessmentPage: React.FC = () => {
   const renderReferenceAssessment = (): React.ReactElement | null => {
     // Reference assessments would be loaded from the API
     // They are typically provided by teachers as examples of good assessments
-    if (!workshopData?.referenceAssessment || !workshop) {
+    // Cast workshopData to extended type that may have referenceAssessment
+    const extendedData = workshopData as unknown as ExtendedWorkshopData | undefined;
+    if (!extendedData?.referenceAssessment || !workshop) {
       return null;
     }
 
-    const referenceAssessment = workshopData.referenceAssessment;
+    const referenceAssessment = extendedData.referenceAssessment;
 
     return (
       <Card sx={{ mb: 4, bgcolor: 'action.hover' }}>
@@ -859,14 +959,14 @@ const WorkshopAssessmentPage: React.FC = () => {
               </Typography>
             </Box>
 
-            {assessment.gradingGrade !== null &&
-              assessment.gradingGrade !== undefined && (
+            {assessment.gradinggrade !== null &&
+              assessment.gradinggrade !== undefined && (
                 <Box>
                   <Typography variant="body2" color="textSecondary">
                     Grade for Assessment
                   </Typography>
                   <Typography variant="h5" color="secondary">
-                    {assessment.gradingGrade.toFixed(1)}%
+                    {assessment.gradinggrade.toFixed(1)}%
                   </Typography>
                 </Box>
               )}
@@ -876,7 +976,7 @@ const WorkshopAssessmentPage: React.FC = () => {
                 Reviewer
               </Typography>
               <Typography variant="body1">
-                {assessment.reviewerName || 'Anonymous'}
+                {assessment.reviewer?.fullname || 'Anonymous'}
               </Typography>
             </Box>
 
@@ -885,8 +985,8 @@ const WorkshopAssessmentPage: React.FC = () => {
                 Assessed On
               </Typography>
               <Typography variant="body1">
-                {assessment.timeCreated
-                  ? new Date(assessment.timeCreated * 1000).toLocaleString()
+                {assessment.timecreated
+                  ? new Date(assessment.timecreated * 1000).toLocaleString()
                   : 'Unknown'}
               </Typography>
             </Box>
