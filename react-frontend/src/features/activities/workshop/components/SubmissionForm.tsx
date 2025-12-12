@@ -36,7 +36,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useForm, Controller, SubmitHandler } from 'react-hook-form';
+import { useForm, Controller, SubmitHandler, type Control, type FieldValues } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
@@ -58,10 +58,10 @@ import {
   Warning as WarningIcon,
 } from '@mui/icons-material';
 import { useQueryClient } from '@tanstack/react-query';
-import { formatDistanceToNow, isPast, differenceInSeconds } from 'date-fns';
+import { formatDistanceToNow, isPast } from 'date-fns';
 
 // Internal imports - Editor and Form components
-import { RichTextEditor } from '@/components/editor/RichTextEditor';
+import RichTextEditor from '@/components/editor/RichTextEditor';
 import { FormFileUpload } from '@/components/forms/FormFileUpload';
 
 // Internal imports - Feedback components
@@ -69,20 +69,21 @@ import { Modal } from '@/components/feedback/Modal';
 import { LoadingSpinner } from '@/components/feedback/LoadingSpinner';
 
 // Internal imports - Workshop feature hooks and types
-import type {
-  WorkshopSubmission,
-  SubmissionFormData,
-  Workshop,
+import {
+  WorkshopPhase,
+  type WorkshopSubmission,
+  type Workshop,
 } from '../types/workshop.types';
 import { useWorkshop } from '../hooks/useWorkshop';
 import {
   useSubmission,
   useCreateSubmission,
   useUpdateSubmission,
+  type SubmissionFormData,
 } from '../hooks/useSubmission';
 
 // Internal imports - Utility hooks
-import { useDebounce } from '@/hooks/useDebounce';
+import useDebounce from '@/hooks/useDebounce';
 import { useToast } from '@/hooks/useToast';
 import { usePermissions } from '@/hooks/usePermissions';
 
@@ -188,7 +189,7 @@ function parseAllowedFileTypes(typeString: string | null | undefined): string {
  * @returns true if submissions are currently allowed
  */
 function isSubmissionPhase(workshop: Workshop): boolean {
-  return workshop.phase === 'submission' || workshop.phase === 'setup';
+  return workshop.phase === WorkshopPhase.SUBMISSION || workshop.phase === WorkshopPhase.SETUP;
 }
 
 /**
@@ -264,7 +265,7 @@ export default function SubmissionForm({
 
   // Fetch existing submission if in edit mode
   const {
-    submission: existingSubmission,
+    data: existingSubmission,
     isLoading: isLoadingSubmission,
     error: submissionError,
   } = useSubmission(workshopId, submissionId);
@@ -275,9 +276,6 @@ export default function SubmissionForm({
 
   const createSubmission = useCreateSubmission();
   const updateSubmission = useUpdateSubmission();
-
-  // Determine which mutation to use based on mode
-  const saveMutation = isEditMode ? updateSubmission : createSubmission;
 
   // ============================================================================
   // Form Configuration
@@ -418,6 +416,8 @@ export default function SubmissionForm({
     }
 
     const performAutoSave = async () => {
+      if (!submissionId) return;
+      
       setIsAutoSaving(true);
 
       try {
@@ -425,11 +425,9 @@ export default function SubmissionForm({
           title: debouncedTitle,
           content: debouncedContent,
           contentformat: 1,
-          attachments: [],
         };
 
         await updateSubmission.mutateAsync({
-          workshopId,
           submissionId,
           data: formData,
         });
@@ -466,27 +464,23 @@ export default function SubmissionForm({
    * Handles saving draft without final submission
    */
   const handleSaveDraft: SubmitHandler<FormFields> = useCallback(
-    async (data) => {
+    async (formFieldData) => {
       if (!workshop) return;
 
       try {
         const formData: SubmissionFormData = {
-          title: data.title,
-          content: data.content,
-          contentformat: data.contentformat,
-          attachments: data.attachments,
+          title: formFieldData.title,
+          content: formFieldData.content,
+          contentformat: formFieldData.contentformat,
         };
 
-        let savedSubmission: WorkshopSubmission;
-
         if (isEditMode && submissionId) {
-          savedSubmission = await updateSubmission.mutateAsync({
-            workshopId,
+          await updateSubmission.mutateAsync({
             submissionId,
             data: formData,
           });
         } else {
-          savedSubmission = await createSubmission.mutateAsync({
+          await createSubmission.mutateAsync({
             workshopId,
             data: formData,
           });
@@ -530,27 +524,25 @@ export default function SubmissionForm({
    * Handles final submission after confirmation
    */
   const handleConfirmSubmit: SubmitHandler<FormFields> = useCallback(
-    async (data) => {
+    async (formFieldData) => {
       if (!workshop) return;
 
       try {
         const formData: SubmissionFormData = {
-          title: data.title,
-          content: data.content,
-          contentformat: data.contentformat,
-          attachments: data.attachments,
+          title: formFieldData.title,
+          content: formFieldData.content,
+          contentformat: formFieldData.contentformat,
         };
 
-        let savedSubmission: WorkshopSubmission;
+        let savedSubmissionResult;
 
         if (isEditMode && submissionId) {
-          savedSubmission = await updateSubmission.mutateAsync({
-            workshopId,
+          savedSubmissionResult = await updateSubmission.mutateAsync({
             submissionId,
             data: formData,
           });
         } else {
-          savedSubmission = await createSubmission.mutateAsync({
+          savedSubmissionResult = await createSubmission.mutateAsync({
             workshopId,
             data: formData,
           });
@@ -570,8 +562,9 @@ export default function SubmissionForm({
         });
 
         // Call success callback if provided
-        if (onSuccess) {
-          onSuccess(savedSubmission);
+        // Cast the result to component's WorkshopSubmission type for callback
+        if (onSuccess && savedSubmissionResult) {
+          onSuccess(savedSubmissionResult as unknown as WorkshopSubmission);
         }
       } catch (error) {
         console.error('Failed to submit:', error);
@@ -635,7 +628,7 @@ export default function SubmissionForm({
           minHeight: 300,
         }}
       >
-        <LoadingSpinner size={40} text="Loading submission form..." />
+        <LoadingSpinner size="medium" message="Loading submission form..." />
       </Box>
     );
   }
@@ -673,7 +666,7 @@ export default function SubmissionForm({
     return (
       <Alert severity="info" sx={{ mb: 2 }}>
         Submissions are not currently open for this workshop.
-        {workshop.phase !== 'submission' && (
+        {workshop.phase !== WorkshopPhase.SUBMISSION && (
           <Typography variant="body2" sx={{ mt: 1 }}>
             Current phase: <strong>{workshop.phase}</strong>
           </Typography>
@@ -787,11 +780,11 @@ export default function SubmissionForm({
         {/* Content Field with Rich Text Editor */}
         <Box sx={{ mb: 3 }}>
           <RichTextEditor
-            control={control}
+            control={control as unknown as Control<FieldValues>}
             name="content"
             label="Submission Content"
             placeholder="Enter your submission content here..."
-            minHeight={300}
+            height={300}
             disabled={!isEditable || isSaving}
             error={Boolean(errors.content)}
             helperText={errors.content?.message}
@@ -908,8 +901,8 @@ export default function SubmissionForm({
           startIcon={
             isSubmitting ? <CircularProgress size={18} color="inherit" /> : <SendIcon />
           }
-          onClick={handleSubmit((data) => {
-            // Store data and show confirmation modal
+          onClick={handleSubmit(() => {
+            // Show confirmation modal before final submission
             handleSubmitClick();
           })}
           disabled={!isEditable || isSaving}

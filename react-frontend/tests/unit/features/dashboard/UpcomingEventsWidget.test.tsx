@@ -457,11 +457,21 @@ describe('UpcomingEventsWidget', () => {
     });
 
     it('does not display empty groups', async () => {
-      // Only create events for "Today"
-      const now = Math.floor(Date.now() / 1000);
+      // Create events that are definitely "today" - use start of today + offset
+      // to avoid midnight boundary issues when tests run late at night
+      const now = new Date();
+      const todayNoon = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0);
+      const todayNoonTimestamp = Math.floor(todayNoon.getTime() / 1000);
+      
+      // If current time is past noon, use times in the early afternoon
+      // Otherwise use times around noon. Both are guaranteed to be "today"
+      const baseTime = now.getHours() >= 14 
+        ? Math.floor(now.getTime() / 1000) + 60  // 1 minute from now (close enough if it's afternoon)
+        : todayNoonTimestamp;
+      
       const todayEvents = [
-        createMockEvent({ id: 1, name: 'Today Event 1', timestart: now + 3600 }),
-        createMockEvent({ id: 2, name: 'Today Event 2', timestart: now + 7200 }),
+        createMockEvent({ id: 1, name: 'Morning Meeting', timestart: baseTime + 300 }),  // +5 minutes
+        createMockEvent({ id: 2, name: 'Afternoon Task', timestart: baseTime + 600 }),   // +10 minutes
       ];
 
       server.use(

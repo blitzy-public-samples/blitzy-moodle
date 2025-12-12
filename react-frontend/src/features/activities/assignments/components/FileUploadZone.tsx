@@ -449,7 +449,11 @@ function FileUploadZone({
     document.body.appendChild(announcement);
 
     setTimeout(() => {
-      document.body.removeChild(announcement);
+      // Check if document and element still exist before removing
+      // This prevents errors when test environment is torn down
+      if (document?.body?.contains(announcement)) {
+        document.body.removeChild(announcement);
+      }
     }, 1000);
   };
 
