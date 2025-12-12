@@ -16,14 +16,12 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import React from 'react';
-import { describe, it, expect, beforeEach, afterEach, vi, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeEach, vi, beforeAll } from 'vitest';
 import { http, HttpResponse } from 'msw';
-import { within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 // Internal imports from helpers
-import { render, renderWithAuth, screen, waitFor } from '@tests/helpers/render';
+import { renderWithAuth, screen, waitFor } from '@tests/helpers/render';
 
 // Import global MSW server - DO NOT create a separate server instance
 import { server } from '@tests/mocks/server';
@@ -639,7 +637,9 @@ describe('AssessmentsList Component', () => {
       expect(actionButtons.length).toBeGreaterThan(0);
 
       // Click first action button to open menu
-      await user.click(actionButtons[0]);
+      const firstActionButton = actionButtons[0];
+      expect(firstActionButton).toBeDefined();
+      await user.click(firstActionButton!);
 
       // View Assessment menu item should be present
       await waitFor(() => {
@@ -663,7 +663,8 @@ describe('AssessmentsList Component', () => {
 
       // Click first action button to open menu
       const actionButtons = screen.getAllByLabelText(/row actions/i);
-      await user.click(actionButtons[0]);
+      expect(actionButtons.length).toBeGreaterThan(0);
+      await user.click(actionButtons[0]!);
 
       // Edit Assessment menu item should be present for users with peerassess capability
       await waitFor(() => {
@@ -687,7 +688,8 @@ describe('AssessmentsList Component', () => {
 
       // Click first action button to open menu
       const actionButtons = screen.getAllByLabelText(/row actions/i);
-      await user.click(actionButtons[0]);
+      expect(actionButtons.length).toBeGreaterThan(0);
+      await user.click(actionButtons[0]!);
 
       // Edit Assessment menu item should be available
       await waitFor(() => {
@@ -734,7 +736,8 @@ describe('AssessmentsList Component', () => {
 
       // Click first row actions button to open menu
       const actionButtons = screen.getAllByLabelText(/row actions/i);
-      await user.click(actionButtons[0]);
+      expect(actionButtons.length).toBeGreaterThan(0);
+      await user.click(actionButtons[0]!);
 
       // Click view assessment menu item
       const viewMenuItem = await screen.findByRole('menuitem', { name: /view assessment/i });
@@ -758,7 +761,8 @@ describe('AssessmentsList Component', () => {
 
       // Click first row actions button to open menu
       const actionButtons = screen.getAllByLabelText(/row actions/i);
-      await user.click(actionButtons[0]);
+      expect(actionButtons.length).toBeGreaterThan(0);
+      await user.click(actionButtons[0]!);
 
       // Click view assessment menu item
       const viewMenuItem = await screen.findByRole('menuitem', { name: /view assessment/i });
