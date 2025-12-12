@@ -15,12 +15,10 @@
  * @module tests/unit/features/activities/workshop/useWorkshopPhase.test
  */
 
-import { describe, it, expect, vi, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
-import { setupServer } from 'msw/node';
-import React from 'react';
 import type { ReactNode } from 'react';
 
 // Hook under test
@@ -33,18 +31,24 @@ import useWorkshopPhase, {
   PHASE_CLOSED,
   type PhaseNumber,
   type PhaseInfo,
-  type PhaseTransitionData,
   type PhaseTransitionValidation,
 } from '@/features/activities/workshop/hooks/useWorkshopPhase';
 
 // Test utilities
-import { createTestQueryClient } from '@/tests/helpers/render';
+import { createTestQueryClient } from '@tests/helpers/render';
+
+// Import global MSW server - do NOT create local server
+import { server } from '@tests/mocks/server';
 
 // ============================================================================
 // Constants
 // ============================================================================
 
-const API_BASE_URL = '/api/v1';
+/**
+ * API base URL for MSW handlers
+ * Must match VITE_API_BASE_URL from vitest.config.ts for MSW to intercept requests
+ */
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api/v1';
 
 // ============================================================================
 // Mock Data Factories
@@ -190,30 +194,6 @@ vi.mock('@/hooks/usePermissions', () => ({
 }));
 
 // ============================================================================
-// MSW Server Setup
-// ============================================================================
-
-/**
- * MSW request handlers for workshop API endpoints
- */
-const handlers = [
-  // GET workshop endpoint
-  http.get(`${API_BASE_URL}/workshops/:id`, ({ params }) => {
-    const workshopId = Number(params.id);
-    // Default to PHASE_SETUP for workshop ID 1
-    return HttpResponse.json(createMockWorkshopResponse(PHASE_SETUP));
-  }),
-
-  // POST switch phase endpoint
-  http.post(`${API_BASE_URL}/workshops/:id/switch-phase`, async ({ request, params }) => {
-    const body = await request.json() as { phase: number; force?: boolean };
-    return HttpResponse.json(createMockPhaseSwitchResponse(body.phase));
-  }),
-];
-
-const server = setupServer(...handlers);
-
-// ============================================================================
 // Test Wrapper
 // ============================================================================
 
@@ -237,18 +217,25 @@ function createWrapper(queryClient: QueryClient) {
 describe('useWorkshopPhase', () => {
   let queryClient: QueryClient;
 
-  beforeAll(() => {
-    server.listen({ onUnhandledRequest: 'warn' });
-  });
-
-  afterAll(() => {
-    server.close();
-  });
+  // Note: server.listen() and server.close() are handled globally in tests/setup.ts
 
   beforeEach(() => {
     queryClient = createTestQueryClient();
     // Reset mock permissions to default (no capabilities)
     mockHasCapability = () => false;
+    
+    // Set up default handlers for each test
+    server.use(
+      // GET workshop endpoint - default to PHASE_SETUP
+      http.get(`${API_BASE_URL}/workshops/:id`, () => {
+        return HttpResponse.json(createMockWorkshopResponse(PHASE_SETUP));
+      }),
+      // POST switch phase endpoint
+      http.post(`${API_BASE_URL}/workshops/:id/switch-phase`, async ({ request }) => {
+        const body = await request.json() as { phase: number; force?: boolean };
+        return HttpResponse.json(createMockPhaseSwitchResponse(body.phase));
+      })
+    );
   });
 
   afterEach(() => {
@@ -704,7 +691,7 @@ describe('useWorkshopPhase', () => {
         expect(capturedRequest).not.toBeNull();
       });
 
-      expect(capturedRequest?.phase).toBe(PHASE_SUBMISSION);
+      expect((capturedRequest as { phase: number; force?: boolean } | null)?.phase).toBe(PHASE_SUBMISSION);
     });
 
     it('should set isSwitching to true during mutation', async () => {
