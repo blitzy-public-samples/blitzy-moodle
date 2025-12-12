@@ -721,7 +721,7 @@ function AssessmentsList({
           pageSize={10}
           pageSizeOptions={[10, 25, 50]}
           emptyMessage="No assessments match the current filter"
-          aria-label="Workshop assessments list"
+          ariaLabel="Workshop assessments list"
         />
       )}
 

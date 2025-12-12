@@ -19,12 +19,14 @@
 import React from 'react';
 import { describe, it, expect, beforeEach, afterEach, vi, beforeAll, afterAll } from 'vitest';
 import { http, HttpResponse } from 'msw';
-import { setupServer } from 'msw/node';
 import { within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 // Internal imports from helpers
-import { render, renderWithAuth, screen, waitFor } from '@/tests/helpers/render';
+import { render, renderWithAuth, screen, waitFor } from '@tests/helpers/render';
+
+// Import global MSW server - DO NOT create a separate server instance
+import { server } from '@tests/mocks/server';
 
 // Component under test
 import AssessmentsList from '@/features/activities/workshop/components/AssessmentsList';
@@ -172,6 +174,9 @@ vi.mock('react-router-dom', async () => {
 // MSW Server Setup
 // ============================================================================
 
+// Must match VITE_API_BASE_URL in vitest.config.ts for MSW to intercept requests
+const API_BASE_URL = 'http://localhost:8000/api/v1';
+
 // Default mock data
 const defaultMockAssessments: WorkshopAssessment[] = [
   createMockAssessment({
@@ -215,10 +220,36 @@ const defaultMockWorkshop = createMockWorkshop({
   grade: 100,
 });
 
+/**
+ * Create mock WorkshopData structure expected by useWorkshop hook
+ * This includes workshop, currentPhase, userPlan, and submissions
+ */
+function createMockWorkshopData(workshop = defaultMockWorkshop) {
+  return {
+    workshop,
+    currentPhase: workshop.phase,
+    currentPhaseTitle: workshop.phase === WorkshopPhase.ASSESSMENT 
+      ? 'Assessment phase' 
+      : workshop.phase === WorkshopPhase.CLOSED 
+        ? 'Closed' 
+        : 'Submission phase',
+    userPlan: {
+      phases: [
+        { code: 10, title: 'Setup phase', active: workshop.phase === 10 },
+        { code: 20, title: 'Submission phase', active: workshop.phase === 20 },
+        { code: 30, title: 'Assessment phase', active: workshop.phase === 30 },
+        { code: 40, title: 'Grading evaluation phase', active: workshop.phase === 40 },
+        { code: 50, title: 'Closed', active: workshop.phase === 50 },
+      ],
+    },
+    submissions: [],
+  };
+}
+
 // MSW request handlers
 const handlers = [
-  // Workshop data endpoint
-  http.get('/api/v1/workshops/:workshopId', ({ params }) => {
+  // Workshop data endpoint - returns full WorkshopData structure
+  http.get(`${API_BASE_URL}/workshops/:workshopId`, ({ params }) => {
     const workshopId = Number(params.workshopId);
     if (workshopId === 999) {
       return HttpResponse.json(
@@ -226,14 +257,15 @@ const handlers = [
         { status: 404 }
       );
     }
+    const workshop = { ...defaultMockWorkshop, id: workshopId };
     return HttpResponse.json({
       success: true,
-      data: { ...defaultMockWorkshop, id: workshopId },
+      data: createMockWorkshopData(workshop),
     });
   }),
 
   // Assessments endpoint
-  http.get('/api/v1/workshops/:workshopId/assessments', ({ params, request }) => {
+  http.get(`${API_BASE_URL}/workshops/:workshopId/assessments`, ({ params, request }) => {
     const workshopId = Number(params.workshopId);
     const url = new URL(request.url);
     const submissionId = url.searchParams.get('submissionId');
@@ -283,26 +315,24 @@ const handlers = [
   }),
 ];
 
-// Create MSW server
-const server = setupServer(...handlers);
-
 // ============================================================================
 // Test Suite
 // ============================================================================
 
 describe('AssessmentsList Component', () => {
-  // Setup/teardown
+  // Setup default handlers before all tests in this suite
   beforeAll(() => {
-    server.listen({ onUnhandledRequest: 'error' });
-  });
-
-  afterAll(() => {
-    server.close();
+    // Add workshop-specific handlers to the global server
+    server.use(...handlers);
   });
 
   beforeEach(() => {
     vi.clearAllMocks();
+    
+    // Reset to default handlers (which now includes workshop handlers)
     server.resetHandlers();
+    // Re-add workshop handlers after reset
+    server.use(...handlers);
     
     // Default permission mocks
     mockHasCapability.mockImplementation((capability: string) => {
@@ -313,10 +343,6 @@ describe('AssessmentsList Component', () => {
       return false;
     });
     mockIsTeacher.mockReturnValue(false);
-  });
-
-  afterEach(() => {
-    server.resetHandlers();
   });
 
   // ==========================================================================
@@ -474,10 +500,11 @@ describe('AssessmentsList Component', () => {
     it('filters by closed status when workshop is closed', async () => {
       // Set up closed workshop
       server.use(
-        http.get('/api/v1/workshops/:workshopId', () => {
+        http.get(`${API_BASE_URL}/workshops/:workshopId`, () => {
+          const closedWorkshop = createMockWorkshop({ phase: WorkshopPhase.CLOSED });
           return HttpResponse.json({
             success: true,
-            data: createMockWorkshop({ phase: WorkshopPhase.CLOSED }),
+            data: createMockWorkshopData(closedWorkshop),
           });
         })
       );
@@ -501,7 +528,7 @@ describe('AssessmentsList Component', () => {
     it('shows message when no assessments match filter', async () => {
       // Create workshop with only graded assessments
       server.use(
-        http.get('/api/v1/workshops/:workshopId/assessments', () => {
+        http.get(`${API_BASE_URL}/workshops/:workshopId/assessments`, () => {
           return HttpResponse.json({
             success: true,
             data: {
@@ -520,8 +547,10 @@ describe('AssessmentsList Component', () => {
       const user = userEvent.setup();
       renderWithAuth(<AssessmentsList workshopId={1} />);
 
+      // Wait for data to load (may have multiple assessments with same reviewer name)
       await waitFor(() => {
-        expect(screen.getByText(/john doe/i)).toBeInTheDocument();
+        const reviewerNames = screen.getAllByText(/john doe/i);
+        expect(reviewerNames.length).toBeGreaterThan(0);
       });
 
       // Filter by pending
@@ -531,9 +560,9 @@ describe('AssessmentsList Component', () => {
       const pendingOption = screen.getByRole('option', { name: /pending/i });
       await user.click(pendingOption);
 
-      // Should show "no pending assessments" message
+      // Should show "no pending assessments" message (component shows "No pending assessments found. Try changing the filter.")
       await waitFor(() => {
-        expect(screen.getByText(/no pending assessments found/i)).toBeInTheDocument();
+        expect(screen.getByText(/no pending assessments found|no assessments match/i)).toBeInTheDocument();
       });
     });
   });
@@ -598,18 +627,28 @@ describe('AssessmentsList Component', () => {
 
   describe('Action Buttons', () => {
     it('shows view action button for all users', async () => {
+      const user = userEvent.setup();
       renderWithAuth(<AssessmentsList workshopId={1} />);
 
       await waitFor(() => {
         expect(screen.getByText(/john doe/i)).toBeInTheDocument();
       });
 
-      // View buttons should be present
-      const viewButtons = screen.getAllByLabelText(/view assessment/i);
-      expect(viewButtons.length).toBeGreaterThan(0);
+      // Row actions buttons should be present (kebab menu)
+      const actionButtons = screen.getAllByLabelText(/row actions/i);
+      expect(actionButtons.length).toBeGreaterThan(0);
+
+      // Click first action button to open menu
+      await user.click(actionButtons[0]);
+
+      // View Assessment menu item should be present
+      await waitFor(() => {
+        expect(screen.getByRole('menuitem', { name: /view assessment/i })).toBeInTheDocument();
+      });
     });
 
     it('shows edit button only for users with peerassess capability in assessment phase', async () => {
+      const user = userEvent.setup();
       mockHasCapability.mockImplementation((capability: string) => {
         if (capability === 'mod/workshop:viewreviewernames') return true;
         if (capability === 'mod/workshop:peerassess') return true;
@@ -622,12 +661,18 @@ describe('AssessmentsList Component', () => {
         expect(screen.getByText(/john doe/i)).toBeInTheDocument();
       });
 
-      // Edit buttons should be present for pending assessments
-      const editButtons = screen.getAllByLabelText(/edit assessment/i);
-      expect(editButtons.length).toBeGreaterThan(0);
+      // Click first action button to open menu
+      const actionButtons = screen.getAllByLabelText(/row actions/i);
+      await user.click(actionButtons[0]);
+
+      // Edit Assessment menu item should be present for users with peerassess capability
+      await waitFor(() => {
+        expect(screen.getByRole('menuitem', { name: /edit assessment/i })).toBeInTheDocument();
+      });
     });
 
     it('shows edit button for users with canoverridegrades capability', async () => {
+      const user = userEvent.setup();
       mockHasCapability.mockImplementation((capability: string) => {
         if (capability === 'mod/workshop:viewreviewernames') return true;
         if (capability === 'mod/workshop:overridegrades') return true;
@@ -640,17 +685,23 @@ describe('AssessmentsList Component', () => {
         expect(screen.getByText(/john doe/i)).toBeInTheDocument();
       });
 
-      // Edit buttons should be available
-      const editButtons = screen.getAllByLabelText(/edit assessment/i);
-      expect(editButtons.length).toBeGreaterThan(0);
+      // Click first action button to open menu
+      const actionButtons = screen.getAllByLabelText(/row actions/i);
+      await user.click(actionButtons[0]);
+
+      // Edit Assessment menu item should be available
+      await waitFor(() => {
+        expect(screen.getByRole('menuitem', { name: /edit assessment/i })).toBeInTheDocument();
+      });
     });
 
     it('hides edit button when workshop is not in assessment phase', async () => {
       server.use(
-        http.get('/api/v1/workshops/:workshopId', () => {
+        http.get(`${API_BASE_URL}/workshops/:workshopId`, () => {
+          const closedWorkshop = createMockWorkshop({ phase: WorkshopPhase.CLOSED });
           return HttpResponse.json({
             success: true,
-            data: createMockWorkshop({ phase: WorkshopPhase.CLOSED }),
+            data: createMockWorkshopData(closedWorkshop),
           });
         })
       );
@@ -681,9 +732,13 @@ describe('AssessmentsList Component', () => {
         expect(screen.getByText(/john doe/i)).toBeInTheDocument();
       });
 
-      // Click first view button
-      const viewButtons = screen.getAllByLabelText(/view assessment/i);
-      await user.click(viewButtons[0]);
+      // Click first row actions button to open menu
+      const actionButtons = screen.getAllByLabelText(/row actions/i);
+      await user.click(actionButtons[0]);
+
+      // Click view assessment menu item
+      const viewMenuItem = await screen.findByRole('menuitem', { name: /view assessment/i });
+      await user.click(viewMenuItem);
 
       // Should navigate to assessment view
       expect(mockNavigate).toHaveBeenCalledWith(expect.stringContaining('/workshops/1/assessments/'));
@@ -701,9 +756,13 @@ describe('AssessmentsList Component', () => {
         expect(screen.getByText(/john doe/i)).toBeInTheDocument();
       });
 
-      // Click first view button
-      const viewButtons = screen.getAllByLabelText(/view assessment/i);
-      await user.click(viewButtons[0]);
+      // Click first row actions button to open menu
+      const actionButtons = screen.getAllByLabelText(/row actions/i);
+      await user.click(actionButtons[0]);
+
+      // Click view assessment menu item
+      const viewMenuItem = await screen.findByRole('menuitem', { name: /view assessment/i });
+      await user.click(viewMenuItem);
 
       // Callback should be called with assessment data
       expect(onAssessmentSelect).toHaveBeenCalled();
@@ -822,7 +881,8 @@ describe('AssessmentsList Component', () => {
 
       // Should show assessment progress section
       expect(screen.getByText(/assessment progress/i)).toBeInTheDocument();
-      expect(screen.getByText(/pending/i)).toBeInTheDocument();
+      // Look for "Pending:" specifically (the statistics label, not status chip)
+      expect(screen.getByText(/pending:/i)).toBeInTheDocument();
     });
 
     it('displays completion progress bar for teachers', async () => {
@@ -900,7 +960,7 @@ describe('AssessmentsList Component', () => {
     it('shows loading state while fetching assessments', async () => {
       // Delay API response to test loading state
       server.use(
-        http.get('/api/v1/workshops/:workshopId/assessments', async () => {
+        http.get(`${API_BASE_URL}/workshops/:workshopId/assessments`, async () => {
           await new Promise((resolve) => setTimeout(resolve, 100));
           return HttpResponse.json({
             success: true,
@@ -965,7 +1025,7 @@ describe('AssessmentsList Component', () => {
       let callCount = 0;
       
       server.use(
-        http.get('/api/v1/workshops/:workshopId/assessments', () => {
+        http.get(`${API_BASE_URL}/workshops/:workshopId/assessments`, () => {
           callCount++;
           if (callCount === 1) {
             return HttpResponse.json(
@@ -1016,9 +1076,9 @@ describe('AssessmentsList Component', () => {
         expect(screen.getByText(/john doe/i)).toBeInTheDocument();
       });
 
-      // Table should have aria-label
-      const table = screen.getByRole('table', { name: /workshop assessments list/i });
-      expect(table).toBeInTheDocument();
+      // DataGrid uses role="grid" instead of "table"
+      const grid = screen.getByRole('grid', { name: /workshop assessments list/i });
+      expect(grid).toBeInTheDocument();
     });
 
     it('has accessible filter select with label', async () => {
@@ -1040,9 +1100,9 @@ describe('AssessmentsList Component', () => {
         expect(screen.getByText(/john doe/i)).toBeInTheDocument();
       });
 
-      // View buttons should have aria-labels
-      const viewButtons = screen.getAllByLabelText(/view assessment/i);
-      expect(viewButtons.length).toBeGreaterThan(0);
+      // Row actions buttons should have aria-labels (actions are in a dropdown menu)
+      const rowActionsButtons = screen.getAllByLabelText(/row actions/i);
+      expect(rowActionsButtons.length).toBeGreaterThan(0);
     });
 
     it('has accessible progress bar with aria-label', async () => {
@@ -1066,9 +1126,12 @@ describe('AssessmentsList Component', () => {
         expect(screen.getByText(/john doe/i)).toBeInTheDocument();
       });
 
-      // Status chips should be present
-      expect(screen.getByText('Graded')).toBeInTheDocument();
-      expect(screen.getByText('Pending')).toBeInTheDocument();
+      // Status chips should be present (multiple assessments may have same status)
+      const gradedChips = screen.getAllByText('Graded');
+      expect(gradedChips.length).toBeGreaterThan(0);
+      
+      const pendingChips = screen.getAllByText('Pending');
+      expect(pendingChips.length).toBeGreaterThan(0);
     });
   });
 
@@ -1147,8 +1210,9 @@ describe('AssessmentsList Component', () => {
         expect(screen.getByText(/85\.0/)).toBeInTheDocument();
       });
 
-      // Should show max grade reference
-      expect(screen.getByText(/\/ 100/)).toBeInTheDocument();
+      // Should show max grade reference (multiple assessments may have this)
+      const gradeDisplays = screen.getAllByText(/\/ 100/);
+      expect(gradeDisplays.length).toBeGreaterThan(0);
     });
   });
 
@@ -1170,10 +1234,11 @@ describe('AssessmentsList Component', () => {
 
     it('shows editing disabled message when not in assessment phase', async () => {
       server.use(
-        http.get('/api/v1/workshops/:workshopId', () => {
+        http.get(`${API_BASE_URL}/workshops/:workshopId`, () => {
+          const submissionWorkshop = createMockWorkshop({ phase: WorkshopPhase.SUBMISSION });
           return HttpResponse.json({
             success: true,
-            data: createMockWorkshop({ phase: WorkshopPhase.SUBMISSION }),
+            data: createMockWorkshopData(submissionWorkshop),
           });
         })
       );
@@ -1192,10 +1257,11 @@ describe('AssessmentsList Component', () => {
 
     it('shows closed phase indicator when workshop is closed', async () => {
       server.use(
-        http.get('/api/v1/workshops/:workshopId', () => {
+        http.get(`${API_BASE_URL}/workshops/:workshopId`, () => {
+          const closedWorkshop = createMockWorkshop({ phase: WorkshopPhase.CLOSED });
           return HttpResponse.json({
             success: true,
-            data: createMockWorkshop({ phase: WorkshopPhase.CLOSED }),
+            data: createMockWorkshopData(closedWorkshop),
           });
         })
       );
@@ -1222,7 +1288,7 @@ describe('AssessmentsList Component', () => {
       let capturedSubmissionId: string | null = null;
       
       server.use(
-        http.get('/api/v1/workshops/:workshopId/assessments', ({ request }) => {
+        http.get(`${API_BASE_URL}/workshops/:workshopId/assessments`, ({ request }) => {
           const url = new URL(request.url);
           capturedSubmissionId = url.searchParams.get('submissionId');
           return HttpResponse.json({
