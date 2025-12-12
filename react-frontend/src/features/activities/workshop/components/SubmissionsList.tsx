@@ -26,7 +26,6 @@ import {
   Box,
   Chip,
   FormControl,
-  IconButton,
   InputLabel,
   MenuItem,
   Select,
@@ -50,13 +49,13 @@ import {
 } from '@mui/icons-material';
 
 // Internal components
-import DataTable, { DataTableColumn, RowAction } from '@/components/data-display/DataTable';
+import { DataTable, DataTableColumn, RowAction } from '@/components/data-display/DataTable';
 import LoadingSpinner from '@/components/feedback/LoadingSpinner';
 import Alert from '@/components/feedback/Alert';
 
 // Hooks
 import { useWorkshop } from '@/features/activities/workshop/hooks/useWorkshop';
-import { useDeleteSubmission, useWorkshopSubmissions } from '@/features/activities/workshop/hooks/useSubmission';
+import { useDeleteSubmission } from '@/features/activities/workshop/hooks/useSubmission';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useToast } from '@/hooks/useToast';
 
@@ -64,8 +63,8 @@ import { useToast } from '@/hooks/useToast';
 import type {
   Workshop,
   WorkshopSubmission,
-  WorkshopPhase,
 } from '@/features/activities/workshop/types/workshop.types';
+import type { SortParams, SortOrder } from '@/types/common';
 
 // ============================================================================
 // Types and Interfaces
@@ -95,16 +94,12 @@ interface SubmissionsListProps {
 }
 
 /**
- * Sort direction type
- */
-type SortDirection = 'asc' | 'desc';
-
-/**
- * Sort configuration
+ * Sort configuration for submissions list
+ * Uses SortOrder from common types for consistency with DataTable
  */
 interface SortConfig {
-  field: keyof WorkshopSubmission | 'authorName';
-  direction: SortDirection;
+  field: keyof WorkshopSubmission;
+  order: SortOrder;
 }
 
 // ============================================================================
@@ -158,28 +153,41 @@ function formatGrade(grade: number | null | undefined, gradeDecimals: number = 0
 }
 
 /**
+ * Get full author name from submission
+ * Combines first and last name, with fallback to 'Unknown Author'
+ *
+ * @param submission - The submission containing author info
+ * @returns Full author name string
+ */
+function getAuthorName(submission: WorkshopSubmission): string {
+  const firstName = submission.authorFirstName || '';
+  const lastName = submission.authorLastName || '';
+  const fullName = `${firstName} ${lastName}`.trim();
+  return fullName || 'Unknown Author';
+}
+
+/**
  * Get assessment status summary for a submission
+ * Note: Since individual assessment data is not available in the submission list,
+ * this function derives status from the submission's grading state.
  *
  * @param submission - The submission to check
- * @returns Status string describing assessment progress
+ * @returns Status string describing assessment/grading progress
  */
 function getAssessmentStatus(submission: WorkshopSubmission): string {
-  const assessments = submission.assessments || [];
-  const totalAssessments = assessments.length;
+  // Check if submission has been graded
+  const hasGrade = submission.grade !== null && submission.grade !== undefined;
+  const hasGradingGrade = submission.gradingGrade !== null && submission.gradingGrade !== undefined;
   
-  if (totalAssessments === 0) {
-    return 'No assessments';
+  if (hasGrade && hasGradingGrade) {
+    return 'Fully graded';
   }
   
-  const completedAssessments = assessments.filter(
-    (a) => a.grade !== null && a.grade !== undefined
-  ).length;
-  
-  if (completedAssessments === totalAssessments) {
-    return `${totalAssessments} assessment${totalAssessments > 1 ? 's' : ''} complete`;
+  if (hasGrade) {
+    return 'Graded';
   }
   
-  return `${completedAssessments}/${totalAssessments} assessments`;
+  return 'Pending assessment';
 }
 
 /**
@@ -225,6 +233,8 @@ function canEditSubmission(
 
 /**
  * Check if a submission can be deleted
+ * Note: Since assessment data is not available in the submission list,
+ * deletion is allowed if the submission has not been graded yet.
  *
  * @param submission - The submission to check
  * @param userId - Current user ID
@@ -243,10 +253,11 @@ function canDeleteSubmission(
     return true;
   }
   
-  // Authors can delete their own submissions if they have no assessments
+  // Authors can delete their own submissions if not graded yet
+  // This is a conservative approach since we don't have assessment count data
   if (submission.authorId === userId) {
-    const assessments = submission.assessments || [];
-    return assessments.length === 0;
+    const hasBeenGraded = submission.grade !== null && submission.grade !== undefined;
+    return !hasBeenGraded;
   }
   
   return false;
@@ -297,6 +308,7 @@ const SubmissionsList: React.FC<SubmissionsListProps> = ({
   const { success, error: showError, warning } = useToast();
   
   // Fetch workshop data if not provided
+  // Note: useWorkshop automatically includes submissions in its response
   const {
     workshop: fetchedWorkshop,
     submissions: fetchedSubmissions,
@@ -305,7 +317,6 @@ const SubmissionsList: React.FC<SubmissionsListProps> = ({
     error: workshopError,
   } = useWorkshop(workshopId, {
     enabled: !preloadedWorkshop,
-    includeSubmissions: true,
   });
   
   // Use pre-loaded data or fetched data
@@ -338,7 +349,7 @@ const SubmissionsList: React.FC<SubmissionsListProps> = ({
   const [statusFilter, setStatusFilter] = useState<SubmissionStatusFilter>('all');
   const [sortConfig, setSortConfig] = useState<SortConfig>({
     field: 'timeCreated',
-    direction: 'desc',
+    order: 'desc',
   });
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
@@ -396,9 +407,10 @@ const SubmissionsList: React.FC<SubmissionsListProps> = ({
       let bValue: string | number | null = null;
       
       switch (sortConfig.field) {
-        case 'authorName':
-          aValue = a.authorName?.toLowerCase() || '';
-          bValue = b.authorName?.toLowerCase() || '';
+        case 'authorId':
+          // Sort by author name for user-friendly sorting
+          aValue = getAuthorName(a).toLowerCase();
+          bValue = getAuthorName(b).toLowerCase();
           break;
         case 'title':
           aValue = a.title.toLowerCase();
@@ -416,20 +428,25 @@ const SubmissionsList: React.FC<SubmissionsListProps> = ({
           aValue = a.grade ?? -1;
           bValue = b.grade ?? -1;
           break;
+        case 'published':
+          // Sort published first when ascending
+          aValue = a.published ? 1 : 0;
+          bValue = b.published ? 1 : 0;
+          break;
         default:
           aValue = a.timeCreated || 0;
           bValue = b.timeCreated || 0;
       }
       
       if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return sortConfig.direction === 'asc'
+        return sortConfig.order === 'asc'
           ? aValue.localeCompare(bValue)
           : bValue.localeCompare(aValue);
       }
       
       const numA = Number(aValue);
       const numB = Number(bValue);
-      return sortConfig.direction === 'asc' ? numA - numB : numB - numA;
+      return sortConfig.order === 'asc' ? numA - numB : numB - numA;
     });
     
     return result;
@@ -478,22 +495,24 @@ const SubmissionsList: React.FC<SubmissionsListProps> = ({
   
   /**
    * Handle delete submission action
+   * Note: Since assessment data is not available, we use the grading state
+   * to determine if the submission has been assessed.
    */
   const handleDelete = useCallback(
     (submission: WorkshopSubmission) => {
-      // Check for existing assessments
-      const assessments = submission.assessments || [];
-      if (assessments.length > 0 && !canDeleteAll) {
+      // Check if submission has been graded (indicating it may have assessments)
+      const hasBeenGraded = submission.grade !== null && submission.grade !== undefined;
+      if (hasBeenGraded && !canDeleteAll) {
         warning(
-          'Cannot delete this submission because it has existing assessments. ' +
+          'Cannot delete this submission because it has already been graded. ' +
             'Contact your teacher for assistance.'
         );
         return;
       }
       
       // Confirm deletion
-      const confirmMessage = assessments.length > 0
-        ? `Delete this submission? This will also remove ${assessments.length} assessment(s).`
+      const confirmMessage = hasBeenGraded
+        ? 'Delete this submission? This will also remove any associated assessments and grades.'
         : 'Delete this submission? This action cannot be undone.';
       
       if (window.confirm(confirmMessage)) {
@@ -512,14 +531,26 @@ const SubmissionsList: React.FC<SubmissionsListProps> = ({
   );
   
   /**
-   * Handle sort column click
+   * Handle sort change from DataTable
+   * Receives SortParams or null when sorting is cleared
    */
-  const handleSort = useCallback((field: string) => {
-    setSortConfig((prev) => ({
-      field: field as keyof WorkshopSubmission | 'authorName',
-      direction: prev.field === field && prev.direction === 'asc' ? 'desc' : 'asc',
-    }));
-  }, []);
+  const handleSortChange = useCallback(
+    (sort: SortParams<WorkshopSubmission> | null) => {
+      if (sort) {
+        setSortConfig({
+          field: sort.field,
+          order: sort.order,
+        });
+      } else {
+        // Reset to default sort when cleared
+        setSortConfig({
+          field: 'timeCreated',
+          order: 'desc',
+        });
+      }
+    },
+    []
+  );
   
   /**
    * Handle page change
@@ -546,27 +577,27 @@ const SubmissionsList: React.FC<SubmissionsListProps> = ({
   const columns: DataTableColumn<WorkshopSubmission>[] = useMemo(
     () => [
       {
-        id: 'authorName',
-        label: 'Author',
+        field: 'authorId',
+        headerName: 'Author',
         sortable: true,
-        width: '20%',
-        render: (submission) => (
+        width: 200,
+        renderCell: (params) => (
           <Stack direction="row" spacing={1} alignItems="center">
             <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
               <PersonIcon fontSize="small" />
             </Avatar>
             <Typography variant="body2" noWrap>
-              {submission.authorName || 'Unknown Author'}
+              {getAuthorName(params.row)}
             </Typography>
           </Stack>
         ),
       },
       {
-        id: 'title',
-        label: 'Title',
+        field: 'title',
+        headerName: 'Title',
         sortable: true,
-        width: '25%',
-        render: (submission) => (
+        width: 250,
+        renderCell: (params) => (
           <Typography
             variant="body2"
             sx={{
@@ -574,32 +605,32 @@ const SubmissionsList: React.FC<SubmissionsListProps> = ({
               cursor: 'pointer',
               '&:hover': { color: 'primary.main' },
             }}
-            onClick={() => handleView(submission)}
+            onClick={() => handleView(params.row)}
           >
-            {submission.title}
+            {params.row.title}
           </Typography>
         ),
       },
       {
-        id: 'timeCreated',
-        label: 'Submitted',
+        field: 'timeCreated',
+        headerName: 'Submitted',
         sortable: true,
-        width: '15%',
-        render: (submission) => (
-          <Tooltip title={formatTimestamp(submission.timeCreated)}>
+        width: 150,
+        renderCell: (params) => (
+          <Tooltip title={formatTimestamp(params.row.timeCreated)}>
             <Typography variant="body2" color="text.secondary">
-              {formatTimestamp(submission.timeCreated, DATE_FORMAT_SHORT)}
+              {formatTimestamp(params.row.timeCreated, DATE_FORMAT_SHORT)}
             </Typography>
           </Tooltip>
         ),
       },
       {
-        id: 'grade',
-        label: 'Grade',
+        field: 'grade',
+        headerName: 'Grade',
         sortable: true,
-        width: '12%',
-        render: (submission) => {
-          const gradeValue = submission.grade;
+        width: 120,
+        renderCell: (params) => {
+          const gradeValue = params.row.grade;
           const hasGrade = gradeValue !== null && gradeValue !== undefined;
           
           return (
@@ -619,35 +650,38 @@ const SubmissionsList: React.FC<SubmissionsListProps> = ({
         },
       },
       {
-        id: 'status',
-        label: 'Status',
-        width: '18%',
-        render: (submission) => (
-          <Stack direction="row" spacing={1} alignItems="center">
-            {/* Assessment status */}
-            <Tooltip title={getAssessmentStatus(submission)}>
-              <Chip
-                size="small"
-                label={getAssessmentStatus(submission)}
-                variant="outlined"
-                color={
-                  (submission.assessments?.length || 0) > 0 ? 'info' : 'default'
-                }
-              />
-            </Tooltip>
-            
-            {/* Published indicator (only show in closed phase or for teachers) */}
-            {(workshop?.phase === 50 || isTeacher) && ( // WorkshopPhase.CLOSED = 50
-              <Tooltip title={submission.published ? 'Published' : 'Not published'}>
-                {submission.published ? (
-                  <PublishedIcon fontSize="small" color="success" />
-                ) : (
-                  <UnpublishedIcon fontSize="small" color="disabled" />
-                )}
+        field: 'published',
+        headerName: 'Status',
+        width: 180,
+        renderCell: (params) => {
+          const submission = params.row;
+          const hasBeenGraded = submission.grade !== null && submission.grade !== undefined;
+          
+          return (
+            <Stack direction="row" spacing={1} alignItems="center">
+              {/* Assessment status */}
+              <Tooltip title={getAssessmentStatus(submission)}>
+                <Chip
+                  size="small"
+                  label={getAssessmentStatus(submission)}
+                  variant="outlined"
+                  color={hasBeenGraded ? 'info' : 'default'}
+                />
               </Tooltip>
-            )}
-          </Stack>
-        ),
+              
+              {/* Published indicator (only show in closed phase or for teachers) */}
+              {(workshop?.phase === 50 || isTeacher) && ( // WorkshopPhase.CLOSED = 50
+                <Tooltip title={submission.published ? 'Published' : 'Not published'}>
+                  {submission.published ? (
+                    <PublishedIcon fontSize="small" color="success" />
+                  ) : (
+                    <UnpublishedIcon fontSize="small" color="disabled" />
+                  )}
+                </Tooltip>
+              )}
+            </Stack>
+          );
+        },
       },
     ],
     [workshop, handleView, isTeacher]
@@ -659,36 +693,33 @@ const SubmissionsList: React.FC<SubmissionsListProps> = ({
   const rowActions: RowAction<WorkshopSubmission>[] = useMemo(
     () => [
       {
-        id: 'view',
         label: 'View',
         icon: <ViewIcon />,
         onClick: handleView,
       },
       {
-        id: 'edit',
         label: 'Edit',
         icon: <EditIcon />,
         onClick: handleEdit,
-        disabled: (submission) =>
+        disabled: (submission: WorkshopSubmission) =>
           !canEditSubmission(submission, workshop, currentUserId, isTeacher),
-        hidden: (submission) =>
-          !canEditSubmission(submission, workshop, currentUserId, isTeacher) &&
-          !isTeacher,
+        visible: (submission: WorkshopSubmission) =>
+          canEditSubmission(submission, workshop, currentUserId, isTeacher) ||
+          isTeacher,
       },
       {
-        id: 'delete',
         label: 'Delete',
         icon: <DeleteIcon />,
         onClick: handleDelete,
-        disabled: (submission) =>
+        disabled: (submission: WorkshopSubmission) =>
           !canDeleteSubmission(
             submission,
             currentUserId,
             canDeleteAll,
             isTeacher
           ) || pendingDeleteId === submission.id,
-        hidden: (submission) =>
-          !canDeleteSubmission(
+        visible: (submission: WorkshopSubmission) =>
+          canDeleteSubmission(
             submission,
             currentUserId,
             canDeleteAll,
@@ -820,28 +851,14 @@ const SubmissionsList: React.FC<SubmissionsListProps> = ({
         rowActions={rowActions}
         loading={isDeleting}
         emptyMessage="No submissions match the selected filter."
-        getRowId={(row) => row.id}
-        onSort={handleSort}
-        sortField={sortConfig.field}
-        sortDirection={sortConfig.direction}
-        pagination={{
-          page,
-          pageSize,
-          totalRows: filteredSubmissions.length,
-          onPageChange: handlePageChange,
-          onPageSizeChange: handlePageSizeChange,
-          pageSizeOptions: [5, 10, 25, 50],
-        }}
-        onRowClick={handleView}
-        rowClassName={(submission) =>
-          pendingDeleteId === submission.id ? 'row-pending-delete' : ''
-        }
-        sx={{
-          '& .row-pending-delete': {
-            opacity: 0.5,
-            pointerEvents: 'none',
-          },
-        }}
+        sortModel={sortConfig}
+        onSortChange={handleSortChange}
+        page={page}
+        pageSize={pageSize}
+        totalRows={filteredSubmissions.length}
+        onPageChange={handlePageChange}
+        onPageSizeChange={handlePageSizeChange}
+        pageSizeOptions={[5, 10, 25, 50]}
       />
     </Box>
   );
