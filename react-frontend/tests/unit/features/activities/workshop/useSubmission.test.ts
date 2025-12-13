@@ -35,7 +35,7 @@ import useSubmission, {
   type SubmissionFile,
 } from '@/features/activities/workshop/hooks/useSubmission';
 import type { WorkshopSubmission } from '@/types/entities';
-import { createTestQueryClient } from '@/tests/helpers/render';
+import { createTestQueryClient } from '@tests/helpers/render';
 
 // ============================================================================
 // Mock Data Factories (since test-utils.ts is not available)
@@ -54,29 +54,20 @@ function createMockSubmission(
   const now = Math.floor(Date.now() / 1000);
   return {
     id: 1,
-    workshopId: 100,
+    workshopid: 100,
     example: false,
-    authorId: 10,
-    authorFirstName: 'Test',
-    authorLastName: 'User',
-    authorEmail: 'test@example.com',
-    authorPicture: 0,
+    authorid: 10,
     title: 'Test Submission',
     content: '<p>This is the submission content.</p>',
-    contentFormat: 1, // HTML format
-    contentTrust: false,
-    attachment: 0,
-    grade: null,
-    gradingGrade: null,
-    gradeOver: null,
-    gradingGradeOver: null,
-    feedbackAuthor: null,
-    feedbackAuthorFormat: 1,
-    timeCreated: now - 3600,
-    timeModified: now - 1800,
+    contentformat: 1, // HTML format
+    attachment: false,
+    grade: undefined,
+    gradeover: undefined,
+    feedbackauthor: undefined,
+    feedbackauthorformat: 1,
+    timecreated: now - 3600,
+    timemodified: now - 1800,
     published: false,
-    late: false,
-    url: '/mod/workshop/submission.php?id=1',
     ...overrides,
   };
 }
@@ -120,7 +111,7 @@ function createMockSubmissionFile(
 // ============================================================================
 
 /** Base API URL for workshop endpoints */
-const API_BASE = '/api/v1';
+const API_BASE = '*/api/v1';
 
 /** Mock submission data used across tests */
 let mockSubmission = createMockSubmission();
@@ -168,11 +159,11 @@ const handlers = [
     });
   }),
 
-  // GET /api/v1/workshops/:workshopId/submissions/mine - Get user's own submission
-  http.get(`${API_BASE}/workshops/:workshopId/submissions/mine`, ({ params }) => {
-    const workshopId = Number(params.workshopId);
+  // GET /api/v1/workshops/:workshopid/submissions/mine - Get user's own submission
+  http.get(`${API_BASE}/workshops/:workshopid/submissions/mine`, ({ params }) => {
+    const workshopid = Number(params.workshopid);
 
-    if (workshopId === 999) {
+    if (workshopid === 999) {
       return HttpResponse.json({
         success: false,
         data: null,
@@ -181,7 +172,7 @@ const handlers = [
 
     return HttpResponse.json({
       success: true,
-      data: { ...mockSubmission, workshopId },
+      data: { ...mockSubmission, workshopid },
       meta: {
         timestamp: Date.now(),
         canEdit: true,
@@ -190,11 +181,11 @@ const handlers = [
     });
   }),
 
-  // GET /api/v1/workshops/:workshopId/submissions - Get all submissions
-  http.get(`${API_BASE}/workshops/:workshopId/submissions`, ({ params }) => {
-    const workshopId = Number(params.workshopId);
+  // GET /api/v1/workshops/:workshopid/submissions - Get all submissions
+  http.get(`${API_BASE}/workshops/:workshopid/submissions`, ({ params }) => {
+    const workshopid = Number(params.workshopid);
 
-    if (workshopId === 998) {
+    if (workshopid === 998) {
       return HttpResponse.json(
         {
           success: false,
@@ -206,11 +197,11 @@ const handlers = [
 
     const submissions =
       mockSubmissionsList.length > 0
-        ? mockSubmissionsList.map((s) => ({ ...s, workshopId }))
+        ? mockSubmissionsList.map((s) => ({ ...s, workshopid }))
         : [
-            createMockSubmission({ id: 1, workshopId, authorId: 10 }),
-            createMockSubmission({ id: 2, workshopId, authorId: 11, title: 'Another Submission' }),
-            createMockSubmission({ id: 3, workshopId, authorId: 12, title: 'Third Submission' }),
+            createMockSubmission({ id: 1, workshopid, authorid: 10 }),
+            createMockSubmission({ id: 2, workshopid, authorid: 11, title: 'Another Submission' }),
+            createMockSubmission({ id: 3, workshopid, authorid: 12, title: 'Third Submission' }),
           ];
 
     return HttpResponse.json({
@@ -223,11 +214,11 @@ const handlers = [
     });
   }),
 
-  // POST /api/v1/workshops/:workshopId/submissions - Create new submission
-  http.post(`${API_BASE}/workshops/:workshopId/submissions`, async ({ params, request }) => {
-    const workshopId = Number(params.workshopId);
+  // POST /api/v1/workshops/:workshopid/submissions - Create new submission
+  http.post(`${API_BASE}/workshops/:workshopid/submissions`, async ({ params, request }) => {
+    const workshopid = Number(params.workshopid);
 
-    if (workshopId === 997) {
+    if (workshopid === 997) {
       return HttpResponse.json(
         {
           success: false,
@@ -237,7 +228,7 @@ const handlers = [
       );
     }
 
-    if (workshopId === 996) {
+    if (workshopid === 996) {
       return HttpResponse.json(
         {
           success: false,
@@ -247,7 +238,7 @@ const handlers = [
       );
     }
 
-    if (workshopId === 995) {
+    if (workshopid === 995) {
       return HttpResponse.json(
         {
           success: false,
@@ -274,12 +265,12 @@ const handlers = [
 
     const newSubmission = createMockSubmission({
       id: Date.now(),
-      workshopId,
+      workshopid,
       title: data.title || 'Untitled',
       content: data.content || '',
-      contentFormat: data.contentformat || 1,
-      timeCreated: Math.floor(Date.now() / 1000),
-      timeModified: Math.floor(Date.now() / 1000),
+      contentformat: data.contentformat || 1,
+      timecreated: Math.floor(Date.now() / 1000),
+      timemodified: Math.floor(Date.now() / 1000),
     });
 
     return HttpResponse.json({
@@ -342,8 +333,8 @@ const handlers = [
       id,
       title: data.title || mockSubmission.title,
       content: data.content || mockSubmission.content,
-      contentFormat: data.contentformat || mockSubmission.contentFormat,
-      timeModified: Math.floor(Date.now() / 1000),
+      contentformat: data.contentformat || mockSubmission.contentformat,
+      timemodified: Math.floor(Date.now() / 1000),
     });
 
     return HttpResponse.json({
@@ -434,7 +425,7 @@ const handlers = [
       ...mockSubmission,
       id,
       published: body.published,
-      timeModified: Math.floor(Date.now() / 1000),
+      timemodified: Math.floor(Date.now() / 1000),
     });
 
     return HttpResponse.json({
@@ -459,9 +450,7 @@ let testQueryClient: QueryClient;
  */
 function createWrapper() {
   return function Wrapper({ children }: { children: ReactNode }) {
-    return (
-      <QueryClientProvider client={testQueryClient}>{children}</QueryClientProvider>
-    );
+    return React.createElement(QueryClientProvider, { client: testQueryClient }, children);
   };
 }
 
@@ -490,7 +479,7 @@ beforeEach(() => {
 
 describe('useSubmission Hook', () => {
   describe('Query Hook Basics', () => {
-    it('accepts workshopId and optional submissionId parameters', async () => {
+    it('accepts workshopid and optional submissionId parameters', async () => {
       const { result } = renderHook(() => useSubmission(100), {
         wrapper: createWrapper(),
       });
@@ -500,22 +489,22 @@ describe('useSubmission Hook', () => {
       expect(result.current.data).toBeDefined();
     });
 
-    it('fetches user\'s own submission when only workshopId is provided', async () => {
-      const workshopId = 100;
-      const { result } = renderHook(() => useSubmission(workshopId), {
+    it('fetches user\'s own submission when only workshopid is provided', async () => {
+      const workshopid = 100;
+      const { result } = renderHook(() => useSubmission(workshopid), {
         wrapper: createWrapper(),
       });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
       expect(result.current.data).toBeDefined();
-      expect(result.current.data?.workshopId).toBe(workshopId);
+      expect(result.current.data?.workshopid).toBe(workshopid);
     });
 
     it('fetches specific submission by ID when submissionId is provided', async () => {
-      const workshopId = 100;
+      const workshopid = 100;
       const submissionId = 42;
-      const { result } = renderHook(() => useSubmission(workshopId, submissionId), {
+      const { result } = renderHook(() => useSubmission(workshopid, submissionId), {
         wrapper: createWrapper(),
       });
 
@@ -535,18 +524,27 @@ describe('useSubmission Hook', () => {
       const submission = result.current.data;
       expect(submission).toBeDefined();
       expect(submission).toHaveProperty('id');
-      expect(submission).toHaveProperty('workshopId');
-      expect(submission).toHaveProperty('authorId');
+      expect(submission).toHaveProperty('workshopid');
+      expect(submission).toHaveProperty('authorid');
       expect(submission).toHaveProperty('title');
       expect(submission).toHaveProperty('content');
-      expect(submission).toHaveProperty('contentFormat');
+      expect(submission).toHaveProperty('contentformat');
       expect(submission).toHaveProperty('attachment');
-      expect(submission).toHaveProperty('grade');
-      expect(submission).toHaveProperty('gradeOver');
+      // grade and gradeover are optional in the interface, so they may not always be present
+      // When present, they should be the correct type
+      if ('grade' in submission!) {
+        expect(typeof submission!.grade === 'number' || submission!.grade === undefined).toBe(true);
+      }
+      if ('gradeover' in submission!) {
+        expect(typeof submission!.gradeover === 'number' || submission!.gradeover === undefined).toBe(true);
+      }
       expect(submission).toHaveProperty('published');
-      expect(submission).toHaveProperty('feedbackAuthor');
-      expect(submission).toHaveProperty('timeCreated');
-      expect(submission).toHaveProperty('timeModified');
+      // feedbackauthor is optional in the interface
+      if ('feedbackauthor' in submission!) {
+        expect(typeof submission!.feedbackauthor === 'string' || submission!.feedbackauthor === undefined).toBe(true);
+      }
+      expect(submission).toHaveProperty('timecreated');
+      expect(submission).toHaveProperty('timemodified');
     });
 
     it('handles enabled option to disable automatic fetching', async () => {
@@ -628,7 +626,7 @@ describe('useSubmission Hook', () => {
 describe('useCreateSubmission Mutation', () => {
   describe('Successful Creation', () => {
     it('creates a new submission via POST API call', async () => {
-      const workshopId = 100;
+      const workshopid = 100;
       const formData = createMockSubmissionFormData({
         title: 'My New Submission',
         content: '<p>My submission content.</p>',
@@ -639,18 +637,18 @@ describe('useCreateSubmission Mutation', () => {
       });
 
       await act(async () => {
-        result.current.mutate({ workshopId, data: formData });
+        result.current.mutate({ workshopId: workshopid, data: formData });
       });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
       expect(result.current.data).toBeDefined();
       expect(result.current.data?.title).toBe(formData.title);
-      expect(result.current.data?.workshopId).toBe(workshopId);
+      expect(result.current.data?.workshopid).toBe(workshopid);
     });
 
     it('handles file attachments with multipart form data', async () => {
-      const workshopId = 100;
+      const workshopid = 100;
       const mockFile = new File(['test content'], 'test-file.pdf', {
         type: 'application/pdf',
       });
@@ -670,7 +668,7 @@ describe('useCreateSubmission Mutation', () => {
       });
 
       await act(async () => {
-        result.current.mutate({ workshopId, data: formData });
+        result.current.mutate({ workshopId: workshopid, data: formData });
       });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -679,7 +677,7 @@ describe('useCreateSubmission Mutation', () => {
     });
 
     it('invalidates workshop queries on success', async () => {
-      const workshopId = 100;
+      const workshopid = 100;
       const formData = createMockSubmissionFormData();
       const invalidateQueriesSpy = vi.spyOn(testQueryClient, 'invalidateQueries');
 
@@ -688,7 +686,7 @@ describe('useCreateSubmission Mutation', () => {
       });
 
       await act(async () => {
-        result.current.mutate({ workshopId, data: formData });
+        result.current.mutate({ workshopId: workshopid, data: formData });
       });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -699,7 +697,7 @@ describe('useCreateSubmission Mutation', () => {
 
   describe('Loading States', () => {
     it('shows loading state during mutation', async () => {
-      const workshopId = 100;
+      const workshopid = 100;
       const formData = createMockSubmissionFormData();
 
       const { result } = renderHook(() => useCreateSubmission(), {
@@ -709,7 +707,7 @@ describe('useCreateSubmission Mutation', () => {
       let loadingObserved = false;
 
       act(() => {
-        result.current.mutate({ workshopId, data: formData });
+        result.current.mutate({ workshopId: workshopid, data: formData });
       });
 
       // Check loading state immediately after mutation call
@@ -726,7 +724,7 @@ describe('useCreateSubmission Mutation', () => {
 
   describe('Error Handling', () => {
     it('handles validation errors from API', async () => {
-      const workshopId = 997; // Triggers validation error
+      const workshopid = 997; // Triggers validation error
       const formData = createMockSubmissionFormData({ title: '' });
 
       const { result } = renderHook(() => useCreateSubmission(), {
@@ -734,7 +732,7 @@ describe('useCreateSubmission Mutation', () => {
       });
 
       await act(async () => {
-        result.current.mutate({ workshopId, data: formData });
+        result.current.mutate({ workshopId: workshopid, data: formData });
       });
 
       await waitFor(() => expect(result.current.isError).toBe(true));
@@ -743,7 +741,7 @@ describe('useCreateSubmission Mutation', () => {
     });
 
     it('handles phase errors when not in submission phase', async () => {
-      const workshopId = 996; // Triggers phase error
+      const workshopid = 996; // Triggers phase error
       const formData = createMockSubmissionFormData();
 
       const { result } = renderHook(() => useCreateSubmission(), {
@@ -751,7 +749,7 @@ describe('useCreateSubmission Mutation', () => {
       });
 
       await act(async () => {
-        result.current.mutate({ workshopId, data: formData });
+        result.current.mutate({ workshopId: workshopid, data: formData });
       });
 
       await waitFor(() => expect(result.current.isError).toBe(true));
@@ -760,7 +758,7 @@ describe('useCreateSubmission Mutation', () => {
     });
 
     it('handles already submitted errors', async () => {
-      const workshopId = 995; // Triggers already submitted error
+      const workshopid = 995; // Triggers already submitted error
       const formData = createMockSubmissionFormData();
 
       const { result } = renderHook(() => useCreateSubmission(), {
@@ -768,7 +766,7 @@ describe('useCreateSubmission Mutation', () => {
       });
 
       await act(async () => {
-        result.current.mutate({ workshopId, data: formData });
+        result.current.mutate({ workshopId: workshopid, data: formData });
       });
 
       await waitFor(() => expect(result.current.isError).toBe(true));
@@ -779,7 +777,7 @@ describe('useCreateSubmission Mutation', () => {
 
   describe('Callback Functions', () => {
     it('calls onSuccess callback when mutation succeeds', async () => {
-      const workshopId = 100;
+      const workshopid = 100;
       const formData = createMockSubmissionFormData();
       const onSuccessMock = vi.fn();
 
@@ -792,20 +790,21 @@ describe('useCreateSubmission Mutation', () => {
       );
 
       await act(async () => {
-        result.current.mutate({ workshopId, data: formData });
+        result.current.mutate({ workshopId: workshopid, data: formData });
       });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-      expect(onSuccessMock).toHaveBeenCalledWith(
-        expect.objectContaining({ workshopId }),
-        expect.objectContaining({ workshopId, data: formData }),
-        undefined
-      );
+      // React Query calls onSuccess with (data, variables, context, mutation)
+      // We only care that the first two arguments have the correct shape
+      expect(onSuccessMock).toHaveBeenCalled();
+      const [data, variables] = onSuccessMock.mock.calls[0];
+      expect(data).toMatchObject({ workshopid });
+      expect(variables).toMatchObject({ workshopId: workshopid, data: formData });
     });
 
     it('calls onError callback when mutation fails', async () => {
-      const workshopId = 997; // Triggers validation error
+      const workshopid = 997; // Triggers validation error
       const formData = createMockSubmissionFormData();
       const onErrorMock = vi.fn();
 
@@ -818,7 +817,7 @@ describe('useCreateSubmission Mutation', () => {
       );
 
       await act(async () => {
-        result.current.mutate({ workshopId, data: formData });
+        result.current.mutate({ workshopId: workshopid, data: formData });
       });
 
       await waitFor(() => expect(result.current.isError).toBe(true));
@@ -884,11 +883,11 @@ describe('useUpdateSubmission Mutation', () => {
   describe('Optimistic Updates', () => {
     it('performs optimistic update on submission modification', async () => {
       const submissionId = 1;
-      const workshopId = 100;
+      const workshopid = 100;
 
       // Pre-populate cache with submission
       testQueryClient.setQueryData(
-        [WORKSHOP_SUBMISSIONS_QUERY_KEY, workshopId, submissionId],
+        [WORKSHOP_SUBMISSIONS_QUERY_KEY, workshopid, submissionId],
         mockSubmission
       );
 
@@ -909,12 +908,12 @@ describe('useUpdateSubmission Mutation', () => {
 
     it('rolls back optimistic update on error', async () => {
       const submissionId = 999; // Not found
-      const workshopId = 100;
-      const originalSubmission = createMockSubmission({ id: submissionId, workshopId });
+      const workshopid = 100;
+      const originalSubmission = createMockSubmission({ id: submissionId, workshopid });
 
       // Pre-populate cache
       testQueryClient.setQueryData(
-        [WORKSHOP_SUBMISSIONS_QUERY_KEY, workshopId, submissionId],
+        [WORKSHOP_SUBMISSIONS_QUERY_KEY, workshopid, submissionId],
         originalSubmission
       );
 
@@ -1014,7 +1013,7 @@ describe('useUpdateSubmission Mutation', () => {
 describe('useDeleteSubmission Mutation', () => {
   describe('Successful Deletion', () => {
     it('deletes a submission via DELETE API call', async () => {
-      const workshopId = 100;
+      const workshopid = 100;
       const submissionId = 1;
 
       const { result } = renderHook(() => useDeleteSubmission(), {
@@ -1022,23 +1021,23 @@ describe('useDeleteSubmission Mutation', () => {
       });
 
       await act(async () => {
-        result.current.mutate({ workshopId, submissionId });
+        result.current.mutate({ workshopId: workshopid, submissionId });
       });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
     });
 
     it('removes submission from cache on success', async () => {
-      const workshopId = 100;
+      const workshopid = 100;
       const submissionId = 1;
 
       // Pre-populate cache
       testQueryClient.setQueryData(
-        [WORKSHOP_SUBMISSIONS_QUERY_KEY, workshopId, submissionId],
+        [WORKSHOP_SUBMISSIONS_QUERY_KEY, workshopid, submissionId],
         mockSubmission
       );
       testQueryClient.setQueryData(
-        [WORKSHOP_SUBMISSIONS_QUERY_KEY, workshopId, 'mine'],
+        [WORKSHOP_SUBMISSIONS_QUERY_KEY, workshopid, 'mine'],
         mockSubmission
       );
 
@@ -1047,7 +1046,7 @@ describe('useDeleteSubmission Mutation', () => {
       });
 
       await act(async () => {
-        result.current.mutate({ workshopId, submissionId });
+        result.current.mutate({ workshopId: workshopid, submissionId });
       });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -1056,12 +1055,12 @@ describe('useDeleteSubmission Mutation', () => {
 
   describe('Optimistic Deletion', () => {
     it('performs optimistic removal from cache', async () => {
-      const workshopId = 100;
+      const workshopid = 100;
       const submissionId = 1;
 
       // Pre-populate cache
       testQueryClient.setQueryData(
-        [WORKSHOP_SUBMISSIONS_QUERY_KEY, workshopId, submissionId],
+        [WORKSHOP_SUBMISSIONS_QUERY_KEY, workshopid, submissionId],
         mockSubmission
       );
 
@@ -1070,23 +1069,23 @@ describe('useDeleteSubmission Mutation', () => {
       });
 
       await act(async () => {
-        result.current.mutate({ workshopId, submissionId });
+        result.current.mutate({ workshopId: workshopid, submissionId });
       });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
     });
 
     it('rolls back on deletion error', async () => {
-      const workshopId = 100;
+      const workshopid = 100;
       const submissionId = 999; // Not found
       const originalSubmission = createMockSubmission({
         id: submissionId,
-        workshopId,
+        workshopid,
       });
 
       // Pre-populate cache
       testQueryClient.setQueryData(
-        [WORKSHOP_SUBMISSIONS_QUERY_KEY, workshopId, submissionId],
+        [WORKSHOP_SUBMISSIONS_QUERY_KEY, workshopid, submissionId],
         originalSubmission
       );
 
@@ -1095,7 +1094,7 @@ describe('useDeleteSubmission Mutation', () => {
       });
 
       await act(async () => {
-        result.current.mutate({ workshopId, submissionId });
+        result.current.mutate({ workshopId: workshopid, submissionId });
       });
 
       await waitFor(() => expect(result.current.isError).toBe(true));
@@ -1106,7 +1105,7 @@ describe('useDeleteSubmission Mutation', () => {
 
   describe('Error Handling', () => {
     it('handles 404 not found error', async () => {
-      const workshopId = 100;
+      const workshopid = 100;
       const submissionId = 999;
 
       const { result } = renderHook(() => useDeleteSubmission(), {
@@ -1114,7 +1113,7 @@ describe('useDeleteSubmission Mutation', () => {
       });
 
       await act(async () => {
-        result.current.mutate({ workshopId, submissionId });
+        result.current.mutate({ workshopId: workshopid, submissionId });
       });
 
       await waitFor(() => expect(result.current.isError).toBe(true));
@@ -1123,7 +1122,7 @@ describe('useDeleteSubmission Mutation', () => {
     });
 
     it('handles 403 permission denied error', async () => {
-      const workshopId = 100;
+      const workshopid = 100;
       const submissionId = 998;
 
       const { result } = renderHook(() => useDeleteSubmission(), {
@@ -1131,7 +1130,7 @@ describe('useDeleteSubmission Mutation', () => {
       });
 
       await act(async () => {
-        result.current.mutate({ workshopId, submissionId });
+        result.current.mutate({ workshopId: workshopid, submissionId });
       });
 
       await waitFor(() => expect(result.current.isError).toBe(true));
@@ -1140,7 +1139,7 @@ describe('useDeleteSubmission Mutation', () => {
     });
 
     it('handles error when submission has assessments', async () => {
-      const workshopId = 100;
+      const workshopid = 100;
       const submissionId = 997;
 
       const { result } = renderHook(() => useDeleteSubmission(), {
@@ -1148,7 +1147,7 @@ describe('useDeleteSubmission Mutation', () => {
       });
 
       await act(async () => {
-        result.current.mutate({ workshopId, submissionId });
+        result.current.mutate({ workshopId: workshopid, submissionId });
       });
 
       await waitFor(() => expect(result.current.isError).toBe(true));
@@ -1159,7 +1158,7 @@ describe('useDeleteSubmission Mutation', () => {
 
   describe('Query Invalidation', () => {
     it('invalidates workshop and submission queries on success', async () => {
-      const workshopId = 100;
+      const workshopid = 100;
       const submissionId = 1;
       const invalidateQueriesSpy = vi.spyOn(testQueryClient, 'invalidateQueries');
 
@@ -1168,7 +1167,7 @@ describe('useDeleteSubmission Mutation', () => {
       });
 
       await act(async () => {
-        result.current.mutate({ workshopId, submissionId });
+        result.current.mutate({ workshopId: workshopid, submissionId });
       });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -1181,7 +1180,7 @@ describe('useDeleteSubmission Mutation', () => {
 describe('usePublishSubmission Mutation', () => {
   describe('Teacher-Only Operation', () => {
     it('publishes a submission via POST API call (teachers only)', async () => {
-      const workshopId = 100;
+      const workshopid = 100;
       const submissionId = 1;
 
       const { result } = renderHook(() => usePublishSubmission(), {
@@ -1189,7 +1188,7 @@ describe('usePublishSubmission Mutation', () => {
       });
 
       await act(async () => {
-        result.current.mutate({ workshopId, submissionId, publish: true });
+        result.current.mutate({ workshopId: workshopid, submissionId, publish: true });
       });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -1199,7 +1198,7 @@ describe('usePublishSubmission Mutation', () => {
     });
 
     it('unpublishes a submission', async () => {
-      const workshopId = 100;
+      const workshopid = 100;
       const submissionId = 1;
 
       const { result } = renderHook(() => usePublishSubmission(), {
@@ -1207,7 +1206,7 @@ describe('usePublishSubmission Mutation', () => {
       });
 
       await act(async () => {
-        result.current.mutate({ workshopId, submissionId, publish: false });
+        result.current.mutate({ workshopId: workshopid, submissionId, publish: false });
       });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -1217,7 +1216,7 @@ describe('usePublishSubmission Mutation', () => {
     });
 
     it('handles permission denied for non-teachers', async () => {
-      const workshopId = 100;
+      const workshopid = 100;
       const submissionId = 998; // Triggers permission denied
 
       const { result } = renderHook(() => usePublishSubmission(), {
@@ -1225,7 +1224,7 @@ describe('usePublishSubmission Mutation', () => {
       });
 
       await act(async () => {
-        result.current.mutate({ workshopId, submissionId, publish: true });
+        result.current.mutate({ workshopId: workshopid, submissionId, publish: true });
       });
 
       await waitFor(() => expect(result.current.isError).toBe(true));
@@ -1236,17 +1235,17 @@ describe('usePublishSubmission Mutation', () => {
 
   describe('Optimistic Updates', () => {
     it('performs optimistic update changing published flag', async () => {
-      const workshopId = 100;
+      const workshopid = 100;
       const submissionId = 1;
       const originalSubmission = createMockSubmission({
         id: submissionId,
-        workshopId,
+        workshopid,
         published: false,
       });
 
       // Pre-populate cache
       testQueryClient.setQueryData(
-        [WORKSHOP_SUBMISSIONS_QUERY_KEY, workshopId, submissionId],
+        [WORKSHOP_SUBMISSIONS_QUERY_KEY, workshopid, submissionId],
         originalSubmission
       );
 
@@ -1255,7 +1254,7 @@ describe('usePublishSubmission Mutation', () => {
       });
 
       await act(async () => {
-        result.current.mutate({ workshopId, submissionId, publish: true });
+        result.current.mutate({ workshopId: workshopid, submissionId, publish: true });
       });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -1264,17 +1263,17 @@ describe('usePublishSubmission Mutation', () => {
     });
 
     it('rolls back optimistic update on error', async () => {
-      const workshopId = 100;
+      const workshopid = 100;
       const submissionId = 999; // Not found
       const originalSubmission = createMockSubmission({
         id: submissionId,
-        workshopId,
+        workshopid,
         published: false,
       });
 
       // Pre-populate cache
       testQueryClient.setQueryData(
-        [WORKSHOP_SUBMISSIONS_QUERY_KEY, workshopId, submissionId],
+        [WORKSHOP_SUBMISSIONS_QUERY_KEY, workshopid, submissionId],
         originalSubmission
       );
 
@@ -1283,7 +1282,7 @@ describe('usePublishSubmission Mutation', () => {
       });
 
       await act(async () => {
-        result.current.mutate({ workshopId, submissionId, publish: true });
+        result.current.mutate({ workshopId: workshopid, submissionId, publish: true });
       });
 
       await waitFor(() => expect(result.current.isError).toBe(true));
@@ -1294,7 +1293,7 @@ describe('usePublishSubmission Mutation', () => {
 
   describe('Error Handling', () => {
     it('handles 404 not found error', async () => {
-      const workshopId = 100;
+      const workshopid = 100;
       const submissionId = 999;
 
       const { result } = renderHook(() => usePublishSubmission(), {
@@ -1302,7 +1301,7 @@ describe('usePublishSubmission Mutation', () => {
       });
 
       await act(async () => {
-        result.current.mutate({ workshopId, submissionId, publish: true });
+        result.current.mutate({ workshopId: workshopid, submissionId, publish: true });
       });
 
       await waitFor(() => expect(result.current.isError).toBe(true));
@@ -1311,7 +1310,7 @@ describe('usePublishSubmission Mutation', () => {
     });
 
     it('handles phase error when publishing not allowed', async () => {
-      const workshopId = 100;
+      const workshopid = 100;
       const submissionId = 997; // Phase error
 
       const { result } = renderHook(() => usePublishSubmission(), {
@@ -1319,7 +1318,7 @@ describe('usePublishSubmission Mutation', () => {
       });
 
       await act(async () => {
-        result.current.mutate({ workshopId, submissionId, publish: true });
+        result.current.mutate({ workshopId: workshopid, submissionId, publish: true });
       });
 
       await waitFor(() => expect(result.current.isError).toBe(true));
@@ -1330,7 +1329,7 @@ describe('usePublishSubmission Mutation', () => {
 
   describe('Query Invalidation', () => {
     it('invalidates queries after successful publication', async () => {
-      const workshopId = 100;
+      const workshopid = 100;
       const submissionId = 1;
       const invalidateQueriesSpy = vi.spyOn(testQueryClient, 'invalidateQueries');
 
@@ -1339,7 +1338,7 @@ describe('usePublishSubmission Mutation', () => {
       });
 
       await act(async () => {
-        result.current.mutate({ workshopId, submissionId, publish: true });
+        result.current.mutate({ workshopId: workshopid, submissionId, publish: true });
       });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -1350,7 +1349,7 @@ describe('usePublishSubmission Mutation', () => {
 
   describe('Loading States', () => {
     it('shows loading state during publish operation', async () => {
-      const workshopId = 100;
+      const workshopid = 100;
       const submissionId = 1;
 
       const { result } = renderHook(() => usePublishSubmission(), {
@@ -1358,7 +1357,7 @@ describe('usePublishSubmission Mutation', () => {
       });
 
       act(() => {
-        result.current.mutate({ workshopId, submissionId, publish: true });
+        result.current.mutate({ workshopId: workshopid, submissionId, publish: true });
       });
 
       // Mutation should complete
@@ -1372,9 +1371,9 @@ describe('usePublishSubmission Mutation', () => {
 describe('useWorkshopSubmissions Hook', () => {
   describe('Fetching All Submissions', () => {
     it('fetches all submissions for a workshop', async () => {
-      const workshopId = 100;
+      const workshopid = 100;
 
-      const { result } = renderHook(() => useWorkshopSubmissions(workshopId), {
+      const { result } = renderHook(() => useWorkshopSubmissions(workshopid), {
         wrapper: createWrapper(),
       });
 
@@ -1386,9 +1385,9 @@ describe('useWorkshopSubmissions Hook', () => {
     });
 
     it('returns submissions with correct data structure', async () => {
-      const workshopId = 100;
+      const workshopid = 100;
 
-      const { result } = renderHook(() => useWorkshopSubmissions(workshopId), {
+      const { result } = renderHook(() => useWorkshopSubmissions(workshopid), {
         wrapper: createWrapper(),
       });
 
@@ -1400,17 +1399,17 @@ describe('useWorkshopSubmissions Hook', () => {
 
       const submission = submissions![0];
       expect(submission).toHaveProperty('id');
-      expect(submission).toHaveProperty('workshopId');
+      expect(submission).toHaveProperty('workshopid');
       expect(submission).toHaveProperty('title');
-      expect(submission).toHaveProperty('authorId');
+      expect(submission).toHaveProperty('authorid');
     });
   });
 
   describe('Error Handling', () => {
     it('handles permission denied for non-teachers', async () => {
-      const workshopId = 998; // Triggers permission denied
+      const workshopid = 998; // Triggers permission denied
 
-      const { result } = renderHook(() => useWorkshopSubmissions(workshopId), {
+      const { result } = renderHook(() => useWorkshopSubmissions(workshopid), {
         wrapper: createWrapper(),
       });
 
@@ -1466,12 +1465,12 @@ describe('TypeScript Type Validation', () => {
       const id: number = submission.id;
       const title: string = submission.title;
       const published: boolean = submission.published;
-      const grade: number | null = submission.grade;
+      const grade: number | undefined = submission.grade;
 
       expect(typeof id).toBe('number');
       expect(typeof title).toBe('string');
       expect(typeof published).toBe('boolean');
-      expect(grade === null || typeof grade === 'number').toBe(true);
+      expect(grade === undefined || typeof grade === 'number').toBe(true);
     }
   });
 });
@@ -1572,7 +1571,7 @@ describe('Mutation Function Types', () => {
 describe('Permission Checks', () => {
   describe('canSubmit Permission', () => {
     it('allows creation when user has submit permission', async () => {
-      const workshopId = 100;
+      const workshopid = 100;
       const formData = createMockSubmissionFormData();
 
       const { result } = renderHook(() => useCreateSubmission(), {
@@ -1580,7 +1579,7 @@ describe('Permission Checks', () => {
       });
 
       await act(async () => {
-        result.current.mutate({ workshopId, data: formData });
+        result.current.mutate({ workshopId: workshopid, data: formData });
       });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -1630,7 +1629,7 @@ describe('Permission Checks', () => {
 
   describe('Publish Permission', () => {
     it('restricts publish to teachers only', async () => {
-      const workshopId = 100;
+      const workshopid = 100;
       const submissionId = 998; // Triggers permission denied
 
       const { result } = renderHook(() => usePublishSubmission(), {
@@ -1638,7 +1637,7 @@ describe('Permission Checks', () => {
       });
 
       await act(async () => {
-        result.current.mutate({ workshopId, submissionId, publish: true });
+        result.current.mutate({ workshopId: workshopid, submissionId, publish: true });
       });
 
       await waitFor(() => expect(result.current.isError).toBe(true));
@@ -1651,7 +1650,7 @@ describe('Permission Checks', () => {
 
 describe('File Upload Data Formatting', () => {
   it('formats file upload data as FormData for multipart requests', async () => {
-    const workshopId = 100;
+    const workshopid = 100;
     const mockFile = new File(['test'], 'test.pdf', { type: 'application/pdf' });
 
     const formData: SubmissionFormData = {
@@ -1673,7 +1672,7 @@ describe('File Upload Data Formatting', () => {
     });
 
     await act(async () => {
-      result.current.mutate({ workshopId, data: formData });
+      result.current.mutate({ workshopId: workshopid, data: formData });
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -1683,7 +1682,7 @@ describe('File Upload Data Formatting', () => {
   });
 
   it('sends JSON for submissions without files', async () => {
-    const workshopId = 100;
+    const workshopid = 100;
     const formData: SubmissionFormData = {
       title: 'Text Only Submission',
       content: 'Just text content',
@@ -1695,7 +1694,7 @@ describe('File Upload Data Formatting', () => {
     });
 
     await act(async () => {
-      result.current.mutate({ workshopId, data: formData });
+      result.current.mutate({ workshopId: workshopid, data: formData });
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -1704,7 +1703,7 @@ describe('File Upload Data Formatting', () => {
   });
 
   it('handles multiple file attachments', async () => {
-    const workshopId = 100;
+    const workshopid = 100;
     const file1 = new File(['content1'], 'doc1.pdf', { type: 'application/pdf' });
     const file2 = new File(['content2'], 'doc2.pdf', { type: 'application/pdf' });
 
@@ -1733,7 +1732,7 @@ describe('File Upload Data Formatting', () => {
     });
 
     await act(async () => {
-      result.current.mutate({ workshopId, data: formData });
+      result.current.mutate({ workshopId: workshopid, data: formData });
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -1748,11 +1747,11 @@ describe('Query Key Constants', () => {
   });
 
   it('uses correct query key structure for submissions', async () => {
-    const workshopId = 100;
+    const workshopid = 100;
     const submissionId = 42;
 
     // Verify query key format by checking cache
-    const { result } = renderHook(() => useSubmission(workshopId, submissionId), {
+    const { result } = renderHook(() => useSubmission(workshopid, submissionId), {
       wrapper: createWrapper(),
     });
 
@@ -1761,7 +1760,7 @@ describe('Query Key Constants', () => {
     // Check that data is cached with correct key
     const cachedData = testQueryClient.getQueryData([
       WORKSHOP_SUBMISSIONS_QUERY_KEY,
-      workshopId,
+      workshopid,
       submissionId,
     ]);
 
@@ -1769,9 +1768,9 @@ describe('Query Key Constants', () => {
   });
 
   it('uses "mine" suffix for user\'s own submission query key', async () => {
-    const workshopId = 100;
+    const workshopid = 100;
 
-    const { result } = renderHook(() => useSubmission(workshopId), {
+    const { result } = renderHook(() => useSubmission(workshopid), {
       wrapper: createWrapper(),
     });
 
@@ -1780,7 +1779,7 @@ describe('Query Key Constants', () => {
     // Check cache with 'mine' key
     const cachedData = testQueryClient.getQueryData([
       WORKSHOP_SUBMISSIONS_QUERY_KEY,
-      workshopId,
+      workshopid,
       'mine',
     ]);
 
