@@ -63,10 +63,25 @@ interface ApiResponse<T> {
 }
 
 /**
+ * Statistics for teacher reports
+ * Aggregated data for lesson statistics display
+ */
+export interface LessonStatistics {
+  /** Total number of attempts across all users */
+  totalAttempts: number;
+  /** Number of completed attempts */
+  completedAttempts: number;
+  /** Average score across all attempts */
+  averageScore?: number;
+  /** Average time spent in seconds */
+  averageTime?: number;
+}
+
+/**
  * Lesson details response including computed fields
  * Extends the base Lesson type with additional computed data
  */
-interface LessonDetailsResponse extends Lesson {
+export interface LessonDetailsResponse extends Lesson {
   /** Course module ID for this lesson */
   cmid?: number;
   /** First page ID in the lesson (prevpageid=0) */
@@ -77,6 +92,22 @@ interface LessonDetailsResponse extends Lesson {
   canmanage?: boolean;
   /** Whether the lesson is accessible at current time */
   isaccessible?: boolean;
+  /** Whether the user has verified the password for this session */
+  passwordVerified?: boolean;
+  /** Whether the dependency lesson has been completed */
+  dependencySatisfied?: boolean;
+  /** Name of the dependency lesson */
+  dependencyName?: string;
+  /** Whether there are offline attempts to sync */
+  hasOfflineAttempts?: boolean;
+  /** Teacher-only statistics (only returned for users with viewreports capability) */
+  statistics?: LessonStatistics;
+  /** Grade method for this lesson (highest, average, first, last) */
+  gradeMethod?: string;
+  /** Passing grade threshold (percentage or absolute depending on grade type) */
+  passinggrade?: number;
+  /** Activity name for display purposes */
+  activityname?: string;
 }
 
 /**

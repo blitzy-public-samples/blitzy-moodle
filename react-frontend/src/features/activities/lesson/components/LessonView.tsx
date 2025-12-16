@@ -31,7 +31,6 @@ import {
   Box,
   Typography,
   Button,
-  TextField,
   Divider,
   Chip,
   Stack,
@@ -53,26 +52,21 @@ import {
   BarChart as StatsIcon,
   Info as InfoIcon,
 } from '@mui/icons-material';
-import { format, formatDuration, intervalToDuration } from 'date-fns';
-import { useForm } from 'react-hook-form';
+import { format, intervalToDuration } from 'date-fns';
+import { useForm, type Control, type FieldValues } from 'react-hook-form';
 
 // Internal imports from depends_on_files
 import type { LessonAttempt } from '../types/lesson.types';
-import { ProgressTracker } from './ProgressTracker';
+import ProgressTracker from './ProgressTracker';
 import { useStartLessonAttempt } from '../api/lessonApi';
-import { useLesson, useLessonAttempts } from '../hooks/useLesson';
+import { useLesson, useLessonAttempts, useLessonProgress } from '../hooks/useLesson';
 import { usePermissions } from '../../../auth/hooks/usePermissions';
-import { Alert } from '../../../../components/feedback/Alert';
-import { LoadingSpinner } from '../../../../components/feedback/LoadingSpinner';
+import Alert from '../../../../components/feedback/Alert';
+import LoadingSpinner from '../../../../components/feedback/LoadingSpinner';
 import { Modal } from '../../../../components/feedback/Modal';
 import { DataTable, type DataTableColumn } from '../../../../components/data-display/DataTable';
-import { Card } from '../../../../components/data-display/Card';
-import { FormInput } from '../../../../components/forms/FormInput';
-
-/**
- * Grade method type constants matching Moodle's LESSON_GRADE_* constants
- */
-type GradeMethod = 'highest' | 'average' | 'first' | 'last';
+import Card from '../../../../components/data-display/Card';
+import FormInput from '../../../../components/forms/FormInput';
 
 /**
  * Password form interface for type-safe form handling
@@ -162,7 +156,7 @@ export default function LessonView({
   const [isVerifyingPassword, setIsVerifyingPassword] = useState(false);
   
   // Permission hooks
-  const { hasCapability, canEditCourse } = usePermissions();
+  const { hasCapability } = usePermissions();
   
   // Data fetching hooks
   const {
@@ -179,6 +173,9 @@ export default function LessonView({
     refetch: refetchAttempts,
   } = useLessonAttempts(lessonId);
   
+  // Progress tracking hook
+  const { data: progressData } = useLessonProgress(lessonId);
+  
   // Mutation hooks
   const startLessonMutation = useStartLessonAttempt();
   
@@ -190,9 +187,13 @@ export default function LessonView({
   });
   
   // Extract lesson and attempts from response data
-  const lesson = lessonData?.data;
-  const attempts = attemptsData?.data?.attempts || [];
-  const progress = attemptsData?.data?.progress;
+  // Note: hooks already return unwrapped data (LessonDetailsResponse and LessonAttemptsResponse)
+  const lesson = lessonData;
+  const attempts: LessonAttempt[] = attemptsData?.attempts || [];
+  
+  // Extract progress data
+  // progressData is LessonProgressResponse which extends LessonProgress
+  const progress = progressData;
   
   // Calculate context ID for permission checks
   const contextId = lesson?.cmid || 0;
@@ -237,7 +238,7 @@ export default function LessonView({
     }
     
     // Password restriction
-    if (lesson.usepassword && !lessonData?.data?.passwordVerified) {
+    if (lesson.usepassword && !lessonData?.passwordVerified) {
       restrictionsList.push({
         type: 'password',
         message: 'This lesson requires a password to access',
@@ -246,10 +247,10 @@ export default function LessonView({
     }
     
     // Dependency restrictions
-    if (lesson.dependency && !lessonData?.data?.dependencySatisfied) {
+    if (lesson.dependency && !lessonData?.dependencySatisfied) {
       restrictionsList.push({
         type: 'dependency',
-        message: `You must complete "${lesson.dependencyName || 'the prerequisite lesson'}" first`,
+        message: `You must complete "${lessonData?.dependencyName || 'the prerequisite lesson'}" first`,
         accessible: false,
       });
     }
@@ -288,7 +289,7 @@ export default function LessonView({
    * Get completed attempts for display
    */
   const completedAttempts = useMemo(() => {
-    return attempts.filter((a) => a.completed).sort((a, b) => b.timecreated - a.timecreated);
+    return attempts.filter((a) => a.completed).sort((a, b) => (b.timecreated ?? 0) - (a.timecreated ?? 0));
   }, [attempts]);
 
   /**
@@ -335,7 +336,7 @@ export default function LessonView({
    */
   const handleStartLesson = useCallback(async () => {
     // Check for password requirement
-    if (lesson?.usepassword && !lessonData?.data?.passwordVerified) {
+    if (lesson?.usepassword && !lessonData?.passwordVerified) {
       setPasswordModalOpen(true);
       return;
     }
@@ -343,13 +344,13 @@ export default function LessonView({
     try {
       const result = await startLessonMutation.mutateAsync({
         lessonId,
-        startPage: lesson?.firstpageid,
       });
       
-      if (result.data?.attemptId && result.data?.firstPageId) {
-        onLessonStart?.(result.data.attemptId);
+      if (result?.firstPageId) {
+        // Use retryNumber as attemptId for the callback
+        onLessonStart?.(result.retryNumber);
         
-        const path = `/mod/lesson/view/${lessonId}/page/${result.data.firstPageId}`;
+        const path = `/mod/lesson/view/${lessonId}/page/${result.firstPageId}`;
         if (onNavigate) {
           onNavigate(path);
         } else {
@@ -384,14 +385,13 @@ export default function LessonView({
     try {
       const result = await startLessonMutation.mutateAsync({
         lessonId,
-        startPage: lesson?.firstpageid,
-        retry: (completedAttempts.length || 0) + 1,
       });
       
-      if (result.data?.attemptId && result.data?.firstPageId) {
-        onLessonStart?.(result.data.attemptId);
+      if (result?.firstPageId) {
+        // Use retryNumber as attemptId for the callback
+        onLessonStart?.(result.retryNumber);
         
-        const path = `/mod/lesson/view/${lessonId}/page/${result.data.firstPageId}`;
+        const path = `/mod/lesson/view/${lessonId}/page/${result.firstPageId}`;
         if (onNavigate) {
           onNavigate(path);
         } else {
@@ -401,7 +401,7 @@ export default function LessonView({
     } catch (error) {
       console.error('Failed to start lesson retake:', error);
     }
-  }, [lessonId, lesson, completedAttempts, startLessonMutation, onLessonStart, onNavigate, navigate]);
+  }, [lessonId, startLessonMutation, onLessonStart, onNavigate, navigate]);
 
   /**
    * Handle viewing a previous attempt review
@@ -637,7 +637,7 @@ export default function LessonView({
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', p: 3 }}>
       {/* Offline sync warning */}
-      {lessonData?.data?.hasOfflineAttempts && (
+      {lessonData?.hasOfflineAttempts && (
         <Alert
           severity="warning"
           title="Offline Attempts Detected"
@@ -757,11 +757,16 @@ export default function LessonView({
           )}
 
           {/* Review last attempt button */}
-          {completedAttempts.length > 0 && (
+          {completedAttempts[0] && (
             <Button
               variant="outlined"
               startIcon={<ReviewIcon />}
-              onClick={() => handleReviewAttempt(completedAttempts[0].id)}
+              onClick={() => {
+                const lastAttempt = completedAttempts[0];
+                if (lastAttempt) {
+                  handleReviewAttempt(lastAttempt.id);
+                }
+              }}
               size="large"
             >
               Review Last Attempt
@@ -1029,7 +1034,7 @@ export default function LessonView({
       )}
 
       {/* Teacher Statistics Section */}
-      {canViewReports && lessonData?.data?.statistics && (
+      {canViewReports && lessonData?.statistics && (
         <Card title="Lesson Statistics" elevation={1} sx={{ mb: 3 }}>
           <Box
             sx={{
@@ -1043,7 +1048,7 @@ export default function LessonView({
                 Total Attempts
               </Typography>
               <Typography variant="h5" fontWeight="medium">
-                {lessonData.data.statistics.totalAttempts || 0}
+                {lessonData.statistics.totalAttempts || 0}
               </Typography>
             </Box>
             <Box>
@@ -1051,7 +1056,7 @@ export default function LessonView({
                 Completed Attempts
               </Typography>
               <Typography variant="h5" fontWeight="medium">
-                {lessonData.data.statistics.completedAttempts || 0}
+                {lessonData.statistics.completedAttempts || 0}
               </Typography>
             </Box>
             <Box>
@@ -1059,7 +1064,7 @@ export default function LessonView({
                 Average Score
               </Typography>
               <Typography variant="h5" fontWeight="medium">
-                {lessonData.data.statistics.averageScore?.toFixed(1) || '—'}
+                {lessonData.statistics.averageScore?.toFixed(1) || '—'}
               </Typography>
             </Box>
             <Box>
@@ -1067,8 +1072,8 @@ export default function LessonView({
                 Average Time
               </Typography>
               <Typography variant="h5" fontWeight="medium">
-                {lessonData.data.statistics.averageTime
-                  ? formatTimeFromSeconds(lessonData.data.statistics.averageTime)
+                {lessonData.statistics.averageTime
+                  ? formatTimeFromSeconds(lessonData.statistics.averageTime)
                   : '—'}
               </Typography>
             </Box>
@@ -1125,7 +1130,7 @@ export default function LessonView({
               name="password"
               label="Password"
               type="password"
-              control={control}
+              control={control as unknown as Control<FieldValues>}
               required
               autoFocus
               fullWidth
