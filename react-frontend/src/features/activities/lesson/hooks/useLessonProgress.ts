@@ -284,17 +284,27 @@ export function useLessonProgress(
   // Track if component is mounted
   const isMountedRef = useRef<boolean>(true);
 
+  // Track if initial state has been set (to prevent overwriting progress)
+  const hasInitializedRef = useRef<boolean>(false);
+  
+  // Track if user has navigated away from initial page (to prevent resetting on data refresh)
+  const hasNavigatedRef = useRef<boolean>(false);
+  const hasTimerStartedRef = useRef<boolean>(false);
+
   // ============================================================================
   // Initialize Progress State from Lesson Data
   // ============================================================================
   useEffect(() => {
-    if (lessonData && !isLessonLoading) {
+    // Only initialize once AND only if user hasn't navigated or started timer yet
+    // This prevents overwriting progress after user has interacted with the lesson
+    if (lessonData && !isLessonLoading && !hasInitializedRef.current && !hasNavigatedRef.current && !hasTimerStartedRef.current) {
+      hasInitializedRef.current = true;
       const lesson = lessonData;
 
-      // Initialize from lesson data or provided initialPageId
+      // Initialize timer-related state and currentPageId from initialPageId
       setProgressState((prev) => ({
         ...prev,
-        // Use initialPageId if provided, otherwise try to get last page seen
+        // Use initialPageId if provided, otherwise keep current
         currentPageId: initialPageId ?? prev.currentPageId,
         // Initialize timer state from lesson settings
         timeRemaining: lesson.timelimit ? lesson.timelimit : null,
@@ -393,7 +403,7 @@ export function useLessonProgress(
   >({
     mutationFn: async ({ pageId, answerData }) => {
       const response = await apiClient.post<PageResponseApiResult>(
-        `/api/v1/lesson/${lessonId}/pages/${pageId}/response`,
+        `/lesson/${lessonId}/pages/${pageId}/response`,
         {
           pageid: answerData.pageid,
           answerid: answerData.answerid,
@@ -407,6 +417,9 @@ export function useLessonProgress(
       }
 
       const result = response.data.data;
+
+      // Mark that user has navigated (to prevent init effect from resetting)
+      hasNavigatedRef.current = true;
 
       // Update progress state with response data
       setProgressState((prev) => ({
@@ -448,7 +461,7 @@ export function useLessonProgress(
   const startTimerMutation = useMutation<void, Error, void>({
     mutationFn: async () => {
       const response = await apiClient.post<TimerApiResponse>(
-        `/api/v1/lesson/${lessonId}/timer/start`
+        `/lesson/${lessonId}/timer/start`
       );
 
       if (!response.data.success) {
@@ -465,6 +478,8 @@ export function useLessonProgress(
       const elapsed = now - starttime;
       const remaining = Math.max(0, lessontime - elapsed);
 
+      // Mark timer as explicitly started to prevent init effect from overwriting
+      hasTimerStartedRef.current = true;
       setProgressState((prev) => ({
         ...prev,
         timeRemaining: remaining,
@@ -482,7 +497,7 @@ export function useLessonProgress(
   const stopTimerMutation = useMutation<void, Error, void>({
     mutationFn: async () => {
       const response = await apiClient.post<{ success: boolean }>(
-        `/api/v1/lesson/${lessonId}/timer/stop`
+        `/lesson/${lessonId}/timer/stop`
       );
 
       if (!response.data.success) {
@@ -514,7 +529,7 @@ export function useLessonProgress(
       const response = await apiClient.post<{
         success: boolean;
         data: { grade: number | null };
-      }>(`/api/v1/lesson/${lessonId}/timer/expired`);
+      }>(`/lesson/${lessonId}/timer/expired`);
 
       if (!response.data.success) {
         throw new Error('Failed to handle timer expiration');

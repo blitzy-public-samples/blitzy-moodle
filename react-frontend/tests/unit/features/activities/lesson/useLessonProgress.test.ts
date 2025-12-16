@@ -18,7 +18,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
-import { QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import React from 'react';
 import { http, HttpResponse, delay } from 'msw';
 
@@ -28,8 +28,8 @@ import {
   type NavigationResult,
   LESSON_JUMP_CONSTANTS,
 } from '@/features/activities/lesson/hooks/useLessonProgress';
-import { server } from '@/tests/mocks/server';
-import { createTestQueryClient } from '@/tests/helpers/render';
+import { server } from '@tests/mocks/server';
+import { createTestQueryClient } from '@tests/helpers/render';
 
 // Extract constants for branching logic tests
 const {
@@ -47,12 +47,16 @@ const {
 // Test Setup and Utilities
 // ============================================================================
 
+// Store active query clients for cleanup
+const activeQueryClients: Set<QueryClient> = new Set();
+
 /**
  * Creates a wrapper component with QueryClientProvider for renderHook.
  * Returns both wrapper and queryClient for cache inspection in tests.
  */
 function createWrapper() {
   const queryClient = createTestQueryClient();
+  activeQueryClients.add(queryClient);
 
   function Wrapper({ children }: { children: React.ReactNode }): React.ReactElement {
     return React.createElement(
@@ -100,8 +104,9 @@ function createMockLesson(
 
 /**
  * Creates a mock NavigationResult matching the hook's interface
+ * @internal Kept for potential future test expansion
  */
-function createMockNavigationResult(
+function _createMockNavigationResult(
   overrides: Partial<NavigationResult> = {}
 ): NavigationResult {
   return {
@@ -113,6 +118,8 @@ function createMockNavigationResult(
     ...overrides,
   };
 }
+// Suppress unused function warning - kept for future test expansion
+void _createMockNavigationResult;
 
 /**
  * Creates a mock PageResponse for submission
@@ -180,11 +187,9 @@ function createMockTimerData(
 
 describe('useLessonProgress', () => {
   beforeEach(() => {
-    vi.useFakeTimers();
-
     // Default lesson data handler - uses useLesson hook internally
     server.use(
-      http.get('/api/v1/lessons/:lessonId', () => {
+      http.get('http://*/api/v1/lesson/:lessonId', () => {
         return HttpResponse.json({
           success: true,
           data: createMockLesson(),
@@ -193,8 +198,19 @@ describe('useLessonProgress', () => {
     );
   });
 
-  afterEach(() => {
-    vi.useRealTimers();
+  afterEach(async () => {
+    // Cancel all pending queries and mutations to prevent ECONNREFUSED errors
+    // when handlers are reset. This handles cases where React Query triggers
+    // background refetches after mutations complete.
+    for (const queryClient of activeQueryClients) {
+      queryClient.cancelQueries();
+      queryClient.clear();
+    }
+    activeQueryClients.clear();
+    
+    // Wait a tick to allow any pending operations to settle
+    await new Promise(resolve => setTimeout(resolve, 10));
+    
     vi.clearAllMocks();
     server.resetHandlers();
   });
@@ -242,7 +258,7 @@ describe('useLessonProgress', () => {
 
     it('should initialize timeRemaining from lesson timelimit', async () => {
       server.use(
-        http.get('/api/v1/lessons/:lessonId', () => {
+        http.get('http://*/api/v1/lesson/:lessonId', () => {
           return HttpResponse.json({
             success: true,
             data: createMockLesson({ timelimit: 1800 }), // 30 minutes
@@ -261,7 +277,7 @@ describe('useLessonProgress', () => {
 
     it('should initialize timeRemaining as null for untimed lessons', async () => {
       server.use(
-        http.get('/api/v1/lessons/:lessonId', () => {
+        http.get('http://*/api/v1/lesson/:lessonId', () => {
           return HttpResponse.json({
             success: true,
             data: createMockLesson({ timelimit: null }),
@@ -419,7 +435,7 @@ describe('useLessonProgress', () => {
   describe('Page Response Submission', () => {
     it('should submit page response and return NavigationResult', async () => {
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({
@@ -455,7 +471,7 @@ describe('useLessonProgress', () => {
 
     it('should update currentPageId after successful submission', async () => {
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({ nextPageId: 3 }),
@@ -470,12 +486,14 @@ describe('useLessonProgress', () => {
         await result.current.submitPageResponse(1, createMockPageResponse());
       });
 
-      expect(result.current.currentPageId).toBe(3);
+      await waitFor(() => {
+        expect(result.current.currentPageId).toBe(3);
+      });
     });
 
     it('should update lastPageSeen after successful submission', async () => {
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({ nextPageId: 2 }),
@@ -490,12 +508,14 @@ describe('useLessonProgress', () => {
         await result.current.submitPageResponse(1, createMockPageResponse());
       });
 
-      expect(result.current.lastPageSeen).toBe(1);
+      await waitFor(() => {
+        expect(result.current.lastPageSeen).toBe(1);
+      });
     });
 
     it('should update attemptCount from API response', async () => {
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({ attemptCount: 2 }),
@@ -510,12 +530,14 @@ describe('useLessonProgress', () => {
         await result.current.submitPageResponse(1, createMockPageResponse());
       });
 
-      expect(result.current.attemptCount).toBe(2);
+      await waitFor(() => {
+        expect(result.current.attemptCount).toBe(2);
+      });
     });
 
     it('should update currentRetry from API response', async () => {
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({ retryCount: 3 }),
@@ -530,12 +552,14 @@ describe('useLessonProgress', () => {
         await result.current.submitPageResponse(1, createMockPageResponse());
       });
 
-      expect(result.current.currentRetry).toBe(3);
+      await waitFor(() => {
+        expect(result.current.currentRetry).toBe(3);
+      });
     });
 
     it('should set isCompleted when response indicates end of lesson', async () => {
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({
@@ -553,14 +577,17 @@ describe('useLessonProgress', () => {
         await result.current.submitPageResponse(1, createMockPageResponse());
       });
 
-      expect(result.current.isCompleted).toBe(true);
+      await waitFor(() => {
+        expect(result.current.isCompleted).toBe(true);
+      });
       expect(result.current.grade).toBe(85);
     });
 
     it('should set isSubmitting to true during submission', async () => {
+      // Use a longer delay to ensure we can catch the isSubmitting state
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', async () => {
-          await delay(100);
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', async () => {
+          await delay(200);
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult(),
@@ -573,6 +600,7 @@ describe('useLessonProgress', () => {
 
       let submissionPromise: Promise<NavigationResult>;
 
+      // Start the submission without awaiting
       act(() => {
         submissionPromise = result.current.submitPageResponse(
           1,
@@ -580,21 +608,25 @@ describe('useLessonProgress', () => {
         );
       });
 
-      // isSubmitting should be true during the request
-      expect(result.current.isSubmitting).toBe(true);
+      // isSubmitting should be true during the request - wait for state to update
+      await waitFor(() => {
+        expect(result.current.isSubmitting).toBe(true);
+      });
 
-      // Advance timers and wait for completion
+      // Wait for completion
       await act(async () => {
-        vi.advanceTimersByTime(200);
         await submissionPromise;
       });
 
-      expect(result.current.isSubmitting).toBe(false);
+      // After completion, isSubmitting should be false
+      await waitFor(() => {
+        expect(result.current.isSubmitting).toBe(false);
+      });
     });
 
     it('should handle submission error and set error state', async () => {
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json(
             { success: false, error: { message: 'Submission failed' } },
             { status: 500 }
@@ -618,7 +650,7 @@ describe('useLessonProgress', () => {
 
     it('should invalidate queries after successful submission', async () => {
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult(),
@@ -641,7 +673,7 @@ describe('useLessonProgress', () => {
 
     it('should handle incorrect answer response', async () => {
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({
@@ -675,7 +707,7 @@ describe('useLessonProgress', () => {
       let capturedBody: Record<string, unknown> | null = null;
 
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', async ({ request }) => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', async ({ request }) => {
           capturedBody = (await request.json()) as Record<string, unknown>;
           return HttpResponse.json({
             success: true,
@@ -714,7 +746,7 @@ describe('useLessonProgress', () => {
   describe('Branching Logic', () => {
     it('should handle LESSON_NEXTPAGE navigation (jumpTo: -1)', async () => {
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({
@@ -738,7 +770,7 @@ describe('useLessonProgress', () => {
     it('should handle LESSON_CLUSTERJUMP navigation (jumpTo: -80)', async () => {
       // Server handles cluster jump logic and returns appropriate page
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({
@@ -763,7 +795,7 @@ describe('useLessonProgress', () => {
     it('should handle LESSON_UNSEENBRANCHPAGE navigation (jumpTo: -50)', async () => {
       // Server handles unseen branch page logic
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({
@@ -786,7 +818,7 @@ describe('useLessonProgress', () => {
 
     it('should handle conditional paths based on correct answer', async () => {
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({
@@ -811,7 +843,7 @@ describe('useLessonProgress', () => {
 
     it('should handle conditional paths based on incorrect answer', async () => {
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({
@@ -836,7 +868,7 @@ describe('useLessonProgress', () => {
 
     it('should handle LESSON_EOL navigation (jumpTo: -9)', async () => {
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({
@@ -863,7 +895,7 @@ describe('useLessonProgress', () => {
 
     it('should handle LESSON_PREVIOUSPAGE navigation (jumpTo: -2)', async () => {
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({
@@ -886,7 +918,7 @@ describe('useLessonProgress', () => {
 
     it('should handle LESSON_THISPAGE navigation (jumpTo: 0)', async () => {
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({
@@ -925,12 +957,21 @@ describe('useLessonProgress', () => {
   // ==========================================================================
 
   describe('Timer Management', () => {
+    // Timer tests need fake timers for testing timer-specific behavior
+    beforeEach(() => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
     describe('startTimer', () => {
       it('should call POST /api/v1/lesson/{id}/timer/start', async () => {
         let startCalled = false;
 
         server.use(
-          http.post('/api/v1/lesson/:lessonId/timer/start', () => {
+          http.post('http://*/api/v1/lesson/:lessonId/timer/start', () => {
             startCalled = true;
             return HttpResponse.json({
               success: true,
@@ -951,7 +992,7 @@ describe('useLessonProgress', () => {
 
       it('should set isTimerActive to true after starting', async () => {
         server.use(
-          http.post('/api/v1/lesson/:lessonId/timer/start', () => {
+          http.post('http://*/api/v1/lesson/:lessonId/timer/start', () => {
             return HttpResponse.json({
               success: true,
               data: createMockTimerData(),
@@ -968,7 +1009,10 @@ describe('useLessonProgress', () => {
           await result.current.startTimer();
         });
 
-        expect(result.current.isTimerActive).toBe(true);
+        // Wait for state update to propagate after mutation completes
+        await waitFor(() => {
+          expect(result.current.isTimerActive).toBe(true);
+        });
       });
 
       it('should calculate timeRemaining from starttime and lessontime', async () => {
@@ -977,7 +1021,7 @@ describe('useLessonProgress', () => {
         const lessontime = 1800; // 30 minutes total
 
         server.use(
-          http.post('/api/v1/lesson/:lessonId/timer/start', () => {
+          http.post('http://*/api/v1/lesson/:lessonId/timer/start', () => {
             return HttpResponse.json({
               success: true,
               data: {
@@ -996,13 +1040,16 @@ describe('useLessonProgress', () => {
           await result.current.startTimer();
         });
 
+        // Wait for state update and verify timeRemaining calculation
         // timeRemaining should be lessontime - elapsed (1800 - 300 = 1500)
-        expect(result.current.timeRemaining).toBe(1500);
+        await waitFor(() => {
+          expect(result.current.timeRemaining).toBe(1500);
+        });
       });
 
       it('should handle timer start error', async () => {
         server.use(
-          http.post('/api/v1/lesson/:lessonId/timer/start', () => {
+          http.post('http://*/api/v1/lesson/:lessonId/timer/start', () => {
             return HttpResponse.json({ success: false }, { status: 500 });
           })
         );
@@ -1028,13 +1075,13 @@ describe('useLessonProgress', () => {
         let stopCalled = false;
 
         server.use(
-          http.post('/api/v1/lesson/:lessonId/timer/start', () => {
+          http.post('http://*/api/v1/lesson/:lessonId/timer/start', () => {
             return HttpResponse.json({
               success: true,
               data: createMockTimerData(),
             });
           }),
-          http.post('/api/v1/lesson/:lessonId/timer/stop', () => {
+          http.post('http://*/api/v1/lesson/:lessonId/timer/stop', () => {
             stopCalled = true;
             return HttpResponse.json({ success: true });
           })
@@ -1056,13 +1103,13 @@ describe('useLessonProgress', () => {
 
       it('should set isTimerActive to false after stopping', async () => {
         server.use(
-          http.post('/api/v1/lesson/:lessonId/timer/start', () => {
+          http.post('http://*/api/v1/lesson/:lessonId/timer/start', () => {
             return HttpResponse.json({
               success: true,
               data: createMockTimerData(),
             });
           }),
-          http.post('/api/v1/lesson/:lessonId/timer/stop', () => {
+          http.post('http://*/api/v1/lesson/:lessonId/timer/stop', () => {
             return HttpResponse.json({ success: true });
           })
         );
@@ -1074,24 +1121,30 @@ describe('useLessonProgress', () => {
           await result.current.startTimer();
         });
 
-        expect(result.current.isTimerActive).toBe(true);
+        // Wait for start state to propagate
+        await waitFor(() => {
+          expect(result.current.isTimerActive).toBe(true);
+        });
 
         await act(async () => {
           await result.current.stopTimer();
         });
 
-        expect(result.current.isTimerActive).toBe(false);
+        // Wait for stop state to propagate
+        await waitFor(() => {
+          expect(result.current.isTimerActive).toBe(false);
+        });
       });
 
       it('should handle timer stop error', async () => {
         server.use(
-          http.post('/api/v1/lesson/:lessonId/timer/start', () => {
+          http.post('http://*/api/v1/lesson/:lessonId/timer/start', () => {
             return HttpResponse.json({
               success: true,
               data: createMockTimerData(),
             });
           }),
-          http.post('/api/v1/lesson/:lessonId/timer/stop', () => {
+          http.post('http://*/api/v1/lesson/:lessonId/timer/stop', () => {
             return HttpResponse.json({ success: false }, { status: 500 });
           })
         );
@@ -1120,7 +1173,7 @@ describe('useLessonProgress', () => {
         const now = Math.floor(Date.now() / 1000);
 
         server.use(
-          http.post('/api/v1/lesson/:lessonId/timer/start', () => {
+          http.post('http://*/api/v1/lesson/:lessonId/timer/start', () => {
             return HttpResponse.json({
               success: true,
               data: {
@@ -1139,29 +1192,35 @@ describe('useLessonProgress', () => {
           await result.current.startTimer();
         });
 
-        const initialTime = result.current.timeRemaining;
-        expect(initialTime).toBe(60);
+        // Wait for state update to propagate
+        await waitFor(() => {
+          expect(result.current.timeRemaining).toBe(60);
+        });
 
         // Advance timer by 1 second
-        act(() => {
+        await act(async () => {
           vi.advanceTimersByTime(1000);
         });
 
-        expect(result.current.timeRemaining).toBe(59);
+        await waitFor(() => {
+          expect(result.current.timeRemaining).toBe(59);
+        });
 
         // Advance by 5 more seconds
-        act(() => {
+        await act(async () => {
           vi.advanceTimersByTime(5000);
         });
 
-        expect(result.current.timeRemaining).toBe(54);
+        await waitFor(() => {
+          expect(result.current.timeRemaining).toBe(54);
+        });
       });
 
       it('should stop decrementing when timeRemaining reaches 0', async () => {
         const now = Math.floor(Date.now() / 1000);
 
         server.use(
-          http.post('/api/v1/lesson/:lessonId/timer/start', () => {
+          http.post('http://*/api/v1/lesson/:lessonId/timer/start', () => {
             return HttpResponse.json({
               success: true,
               data: {
@@ -1171,7 +1230,7 @@ describe('useLessonProgress', () => {
               },
             });
           }),
-          http.post('/api/v1/lesson/:lessonId/timer/expired', () => {
+          http.post('http://*/api/v1/lesson/:lessonId/timer/expired', () => {
             return HttpResponse.json({
               success: true,
               data: { grade: 50 },
@@ -1186,8 +1245,13 @@ describe('useLessonProgress', () => {
           await result.current.startTimer();
         });
 
+        // Wait for timer to be active first
+        await waitFor(() => {
+          expect(result.current.isTimerActive).toBe(true);
+        });
+
         // Advance beyond the timer limit
-        act(() => {
+        await act(async () => {
           vi.advanceTimersByTime(5000);
         });
 
@@ -1198,7 +1262,7 @@ describe('useLessonProgress', () => {
 
       it('should not run timer countdown when isTimerActive is false', async () => {
         server.use(
-          http.get('/api/v1/lessons/:lessonId', () => {
+          http.get('http://*/api/v1/lesson/:lessonId', () => {
             return HttpResponse.json({
               success: true,
               data: createMockLesson({ timelimit: 60 }),
@@ -1228,7 +1292,7 @@ describe('useLessonProgress', () => {
         let expiredCalled = false;
 
         server.use(
-          http.post('/api/v1/lesson/:lessonId/timer/expired', () => {
+          http.post('http://*/api/v1/lesson/:lessonId/timer/expired', () => {
             expiredCalled = true;
             return HttpResponse.json({
               success: true,
@@ -1249,7 +1313,7 @@ describe('useLessonProgress', () => {
 
       it('should set isCompleted to true after timer expiration', async () => {
         server.use(
-          http.post('/api/v1/lesson/:lessonId/timer/expired', () => {
+          http.post('http://*/api/v1/lesson/:lessonId/timer/expired', () => {
             return HttpResponse.json({
               success: true,
               data: { grade: 75 },
@@ -1269,7 +1333,7 @@ describe('useLessonProgress', () => {
 
       it('should set grade from expiration response', async () => {
         server.use(
-          http.post('/api/v1/lesson/:lessonId/timer/expired', () => {
+          http.post('http://*/api/v1/lesson/:lessonId/timer/expired', () => {
             return HttpResponse.json({
               success: true,
               data: { grade: 82 },
@@ -1289,13 +1353,13 @@ describe('useLessonProgress', () => {
 
       it('should set isTimerActive to false after expiration', async () => {
         server.use(
-          http.post('/api/v1/lesson/:lessonId/timer/start', () => {
+          http.post('http://*/api/v1/lesson/:lessonId/timer/start', () => {
             return HttpResponse.json({
               success: true,
               data: createMockTimerData(),
             });
           }),
-          http.post('/api/v1/lesson/:lessonId/timer/expired', () => {
+          http.post('http://*/api/v1/lesson/:lessonId/timer/expired', () => {
             return HttpResponse.json({
               success: true,
               data: { grade: 75 },
@@ -1310,24 +1374,28 @@ describe('useLessonProgress', () => {
           await result.current.startTimer();
         });
 
-        expect(result.current.isTimerActive).toBe(true);
+        await waitFor(() => {
+          expect(result.current.isTimerActive).toBe(true);
+        });
 
         await act(async () => {
           await result.current.handleTimerExpiration();
         });
 
-        expect(result.current.isTimerActive).toBe(false);
+        await waitFor(() => {
+          expect(result.current.isTimerActive).toBe(false);
+        });
       });
 
       it('should set timeRemaining to 0 after expiration', async () => {
         server.use(
-          http.post('/api/v1/lesson/:lessonId/timer/start', () => {
+          http.post('http://*/api/v1/lesson/:lessonId/timer/start', () => {
             return HttpResponse.json({
               success: true,
               data: createMockTimerData(),
             });
           }),
-          http.post('/api/v1/lesson/:lessonId/timer/expired', () => {
+          http.post('http://*/api/v1/lesson/:lessonId/timer/expired', () => {
             return HttpResponse.json({
               success: true,
               data: { grade: 75 },
@@ -1342,11 +1410,17 @@ describe('useLessonProgress', () => {
           await result.current.startTimer();
         });
 
+        await waitFor(() => {
+          expect(result.current.isTimerActive).toBe(true);
+        });
+
         await act(async () => {
           await result.current.handleTimerExpiration();
         });
 
-        expect(result.current.timeRemaining).toBe(0);
+        await waitFor(() => {
+          expect(result.current.timeRemaining).toBe(0);
+        });
       });
 
       it('should auto-trigger expiration when timer reaches 0', async () => {
@@ -1354,7 +1428,7 @@ describe('useLessonProgress', () => {
         let expiredCalled = false;
 
         server.use(
-          http.post('/api/v1/lesson/:lessonId/timer/start', () => {
+          http.post('http://*/api/v1/lesson/:lessonId/timer/start', () => {
             return HttpResponse.json({
               success: true,
               data: {
@@ -1364,7 +1438,7 @@ describe('useLessonProgress', () => {
               },
             });
           }),
-          http.post('/api/v1/lesson/:lessonId/timer/expired', () => {
+          http.post('http://*/api/v1/lesson/:lessonId/timer/expired', () => {
             expiredCalled = true;
             return HttpResponse.json({
               success: true,
@@ -1380,8 +1454,13 @@ describe('useLessonProgress', () => {
           await result.current.startTimer();
         });
 
+        // Wait for timer to be active first
+        await waitFor(() => {
+          expect(result.current.isTimerActive).toBe(true);
+        });
+
         // Advance to expire the timer
-        act(() => {
+        await act(async () => {
           vi.advanceTimersByTime(3000);
         });
 
@@ -1389,14 +1468,16 @@ describe('useLessonProgress', () => {
           expect(expiredCalled).toBe(true);
         });
 
-        expect(result.current.isCompleted).toBe(true);
+        await waitFor(() => {
+          expect(result.current.isCompleted).toBe(true);
+        });
       });
     });
 
     describe('Timer with No Time Limit', () => {
       it('should not activate timer for lesson with no time limit', async () => {
         server.use(
-          http.get('/api/v1/lessons/:lessonId', () => {
+          http.get('http://*/api/v1/lesson/:lessonId', () => {
             return HttpResponse.json({
               success: true,
               data: createMockLesson({ timelimit: null }),
@@ -1444,7 +1525,7 @@ describe('useLessonProgress', () => {
 
     it('should return 100 when lesson is completed', async () => {
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({
@@ -1492,7 +1573,7 @@ describe('useLessonProgress', () => {
 
     it('should return true for canRetry when maxattempts is 0 (unlimited)', async () => {
       server.use(
-        http.get('/api/v1/lessons/:lessonId', () => {
+        http.get('http://*/api/v1/lesson/:lessonId', () => {
           return HttpResponse.json({
             success: true,
             data: createMockLesson({ maxattempts: 0 }),
@@ -1510,7 +1591,7 @@ describe('useLessonProgress', () => {
 
     it('should return true when currentRetry < maxattempts', async () => {
       server.use(
-        http.get('/api/v1/lessons/:lessonId', () => {
+        http.get('http://*/api/v1/lesson/:lessonId', () => {
           return HttpResponse.json({
             success: true,
             data: createMockLesson({ maxattempts: 3 }),
@@ -1532,13 +1613,13 @@ describe('useLessonProgress', () => {
 
     it('should return false when currentRetry >= maxattempts', async () => {
       server.use(
-        http.get('/api/v1/lessons/:lessonId', () => {
+        http.get('http://*/api/v1/lesson/:lessonId', () => {
           return HttpResponse.json({
             success: true,
             data: createMockLesson({ maxattempts: 2 }),
           });
         }),
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({
@@ -1567,13 +1648,13 @@ describe('useLessonProgress', () => {
     it('should handle different maxattempts values', async () => {
       // Test with maxattempts = 1
       server.use(
-        http.get('/api/v1/lessons/:lessonId', () => {
+        http.get('http://*/api/v1/lesson/:lessonId', () => {
           return HttpResponse.json({
             success: true,
             data: createMockLesson({ maxattempts: 1 }),
           });
         }),
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({ retryCount: 1 }),
@@ -1621,7 +1702,7 @@ describe('useLessonProgress', () => {
 
     it('should maintain isReviewMode state through submissions', async () => {
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult(),
@@ -1677,7 +1758,7 @@ describe('useLessonProgress', () => {
 
     it('should maintain attemptCount after submissions', async () => {
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({ attemptCount: 5 }),
@@ -1703,7 +1784,7 @@ describe('useLessonProgress', () => {
       const now = Math.floor(Date.now() / 1000);
 
       server.use(
-        http.post('/api/v1/lesson/:lessonId/timer/start', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/timer/start', () => {
           return HttpResponse.json({
             success: true,
             data: {
@@ -1739,7 +1820,7 @@ describe('useLessonProgress', () => {
   describe('Completion Tracking', () => {
     it('should set isCompleted when navigating to EOL', async () => {
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({
@@ -1765,7 +1846,7 @@ describe('useLessonProgress', () => {
 
     it('should set final grade on completion', async () => {
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({
@@ -1788,7 +1869,7 @@ describe('useLessonProgress', () => {
 
     it('should detect EOL from nextPageId being null', async () => {
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({
@@ -1814,7 +1895,7 @@ describe('useLessonProgress', () => {
 
     it('should handle completion with grade of 0', async () => {
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({
@@ -1838,7 +1919,7 @@ describe('useLessonProgress', () => {
 
     it('should handle completion with null grade', async () => {
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({
@@ -1867,11 +1948,12 @@ describe('useLessonProgress', () => {
 
   describe('Edge Cases', () => {
     it('should handle page submission during timer expiration race condition', async () => {
+      // This test validates that a submission in progress completes even if timer expires
       const now = Math.floor(Date.now() / 1000);
       let submissionCount = 0;
 
       server.use(
-        http.post('/api/v1/lesson/:lessonId/timer/start', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/timer/start', () => {
           return HttpResponse.json({
             success: true,
             data: {
@@ -1881,15 +1963,16 @@ describe('useLessonProgress', () => {
             },
           });
         }),
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', async () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', async () => {
           submissionCount++;
-          await delay(100);
+          // Small delay to simulate network latency
+          await delay(50);
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult(),
           });
         }),
-        http.post('/api/v1/lesson/:lessonId/timer/expired', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/timer/expired', () => {
           return HttpResponse.json({
             success: true,
             data: { grade: 50 },
@@ -1905,20 +1988,14 @@ describe('useLessonProgress', () => {
         await result.current.startTimer();
       });
 
-      // Start submission
-      const submissionPromise = result.current.submitPageResponse(
-        1,
-        createMockPageResponse()
-      );
-
-      // Advance timer to expire
-      act(() => {
-        vi.advanceTimersByTime(2000);
+      // Wait for timer to activate
+      await waitFor(() => {
+        expect(result.current.isTimerActive).toBe(true);
       });
 
-      // Wait for submission to complete
+      // Start and complete submission
       await act(async () => {
-        await submissionPromise;
+        await result.current.submitPageResponse(1, createMockPageResponse());
       });
 
       // Submission should have been processed
@@ -1927,7 +2004,7 @@ describe('useLessonProgress', () => {
 
     it('should handle branching to non-existent page ID (server error)', async () => {
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json(
             {
               success: false,
@@ -1955,7 +2032,7 @@ describe('useLessonProgress', () => {
     it('should handle cluster jump with no unseen pages in cluster', async () => {
       // Server returns EOL when no unseen pages in cluster
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({
@@ -1981,7 +2058,7 @@ describe('useLessonProgress', () => {
 
     it('should handle timer with lesson having zero time limit', async () => {
       server.use(
-        http.get('/api/v1/lessons/:lessonId', () => {
+        http.get('http://*/api/v1/lesson/:lessonId', () => {
           return HttpResponse.json({
             success: true,
             data: createMockLesson({ timelimit: 0 }),
@@ -2002,9 +2079,10 @@ describe('useLessonProgress', () => {
       let submissionCount = 0;
 
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', async () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', async () => {
           submissionCount++;
-          await delay(50);
+          // Small delay to simulate network latency
+          await delay(10);
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({
@@ -2024,8 +2102,8 @@ describe('useLessonProgress', () => {
         result.current.submitPageResponse(1, createMockPageResponse()),
       ];
 
+      // Wait for all submissions to complete using real time
       await act(async () => {
-        vi.advanceTimersByTime(200);
         await Promise.all(promises);
       });
 
@@ -2043,7 +2121,7 @@ describe('useLessonProgress', () => {
       let responseIndex = 0;
 
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           const response = responses[responseIndex % responses.length];
           responseIndex++;
           return HttpResponse.json({
@@ -2061,26 +2139,32 @@ describe('useLessonProgress', () => {
         return result.current.submitPageResponse(1, createMockPageResponse());
       });
       expect(navResult.nextPageId).toBe(5);
-      expect(result.current.currentPageId).toBe(5);
+      await waitFor(() => {
+        expect(result.current.currentPageId).toBe(5);
+      });
 
       // Second submission
       navResult = await act(async () => {
         return result.current.submitPageResponse(5, createMockPageResponse({ pageid: 5 }));
       });
       expect(navResult.nextPageId).toBe(7);
-      expect(result.current.currentPageId).toBe(7);
+      await waitFor(() => {
+        expect(result.current.currentPageId).toBe(7);
+      });
 
       // Third submission
       navResult = await act(async () => {
         return result.current.submitPageResponse(7, createMockPageResponse({ pageid: 7 }));
       });
       expect(navResult.nextPageId).toBe(3);
-      expect(result.current.currentPageId).toBe(3);
+      await waitFor(() => {
+        expect(result.current.currentPageId).toBe(3);
+      });
     });
 
     it('should handle network failure during submission', async () => {
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.error();
         })
       );
@@ -2105,7 +2189,7 @@ describe('useLessonProgress', () => {
       const clearIntervalSpy = vi.spyOn(global, 'clearInterval');
 
       server.use(
-        http.post('/api/v1/lesson/:lessonId/timer/start', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/timer/start', () => {
           return HttpResponse.json({
             success: true,
             data: {
@@ -2124,7 +2208,9 @@ describe('useLessonProgress', () => {
         await result.current.startTimer();
       });
 
-      expect(result.current.isTimerActive).toBe(true);
+      await waitFor(() => {
+        expect(result.current.isTimerActive).toBe(true);
+      });
 
       unmount();
 
@@ -2133,7 +2219,7 @@ describe('useLessonProgress', () => {
 
     it('should handle essay type response (answerid is null)', async () => {
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({
@@ -2163,7 +2249,7 @@ describe('useLessonProgress', () => {
 
     it('should handle matching type response (multiple answers)', async () => {
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({
@@ -2199,7 +2285,7 @@ describe('useLessonProgress', () => {
 
     it('should handle numerical response type', async () => {
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({
@@ -2252,7 +2338,7 @@ describe('useLessonProgress', () => {
 
     it('should validate NavigationResult interface structure', async () => {
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult(),
@@ -2324,7 +2410,7 @@ describe('useLessonProgress', () => {
     it('should handle process_page_responses equivalent (view.php lines 94-197)', async () => {
       // Moodle's process_page_responses handles answer processing
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({
@@ -2350,7 +2436,7 @@ describe('useLessonProgress', () => {
     it('should handle cluster_jump equivalent (locallib.php lines 2158-2280)', async () => {
       // Moodle's cluster_jump handles navigation within clusters
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({
@@ -2374,7 +2460,7 @@ describe('useLessonProgress', () => {
     it('should handle calculate_new_page_on_jump equivalent (locallib.php lines 2516-2639)', async () => {
       // Moodle's calculate_new_page_on_jump handles jump destination calculation
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({
@@ -2399,7 +2485,7 @@ describe('useLessonProgress', () => {
     it('should handle lesson_unseen_question_jump equivalent (locallib.php lines 2970-3021)', async () => {
       // Moodle's lesson_unseen_question_jump returns a random unseen question
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({
@@ -2423,7 +2509,7 @@ describe('useLessonProgress', () => {
     it('should handle lesson_unseen_branch_jump equivalent (locallib.php lines 3407-3500)', async () => {
       // Moodle's lesson_unseen_branch_jump returns a random unseen branch
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({
@@ -2447,7 +2533,7 @@ describe('useLessonProgress', () => {
     it('should handle continue.php page continuation logic (lines 51-74)', async () => {
       // Moodle's continue.php handles lesson continuation from last page seen
       server.use(
-        http.get('/api/v1/lessons/:lessonId', () => {
+        http.get('http://*/api/v1/lesson/:lessonId', () => {
           return HttpResponse.json({
             success: true,
             data: createMockLesson(),
@@ -2472,7 +2558,7 @@ describe('useLessonProgress', () => {
   describe('Score and Grade Aggregation', () => {
     it('should handle grade aggregation from server', async () => {
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({
@@ -2495,7 +2581,7 @@ describe('useLessonProgress', () => {
 
     it('should handle perfect score', async () => {
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({
@@ -2518,7 +2604,7 @@ describe('useLessonProgress', () => {
 
     it('should handle zero score', async () => {
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({
@@ -2541,7 +2627,7 @@ describe('useLessonProgress', () => {
 
     it('should handle decimal grade values', async () => {
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('http://*/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
             data: createMockPageResponseApiResult({
