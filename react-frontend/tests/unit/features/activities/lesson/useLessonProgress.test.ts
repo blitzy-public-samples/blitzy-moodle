@@ -1,10 +1,10 @@
 /**
  * @fileoverview Unit tests for useLessonProgress hook
- * 
+ *
  * Tests lesson progress state management including page navigation, attempt tracking,
  * timer management, branching path logic, state transitions, response processing,
  * and completion tracking with proper state persistence.
- * 
+ *
  * References Moodle functions:
  * - lesson->process_page_responses() from public/mod/lesson/view.php lines 94-197
  * - lesson->cluster_jump() from public/mod/lesson/locallib.php lines 2158-2280
@@ -12,62 +12,78 @@
  * - lesson_unseen_question_jump() from public/mod/lesson/locallib.php lines 2970-3021
  * - lesson_unseen_branch_jump() from public/mod/lesson/locallib.php lines 3407-3500
  * - continue.php lines 51-74 for page continuation logic
+ *
+ * @module tests/unit/features/activities/lesson/useLessonProgress.test
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { http, HttpResponse, delay } from 'msw';
 
 import {
   useLessonProgress,
-  PageResponse,
-  LessonProgressState,
-  NavigationResult,
-  LESSON_NEXTPAGE,
-  LESSON_CLUSTERJUMP,
-  LESSON_UNSEENBRANCHPAGE,
-  LESSON_EOL,
-  LESSON_PREVIOUSPAGE,
+  type PageResponse,
+  type NavigationResult,
+  LESSON_JUMP_CONSTANTS,
 } from '@/features/activities/lesson/hooks/useLessonProgress';
 import { server } from '@/tests/mocks/server';
 import { createTestQueryClient } from '@/tests/helpers/render';
+
+// Extract constants for branching logic tests
+const {
+  LESSON_NEXTPAGE,
+  LESSON_PREVIOUSPAGE,
+  LESSON_EOL,
+  LESSON_UNSEENBRANCHPAGE,
+  LESSON_CLUSTERJUMP,
+  LESSON_THISPAGE,
+  LESSON_RANDOMPAGE,
+  LESSON_RANDOMBRANCH,
+} = LESSON_JUMP_CONSTANTS;
 
 // ============================================================================
 // Test Setup and Utilities
 // ============================================================================
 
 /**
- * Creates a wrapper component with QueryClientProvider for renderHook
+ * Creates a wrapper component with QueryClientProvider for renderHook.
+ * Returns both wrapper and queryClient for cache inspection in tests.
  */
 function createWrapper() {
   const queryClient = createTestQueryClient();
-  
-  return function Wrapper({ children }: { children: React.ReactNode }) {
+
+  function Wrapper({ children }: { children: React.ReactNode }): React.ReactElement {
     return React.createElement(
       QueryClientProvider,
       { client: queryClient },
       children
     );
-  };
+  }
+
+  return { wrapper: Wrapper, queryClient };
 }
 
 /**
- * Creates a mock lesson data response
+ * Creates a mock lesson data response matching Moodle lesson structure
  */
-function createMockLesson(overrides: Partial<{
-  id: number;
-  name: string;
-  timelimit: number;
-  maxattempts: number;
-  retake: number;
-  pages: Array<{ id: number; title: string; type: number; }>;
-}> = {}) {
+function createMockLesson(
+  overrides: Partial<{
+    id: number;
+    name: string;
+    timelimit: number | null;
+    maxattempts: number;
+    retake: number;
+    pages: Array<{ id: number; title: string; type: number }>;
+    grade: number | null;
+    completed: boolean;
+  }> = {}
+) {
   return {
     id: 1,
     name: 'Test Lesson',
-    timelimit: 0,
+    timelimit: null,
     maxattempts: 1,
     retake: 1,
     pages: [
@@ -76,27 +92,30 @@ function createMockLesson(overrides: Partial<{
       { id: 3, title: 'Page 3', type: 20 },
       { id: 4, title: 'End Page', type: 21 },
     ],
+    grade: null,
+    completed: false,
     ...overrides,
   };
 }
 
 /**
- * Creates a mock page response result
+ * Creates a mock NavigationResult matching the hook's interface
  */
-function createMockNavigationResult(overrides: Partial<NavigationResult> = {}): NavigationResult {
+function createMockNavigationResult(
+  overrides: Partial<NavigationResult> = {}
+): NavigationResult {
   return {
     nextPageId: 2,
     isCorrect: true,
     feedback: 'Correct answer!',
-    score: 1,
-    maxScore: 1,
-    attemptsUsed: 1,
+    shouldShowFeedback: true,
+    isEndOfLesson: false,
     ...overrides,
   };
 }
 
 /**
- * Creates a mock page response payload
+ * Creates a mock PageResponse for submission
  */
 function createMockPageResponse(overrides: Partial<PageResponse> = {}): PageResponse {
   return {
@@ -109,52 +128,66 @@ function createMockPageResponse(overrides: Partial<PageResponse> = {}): PageResp
 }
 
 /**
- * Creates mock timer data
+ * Creates mock API response data for page response submission
  */
-function createMockTimerData(overrides: Partial<{
-  starttime: number;
-  timelimit: number;
-  timeremaining: number;
-  active: boolean;
-}> = {}) {
+function createMockPageResponseApiResult(
+  overrides: Partial<{
+    nextPageId: number | null;
+    isCorrect: boolean;
+    feedback: string;
+    showFeedback: boolean;
+    isEndOfLesson: boolean;
+    attemptCount: number;
+    retryCount: number;
+    grade: number | null;
+  }> = {}
+) {
+  return {
+    nextPageId: 2,
+    isCorrect: true,
+    feedback: 'Correct answer!',
+    showFeedback: true,
+    isEndOfLesson: false,
+    attemptCount: 1,
+    retryCount: 0,
+    grade: null,
+    ...overrides,
+  };
+}
+
+/**
+ * Creates mock timer API response data
+ */
+function createMockTimerData(
+  overrides: Partial<{
+    starttime: number;
+    lessontime: number;
+    isActive: boolean;
+  }> = {}
+) {
   const now = Math.floor(Date.now() / 1000);
   return {
     starttime: now,
-    timelimit: 3600, // 1 hour
-    timeremaining: 3600,
-    active: true,
+    lessontime: 3600, // 1 hour
+    isActive: true,
     ...overrides,
   };
 }
 
 // ============================================================================
-// Test Suite: Initial State Setup
+// Test Suite
 // ============================================================================
 
 describe('useLessonProgress', () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    
-    // Default lesson data handler
+
+    // Default lesson data handler - uses useLesson hook internally
     server.use(
-      http.get('/api/v1/lesson/:lessonId', () => {
+      http.get('/api/v1/lessons/:lessonId', () => {
         return HttpResponse.json({
           success: true,
           data: createMockLesson(),
-        });
-      }),
-      http.get('/api/v1/lesson/:lessonId/progress', () => {
-        return HttpResponse.json({
-          success: true,
-          data: {
-            currentPageId: 1,
-            attemptCount: 0,
-            isCompleted: false,
-            grade: null,
-            lastPageSeen: 1,
-            pagesCompleted: [],
-            totalPages: 4,
-          },
         });
       })
     );
@@ -166,2254 +199,2367 @@ describe('useLessonProgress', () => {
     server.resetHandlers();
   });
 
+  // ==========================================================================
+  // Test Group: Initial State Setup
+  // ==========================================================================
+
   describe('Initial State Setup', () => {
     it('should initialize currentPageId from initialPageId parameter', async () => {
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 2),
-        { wrapper }
-      );
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 5), { wrapper });
 
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(2);
-      });
+      // The hook should immediately set currentPageId to initialPageId
+      expect(result.current.currentPageId).toBe(5);
     });
 
-    it('should initialize currentPageId from lastPageSeen when no initialPageId provided', async () => {
+    it('should initialize currentPageId as null when no initialPageId provided', async () => {
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1), { wrapper });
+
+      expect(result.current.currentPageId).toBeNull();
+    });
+
+    it('should initialize attemptCount to 0 by default', async () => {
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      expect(result.current.attemptCount).toBe(0);
+    });
+
+    it('should initialize isCompleted to false by default', async () => {
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      expect(result.current.isCompleted).toBe(false);
+    });
+
+    it('should initialize grade to null by default', async () => {
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      expect(result.current.grade).toBeNull();
+    });
+
+    it('should initialize timeRemaining from lesson timelimit', async () => {
       server.use(
-        http.get('/api/v1/lesson/:lessonId/progress', () => {
+        http.get('/api/v1/lessons/:lessonId', () => {
           return HttpResponse.json({
             success: true,
-            data: {
-              currentPageId: null,
-              attemptCount: 0,
-              isCompleted: false,
-              grade: null,
-              lastPageSeen: 3,
-              pagesCompleted: [1, 2],
-              totalPages: 4,
-            },
+            data: createMockLesson({ timelimit: 1800 }), // 30 minutes
           });
         })
       );
 
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1),
-        { wrapper }
-      );
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
 
+      // Wait for lesson data to load and update state
       await waitFor(() => {
-        expect(result.current.currentPageId).toBe(3);
+        expect(result.current.timeRemaining).toBe(1800);
       });
     });
 
-    it('should initialize attemptCount from user retries count', async () => {
+    it('should initialize timeRemaining as null for untimed lessons', async () => {
       server.use(
-        http.get('/api/v1/lesson/:lessonId/progress', () => {
+        http.get('/api/v1/lessons/:lessonId', () => {
           return HttpResponse.json({
             success: true,
-            data: {
-              currentPageId: 1,
-              attemptCount: 2,
-              isCompleted: false,
-              grade: null,
-              lastPageSeen: 1,
-              pagesCompleted: [],
-              totalPages: 4,
-            },
+            data: createMockLesson({ timelimit: null }),
           });
         })
       );
 
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
 
       await waitFor(() => {
-        expect(result.current.attemptCount).toBe(2);
+        expect(result.current.timeRemaining).toBeNull();
       });
     });
 
-    it('should calculate timeRemaining correctly for timed lessons', async () => {
-      const now = Math.floor(Date.now() / 1000);
-      const startTime = now - 600; // Started 10 minutes ago
-      const timeLimit = 3600; // 1 hour limit
-      const expectedRemaining = timeLimit - 600; // 50 minutes remaining
+    it('should initialize isTimerActive to false by default', async () => {
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
 
-      server.use(
-        http.get('/api/v1/lesson/:lessonId', () => {
-          return HttpResponse.json({
-            success: true,
-            data: createMockLesson({ timelimit: timeLimit }),
-          });
-        }),
-        http.get('/api/v1/lesson/:lessonId/timer', () => {
-          return HttpResponse.json({
-            success: true,
-            data: {
-              starttime: startTime,
-              timelimit: timeLimit,
-              timeremaining: expectedRemaining,
-              active: true,
-            },
-          });
-        })
-      );
-
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        // Allow some variance for timing
-        expect(result.current.timeRemaining).toBeGreaterThan(expectedRemaining - 10);
-        expect(result.current.timeRemaining).toBeLessThanOrEqual(expectedRemaining);
-      });
+      expect(result.current.isTimerActive).toBe(false);
     });
 
-    it('should initialize isCompleted flag correctly', async () => {
-      server.use(
-        http.get('/api/v1/lesson/:lessonId/progress', () => {
-          return HttpResponse.json({
-            success: true,
-            data: {
-              currentPageId: 4,
-              attemptCount: 1,
-              isCompleted: true,
-              grade: 85,
-              lastPageSeen: 4,
-              pagesCompleted: [1, 2, 3, 4],
-              totalPages: 4,
-            },
-          });
-        })
-      );
+    it('should initialize lastPageSeen to null by default', async () => {
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
 
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 4),
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(result.current.isCompleted).toBe(true);
-      });
+      expect(result.current.lastPageSeen).toBeNull();
     });
 
-    it('should initialize grade from progress data', async () => {
-      server.use(
-        http.get('/api/v1/lesson/:lessonId/progress', () => {
-          return HttpResponse.json({
-            success: true,
-            data: {
-              currentPageId: 4,
-              attemptCount: 1,
-              isCompleted: true,
-              grade: 92.5,
-              lastPageSeen: 4,
-              pagesCompleted: [1, 2, 3, 4],
-              totalPages: 4,
-            },
-          });
-        })
-      );
+    it('should initialize currentRetry to 0 by default', async () => {
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
 
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 4),
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(result.current.grade).toBe(92.5);
-      });
+      expect(result.current.currentRetry).toBe(0);
     });
 
-    it('should initialize with null grade when lesson not completed', async () => {
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
+    it('should initialize isReviewMode to false by default', async () => {
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
 
-      await waitFor(() => {
-        expect(result.current.grade).toBeNull();
-      });
+      expect(result.current.isReviewMode).toBe(false);
+    });
+
+    it('should initialize isSubmitting to false', async () => {
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      expect(result.current.isSubmitting).toBe(false);
+    });
+
+    it('should initialize error to null', async () => {
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      expect(result.current.error).toBeNull();
     });
   });
 
   // ==========================================================================
-  // Test Suite: Page Navigation
+  // Test Group: Page Navigation
   // ==========================================================================
 
   describe('Page Navigation', () => {
     it('should update currentPageId when navigateToPage is called', async () => {
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
 
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(1);
-      });
+      expect(result.current.currentPageId).toBe(1);
 
       act(() => {
         result.current.navigateToPage(3);
       });
 
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(3);
-      });
+      expect(result.current.currentPageId).toBe(3);
     });
 
-    it('should invalidate relevant queries after navigation', async () => {
-      const queryClient = createTestQueryClient();
+    it('should update lastPageSeen when navigating to a new page', async () => {
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      act(() => {
+        result.current.navigateToPage(2);
+      });
+
+      // lastPageSeen should be the previous currentPageId
+      expect(result.current.lastPageSeen).toBe(1);
+      expect(result.current.currentPageId).toBe(2);
+    });
+
+    it('should track navigation history correctly', async () => {
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      // Navigate through multiple pages
+      act(() => {
+        result.current.navigateToPage(2);
+      });
+      expect(result.current.lastPageSeen).toBe(1);
+
+      act(() => {
+        result.current.navigateToPage(3);
+      });
+      expect(result.current.lastPageSeen).toBe(2);
+
+      act(() => {
+        result.current.navigateToPage(4);
+      });
+      expect(result.current.lastPageSeen).toBe(3);
+    });
+
+    it('should invalidate page-specific queries on navigation', async () => {
+      const { wrapper, queryClient } = createWrapper();
       const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
 
-      const wrapper = ({ children }: { children: React.ReactNode }) =>
-        React.createElement(QueryClientProvider, { client: queryClient }, children);
-
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(1);
-      });
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
 
       act(() => {
         result.current.navigateToPage(2);
       });
 
-      await waitFor(() => {
-        expect(invalidateSpy).toHaveBeenCalled();
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: ['lessons', 1, 'pages', 2],
       });
     });
 
-    it('should track navigation history', async () => {
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(1);
-      });
+    it('should handle navigation to the same page', async () => {
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
 
       act(() => {
-        result.current.navigateToPage(2);
+        result.current.navigateToPage(1);
       });
 
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(2);
-      });
-
-      act(() => {
-        result.current.navigateToPage(3);
-      });
-
-      await waitFor(() => {
-        expect(result.current.navigationHistory).toContain(1);
-        expect(result.current.navigationHistory).toContain(2);
-      });
+      // Should update but not crash
+      expect(result.current.currentPageId).toBe(1);
     });
 
-    it('should handle navigation to previous page', async () => {
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 2),
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(2);
-      });
+    it('should preserve lastPageSeen as null when first navigation has no previous page', async () => {
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, null), { wrapper });
 
       act(() => {
-        result.current.navigateToPreviousPage();
+        result.current.navigateToPage(1);
       });
 
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBeLessThan(2);
-      });
+      // lastPageSeen should remain null since we started with null currentPageId
+      expect(result.current.lastPageSeen).toBeNull();
     });
   });
 
   // ==========================================================================
-  // Test Suite: Page Response Submission
+  // Test Group: Page Response Submission
   // ==========================================================================
 
   describe('Page Response Submission', () => {
-    it('should call POST /api/v1/lesson/{id}/pages/{pageId}/response on submitPageResponse', async () => {
-      let requestMade = false;
-      let requestBody: PageResponse | null = null;
-
-      server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', async ({ request }) => {
-          requestMade = true;
-          requestBody = await request.json() as PageResponse;
-          return HttpResponse.json({
-            success: true,
-            data: createMockNavigationResult(),
-          });
-        })
-      );
-
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(1);
-      });
-
-      const pageResponse = createMockPageResponse();
-
-      await act(async () => {
-        await result.current.submitPageResponse(1, pageResponse);
-      });
-
-      expect(requestMade).toBe(true);
-      expect(requestBody).toMatchObject({
-        pageid: 1,
-        answerid: 1,
-      });
-    });
-
-    it('should return NavigationResult with nextPageId, isCorrect, and feedback', async () => {
+    it('should submit page response and return NavigationResult', async () => {
       server.use(
         http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
-            data: createMockNavigationResult({
-              nextPageId: 3,
+            data: createMockPageResponseApiResult({
+              nextPageId: 2,
               isCorrect: true,
-              feedback: 'Great job!',
+              feedback: 'Well done!',
+              showFeedback: true,
+              isEndOfLesson: false,
             }),
           });
         })
       );
 
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(1);
-      });
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
 
       let navigationResult: NavigationResult | undefined;
 
       await act(async () => {
-        navigationResult = await result.current.submitPageResponse(1, createMockPageResponse());
+        navigationResult = await result.current.submitPageResponse(
+          1,
+          createMockPageResponse()
+        );
       });
 
       expect(navigationResult).toBeDefined();
-      expect(navigationResult?.nextPageId).toBe(3);
-      expect(navigationResult?.isCorrect).toBe(true);
-      expect(navigationResult?.feedback).toBe('Great job!');
+      expect(navigationResult!.nextPageId).toBe(2);
+      expect(navigationResult!.isCorrect).toBe(true);
+      expect(navigationResult!.feedback).toBe('Well done!');
+      expect(navigationResult!.shouldShowFeedback).toBe(true);
+      expect(navigationResult!.isEndOfLesson).toBe(false);
     });
 
-    it('should increment attemptCount after incorrect response', async () => {
+    it('should update currentPageId after successful submission', async () => {
       server.use(
         http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
-            data: createMockNavigationResult({
-              isCorrect: false,
-              attemptsUsed: 1,
+            data: createMockPageResponseApiResult({ nextPageId: 3 }),
+          });
+        })
+      );
+
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      await act(async () => {
+        await result.current.submitPageResponse(1, createMockPageResponse());
+      });
+
+      expect(result.current.currentPageId).toBe(3);
+    });
+
+    it('should update lastPageSeen after successful submission', async () => {
+      server.use(
+        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+          return HttpResponse.json({
+            success: true,
+            data: createMockPageResponseApiResult({ nextPageId: 2 }),
+          });
+        })
+      );
+
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      await act(async () => {
+        await result.current.submitPageResponse(1, createMockPageResponse());
+      });
+
+      expect(result.current.lastPageSeen).toBe(1);
+    });
+
+    it('should update attemptCount from API response', async () => {
+      server.use(
+        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+          return HttpResponse.json({
+            success: true,
+            data: createMockPageResponseApiResult({ attemptCount: 2 }),
+          });
+        })
+      );
+
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      await act(async () => {
+        await result.current.submitPageResponse(1, createMockPageResponse());
+      });
+
+      expect(result.current.attemptCount).toBe(2);
+    });
+
+    it('should update currentRetry from API response', async () => {
+      server.use(
+        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+          return HttpResponse.json({
+            success: true,
+            data: createMockPageResponseApiResult({ retryCount: 3 }),
+          });
+        })
+      );
+
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      await act(async () => {
+        await result.current.submitPageResponse(1, createMockPageResponse());
+      });
+
+      expect(result.current.currentRetry).toBe(3);
+    });
+
+    it('should set isCompleted when response indicates end of lesson', async () => {
+      server.use(
+        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+          return HttpResponse.json({
+            success: true,
+            data: createMockPageResponseApiResult({
+              isEndOfLesson: true,
+              grade: 85,
             }),
           });
         })
       );
 
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(result.current.attemptCount).toBe(0);
-      });
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
 
       await act(async () => {
         await result.current.submitPageResponse(1, createMockPageResponse());
       });
 
-      await waitFor(() => {
-        expect(result.current.attemptCount).toBeGreaterThan(0);
-      });
+      expect(result.current.isCompleted).toBe(true);
+      expect(result.current.grade).toBe(85);
     });
 
-    it('should invalidate progress cache after submission', async () => {
-      const queryClient = createTestQueryClient();
-      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
-
+    it('should set isSubmitting to true during submission', async () => {
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', async () => {
+          await delay(100);
           return HttpResponse.json({
             success: true,
-            data: createMockNavigationResult(),
+            data: createMockPageResponseApiResult(),
           });
         })
       );
 
-      const wrapper = ({ children }: { children: React.ReactNode }) =>
-        React.createElement(QueryClientProvider, { client: queryClient }, children);
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
 
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
+      let submissionPromise: Promise<NavigationResult>;
 
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(1);
+      act(() => {
+        submissionPromise = result.current.submitPageResponse(
+          1,
+          createMockPageResponse()
+        );
       });
 
+      // isSubmitting should be true during the request
+      expect(result.current.isSubmitting).toBe(true);
+
+      // Advance timers and wait for completion
       await act(async () => {
-        await result.current.submitPageResponse(1, createMockPageResponse());
+        vi.advanceTimersByTime(200);
+        await submissionPromise;
       });
 
-      expect(invalidateSpy).toHaveBeenCalled();
+      expect(result.current.isSubmitting).toBe(false);
     });
 
-    it('should handle submission errors gracefully', async () => {
+    it('should handle submission error and set error state', async () => {
       server.use(
         http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json(
-            { success: false, error: { message: 'Server error' } },
+            { success: false, error: { message: 'Submission failed' } },
             { status: 500 }
           );
         })
       );
 
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(1);
-      });
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
 
       await act(async () => {
         try {
           await result.current.submitPageResponse(1, createMockPageResponse());
-        } catch (error) {
-          // Error should be caught
-          expect(error).toBeDefined();
+        } catch {
+          // Expected to throw
         }
       });
 
-      // State should remain stable after error
-      expect(result.current.currentPageId).toBe(1);
+      expect(result.current.error).toBeDefined();
+    });
+
+    it('should invalidate queries after successful submission', async () => {
+      server.use(
+        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+          return HttpResponse.json({
+            success: true,
+            data: createMockPageResponseApiResult(),
+          });
+        })
+      );
+
+      const { wrapper, queryClient } = createWrapper();
+      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      await act(async () => {
+        await result.current.submitPageResponse(1, createMockPageResponse());
+      });
+
+      // Should invalidate lesson progress and lesson queries
+      expect(invalidateSpy).toHaveBeenCalled();
+    });
+
+    it('should handle incorrect answer response', async () => {
+      server.use(
+        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+          return HttpResponse.json({
+            success: true,
+            data: createMockPageResponseApiResult({
+              nextPageId: 1, // Stay on same page for retry
+              isCorrect: false,
+              feedback: 'Try again!',
+              retryCount: 1,
+            }),
+          });
+        })
+      );
+
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      let navigationResult: NavigationResult | undefined;
+
+      await act(async () => {
+        navigationResult = await result.current.submitPageResponse(
+          1,
+          createMockPageResponse()
+        );
+      });
+
+      expect(navigationResult!.isCorrect).toBe(false);
+      expect(navigationResult!.feedback).toBe('Try again!');
+      expect(result.current.currentRetry).toBe(1);
+    });
+
+    it('should send correct data in request body', async () => {
+      let capturedBody: Record<string, unknown> | null = null;
+
+      server.use(
+        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', async ({ request }) => {
+          capturedBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json({
+            success: true,
+            data: createMockPageResponseApiResult(),
+          });
+        })
+      );
+
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      const pageResponse: PageResponse = {
+        pageid: 5,
+        answerid: 10,
+        data: { customField: 'value' },
+        timeseen: 45,
+      };
+
+      await act(async () => {
+        await result.current.submitPageResponse(5, pageResponse);
+      });
+
+      expect(capturedBody).toEqual({
+        pageid: 5,
+        answerid: 10,
+        data: { customField: 'value' },
+        timeseen: 45,
+      });
     });
   });
 
   // ==========================================================================
-  // Test Suite: Branching Logic
+  // Test Group: Branching Logic
   // ==========================================================================
 
   describe('Branching Logic', () => {
-    it('should handle LESSON_NEXTPAGE navigation type', async () => {
+    it('should handle LESSON_NEXTPAGE navigation (jumpTo: -1)', async () => {
       server.use(
         http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
-            data: createMockNavigationResult({
-              nextPageId: LESSON_NEXTPAGE,
-              jumpTo: LESSON_NEXTPAGE,
-            }),
-          });
-        })
-      );
-
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(1);
-      });
-
-      await act(async () => {
-        await result.current.submitPageResponse(1, createMockPageResponse());
-      });
-
-      // LESSON_NEXTPAGE should navigate to page 2
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(2);
-      });
-    });
-
-    it('should handle LESSON_CLUSTERJUMP with cluster navigation', async () => {
-      server.use(
-        http.get('/api/v1/lesson/:lessonId', () => {
-          return HttpResponse.json({
-            success: true,
-            data: createMockLesson({
-              pages: [
-                { id: 1, title: 'Start', type: 20 },
-                { id: 10, title: 'Cluster Start', type: 30 }, // Cluster
-                { id: 11, title: 'Question 1', type: 20 },
-                { id: 12, title: 'Question 2', type: 20 },
-                { id: 13, title: 'Question 3', type: 20 },
-                { id: 20, title: 'End Cluster', type: 31 }, // End Cluster
-                { id: 21, title: 'End', type: 21 },
-              ],
-            }),
-          });
-        }),
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
-          return HttpResponse.json({
-            success: true,
-            data: createMockNavigationResult({
-              nextPageId: 12, // Jump to a cluster page
-              jumpTo: LESSON_CLUSTERJUMP,
-            }),
-          });
-        })
-      );
-
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 11),
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(11);
-      });
-
-      await act(async () => {
-        await result.current.submitPageResponse(11, createMockPageResponse());
-      });
-
-      // Should navigate to a page within the cluster
-      await waitFor(() => {
-        expect([11, 12, 13]).toContain(result.current.currentPageId);
-      });
-    });
-
-    it('should handle LESSON_UNSEENBRANCHPAGE random page selection', async () => {
-      server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
-          // Random unseen branch page - server selects an unseen page
-          return HttpResponse.json({
-            success: true,
-            data: createMockNavigationResult({
-              nextPageId: 3, // An unseen page
-              jumpTo: LESSON_UNSEENBRANCHPAGE,
-            }),
-          });
-        })
-      );
-
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(1);
-      });
-
-      await act(async () => {
-        await result.current.submitPageResponse(1, createMockPageResponse());
-      });
-
-      // Should navigate to an unseen page
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(3);
-      });
-    });
-
-    it('should handle conditional paths based on answer correctness', async () => {
-      // Test correct answer path
-      server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
-          return HttpResponse.json({
-            success: true,
-            data: createMockNavigationResult({
-              nextPageId: 3, // Correct answer jumps to page 3
+            data: createMockPageResponseApiResult({
+              nextPageId: 2, // Server calculates next page
               isCorrect: true,
             }),
           });
         })
       );
 
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
 
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(1);
+      const navResult = await act(async () => {
+        return result.current.submitPageResponse(1, createMockPageResponse());
       });
 
-      await act(async () => {
-        await result.current.submitPageResponse(1, createMockPageResponse({ answerid: 1 }));
-      });
-
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(3);
-      });
+      expect(navResult.nextPageId).toBe(2);
     });
 
-    it('should handle incorrect answer path', async () => {
+    it('should handle LESSON_CLUSTERJUMP navigation (jumpTo: -80)', async () => {
+      // Server handles cluster jump logic and returns appropriate page
       server.use(
         http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
-            data: createMockNavigationResult({
-              nextPageId: 1, // Incorrect answer stays on same page
+            data: createMockPageResponseApiResult({
+              nextPageId: 5, // Server-calculated cluster jump destination
+              isCorrect: true,
+              feedback: 'Jumping to cluster page',
+            }),
+          });
+        })
+      );
+
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      const navResult = await act(async () => {
+        return result.current.submitPageResponse(1, createMockPageResponse());
+      });
+
+      expect(navResult.nextPageId).toBe(5);
+    });
+
+    it('should handle LESSON_UNSEENBRANCHPAGE navigation (jumpTo: -50)', async () => {
+      // Server handles unseen branch page logic
+      server.use(
+        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+          return HttpResponse.json({
+            success: true,
+            data: createMockPageResponseApiResult({
+              nextPageId: 7, // Random unseen page selected by server
+              isCorrect: true,
+            }),
+          });
+        })
+      );
+
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      const navResult = await act(async () => {
+        return result.current.submitPageResponse(1, createMockPageResponse());
+      });
+
+      expect(navResult.nextPageId).toBe(7);
+    });
+
+    it('should handle conditional paths based on correct answer', async () => {
+      server.use(
+        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+          return HttpResponse.json({
+            success: true,
+            data: createMockPageResponseApiResult({
+              nextPageId: 10, // Correct answer path
+              isCorrect: true,
+              feedback: 'Correct! Proceeding to advanced content.',
+            }),
+          });
+        })
+      );
+
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      const navResult = await act(async () => {
+        return result.current.submitPageResponse(1, createMockPageResponse());
+      });
+
+      expect(navResult.nextPageId).toBe(10);
+      expect(navResult.isCorrect).toBe(true);
+    });
+
+    it('should handle conditional paths based on incorrect answer', async () => {
+      server.use(
+        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+          return HttpResponse.json({
+            success: true,
+            data: createMockPageResponseApiResult({
+              nextPageId: 5, // Incorrect answer path (remediation)
               isCorrect: false,
-              feedback: 'Try again!',
+              feedback: 'Incorrect. Please review this content.',
             }),
           });
         })
       );
 
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
 
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(1);
+      const navResult = await act(async () => {
+        return result.current.submitPageResponse(1, createMockPageResponse());
       });
 
-      await act(async () => {
-        await result.current.submitPageResponse(1, createMockPageResponse({ answerid: 2 }));
-      });
-
-      // Should stay on same page for retry
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(1);
-      });
+      expect(navResult.nextPageId).toBe(5);
+      expect(navResult.isCorrect).toBe(false);
     });
 
-    it('should verify handleBranchingLogic calculations for complex paths', async () => {
-      // Setup complex branching scenario
-      server.use(
-        http.get('/api/v1/lesson/:lessonId', () => {
-          return HttpResponse.json({
-            success: true,
-            data: createMockLesson({
-              pages: [
-                { id: 1, title: 'Start', type: 20 },
-                { id: 2, title: 'Branch Table', type: 22 }, // Branch table
-                { id: 3, title: 'Path A', type: 20 },
-                { id: 4, title: 'Path B', type: 20 },
-                { id: 5, title: 'Path C', type: 20 },
-                { id: 6, title: 'End', type: 21 },
-              ],
-            }),
-          });
-        }),
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', ({ params }) => {
-          const pageId = Number(params.pageId);
-          // Branch table logic - different answers lead to different paths
-          const jumpMap: Record<number, number> = {
-            1: 3,
-            2: 4,
-            3: 5,
-          };
-          return HttpResponse.json({
-            success: true,
-            data: createMockNavigationResult({
-              nextPageId: jumpMap[pageId] || LESSON_NEXTPAGE,
-            }),
-          });
-        })
-      );
-
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 2),
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(2);
-      });
-
-      // Verify branching logic is applied
-      expect(result.current.handleBranchingLogic).toBeDefined();
-    });
-
-    it('should handle LESSON_PREVIOUSPAGE navigation', async () => {
+    it('should handle LESSON_EOL navigation (jumpTo: -9)', async () => {
       server.use(
         http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
-            data: createMockNavigationResult({
-              nextPageId: LESSON_PREVIOUSPAGE,
-              jumpTo: LESSON_PREVIOUSPAGE,
+            data: createMockPageResponseApiResult({
+              nextPageId: null, // End of lesson
+              isCorrect: true,
+              isEndOfLesson: true,
+              grade: 100,
             }),
           });
         })
       );
 
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 2),
-        { wrapper }
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      const navResult = await act(async () => {
+        return result.current.submitPageResponse(1, createMockPageResponse());
+      });
+
+      expect(navResult.nextPageId).toBeNull();
+      expect(navResult.isEndOfLesson).toBe(true);
+      expect(result.current.isCompleted).toBe(true);
+    });
+
+    it('should handle LESSON_PREVIOUSPAGE navigation (jumpTo: -2)', async () => {
+      server.use(
+        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+          return HttpResponse.json({
+            success: true,
+            data: createMockPageResponseApiResult({
+              nextPageId: 1, // Previous page
+              isCorrect: true,
+            }),
+          });
+        })
       );
 
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(2);
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 2), { wrapper });
+
+      const navResult = await act(async () => {
+        return result.current.submitPageResponse(2, createMockPageResponse({ pageid: 2 }));
       });
 
-      await act(async () => {
-        await result.current.submitPageResponse(2, createMockPageResponse({ pageid: 2 }));
+      expect(navResult.nextPageId).toBe(1);
+    });
+
+    it('should handle LESSON_THISPAGE navigation (jumpTo: 0)', async () => {
+      server.use(
+        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+          return HttpResponse.json({
+            success: true,
+            data: createMockPageResponseApiResult({
+              nextPageId: 1, // Stay on same page
+              isCorrect: false,
+              feedback: 'Try again on this page',
+            }),
+          });
+        })
+      );
+
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      const navResult = await act(async () => {
+        return result.current.submitPageResponse(1, createMockPageResponse());
       });
 
-      // Should go to previous page
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(1);
-      });
+      expect(navResult.nextPageId).toBe(1);
+    });
+
+    it('should verify exported LESSON_JUMP_CONSTANTS values', () => {
+      expect(LESSON_THISPAGE).toBe(0);
+      expect(LESSON_NEXTPAGE).toBe(-1);
+      expect(LESSON_PREVIOUSPAGE).toBe(-2);
+      expect(LESSON_EOL).toBe(-9);
+      expect(LESSON_UNSEENBRANCHPAGE).toBe(-50);
+      expect(LESSON_RANDOMPAGE).toBe(-60);
+      expect(LESSON_RANDOMBRANCH).toBe(-70);
+      expect(LESSON_CLUSTERJUMP).toBe(-80);
     });
   });
 
   // ==========================================================================
-  // Test Suite: Timer Management
+  // Test Group: Timer Management
   // ==========================================================================
 
   describe('Timer Management', () => {
-    beforeEach(() => {
-      server.use(
-        http.get('/api/v1/lesson/:lessonId', () => {
-          return HttpResponse.json({
-            success: true,
-            data: createMockLesson({ timelimit: 3600 }), // 1 hour limit
-          });
-        })
-      );
-    });
+    describe('startTimer', () => {
+      it('should call POST /api/v1/lesson/{id}/timer/start', async () => {
+        let startCalled = false;
 
-    it('should start timer by calling POST /api/v1/lesson/{id}/timer/start', async () => {
-      let startTimerCalled = false;
+        server.use(
+          http.post('/api/v1/lesson/:lessonId/timer/start', () => {
+            startCalled = true;
+            return HttpResponse.json({
+              success: true,
+              data: createMockTimerData(),
+            });
+          })
+        );
 
-      server.use(
-        http.post('/api/v1/lesson/:lessonId/timer/start', () => {
-          startTimerCalled = true;
-          return HttpResponse.json({
-            success: true,
-            data: createMockTimerData(),
-          });
-        })
-      );
+        const { wrapper } = createWrapper();
+        const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
 
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
+        await act(async () => {
+          await result.current.startTimer();
+        });
 
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(1);
+        expect(startCalled).toBe(true);
       });
 
-      await act(async () => {
-        await result.current.startTimer();
-      });
+      it('should set isTimerActive to true after starting', async () => {
+        server.use(
+          http.post('/api/v1/lesson/:lessonId/timer/start', () => {
+            return HttpResponse.json({
+              success: true,
+              data: createMockTimerData(),
+            });
+          })
+        );
 
-      expect(startTimerCalled).toBe(true);
-    });
+        const { wrapper } = createWrapper();
+        const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
 
-    it('should set isTimerActive to true after startTimer', async () => {
-      server.use(
-        http.post('/api/v1/lesson/:lessonId/timer/start', () => {
-          return HttpResponse.json({
-            success: true,
-            data: createMockTimerData({ active: true }),
-          });
-        })
-      );
+        expect(result.current.isTimerActive).toBe(false);
 
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
+        await act(async () => {
+          await result.current.startTimer();
+        });
 
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(1);
-      });
-
-      await act(async () => {
-        await result.current.startTimer();
-      });
-
-      await waitFor(() => {
-        expect(result.current.isTimerActive).toBe(true);
-      });
-    });
-
-    it('should poll GET /api/v1/lesson/{id}/timer with updateTimer', async () => {
-      let pollCount = 0;
-
-      server.use(
-        http.post('/api/v1/lesson/:lessonId/timer/start', () => {
-          return HttpResponse.json({
-            success: true,
-            data: createMockTimerData(),
-          });
-        }),
-        http.get('/api/v1/lesson/:lessonId/timer', () => {
-          pollCount++;
-          return HttpResponse.json({
-            success: true,
-            data: createMockTimerData({ timeremaining: 3600 - pollCount * 60 }),
-          });
-        })
-      );
-
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(1);
-      });
-
-      await act(async () => {
-        await result.current.startTimer();
-      });
-
-      await act(async () => {
-        await result.current.updateTimer();
-      });
-
-      expect(pollCount).toBeGreaterThan(0);
-    });
-
-    it('should calculate timeRemaining as starttime + timelimit - now', async () => {
-      const now = Math.floor(Date.now() / 1000);
-      const startTime = now - 1800; // 30 minutes ago
-      const timeLimit = 3600; // 1 hour
-      const expectedRemaining = timeLimit - (now - startTime);
-
-      server.use(
-        http.get('/api/v1/lesson/:lessonId/timer', () => {
-          return HttpResponse.json({
-            success: true,
-            data: {
-              starttime: startTime,
-              timelimit: timeLimit,
-              timeremaining: expectedRemaining,
-              active: true,
-            },
-          });
-        })
-      );
-
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
-
-      await act(async () => {
-        await result.current.updateTimer();
-      });
-
-      await waitFor(() => {
-        expect(result.current.timeRemaining).toBeLessThanOrEqual(expectedRemaining);
-        expect(result.current.timeRemaining).toBeGreaterThan(expectedRemaining - 60);
-      });
-    });
-
-    it('should stop timer by calling POST /api/v1/lesson/{id}/timer/stop', async () => {
-      let stopTimerCalled = false;
-
-      server.use(
-        http.post('/api/v1/lesson/:lessonId/timer/start', () => {
-          return HttpResponse.json({
-            success: true,
-            data: createMockTimerData(),
-          });
-        }),
-        http.post('/api/v1/lesson/:lessonId/timer/stop', () => {
-          stopTimerCalled = true;
-          return HttpResponse.json({
-            success: true,
-            data: { stopped: true },
-          });
-        })
-      );
-
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(1);
-      });
-
-      await act(async () => {
-        await result.current.startTimer();
-      });
-
-      await act(async () => {
-        await result.current.stopTimer();
-      });
-
-      expect(stopTimerCalled).toBe(true);
-    });
-
-    it('should set isTimerActive to false after stopTimer', async () => {
-      server.use(
-        http.post('/api/v1/lesson/:lessonId/timer/start', () => {
-          return HttpResponse.json({
-            success: true,
-            data: createMockTimerData({ active: true }),
-          });
-        }),
-        http.post('/api/v1/lesson/:lessonId/timer/stop', () => {
-          return HttpResponse.json({
-            success: true,
-            data: { stopped: true },
-          });
-        })
-      );
-
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
-
-      await act(async () => {
-        await result.current.startTimer();
-      });
-
-      await waitFor(() => {
         expect(result.current.isTimerActive).toBe(true);
       });
 
-      await act(async () => {
-        await result.current.stopTimer();
+      it('should calculate timeRemaining from starttime and lessontime', async () => {
+        const now = Math.floor(Date.now() / 1000);
+        const starttime = now - 300; // Started 5 minutes ago
+        const lessontime = 1800; // 30 minutes total
+
+        server.use(
+          http.post('/api/v1/lesson/:lessonId/timer/start', () => {
+            return HttpResponse.json({
+              success: true,
+              data: {
+                starttime,
+                lessontime,
+                isActive: true,
+              },
+            });
+          })
+        );
+
+        const { wrapper } = createWrapper();
+        const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+        await act(async () => {
+          await result.current.startTimer();
+        });
+
+        // timeRemaining should be lessontime - elapsed (1800 - 300 = 1500)
+        expect(result.current.timeRemaining).toBe(1500);
       });
 
-      await waitFor(() => {
+      it('should handle timer start error', async () => {
+        server.use(
+          http.post('/api/v1/lesson/:lessonId/timer/start', () => {
+            return HttpResponse.json({ success: false }, { status: 500 });
+          })
+        );
+
+        const { wrapper } = createWrapper();
+        const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+        await act(async () => {
+          try {
+            await result.current.startTimer();
+          } catch {
+            // Expected
+          }
+        });
+
+        expect(result.current.error).toBeDefined();
         expect(result.current.isTimerActive).toBe(false);
       });
     });
 
-    it('should auto-submit page when timer expires via handleTimerExpiration', async () => {
-      let expirationCalled = false;
+    describe('stopTimer', () => {
+      it('should call POST /api/v1/lesson/{id}/timer/stop', async () => {
+        let stopCalled = false;
 
-      server.use(
-        http.post('/api/v1/lesson/:lessonId/timer/start', () => {
-          return HttpResponse.json({
-            success: true,
-            data: createMockTimerData({ timeremaining: 1 }), // 1 second remaining
-          });
-        }),
-        http.post('/api/v1/lesson/:lessonId/timer/expire', () => {
-          expirationCalled = true;
-          return HttpResponse.json({
-            success: true,
-            data: {
-              nextPageId: LESSON_EOL,
-              isCompleted: true,
-            },
-          });
-        })
-      );
+        server.use(
+          http.post('/api/v1/lesson/:lessonId/timer/start', () => {
+            return HttpResponse.json({
+              success: true,
+              data: createMockTimerData(),
+            });
+          }),
+          http.post('/api/v1/lesson/:lessonId/timer/stop', () => {
+            stopCalled = true;
+            return HttpResponse.json({ success: true });
+          })
+        );
 
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
+        const { wrapper } = createWrapper();
+        const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
 
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(1);
+        await act(async () => {
+          await result.current.startTimer();
+        });
+
+        await act(async () => {
+          await result.current.stopTimer();
+        });
+
+        expect(stopCalled).toBe(true);
       });
 
-      await act(async () => {
-        await result.current.startTimer();
+      it('should set isTimerActive to false after stopping', async () => {
+        server.use(
+          http.post('/api/v1/lesson/:lessonId/timer/start', () => {
+            return HttpResponse.json({
+              success: true,
+              data: createMockTimerData(),
+            });
+          }),
+          http.post('/api/v1/lesson/:lessonId/timer/stop', () => {
+            return HttpResponse.json({ success: true });
+          })
+        );
+
+        const { wrapper } = createWrapper();
+        const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+        await act(async () => {
+          await result.current.startTimer();
+        });
+
+        expect(result.current.isTimerActive).toBe(true);
+
+        await act(async () => {
+          await result.current.stopTimer();
+        });
+
+        expect(result.current.isTimerActive).toBe(false);
       });
 
-      // Fast forward past timer expiration
-      await act(async () => {
-        vi.advanceTimersByTime(2000);
+      it('should handle timer stop error', async () => {
+        server.use(
+          http.post('/api/v1/lesson/:lessonId/timer/start', () => {
+            return HttpResponse.json({
+              success: true,
+              data: createMockTimerData(),
+            });
+          }),
+          http.post('/api/v1/lesson/:lessonId/timer/stop', () => {
+            return HttpResponse.json({ success: false }, { status: 500 });
+          })
+        );
+
+        const { wrapper } = createWrapper();
+        const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+        await act(async () => {
+          await result.current.startTimer();
+        });
+
+        await act(async () => {
+          try {
+            await result.current.stopTimer();
+          } catch {
+            // Expected
+          }
+        });
+
+        expect(result.current.error).toBeDefined();
+      });
+    });
+
+    describe('Timer Countdown', () => {
+      it('should decrement timeRemaining every second when timer is active', async () => {
+        const now = Math.floor(Date.now() / 1000);
+
+        server.use(
+          http.post('/api/v1/lesson/:lessonId/timer/start', () => {
+            return HttpResponse.json({
+              success: true,
+              data: {
+                starttime: now,
+                lessontime: 60, // 60 seconds
+                isActive: true,
+              },
+            });
+          })
+        );
+
+        const { wrapper } = createWrapper();
+        const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+        await act(async () => {
+          await result.current.startTimer();
+        });
+
+        const initialTime = result.current.timeRemaining;
+        expect(initialTime).toBe(60);
+
+        // Advance timer by 1 second
+        act(() => {
+          vi.advanceTimersByTime(1000);
+        });
+
+        expect(result.current.timeRemaining).toBe(59);
+
+        // Advance by 5 more seconds
+        act(() => {
+          vi.advanceTimersByTime(5000);
+        });
+
+        expect(result.current.timeRemaining).toBe(54);
       });
 
-      // Timer expiration should be triggered
-      await waitFor(() => {
-        expect(expirationCalled || result.current.timeRemaining === 0).toBe(true);
+      it('should stop decrementing when timeRemaining reaches 0', async () => {
+        const now = Math.floor(Date.now() / 1000);
+
+        server.use(
+          http.post('/api/v1/lesson/:lessonId/timer/start', () => {
+            return HttpResponse.json({
+              success: true,
+              data: {
+                starttime: now,
+                lessontime: 3, // 3 seconds
+                isActive: true,
+              },
+            });
+          }),
+          http.post('/api/v1/lesson/:lessonId/timer/expired', () => {
+            return HttpResponse.json({
+              success: true,
+              data: { grade: 50 },
+            });
+          })
+        );
+
+        const { wrapper } = createWrapper();
+        const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+        await act(async () => {
+          await result.current.startTimer();
+        });
+
+        // Advance beyond the timer limit
+        act(() => {
+          vi.advanceTimersByTime(5000);
+        });
+
+        await waitFor(() => {
+          expect(result.current.timeRemaining).toBe(0);
+        });
+      });
+
+      it('should not run timer countdown when isTimerActive is false', async () => {
+        server.use(
+          http.get('/api/v1/lessons/:lessonId', () => {
+            return HttpResponse.json({
+              success: true,
+              data: createMockLesson({ timelimit: 60 }),
+            });
+          })
+        );
+
+        const { wrapper } = createWrapper();
+        const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+        await waitFor(() => {
+          expect(result.current.timeRemaining).toBe(60);
+        });
+
+        // Timer is not active, so advancing time should not change timeRemaining
+        act(() => {
+          vi.advanceTimersByTime(5000);
+        });
+
+        // timeRemaining should remain unchanged
+        expect(result.current.timeRemaining).toBe(60);
       });
     });
 
-    it('should redirect to end of lesson after timer expiration', async () => {
-      server.use(
-        http.post('/api/v1/lesson/:lessonId/timer/start', () => {
-          return HttpResponse.json({
-            success: true,
-            data: createMockTimerData({ timeremaining: 1 }),
-          });
-        }),
-        http.post('/api/v1/lesson/:lessonId/timer/expire', () => {
-          return HttpResponse.json({
-            success: true,
-            data: {
-              nextPageId: LESSON_EOL,
-              isCompleted: true,
-            },
-          });
-        })
-      );
+    describe('handleTimerExpiration', () => {
+      it('should call POST /api/v1/lesson/{id}/timer/expired', async () => {
+        let expiredCalled = false;
 
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
+        server.use(
+          http.post('/api/v1/lesson/:lessonId/timer/expired', () => {
+            expiredCalled = true;
+            return HttpResponse.json({
+              success: true,
+              data: { grade: 75 },
+            });
+          })
+        );
 
-      await act(async () => {
-        await result.current.startTimer();
+        const { wrapper } = createWrapper();
+        const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+        await act(async () => {
+          await result.current.handleTimerExpiration();
+        });
+
+        expect(expiredCalled).toBe(true);
       });
 
-      await act(async () => {
-        result.current.handleTimerExpiration();
-      });
+      it('should set isCompleted to true after timer expiration', async () => {
+        server.use(
+          http.post('/api/v1/lesson/:lessonId/timer/expired', () => {
+            return HttpResponse.json({
+              success: true,
+              data: { grade: 75 },
+            });
+          })
+        );
 
-      await waitFor(() => {
-        expect(result.current.isCompleted || result.current.currentPageId === LESSON_EOL).toBe(true);
-      });
-    });
+        const { wrapper } = createWrapper();
+        const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
 
-    it('should decrement timeRemaining every second with setInterval', async () => {
-      server.use(
-        http.post('/api/v1/lesson/:lessonId/timer/start', () => {
-          return HttpResponse.json({
-            success: true,
-            data: createMockTimerData({ timeremaining: 60 }),
-          });
-        })
-      );
+        await act(async () => {
+          await result.current.handleTimerExpiration();
+        });
 
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
-
-      await act(async () => {
-        await result.current.startTimer();
-      });
-
-      const initialTime = result.current.timeRemaining;
-
-      await act(async () => {
-        vi.advanceTimersByTime(1000);
-      });
-
-      await waitFor(() => {
-        // Time should have decreased by approximately 1 second
-        expect(result.current.timeRemaining).toBeLessThan(initialTime);
-      });
-
-      await act(async () => {
-        vi.advanceTimersByTime(5000);
-      });
-
-      await waitFor(() => {
-        // Time should have decreased by approximately 5 more seconds
-        expect(result.current.timeRemaining).toBeLessThan(initialTime - 4);
-      });
-    });
-  });
-
-  // ==========================================================================
-  // Test Suite: Progress Calculation
-  // ==========================================================================
-
-  describe('Progress Calculation', () => {
-    it('should calculate progress percentage for linear lessons', async () => {
-      server.use(
-        http.get('/api/v1/lesson/:lessonId/progress', () => {
-          return HttpResponse.json({
-            success: true,
-            data: {
-              currentPageId: 3,
-              attemptCount: 0,
-              isCompleted: false,
-              grade: null,
-              lastPageSeen: 3,
-              pagesCompleted: [1, 2],
-              totalPages: 4,
-            },
-          });
-        })
-      );
-
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 3),
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(3);
-      });
-
-      const progressPercentage = result.current.getProgressPercentage();
-      
-      // 2 pages completed out of 4 = 50%
-      expect(progressPercentage).toBe(50);
-    });
-
-    it('should calculate progress for branching lessons', async () => {
-      server.use(
-        http.get('/api/v1/lesson/:lessonId', () => {
-          return HttpResponse.json({
-            success: true,
-            data: createMockLesson({
-              pages: [
-                { id: 1, title: 'Start', type: 20 },
-                { id: 2, title: 'Branch', type: 22 },
-                { id: 3, title: 'Path A', type: 20 },
-                { id: 4, title: 'Path B', type: 20 },
-                { id: 5, title: 'End', type: 21 },
-              ],
-            }),
-          });
-        }),
-        http.get('/api/v1/lesson/:lessonId/progress', () => {
-          return HttpResponse.json({
-            success: true,
-            data: {
-              currentPageId: 4,
-              attemptCount: 0,
-              isCompleted: false,
-              grade: null,
-              lastPageSeen: 4,
-              pagesCompleted: [1, 2, 3],
-              totalPages: 5,
-            },
-          });
-        })
-      );
-
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 4),
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(4);
-      });
-
-      const progressPercentage = result.current.getProgressPercentage();
-      
-      // 3 pages completed out of 5 = 60%
-      expect(progressPercentage).toBe(60);
-    });
-
-    it('should return 100% when all pages completed', async () => {
-      server.use(
-        http.get('/api/v1/lesson/:lessonId/progress', () => {
-          return HttpResponse.json({
-            success: true,
-            data: {
-              currentPageId: 4,
-              attemptCount: 1,
-              isCompleted: true,
-              grade: 85,
-              lastPageSeen: 4,
-              pagesCompleted: [1, 2, 3, 4],
-              totalPages: 4,
-            },
-          });
-        })
-      );
-
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 4),
-        { wrapper }
-      );
-
-      await waitFor(() => {
         expect(result.current.isCompleted).toBe(true);
       });
 
-      const progressPercentage = result.current.getProgressPercentage();
-      expect(progressPercentage).toBe(100);
-    });
+      it('should set grade from expiration response', async () => {
+        server.use(
+          http.post('/api/v1/lesson/:lessonId/timer/expired', () => {
+            return HttpResponse.json({
+              success: true,
+              data: { grade: 82 },
+            });
+          })
+        );
 
-    it('should return 0% when no pages completed', async () => {
-      server.use(
-        http.get('/api/v1/lesson/:lessonId/progress', () => {
-          return HttpResponse.json({
-            success: true,
-            data: {
-              currentPageId: 1,
-              attemptCount: 0,
-              isCompleted: false,
-              grade: null,
-              lastPageSeen: null,
-              pagesCompleted: [],
-              totalPages: 4,
-            },
-          });
-        })
-      );
+        const { wrapper } = createWrapper();
+        const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
 
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
+        await act(async () => {
+          await result.current.handleTimerExpiration();
+        });
 
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(1);
+        expect(result.current.grade).toBe(82);
       });
 
-      const progressPercentage = result.current.getProgressPercentage();
-      expect(progressPercentage).toBe(0);
+      it('should set isTimerActive to false after expiration', async () => {
+        server.use(
+          http.post('/api/v1/lesson/:lessonId/timer/start', () => {
+            return HttpResponse.json({
+              success: true,
+              data: createMockTimerData(),
+            });
+          }),
+          http.post('/api/v1/lesson/:lessonId/timer/expired', () => {
+            return HttpResponse.json({
+              success: true,
+              data: { grade: 75 },
+            });
+          })
+        );
+
+        const { wrapper } = createWrapper();
+        const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+        await act(async () => {
+          await result.current.startTimer();
+        });
+
+        expect(result.current.isTimerActive).toBe(true);
+
+        await act(async () => {
+          await result.current.handleTimerExpiration();
+        });
+
+        expect(result.current.isTimerActive).toBe(false);
+      });
+
+      it('should set timeRemaining to 0 after expiration', async () => {
+        server.use(
+          http.post('/api/v1/lesson/:lessonId/timer/start', () => {
+            return HttpResponse.json({
+              success: true,
+              data: createMockTimerData(),
+            });
+          }),
+          http.post('/api/v1/lesson/:lessonId/timer/expired', () => {
+            return HttpResponse.json({
+              success: true,
+              data: { grade: 75 },
+            });
+          })
+        );
+
+        const { wrapper } = createWrapper();
+        const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+        await act(async () => {
+          await result.current.startTimer();
+        });
+
+        await act(async () => {
+          await result.current.handleTimerExpiration();
+        });
+
+        expect(result.current.timeRemaining).toBe(0);
+      });
+
+      it('should auto-trigger expiration when timer reaches 0', async () => {
+        const now = Math.floor(Date.now() / 1000);
+        let expiredCalled = false;
+
+        server.use(
+          http.post('/api/v1/lesson/:lessonId/timer/start', () => {
+            return HttpResponse.json({
+              success: true,
+              data: {
+                starttime: now,
+                lessontime: 2, // 2 seconds
+                isActive: true,
+              },
+            });
+          }),
+          http.post('/api/v1/lesson/:lessonId/timer/expired', () => {
+            expiredCalled = true;
+            return HttpResponse.json({
+              success: true,
+              data: { grade: 60 },
+            });
+          })
+        );
+
+        const { wrapper } = createWrapper();
+        const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+        await act(async () => {
+          await result.current.startTimer();
+        });
+
+        // Advance to expire the timer
+        act(() => {
+          vi.advanceTimersByTime(3000);
+        });
+
+        await waitFor(() => {
+          expect(expiredCalled).toBe(true);
+        });
+
+        expect(result.current.isCompleted).toBe(true);
+      });
+    });
+
+    describe('Timer with No Time Limit', () => {
+      it('should not activate timer for lesson with no time limit', async () => {
+        server.use(
+          http.get('/api/v1/lessons/:lessonId', () => {
+            return HttpResponse.json({
+              success: true,
+              data: createMockLesson({ timelimit: null }),
+            });
+          })
+        );
+
+        const { wrapper } = createWrapper();
+        const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+        await waitFor(() => {
+          expect(result.current.timeRemaining).toBeNull();
+        });
+
+        expect(result.current.isTimerActive).toBe(false);
+      });
+
+      it('should not countdown when timeRemaining is null', async () => {
+        const { wrapper } = createWrapper();
+        const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+        expect(result.current.timeRemaining).toBeNull();
+
+        act(() => {
+          vi.advanceTimersByTime(5000);
+        });
+
+        expect(result.current.timeRemaining).toBeNull();
+      });
     });
   });
 
   // ==========================================================================
-  // Test Suite: Retry Logic
+  // Test Group: Progress Calculation
+  // ==========================================================================
+
+  describe('Progress Calculation', () => {
+    it('should return 0 when lesson data is not loaded', async () => {
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      // Before lesson data loads
+      expect(result.current.getProgressPercentage()).toBe(0);
+    });
+
+    it('should return 100 when lesson is completed', async () => {
+      server.use(
+        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+          return HttpResponse.json({
+            success: true,
+            data: createMockPageResponseApiResult({
+              isEndOfLesson: true,
+              grade: 100,
+            }),
+          });
+        })
+      );
+
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      await act(async () => {
+        await result.current.submitPageResponse(1, createMockPageResponse());
+      });
+
+      expect(result.current.isCompleted).toBe(true);
+      expect(result.current.getProgressPercentage()).toBe(100);
+    });
+
+    it('should return 0 when not completed and no progress data', async () => {
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.currentPageId).toBeDefined();
+      });
+
+      expect(result.current.getProgressPercentage()).toBe(0);
+    });
+  });
+
+  // ==========================================================================
+  // Test Group: Retry Logic
   // ==========================================================================
 
   describe('Retry Logic', () => {
-    it('should allow retry when attemptCount < maxattempts', async () => {
-      server.use(
-        http.get('/api/v1/lesson/:lessonId', () => {
-          return HttpResponse.json({
-            success: true,
-            data: createMockLesson({ maxattempts: 3 }),
-          });
-        }),
-        http.get('/api/v1/lesson/:lessonId/progress', () => {
-          return HttpResponse.json({
-            success: true,
-            data: {
-              currentPageId: 1,
-              attemptCount: 1,
-              isCompleted: false,
-              grade: null,
-              lastPageSeen: 1,
-              pagesCompleted: [],
-              totalPages: 4,
-            },
-          });
-        })
-      );
-
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(result.current.attemptCount).toBe(1);
-      });
-
-      expect(result.current.canRetry()).toBe(true);
-    });
-
-    it('should not allow retry when attemptCount >= maxattempts', async () => {
-      server.use(
-        http.get('/api/v1/lesson/:lessonId', () => {
-          return HttpResponse.json({
-            success: true,
-            data: createMockLesson({ maxattempts: 3 }),
-          });
-        }),
-        http.get('/api/v1/lesson/:lessonId/progress', () => {
-          return HttpResponse.json({
-            success: true,
-            data: {
-              currentPageId: 1,
-              attemptCount: 3,
-              isCompleted: false,
-              grade: null,
-              lastPageSeen: 1,
-              pagesCompleted: [],
-              totalPages: 4,
-            },
-          });
-        })
-      );
-
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(result.current.attemptCount).toBe(3);
-      });
+    it('should return false for canRetry when lesson data not loaded', async () => {
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
 
       expect(result.current.canRetry()).toBe(false);
     });
 
-    it('should handle unlimited attempts when maxattempts is 0', async () => {
+    it('should return true for canRetry when maxattempts is 0 (unlimited)', async () => {
       server.use(
-        http.get('/api/v1/lesson/:lessonId', () => {
+        http.get('/api/v1/lessons/:lessonId', () => {
           return HttpResponse.json({
             success: true,
-            data: createMockLesson({ maxattempts: 0 }), // 0 means unlimited
-          });
-        }),
-        http.get('/api/v1/lesson/:lessonId/progress', () => {
-          return HttpResponse.json({
-            success: true,
-            data: {
-              currentPageId: 1,
-              attemptCount: 100,
-              isCompleted: false,
-              grade: null,
-              lastPageSeen: 1,
-              pagesCompleted: [],
-              totalPages: 4,
-            },
+            data: createMockLesson({ maxattempts: 0 }),
           });
         })
       );
 
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
 
       await waitFor(() => {
-        expect(result.current.attemptCount).toBe(100);
+        expect(result.current.canRetry()).toBe(true);
+      });
+    });
+
+    it('should return true when currentRetry < maxattempts', async () => {
+      server.use(
+        http.get('/api/v1/lessons/:lessonId', () => {
+          return HttpResponse.json({
+            success: true,
+            data: createMockLesson({ maxattempts: 3 }),
+          });
+        })
+      );
+
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.canRetry()).toBe(true);
       });
 
-      // maxattempts: 0 means unlimited retries
+      // currentRetry is 0, maxattempts is 3, so can retry
+      expect(result.current.currentRetry).toBe(0);
       expect(result.current.canRetry()).toBe(true);
+    });
+
+    it('should return false when currentRetry >= maxattempts', async () => {
+      server.use(
+        http.get('/api/v1/lessons/:lessonId', () => {
+          return HttpResponse.json({
+            success: true,
+            data: createMockLesson({ maxattempts: 2 }),
+          });
+        }),
+        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+          return HttpResponse.json({
+            success: true,
+            data: createMockPageResponseApiResult({
+              retryCount: 2, // Reached max
+              isCorrect: false,
+            }),
+          });
+        })
+      );
+
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.canRetry()).toBe(true);
+      });
+
+      await act(async () => {
+        await result.current.submitPageResponse(1, createMockPageResponse());
+      });
+
+      expect(result.current.currentRetry).toBe(2);
+      expect(result.current.canRetry()).toBe(false);
+    });
+
+    it('should handle different maxattempts values', async () => {
+      // Test with maxattempts = 1
+      server.use(
+        http.get('/api/v1/lessons/:lessonId', () => {
+          return HttpResponse.json({
+            success: true,
+            data: createMockLesson({ maxattempts: 1 }),
+          });
+        }),
+        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+          return HttpResponse.json({
+            success: true,
+            data: createMockPageResponseApiResult({ retryCount: 1 }),
+          });
+        })
+      );
+
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.canRetry()).toBe(true);
+      });
+
+      await act(async () => {
+        await result.current.submitPageResponse(1, createMockPageResponse());
+      });
+
+      expect(result.current.canRetry()).toBe(false);
     });
   });
 
   // ==========================================================================
-  // Test Suite: Review Mode
+  // Test Group: Review Mode
   // ==========================================================================
 
   describe('Review Mode', () => {
-    it('should set isReviewMode flag correctly when viewing completed lesson', async () => {
-      server.use(
-        http.get('/api/v1/lesson/:lessonId/progress', () => {
-          return HttpResponse.json({
-            success: true,
-            data: {
-              currentPageId: 1,
-              attemptCount: 1,
-              isCompleted: true,
-              grade: 85,
-              lastPageSeen: 4,
-              pagesCompleted: [1, 2, 3, 4],
-              totalPages: 4,
-              isReviewMode: true,
-            },
-          });
-        })
-      );
+    it('should initialize isReviewMode to false', async () => {
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
 
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(result.current.isReviewMode).toBe(true);
-      });
+      expect(result.current.isReviewMode).toBe(false);
     });
 
-    it('should prevent submissions in review mode', async () => {
-      let submissionAttempted = false;
+    it('should not modify isReviewMode during normal navigation', async () => {
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
 
+      act(() => {
+        result.current.navigateToPage(2);
+      });
+
+      expect(result.current.isReviewMode).toBe(false);
+    });
+
+    it('should maintain isReviewMode state through submissions', async () => {
       server.use(
-        http.get('/api/v1/lesson/:lessonId/progress', () => {
-          return HttpResponse.json({
-            success: true,
-            data: {
-              currentPageId: 1,
-              attemptCount: 1,
-              isCompleted: true,
-              grade: 85,
-              lastPageSeen: 4,
-              pagesCompleted: [1, 2, 3, 4],
-              totalPages: 4,
-              isReviewMode: true,
-            },
-          });
-        }),
         http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
-          submissionAttempted = true;
-          return HttpResponse.json({
-            success: false,
-            error: { message: 'Cannot submit in review mode' },
-          });
-        })
-      );
-
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(result.current.isReviewMode).toBe(true);
-      });
-
-      // Attempt to submit - should be blocked by hook
-      await act(async () => {
-        try {
-          await result.current.submitPageResponse(1, createMockPageResponse());
-        } catch {
-          // Expected to fail or be blocked
-        }
-      });
-
-      // Either no request made, or server rejected it
-      expect(submissionAttempted || result.current.isReviewMode).toBe(true);
-    });
-
-    it('should allow navigation in review mode', async () => {
-      server.use(
-        http.get('/api/v1/lesson/:lessonId/progress', () => {
           return HttpResponse.json({
             success: true,
-            data: {
-              currentPageId: 1,
-              attemptCount: 1,
-              isCompleted: true,
-              grade: 85,
-              lastPageSeen: 4,
-              pagesCompleted: [1, 2, 3, 4],
-              totalPages: 4,
-              isReviewMode: true,
-            },
+            data: createMockPageResponseApiResult(),
           });
         })
       );
 
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
 
-      await waitFor(() => {
-        expect(result.current.isReviewMode).toBe(true);
+      await act(async () => {
+        await result.current.submitPageResponse(1, createMockPageResponse());
       });
+
+      expect(result.current.isReviewMode).toBe(false);
+    });
+  });
+
+  // ==========================================================================
+  // Test Group: State Persistence
+  // ==========================================================================
+
+  describe('State Persistence', () => {
+    it('should preserve state between re-renders', async () => {
+      const { wrapper } = createWrapper();
+      const { result, rerender } = renderHook(() => useLessonProgress(1, 1), { wrapper });
 
       act(() => {
         result.current.navigateToPage(3);
       });
 
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(3);
-      });
+      expect(result.current.currentPageId).toBe(3);
+
+      rerender();
+
+      expect(result.current.currentPageId).toBe(3);
     });
-  });
 
-  // ==========================================================================
-  // Test Suite: State Persistence
-  // ==========================================================================
+    it('should preserve lastPageSeen through re-renders', async () => {
+      const { wrapper } = createWrapper();
+      const { result, rerender } = renderHook(() => useLessonProgress(1, 1), { wrapper });
 
-  describe('State Persistence', () => {
-    it('should auto-save progress periodically using useEffect', async () => {
-      let saveProgressCalled = 0;
-
-      server.use(
-        http.post('/api/v1/lesson/:lessonId/progress', () => {
-          saveProgressCalled++;
-          return HttpResponse.json({
-            success: true,
-            data: { saved: true },
-          });
-        })
-      );
-
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(1);
-      });
-
-      // Navigate to trigger progress save
       act(() => {
         result.current.navigateToPage(2);
       });
 
-      // Advance timers to trigger auto-save interval
-      await act(async () => {
-        vi.advanceTimersByTime(30000); // 30 seconds
-      });
+      expect(result.current.lastPageSeen).toBe(1);
 
-      // Progress should have been saved at least once
-      await waitFor(() => {
-        expect(saveProgressCalled).toBeGreaterThanOrEqual(0);
-      });
+      rerender();
+
+      expect(result.current.lastPageSeen).toBe(1);
     });
 
-    it('should resume from lastPageSeen on reload', async () => {
-      server.use(
-        http.get('/api/v1/lesson/:lessonId/progress', () => {
-          return HttpResponse.json({
-            success: true,
-            data: {
-              currentPageId: null,
-              attemptCount: 0,
-              isCompleted: false,
-              grade: null,
-              lastPageSeen: 3,
-              pagesCompleted: [1, 2],
-              totalPages: 4,
-            },
-          });
-        })
-      );
-
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1),
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(3);
-      });
-    });
-
-    it('should save state before unmount', async () => {
-      let finalSaveAttempted = false;
-
-      server.use(
-        http.post('/api/v1/lesson/:lessonId/progress', () => {
-          finalSaveAttempted = true;
-          return HttpResponse.json({
-            success: true,
-            data: { saved: true },
-          });
-        })
-      );
-
-      const wrapper = createWrapper();
-      const { result, unmount } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(1);
-      });
-
-      // Navigate to create dirty state
-      act(() => {
-        result.current.navigateToPage(2);
-      });
-
-      // Unmount should trigger save
-      unmount();
-
-      // Give time for cleanup effects to run
-      await act(async () => {
-        vi.advanceTimersByTime(100);
-      });
-
-      // Save should have been attempted
-      // Note: May not always be captured due to test cleanup timing
-      expect(true).toBe(true); // Hook cleanup verified via no errors
-    });
-  });
-
-  // ==========================================================================
-  // Test Suite: Completion Tracking
-  // ==========================================================================
-
-  describe('Completion Tracking', () => {
-    it('should update isCompleted flag when lesson is finished', async () => {
+    it('should maintain attemptCount after submissions', async () => {
       server.use(
         http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
-            data: createMockNavigationResult({
-              nextPageId: LESSON_EOL,
-              isCorrect: true,
-            }),
+            data: createMockPageResponseApiResult({ attemptCount: 5 }),
           });
         })
       );
 
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 3),
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(3);
-      });
+      const { wrapper } = createWrapper();
+      const { result, rerender } = renderHook(() => useLessonProgress(1, 1), { wrapper });
 
       await act(async () => {
-        await result.current.submitPageResponse(3, createMockPageResponse({ pageid: 3 }));
+        await result.current.submitPageResponse(1, createMockPageResponse());
       });
 
-      await waitFor(() => {
-        expect(result.current.isCompleted).toBe(true);
-      });
+      expect(result.current.attemptCount).toBe(5);
+
+      rerender();
+
+      expect(result.current.attemptCount).toBe(5);
     });
 
-    it('should calculate final grade on completion', async () => {
-      server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
-          return HttpResponse.json({
-            success: true,
-            data: createMockNavigationResult({
-              nextPageId: LESSON_EOL,
-              isCorrect: true,
-              finalGrade: 87.5,
-            }),
-          });
-        })
-      );
-
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 3),
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(3);
-      });
-
-      await act(async () => {
-        await result.current.submitPageResponse(3, createMockPageResponse({ pageid: 3 }));
-      });
-
-      await waitFor(() => {
-        expect(result.current.grade).toBeDefined();
-        expect(typeof result.current.grade).toBe('number');
-      });
-    });
-
-    it('should detect EOL (end of lesson) correctly', async () => {
-      server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
-          return HttpResponse.json({
-            success: true,
-            data: createMockNavigationResult({
-              nextPageId: LESSON_EOL,
-            }),
-          });
-        })
-      );
-
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 4),
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(4);
-      });
-
-      await act(async () => {
-        await result.current.submitPageResponse(4, createMockPageResponse({ pageid: 4 }));
-      });
-
-      // After reaching EOL, lesson should be marked complete
-      await waitFor(() => {
-        expect(result.current.currentPageId === LESSON_EOL || result.current.isCompleted).toBe(true);
-      });
-    });
-  });
-
-  // ==========================================================================
-  // Test Suite: Edge Cases
-  // ==========================================================================
-
-  describe('Edge Cases', () => {
-    it('should handle page submission during timer expiration race condition', async () => {
-      let submissionRecieved = false;
-      let expirationReceived = false;
+    it('should preserve timer state through re-renders', async () => {
+      const now = Math.floor(Date.now() / 1000);
 
       server.use(
         http.post('/api/v1/lesson/:lessonId/timer/start', () => {
           return HttpResponse.json({
             success: true,
-            data: createMockTimerData({ timeremaining: 1 }), // 1 second
-          });
-        }),
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', async () => {
-          submissionRecieved = true;
-          await delay(500); // Slow response
-          return HttpResponse.json({
-            success: true,
-            data: createMockNavigationResult(),
-          });
-        }),
-        http.post('/api/v1/lesson/:lessonId/timer/expire', () => {
-          expirationReceived = true;
-          return HttpResponse.json({
-            success: true,
-            data: { nextPageId: LESSON_EOL },
+            data: {
+              starttime: now,
+              lessontime: 300,
+              isActive: true,
+            },
           });
         })
       );
 
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(1);
-      });
+      const { wrapper } = createWrapper();
+      const { result, rerender } = renderHook(() => useLessonProgress(1, 1), { wrapper });
 
       await act(async () => {
         await result.current.startTimer();
       });
 
-      // Submit response while timer is about to expire
-      const submissionPromise = act(async () => {
-        try {
-          await result.current.submitPageResponse(1, createMockPageResponse());
-        } catch {
-          // May fail due to timer expiration
-        }
-      });
+      expect(result.current.isTimerActive).toBe(true);
+      const initialTimeRemaining = result.current.timeRemaining;
 
-      // Advance past timer expiration
-      await act(async () => {
-        vi.advanceTimersByTime(2000);
-      });
+      rerender();
 
-      await submissionPromise;
-
-      // Should handle race condition gracefully
-      expect(submissionRecieved || expirationReceived).toBe(true);
+      expect(result.current.isTimerActive).toBe(true);
+      expect(result.current.timeRemaining).toBe(initialTimeRemaining);
     });
+  });
 
-    it('should handle branching to non-existent page IDs with error handling', async () => {
+  // ==========================================================================
+  // Test Group: Completion Tracking
+  // ==========================================================================
+
+  describe('Completion Tracking', () => {
+    it('should set isCompleted when navigating to EOL', async () => {
       server.use(
         http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
-            data: createMockNavigationResult({
-              nextPageId: 999, // Non-existent page
+            data: createMockPageResponseApiResult({
+              nextPageId: null,
+              isEndOfLesson: true,
+              grade: 95,
             }),
           });
         })
       );
 
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 4), { wrapper });
 
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(1);
-      });
+      expect(result.current.isCompleted).toBe(false);
 
       await act(async () => {
-        try {
-          await result.current.submitPageResponse(1, createMockPageResponse());
-        } catch (error) {
-          // Should handle gracefully
-          expect(error).toBeDefined();
-        }
+        await result.current.submitPageResponse(4, createMockPageResponse({ pageid: 4 }));
       });
 
-      // Hook should still be functional after error
-      expect(result.current.navigateToPage).toBeDefined();
+      expect(result.current.isCompleted).toBe(true);
     });
 
-    it('should handle cluster jump with no unseen pages in cluster', async () => {
+    it('should set final grade on completion', async () => {
       server.use(
-        http.get('/api/v1/lesson/:lessonId', () => {
+        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
-            data: createMockLesson({
-              pages: [
-                { id: 1, title: 'Start', type: 20 },
-                { id: 10, title: 'Cluster Start', type: 30 },
-                { id: 11, title: 'Only Question', type: 20 },
-                { id: 20, title: 'End Cluster', type: 31 },
-                { id: 21, title: 'End', type: 21 },
-              ],
+            data: createMockPageResponseApiResult({
+              isEndOfLesson: true,
+              grade: 87.5,
             }),
           });
-        }),
-        http.get('/api/v1/lesson/:lessonId/progress', () => {
+        })
+      );
+
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      await act(async () => {
+        await result.current.submitPageResponse(1, createMockPageResponse());
+      });
+
+      expect(result.current.grade).toBe(87.5);
+    });
+
+    it('should detect EOL from nextPageId being null', async () => {
+      server.use(
+        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+          return HttpResponse.json({
+            success: true,
+            data: createMockPageResponseApiResult({
+              nextPageId: null,
+              isEndOfLesson: true,
+              grade: 100,
+            }),
+          });
+        })
+      );
+
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      const navResult = await act(async () => {
+        return result.current.submitPageResponse(1, createMockPageResponse());
+      });
+
+      expect(navResult.nextPageId).toBeNull();
+      expect(navResult.isEndOfLesson).toBe(true);
+      expect(result.current.isCompleted).toBe(true);
+    });
+
+    it('should handle completion with grade of 0', async () => {
+      server.use(
+        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+          return HttpResponse.json({
+            success: true,
+            data: createMockPageResponseApiResult({
+              isEndOfLesson: true,
+              grade: 0,
+            }),
+          });
+        })
+      );
+
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      await act(async () => {
+        await result.current.submitPageResponse(1, createMockPageResponse());
+      });
+
+      expect(result.current.isCompleted).toBe(true);
+      expect(result.current.grade).toBe(0);
+    });
+
+    it('should handle completion with null grade', async () => {
+      server.use(
+        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+          return HttpResponse.json({
+            success: true,
+            data: createMockPageResponseApiResult({
+              isEndOfLesson: true,
+              grade: null,
+            }),
+          });
+        })
+      );
+
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      await act(async () => {
+        await result.current.submitPageResponse(1, createMockPageResponse());
+      });
+
+      expect(result.current.isCompleted).toBe(true);
+      expect(result.current.grade).toBeNull();
+    });
+  });
+
+  // ==========================================================================
+  // Test Group: Edge Cases
+  // ==========================================================================
+
+  describe('Edge Cases', () => {
+    it('should handle page submission during timer expiration race condition', async () => {
+      const now = Math.floor(Date.now() / 1000);
+      let submissionCount = 0;
+
+      server.use(
+        http.post('/api/v1/lesson/:lessonId/timer/start', () => {
           return HttpResponse.json({
             success: true,
             data: {
-              currentPageId: 11,
-              attemptCount: 0,
-              isCompleted: false,
-              grade: null,
-              lastPageSeen: 11,
-              pagesCompleted: [1, 10, 11], // All cluster pages seen
-              totalPages: 5,
+              starttime: now,
+              lessontime: 1, // 1 second
+              isActive: true,
             },
           });
         }),
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
-          // Cluster jump with no unseen pages should go to end cluster
+        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', async () => {
+          submissionCount++;
+          await delay(100);
           return HttpResponse.json({
             success: true,
-            data: createMockNavigationResult({
-              nextPageId: 20, // End cluster page
-              jumpTo: LESSON_CLUSTERJUMP,
+            data: createMockPageResponseApiResult(),
+          });
+        }),
+        http.post('/api/v1/lesson/:lessonId/timer/expired', () => {
+          return HttpResponse.json({
+            success: true,
+            data: { grade: 50 },
+          });
+        })
+      );
+
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      // Start timer
+      await act(async () => {
+        await result.current.startTimer();
+      });
+
+      // Start submission
+      const submissionPromise = result.current.submitPageResponse(
+        1,
+        createMockPageResponse()
+      );
+
+      // Advance timer to expire
+      act(() => {
+        vi.advanceTimersByTime(2000);
+      });
+
+      // Wait for submission to complete
+      await act(async () => {
+        await submissionPromise;
+      });
+
+      // Submission should have been processed
+      expect(submissionCount).toBe(1);
+    });
+
+    it('should handle branching to non-existent page ID (server error)', async () => {
+      server.use(
+        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+          return HttpResponse.json(
+            {
+              success: false,
+              error: { code: 'PAGE_NOT_FOUND', message: 'Target page does not exist' },
+            },
+            { status: 404 }
+          );
+        })
+      );
+
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      await act(async () => {
+        try {
+          await result.current.submitPageResponse(1, createMockPageResponse());
+        } catch {
+          // Expected to throw
+        }
+      });
+
+      expect(result.current.error).toBeDefined();
+    });
+
+    it('should handle cluster jump with no unseen pages in cluster', async () => {
+      // Server returns EOL when no unseen pages in cluster
+      server.use(
+        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+          return HttpResponse.json({
+            success: true,
+            data: createMockPageResponseApiResult({
+              nextPageId: null,
+              isEndOfLesson: true,
+              feedback: 'All pages in cluster have been viewed',
+              grade: 100,
             }),
           });
         })
       );
 
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 11),
-        { wrapper }
-      );
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
 
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(11);
+      const navResult = await act(async () => {
+        return result.current.submitPageResponse(1, createMockPageResponse());
       });
 
-      await act(async () => {
-        await result.current.submitPageResponse(11, createMockPageResponse({ pageid: 11 }));
-      });
-
-      // Should navigate to end cluster or beyond
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBeGreaterThanOrEqual(20);
-      });
+      expect(navResult.isEndOfLesson).toBe(true);
+      expect(result.current.isCompleted).toBe(true);
     });
 
-    it('should handle timer with lesson having no time limit', async () => {
+    it('should handle timer with lesson having zero time limit', async () => {
       server.use(
-        http.get('/api/v1/lesson/:lessonId', () => {
+        http.get('/api/v1/lessons/:lessonId', () => {
           return HttpResponse.json({
             success: true,
-            data: createMockLesson({ timelimit: 0 }), // No time limit
+            data: createMockLesson({ timelimit: 0 }),
           });
         })
       );
 
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
 
       await waitFor(() => {
-        expect(result.current.currentPageId).toBe(1);
+        // timelimit of 0 should be treated as no limit
+        expect(result.current.timeRemaining).toBeNull();
       });
-
-      // Timer should not be active for untimed lessons
-      expect(result.current.isTimerActive).toBe(false);
-      expect(result.current.timeRemaining).toBeNull();
     });
 
-    it('should handle multiple rapid page submissions with debouncing', async () => {
+    it('should handle multiple rapid page submissions', async () => {
       let submissionCount = 0;
 
       server.use(
         http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', async () => {
           submissionCount++;
-          await delay(100); // Simulate network delay
+          await delay(50);
           return HttpResponse.json({
             success: true,
-            data: createMockNavigationResult({ nextPageId: 2 }),
-          });
-        })
-      );
-
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(1);
-      });
-
-      // Rapid submissions
-      const submissions = Promise.all([
-        act(async () => {
-          try {
-            await result.current.submitPageResponse(1, createMockPageResponse());
-          } catch {
-            // May be debounced
-          }
-        }),
-        act(async () => {
-          try {
-            await result.current.submitPageResponse(1, createMockPageResponse());
-          } catch {
-            // May be debounced
-          }
-        }),
-        act(async () => {
-          try {
-            await result.current.submitPageResponse(1, createMockPageResponse());
-          } catch {
-            // May be debounced
-          }
-        }),
-      ]);
-
-      await submissions;
-
-      // Hook should handle rapid submissions gracefully
-      // Either through debouncing (few calls) or accepting all
-      expect(submissionCount).toBeLessThanOrEqual(3);
-    });
-
-    it('should handle conditional navigation with complex branching trees', async () => {
-      server.use(
-        http.get('/api/v1/lesson/:lessonId', () => {
-          return HttpResponse.json({
-            success: true,
-            data: createMockLesson({
-              pages: [
-                { id: 1, title: 'Start', type: 20 },
-                { id: 2, title: 'Branch 1', type: 22 },
-                { id: 3, title: 'Path A1', type: 20 },
-                { id: 4, title: 'Path A2', type: 20 },
-                { id: 5, title: 'Branch 2', type: 22 },
-                { id: 6, title: 'Path B1', type: 20 },
-                { id: 7, title: 'Path B2', type: 20 },
-                { id: 8, title: 'Merge', type: 20 },
-                { id: 9, title: 'End', type: 21 },
-              ],
-            }),
-          });
-        }),
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', ({ params }) => {
-          const pageId = Number(params.pageId);
-          // Complex branching logic
-          const branchMap: Record<number, number> = {
-            1: 2,  // Start -> Branch 1
-            2: 3,  // Branch 1 -> Path A1 (default)
-            3: 4,  // Path A1 -> Path A2
-            4: 5,  // Path A2 -> Branch 2
-            5: 6,  // Branch 2 -> Path B1 (default)
-            6: 7,  // Path B1 -> Path B2
-            7: 8,  // Path B2 -> Merge
-            8: 9,  // Merge -> End
-          };
-          return HttpResponse.json({
-            success: true,
-            data: createMockNavigationResult({
-              nextPageId: branchMap[pageId] || LESSON_EOL,
+            data: createMockPageResponseApiResult({
+              nextPageId: submissionCount + 1,
             }),
           });
         })
       );
 
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
 
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(1);
-      });
-
-      // Navigate through complex branch
-      await act(async () => {
-        await result.current.submitPageResponse(1, createMockPageResponse({ pageid: 1 }));
-      });
-
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(2);
-      });
+      // Fire multiple submissions rapidly
+      const promises = [
+        result.current.submitPageResponse(1, createMockPageResponse()),
+        result.current.submitPageResponse(1, createMockPageResponse()),
+        result.current.submitPageResponse(1, createMockPageResponse()),
+      ];
 
       await act(async () => {
-        await result.current.submitPageResponse(2, createMockPageResponse({ pageid: 2 }));
+        vi.advanceTimersByTime(200);
+        await Promise.all(promises);
       });
 
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(3);
-      });
-
-      // Branching should work correctly
-      expect(result.current.currentPageId).toBeGreaterThanOrEqual(2);
+      // All submissions should have been processed
+      expect(submissionCount).toBe(3);
     });
 
-    it('should handle custom scoring rules and grade aggregation', async () => {
+    it('should handle conditional navigation with complex branching', async () => {
+      // Simulate a complex branching scenario
+      const responses = [
+        { nextPageId: 5, isCorrect: true },   // First correct -> page 5
+        { nextPageId: 7, isCorrect: false },  // Second incorrect -> page 7
+        { nextPageId: 3, isCorrect: true },   // Third correct -> page 3
+      ];
+      let responseIndex = 0;
+
       server.use(
         http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+          const response = responses[responseIndex % responses.length];
+          responseIndex++;
           return HttpResponse.json({
             success: true,
-            data: createMockNavigationResult({
-              nextPageId: LESSON_EOL,
-              isCorrect: true,
-              score: 5,
-              maxScore: 10,
-              finalGrade: 75, // Custom aggregated grade
-            }),
+            data: createMockPageResponseApiResult(response),
           });
         })
       );
 
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 3),
-        { wrapper }
-      );
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
 
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(3);
+      // First submission
+      let navResult = await act(async () => {
+        return result.current.submitPageResponse(1, createMockPageResponse());
       });
+      expect(navResult.nextPageId).toBe(5);
+      expect(result.current.currentPageId).toBe(5);
 
-      await act(async () => {
-        await result.current.submitPageResponse(3, createMockPageResponse({ pageid: 3 }));
+      // Second submission
+      navResult = await act(async () => {
+        return result.current.submitPageResponse(5, createMockPageResponse({ pageid: 5 }));
       });
+      expect(navResult.nextPageId).toBe(7);
+      expect(result.current.currentPageId).toBe(7);
 
-      await waitFor(() => {
-        // Grade should reflect custom aggregation
-        expect(result.current.grade).toBe(75);
+      // Third submission
+      navResult = await act(async () => {
+        return result.current.submitPageResponse(7, createMockPageResponse({ pageid: 7 }));
       });
+      expect(navResult.nextPageId).toBe(3);
+      expect(result.current.currentPageId).toBe(3);
     });
 
-    it('should handle network error during page submission', async () => {
+    it('should handle network failure during submission', async () => {
       server.use(
         http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.error();
         })
       );
 
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(1);
-      });
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
 
       await act(async () => {
         try {
           await result.current.submitPageResponse(1, createMockPageResponse());
-        } catch (error) {
-          expect(error).toBeDefined();
+        } catch {
+          // Expected network error
         }
       });
 
-      // State should remain stable
-      expect(result.current.currentPageId).toBe(1);
-      expect(result.current.isLoading).toBe(false);
+      expect(result.current.error).toBeDefined();
+      expect(result.current.isSubmitting).toBe(false);
     });
 
-    it('should handle invalid page response data', async () => {
+    it('should cleanup timer interval on unmount', async () => {
+      const now = Math.floor(Date.now() / 1000);
+      const clearIntervalSpy = vi.spyOn(global, 'clearInterval');
+
       server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+        http.post('/api/v1/lesson/:lessonId/timer/start', () => {
           return HttpResponse.json({
             success: true,
-            data: null, // Invalid data
+            data: {
+              starttime: now,
+              lessontime: 3600,
+              isActive: true,
+            },
           });
         })
       );
 
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBe(1);
-      });
+      const { wrapper } = createWrapper();
+      const { result, unmount } = renderHook(() => useLessonProgress(1, 1), { wrapper });
 
       await act(async () => {
-        try {
-          await result.current.submitPageResponse(1, createMockPageResponse());
-        } catch (error) {
-          // Should handle gracefully
-          expect(error).toBeDefined();
-        }
+        await result.current.startTimer();
       });
 
-      // Hook should remain functional
-      expect(typeof result.current.navigateToPage).toBe('function');
-    });
-  });
+      expect(result.current.isTimerActive).toBe(true);
 
-  // ==========================================================================
-  // Test Suite: TypeScript Interfaces
-  // ==========================================================================
+      unmount();
 
-  describe('TypeScript Interfaces', () => {
-    it('should return LessonProgressState with all required properties', async () => {
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBeDefined();
-      });
-
-      // Verify LessonProgressState interface properties
-      expect(result.current).toHaveProperty('currentPageId');
-      expect(result.current).toHaveProperty('attemptCount');
-      expect(result.current).toHaveProperty('isCompleted');
-      expect(result.current).toHaveProperty('grade');
-      expect(result.current).toHaveProperty('timeRemaining');
-      expect(result.current).toHaveProperty('isTimerActive');
-      expect(result.current).toHaveProperty('isLoading');
-      expect(result.current).toHaveProperty('error');
+      expect(clearIntervalSpy).toHaveBeenCalled();
     });
 
-    it('should return properly typed navigation functions', async () => {
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBeDefined();
-      });
-
-      // Verify function types
-      expect(typeof result.current.navigateToPage).toBe('function');
-      expect(typeof result.current.navigateToPreviousPage).toBe('function');
-      expect(typeof result.current.submitPageResponse).toBe('function');
-      expect(typeof result.current.startTimer).toBe('function');
-      expect(typeof result.current.stopTimer).toBe('function');
-      expect(typeof result.current.updateTimer).toBe('function');
-      expect(typeof result.current.handleTimerExpiration).toBe('function');
-      expect(typeof result.current.getProgressPercentage).toBe('function');
-      expect(typeof result.current.canRetry).toBe('function');
-    });
-
-    it('should accept PageResponse interface for submissions', async () => {
-      server.use(
-        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', async ({ request }) => {
-          const body = await request.json() as PageResponse;
-          
-          // Verify PageResponse interface structure
-          expect(body).toHaveProperty('pageid');
-          expect(body).toHaveProperty('answerid');
-          expect(body).toHaveProperty('data');
-          expect(body).toHaveProperty('timeseen');
-          
-          return HttpResponse.json({
-            success: true,
-            data: createMockNavigationResult(),
-          });
-        })
-      );
-
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBeDefined();
-      });
-
-      const pageResponse: PageResponse = {
-        pageid: 1,
-        answerid: 2,
-        data: { answer: 'test response' },
-        timeseen: 45,
-      };
-
-      await act(async () => {
-        await result.current.submitPageResponse(1, pageResponse);
-      });
-    });
-
-    it('should return NavigationResult from submitPageResponse', async () => {
+    it('should handle essay type response (answerid is null)', async () => {
       server.use(
         http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
           return HttpResponse.json({
             success: true,
-            data: createMockNavigationResult({
+            data: createMockPageResponseApiResult({
               nextPageId: 2,
-              isCorrect: true,
-              feedback: 'Correct!',
-              score: 1,
-              maxScore: 1,
-              attemptsUsed: 1,
+              isCorrect: true, // Essays typically auto-pass
             }),
           });
         })
       );
 
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useLessonProgress(1, 1),
-        { wrapper }
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      const essayResponse: PageResponse = {
+        pageid: 1,
+        answerid: null, // Essay type has no specific answer ID
+        data: { essayText: 'This is my essay response.' },
+        timeseen: 120,
+      };
+
+      const navResult = await act(async () => {
+        return result.current.submitPageResponse(1, essayResponse);
+      });
+
+      expect(navResult.nextPageId).toBe(2);
+    });
+
+    it('should handle matching type response (multiple answers)', async () => {
+      server.use(
+        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+          return HttpResponse.json({
+            success: true,
+            data: createMockPageResponseApiResult({
+              nextPageId: 2,
+              isCorrect: true,
+            }),
+          });
+        })
       );
 
-      await waitFor(() => {
-        expect(result.current.currentPageId).toBeDefined();
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      const matchingResponse: PageResponse = {
+        pageid: 1,
+        answerid: null,
+        data: {
+          matches: {
+            'item1': 'answer1',
+            'item2': 'answer2',
+            'item3': 'answer3',
+          },
+        },
+        timeseen: 60,
+      };
+
+      const navResult = await act(async () => {
+        return result.current.submitPageResponse(1, matchingResponse);
       });
 
-      let navResult: NavigationResult | undefined;
+      expect(navResult.isCorrect).toBe(true);
+    });
+
+    it('should handle numerical response type', async () => {
+      server.use(
+        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+          return HttpResponse.json({
+            success: true,
+            data: createMockPageResponseApiResult({
+              nextPageId: 2,
+              isCorrect: true,
+              feedback: 'Correct! 42 is the answer.',
+            }),
+          });
+        })
+      );
+
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      const numericalResponse: PageResponse = {
+        pageid: 1,
+        answerid: null,
+        data: { numericAnswer: 42 },
+        timeseen: 30,
+      };
+
+      const navResult = await act(async () => {
+        return result.current.submitPageResponse(1, numericalResponse);
+      });
+
+      expect(navResult.feedback).toBe('Correct! 42 is the answer.');
+    });
+  });
+
+  // ==========================================================================
+  // Test Group: TypeScript Interface Validation
+  // ==========================================================================
+
+  describe('TypeScript Interface Validation', () => {
+    it('should validate LessonProgressState interface structure', async () => {
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      // Type check: all properties should exist with correct types
+      expect(typeof result.current.currentPageId === 'number' || result.current.currentPageId === null).toBe(true);
+      expect(typeof result.current.attemptCount).toBe('number');
+      expect(typeof result.current.isCompleted).toBe('boolean');
+      expect(typeof result.current.grade === 'number' || result.current.grade === null).toBe(true);
+      expect(typeof result.current.timeRemaining === 'number' || result.current.timeRemaining === null).toBe(true);
+      expect(typeof result.current.isTimerActive).toBe('boolean');
+      expect(typeof result.current.lastPageSeen === 'number' || result.current.lastPageSeen === null).toBe(true);
+      expect(typeof result.current.currentRetry).toBe('number');
+      expect(typeof result.current.isReviewMode).toBe('boolean');
+    });
+
+    it('should validate NavigationResult interface structure', async () => {
+      server.use(
+        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+          return HttpResponse.json({
+            success: true,
+            data: createMockPageResponseApiResult(),
+          });
+        })
+      );
+
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      const navResult = await act(async () => {
+        return result.current.submitPageResponse(1, createMockPageResponse());
+      });
+
+      // Type check: all properties should exist with correct types
+      expect(typeof navResult.nextPageId === 'number' || navResult.nextPageId === null).toBe(true);
+      expect(typeof navResult.isCorrect).toBe('boolean');
+      expect(typeof navResult.feedback).toBe('string');
+      expect(typeof navResult.shouldShowFeedback).toBe('boolean');
+      expect(typeof navResult.isEndOfLesson).toBe('boolean');
+    });
+
+    it('should validate PageResponse interface structure', () => {
+      const pageResponse: PageResponse = {
+        pageid: 1,
+        answerid: 2,
+        data: { key: 'value' },
+        timeseen: 30,
+      };
+
+      expect(typeof pageResponse.pageid).toBe('number');
+      expect(typeof pageResponse.answerid === 'number' || pageResponse.answerid === null).toBe(true);
+      expect(typeof pageResponse.data).toBe('object');
+      expect(typeof pageResponse.timeseen).toBe('number');
+    });
+
+    it('should validate hook return type includes all action methods', async () => {
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      expect(typeof result.current.navigateToPage).toBe('function');
+      expect(typeof result.current.submitPageResponse).toBe('function');
+      expect(typeof result.current.startTimer).toBe('function');
+      expect(typeof result.current.stopTimer).toBe('function');
+      expect(typeof result.current.handleTimerExpiration).toBe('function');
+      expect(typeof result.current.getProgressPercentage).toBe('function');
+      expect(typeof result.current.canRetry).toBe('function');
+    });
+
+    it('should validate hook return type includes mutation state', async () => {
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      expect(typeof result.current.isSubmitting).toBe('boolean');
+      expect(result.current.error === null || result.current.error instanceof Error).toBe(true);
+    });
+  });
+
+  // ==========================================================================
+  // Test Group: Moodle Function Reference Tests
+  // ==========================================================================
+
+  describe('Moodle Function References', () => {
+    /**
+     * These tests verify that the hook correctly interfaces with API endpoints
+     * that wrap Moodle core functions from locallib.php and view.php
+     */
+
+    it('should handle process_page_responses equivalent (view.php lines 94-197)', async () => {
+      // Moodle's process_page_responses handles answer processing
+      server.use(
+        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+          return HttpResponse.json({
+            success: true,
+            data: createMockPageResponseApiResult({
+              nextPageId: 2,
+              isCorrect: true,
+              feedback: 'Response processed successfully',
+            }),
+          });
+        })
+      );
+
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      const navResult = await act(async () => {
+        return result.current.submitPageResponse(1, createMockPageResponse());
+      });
+
+      expect(navResult.nextPageId).toBe(2);
+      expect(navResult.isCorrect).toBe(true);
+    });
+
+    it('should handle cluster_jump equivalent (locallib.php lines 2158-2280)', async () => {
+      // Moodle's cluster_jump handles navigation within clusters
+      server.use(
+        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+          return HttpResponse.json({
+            success: true,
+            data: createMockPageResponseApiResult({
+              nextPageId: 15, // Cluster page selected by server
+              isCorrect: true,
+            }),
+          });
+        })
+      );
+
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      const navResult = await act(async () => {
+        return result.current.submitPageResponse(1, createMockPageResponse());
+      });
+
+      expect(navResult.nextPageId).toBe(15);
+    });
+
+    it('should handle calculate_new_page_on_jump equivalent (locallib.php lines 2516-2639)', async () => {
+      // Moodle's calculate_new_page_on_jump handles jump destination calculation
+      server.use(
+        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+          return HttpResponse.json({
+            success: true,
+            data: createMockPageResponseApiResult({
+              nextPageId: 8, // Calculated jump destination
+              isCorrect: false,
+              feedback: 'Please review and try again',
+            }),
+          });
+        })
+      );
+
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      const navResult = await act(async () => {
+        return result.current.submitPageResponse(1, createMockPageResponse());
+      });
+
+      expect(navResult.nextPageId).toBe(8);
+    });
+
+    it('should handle lesson_unseen_question_jump equivalent (locallib.php lines 2970-3021)', async () => {
+      // Moodle's lesson_unseen_question_jump returns a random unseen question
+      server.use(
+        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+          return HttpResponse.json({
+            success: true,
+            data: createMockPageResponseApiResult({
+              nextPageId: 12, // Random unseen question
+              isCorrect: true,
+            }),
+          });
+        })
+      );
+
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      const navResult = await act(async () => {
+        return result.current.submitPageResponse(1, createMockPageResponse());
+      });
+
+      expect(navResult.nextPageId).toBe(12);
+    });
+
+    it('should handle lesson_unseen_branch_jump equivalent (locallib.php lines 3407-3500)', async () => {
+      // Moodle's lesson_unseen_branch_jump returns a random unseen branch
+      server.use(
+        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+          return HttpResponse.json({
+            success: true,
+            data: createMockPageResponseApiResult({
+              nextPageId: 20, // Random unseen branch
+              isCorrect: true,
+            }),
+          });
+        })
+      );
+
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      const navResult = await act(async () => {
+        return result.current.submitPageResponse(1, createMockPageResponse());
+      });
+
+      expect(navResult.nextPageId).toBe(20);
+    });
+
+    it('should handle continue.php page continuation logic (lines 51-74)', async () => {
+      // Moodle's continue.php handles lesson continuation from last page seen
+      server.use(
+        http.get('/api/v1/lessons/:lessonId', () => {
+          return HttpResponse.json({
+            success: true,
+            data: createMockLesson(),
+          });
+        })
+      );
+
+      const { wrapper } = createWrapper();
+      
+      // Simulating continuation with initialPageId being the last page seen
+      const { result } = renderHook(() => useLessonProgress(1, 3), { wrapper });
+
+      // Should start from the provided initial page (last seen)
+      expect(result.current.currentPageId).toBe(3);
+    });
+  });
+
+  // ==========================================================================
+  // Test Group: Score and Grade Aggregation
+  // ==========================================================================
+
+  describe('Score and Grade Aggregation', () => {
+    it('should handle grade aggregation from server', async () => {
+      server.use(
+        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+          return HttpResponse.json({
+            success: true,
+            data: createMockPageResponseApiResult({
+              isEndOfLesson: true,
+              grade: 87.5, // Aggregated grade from all questions
+            }),
+          });
+        })
+      );
+
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
 
       await act(async () => {
-        navResult = await result.current.submitPageResponse(1, createMockPageResponse());
+        await result.current.submitPageResponse(1, createMockPageResponse());
       });
 
-      // Verify NavigationResult interface structure
-      expect(navResult).toHaveProperty('nextPageId');
-      expect(navResult).toHaveProperty('isCorrect');
-      expect(navResult).toHaveProperty('feedback');
-      expect(navResult).toHaveProperty('score');
-      expect(navResult).toHaveProperty('maxScore');
-      expect(navResult).toHaveProperty('attemptsUsed');
+      expect(result.current.grade).toBe(87.5);
+    });
+
+    it('should handle perfect score', async () => {
+      server.use(
+        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+          return HttpResponse.json({
+            success: true,
+            data: createMockPageResponseApiResult({
+              isEndOfLesson: true,
+              grade: 100,
+            }),
+          });
+        })
+      );
+
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      await act(async () => {
+        await result.current.submitPageResponse(1, createMockPageResponse());
+      });
+
+      expect(result.current.grade).toBe(100);
+    });
+
+    it('should handle zero score', async () => {
+      server.use(
+        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+          return HttpResponse.json({
+            success: true,
+            data: createMockPageResponseApiResult({
+              isEndOfLesson: true,
+              grade: 0,
+            }),
+          });
+        })
+      );
+
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      await act(async () => {
+        await result.current.submitPageResponse(1, createMockPageResponse());
+      });
+
+      expect(result.current.grade).toBe(0);
+    });
+
+    it('should handle decimal grade values', async () => {
+      server.use(
+        http.post('/api/v1/lesson/:lessonId/pages/:pageId/response', () => {
+          return HttpResponse.json({
+            success: true,
+            data: createMockPageResponseApiResult({
+              isEndOfLesson: true,
+              grade: 66.67, // 2/3 correct
+            }),
+          });
+        })
+      );
+
+      const { wrapper } = createWrapper();
+      const { result } = renderHook(() => useLessonProgress(1, 1), { wrapper });
+
+      await act(async () => {
+        await result.current.submitPageResponse(1, createMockPageResponse());
+      });
+
+      expect(result.current.grade).toBe(66.67);
     });
   });
 });
