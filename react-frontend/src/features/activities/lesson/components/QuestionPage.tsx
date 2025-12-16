@@ -23,7 +23,7 @@
  * @module features/activities/lesson/components/QuestionPage
  */
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useForm, Controller, type SubmitHandler } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -56,14 +56,13 @@ import type {
   LessonPage,
   Lesson,
   LessonProgress,
-  QuestionType,
 } from '../types/lesson.types';
-import { ProgressTracker } from './ProgressTracker';
-import { useSubmitLessonAnswer } from '../api/lessonApi';
-import { FormInput } from '@/components/forms/FormInput';
-import { RichTextEditor } from '@/components/editor/RichTextEditor';
-import { LoadingSpinner } from '@/components/feedback/LoadingSpinner';
-import { Alert } from '@/components/feedback/Alert';
+import ProgressTracker from './ProgressTracker';
+import { useSubmitLessonAnswer, type SubmitAnswerRequest } from '../api/lessonApi';
+import FormInput from '@/components/forms/FormInput';
+import RichTextEditor from '@/components/editor/RichTextEditor';
+import LoadingSpinner from '@/components/feedback/LoadingSpinner';
+import Alert from '@/components/feedback/Alert';
 import { FormSelect, type SelectOption } from '@/components/forms/FormSelect';
 import { useToast } from '@/hooks/useToast';
 
@@ -181,17 +180,6 @@ function getCorrectAnswerText(answers: Answer[]): string {
 }
 
 /**
- * Validates numerical answer against expected format
- * @param value - User input value
- * @returns True if valid number format
- */
-function isValidNumericalAnswer(value: string): boolean {
-  if (!value || value.trim() === '') return false;
-  const num = parseFloat(value);
-  return !isNaN(num) && isFinite(num);
-}
-
-/**
  * Parses matching question answers into questions and options
  * For matching questions, answers alternate between questions (odd) and options (even)
  * @param answers - Array of answer options
@@ -212,7 +200,7 @@ function parseMatchingAnswers(answers: Answer[]): {
       // Odd indices are options (right side)
       options.push({
         value: answer.id,
-        label: answer.answer,
+        label: answer.answer ?? '',
       });
     }
   });
@@ -252,7 +240,6 @@ export function QuestionPage({
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
-    setValue,
     watch,
   } = useForm<QuestionFormValues>({
     defaultValues: {
@@ -303,20 +290,16 @@ export function QuestionPage({
     async (data) => {
       try {
         // Build submission payload based on question type
-        const submitData: {
-          pageId: number;
-          answerId?: number;
-          answerIds?: number[];
-          userAnswer?: string;
-          matchingAnswers?: Record<string, number>;
-        } = {
+        const submitData: SubmitAnswerRequest = {
           pageId,
         };
 
         switch (qtype) {
           case QUESTION_TYPES.MULTICHOICE:
-            if (isMultipleAnswer) {
-              submitData.answerIds = data.answerIds;
+            if (isMultipleAnswer && data.answerIds && data.answerIds.length > 0) {
+              // For multiple answer, use first answer ID (API expects single answerId)
+              // Alternatively, join as comma-separated string in userAnswer
+              submitData.userAnswer = data.answerIds.join(',');
             } else {
               submitData.answerId = data.answerId;
             }
@@ -330,7 +313,14 @@ export function QuestionPage({
             submitData.userAnswer = data.userAnswer;
             break;
           case QUESTION_TYPES.MATCHING:
-            submitData.matchingAnswers = data.matchingAnswers;
+            // Convert string keys to number keys for API compatibility
+            if (data.matchingAnswers) {
+              const numericMatchingAnswers: Record<number, number> = {};
+              Object.entries(data.matchingAnswers).forEach(([key, value]) => {
+                numericMatchingAnswers[parseInt(key, 10)] = value;
+              });
+              submitData.matchingAnswers = numericMatchingAnswers;
+            }
             break;
           default:
             submitData.userAnswer = data.userAnswer;
@@ -339,7 +329,7 @@ export function QuestionPage({
         // Submit answer to API
         const response = await submitAnswerMutation.mutateAsync({
           lessonId,
-          ...submitData,
+          request: submitData,
         });
 
         // Process response and update feedback state
@@ -452,7 +442,7 @@ export function QuestionPage({
                   <Typography
                     variant="body1"
                     component="span"
-                    dangerouslySetInnerHTML={createMarkup(answer.answer)}
+                    dangerouslySetInnerHTML={createMarkup(answer.answer ?? '')}
                   />
                 }
                 sx={{
@@ -515,7 +505,7 @@ export function QuestionPage({
                     <Typography
                       variant="body1"
                       component="span"
-                      dangerouslySetInnerHTML={createMarkup(answer.answer)}
+                      dangerouslySetInnerHTML={createMarkup(answer.answer ?? '')}
                     />
                   }
                   sx={{
@@ -600,7 +590,7 @@ export function QuestionPage({
         name="userAnswer"
         label="Your Answer"
         control={control}
-        rules={{ required: 'Please enter an answer' }}
+        required
         disabled={!!feedbackState}
         fullWidth
         placeholder="Enter your answer here..."
@@ -621,17 +611,10 @@ export function QuestionPage({
         label="Your Answer"
         type="number"
         control={control}
-        rules={{
-          required: 'Please enter an answer',
-          validate: (value) =>
-            isValidNumericalAnswer(value as string) || 'Please enter a valid number',
-        }}
+        required
         disabled={!!feedbackState}
         fullWidth
         placeholder="Enter a number..."
-        inputProps={{
-          step: 'any',
-        }}
       />
     </Box>
   );
@@ -685,7 +668,7 @@ export function QuestionPage({
               <Box sx={{ flex: '1 1 auto', minWidth: 200 }}>
                 <Typography
                   variant="body1"
-                  dangerouslySetInnerHTML={createMarkup(question.answer)}
+                  dangerouslySetInnerHTML={createMarkup(question.answer ?? '')}
                 />
               </Box>
               <Box sx={{ flex: '0 0 auto', minWidth: 200 }}>
@@ -814,7 +797,6 @@ export function QuestionPage({
         <Box sx={{ mb: 3 }}>
           <ProgressTracker
             progress={progress}
-            currentPageId={pageId}
             lessonId={lessonId}
           />
         </Box>
