@@ -21,14 +21,13 @@
  * @module tests/unit/features/activities/lesson/ProgressTracker.test
  */
 
-import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { http, HttpResponse, delay } from 'msw';
 import '@testing-library/jest-dom';
 
 // Internal imports from test helpers
-import { render, screen, waitFor, userEvent } from '@/tests/helpers/render';
-import { server } from '@/tests/mocks/server';
+import { render, screen, waitFor } from '@tests/helpers/render';
+import { server } from '@tests/mocks/server';
 
 // Component under test
 import ProgressTracker from '@/features/activities/lesson/components/ProgressTracker';
@@ -173,13 +172,13 @@ function createBranchingLessonPages(): LessonPage[] {
       nextpageid: 10,
       qtype: QuestionType.ENDOFBRANCH,
     }),
-    // Final content page
+    // Final content page (using BRANCHTABLE as content pages)
     createMockPage({
       id: 10,
       title: 'Lesson Summary',
       prevpageid: 9,
       nextpageid: 0,
-      qtype: 0, // Content page
+      qtype: QuestionType.BRANCHTABLE, // Content page - using BRANCHTABLE per Moodle convention
     }),
   ];
 }
@@ -272,7 +271,7 @@ function createContentOnlyLessonPages(count: number = 5): LessonPage[] {
       title: `Content Page ${pageId}`,
       prevpageid: index > 0 ? index : 0,
       nextpageid: index < count - 1 ? pageId + 1 : 0,
-      qtype: 0, // Content page
+      qtype: QuestionType.BRANCHTABLE, // Content page - using BRANCHTABLE per Moodle convention
     });
   });
 }
@@ -328,18 +327,24 @@ function createLargeLessonPages(count: number = 50): LessonPage[] {
 // ============================================================================
 
 /**
+ * Base URL for API endpoints in tests
+ * Uses wildcard to match both localhost and any port configuration
+ */
+const API_BASE_URL_PATTERN = '*/api/v1';
+
+/**
  * Sets up a mock handler for the lesson pages API endpoint
  */
 function setupPagesApiHandler(pages: LessonPage[]) {
   server.use(
-    http.get('/api/v1/lesson/:lessonId/pages', () => {
+    http.get(`${API_BASE_URL_PATTERN}/lesson/:lessonId/pages`, () => {
       return HttpResponse.json({
         success: true,
         data: {
           pages,
           totalPages: pages.length,
           questionPages: pages.filter(p => p.qtype > 0 && p.qtype < 20).length,
-          contentPages: pages.filter(p => p.qtype === 0).length,
+          contentPages: pages.filter(p => p.qtype >= 20).length, // Structural pages (BRANCHTABLE, etc.)
           accessiblePages: pages.map(p => p.id),
         },
       });
@@ -352,7 +357,7 @@ function setupPagesApiHandler(pages: LessonPage[]) {
  */
 function setupPagesApiErrorHandler(status: number = 500, message: string = 'Internal server error') {
   server.use(
-    http.get('/api/v1/lesson/:lessonId/pages', () => {
+    http.get(`${API_BASE_URL_PATTERN}/lesson/:lessonId/pages`, () => {
       return HttpResponse.json(
         {
           success: false,
@@ -372,7 +377,7 @@ function setupPagesApiErrorHandler(status: number = 500, message: string = 'Inte
  */
 function setupPagesApiDelayedHandler(pages: LessonPage[], delayMs: number = 100) {
   server.use(
-    http.get('/api/v1/lesson/:lessonId/pages', async () => {
+    http.get(`${API_BASE_URL_PATTERN}/lesson/:lessonId/pages`, async () => {
       await delay(delayMs);
       return HttpResponse.json({
         success: true,
@@ -380,7 +385,7 @@ function setupPagesApiDelayedHandler(pages: LessonPage[], delayMs: number = 100)
           pages,
           totalPages: pages.length,
           questionPages: pages.filter(p => p.qtype > 0 && p.qtype < 20).length,
-          contentPages: pages.filter(p => p.qtype === 0).length,
+          contentPages: pages.filter(p => p.qtype >= 20).length, // Structural pages (BRANCHTABLE, etc.)
           accessiblePages: pages.map(p => p.id),
         },
       });
@@ -829,7 +834,11 @@ describe('ProgressTracker', () => {
 
       await waitFor(() => {
         // Check for branch table and cluster indicators
-        expect(screen.getByText('Branch', { selector: '.MuiChip-label' }) || screen.getByText('Cluster', { selector: '.MuiChip-label' })).toBeInTheDocument();
+        // Use queryAllByText since there may be multiple branch/cluster indicators
+        const branchChips = screen.queryAllByText('Branch', { selector: '.MuiChip-label' });
+        const clusterChips = screen.queryAllByText('Cluster', { selector: '.MuiChip-label' });
+        // At least one type indicator should be present
+        expect(branchChips.length > 0 || clusterChips.length > 0).toBeTruthy();
       });
     });
 
@@ -909,12 +918,13 @@ describe('ProgressTracker', () => {
 
       // Find expand buttons and click one
       const expandButtons = screen.queryAllByLabelText(/expand section|collapse section/i);
-      if (expandButtons.length > 0) {
-        await user.click(expandButtons[0]);
+      const firstButton = expandButtons[0];
+      if (firstButton) {
+        await user.click(firstButton);
         // After clicking, the state should change
         await waitFor(() => {
           // The button aria-label or aria-expanded should have changed
-          expect(expandButtons[0]).toHaveAttribute('aria-expanded');
+          expect(firstButton).toHaveAttribute('aria-expanded');
         });
       }
     });
@@ -1562,11 +1572,11 @@ describe('ProgressTracker', () => {
 
     it('handles mixed content and question pages', async () => {
       const mixedPages = [
-        createMockPage({ id: 1, title: 'Introduction', qtype: 0 }),
+        createMockPage({ id: 1, title: 'Introduction', qtype: QuestionType.BRANCHTABLE }),
         createMockPage({ id: 2, title: 'Quiz 1', qtype: QuestionType.MULTICHOICE, prevpageid: 1, nextpageid: 3 }),
-        createMockPage({ id: 3, title: 'Reading Material', qtype: 0, prevpageid: 2, nextpageid: 4 }),
+        createMockPage({ id: 3, title: 'Reading Material', qtype: QuestionType.BRANCHTABLE, prevpageid: 2, nextpageid: 4 }),
         createMockPage({ id: 4, title: 'Quiz 2', qtype: QuestionType.TRUEFALSE, prevpageid: 3, nextpageid: 5 }),
-        createMockPage({ id: 5, title: 'Summary', qtype: 0, prevpageid: 4, nextpageid: 0 }),
+        createMockPage({ id: 5, title: 'Summary', qtype: QuestionType.BRANCHTABLE, prevpageid: 4, nextpageid: 0 }),
       ];
       setupPagesApiHandler(mixedPages);
 
@@ -1680,7 +1690,7 @@ describe('ProgressTracker', () => {
 
     it('handles empty pages response', async () => {
       server.use(
-        http.get('/api/v1/lesson/:lessonId/pages', () => {
+        http.get(`${API_BASE_URL_PATTERN}/lesson/:lessonId/pages`, () => {
           return HttpResponse.json({
             success: true,
             data: {
@@ -1836,7 +1846,7 @@ describe('ProgressTracker', () => {
   describe('Question Type Icons', () => {
     it('displays different icons for different question types', async () => {
       const mixedPages = [
-        createMockPage({ id: 1, title: 'Content Page', qtype: 0 }),
+        createMockPage({ id: 1, title: 'Content Page', qtype: QuestionType.BRANCHTABLE }),
         createMockPage({ id: 2, title: 'Multiple Choice', qtype: QuestionType.MULTICHOICE, prevpageid: 1, nextpageid: 3 }),
         createMockPage({ id: 3, title: 'Branch Table', qtype: QuestionType.BRANCHTABLE, prevpageid: 2, nextpageid: 0 }),
       ];
