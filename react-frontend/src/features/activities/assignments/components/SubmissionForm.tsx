@@ -31,13 +31,11 @@
 import type React from 'react';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
-import type { SubmitHandler } from 'react-hook-form';
 import {
   Box,
   Typography,
   Paper,
   Button,
-  TextField,
   Alert,
   Dialog,
   DialogTitle,
@@ -48,7 +46,6 @@ import {
   FormHelperText,
   Divider,
   CircularProgress,
-  Skeleton,
   List,
   ListItem,
   ListItemText,
@@ -69,10 +66,10 @@ import {
 } from '@mui/icons-material';
 
 // Internal imports from depends_on_files
-import { FileUploadZone } from './FileUploadZone';
+import FileUploadZone from './FileUploadZone';
 import type { UploadedFile } from './FileUploadZone';
-import { RichTextEditor } from '@/components/editor/RichTextEditor';
-import type { Assignment, Submission, AssignmentFile, PluginConfig } from '../types/assignment.types';
+import RichTextEditor from '@/components/editor/RichTextEditor';
+import type { Assignment, Submission, PluginConfig } from '../types/assignment.types';
 import { useSubmitAssignment } from '../hooks/useSubmission';
 import type { SubmitAssignmentData } from '../hooks/useSubmission';
 import { formatFileSize } from '@/utils/formatters';
@@ -465,12 +462,8 @@ function SubmissionForm({
 
   const {
     control,
-    handleSubmit,
     setValue,
     watch,
-    formState: { errors, isValid },
-    trigger,
-    reset,
   } = useForm<SubmissionFormData>({
     defaultValues: {
       onlineText: existingOnlineText || '',
@@ -494,7 +487,6 @@ function SubmissionForm({
     isPending: isSubmitting,
     isError: isSubmitError,
     error: submitError,
-    isSuccess: isSubmitSuccess,
   } = useSubmitAssignment({
     onSuccess: (response) => {
       if (response.success && response.submission) {
@@ -1065,7 +1057,7 @@ function SubmissionForm({
             validate: (value) =>
               value === true || 'You must accept the submission statement',
           }}
-          render={({ field, fieldState }) => (
+          render={({ field }) => (
             <FormControlLabel
               control={
                 <Checkbox
