@@ -36,7 +36,6 @@ import {
   Typography,
   Paper,
   Button,
-  TextField,
   Alert,
   Checkbox,
   FormControlLabel,
@@ -81,15 +80,15 @@ import {
   AccessTime as TimeIcon,
   Info as InfoIcon,
 } from '@mui/icons-material';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, type Control, type FieldValues } from 'react-hook-form';
 
 // Internal imports from dependency files
 import { useAssignment } from '../hooks/useAssignment';
-import { useSubmitAssignment } from '../hooks/useSubmission';
-import type { Submission, Assignment as AssignmentType } from '../types/assignment.types';
+import { useSubmitAssignment, useSubmissions } from '../hooks/useSubmission';
+import type { Assignment } from '../types/assignment.types';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import { FileUploadZone } from '../components/FileUploadZone';
-import { RichTextEditor } from '@/components/editor/RichTextEditor';
+import FileUploadZone from '../components/FileUploadZone';
+import RichTextEditor from '@/components/editor/RichTextEditor';
 
 // ============================================================================
 // Type Definitions
@@ -98,7 +97,7 @@ import { RichTextEditor } from '@/components/editor/RichTextEditor';
 /**
  * URL parameters interface for the submission page route
  */
-interface SubmissionPageParams {
+interface SubmissionPageParams extends Record<string, string | undefined> {
   /** Assignment ID from URL */
   assignmentId: string;
 }
@@ -244,7 +243,7 @@ function getTimeRemaining(deadline: number): {
  * @param assignment - Assignment data
  * @returns Object with submission status details
  */
-function checkSubmissionsOpen(assignment: AssignmentType): {
+function checkSubmissionsOpen(assignment: Assignment): {
   isOpen: boolean;
   reason: string | null;
   canSubmit: boolean;
@@ -288,7 +287,7 @@ function checkSubmissionsOpen(assignment: AssignmentType): {
 function getSubmissionStatusConfig(status: string): {
   color: 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning';
   label: string;
-  icon: React.ReactNode;
+  icon: React.ReactElement;
 } {
   switch (status) {
     case 'submitted':
@@ -355,7 +354,8 @@ function SubmissionPage(): React.ReactElement {
   // Authentication
   // ============================================================================
 
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const userId = user?.id;
 
   // ============================================================================
   // Data Fetching Hooks
@@ -366,6 +366,20 @@ function SubmissionPage(): React.ReactElement {
     isLoading: isAssignmentLoading,
     error: assignmentError,
   } = useAssignment(parsedAssignmentId);
+
+  // Fetch submissions for this assignment (to get current user's submission)
+  const {
+    data: submissionsData,
+    isLoading: isSubmissionsLoading,
+  } = useSubmissions(parsedAssignmentId ?? 0, {
+    enabled: parsedAssignmentId !== null && parsedAssignmentId > 0,
+  });
+
+  // Extract the current user's submission from the submissions list
+  // In most cases for students, this will return only their own submission
+  const currentSubmission = submissionsData?.submissions?.find(
+    (sub) => sub.userid === userId
+  ) || submissionsData?.submissions?.[0] || null;
 
   // ============================================================================
   // Mutations
@@ -418,8 +432,7 @@ function SubmissionPage(): React.ReactElement {
     handleSubmit,
     watch,
     setValue,
-    formState: { errors, isDirty, isValid },
-    reset,
+    formState: { errors },
   } = useForm<SubmissionFormData>({
     defaultValues: {
       onlineText: '',
@@ -702,7 +715,7 @@ function SubmissionPage(): React.ReactElement {
   // Render: Loading State
   // ============================================================================
 
-  if (isAssignmentLoading) {
+  if (isAssignmentLoading || isSubmissionsLoading) {
     return (
       <Box
         sx={{
@@ -1034,7 +1047,7 @@ function SubmissionPage(): React.ReactElement {
             </Card>
 
             {/* Previous Submissions (if any) */}
-            {assignment.submission && (
+            {currentSubmission && (
               <Card variant="outlined" sx={{ mb: 3 }}>
                 <CardContent>
                   <Box
@@ -1064,30 +1077,30 @@ function SubmissionPage(): React.ReactElement {
                           secondary={
                             <Chip
                               size="small"
-                              {...getSubmissionStatusConfig(assignment.submission.status)}
+                              {...getSubmissionStatusConfig(currentSubmission.status)}
                             />
                           }
                         />
                       </ListItem>
-                      {assignment.submission.timemodified > 0 && (
+                      {currentSubmission.timemodified > 0 && (
                         <ListItem>
                           <ListItemIcon>
                             <CalendarIcon color="action" />
                           </ListItemIcon>
                           <ListItemText
                             primary="Last Modified"
-                            secondary={formatDateTime(assignment.submission.timemodified)}
+                            secondary={formatDateTime(currentSubmission.timemodified)}
                           />
                         </ListItem>
                       )}
-                      {assignment.submission.attemptnumber !== undefined && (
+                      {currentSubmission.attemptnumber !== undefined && (
                         <ListItem>
                           <ListItemIcon>
                             <HistoryIcon color="action" />
                           </ListItemIcon>
                           <ListItemText
                             primary="Attempt Number"
-                            secondary={`Attempt ${assignment.submission.attemptnumber + 1}`}
+                            secondary={`Attempt ${currentSubmission.attemptnumber + 1}`}
                           />
                         </ListItem>
                       )}
@@ -1129,7 +1142,7 @@ function SubmissionPage(): React.ReactElement {
                 </Typography>
                 <RichTextEditor
                   name="onlineText"
-                  control={control}
+                  control={control as unknown as Control<FieldValues>}
                   label="Submission Text"
                   toolbar="full"
                   error={!!errors.onlineText}
