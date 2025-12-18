@@ -21,7 +21,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import React, { type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
@@ -1535,9 +1535,8 @@ describe('useQuizTimer', () => {
         { wrapper }
       );
 
-      let saveResult: unknown;
       await act(async () => {
-        saveResult = await result.current.triggerAutoSave();
+        await result.current.triggerAutoSave();
       });
 
       // Function returns undefined when quizId is not set (short-circuits)
