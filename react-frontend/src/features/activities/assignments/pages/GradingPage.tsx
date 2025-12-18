@@ -39,13 +39,11 @@ import {
   Grid,
   InputAdornment,
   Toolbar,
-  Divider,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   LinearProgress,
-  Checkbox,
   SelectChangeEvent,
 } from '@mui/material';
 import {
@@ -71,6 +69,7 @@ import {
   CheckCircle as CheckCircleIcon,
   Schedule as ScheduleIcon,
   Group as GroupIcon,
+  Speed as SpeedIcon,
 } from '@mui/icons-material';
 import { format, isPast, parseISO } from 'date-fns';
 
@@ -78,13 +77,7 @@ import { format, isPast, parseISO } from 'date-fns';
 import { useAssignment } from '../hooks/useAssignment';
 import { useSubmissions, useGradeSubmission } from '../hooks/useSubmission';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import type {
-  Submission,
-  Grade,
-  SubmissionStatus,
-  GradingStatus,
-  WorkflowState,
-} from '../types/assignment.types';
+import type { Submission } from '../types/assignment.types';
 
 // ============================================================================
 // Type Definitions
@@ -105,22 +98,6 @@ interface SubmissionFilters {
 }
 
 /**
- * Pagination state for DataGrid
- */
-interface PaginationState {
-  page: number;
-  pageSize: number;
-}
-
-/**
- * Sort state for DataGrid
- */
-interface SortState {
-  field: string;
-  order: 'asc' | 'desc';
-}
-
-/**
  * Grading statistics summary
  */
 interface GradingStatistics {
@@ -138,14 +115,14 @@ interface GradingStatistics {
  */
 interface SubmissionRow {
   id: number;
-  oderId: number;
+  userId: number;
   fullname: string;
   email: string;
-  status: SubmissionStatus;
+  status: string;
   submissionDate: string | null;
   grade: number | null;
-  gradingStatus: GradingStatus;
-  workflowState: WorkflowState | null;
+  gradingStatus: string;
+  workflowState: string | null;
   hasFiles: boolean;
   attemptnumber: number;
 }
@@ -182,7 +159,7 @@ const STATUS_OPTIONS = [
 /**
  * Get color for submission status chip
  */
-function getStatusColor(status: SubmissionStatus): 'default' | 'primary' | 'success' | 'warning' | 'error' {
+function getStatusColor(status: string): 'default' | 'primary' | 'success' | 'warning' | 'error' {
   switch (status) {
     case 'submitted':
       return 'primary';
@@ -198,7 +175,7 @@ function getStatusColor(status: SubmissionStatus): 'default' | 'primary' | 'succ
 /**
  * Get color for grading status chip
  */
-function getGradingStatusColor(status: GradingStatus): 'default' | 'primary' | 'success' | 'warning' {
+function getGradingStatusColor(status: string): 'default' | 'primary' | 'success' | 'warning' {
   switch (status) {
     case 'graded':
       return 'success';
@@ -214,7 +191,7 @@ function getGradingStatusColor(status: GradingStatus): 'default' | 'primary' | '
 /**
  * Get human-readable label for submission status
  */
-function getStatusLabel(status: SubmissionStatus): string {
+function getStatusLabel(status: string): string {
   switch (status) {
     case 'submitted':
       return 'Submitted';
@@ -232,7 +209,7 @@ function getStatusLabel(status: SubmissionStatus): string {
 /**
  * Get human-readable label for grading status
  */
-function getGradingStatusLabel(status: GradingStatus): string {
+function getGradingStatusLabel(status: string): string {
   switch (status) {
     case 'graded':
       return 'Graded';
@@ -389,19 +366,35 @@ const GradingPage: React.FC = () => {
   const rows: SubmissionRow[] = useMemo(() => {
     if (!submissionsData?.submissions) return [];
     
-    return submissionsData.submissions.map((submission: Submission) => ({
-      id: submission.id,
-      oderId: submission.userid,
-      fullname: submission.user?.fullname || `User ${submission.userid}`,
-      email: submission.user?.email || '',
-      status: submission.status,
-      submissionDate: submission.timemodified ? String(submission.timemodified) : null,
-      grade: submission.grade?.grade ?? null,
-      gradingStatus: submission.gradingstatus || 'notgraded',
-      workflowState: submission.workflowstate || null,
-      hasFiles: (submission.plugins?.some(p => p.type === 'file' && p.fileareas?.length > 0)) || false,
-      attemptnumber: submission.attemptnumber || 0,
-    }));
+    return submissionsData.submissions.map((submission: Submission) => {
+      // Parse grade value - grade can be string or number directly
+      let gradeValue: number | null = null;
+      if (submission.grade !== undefined && submission.grade !== null) {
+        const parsed = typeof submission.grade === 'number' 
+          ? submission.grade 
+          : parseFloat(submission.grade);
+        gradeValue = isNaN(parsed) ? null : parsed;
+      }
+      
+      // Check if submission has file attachments
+      const hasFiles = submission.plugins?.some(
+        p => p.type === 'file' && (p.fileareas?.length ?? 0) > 0
+      ) ?? false;
+      
+      return {
+        id: submission.id,
+        userId: submission.userid,
+        fullname: submission.studentname || `User ${submission.userid}`,
+        email: '', // Email not available in Submission type, would need separate user fetch
+        status: submission.status,
+        submissionDate: submission.timemodified ? String(submission.timemodified) : null,
+        grade: gradeValue,
+        gradingStatus: submission.gradingstatus || 'notgraded',
+        workflowState: null, // Workflow state comes from UserFlag, not Submission
+        hasFiles,
+        attemptnumber: submission.attemptnumber || 0,
+      };
+    });
   }, [submissionsData]);
 
   /** Calculate grading statistics */
@@ -418,7 +411,6 @@ const GradingPage: React.FC = () => {
     let gradeCount = 0;
 
     const dueDate = assignment?.duedate ? new Date(assignment.duedate * 1000) : null;
-    const now = new Date();
 
     submissions.forEach((submission: Submission) => {
       if (submission.status === 'submitted') {
@@ -433,9 +425,15 @@ const GradingPage: React.FC = () => {
         graded++;
       }
 
-      if (submission.grade?.grade !== undefined && submission.grade.grade !== null) {
-        gradeSum += submission.grade.grade;
-        gradeCount++;
+      // Parse grade value - grade can be string or number directly
+      if (submission.grade !== undefined && submission.grade !== null) {
+        const gradeValue = typeof submission.grade === 'number' 
+          ? submission.grade 
+          : parseFloat(submission.grade);
+        if (!isNaN(gradeValue)) {
+          gradeSum += gradeValue;
+          gradeCount++;
+        }
       }
 
       // Check for overdue
@@ -495,7 +493,7 @@ const GradingPage: React.FC = () => {
    * Handle row click - navigate to grading view
    */
   const handleRowClick = useCallback((params: GridRowParams) => {
-    navigate(`/assignments/${assignmentId}/grading/${params.row.oderId}`);
+    navigate(`/assignments/${assignmentId}/grading/${params.row.userId}`);
   }, [navigate, assignmentId]);
 
   /**
@@ -537,7 +535,7 @@ const GradingPage: React.FC = () => {
   }, [assignmentId, selectedRows]);
 
   /**
-   * Open quick grade dialog
+   * Open quick grade dialog for inline grading without opening full interface
    */
   const handleOpenQuickGrade = useCallback((submissionId: number, userId: number, currentGrade: number | null) => {
     setQuickGradeDialog({
@@ -574,7 +572,7 @@ const GradingPage: React.FC = () => {
     gradeSubmission(
       {
         assignmentId: assignmentIdNum,
-        oderId: quickGradeDialog.userId,
+        userId: quickGradeDialog.userId,
         grade: gradeValue,
       },
       {
@@ -679,7 +677,6 @@ const GradingPage: React.FC = () => {
       field: 'submissionDate',
       headerName: 'Submission Date',
       width: 170,
-      valueFormatter: (value: string | null) => formatDate(value),
       renderCell: (params: GridRenderCellParams<SubmissionRow>) => (
         <Typography variant="body2">
           {formatDate(params.row.submissionDate)}
@@ -743,7 +740,7 @@ const GradingPage: React.FC = () => {
       field: 'actions',
       type: 'actions',
       headerName: 'Actions',
-      width: 150,
+      width: 180,
       getActions: (params: GridRowParams<SubmissionRow>) => [
         <GridActionsCellItem
           key="view"
@@ -753,7 +750,7 @@ const GradingPage: React.FC = () => {
             </Tooltip>
           }
           label="View"
-          onClick={() => handleViewSubmission(params.row.oderId)}
+          onClick={() => handleViewSubmission(params.row.userId)}
         />,
         <GridActionsCellItem
           key="grade"
@@ -763,7 +760,17 @@ const GradingPage: React.FC = () => {
             </Tooltip>
           }
           label="Grade"
-          onClick={() => handleGradeClick(params.row.oderId)}
+          onClick={() => handleGradeClick(params.row.userId)}
+        />,
+        <GridActionsCellItem
+          key="quickgrade"
+          icon={
+            <Tooltip title="Quick Grade">
+              <SpeedIcon />
+            </Tooltip>
+          }
+          label="Quick Grade"
+          onClick={() => handleOpenQuickGrade(params.row.id, params.row.userId, params.row.grade)}
         />,
         ...(params.row.hasFiles ? [
           <GridActionsCellItem
@@ -779,7 +786,7 @@ const GradingPage: React.FC = () => {
         ] : []),
       ],
     },
-  ], [assignment, handleViewSubmission, handleGradeClick, handleDownloadFiles]);
+  ], [assignment, handleViewSubmission, handleGradeClick, handleOpenQuickGrade, handleDownloadFiles]);
 
   // -------------------------------------------------------------------------
   // Loading State
