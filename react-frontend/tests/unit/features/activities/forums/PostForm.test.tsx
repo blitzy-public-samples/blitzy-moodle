@@ -18,7 +18,7 @@
  
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, within, fireEvent, act, cleanup } from '@testing-library/react';
+import { render, screen, waitFor, within, fireEvent, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { PostFormProps } from '@/features/activities/forums/components/PostForm';
@@ -100,8 +100,9 @@ const mockFileUploadState = {
 };
 
 // Helper to update mock state when configuring useMultiFileUpload
+// FileState requires: id, name, size, type, progress, file; error is optional
 const configureFileUploadMock = (config: {
-  files: Array<{ id: string; name: string; size: number; type?: string; progress?: number; file?: File; error?: string }>;
+  files: Array<{ id: string; name: string; size: number; type: string; progress: number; file: File; error?: string }>;
   addFiles: (files: File[]) => void;
   removeFile: (id: string) => void;
   clearFiles: () => void;
@@ -110,12 +111,14 @@ const configureFileUploadMock = (config: {
   isMaxFilesReached: boolean;
   totalSize: number;
 }) => {
-  // Copy files with relevant fields including progress
+  // Copy files with relevant fields including progress, type, and file
   mockFileUploadState.files = config.files.map(f => ({
     id: f.id,
     name: f.name,
     size: f.size,
+    type: f.type,
     progress: f.progress,
+    file: f.file,
     error: f.error,
   }));
   mockFileUploadState.addFiles = config.addFiles;
@@ -123,10 +126,8 @@ const configureFileUploadMock = (config: {
   return config;
 };
 
-// Global refs (kept for backwards compatibility, now read from state)
-let getAddFilesRef: (() => (files: File[]) => void) | null = () => mockFileUploadState.addFiles;
-let getFilesRef: (() => Array<{ id: string; name: string; size: number; error?: string }>) | null = () => mockFileUploadState.files;
-let getRemoveFileRef: (() => (id: string) => void) | null = () => mockFileUploadState.removeFile;
+// Removed unused getAddFilesRef, getFilesRef, getRemoveFileRef - they were kept for backwards compatibility 
+// but the mock state pattern makes them unnecessary
 
 vi.mock('@/components/forms/FormFileUpload', () => ({
   FormFileUpload: ({ 
@@ -232,7 +233,6 @@ import { useCreateDiscussion } from '@/features/activities/forums/hooks/useCreat
 import { useSaveDraft } from '@/features/activities/forums/hooks/useSaveDraft';
 import { useMultiFileUpload } from '@/hooks/useMultiFileUpload';
 import type { DiscussionPost } from '@/features/activities/forums/types/forum.types';
-import type * as UseSaveDraftModule from '@/features/activities/forums/hooks/useSaveDraft';
 
 describe('PostForm Component', () => {
   let queryClient: QueryClient;
@@ -486,9 +486,6 @@ describe('PostForm Component', () => {
   });
 
   describe('Subject Field Validation', () => {
-    // Valid message must be at least 20 characters to enable submit button
-    const validMessage = 'This is a valid message body that is long enough to pass validation.';
-
     it('renders subject field when showSubject is true', () => {
       // Subject is optional in the schema but shown when showSubject=true
       renderComponent({ mode: 'create', showSubject: true });
