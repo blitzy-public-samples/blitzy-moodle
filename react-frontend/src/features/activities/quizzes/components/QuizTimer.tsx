@@ -282,8 +282,9 @@ function QuizTimerComponent({
   // Callback for time warning events
   const handleTimeWarning = useCallback(
     (remaining: number) => {
-      // Log warning for debugging purposes
+      // Log warning for debugging purposes in development mode only
       if (process.env.NODE_ENV === 'development') {
+        // eslint-disable-next-line no-console
         console.log(`Quiz timer warning: ${remaining} seconds remaining`);
       }
     },
@@ -350,9 +351,9 @@ function QuizTimerComponent({
         borderRadius: 2,
         backgroundColor:
           displayState === 'critical' || displayState === 'expired'
-            ? theme.palette.error.light + '20'
+            ? `${theme.palette.error.light}20`
             : displayState === 'warning'
-            ? theme.palette.warning.light + '20'
+            ? `${theme.palette.warning.light}20`
             : theme.palette.background.paper,
         border: `1px solid ${
           displayState === 'critical' || displayState === 'expired'
