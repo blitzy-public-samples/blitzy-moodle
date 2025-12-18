@@ -53,12 +53,22 @@ import {
   Image as ImageIcon,
   PictureAsPdf as PdfIcon,
   Description as DocIcon,
+  Flag as ReportIcon,
+  Link as LinkIcon,
+  FormatQuote as QuoteIcon,
+  CheckCircle as ApproveIcon,
+  Cancel as RejectIcon,
+  CallSplit as SplitIcon,
+  DriveFileMove as MoveIcon,
+  FolderZip as ZipIcon,
+  HourglassEmpty as PendingIcon,
+  Person as PersonIcon,
 } from '@mui/icons-material';
 import { formatDistanceToNow, format } from 'date-fns';
 import DOMPurify from 'dompurify';
 
 import { useDeletePost } from '../hooks/useDiscussion';
-import type { PostCardProps, Author, PostAttachment } from '../types/forum.types';
+import type { PostCardProps, PostAuthor, PostAttachment } from '../types/forum.types';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useToast } from '@/hooks/useToast';
 
@@ -119,40 +129,51 @@ const formatFileSize = (bytes: number): string => {
 /**
  * Get appropriate icon for file type based on MIME type
  */
-const getFileIcon = (mimetype: string): React.ReactNode => {
+/**
+ * Get file icon and testid based on mimetype
+ * Returns [icon element, testId]
+ */
+const getFileIconWithTestId = (mimetype: string): [React.ReactNode, string] => {
   if (mimetype.startsWith('image/')) {
-    return <ImageIcon fontSize="small" color="primary" />;
+    return [<ImageIcon fontSize="small" color="primary" />, 'attachment-icon-image'];
   }
   if (mimetype === 'application/pdf') {
-    return <PdfIcon fontSize="small" color="error" />;
+    return [<PdfIcon fontSize="small" color="error" />, 'attachment-icon-pdf'];
+  }
+  if (mimetype.includes('zip') || mimetype.includes('compressed')) {
+    return [<ZipIcon fontSize="small" color="warning" />, 'attachment-icon-zip'];
   }
   if (
     mimetype.includes('document') ||
     mimetype.includes('word') ||
     mimetype.includes('text')
   ) {
-    return <DocIcon fontSize="small" color="info" />;
+    return [<DocIcon fontSize="small" color="info" />, 'attachment-icon-doc'];
   }
-  return <FileIcon fontSize="small" color="action" />;
+  return [<FileIcon fontSize="small" color="action" />, 'attachment-icon-file'];
 };
 
 /**
- * Generate profile image URL from Author object
+ * Check if mimetype is an image type
  */
-const getAuthorImageUrl = (author: Author): string | undefined => {
-  if (author.deleted) return undefined;
-  if (author.pictureitemid > 0) {
-    // Construct Moodle user picture URL
-    return `/user/pix.php/${author.id}/f1.jpg`;
-  }
-  return undefined;
+const isImageMimetype = (mimetype: string): boolean => {
+  return mimetype.startsWith('image/');
 };
 
 /**
- * Generate profile page URL from Author object
+ * Generate profile image URL from PostAuthor object
  */
-const getAuthorProfileUrl = (author: Author): string => {
-  return `/user/profile.php?id=${author.id}`;
+const getAuthorImageUrl = (author: PostAuthor | null): string | undefined => {
+  if (!author) return undefined;
+  return author.profileImageUrl || undefined;
+};
+
+/**
+ * Generate profile page URL from PostAuthor object
+ */
+const getAuthorProfileUrl = (author: PostAuthor | null): string => {
+  if (!author) return '/user/profile.php';
+  return author.profileUrl || `/user/profile.php?id=${author.id}`;
 };
 
 // ============================================================================
@@ -171,18 +192,35 @@ const getAuthorProfileUrl = (author: Author): string => {
  */
 function PostCard({
   post,
-  author,
-  isFirstPost,
-  userid,
-  canEdit,
-  canDelete,
-  canReply,
-  canRate,
   onReply,
   onEdit,
   onDelete,
   onRate,
+  // Additional feature handlers
+  onReport,
+  onLike,
+  onQuote,
+  onApprove,
+  onReject,
+  onSplit,
+  onMove,
 }: PostCardProps): React.ReactElement {
+  // Extract author from post for convenience with fallback for missing author
+  const author = post.author;
+  const authorName = author?.fullName || 'Unknown User';
+  const authorProfileUrl = getAuthorProfileUrl(author);
+  const authorImageUrl = getAuthorImageUrl(author);
+
+  // Determine if this is the first post in discussion (no parent)
+  const isFirstPost = post.parentId === null;
+
+  // Get permissions from post object
+  const canEdit = post.canEdit;
+  const canDelete = post.canDelete;
+  const canReply = post.canReply;
+  const canRate = post.canRate;
+  // Note: canSplit, canExport, canControlReadTracking are reserved for future moderation features
+
   // Theme and responsive hooks
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -194,7 +232,7 @@ function PostCard({
   const toast = useToast();
 
   // Delete mutation hook - requires discussionId for cache invalidation
-  const deletePostMutation = useDeletePost(post.discussionid);
+  const deletePostMutation = useDeletePost(post.discussionId);
 
   // ============================================================================
   // LOCAL STATE
@@ -210,13 +248,20 @@ function PostCard({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState<boolean>(false);
 
   /** Optimistic like state */
-  const [isLiked, setIsLiked] = useState<boolean>(false);
+  const [isLiked, setIsLiked] = useState<boolean>(post.userHasLiked);
+  const [likeCount, setLikeCount] = useState<number>(post.likeCount || 0);
 
   /** Current rating value */
   const [currentRating, setCurrentRating] = useState<number | null>(null);
 
   /** Hover rating for preview */
   const [hoverRating, setHoverRating] = useState<number>(-1);
+
+  /** Status announcement for screen readers */
+  const [statusAnnouncement, setStatusAnnouncement] = useState<string>('');
+
+  /** Error message state for inline display */
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // ============================================================================
   // COMPUTED VALUES
@@ -247,28 +292,29 @@ function PostCard({
   /** Formatted creation timestamp */
   const formattedTimestamp = useMemo(() => {
     try {
-      return formatDistanceToNow(new Date(post.timecreated * 1000), { addSuffix: true });
+      return formatDistanceToNow(post.created, { addSuffix: true });
     } catch {
       return 'Unknown date';
     }
-  }, [post.timecreated]);
+  }, [post.created]);
 
   /** Formatted modification timestamp */
   const formattedModifiedTimestamp = useMemo(() => {
-    if (!post.timemodified || post.timemodified === post.timecreated) {
+    if (!post.modified) {
       return null;
     }
     try {
-      return format(new Date(post.timemodified * 1000), 'PPpp');
+      return format(post.modified, 'PPpp');
     } catch {
       return null;
     }
-  }, [post.timemodified, post.timecreated]);
+  }, [post.modified]);
 
-  /** Whether current user is the author */
+  /** Whether current user is the author (determined by canEdit permission) */
   const isOwnPost = useMemo(() => {
-    return post.authorid === userid;
-  }, [post.authorid, userid]);
+    // If user can edit but doesn't have editanypost capability, they're likely the author
+    return canEdit && !hasCapability('mod/forum:editanypost');
+  }, [canEdit, hasCapability]);
 
   /** Check if user can edit any post (moderator capability) */
   const canEditAnyPost = useMemo(() => {
@@ -292,8 +338,8 @@ function PostCard({
 
   /** Check if post is a private reply */
   const isPrivateReply = useMemo(() => {
-    return post.privatereplyto > 0;
-  }, [post.privatereplyto]);
+    return post.privateReplyTo !== null && post.privateReplyTo > 0;
+  }, [post.privateReplyTo]);
 
   // ============================================================================
   // EVENT HANDLERS
@@ -318,7 +364,11 @@ function PostCard({
   const handleReply = useCallback(() => {
     handleMenuClose();
     if (onReply) {
-      onReply(post.id);
+      try {
+        onReply(post.id);
+      } catch (error) {
+        console.error('Error in reply handler:', error);
+      }
     }
   }, [onReply, post.id, handleMenuClose]);
 
@@ -326,7 +376,11 @@ function PostCard({
   const handleEdit = useCallback(() => {
     handleMenuClose();
     if (onEdit) {
-      onEdit(post);
+      try {
+        onEdit(post);
+      } catch (error) {
+        console.error('Error in edit handler:', error);
+      }
     }
   }, [onEdit, post, handleMenuClose]);
 
@@ -363,9 +417,36 @@ function PostCard({
 
   /** Handle like/unlike toggle */
   const handleLikeToggle = useCallback(() => {
-    setIsLiked((prev) => !prev);
-    // Optimistic update - in real implementation would call API
-  }, []);
+    const newLikedState = !isLiked;
+    setIsLiked(newLikedState);
+    // Optimistic update for like count
+    const newCount = newLikedState ? likeCount + 1 : Math.max(0, likeCount - 1);
+    setLikeCount(newCount);
+    // Set status announcement for screen readers
+    setStatusAnnouncement(newLikedState ? `Liked. ${newCount} likes.` : `Unliked. ${newCount} likes.`);
+    // Call onLike handler if provided
+    if (onLike) {
+      try {
+        onLike(post.id);
+      } catch (error) {
+        console.error('Error in like handler:', error);
+      }
+    }
+  }, [isLiked, likeCount, onLike, post.id]);
+
+  /** Handle copying permalink to clipboard */
+  const handleCopyPermalink = useCallback(async () => {
+    const permalink = `${window.location.origin}/mod/forum/discuss.php?d=${post.discussionId}#p${post.id}`;
+    try {
+      setErrorMessage(null);
+      await navigator.clipboard.writeText(permalink);
+      toast.success('Permalink copied to clipboard');
+    } catch (error) {
+      const message = 'Failed to copy permalink';
+      setErrorMessage(message);
+      toast.error(message);
+    }
+  }, [post.id, post.discussionId, toast]);
 
   /** Handle rating change */
   const handleRatingChange = useCallback(
@@ -374,8 +455,12 @@ function PostCard({
 
       setCurrentRating(newValue);
       if (onRate) {
-        onRate(post.id, newValue);
-        toast.success(`Rated ${newValue} stars`);
+        try {
+          onRate(post.id, newValue);
+          toast.success(`Rated ${newValue} stars`);
+        } catch (error) {
+          console.error('Error in rate handler:', error);
+        }
       }
     },
     [canRate, onRate, post.id, toast]
@@ -385,29 +470,38 @@ function PostCard({
   // RENDER: DELETED POST
   // ============================================================================
 
+  // Handle deleted posts - show placeholder
   if (post.deleted) {
     return (
       <Card
-        sx={{
-          mb: 2,
-          opacity: 0.6,
-          backgroundColor: 'action.disabledBackground',
-        }}
+        sx={{ mb: 2, opacity: 0.7 }}
         role="article"
         aria-label="Deleted post"
+        data-post-id={post.id}
+        data-testid={`post-card-${post.id}`}
+        className={isMobile ? 'mobile-layout' : 'desktop-layout'}
       >
         <CardContent>
-          <Typography variant="body2" color="text.secondary" fontStyle="italic">
-            This post has been deleted.
-          </Typography>
+          <Box display="flex" alignItems="center" gap={2}>
+            <Avatar sx={{ bgcolor: 'grey.400' }}>
+              <DeleteIcon />
+            </Avatar>
+            <Box>
+              <Typography variant="body1" color="text.secondary">
+                This post has been deleted
+              </Typography>
+              {post.deletedBy && (
+                <Typography variant="caption" color="text.secondary">
+                  Deleted by {post.deletedBy.fullName}
+                  {post.deletedAt && ` on ${format(post.deletedAt, 'PPpp')}`}
+                </Typography>
+              )}
+            </Box>
+          </Box>
         </CardContent>
       </Card>
     );
   }
-
-  // ============================================================================
-  // RENDER: MAIN COMPONENT
-  // ============================================================================
 
   return (
     <Card
@@ -422,19 +516,59 @@ function PostCard({
           borderLeft: `4px solid ${theme.palette.warning.main}`,
         }),
       }}
+      className={isMobile ? 'mobile-layout' : 'desktop-layout'}
       role="article"
-      aria-label={`Post by ${author.fullname}`}
+      aria-label={`Post by ${authorName}`}
       data-post-id={post.id}
       data-testid={`post-card-${post.id}`}
     >
+      {/* Status Announcement for Screen Readers */}
+      {statusAnnouncement && (
+        <Box
+          role="status"
+          aria-live="polite"
+          sx={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0, 0, 0, 0)' }}
+        >
+          {statusAnnouncement}
+        </Box>
+      )}
+
+      {/* Error Message Display */}
+      {errorMessage && (
+        <Box
+          role="alert"
+          sx={{
+            p: 1,
+            mb: 1,
+            backgroundColor: 'error.light',
+            borderRadius: 1,
+            color: 'error.contrastText',
+          }}
+        >
+          <Typography variant="body2">{errorMessage}</Typography>
+        </Box>
+      )}
+
       <CardContent>
+        {/* Pending Approval Indicator */}
+        {post.isPending && !post.moderatorApproved && (
+          <Chip
+            icon={<PendingIcon />}
+            label="Pending Approval"
+            size="small"
+            color="warning"
+            sx={{ mb: 1 }}
+            aria-label="This post is pending approval"
+          />
+        )}
+
         {/* Private Reply Indicator */}
         {isPrivateReply && (
           <Chip
             label="Private Reply"
             size="small"
             color="warning"
-            sx={{ mb: 1 }}
+            sx={{ mb: 1, ml: post.isPending ? 1 : 0 }}
             aria-label="This is a private reply"
           />
         )}
@@ -448,27 +582,39 @@ function PostCard({
         >
           {/* Avatar */}
           <MuiLink
-            href={getAuthorProfileUrl(author)}
+            href={authorProfileUrl}
             sx={{ textDecoration: 'none' }}
-            aria-label={`View ${author.fullname}'s profile`}
+            aria-label={`View ${authorName}'s profile`}
           >
-            <Avatar
-              src={getAuthorImageUrl(author)}
-              alt={author.fullname}
-              sx={{
-                width: isMobile ? 40 : 48,
-                height: isMobile ? 40 : 48,
-              }}
-            >
-              {getInitials(author.fullname)}
-            </Avatar>
+            {authorImageUrl ? (
+              <Avatar
+                src={authorImageUrl}
+                alt={authorName}
+                sx={{
+                  width: isMobile ? 40 : 48,
+                  height: isMobile ? 40 : 48,
+                }}
+              />
+            ) : (
+              <Avatar
+                data-testid="default-avatar"
+                alt={authorName}
+                sx={{
+                  width: isMobile ? 40 : 48,
+                  height: isMobile ? 40 : 48,
+                  bgcolor: 'primary.main',
+                }}
+              >
+                {getInitials(authorName) || <PersonIcon />}
+              </Avatar>
+            )}
           </MuiLink>
 
           {/* Author Info */}
           <Box flex={1} minWidth={0}>
             <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
               <MuiLink
-                href={getAuthorProfileUrl(author)}
+                href={authorProfileUrl}
                 sx={{ textDecoration: 'none', color: 'inherit' }}
               >
                 <Typography
@@ -479,7 +625,7 @@ function PostCard({
                     '&:hover': { textDecoration: 'underline' },
                   }}
                 >
-                  {author.fullname}
+                  {authorName}
                 </Typography>
               </MuiLink>
 
@@ -500,6 +646,32 @@ function PostCard({
                   variant="outlined"
                 />
               )}
+
+              {/* Author Role Badge */}
+              {author?.role && (
+                <Chip
+                  data-testid="role-badge"
+                  label={author.role}
+                  size="small"
+                  color={
+                    author.role === 'teacher' ? 'success' :
+                    author.role === 'moderator' ? 'info' :
+                    'default'
+                  }
+                  variant="outlined"
+                />
+              )}
+
+              {/* Unread Indicator */}
+              {post.unread && (
+                <Chip
+                  data-testid="unread-indicator"
+                  label="New"
+                  size="small"
+                  color="error"
+                  sx={{ fontWeight: 'bold' }}
+                />
+              )}
             </Box>
 
             {/* Timestamp */}
@@ -509,8 +681,21 @@ function PostCard({
                 <span>
                   {' • '}
                   <Tooltip title={`Edited ${formattedModifiedTimestamp}`}>
-                    <span style={{ cursor: 'help' }}>(edited)</span>
+                    <span style={{ cursor: 'help' }}>
+                      Edited{post.editedBy && ` by ${post.editedBy.fullName}`}
+                    </span>
                   </Tooltip>
+                  {' • '}
+                  <MuiLink
+                    href={`/mod/forum/post.php?edit=${post.id}&history=1`}
+                    sx={{ 
+                      color: 'inherit',
+                      textDecoration: 'underline',
+                      '&:hover': { color: 'primary.main' },
+                    }}
+                  >
+                    edit history
+                  </MuiLink>
                 </span>
               )}
             </Typography>
@@ -542,49 +727,55 @@ function PostCard({
         </Typography>
 
         {/* Post Content */}
-        <Box
-          sx={{
-            '& img': {
-              maxWidth: '100%',
-              height: 'auto',
-              borderRadius: 1,
-            },
-            '& pre': {
-              backgroundColor: 'action.hover',
-              padding: 2,
-              borderRadius: 1,
-              overflowX: 'auto',
-            },
-            '& code': {
-              backgroundColor: 'action.hover',
-              padding: '2px 4px',
-              borderRadius: 0.5,
-              fontFamily: 'monospace',
-            },
-            '& blockquote': {
-              borderLeft: `4px solid ${theme.palette.divider}`,
-              margin: '16px 0',
-              paddingLeft: 2,
-              color: 'text.secondary',
-            },
-            '& a': {
-              color: theme.palette.primary.main,
-            },
-            '& table': {
-              borderCollapse: 'collapse',
-              width: '100%',
-              '& th, & td': {
-                border: `1px solid ${theme.palette.divider}`,
-                padding: 1,
+        {post.message ? (
+          <Box
+            sx={{
+              '& img': {
+                maxWidth: '100%',
+                height: 'auto',
+                borderRadius: 1,
               },
-            },
-          }}
-        >
-          <div
-            dangerouslySetInnerHTML={{ __html: displayMessage }}
-            aria-label="Post content"
-          />
-        </Box>
+              '& pre': {
+                backgroundColor: 'action.hover',
+                padding: 2,
+                borderRadius: 1,
+                overflowX: 'auto',
+              },
+              '& code': {
+                backgroundColor: 'action.hover',
+                padding: '2px 4px',
+                borderRadius: 0.5,
+                fontFamily: 'monospace',
+              },
+              '& blockquote': {
+                borderLeft: `4px solid ${theme.palette.divider}`,
+                margin: '16px 0',
+                paddingLeft: 2,
+                color: 'text.secondary',
+              },
+              '& a': {
+                color: theme.palette.primary.main,
+              },
+              '& table': {
+                borderCollapse: 'collapse',
+                width: '100%',
+                '& th, & td': {
+                  border: `1px solid ${theme.palette.divider}`,
+                  padding: 1,
+                },
+              },
+            }}
+          >
+            <div
+              dangerouslySetInnerHTML={{ __html: displayMessage }}
+              aria-label="Post content"
+            />
+          </Box>
+        ) : (
+          <Typography variant="body2" color="text.secondary" fontStyle="italic">
+            No content
+          </Typography>
+        )}
 
         {/* Expand/Collapse Button */}
         {isLongMessage && (
@@ -603,15 +794,54 @@ function PostCard({
         )}
 
         {/* Attachments Section */}
-        {post.hasattachments && (
+        {post.attachments && post.attachments.length > 0 && (
           <AttachmentsSection
             postId={post.id}
-            attachments={[]}
+            attachments={post.attachments}
             // Note: Actual attachments would be fetched or passed separately
           />
         )}
 
-        {/* Rating Section */}
+        {/* Star Rating Section - Display average rating and user rating */}
+        {post.rating !== undefined && post.rating !== null && (
+          <Box mt={2} display="flex" alignItems="center" gap={2} flexWrap="wrap">
+            {/* Average Post Rating */}
+            <Box display="flex" alignItems="center" gap={0.5} data-testid="post-rating">
+              <Rating
+                value={post.rating}
+                readOnly
+                precision={0.5}
+                size="small"
+                emptyIcon={<StarBorderIcon fontSize="inherit" />}
+                icon={<StarIcon fontSize="inherit" />}
+                aria-label={`Average rating: ${post.rating} stars`}
+              />
+              <Typography variant="body2" color="text.secondary">
+                {post.rating}
+              </Typography>
+            </Box>
+
+            {/* User's Rating (if exists) */}
+            {post.userRating !== undefined && post.userRating !== null && (
+              <Box display="flex" alignItems="center" gap={0.5} data-testid="user-rating">
+                <Typography variant="caption" color="text.secondary">
+                  Your rating:
+                </Typography>
+                <Rating
+                  value={post.userRating}
+                  readOnly
+                  precision={1}
+                  size="small"
+                  emptyIcon={<StarBorderIcon fontSize="inherit" />}
+                  icon={<StarIcon fontSize="inherit" />}
+                  aria-label={`Your rating: ${post.userRating} stars`}
+                />
+              </Box>
+            )}
+          </Box>
+        )}
+
+        {/* Interactive Rating Section - Only for users who can rate */}
         {canRate && (
           <Box mt={2} display="flex" alignItems="center" gap={1}>
             <Typography variant="body2" color="text.secondary">
@@ -625,7 +855,7 @@ function PostCard({
               size="small"
               emptyIcon={<StarBorderIcon fontSize="inherit" />}
               icon={<StarIcon fontSize="inherit" />}
-              aria-label="Post rating"
+              aria-label="Rate this post"
             />
             {hoverRating !== -1 && (
               <Typography variant="caption" color="text.secondary">
@@ -640,25 +870,49 @@ function PostCard({
 
       {/* Action Buttons */}
       <CardActions
+        data-testid="action-buttons"
+        className={isMobile ? 'vertical' : 'horizontal'}
         sx={{
           justifyContent: 'flex-start',
           flexWrap: 'wrap',
           gap: 1,
           px: 2,
+          ...(isMobile && {
+            flexDirection: 'column',
+            alignItems: 'flex-start',
+          }),
         }}
       >
-        {/* Like Button */}
-        <Tooltip title={isLiked ? 'Unlike' : 'Like'}>
-          <IconButton
-            onClick={handleLikeToggle}
-            color={isLiked ? 'primary' : 'default'}
-            aria-label={isLiked ? 'Unlike this post' : 'Like this post'}
-            aria-pressed={isLiked}
+        {/* Like Button with Count */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <Tooltip title={isLiked ? 'Unlike' : 'Like'}>
+            <IconButton
+              onClick={handleLikeToggle}
+              color={isLiked ? 'primary' : 'default'}
+              className={isLiked ? 'liked' : ''}
+              aria-label={isLiked ? 'Liked' : 'Like this post'}
+              aria-pressed={isLiked}
+              size="small"
+            >
+              {isLiked ? <ThumbUpIcon /> : <ThumbUpOutlinedIcon />}
+            </IconButton>
+          </Tooltip>
+          {likeCount > 0 && (
+            <Typography variant="body2" color="text.secondary">
+              {likeCount}
+            </Typography>
+          )}
+        </Box>
+
+        {/* Reply Count Badge */}
+        {post.replyCount > 0 && (
+          <Chip
             size="small"
-          >
-            {isLiked ? <ThumbUpIcon /> : <ThumbUpOutlinedIcon />}
-          </IconButton>
-        </Tooltip>
+            variant="outlined"
+            label={`${post.replyCount} ${post.replyCount === 1 ? 'reply' : 'replies'}`}
+            sx={{ ml: 1 }}
+          />
+        )}
 
         {/* Reply Button */}
         {canReply && onReply && (
@@ -694,6 +948,128 @@ function PostCard({
             aria-label="Delete this post"
           >
             Delete
+          </Button>
+        )}
+
+        {/* Quote Button */}
+        {onQuote && (
+          <Button
+            startIcon={<QuoteIcon />}
+            onClick={() => {
+              try {
+                onQuote(post.id);
+              } catch (error) {
+                console.error('Error in quote handler:', error);
+              }
+            }}
+            size="small"
+            aria-label="Quote this post"
+          >
+            Quote
+          </Button>
+        )}
+
+        {/* Permalink Button */}
+        <Button
+          startIcon={<LinkIcon />}
+          onClick={handleCopyPermalink}
+          size="small"
+          aria-label="Copy permalink"
+        >
+          Permalink
+        </Button>
+
+        {/* Report Button */}
+        {onReport && (
+          <Button
+            startIcon={<ReportIcon />}
+            onClick={() => {
+              try {
+                onReport(post.id);
+              } catch (error) {
+                console.error('Error in report handler:', error);
+              }
+            }}
+            size="small"
+            aria-label="Report this post"
+          >
+            Report
+          </Button>
+        )}
+
+        {/* Moderator Controls - only shown for pending posts and users with moderator permissions */}
+        {post.isPending && post.canSplit && (
+          <>
+            {onApprove && (
+              <Button
+                startIcon={<ApproveIcon />}
+                onClick={() => {
+                  try {
+                    onApprove(post.id);
+                  } catch (error) {
+                    console.error('Error in approve handler:', error);
+                  }
+                }}
+                size="small"
+                color="success"
+                aria-label="Approve this post"
+              >
+                Approve
+              </Button>
+            )}
+            {onReject && (
+              <Button
+                startIcon={<RejectIcon />}
+                onClick={() => {
+                  try {
+                    onReject(post.id);
+                  } catch (error) {
+                    console.error('Error in reject handler:', error);
+                  }
+                }}
+                size="small"
+                color="error"
+                aria-label="Reject this post"
+              >
+                Reject
+              </Button>
+            )}
+          </>
+        )}
+
+        {/* Split Button - for moderators */}
+        {post.canSplit && onSplit && (
+          <Button
+            startIcon={<SplitIcon />}
+            onClick={() => {
+              try {
+                onSplit(post.id);
+              } catch (error) {
+                console.error('Error in split handler:', error);
+              }
+            }}
+            size="small"
+            aria-label="Split this post"
+          >
+            Split
+          </Button>
+        )}
+
+        {/* Move Button - for moderators */}
+        {post.canSplit && onMove && (
+          <Button
+            startIcon={<MoveIcon />}
+            onClick={() => {
+              try {
+                onMove(post.id);
+              } catch (error) {
+                console.error('Error in move handler:', error);
+              }
+            }}
+            size="small"
+            aria-label="Move this post"
+          >
+            Move
           </Button>
         )}
       </CardActions>
@@ -785,7 +1161,8 @@ interface AttachmentsSectionProps {
 /**
  * AttachmentsSection Subcomponent
  *
- * Displays file attachments with download links and file metadata
+ * Displays file attachments with download links, thumbnails for images,
+ * file metadata, and "Download all as ZIP" option for multiple files
  */
 function AttachmentsSection({
   postId,
@@ -809,48 +1186,92 @@ function AttachmentsSection({
   return (
     <Box mt={2} data-testid={`attachments-${postId}`}>
       <Divider sx={{ mb: 2 }} />
-      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-        Attachments ({attachments.length})
-      </Typography>
-      <Box component="ul" sx={{ listStyle: 'none', p: 0, m: 0 }}>
-        {attachments.map((attachment) => (
-          <Box
-            component="li"
-            key={attachment.id}
-            display="flex"
-            alignItems="center"
-            gap={1}
-            py={0.5}
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+        <Typography variant="subtitle2" color="text.secondary">
+          Attachments ({attachments.length})
+        </Typography>
+
+        {/* Download all as ZIP option for multiple attachments */}
+        {attachments.length > 1 && (
+          <Button
+            startIcon={<ZipIcon />}
+            size="small"
+            variant="outlined"
+            aria-label="Download all as ZIP"
+            onClick={() => {
+              window.location.href = `/mod/forum/post.php?id=${postId}&download=all`;
+            }}
           >
-            {getFileIcon(attachment.mimetype)}
-            <Box flex={1} minWidth={0}>
-              <Typography
-                variant="body2"
-                sx={{
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {attachment.filename}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {formatFileSize(attachment.filesize)}
-              </Typography>
+            Download all as ZIP
+          </Button>
+        )}
+      </Box>
+
+      <Box component="ul" sx={{ listStyle: 'none', p: 0, m: 0 }}>
+        {attachments.map((attachment) => {
+          const [icon, testId] = getFileIconWithTestId(attachment.mimetype);
+          const isImage = isImageMimetype(attachment.mimetype);
+
+          return (
+            <Box
+              component="li"
+              key={attachment.id}
+              display="flex"
+              alignItems="center"
+              gap={1}
+              py={0.5}
+            >
+              {/* Thumbnail for images, icon for other file types */}
+              {isImage ? (
+                <Box data-testid={testId}>
+                  <Box
+                    component="img"
+                    src={attachment.fileurl}
+                    alt={attachment.filename}
+                    sx={{
+                      width: 48,
+                      height: 48,
+                      objectFit: 'cover',
+                      borderRadius: 1,
+                    }}
+                  />
+                </Box>
+              ) : (
+                <Box data-testid={testId}>
+                  {icon}
+                </Box>
+              )}
+
+              <Box flex={1} minWidth={0}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {attachment.filename}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {formatFileSize(attachment.filesize)}
+                </Typography>
+              </Box>
+
+              <Tooltip title={`Download ${attachment.filename}`}>
+                <IconButton
+                  component="a"
+                  href={attachment.fileurl}
+                  download={attachment.filename}
+                  size="small"
+                  aria-label={`Download ${attachment.filename}`}
+                >
+                  <DownloadIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
             </Box>
-            <Tooltip title={`Download ${attachment.filename}`}>
-              <IconButton
-                component="a"
-                href={attachment.fileurl}
-                download={attachment.filename}
-                size="small"
-                aria-label={`Download ${attachment.filename}`}
-              >
-                <DownloadIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          </Box>
-        ))}
+          );
+        })}
       </Box>
     </Box>
   );

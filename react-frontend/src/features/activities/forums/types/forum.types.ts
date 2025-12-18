@@ -655,33 +655,33 @@ export interface DiscussionThreadProps {
 
 /**
  * Props for PostCard component
- * Individual post display
+ * Individual post display with ForumPost type for React-friendly API
  */
 export interface PostCardProps {
-  /** Post to display */
-  post: Post;
-  /** Post author */
-  author: Author;
-  /** Whether this is the first post in discussion */
-  isFirstPost: boolean;
-  /** Current user ID */
-  userid: number;
-  /** Whether user can edit this post */
-  canEdit: boolean;
-  /** Whether user can delete this post */
-  canDelete: boolean;
-  /** Whether user can reply to this post */
-  canReply: boolean;
-  /** Whether user can rate this post */
-  canRate: boolean;
+  /** Post to display (includes author, permissions, and all display data) */
+  post: ForumPost;
   /** Callback when replying to post */
   onReply?: (parentId: number) => void;
   /** Callback when editing post */
-  onEdit?: (post: Post) => void;
+  onEdit?: (post: ForumPost) => void;
   /** Callback when deleting post */
   onDelete?: (postId: number) => void;
   /** Callback when rating post */
   onRate?: (postId: number, rating: number) => void;
+  /** Callback when reporting post */
+  onReport?: (postId: number) => void;
+  /** Callback when liking post */
+  onLike?: (postId: number) => void;
+  /** Callback when quoting post */
+  onQuote?: (postId: number) => void;
+  /** Callback when approving post (moderation) */
+  onApprove?: (postId: number) => void;
+  /** Callback when rejecting post (moderation) */
+  onReject?: (postId: number) => void;
+  /** Callback when splitting post (moderation) */
+  onSplit?: (postId: number) => void;
+  /** Callback when moving post (moderation) */
+  onMove?: (postId: number) => void;
 }
 
 /**
@@ -827,6 +827,8 @@ export interface ForumPost {
   canExport: boolean;
   /** Whether current user can control read tracking */
   canControlReadTracking: boolean;
+  /** Whether current user can rate this post */
+  canRate: boolean;
   /** Whether to send immediate email notification */
   mailNow: boolean;
   /** Whether post is unread by current user */
@@ -845,6 +847,10 @@ export interface ForumPost {
   isPending: boolean;
   /** Whether post has been approved by moderator */
   moderatorApproved: boolean;
+  /** User ID for private reply (null if not a private reply) */
+  privateReplyTo: number | null;
+  /** User this post is privately replying to (null if not a private reply) */
+  privateReplyToUser: PostAuthor | null;
 }
 
 /**

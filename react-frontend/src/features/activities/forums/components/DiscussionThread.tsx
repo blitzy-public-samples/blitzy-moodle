@@ -116,6 +116,7 @@ function convertToForumPost(post: DiscussionPost): ForumPost {
     canSplit: false,
     canExport: false,
     canControlReadTracking: true,
+    canRate: false, // Rating capability determined by forum settings
     mailNow: false,
     unread: post.unread ?? false,
     rating: null,
@@ -125,6 +126,8 @@ function convertToForumPost(post: DiscussionPost): ForumPost {
     userHasLiked: false,
     isPending: false,
     moderatorApproved: true,
+    privateReplyTo: null, // Private reply support
+    privateReplyToUser: null,
   };
 }
 

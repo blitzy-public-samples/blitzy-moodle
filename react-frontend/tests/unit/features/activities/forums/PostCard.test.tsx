@@ -2,12 +2,133 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe, toHaveNoViolations } from 'jest-axe';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Provider as ReduxProvider } from 'react-redux';
+import { MemoryRouter } from 'react-router-dom';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { configureStore } from '@reduxjs/toolkit';
+import type { ReactElement, ReactNode } from 'react';
 import PostCard from '@/features/activities/forums/components/PostCard';
 import type { ForumPost, PostAttachment, UserRole } from '@/features/activities/forums/types/forum.types';
-
- 
+import type { AuthState } from '@/features/auth/store/authSlice';
+import { AuthStatus, RoleArchetype } from '@/features/auth/types/auth.types';
 
 expect.extend(toHaveNoViolations);
+
+// ============================================================================
+// Test Setup - Providers and Wrappers
+// ============================================================================
+
+/**
+ * Creates a test-specific QueryClient with caching disabled
+ */
+function createTestQueryClient(): QueryClient {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+        gcTime: 0,
+        staleTime: 0,
+      },
+      mutations: {
+        retry: false,
+      },
+    },
+  });
+}
+
+/**
+ * Creates a test-specific Redux store with mock auth state
+ */
+function createTestStore() {
+  const mockAuthState: AuthState = {
+    user: {
+      id: 42,
+      username: 'testuser',
+      email: 'test@example.com',
+      firstname: 'John',
+      lastname: 'Doe',
+      fullname: 'John Doe',
+      auth: 'manual',
+      confirmed: true,
+      suspended: false,
+      roles: [{ id: 5, shortname: 'student', name: 'Student', archetype: RoleArchetype.STUDENT }],
+      capabilities: [],
+      lang: 'en',
+      theme: 'boost',
+      timezone: 'UTC',
+      firstaccess: Date.now() - 86400000,
+      lastaccess: Date.now(),
+      lastlogin: Date.now(),
+      currentlogin: Date.now(),
+      profileimageurl: '',
+      profileimageurlsmall: '',
+      idnumber: '',
+      institution: '',
+      department: '',
+      phone1: '',
+      phone2: '',
+      address: '',
+      city: '',
+      country: '',
+      description: '',
+      descriptionformat: 1,
+      mailformat: 1,
+      maildigest: 0,
+      maildisplay: 2,
+      autosubscribe: true,
+      trackforums: false,
+      imagealt: '',
+      lastip: '',
+    },
+    tokens: {
+      accessToken: 'test-access-token',
+      refreshToken: 'test-refresh-token',
+      expiresIn: 3600,
+      tokenType: 'Bearer',
+    },
+    isAuthenticated: true,
+    isLoading: false,
+    error: null,
+    status: AuthStatus.AUTHENTICATED,
+  };
+
+  return configureStore({
+    reducer: {
+      auth: (state: AuthState = mockAuthState): AuthState => state,
+    },
+  });
+}
+
+/**
+ * Test wrapper with all required providers
+ */
+interface TestProvidersProps {
+  children: ReactNode;
+}
+
+function TestProviders({ children }: TestProvidersProps): ReactElement {
+  const queryClient = createTestQueryClient();
+  const store = createTestStore();
+  const theme = createTheme({ palette: { mode: 'light' } });
+
+  return (
+    <ReduxProvider store={store}>
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={['/']}>
+          <ThemeProvider theme={theme}>{children}</ThemeProvider>
+        </MemoryRouter>
+      </QueryClientProvider>
+    </ReduxProvider>
+  );
+}
+
+/**
+ * Custom render function that wraps component with all providers
+ */
+function renderWithProviders(ui: ReactElement): ReturnType<typeof render> {
+  return render(ui, { wrapper: TestProviders });
+}
 
 // Mock handlers
 const mockHandlers = {
@@ -32,14 +153,33 @@ interface MockLinkProps {
   [key: string]: unknown;
 }
 
-vi.mock('react-router-dom', () => ({
-  useNavigate: () => mockNavigate,
-  Link: ({ children, to, ...props }: MockLinkProps) => (
-    <a href={to} {...(props as Record<string, unknown>)}>
-      {children}
-    </a>
-  ),
+// Mock the useDiscussion hooks
+vi.mock('@/features/activities/forums/hooks/useDiscussion', () => ({
+  useDeletePost: () => ({
+    mutateAsync: vi.fn().mockResolvedValue({}),
+    isPending: false,
+    isError: false,
+    error: null,
+  }),
+  useDiscussion: () => ({
+    data: null,
+    isLoading: false,
+    isError: false,
+  }),
 }));
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+    Link: ({ children, to, ...props }: MockLinkProps) => (
+      <a href={to} {...(props as Record<string, unknown>)}>
+        {children}
+      </a>
+    ),
+  };
+});
 
 // Mock clipboard API
 Object.defineProperty(navigator, 'clipboard', {
@@ -125,6 +265,7 @@ describe('PostCard Component', () => {
     canSplit: false,
     canExport: false,
     canControlReadTracking: false,
+    canRate: false,
     mailNow: false,
     unread: false,
     rating: null,
@@ -134,6 +275,8 @@ describe('PostCard Component', () => {
     userHasLiked: false,
     isPending: false,
     moderatorApproved: true,
+    privateReplyTo: null,
+    privateReplyToUser: null,
     ...overrides,
   });
 
@@ -150,7 +293,7 @@ describe('PostCard Component', () => {
   describe('Author Information Section', () => {
     it('should render author avatar', () => {
       const post = createMockPost();
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const avatar = screen.getByRole('img', { name: /john doe/i });
       expect(avatar).toBeInTheDocument();
@@ -159,17 +302,19 @@ describe('PostCard Component', () => {
 
     it('should render author full name', () => {
       const post = createMockPost();
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByText('John Doe')).toBeInTheDocument();
     });
 
     it('should render author name as link to profile', () => {
       const post = createMockPost();
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
-      const profileLink = screen.getByRole('link', { name: /john doe/i });
-      expect(profileLink).toHaveAttribute('href', '/user/profile/42');
+      // Both avatar and name link to profile - get all links containing "John Doe"
+      const profileLinks = screen.getAllByRole('link', { name: /john doe/i });
+      expect(profileLinks.length).toBeGreaterThanOrEqual(1);
+      expect(profileLinks[0]).toHaveAttribute('href', '/user/profile/42');
     });
 
     it('should render teacher role badge', () => {
@@ -184,7 +329,7 @@ describe('PostCard Component', () => {
           role: 'teacher' as UserRole,
         },
       });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const roleBadge = screen.getByTestId('role-badge');
       expect(roleBadge).toBeInTheDocument();
@@ -203,7 +348,7 @@ describe('PostCard Component', () => {
           role: 'moderator' as UserRole,
         },
       });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByText(/moderator/i)).toBeInTheDocument();
     });
@@ -220,7 +365,7 @@ describe('PostCard Component', () => {
           role: 'student' as UserRole,
         },
       });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const roleBadge = screen.getByTestId('role-badge');
       expect(roleBadge).toBeInTheDocument();
@@ -231,10 +376,11 @@ describe('PostCard Component', () => {
   describe('Post Metadata', () => {
     it('should render post timestamp', () => {
       const post = createMockPost();
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
-      // Should display relative time or formatted date
-      expect(screen.getByText(/jan/i)).toBeInTheDocument();
+      // Should display relative time (formatDistanceToNow format like "3 months ago")
+      // The component uses relative timestamps for better UX
+      expect(screen.getByText(/ago/i)).toBeInTheDocument();
     });
 
     it('should render edited indicator when post has been modified', () => {
@@ -249,7 +395,7 @@ describe('PostCard Component', () => {
           profileUrl: '/user/profile/43',
         },
       });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByText(/edited/i)).toBeInTheDocument();
       expect(screen.getByText(/editor user/i)).toBeInTheDocument();
@@ -267,7 +413,7 @@ describe('PostCard Component', () => {
           profileUrl: '/user/profile/43',
         },
       });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const editHistoryLink = screen.getByRole('link', { name: /edit history/i });
       expect(editHistoryLink).toBeInTheDocument();
@@ -275,21 +421,21 @@ describe('PostCard Component', () => {
 
     it('should not render edited indicator for non-edited posts', () => {
       const post = createMockPost();
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.queryByText(/edited/i)).not.toBeInTheDocument();
     });
 
     it('should render unread indicator badge for new posts', () => {
       const post = createMockPost({ unread: true });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByTestId('unread-indicator')).toBeInTheDocument();
     });
 
     it('should not render unread indicator for read posts', () => {
       const post = createMockPost({ unread: false });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.queryByTestId('unread-indicator')).not.toBeInTheDocument();
     });
@@ -298,7 +444,7 @@ describe('PostCard Component', () => {
   describe('Post Content Rendering', () => {
     it('should render post subject', () => {
       const post = createMockPost();
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByText('Test Post Subject')).toBeInTheDocument();
     });
@@ -307,7 +453,7 @@ describe('PostCard Component', () => {
       const post = createMockPost({
         message: '<p>This is a <strong>bold</strong> and <em>italic</em> text.</p>',
       });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const strongElement = screen.getByText('bold');
       expect(strongElement.tagName).toBe('STRONG');
@@ -320,7 +466,7 @@ describe('PostCard Component', () => {
       const post = createMockPost({
         message: '<p>Safe content</p><script>alert("XSS")</script>',
       });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByText('Safe content')).toBeInTheDocument();
       expect(screen.queryByText(/alert/i)).not.toBeInTheDocument();
@@ -331,7 +477,7 @@ describe('PostCard Component', () => {
         message: '<p>Check this image:</p><img src="https://example.com/image.jpg" alt="Test image" />',
         hasInlineFiles: true,
       });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const image = screen.getByRole('img', { name: /test image/i });
       expect(image).toBeInTheDocument();
@@ -342,7 +488,7 @@ describe('PostCard Component', () => {
       const post = createMockPost({
         message: '<pre><code class="language-javascript">const x = 10;</code></pre>',
       });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const codeBlock = screen.getByText(/const x = 10;/);
       expect(codeBlock).toBeInTheDocument();
@@ -352,7 +498,7 @@ describe('PostCard Component', () => {
     it('should render "Show more" button for long posts', () => {
       const longMessage = `<p>${  'Lorem ipsum dolor sit amet. '.repeat(100)  }</p>`;
       const post = createMockPost({ message: longMessage });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const showMoreButton = screen.getByRole('button', { name: /show more/i });
       expect(showMoreButton).toBeInTheDocument();
@@ -361,7 +507,7 @@ describe('PostCard Component', () => {
     it('should expand long post content when "Show more" is clicked', async () => {
       const longMessage = `<p>${  'Lorem ipsum dolor sit amet. '.repeat(100)  }</p>`;
       const post = createMockPost({ message: longMessage });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const showMoreButton = screen.getByRole('button', { name: /show more/i });
       await userEvent.click(showMoreButton);
@@ -375,7 +521,7 @@ describe('PostCard Component', () => {
       const attachment1 = createMockAttachment({ id: 1, filename: 'document.pdf' });
       const attachment2 = createMockAttachment({ id: 2, filename: 'image.png', mimetype: 'image/png' });
       const post = createMockPost({ attachments: [attachment1, attachment2] });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByText('document.pdf')).toBeInTheDocument();
       expect(screen.getByText('image.png')).toBeInTheDocument();
@@ -384,7 +530,7 @@ describe('PostCard Component', () => {
     it('should display attachment file sizes', () => {
       const attachment = createMockAttachment({ filesize: 2048576 }); // 2MB
       const post = createMockPost({ attachments: [attachment] });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByText(/2\.0 MB/i)).toBeInTheDocument();
     });
@@ -392,7 +538,7 @@ describe('PostCard Component', () => {
     it('should render download button for each attachment', () => {
       const attachment = createMockAttachment();
       const post = createMockPost({ attachments: [attachment] });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const downloadButton = screen.getByRole('link', { name: /download/i });
       expect(downloadButton).toHaveAttribute('href', 'https://example.com/files/document.pdf');
@@ -402,7 +548,7 @@ describe('PostCard Component', () => {
       const pdfAttachment = createMockAttachment({ id: 1, mimetype: 'application/pdf' });
       const imageAttachment = createMockAttachment({ id: 2, mimetype: 'image/png', filename: 'image.png' });
       const post = createMockPost({ attachments: [pdfAttachment, imageAttachment] });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByTestId('attachment-icon-pdf')).toBeInTheDocument();
       expect(screen.getByTestId('attachment-icon-image')).toBeInTheDocument();
@@ -415,7 +561,7 @@ describe('PostCard Component', () => {
         fileurl: 'https://example.com/files/photo.jpg',
       });
       const post = createMockPost({ attachments: [imageAttachment] });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const thumbnail = screen.getByRole('img', { name: /photo\.jpg/i });
       expect(thumbnail).toBeInTheDocument();
@@ -425,7 +571,7 @@ describe('PostCard Component', () => {
       const attachment1 = createMockAttachment({ id: 1 });
       const attachment2 = createMockAttachment({ id: 2 });
       const post = createMockPost({ attachments: [attachment1, attachment2] });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByRole('button', { name: /download all as zip/i })).toBeInTheDocument();
     });
@@ -433,14 +579,14 @@ describe('PostCard Component', () => {
     it('should not render download all option for single attachment', () => {
       const attachment = createMockAttachment();
       const post = createMockPost({ attachments: [attachment] });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.queryByRole('button', { name: /download all as zip/i })).not.toBeInTheDocument();
     });
 
     it('should not render attachments section when no attachments', () => {
       const post = createMockPost({ attachments: [] });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.queryByText(/attachments/i)).not.toBeInTheDocument();
     });
@@ -449,14 +595,14 @@ describe('PostCard Component', () => {
   describe('Action Buttons', () => {
     it('should render Reply button when user can reply', () => {
       const post = createMockPost({ canReply: true });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByRole('button', { name: /reply/i })).toBeInTheDocument();
     });
 
     it('should call onReply handler when Reply button is clicked', async () => {
       const post = createMockPost({ canReply: true });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const replyButton = screen.getByRole('button', { name: /reply/i });
       await userEvent.click(replyButton);
@@ -466,45 +612,46 @@ describe('PostCard Component', () => {
 
     it('should not render Reply button when user cannot reply', () => {
       const post = createMockPost({ canReply: false });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.queryByRole('button', { name: /reply/i })).not.toBeInTheDocument();
     });
 
     it('should render Edit button when user can edit', () => {
       const post = createMockPost({ canEdit: true });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByRole('button', { name: /edit/i })).toBeInTheDocument();
     });
 
     it('should call onEdit handler when Edit button is clicked', async () => {
       const post = createMockPost({ canEdit: true });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const editButton = screen.getByRole('button', { name: /edit/i });
       await userEvent.click(editButton);
       
-      expect(mockHandlers.onEdit).toHaveBeenCalledWith(post.id);
+      // Component passes the full post object to onEdit
+      expect(mockHandlers.onEdit).toHaveBeenCalledWith(post);
     });
 
     it('should not render Edit button when user cannot edit', () => {
       const post = createMockPost({ canEdit: false });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.queryByRole('button', { name: /edit/i })).not.toBeInTheDocument();
     });
 
     it('should render Delete button when user can delete', () => {
       const post = createMockPost({ canDelete: true });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByRole('button', { name: /delete/i })).toBeInTheDocument();
     });
 
     it('should show confirmation dialog when Delete button is clicked', async () => {
       const post = createMockPost({ canDelete: true });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const deleteButton = screen.getByRole('button', { name: /delete/i });
       await userEvent.click(deleteButton);
@@ -514,20 +661,23 @@ describe('PostCard Component', () => {
 
     it('should call onDelete handler when deletion is confirmed', async () => {
       const post = createMockPost({ canDelete: true });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const deleteButton = screen.getByRole('button', { name: /delete/i });
       await userEvent.click(deleteButton);
       
-      const confirmButton = screen.getByRole('button', { name: /confirm/i });
-      await userEvent.click(confirmButton);
+      // After clicking delete, a dialog opens with Cancel and Delete buttons
+      // Get all delete buttons - the second one is in the dialog
+      const deleteButtons = screen.getAllByRole('button', { name: /delete/i });
+      const confirmDeleteButton = deleteButtons[deleteButtons.length - 1]!; // Dialog button (non-null assertion)
+      await userEvent.click(confirmDeleteButton);
       
       expect(mockHandlers.onDelete).toHaveBeenCalledWith(post.id);
     });
 
     it('should not call onDelete handler when deletion is cancelled', async () => {
       const post = createMockPost({ canDelete: true });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const deleteButton = screen.getByRole('button', { name: /delete/i });
       await userEvent.click(deleteButton);
@@ -540,14 +690,14 @@ describe('PostCard Component', () => {
 
     it('should render Report button', () => {
       const post = createMockPost();
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByRole('button', { name: /report/i })).toBeInTheDocument();
     });
 
     it('should call onReport handler when Report button is clicked', async () => {
       const post = createMockPost();
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const reportButton = screen.getByRole('button', { name: /report/i });
       await userEvent.click(reportButton);
@@ -557,14 +707,14 @@ describe('PostCard Component', () => {
 
     it('should render Permalink button', () => {
       const post = createMockPost();
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByRole('button', { name: /permalink/i })).toBeInTheDocument();
     });
 
     it('should copy permalink to clipboard when Permalink button is clicked', async () => {
       const post = createMockPost();
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const permalinkButton = screen.getByRole('button', { name: /permalink/i });
       await userEvent.click(permalinkButton);
@@ -574,14 +724,14 @@ describe('PostCard Component', () => {
 
     it('should render Quote button', () => {
       const post = createMockPost({ canReply: true });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByRole('button', { name: /quote/i })).toBeInTheDocument();
     });
 
     it('should call onQuote handler when Quote button is clicked', async () => {
       const post = createMockPost({ canReply: true });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const quoteButton = screen.getByRole('button', { name: /quote/i });
       await userEvent.click(quoteButton);
@@ -593,7 +743,7 @@ describe('PostCard Component', () => {
   describe('Like/Rating System', () => {
     it('should render Like button with count', () => {
       const post = createMockPost({ likeCount: 5 });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByRole('button', { name: /like/i })).toBeInTheDocument();
       expect(screen.getByText('5')).toBeInTheDocument();
@@ -601,7 +751,7 @@ describe('PostCard Component', () => {
 
     it('should show liked state when user has liked the post', () => {
       const post = createMockPost({ userHasLiked: true, likeCount: 5 });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const likeButton = screen.getByRole('button', { name: /liked/i });
       expect(likeButton).toHaveClass('liked');
@@ -609,7 +759,7 @@ describe('PostCard Component', () => {
 
     it('should call onLike handler when Like button is clicked', async () => {
       const post = createMockPost({ likeCount: 0 });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const likeButton = screen.getByRole('button', { name: /like/i });
       await userEvent.click(likeButton);
@@ -619,7 +769,7 @@ describe('PostCard Component', () => {
 
     it('should render star rating when forum uses rating system', () => {
       const post = createMockPost({ rating: 4.5 });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByTestId('post-rating')).toBeInTheDocument();
       expect(screen.getByText(/4\.5/)).toBeInTheDocument();
@@ -627,7 +777,7 @@ describe('PostCard Component', () => {
 
     it('should render user rating separately from average rating', () => {
       const post = createMockPost({ rating: 4.5, userRating: 5 });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByTestId('post-rating')).toBeInTheDocument();
       expect(screen.getByTestId('user-rating')).toBeInTheDocument();
@@ -637,21 +787,21 @@ describe('PostCard Component', () => {
   describe('Reply Count Badge', () => {
     it('should render reply count badge when post has replies', () => {
       const post = createMockPost({ replyCount: 3 });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByText(/3 replies/i)).toBeInTheDocument();
     });
 
     it('should not render reply count badge when post has no replies', () => {
       const post = createMockPost({ replyCount: 0 });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.queryByText(/replies/i)).not.toBeInTheDocument();
     });
 
     it('should render singular "reply" for single reply', () => {
       const post = createMockPost({ replyCount: 1 });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByText(/1 reply/i)).toBeInTheDocument();
     });
@@ -660,21 +810,21 @@ describe('PostCard Component', () => {
   describe('Moderator Controls', () => {
     it('should render Approve button for pending posts when user is moderator', () => {
       const post = createMockPost({ isPending: true, canSplit: true });
-      render(<PostCard post={post} currentUserRole="moderator" {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByRole('button', { name: /approve/i })).toBeInTheDocument();
     });
 
     it('should render Reject button for pending posts when user is moderator', () => {
       const post = createMockPost({ isPending: true, canSplit: true });
-      render(<PostCard post={post} currentUserRole="moderator" {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByRole('button', { name: /reject/i })).toBeInTheDocument();
     });
 
     it('should call onApprove handler when Approve button is clicked', async () => {
       const post = createMockPost({ isPending: true, canSplit: true });
-      render(<PostCard post={post} currentUserRole="moderator" {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const approveButton = screen.getByRole('button', { name: /approve/i });
       await userEvent.click(approveButton);
@@ -684,7 +834,7 @@ describe('PostCard Component', () => {
 
     it('should call onReject handler when Reject button is clicked', async () => {
       const post = createMockPost({ isPending: true, canSplit: true });
-      render(<PostCard post={post} currentUserRole="moderator" {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const rejectButton = screen.getByRole('button', { name: /reject/i });
       await userEvent.click(rejectButton);
@@ -694,14 +844,14 @@ describe('PostCard Component', () => {
 
     it('should render Split button when user can split posts', () => {
       const post = createMockPost({ canSplit: true });
-      render(<PostCard post={post} currentUserRole="moderator" {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByRole('button', { name: /split/i })).toBeInTheDocument();
     });
 
     it('should call onSplit handler when Split button is clicked', async () => {
       const post = createMockPost({ canSplit: true });
-      render(<PostCard post={post} currentUserRole="moderator" {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const splitButton = screen.getByRole('button', { name: /split/i });
       await userEvent.click(splitButton);
@@ -711,14 +861,14 @@ describe('PostCard Component', () => {
 
     it('should render Move button when user is moderator', () => {
       const post = createMockPost({ canSplit: true });
-      render(<PostCard post={post} currentUserRole="moderator" {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByRole('button', { name: /move/i })).toBeInTheDocument();
     });
 
     it('should call onMove handler when Move button is clicked', async () => {
       const post = createMockPost({ canSplit: true });
-      render(<PostCard post={post} currentUserRole="moderator" {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const moveButton = screen.getByRole('button', { name: /move/i });
       await userEvent.click(moveButton);
@@ -728,7 +878,7 @@ describe('PostCard Component', () => {
 
     it('should not render moderator controls for non-moderators', () => {
       const post = createMockPost({ isPending: true });
-      render(<PostCard post={post} currentUserRole="student" {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.queryByRole('button', { name: /approve/i })).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /reject/i })).not.toBeInTheDocument();
@@ -750,7 +900,7 @@ describe('PostCard Component', () => {
         },
         deletedAt: new Date('2024-01-16T10:00:00Z'),
       });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByText(/this post has been deleted/i)).toBeInTheDocument();
       expect(screen.getByText(/admin user/i)).toBeInTheDocument();
@@ -761,7 +911,7 @@ describe('PostCard Component', () => {
         deleted: true,
         message: '<p>This should not be visible</p>',
       });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.queryByText(/this should not be visible/i)).not.toBeInTheDocument();
     });
@@ -772,7 +922,7 @@ describe('PostCard Component', () => {
         canReply: true,
         canEdit: true,
       });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.queryByRole('button', { name: /reply/i })).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /edit/i })).not.toBeInTheDocument();
@@ -782,14 +932,14 @@ describe('PostCard Component', () => {
   describe('Pending Approval State', () => {
     it('should render pending approval indicator', () => {
       const post = createMockPost({ isPending: true, moderatorApproved: false });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByText(/pending approval/i)).toBeInTheDocument();
     });
 
     it('should not render pending indicator for approved posts', () => {
       const post = createMockPost({ isPending: false, moderatorApproved: true });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.queryByText(/pending approval/i)).not.toBeInTheDocument();
     });
@@ -807,7 +957,7 @@ describe('PostCard Component', () => {
           profileUrl: '',
         },
       });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByText(/deleted user/i)).toBeInTheDocument();
     });
@@ -815,7 +965,7 @@ describe('PostCard Component', () => {
     it('should handle posts with broken attachment links', () => {
       const attachment = createMockAttachment({ fileurl: '' });
       const post = createMockPost({ attachments: [attachment] });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByText('document.pdf')).toBeInTheDocument();
       expect(screen.queryByRole('link', { name: /download/i })).not.toBeInTheDocument();
@@ -832,7 +982,7 @@ describe('PostCard Component', () => {
           profileUrl: '/user/profile/42',
         },
       });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       // Should render default avatar or initials
       expect(screen.getByTestId('default-avatar')).toBeInTheDocument();
@@ -842,12 +992,12 @@ describe('PostCard Component', () => {
       const veryLongMessage = `<p>${  'A'.repeat(10000)  }</p>`;
       const post = createMockPost({ message: veryLongMessage });
       
-      expect(() => render(<PostCard post={post} {...mockHandlers} />)).not.toThrow();
+      expect(() => renderWithProviders(<PostCard post={post} {...mockHandlers} />)).not.toThrow();
     });
 
     it('should handle posts with no message content', () => {
       const post = createMockPost({ message: '' });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.queryByText(/no content/i)).toBeInTheDocument();
     });
@@ -855,7 +1005,7 @@ describe('PostCard Component', () => {
     it('should handle posts with malformed HTML', () => {
       const post = createMockPost({ message: '<p>Unclosed paragraph<div>Nested incorrectly' });
       
-      expect(() => render(<PostCard post={post} {...mockHandlers} />)).not.toThrow();
+      expect(() => renderWithProviders(<PostCard post={post} {...mockHandlers} />)).not.toThrow();
     });
 
     it('should handle multiple image attachments', () => {
@@ -867,7 +1017,7 @@ describe('PostCard Component', () => {
         })
       );
       const post = createMockPost({ attachments });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       attachments.forEach((attachment) => {
         expect(screen.getByText(attachment.filename)).toBeInTheDocument();
@@ -882,7 +1032,7 @@ describe('PostCard Component', () => {
         createMockAttachment({ id: 4, filename: 'data.xlsx', mimetype: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
       ];
       const post = createMockPost({ attachments });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByText('doc.pdf')).toBeInTheDocument();
       expect(screen.getByText('image.png')).toBeInTheDocument();
@@ -894,28 +1044,28 @@ describe('PostCard Component', () => {
   describe('Permission-Based Visibility', () => {
     it('should show Edit button only for post owner', () => {
       const post = createMockPost({ canEdit: true });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByRole('button', { name: /edit/i })).toBeInTheDocument();
     });
 
     it('should not show Edit button for other users', () => {
       const post = createMockPost({ canEdit: false });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.queryByRole('button', { name: /edit/i })).not.toBeInTheDocument();
     });
 
     it('should show Delete button for moderators even if not owner', () => {
       const post = createMockPost({ canDelete: true });
-      render(<PostCard post={post} currentUserRole="moderator" {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByRole('button', { name: /delete/i })).toBeInTheDocument();
     });
 
     it('should show moderator controls only for moderators and teachers', () => {
       const post = createMockPost({ canSplit: true });
-      render(<PostCard post={post} currentUserRole="teacher" {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByRole('button', { name: /split/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /move/i })).toBeInTheDocument();
@@ -923,7 +1073,7 @@ describe('PostCard Component', () => {
 
     it('should not show moderator controls for students', () => {
       const post = createMockPost({ canSplit: false });
-      render(<PostCard post={post} currentUserRole="student" {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.queryByRole('button', { name: /split/i })).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /move/i })).not.toBeInTheDocument();
@@ -933,7 +1083,7 @@ describe('PostCard Component', () => {
   describe('Accessibility', () => {
     it('should have no accessibility violations', async () => {
       const post = createMockPost();
-      const { container } = render(<PostCard post={post} {...mockHandlers} />);
+      const { container } = renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const results = await axe(container);
       expect(results).toHaveNoViolations();
@@ -941,14 +1091,14 @@ describe('PostCard Component', () => {
 
     it('should have proper semantic HTML structure', () => {
       const post = createMockPost();
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByRole('article')).toBeInTheDocument();
     });
 
     it('should have proper ARIA labels for buttons', () => {
       const post = createMockPost({ canReply: true, canEdit: true });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const replyButton = screen.getByRole('button', { name: /reply/i });
       expect(replyButton).toHaveAttribute('aria-label');
@@ -959,7 +1109,7 @@ describe('PostCard Component', () => {
 
     it('should support keyboard navigation', async () => {
       const post = createMockPost({ canReply: true, canEdit: true, canDelete: true });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const replyButton = screen.getByRole('button', { name: /reply/i });
       replyButton.focus();
@@ -973,7 +1123,7 @@ describe('PostCard Component', () => {
 
     it('should have proper alt text for images', () => {
       const post = createMockPost();
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const avatar = screen.getByRole('img', { name: /john doe/i });
       expect(avatar).toHaveAttribute('alt');
@@ -981,7 +1131,7 @@ describe('PostCard Component', () => {
 
     it('should have proper heading hierarchy', () => {
       const post = createMockPost();
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const heading = screen.getByRole('heading', { name: /test post subject/i });
       expect(heading).toBeInTheDocument();
@@ -989,7 +1139,7 @@ describe('PostCard Component', () => {
 
     it('should announce dynamic content changes to screen readers', async () => {
       const post = createMockPost({ likeCount: 5 });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const likeButton = screen.getByRole('button', { name: /like/i });
       await userEvent.click(likeButton);
@@ -1015,7 +1165,7 @@ describe('PostCard Component', () => {
       }));
       
       const post = createMockPost();
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const card = screen.getByRole('article');
       expect(card).toHaveClass('mobile-layout');
@@ -1035,7 +1185,7 @@ describe('PostCard Component', () => {
       }));
       
       const post = createMockPost();
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const card = screen.getByRole('article');
       expect(card).toHaveClass('desktop-layout');
@@ -1055,7 +1205,7 @@ describe('PostCard Component', () => {
       }));
       
       const post = createMockPost({ canReply: true, canEdit: true });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const actionButtons = screen.getByTestId('action-buttons');
       expect(actionButtons).toHaveClass('vertical');
@@ -1075,7 +1225,7 @@ describe('PostCard Component', () => {
       }));
       
       const post = createMockPost({ canReply: true, canEdit: true });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const actionButtons = screen.getByTestId('action-buttons');
       expect(actionButtons).toHaveClass('horizontal');
@@ -1087,7 +1237,7 @@ describe('PostCard Component', () => {
       const post = createMockPost({
         message: '<p>Safe text</p><script>alert("XSS")</script>',
       });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByText('Safe text')).toBeInTheDocument();
       expect(document.querySelector('script')).not.toBeInTheDocument();
@@ -1097,7 +1247,7 @@ describe('PostCard Component', () => {
       const post = createMockPost({
         message: '<p onclick="alert(\'XSS\')">Click me</p>',
       });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const paragraph = screen.getByText('Click me');
       expect(paragraph).not.toHaveAttribute('onclick');
@@ -1107,7 +1257,7 @@ describe('PostCard Component', () => {
       const post = createMockPost({
         message: '<a href="javascript:alert(\'XSS\')">Click</a>',
       });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const link = screen.queryByRole('link', { name: /click/i });
       if (link) {
@@ -1119,7 +1269,7 @@ describe('PostCard Component', () => {
       const post = createMockPost({
         message: '<div style="background: url(javascript:alert(\'XSS\'))">Content</div>',
       });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByText('Content')).toBeInTheDocument();
       // Style should be sanitized
@@ -1129,7 +1279,7 @@ describe('PostCard Component', () => {
       const post = createMockPost({
         message: '<p><strong>Bold</strong> <em>Italic</em> <a href="/safe-link">Link</a></p>',
       });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       expect(screen.getByText('Bold').tagName).toBe('STRONG');
       expect(screen.getByText('Italic').tagName).toBe('EM');
@@ -1171,7 +1321,7 @@ describe('PostCard Component', () => {
         },
       });
       
-      render(<PostCard post={post} currentUserRole="teacher" {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       // Verify all major sections are present
       expect(screen.getByRole('img', { name: /john doe/i })).toBeInTheDocument();
@@ -1191,7 +1341,7 @@ describe('PostCard Component', () => {
 
     it('should handle rapid button clicks without duplicate actions', async () => {
       const post = createMockPost({ canReply: true });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const replyButton = screen.getByRole('button', { name: /reply/i });
       
@@ -1207,7 +1357,7 @@ describe('PostCard Component', () => {
 
     it('should update UI optimistically when liking a post', async () => {
       const post = createMockPost({ likeCount: 5, userHasLiked: false });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const likeButton = screen.getByRole('button', { name: /like/i });
       await userEvent.click(likeButton);
@@ -1227,7 +1377,7 @@ describe('PostCard Component', () => {
       const post = createMockPost({ attachments });
       
       const startTime = performance.now();
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       const endTime = performance.now();
       
       // Should render in reasonable time (< 1000ms) - adjusted for test environment variability
@@ -1237,11 +1387,12 @@ describe('PostCard Component', () => {
 
     it('should not re-render unnecessarily', () => {
       const post = createMockPost();
-      const { rerender } = render(<PostCard post={post} {...mockHandlers} />);
+      const { rerender } = renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const renderSpy = vi.spyOn(console, 'log');
       
-      // Re-render with same props
+      // Re-render with same props - rerender keeps the same tree context,
+      // so we should NOT wrap in TestProviders again (it would cause nested Routers)
       rerender(<PostCard post={post} {...mockHandlers} />);
       
       // Component should be memoized
@@ -1256,14 +1407,14 @@ describe('PostCard Component', () => {
       // Intentionally create invalid post for error handling test
       const post = { ...createMockPost(), author: null } as unknown as ForumPost;
       
-      expect(() => render(<PostCard post={post} {...mockHandlers} />)).not.toThrow();
+      expect(() => renderWithProviders(<PostCard post={post} {...mockHandlers} />)).not.toThrow();
     });
 
     it('should handle invalid date values', () => {
       // Intentionally create invalid post for error handling test
       const post = { ...createMockPost(), created: null } as unknown as ForumPost;
       
-      expect(() => render(<PostCard post={post} {...mockHandlers} />)).not.toThrow();
+      expect(() => renderWithProviders(<PostCard post={post} {...mockHandlers} />)).not.toThrow();
     });
 
     it('should handle network errors when copying permalink', async () => {
@@ -1271,7 +1422,7 @@ describe('PostCard Component', () => {
       vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValueOnce(clipboardError);
       
       const post = createMockPost();
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const permalinkButton = screen.getByRole('button', { name: /permalink/i });
       await userEvent.click(permalinkButton);
@@ -1289,7 +1440,7 @@ describe('PostCard Component', () => {
       });
       
       const post = createMockPost({ canReply: true });
-      render(<PostCard post={post} {...mockHandlers} />);
+      renderWithProviders(<PostCard post={post} {...mockHandlers} />);
       
       const replyButton = screen.getByRole('button', { name: /reply/i });
       await userEvent.click(replyButton);
