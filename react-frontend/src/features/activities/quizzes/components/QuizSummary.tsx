@@ -25,7 +25,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -54,21 +54,21 @@ import {
   Timer as TimerIcon,
   Event as EventIcon,
   Assignment as AssignmentIcon,
-  Warning as WarningIcon,
   Send as SendIcon,
   ArrowBack as ArrowBackIcon,
 } from '@mui/icons-material';
 
 // Internal imports from dependencies
-import type { AttemptSummary, QuestionSummary, QuizAttempt } from '../types/quiz.types';
+import type { AttemptSummary, QuizAttempt, QuestionNavigationState, Question } from '../types/quiz.types';
+import { QuestionState } from '../types/quiz.types';
 import { QuizNavigation } from './QuizNavigation';
-import { useQuizAttempt } from '../hooks/useQuizAttempt';
+import useQuizAttempt from '../hooks/useQuizAttempt';
 import { getAttemptSummary } from '../api/quizApi';
 import { Modal } from '@/components/feedback/Modal';
 import { Alert } from '@/components/feedback/Alert';
-import { Card } from '@/components/data-display/Card';
+import Card from '@/components/data-display/Card';
 import { LoadingSpinner } from '@/components/feedback/LoadingSpinner';
-import { formatDate, formatDateTime } from '@/utils/date';
+import { formatDateTime } from '@/utils/date';
 import { useToast } from '@/hooks/useToast';
 
 // ============================================================================
@@ -121,15 +121,19 @@ interface AttemptStatistics {
 
 /**
  * Determine the status of a question for display purposes
+ * Uses the Question type's state property to determine if answered
  *
- * @param question - Question summary data
+ * @param question - Question data from attempt summary
  * @returns The status of the question
  */
-function getQuestionStatus(question: QuestionSummary): QuestionStatus {
+function getQuestionStatus(question: Question): QuestionStatus {
   if (question.flagged) {
     return 'flagged';
   }
-  if (question.answersaved) {
+  // Check if question has been answered based on state
+  // A question is answered if state is not TODO or undefined
+  const isAnswered = question.state && question.state !== QuestionState.TODO;
+  if (isAnswered) {
     return 'answered';
   }
   return 'unanswered';
@@ -403,7 +407,7 @@ function StatisticsSummary({ statistics }: StatisticsSummaryProps): React.ReactE
  * Component for displaying the questions table
  */
 interface QuestionsTableProps {
-  questions: QuestionSummary[];
+  questions: Question[];
   onNavigateToQuestion: (questionNumber: number) => void;
 }
 
@@ -427,10 +431,15 @@ function QuestionsTable({ questions, onNavigateToQuestion }: QuestionsTableProps
             const statusColor = getStatusColor(status);
             const statusIcon = getStatusIcon(status);
             const statusLabel = getStatusLabel(status);
+            // Use question.id or index for key, slot may be undefined
+            const questionKey = question.slot ?? question.id ?? index;
+            // Use question.name for display, fallback to truncated questiontext
+            const questionSummary = question.name || 
+              (question.questiontext?.substring(0, 50) + (question.questiontext?.length > 50 ? '...' : ''));
 
             return (
               <TableRow
-                key={question.slot}
+                key={questionKey}
                 sx={{
                   '&:last-child td, &:last-child th': { border: 0 },
                   backgroundColor:
@@ -454,7 +463,7 @@ function QuestionsTable({ questions, onNavigateToQuestion }: QuestionsTableProps
                       />
                     )}
                   </Box>
-                  {question.questionsummary && (
+                  {questionSummary && (
                     <Typography
                       variant="body2"
                       color="text.secondary"
@@ -465,7 +474,7 @@ function QuestionsTable({ questions, onNavigateToQuestion }: QuestionsTableProps
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      {question.questionsummary}
+                      {questionSummary}
                     </Typography>
                   )}
                 </TableCell>
@@ -639,7 +648,7 @@ export default function QuizSummary({
   const { success, error } = useToast();
 
   // Quiz attempt hook for submission
-  const { finishAttempt, isFinishing } = useQuizAttempt(quizId, attemptId);
+  const { finishAttempt, isSubmitting } = useQuizAttempt({ quizId, attemptId });
 
   // Fetch attempt summary data
   const {
@@ -688,7 +697,7 @@ export default function QuizSummary({
    * Handle closing the submission confirmation dialog
    */
   const handleCloseConfirmDialog = (): void => {
-    if (!isFinishing) {
+    if (!isSubmitting) {
       setShowConfirmDialog(false);
     }
   };
@@ -698,10 +707,8 @@ export default function QuizSummary({
    */
   const handleSubmit = async (): Promise<void> => {
     try {
-      await finishAttempt({
-        attemptId,
-        finishattempt: true,
-      });
+      // finishAttempt takes no arguments - the hook already has attemptId context
+      await finishAttempt();
 
       // Close dialog
       setShowConfirmDialog(false);
@@ -738,6 +745,54 @@ export default function QuizSummary({
   const handleReturnToAttempt = (): void => {
     handleNavigateToQuestion(1);
   };
+
+  /**
+   * Handle flag toggle for a question
+   * On the summary page, this navigates back to the question
+   * where the user can toggle the flag
+   *
+   * @param index - The 0-based index of the question
+   */
+  const handleFlagToggle = (index: number): void => {
+    // Navigate back to the question to allow flag toggling
+    handleNavigateToQuestion(index + 1);
+  };
+
+  /**
+   * Handle finish attempt from navigation component
+   * Opens the confirmation dialog
+   */
+  const handleFinishAttempt = (): void => {
+    handleOpenConfirmDialog();
+  };
+
+  /**
+   * Transform QuestionSummary array to QuestionNavigationState array
+   * for compatibility with QuizNavigation component
+   */
+  const getNavigationQuestions = (): QuestionNavigationState[] => {
+    if (!summaryData?.questions) {
+      return [];
+    }
+
+    return summaryData.questions.map((q, index) => {
+      // Determine if question has been answered based on state
+      const isAnswered = q.state !== undefined && q.state !== QuestionState.TODO;
+      
+      return {
+        slot: q.slot ?? index + 1,
+        number: String(q.displaynumber ?? index + 1),
+        answered: isAnswered,
+        flagged: q.flagged ?? false,
+        page: q.page ?? Math.floor(index / 10) + 1,
+        isCurrentQuestion: false, // No current question on summary page
+        state: q.state ?? QuestionState.TODO,
+      };
+    });
+  };
+
+  // Memoize navigation questions to avoid recalculation
+  const navigationQuestions = useMemo(() => getNavigationQuestions(), [summaryData?.questions]);
 
   // Loading state
   if (isLoading) {
@@ -853,11 +908,11 @@ export default function QuizSummary({
               Quick Navigation
             </Typography>
             <QuizNavigation
-              questions={summaryData.questions}
-              currentQuestion={0}
+              questions={navigationQuestions}
+              currentQuestionIndex={0}
               onQuestionClick={handleNavigateToQuestion}
-              showProgress
-              compact
+              onFlagToggle={handleFlagToggle}
+              onFinishAttempt={handleFinishAttempt}
             />
           </Paper>
         </Grid>
@@ -902,11 +957,11 @@ export default function QuizSummary({
           variant="contained"
           color="primary"
           size="large"
-          startIcon={isFinishing ? <CircularProgress size={20} color="inherit" /> : <SendIcon />}
+          startIcon={isSubmitting ? <CircularProgress size={20} color="inherit" /> : <SendIcon />}
           onClick={handleOpenConfirmDialog}
-          disabled={isFinishing}
+          disabled={isSubmitting}
         >
-          {isFinishing ? 'Submitting...' : 'Submit all and finish'}
+          {isSubmitting ? 'Submitting...' : 'Submit all and finish'}
         </Button>
       </Box>
 
@@ -917,7 +972,7 @@ export default function QuizSummary({
         onConfirm={handleSubmit}
         hasUnanswered={hasUnanswered}
         unansweredCount={unansweredCount}
-        isSubmitting={isFinishing}
+        isSubmitting={isSubmitting}
       />
     </Box>
   );
