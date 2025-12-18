@@ -17,8 +17,11 @@
  * @module features/activities/assignments/pages/GradingPage
  */
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import type React from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import type {
+  SelectChangeEvent} from '@mui/material';
 import {
   Box,
   Typography,
@@ -43,18 +46,18 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  LinearProgress,
-  SelectChangeEvent,
+  LinearProgress
 } from '@mui/material';
-import {
-  DataGrid,
+import type {
   GridColDef,
   GridRenderCellParams,
   GridRowSelectionModel,
   GridSortModel,
   GridPaginationModel,
-  GridActionsCellItem,
-  GridRowParams,
+  GridRowParams} from '@mui/x-data-grid';
+import {
+  DataGrid,
+  GridActionsCellItem
 } from '@mui/x-data-grid';
 import {
   Download as DownloadIcon,
@@ -226,7 +229,7 @@ function getGradingStatusLabel(status: string): string {
  * Format date for display
  */
 function formatDate(dateString: string | null | number): string {
-  if (!dateString) return '-';
+  if (!dateString) {return '-';}
   try {
     const date = typeof dateString === 'number' 
       ? new Date(dateString * 1000) 
@@ -272,7 +275,7 @@ const GradingPage: React.FC = () => {
    * Returns true if user has 'mod/assign:grade' capability
    */
   const hasGradingPermission = useMemo(() => {
-    if (!user || !user.capabilities) return false;
+    if (!user?.capabilities) {return false;}
     return hasCapability(user.capabilities, 'mod/assign:grade');
   }, [user]);
 
@@ -282,21 +285,21 @@ const GradingPage: React.FC = () => {
   
   /** Filter state */
   const [filters, setFilters] = useState<SubmissionFilters>(() => ({
-    status: (searchParams.get('status') as SubmissionFilters['status']) || 'all',
-    search: searchParams.get('search') || '',
-    dateFrom: searchParams.get('dateFrom') || '',
-    dateTo: searchParams.get('dateTo') || '',
+    status: (searchParams.get('status') as SubmissionFilters['status']) ?? 'all',
+    search: searchParams.get('search') ?? '',
+    dateFrom: searchParams.get('dateFrom') ?? '',
+    dateTo: searchParams.get('dateTo') ?? '',
   }));
 
   /** Pagination state */
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
-    page: parseInt(searchParams.get('page') || '0', 10),
-    pageSize: parseInt(searchParams.get('pageSize') || String(DEFAULT_PAGE_SIZE), 10),
+    page: parseInt(searchParams.get('page') ?? '0', 10),
+    pageSize: parseInt(searchParams.get('pageSize') ?? String(DEFAULT_PAGE_SIZE), 10),
   });
 
   /** Sort state */
   const [sortModel, setSortModel] = useState<GridSortModel>([
-    { field: searchParams.get('sortField') || 'fullname', sort: (searchParams.get('sortOrder') as 'asc' | 'desc') || 'asc' },
+    { field: searchParams.get('sortField') ?? 'fullname', sort: (searchParams.get('sortOrder') as 'asc' | 'desc') ?? 'asc' },
   ]);
 
   /** Row selection for batch operations */
@@ -343,8 +346,8 @@ const GradingPage: React.FC = () => {
     dateTo: filters.dateTo || undefined,
     page: paginationModel.page,
     pageSize: paginationModel.pageSize,
-    sortField: sortModel[0]?.field || 'fullname',
-    sortOrder: sortModel[0]?.sort || 'asc',
+    sortField: sortModel[0]?.field ?? 'fullname',
+    sortOrder: sortModel[0]?.sort ?? 'asc',
   }), [filters, paginationModel, sortModel]);
 
   /** Fetch submissions list */
@@ -364,7 +367,7 @@ const GradingPage: React.FC = () => {
 
   /** Convert submissions to DataGrid rows */
   const rows: SubmissionRow[] = useMemo(() => {
-    if (!submissionsData?.submissions) return [];
+    if (!submissionsData?.submissions) {return [];}
     
     return submissionsData.submissions.map((submission: Submission) => {
       // Parse grade value - grade can be string or number directly
@@ -384,23 +387,23 @@ const GradingPage: React.FC = () => {
       return {
         id: submission.id,
         userId: submission.userid,
-        fullname: submission.studentname || `User ${submission.userid}`,
+        fullname: submission.studentname ?? `User ${submission.userid}`,
         email: '', // Email not available in Submission type, would need separate user fetch
         status: submission.status,
         submissionDate: submission.timemodified ? String(submission.timemodified) : null,
         grade: gradeValue,
-        gradingStatus: submission.gradingstatus || 'notgraded',
+        gradingStatus: submission.gradingstatus ?? 'notgraded',
         workflowState: null, // Workflow state comes from UserFlag, not Submission
         hasFiles,
-        attemptnumber: submission.attemptnumber || 0,
+        attemptnumber: submission.attemptnumber ?? 0,
       };
     });
   }, [submissionsData]);
 
   /** Calculate grading statistics */
   const statistics: GradingStatistics = useMemo(() => {
-    const submissions = submissionsData?.submissions || [];
-    const total = submissionsData?.total || submissions.length;
+    const submissions = submissionsData?.submissions ?? [];
+    const total = submissionsData?.total ?? submissions.length;
     
     let submitted = 0;
     let graded = 0;
@@ -492,7 +495,7 @@ const GradingPage: React.FC = () => {
   /**
    * Handle row click - navigate to grading view
    */
-  const handleRowClick = useCallback((params: GridRowParams) => {
+  const handleRowClick = useCallback((params: GridRowParams<SubmissionRow>) => {
     navigate(`/assignments/${assignmentId}/grading/${params.row.userId}`);
   }, [navigate, assignmentId]);
 
@@ -529,7 +532,7 @@ const GradingPage: React.FC = () => {
    * Handle download selected submissions
    */
   const handleDownloadSelected = useCallback(() => {
-    if (selectedRows.length === 0) return;
+    if (selectedRows.length === 0) {return;}
     const ids = selectedRows.join(',');
     window.open(`/api/v1/assignments/${assignmentId}/submissions/download?ids=${ids}`, '_blank');
   }, [assignmentId, selectedRows]);
@@ -564,10 +567,10 @@ const GradingPage: React.FC = () => {
    * Submit quick grade
    */
   const handleSubmitQuickGrade = useCallback(() => {
-    if (quickGradeDialog.userId === null || !assignmentIdNum) return;
+    if (quickGradeDialog.userId === null || !assignmentIdNum) {return;}
     
     const gradeValue = parseFloat(quickGradeValue);
-    if (isNaN(gradeValue)) return;
+    if (isNaN(gradeValue)) {return;}
 
     gradeSubmission(
       {
@@ -578,7 +581,7 @@ const GradingPage: React.FC = () => {
       {
         onSuccess: () => {
           handleCloseQuickGrade();
-          refetchSubmissions();
+          void refetchSubmissions();
         },
       }
     );
@@ -627,14 +630,14 @@ const GradingPage: React.FC = () => {
 
   useEffect(() => {
     const params = new URLSearchParams();
-    if (filters.status !== 'all') params.set('status', filters.status);
-    if (filters.search) params.set('search', filters.search);
-    if (filters.dateFrom) params.set('dateFrom', filters.dateFrom);
-    if (filters.dateTo) params.set('dateTo', filters.dateTo);
-    if (paginationModel.page > 0) params.set('page', String(paginationModel.page));
-    if (paginationModel.pageSize !== DEFAULT_PAGE_SIZE) params.set('pageSize', String(paginationModel.pageSize));
-    if (sortModel[0]?.field) params.set('sortField', sortModel[0].field);
-    if (sortModel[0]?.sort) params.set('sortOrder', sortModel[0].sort);
+    if (filters.status !== 'all') {params.set('status', filters.status);}
+    if (filters.search) {params.set('search', filters.search);}
+    if (filters.dateFrom) {params.set('dateFrom', filters.dateFrom);}
+    if (filters.dateTo) {params.set('dateTo', filters.dateTo);}
+    if (paginationModel.page > 0) {params.set('page', String(paginationModel.page));}
+    if (paginationModel.pageSize !== DEFAULT_PAGE_SIZE) {params.set('pageSize', String(paginationModel.pageSize));}
+    if (sortModel[0]?.field) {params.set('sortField', sortModel[0].field);}
+    if (sortModel[0]?.sort) {params.set('sortOrder', sortModel[0].sort);}
     
     setSearchParams(params, { replace: true });
   }, [filters, paginationModel, sortModel, setSearchParams]);
@@ -690,8 +693,8 @@ const GradingPage: React.FC = () => {
       align: 'center',
       headerAlign: 'center',
       renderCell: (params: GridRenderCellParams<SubmissionRow>) => {
-        const grade = params.row.grade;
-        const maxGrade = assignment?.grade || 100;
+        const {grade} = params.row;
+        const maxGrade = assignment?.grade ?? 100;
         
         return (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -1137,42 +1140,22 @@ const GradingPage: React.FC = () => {
           onRowSelectionModelChange={handleSelectionChange}
           onRowClick={handleRowClick}
           pageSizeOptions={PAGE_SIZE_OPTIONS}
-          rowCount={submissionsData?.total || rows.length}
+          rowCount={submissionsData?.total ?? rows.length}
           paginationMode="server"
           sortingMode="server"
           loading={submissionsLoading}
           disableRowSelectionOnClick={false}
-          getRowId={(row) => row.id}
+          getRowId={(row: SubmissionRow) => row.id}
           sx={{
             '& .MuiDataGrid-row:hover': {
               cursor: 'pointer',
             },
           }}
           localeText={{
-            noRowsLabel: 'No submissions found',
+            noRowsLabel: filters.status !== 'all' || filters.search
+              ? 'No submissions match your filters - try adjusting your filters'
+              : 'No students have made submissions yet',
             noResultsOverlayLabel: 'No submissions match your filters',
-          }}
-          slots={{
-            noRowsOverlay: () => (
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  height: '100%',
-                }}
-              >
-                <Typography variant="h6" color="text.secondary">
-                  No submissions found
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {filters.status !== 'all' || filters.search
-                    ? 'Try adjusting your filters'
-                    : 'No students have made submissions yet'}
-                </Typography>
-              </Box>
-            ),
           }}
         />
       </Paper>
@@ -1182,9 +1165,8 @@ const GradingPage: React.FC = () => {
         <DialogTitle>Quick Grade</DialogTitle>
         <DialogContent>
           <TextField
-            autoFocus
             margin="dense"
-            label={`Grade (0 - ${assignment.grade || 100})`}
+            label={`Grade (0 - ${assignment.grade ?? 100})`}
             type="number"
             fullWidth
             variant="outlined"
