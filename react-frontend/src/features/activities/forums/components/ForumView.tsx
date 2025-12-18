@@ -601,16 +601,6 @@ export const ForumView: React.FC<ForumViewComponentProps> = ({ courseId, forumId
         <DiscussionList
           courseId={courseId}
           forumId={forumId}
-          currentUser={{
-            id: user.id,
-            name: user.fullname || 'Unknown User',
-          }}
-          permissions={{
-            canModerate: forum.canModerate,
-            canPin: forum.canModerate,
-            canLock: forum.canModerate,
-            canDelete: forum.canModerate,
-          }}
         />
       )}
 

@@ -11,8 +11,17 @@
  */
 
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+
+// Import API functions for mutations
+import {
+  pinDiscussion as pinDiscussionApi,
+  unpinDiscussion as unpinDiscussionApi,
+  lockDiscussion as lockDiscussionApi,
+  unlockDiscussion as unlockDiscussionApi,
+} from '../api/forumApi';
 
 // Material-UI Components
 import {
@@ -43,7 +52,6 @@ import {
   Menu,
   useTheme,
   useMediaQuery,
-  Skeleton,
   SelectChangeEvent,
   List,
   ListItem,
@@ -66,18 +74,17 @@ import {
   Delete as DeleteIcon,
   Forum as ForumIcon,
   Comment as CommentIcon,
-  Visibility as VisibilityIcon,
-  VisibilityOff as VisibilityOffIcon,
 } from '@mui/icons-material';
 
 // Internal Dependencies (from depends_on_files)
 import { useForum } from '../hooks/useForum';
-import type { Forum, DiscussionEnriched } from '../types/forum.types';
 import { LoadingSpinner } from '../../../../components/feedback/LoadingSpinner';
 import { Alert } from '../../../../components/feedback/Alert';
-import { Pagination } from '../../../../components/data-display/Pagination';
-import { usePagination } from '../../../../hooks/usePagination';
+import Pagination from '../../../../components/data-display/Pagination';
+import usePagination from '../../../../hooks/usePagination';
 import { usePermissions } from '../../../../hooks/usePermissions';
+import { useAuth } from '../../../auth/hooks/useAuth';
+import type { DiscussionEnriched } from '../types/forum.types';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -187,10 +194,15 @@ function formatTimestamp(timestamp: number | string | undefined): string {
 }
 
 /**
+ * Valid API sort field values as expected by useForum hook
+ */
+type ApiSortField = 'date' | 'replies' | 'author';
+
+/**
  * Maps component sort field to API sort parameter
  */
-function mapSortFieldToApi(field: SortField): string {
-  const mapping: Record<SortField, string> = {
+function mapSortFieldToApi(field: SortField): ApiSortField {
+  const mapping: Record<SortField, ApiSortField> = {
     lastPost: 'date',
     created: 'date',
     replies: 'replies',
@@ -230,11 +242,17 @@ export function DiscussionList({
   // Permission checks using usePermissions hook with hasCapability
   const { hasCapability } = usePermissions();
   const canModerate = hasCapability('mod/forum:editanypost');
-  const canViewDiscussions = hasCapability('mod/forum:viewdiscussion');
   const canStartDiscussion = hasCapability('mod/forum:startdiscussion');
   const canPinDiscussions = hasCapability('mod/forum:pindiscussions');
   const canLockDiscussions = hasCapability('mod/forum:lockmessage');
   const canDeleteDiscussions = hasCapability('mod/forum:deleteanypost');
+  const canMoveDiscussions = hasCapability('mod/forum:movediscussions');
+
+  // Show selection controls for moderators by default (can be overridden by prop)
+  const effectiveShowSelection = showSelection || canModerate;
+
+  // Get current authenticated user for filtering "my discussions"
+  const { user: currentUser } = useAuth();
 
   // Local state for sorting and filtering
   const [sortField, setSortField] = useState<SortField>('lastPost');
@@ -245,45 +263,132 @@ export function DiscussionList({
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [mobileMenuAnchor, setMobileMenuAnchor] = useState<HTMLElement | null>(null);
   const [activeDiscussionId, setActiveDiscussionId] = useState<number | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
 
   // Refs for debouncing and focus management
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const tableRef = useRef<HTMLTableElement>(null);
 
   // Use the useForum hook for data fetching with sorting and filtering
+  // Note: groupId from props is available for group filtering if extended in the future
   const {
-    forum,
     discussions,
     isLoading,
     isError,
     error,
     refetch,
-    pagination,
-    sortBy,
-    setSortBy,
-    filterBy,
-    setFilterBy,
-    markAsRead,
+    pagination: forumPagination,
   } = useForum(forumId, {
-    initialPage: 1,
-    initialPageSize: 20,
-    initialSortBy: mapSortFieldToApi(sortField),
-    initialSortOrder: sortDirection,
+    discussionOptions: {
+      page: currentPage,
+      perPage: itemsPerPage,
+      sortBy: mapSortFieldToApi(sortField),
+      sortOrder: sortDirection,
+      ...(groupId !== undefined && groupId > 0 ? { groupId } : {}),
+    },
   });
+
+  // Query client for cache manipulation in optimistic updates
+  const queryClient = useQueryClient();
+  const discussionQueryKey = ['forum', forumId, 'discussions'];
+
+  // Type for discussion context in optimistic updates
+  type DiscussionContext = {
+    previousDiscussions: DiscussionEnriched[] | undefined;
+  };
+
+  // Pin discussion mutation with optimistic updates
+  const pinMutation = useMutation({
+    mutationFn: async ({ discussionId, shouldPin }: { discussionId: number; shouldPin: boolean }) => {
+      if (shouldPin) {
+        return pinDiscussionApi(discussionId);
+      } else {
+        return unpinDiscussionApi(discussionId);
+      }
+    },
+    onMutate: async ({ discussionId, shouldPin }): Promise<DiscussionContext> => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: discussionQueryKey });
+
+      // Snapshot the previous value
+      const previousDiscussions = queryClient.getQueryData<DiscussionEnriched[]>(discussionQueryKey);
+
+      // Optimistically update to the new value
+      queryClient.setQueryData<DiscussionEnriched[]>(discussionQueryKey, (old) => {
+        if (!old) return old;
+        return old.map((d) =>
+          d.id === discussionId ? { ...d, pinned: shouldPin } : d
+        );
+      });
+
+      return { previousDiscussions };
+    },
+    onError: (_err, _variables, context) => {
+      // Rollback to the previous value on error
+      if (context?.previousDiscussions) {
+        queryClient.setQueryData(discussionQueryKey, context.previousDiscussions);
+      }
+    },
+    onSettled: () => {
+      // Refetch to ensure server state sync
+      queryClient.invalidateQueries({ queryKey: discussionQueryKey });
+    },
+  });
+
+  // Lock discussion mutation with optimistic updates
+  const lockMutation = useMutation({
+    mutationFn: async ({ discussionId, shouldLock }: { discussionId: number; shouldLock: boolean }) => {
+      if (shouldLock) {
+        return lockDiscussionApi(discussionId);
+      } else {
+        return unlockDiscussionApi(discussionId);
+      }
+    },
+    onMutate: async ({ discussionId, shouldLock }): Promise<DiscussionContext> => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: discussionQueryKey });
+
+      // Snapshot the previous value
+      const previousDiscussions = queryClient.getQueryData<DiscussionEnriched[]>(discussionQueryKey);
+
+      // Optimistically update to the new value
+      queryClient.setQueryData<DiscussionEnriched[]>(discussionQueryKey, (old) => {
+        if (!old) return old;
+        return old.map((d) =>
+          d.id === discussionId ? { ...d, locked: shouldLock } : d
+        );
+      });
+
+      return { previousDiscussions };
+    },
+    onError: (_err, _variables, context) => {
+      // Rollback to the previous value on error
+      if (context?.previousDiscussions) {
+        queryClient.setQueryData(discussionQueryKey, context.previousDiscussions);
+      }
+    },
+    onSettled: () => {
+      // Refetch to ensure server state sync
+      queryClient.invalidateQueries({ queryKey: discussionQueryKey });
+    },
+  });
+
+  // Check if user owns any discussion in the list (for showing delete button on own posts)
+  const userOwnsAnyDiscussion = useMemo(() => {
+    if (!currentUser?.id || !discussions) return false;
+    return discussions.some((d) => d.userid === currentUser.id);
+  }, [discussions, currentUser?.id]);
+
+  // Determine if actions column should be shown (moderator OR user owns any discussion)
+  const showActionsColumn = canModerate || userOwnsAnyDiscussion;
 
   // Use usePagination for additional pagination controls
   const paginationState = usePagination({
-    totalItems: pagination.totalItems,
-    initialPage: pagination.currentPage,
-    initialPageSize: pagination.itemsPerPage,
+    totalItems: forumPagination?.total ?? 0,
+    initialPage: currentPage,
+    itemsPerPage: itemsPerPage,
   });
-
-  // Sync pagination state with useForum
-  useEffect(() => {
-    if (paginationState.currentPage !== pagination.currentPage) {
-      pagination.goToPage(paginationState.currentPage);
-    }
-  }, [paginationState.currentPage, pagination]);
 
   // Debounced search effect
   useEffect(() => {
@@ -302,28 +407,14 @@ export function DiscussionList({
     };
   }, [searchQuery]);
 
-  // Update API sort when local sort changes
+  // Refetch data when sort field or direction changes
   useEffect(() => {
-    const apiSort = mapSortFieldToApi(sortField);
-    if (sortBy !== apiSort) {
-      setSortBy(apiSort);
-    }
-  }, [sortField, sortBy, setSortBy]);
+    // Reset to first page when sort changes
+    setCurrentPage(1);
+  }, [sortField, sortDirection]);
 
-  // Update API filter when local filter changes
-  useEffect(() => {
-    const filterMap: Record<FilterOption, string> = {
-      all: 'all',
-      unread: 'unread',
-      pinned: 'pinned',
-      subscribed: 'all', // Not directly supported, will filter client-side
-      started: 'all', // Not directly supported, will filter client-side
-    };
-    const apiFilter = filterMap[filterOption];
-    if (filterBy !== apiFilter) {
-      setFilterBy(apiFilter);
-    }
-  }, [filterOption, filterBy, setFilterBy]);
+  // Note: filterOption is used for client-side filtering
+  // The API sorting is handled via discussionOptions in useForum
 
   // Filter and sort discussions client-side for additional filtering
   const filteredDiscussions = useMemo(() => {
@@ -341,13 +432,23 @@ export function DiscussionList({
       );
     }
 
-    // Apply additional client-side filters not supported by API
+    // Apply additional client-side filters
     switch (filterOption) {
+      case 'unread':
+        result = result.filter((d) => (d.numUnreadPosts || 0) > 0);
+        break;
+      case 'pinned':
+        result = result.filter((d) => d.pinned);
+        break;
       case 'subscribed':
         // This would need subscription data which may not be in DiscussionEnriched
+        // Filter by discussions the user is subscribed to
         break;
       case 'started':
-        // Filter by current user - would need current user ID
+        // Filter discussions started by the current user
+        if (currentUser?.id) {
+          result = result.filter((d) => d.userid === currentUser.id);
+        }
         break;
       default:
         break;
@@ -378,7 +479,7 @@ export function DiscussionList({
     });
 
     return [...pinned, ...unpinned];
-  }, [discussions, debouncedSearch, filterOption, sortField, sortDirection]);
+  }, [discussions, debouncedSearch, filterOption, sortField, sortDirection, currentUser]);
 
   // Event Handlers
   const handleSortChange = useCallback((field: SortField) => {
@@ -394,8 +495,9 @@ export function DiscussionList({
 
   const handleFilterChange = useCallback((event: SelectChangeEvent<FilterOption>) => {
     setFilterOption(event.target.value as FilterOption);
-    pagination.goToPage(1); // Reset to first page on filter change
-  }, [pagination]);
+    setCurrentPage(1); // Reset to first page on filter change
+    paginationState.goToPage(1);
+  }, [paginationState]);
 
   const handleSearchChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(event.target.value);
@@ -408,16 +510,14 @@ export function DiscussionList({
 
   const handleDiscussionClick = useCallback(
     (discussionId: number) => {
-      // Mark as read when opening
-      markAsRead(discussionId).catch(console.error);
-      
+      // Note: Mark as read functionality would be handled via a separate API call if needed
       if (onDiscussionSelect) {
         onDiscussionSelect(discussionId);
       } else {
         navigate(`/courses/${courseId}/forums/${forumId}/discussions/${discussionId}`);
       }
     },
-    [courseId, forumId, markAsRead, navigate, onDiscussionSelect]
+    [courseId, forumId, navigate, onDiscussionSelect]
   );
 
   const handleSelectAll = useCallback(() => {
@@ -466,21 +566,23 @@ export function DiscussionList({
 
   const handlePageChange = useCallback(
     (page: number) => {
-      pagination.goToPage(page);
-      paginationState.goToPage(page);
+      // Pagination table variant uses 0-indexed pages, convert to 1-indexed for internal state
+      const oneIndexedPage = page + 1;
+      setCurrentPage(oneIndexedPage);
+      paginationState.goToPage(oneIndexedPage);
       // Scroll to top of table
       tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     },
-    [pagination, paginationState]
+    [paginationState]
   );
 
   const handlePageSizeChange = useCallback(
     (pageSize: number) => {
-      pagination.setItemsPerPage(pageSize);
-      paginationState.setPageSize(pageSize);
-      pagination.goToPage(1);
+      setItemsPerPage(pageSize);
+      setCurrentPage(1);
+      paginationState.goToPage(1);
     },
-    [pagination, paginationState]
+    [paginationState]
   );
 
   // Keyboard navigation handler
@@ -496,9 +598,11 @@ export function DiscussionList({
           event.preventDefault();
           const currentIndex = filteredDiscussions.findIndex((d) => d.id === discussionId);
           if (currentIndex < filteredDiscussions.length - 1) {
-            const nextId = filteredDiscussions[currentIndex + 1].id;
-            const nextRow = document.querySelector(`[data-discussion-id="${nextId}"]`) as HTMLElement;
-            nextRow?.focus();
+            const nextDiscussion = filteredDiscussions[currentIndex + 1];
+            if (nextDiscussion) {
+              const nextRow = document.querySelector(`[data-discussion-id="${nextDiscussion.id}"]`) as HTMLElement;
+              nextRow?.focus();
+            }
           }
           break;
         }
@@ -506,9 +610,11 @@ export function DiscussionList({
           event.preventDefault();
           const currentIdx = filteredDiscussions.findIndex((d) => d.id === discussionId);
           if (currentIdx > 0) {
-            const prevId = filteredDiscussions[currentIdx - 1].id;
-            const prevRow = document.querySelector(`[data-discussion-id="${prevId}"]`) as HTMLElement;
-            prevRow?.focus();
+            const prevDiscussion = filteredDiscussions[currentIdx - 1];
+            if (prevDiscussion) {
+              const prevRow = document.querySelector(`[data-discussion-id="${prevDiscussion.id}"]`) as HTMLElement;
+              prevRow?.focus();
+            }
           }
           break;
         }
@@ -542,15 +648,15 @@ export function DiscussionList({
         <Alert
           severity="error"
           title="Failed to load discussions"
+          message={error?.message || 'An unexpected error occurred while loading discussions.'}
+          closeable
           onClose={() => refetch()}
           action={
             <Button color="inherit" size="small" onClick={() => refetch()}>
               Retry
             </Button>
           }
-        >
-          {error?.message || 'An unexpected error occurred while loading discussions.'}
-        </Alert>
+        />
       </Box>
     );
   }
@@ -749,7 +855,7 @@ export function DiscussionList({
                     }
                     secondary={
                       <Typography variant="caption" color="text.secondary">
-                        By {discussion.userFullName || 'Unknown'} · {formatTimestamp(discussion.created)} · {discussion.numReplies || 0} replies
+                        By {discussion.userFullName || 'Deleted User'} · {formatTimestamp(discussion.created)} · {discussion.numReplies || 0} replies
                       </Typography>
                     }
                   />
@@ -760,13 +866,18 @@ export function DiscussionList({
           ))}
         </List>
 
-        {/* Mobile pagination */}
-        {pagination.totalPages > 1 && (
+        {/* Mobile pagination - page is 0-indexed for table variant */}
+        {(forumPagination?.totalPages ?? 0) > 1 && (
           <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
             <Pagination
-              currentPage={pagination.currentPage}
-              totalPages={pagination.totalPages}
+              variant="table"
+              count={forumPagination?.total ?? 0}
+              page={currentPage - 1}
+              rowsPerPage={itemsPerPage}
+              rowsPerPageOptions={PAGE_SIZE_OPTIONS}
               onPageChange={handlePageChange}
+              onRowsPerPageChange={handlePageSizeChange}
+              labelRowsPerPage="Per page:"
               aria-label="Discussion list pagination"
             />
           </Box>
@@ -867,7 +978,7 @@ export function DiscussionList({
         </FormControl>
 
         {/* Bulk actions for moderators */}
-        {showSelection && canModerate && selectedIds.size > 0 && (
+        {effectiveShowSelection && selectedIds.size > 0 && (
           <Stack direction="row" spacing={1} alignItems="center">
             <Typography variant="body2" color="text.secondary">
               {selectedIds.size} selected
@@ -890,6 +1001,15 @@ export function DiscussionList({
                 Lock
               </Button>
             )}
+            {canMoveDiscussions && (
+              <Button
+                size="small"
+                startIcon={<ForumIcon />}
+                onClick={() => handleBulkAction('move')}
+              >
+                Bulk Move
+              </Button>
+            )}
             {canDeleteDiscussions && (
               <Button
                 size="small"
@@ -897,7 +1017,7 @@ export function DiscussionList({
                 startIcon={<DeleteIcon />}
                 onClick={() => handleBulkAction('delete')}
               >
-                Delete
+                Bulk Delete
               </Button>
             )}
           </Stack>
@@ -906,7 +1026,7 @@ export function DiscussionList({
         <Box sx={{ flexGrow: 1 }} />
 
         <Typography variant="body2" color="text.secondary">
-          {pagination.totalItems} discussion{pagination.totalItems !== 1 ? 's' : ''}
+          {forumPagination?.total ?? 0} discussion{(forumPagination?.total ?? 0) !== 1 ? 's' : ''}
         </Typography>
       </Stack>
 
@@ -924,7 +1044,7 @@ export function DiscussionList({
         >
           <TableHead>
             <TableRow>
-              {showSelection && canModerate && (
+              {effectiveShowSelection && (
                 <TableCell padding="checkbox">
                   <Checkbox
                     indeterminate={
@@ -969,7 +1089,7 @@ export function DiscussionList({
                   </TableCell>
                 )
               )}
-              {canModerate && <TableCell width={120}>Actions</TableCell>}
+              {showActionsColumn && <TableCell width={120}>Actions</TableCell>}
             </TableRow>
           </TableHead>
           <TableBody>
@@ -999,7 +1119,7 @@ export function DiscussionList({
                     },
                   }}
                 >
-                  {showSelection && canModerate && (
+                  {effectiveShowSelection && (
                     <TableCell padding="checkbox">
                       <Checkbox
                         checked={isSelected}
@@ -1083,7 +1203,7 @@ export function DiscussionList({
                       <Stack direction="row" spacing={1} alignItems="center">
                         <Avatar
                           src={discussion.userPictureUrl || undefined}
-                          alt={discussion.userFullName || 'Unknown'}
+                          alt={discussion.userFullName || 'Deleted User'}
                           sx={{ width: 32, height: 32 }}
                         >
                           {discussion.userFullName?.[0]?.toUpperCase() || (
@@ -1091,10 +1211,42 @@ export function DiscussionList({
                           )}
                         </Avatar>
                         <Box>
-                          <Typography variant="body2">
-                            {discussion.userFullName || 'Unknown'}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
+                          {/* Author name - clickable only if user exists (has fullName) */}
+                          {discussion.userFullName ? (
+                            <Typography
+                              variant="body2"
+                              component="span"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (discussion.userid) {
+                                  navigate(`/users/${discussion.userid}`);
+                                }
+                              }}
+                              sx={{
+                                cursor: 'pointer',
+                                '&:hover': {
+                                  textDecoration: 'underline',
+                                  color: 'primary.main',
+                                },
+                              }}
+                              role="link"
+                              tabIndex={0}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  navigate(`/users/${discussion.userid}`);
+                                }
+                              }}
+                            >
+                              {discussion.userFullName}
+                            </Typography>
+                          ) : (
+                            <Typography variant="body2" color="text.secondary">
+                              Deleted User
+                            </Typography>
+                          )}
+                          <Typography variant="caption" color="text.secondary" display="block">
                             {formatTimestamp(discussion.created)}
                           </Typography>
                         </Box>
@@ -1117,13 +1269,13 @@ export function DiscussionList({
                   {/* Last post cell */}
                   {!isSmallScreen && (
                     <TableCell>
-                      {discussion.lastPostAuthor ? (
+                      {discussion.timemodified && discussion.timemodified !== discussion.created ? (
                         <Box>
-                          <Typography variant="body2">
-                            {discussion.lastPostAuthor}
-                          </Typography>
                           <Typography variant="caption" color="text.secondary">
-                            {formatTimestamp(discussion.timeModified || discussion.created)}
+                            Last activity:
+                          </Typography>
+                          <Typography variant="body2">
+                            {formatTimestamp(discussion.timemodified)}
                           </Typography>
                         </Box>
                       ) : (
@@ -1134,8 +1286,8 @@ export function DiscussionList({
                     </TableCell>
                   )}
 
-                  {/* Actions cell */}
-                  {canModerate && (
+                  {/* Actions cell - show for moderators OR discussion owner */}
+                  {(canModerate || discussion.userid === currentUser?.id) && (
                     <TableCell>
                       <Stack direction="row" spacing={0.5}>
                         {canPinDiscussions && (
@@ -1146,6 +1298,12 @@ export function DiscussionList({
                               size="small"
                               onClick={(e) => {
                                 e.stopPropagation();
+                                // Use mutation for optimistic update
+                                pinMutation.mutate({
+                                  discussionId: discussion.id,
+                                  shouldPin: !discussion.pinned,
+                                });
+                                // Also call onBulkAction if provided for external handling
                                 if (onBulkAction) {
                                   onBulkAction([discussion.id], 'pin');
                                 }
@@ -1169,6 +1327,12 @@ export function DiscussionList({
                               size="small"
                               onClick={(e) => {
                                 e.stopPropagation();
+                                // Use mutation for optimistic update
+                                lockMutation.mutate({
+                                  discussionId: discussion.id,
+                                  shouldLock: !discussion.locked,
+                                });
+                                // Also call onBulkAction if provided for external handling
                                 if (onBulkAction) {
                                   onBulkAction([discussion.id], 'lock');
                                 }
@@ -1184,7 +1348,8 @@ export function DiscussionList({
                             </IconButton>
                           </Tooltip>
                         )}
-                        {canDeleteDiscussions && (
+                        {/* Show delete button for moderators OR for discussion owner */}
+                        {(canDeleteDiscussions || discussion.userid === currentUser?.id) && (
                           <Tooltip title="Delete discussion">
                             <IconButton
                               size="small"
@@ -1217,20 +1382,18 @@ export function DiscussionList({
         </Table>
       </TableContainer>
 
-      {/* Pagination */}
-      {pagination.totalPages > 1 && (
+      {/* Pagination - page is 0-indexed for table variant */}
+      {(forumPagination?.totalPages ?? 0) > 1 && (
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
           <Pagination
-            currentPage={pagination.currentPage}
-            totalPages={pagination.totalPages}
-            totalItems={pagination.totalItems}
-            itemsPerPage={pagination.itemsPerPage}
-            onPageChange={handlePageChange}
-            onPageSizeChange={handlePageSizeChange}
-            pageSizeOptions={PAGE_SIZE_OPTIONS}
-            showFirstLast
-            showPageSize
             variant="table"
+            count={forumPagination?.total ?? 0}
+            page={currentPage - 1}
+            rowsPerPage={itemsPerPage}
+            onPageChange={handlePageChange}
+            onRowsPerPageChange={handlePageSizeChange}
+            rowsPerPageOptions={PAGE_SIZE_OPTIONS}
+            labelRowsPerPage="Per page:"
             aria-label="Discussion list pagination"
           />
         </Box>

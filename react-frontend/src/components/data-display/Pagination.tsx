@@ -92,6 +92,12 @@ export interface PaginationProps {
    * Additional CSS class name
    */
   className?: string;
+
+  /**
+   * Accessible label for the pagination component
+   * Applied to the wrapper element for screen reader identification
+   */
+  'aria-label'?: string;
 }
 
 /**
@@ -155,6 +161,7 @@ function Pagination({
   labelDisplayedRows,
   disabled = false,
   className,
+  'aria-label': ariaLabel,
 }: PaginationProps) {
   // Calculate total pages for simple variant
   const totalPages = useMemo(() => {
@@ -176,15 +183,21 @@ function Pagination({
     [disabled, onPageChange]
   );
 
-  // Handle page change for table pagination (TablePagination uses 0-indexed pages)
+  // Handle page change for table pagination (TablePagination uses 0-indexed pages internally)
+  // For table variant, the API/callback also uses 0-indexed pages (as documented in interface)
   const handleTablePageChange = useCallback(
     (_event: React.MouseEvent<HTMLButtonElement> | null, newPage: number) => {
       if (!disabled) {
+        // MUI gives us 0-indexed page, which matches the table variant's expected callback format
         onPageChange(newPage);
       }
     },
     [disabled, onPageChange]
   );
+
+  // For table variant, page prop is already 0-indexed (as documented in interface)
+  // Just ensure it's not negative
+  const tablePageZeroIndexed = Math.max(0, page);
 
   // Handle rows per page change for table pagination
   const handleRowsPerPageChange = useCallback(
@@ -210,6 +223,7 @@ function Pagination({
     return (
       <Box
         className={className}
+        aria-label={ariaLabel ?? 'Pagination navigation'}
         sx={{
           display: 'flex',
           justifyContent: 'center',
@@ -243,6 +257,7 @@ function Pagination({
   return (
     <Box
       className={className}
+      aria-label={ariaLabel ?? 'Table pagination'}
       sx={{
         display: 'flex',
         justifyContent: 'flex-end',
@@ -254,7 +269,7 @@ function Pagination({
       <MuiTablePagination
         component="div"
         count={count}
-        page={page}
+        page={tablePageZeroIndexed}
         onPageChange={handleTablePageChange}
         rowsPerPage={rowsPerPage}
         rowsPerPageOptions={rowsPerPageOptions}
