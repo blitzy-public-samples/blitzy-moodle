@@ -26,7 +26,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import type React from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import {
   Box,
@@ -54,7 +55,6 @@ import {
   ListItemText,
   ListItemSecondaryAction,
   FormHelperText,
-  Skeleton,
 } from '@mui/material';
 import {
   Grade as GradeIcon,
@@ -76,9 +76,9 @@ import {
 import { format } from 'date-fns';
 
 // Internal imports from depends_on_files
-import { FileUploadZone } from './FileUploadZone';
-import { RichTextEditor } from '@/components/editor/RichTextEditor';
-import type { Assignment, Submission, Grade, AssignmentFile, WorkflowState } from '../types/assignment.types';
+import FileUploadZone from './FileUploadZone';
+import RichTextEditor from '@/components/editor/RichTextEditor';
+import type { Assignment, Submission, Grade, AssignmentFile } from '../types/assignment.types';
 import { useGradeSubmission, useSaveFeedback } from '../hooks/useSubmission';
 
 // ============================================================================
@@ -178,7 +178,7 @@ export interface GradingFormData {
  * @returns Formatted size string (e.g., "1.5 MB")
  */
 function formatFileSize(bytes: number): string {
-  if (bytes === 0) return '0 Bytes';
+  if (bytes === 0) {return '0 Bytes';}
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -259,7 +259,7 @@ function countWords(text: string): number {
  * @returns Boolean indicating if submission is late
  */
 function isSubmissionLate(submission: Submission, assignment: Assignment): boolean {
-  if (assignment.duedate === 0) return false;
+  if (assignment.duedate === 0) {return false;}
   return submission.timemodified > assignment.duedate;
 }
 
@@ -386,9 +386,9 @@ function GradingInterface({
    * Calculate grade as percentage
    */
   const gradePercentage = useMemo(() => {
-    if (usesScale || maxGrade === 0) return null;
+    if (usesScale || maxGrade === 0) {return null;}
     const gradeNum = typeof watchedGrade === 'number' ? watchedGrade : parseFloat(String(watchedGrade));
-    if (isNaN(gradeNum)) return null;
+    if (isNaN(gradeNum)) {return null;}
     return ((gradeNum / maxGrade) * 100).toFixed(1);
   }, [watchedGrade, maxGrade, usesScale]);
 
@@ -435,7 +435,7 @@ function GradingInterface({
    * Count words in online text submission
    */
   const onlineTextWordCount = useMemo(() => {
-    if (!onlineTextContent) return 0;
+    if (!onlineTextContent) {return 0;}
     return countWords(onlineTextContent);
   }, [onlineTextContent]);
 
@@ -456,7 +456,7 @@ function GradingInterface({
     });
     setSuccessMessage('');
     setErrorMessage('');
-  }, [submission.id, existingGrade, existingFeedbackText, reset]);
+  }, [submission.id, submission.gradingstatus, existingGrade, existingFeedbackText, reset]);
 
   // ============================================================================
   // Event Handlers
@@ -495,7 +495,7 @@ function GradingInterface({
       }
 
       // Determine workflow state based on action
-      let workflowState = data.workflowState;
+      let {workflowState} = data;
       if (action === 'saveDraft' && markingWorkflowEnabled) {
         workflowState = 'inmarking';
       } else if (action !== 'saveDraft' && !markingWorkflowEnabled) {
@@ -552,21 +552,21 @@ function GradingInterface({
    * Handle save and release grade action
    */
   const handleSaveAndRelease = useCallback(() => {
-    handleSubmit((data) => onSubmit(data, 'save'))();
+    void handleSubmit((data) => onSubmit(data, 'save'))();
   }, [handleSubmit, onSubmit]);
 
   /**
    * Handle save as draft action
    */
   const handleSaveDraft = useCallback(() => {
-    handleSubmit((data) => onSubmit(data, 'saveDraft'))();
+    void handleSubmit((data) => onSubmit(data, 'saveDraft'))();
   }, [handleSubmit, onSubmit]);
 
   /**
    * Handle save and navigate to next submission
    */
   const handleSaveAndNext = useCallback(() => {
-    handleSubmit((data) => onSubmit(data, 'saveAndNext'))();
+    void handleSubmit((data) => onSubmit(data, 'saveAndNext'))();
   }, [handleSubmit, onSubmit]);
 
   /**
@@ -596,11 +596,11 @@ function GradingInterface({
           rules={{
             required: 'Grade is required',
             validate: (value) => {
-              if (usesScale) return true;
+              if (usesScale) {return true;}
               const num = typeof value === 'number' ? value : parseFloat(String(value));
-              if (isNaN(num)) return 'Enter a valid number';
-              if (num < 0) return 'Grade cannot be negative';
-              if (num > maxGrade) return `Grade cannot exceed ${maxGrade}`;
+              if (isNaN(num)) {return 'Enter a valid number';}
+              if (num < 0) {return 'Grade cannot be negative';}
+              if (num > maxGrade) {return `Grade cannot exceed ${maxGrade}`;}
               return true;
             },
           }}
@@ -617,7 +617,7 @@ function GradingInterface({
                 min: 0,
                 max: maxGrade,
                 step: 0.01,
-                'aria-label': `Grade for ${submission.studentname || 'student'}`,
+                'aria-label': `Grade for ${submission.studentname ?? 'student'}`,
               }}
               sx={{ width: 120 }}
             />
@@ -781,8 +781,8 @@ function GradingInterface({
                   Submitted Files
                 </Typography>
                 <List dense>
-                  {submissionFiles.map((file, index) => (
-                    <ListItem key={file.filename + index}>
+                  {submissionFiles.map((file) => (
+                    <ListItem key={file.fileurl}>
                       <ListItemIcon>{getFileIcon(file.mimetype)}</ListItemIcon>
                       <ListItemText
                         primary={file.filename}
@@ -902,8 +902,8 @@ function GradingInterface({
                         <strong>Previous Feedback Files:</strong>
                       </Typography>
                       <List dense>
-                        {existingFeedbackFiles.map((file, index) => (
-                          <ListItem key={file.filename + index} disablePadding>
+                        {existingFeedbackFiles.map((file) => (
+                          <ListItem key={file.fileurl} disablePadding>
                             <ListItemIcon sx={{ minWidth: 32 }}>
                               {getFileIcon(file.mimetype)}
                             </ListItemIcon>
@@ -973,9 +973,9 @@ function GradingInterface({
                       required: 'Grade is required',
                       validate: (value) => {
                         const num = typeof value === 'number' ? value : parseFloat(String(value));
-                        if (isNaN(num)) return 'Enter a valid number';
-                        if (num < 0) return 'Grade cannot be negative';
-                        if (num > maxGrade) return `Grade cannot exceed ${maxGrade}`;
+                        if (isNaN(num)) {return 'Enter a valid number';}
+                        if (num < 0) {return 'Grade cannot be negative';}
+                        if (num > maxGrade) {return `Grade cannot exceed ${maxGrade}`;}
                         return true;
                       },
                     }}
@@ -987,7 +987,7 @@ function GradingInterface({
                         label={`Grade (out of ${maxGrade})`}
                         error={!!fieldState.error}
                         helperText={
-                          fieldState.error?.message ||
+                          fieldState.error?.message ??
                           (gradePercentage ? `${gradePercentage}%` : 'Enter a grade')
                         }
                         disabled={isLoading}
