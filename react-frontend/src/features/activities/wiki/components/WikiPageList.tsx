@@ -29,12 +29,9 @@
 
 import React, {
   useState,
-  useEffect,
   useMemo,
   useCallback,
-  type ReactNode,
   type ChangeEvent,
-  type MouseEvent,
 } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -80,14 +77,12 @@ import {
 import {
   Add as AddIcon,
   Search as SearchIcon,
-  Sort as SortIcon,
   ViewList as ViewListIcon,
   ViewModule as ViewModuleIcon,
   ViewAgenda as ViewAgendaIcon,
   Star as StarIcon,
   Warning as WarningIcon,
   Lock as LockIcon,
-  Edit as EditIcon,
   Visibility as VisibilityIcon,
   Person as PersonIcon,
   CalendarToday as CalendarTodayIcon,
@@ -95,7 +90,6 @@ import {
   ArrowDownward as ArrowDownwardIcon,
   FilterList as FilterListIcon,
   Clear as ClearIcon,
-  Info as InfoIcon,
   FolderOpen as FolderOpenIcon,
 } from '@mui/icons-material';
 
@@ -103,8 +97,8 @@ import {
 import type { WikiPage } from '../types/wiki.types';
 import { fetchPageList, searchWikiPages } from '../api/wikiApi';
 import { useWiki } from '../hooks/useWiki';
-import { usePagination } from '@/hooks/usePagination';
-import { useDebounce } from '@/hooks/useDebounce';
+import usePagination from '@/hooks/usePagination';
+import useDebounce from '@/hooks/useDebounce';
 import { usePermissions } from '@/hooks/usePermissions';
 import { formatRelativeTime } from '@/utils/date';
 import { formatFileSize } from '@/utils/formatters';
@@ -183,7 +177,7 @@ const SORT_OPTIONS: Array<{ value: SortField; label: string }> = [
   { value: 'pageviews', label: 'Views' },
 ];
 
-const VIEW_MODES: Array<{ value: ViewMode; label: string; icon: ReactNode }> = [
+const VIEW_MODES: Array<{ value: ViewMode; label: string; icon: React.ReactElement }> = [
   { value: 'list', label: 'List View', icon: <ViewListIcon /> },
   { value: 'tree', label: 'Tree View', icon: <ViewAgendaIcon /> },
   { value: 'alphabetical', label: 'Alphabetical', icon: <ViewModuleIcon /> },
@@ -444,7 +438,7 @@ function WikiPageList({
   // ============================================================================
 
   // Fetch wiki metadata
-  const { wiki, isLoading: wikiLoading } = useWiki(wikiId);
+  const { data: wiki, isLoading: wikiLoading } = useWiki(wikiId);
 
   // Permission check for creating pages
   const { hasCapability } = usePermissions();
@@ -460,9 +454,9 @@ function WikiPageList({
     queryKey: ['wiki', 'pages', subwikiId, sort.field, sort.direction],
     queryFn: () =>
       fetchPageList(wikiId, {
-        subwikiId,
-        sort: sort.field,
-        direction: sort.direction,
+        subwikiid: subwikiId,
+        sortby: sort.field as 'title' | 'timemodified' | 'timecreated',
+        sortdirection: sort.direction as 'ASC' | 'DESC',
       }),
     staleTime: 5 * 60 * 1000, // 5 minutes
     enabled: Boolean(subwikiId),
@@ -476,8 +470,8 @@ function WikiPageList({
     queryKey: ['wiki', 'search', subwikiId, debouncedSearchTerm],
     queryFn: () =>
       searchWikiPages(wikiId, {
-        subwikiId,
-        searchTerm: debouncedSearchTerm,
+        query: debouncedSearchTerm,
+        includeContent: true,
       }),
     enabled: Boolean(subwikiId) && debouncedSearchTerm.length >= 2,
     staleTime: 30 * 1000, // 30 seconds
@@ -488,9 +482,9 @@ function WikiPageList({
   // ============================================================================
 
   // Determine which pages to display (search results or full list)
-  const basePagesData = useMemo(() => {
+  const basePagesData = useMemo((): WikiPage[] => {
     if (debouncedSearchTerm.length >= 2 && searchResults) {
-      return searchResults;
+      return searchResults.pages;
     }
     return pageListData || [];
   }, [debouncedSearchTerm, searchResults, pageListData]);
@@ -512,17 +506,20 @@ function WikiPageList({
   const {
     currentPage,
     totalPages,
-    paginatedItems: paginatedPages,
     goToPage,
-    nextPage,
-    previousPage,
     startIndex,
     endIndex,
   } = usePagination({
-    items: sortedPages,
+    totalItems: sortedPages.length,
     itemsPerPage: ITEMS_PER_PAGE,
     initialPage: 1,
   });
+
+  // Slice pages for current page view
+  const paginatedPages = useMemo(
+    () => sortedPages.slice(startIndex, endIndex),
+    [sortedPages, startIndex, endIndex]
+  );
 
   // Alphabetical grouping for alphabetical view
   const alphabeticalGroups = useMemo(() => {
