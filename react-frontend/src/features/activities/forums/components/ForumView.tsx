@@ -64,9 +64,8 @@ import { useForum } from '../hooks/useForum';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { DiscussionList } from './DiscussionList';
 import { PostForm } from './PostForm';
-import type { PostResponse } from '../types/forum.types';
+import type { DiscussionPost } from '../types/forum.types';
 import { ForumType } from '../types/forum.types';
-import type { DiscussionResponse } from '../api/forumApi';
 
 // ============================================================================
 // TYPES
@@ -331,22 +330,11 @@ export const ForumView: React.FC<ForumViewComponentProps> = ({ courseId, forumId
     setIsCreateDialogOpen(false);
   };
 
-  const handleSubmitSuccess = (response: PostResponse | DiscussionResponse) => {
+  const handleSubmitSuccess = (post: DiscussionPost) => {
     setIsCreateDialogOpen(false);
     
-    // Extract discussion ID based on response type
-    let discussionId: number;
-    if ('discussion' in response) {
-      // DiscussionResponse: { discussion: Discussion, message: string }
-      discussionId = response.discussion.id;
-    } else {
-      // PostResponse: extends Post with discussionId property
-      const { discussionId: extractedId } = response;
-      discussionId = extractedId;
-    }
-    
     // Navigate to the newly created discussion
-    navigate(`/courses/${courseId}/forums/${forumId}/discussions/${discussionId}`);
+    navigate(`/courses/${courseId}/forums/${forumId}/discussions/${post.discussionId}`);
     // Refetch forum data to update discussion count
     void refetch();
   };
@@ -637,10 +625,12 @@ export const ForumView: React.FC<ForumViewComponentProps> = ({ courseId, forumId
         <DialogTitle id="create-discussion-dialog-title">Create New Discussion</DialogTitle>
         <DialogContent>
           <PostForm
+            mode="create"
             forumId={forumId}
-            discussionId={null}
-            onSubmitSuccess={handleSubmitSuccess}
+            discussionId={undefined}
+            onSuccess={handleSubmitSuccess}
             onCancel={handleCloseCreateDialog}
+            showSubject
           />
         </DialogContent>
       </Dialog>

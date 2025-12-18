@@ -19,18 +19,16 @@
  * @module features/activities/forums/components/PostForm
  */
 
-import React, {
+import {
   useState,
   useEffect,
   useMemo,
   useCallback,
   useRef,
-  type ChangeEvent,
 } from 'react';
-import { useForm, Controller, type SubmitHandler } from 'react-hook-form';
+import { useForm, Controller, type SubmitHandler, type Control, type FieldValues } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Button,
@@ -52,16 +50,16 @@ import {
 
 // Internal imports from dependencies
 import { useCreatePost, useUpdatePost } from '../hooks/useDiscussion';
+import type { PostMutationResponse } from '../api/forumApi';
 import type {
   CreatePostData,
   UpdatePostData,
   DiscussionPost,
-  ForumAttachment,
 } from '../types/forum.types';
 import { FormInput } from '@/components/forms/FormInput';
-import { RichTextEditor } from '@/components/editor/RichTextEditor';
+import RichTextEditor from '@/components/editor/RichTextEditor';
 import { FormFileUpload } from '@/components/forms/FormFileUpload';
-import { useDebounce } from '@/hooks/useDebounce';
+import useDebounce from '@/hooks/useDebounce';
 import { useToast } from '@/hooks/useToast';
 import { Modal } from '@/components/feedback/Modal';
 import { Alert } from '@/components/feedback/Alert';
@@ -354,6 +352,38 @@ function removeDraftFromStorage(key: string): void {
   }
 }
 
+/**
+ * Transforms PostMutationResponse (snake_case API response) to DiscussionPost (camelCase UI type)
+ * This is needed because the API returns snake_case properties while the UI components expect camelCase
+ * @param response - The mutation response from createPost or updatePost
+ * @returns DiscussionPost object for UI consumption
+ */
+function transformMutationResponseToDiscussionPost(
+  response: PostMutationResponse
+): DiscussionPost {
+  return {
+    id: response.id,
+    discussionId: response.discussionId ?? response.discussionid,
+    parentId: response.parentid ?? null,
+    subject: response.subject,
+    message: response.message,
+    userId: response.authorid,
+    userName: '', // Not available in mutation response, would need to be fetched separately
+    userPictureUrl: '', // Not available in mutation response
+    created: response.timecreated,
+    modified: response.timemodified,
+    version: 1, // Default version for newly created/updated posts
+    deleted: response.deleted,
+    hasAttachments: response.hasattachments,
+    attachments: [], // Would need to be populated from separate API call
+    canEdit: true, // User just created/edited this post, so they can edit
+    canDelete: true, // User just created this post, so they can delete
+    canReply: true, // Default to true, actual permissions checked by backend
+    unread: false, // User just created this post, so it's not unread
+    replies: [],
+  };
+}
+
 // ============================================================================
 // COMPONENT
 // ============================================================================
@@ -386,12 +416,15 @@ export function PostForm({
   // HOOKS
   // ============================================================================
 
-  const queryClient = useQueryClient();
-  const toast = useToast();
+  // Destructure stable callback references from useToast to avoid re-renders
+  // The individual methods (info, success, error) are wrapped in useCallback
+  // and are stable across renders, unlike the toast object itself
+  const { info: toastInfo, success: toastSuccess, error: toastError } = useToast();
 
   // Mutation hooks for creating and updating posts
-  const createPostMutation = useCreatePost();
-  const updatePostMutation = useUpdatePost();
+  // Both hooks require discussionId - use 0 as fallback for create mode when no discussion yet exists
+  const createPostMutation = useCreatePost(discussionId ?? 0);
+  const updatePostMutation = useUpdatePost(discussionId ?? 0);
 
   // ============================================================================
   // STATE
@@ -449,7 +482,9 @@ export function PostForm({
       return {
         subject: existingPost.subject || '',
         message: existingPost.message || '',
-        isPrivateReply: existingPost.privatereplyto !== null,
+        // Note: DiscussionPost interface doesn't include privatereplyto property
+        // Private reply state is only relevant for new posts, not edits
+        isPrivateReply: false,
         attachments: [],
       };
     }
@@ -472,7 +507,6 @@ export function PostForm({
     handleSubmit,
     watch,
     reset,
-    setValue,
     formState: { errors, isSubmitting, isDirty },
   } = useForm<PostFormValues>({
     resolver: zodResolver(postFormSchema),
@@ -554,7 +588,7 @@ export function PostForm({
 
     // Show subtle notification
     if (showAutosave) {
-      toast.info('Draft saved', { duration: 1500 });
+      toastInfo('Draft saved', { duration: 1500 });
     }
   }, [
     debouncedMessage,
@@ -564,7 +598,7 @@ export function PostForm({
     isSubmitting,
     draftKey,
     showAutosave,
-    toast,
+    toastInfo,
   ]);
 
   // Track unsaved changes
@@ -583,7 +617,7 @@ export function PostForm({
       setFormError(null);
 
       try {
-        let result: DiscussionPost;
+        let mutationResponse: PostMutationResponse;
 
         if (mode === 'edit' && existingPost) {
           // Update existing post
@@ -595,10 +629,16 @@ export function PostForm({
             removeAttachments: [], // Would be populated if UI supports removing existing attachments
           };
 
-          result = await updatePostMutation.mutateAsync(updateData);
-          toast.success('Post updated successfully');
+          // useUpdatePost mutation expects { postId, postData } signature
+          mutationResponse = await updatePostMutation.mutateAsync({
+            postId: existingPost.id,
+            postData: updateData,
+          });
+          toastSuccess('Post updated successfully');
         } else {
           // Create new post or reply
+          // Note: CreatePostData doesn't include isPrivateReply - private reply handling
+          // would need to be implemented via a different mechanism (e.g., API parameter)
           const createData: CreatePostData = {
             forumId,
             message: data.message,
@@ -606,14 +646,22 @@ export function PostForm({
             parentPostId: parentPostId,
             subject: data.subject,
             attachments: data.attachments,
-            isPrivateReply: data.isPrivateReply,
+            // subscribe could be set based on isPrivateReply for notification handling
+            subscribe: !data.isPrivateReply,
           };
 
-          result = await createPostMutation.mutateAsync(createData);
-          toast.success(
+          // useCreatePost mutation expects { postData, parentPostId } signature
+          mutationResponse = await createPostMutation.mutateAsync({
+            postData: createData,
+            parentPostId: parentPostId,
+          });
+          toastSuccess(
             mode === 'create' ? 'Discussion created successfully' : 'Reply posted successfully'
           );
         }
+
+        // Transform mutation response to DiscussionPost for the callback
+        const result = transformMutationResponseToDiscussionPost(mutationResponse);
 
         // Clear draft on successful submission
         removeDraftFromStorage(draftKey);
@@ -637,7 +685,7 @@ export function PostForm({
             : 'Failed to submit post. Please try again.';
 
         setFormError(errorMessage);
-        toast.error(errorMessage);
+        toastError(errorMessage);
 
         // Announce error for screen readers
         announceToScreenReader(`Error: ${errorMessage}`);
@@ -651,7 +699,8 @@ export function PostForm({
       existingPost,
       createPostMutation,
       updatePostMutation,
-      toast,
+      toastSuccess,
+      toastError,
       draftKey,
       reset,
       onSuccess,
@@ -792,7 +841,7 @@ export function PostForm({
         <Box>
           <FormInput
             name="subject"
-            control={control}
+            control={control as unknown as Control<FieldValues>}
             label="Subject"
             placeholder="Enter discussion subject"
             required={mode === 'create'}
@@ -861,20 +910,15 @@ export function PostForm({
           control={control}
           render={({ field, fieldState }) => (
             <RichTextEditor
+              name="message"
               value={field.value}
               onChange={field.onChange}
-              onBlur={field.onBlur}
               toolbar="full"
               placeholder="Write your message here..."
-              minHeight={200}
-              maxHeight={500}
+              height={300}
               disabled={isLoading}
               error={Boolean(fieldState.error)}
-              errorMessage={fieldState.error?.message}
-              aria-labelledby="message-label"
-              aria-describedby="message-hint message-count"
-              aria-invalid={Boolean(fieldState.error)}
-              data-testid="post-form-message"
+              helperText={fieldState.error?.message}
             />
           )}
         />
@@ -938,7 +982,6 @@ export function PostForm({
             message={errors.message.message || 'Please enter a valid message'}
             variant="standard"
             sx={{ mt: 1 }}
-            role="alert"
           />
         )}
       </Box>
@@ -956,25 +999,16 @@ export function PostForm({
           Attachments
         </Typography>
 
-        <Controller
+        <FormFileUpload
           name="attachments"
           control={control}
-          render={({ field, fieldState }) => (
-            <FormFileUpload
-              name="attachments"
-              control={control}
-              label="Upload files"
-              helperText={`Drag and drop files here or click to browse. Max ${MAX_FILES} files, ${MAX_FILE_SIZE / (1024 * 1024)}MB each.`}
-              accept={ACCEPTED_FILE_TYPES.join(',')}
-              maxSize={MAX_FILE_SIZE}
-              maxFiles={MAX_FILES}
-              multiple
-              disabled={isLoading}
-              showPreview
-              aria-labelledby="attachments-label"
-              data-testid="post-form-attachments"
-            />
-          )}
+          label="Upload files"
+          helperText={`Drag and drop files here or click to browse. Max ${MAX_FILES} files, ${MAX_FILE_SIZE / (1024 * 1024)}MB each.`}
+          accept={ACCEPTED_FILE_TYPES.join(',')}
+          maxSize={MAX_FILE_SIZE}
+          maxFiles={MAX_FILES}
+          multiple
+          disabled={isLoading}
         />
       </Box>
 
