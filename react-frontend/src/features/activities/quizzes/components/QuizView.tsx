@@ -56,7 +56,6 @@ import {
   Link,
   Skeleton,
   Stack,
-  Divider,
   useTheme,
   useMediaQuery,
 } from '@mui/material';
@@ -69,27 +68,22 @@ import {
   HourglassEmpty,
   Cancel,
   Warning,
-  Info,
   AccessTime,
   Assessment,
   Timer,
 } from '@mui/icons-material';
 
 // Internal imports from quiz feature
-import type {
-  Quiz,
-  QuizSettings,
-  QuizAttempt,
-  QuizAttemptState,
-  AccessManager,
-} from '../types/quiz.types';
+import type { Quiz } from '../types/quiz.types';
+import { GradeMethod, QuizNavMethod } from '../types/quiz.types';
 import { useQuiz } from '../hooks/useQuiz';
-import { useQuizAttempt } from '../hooks/useQuizAttempt';
+import useQuizAttempt from '../hooks/useQuizAttempt';
+
+// Shared types (QuizAttempt from entities to match hook return types)
+import type { QuizAttempt } from '@/types/entities';
 
 // Shared components
-import { Card } from '@/components/data-display/Card';
-import { DataTable } from '@/components/data-display/DataTable';
-import { LoadingSpinner } from '@/components/feedback/LoadingSpinner';
+import Card from '@/components/data-display/Card';
 import { Alert } from '@/components/feedback/Alert';
 
 // Utility functions
@@ -98,6 +92,19 @@ import { formatNumber } from '@/utils/formatters';
 
 // Permission hook
 import { usePermissions } from '@/hooks/usePermissions';
+
+// ============================================================================
+// Constants for Attempt States (matching backend strings)
+// ============================================================================
+const ATTEMPT_STATE = {
+  IN_PROGRESS: 'inprogress' as const,
+  OVERDUE: 'overdue' as const,
+  FINISHED: 'finished' as const,
+  ABANDONED: 'abandoned' as const,
+};
+
+// Type alias for attempt state values (matching entities.ts)
+type AttemptState = 'inprogress' | 'overdue' | 'finished' | 'abandoned';
 
 // ============================================================================
 // Component Interfaces
@@ -123,7 +130,7 @@ export interface QuizViewProps {
 interface FormattedAttemptRow {
   id: number;
   attemptNumber: number;
-  state: QuizAttemptState;
+  state: AttemptState;
   stateLabel: string;
   timeStarted: string;
   timeFinished: string | null;
@@ -150,18 +157,16 @@ interface QuizMetadataItem {
 /**
  * Get the display label for an attempt state
  */
-function getAttemptStateLabel(state: QuizAttemptState): string {
+function getAttemptStateLabel(state: AttemptState): string {
   switch (state) {
-    case 'IN_PROGRESS':
+    case ATTEMPT_STATE.IN_PROGRESS:
       return 'In progress';
-    case 'FINISHED':
+    case ATTEMPT_STATE.FINISHED:
       return 'Finished';
-    case 'OVERDUE':
+    case ATTEMPT_STATE.OVERDUE:
       return 'Overdue';
-    case 'ABANDONED':
+    case ATTEMPT_STATE.ABANDONED:
       return 'Abandoned';
-    case 'NOT_STARTED':
-      return 'Not started';
     default:
       return 'Unknown';
   }
@@ -171,16 +176,16 @@ function getAttemptStateLabel(state: QuizAttemptState): string {
  * Get the chip color variant for an attempt state
  */
 function getAttemptStateColor(
-  state: QuizAttemptState
+  state: AttemptState
 ): 'success' | 'warning' | 'error' | 'info' | 'default' {
   switch (state) {
-    case 'FINISHED':
+    case ATTEMPT_STATE.FINISHED:
       return 'success';
-    case 'IN_PROGRESS':
+    case ATTEMPT_STATE.IN_PROGRESS:
       return 'info';
-    case 'OVERDUE':
+    case ATTEMPT_STATE.OVERDUE:
       return 'warning';
-    case 'ABANDONED':
+    case ATTEMPT_STATE.ABANDONED:
       return 'error';
     default:
       return 'default';
@@ -190,15 +195,15 @@ function getAttemptStateColor(
 /**
  * Get the icon for an attempt state
  */
-function getAttemptStateIcon(state: QuizAttemptState): React.ReactNode {
+function getAttemptStateIcon(state: AttemptState): React.ReactNode {
   switch (state) {
-    case 'FINISHED':
+    case ATTEMPT_STATE.FINISHED:
       return <CheckCircle fontSize="small" />;
-    case 'IN_PROGRESS':
+    case ATTEMPT_STATE.IN_PROGRESS:
       return <HourglassEmpty fontSize="small" />;
-    case 'OVERDUE':
+    case ATTEMPT_STATE.OVERDUE:
       return <Warning fontSize="small" />;
-    case 'ABANDONED':
+    case ATTEMPT_STATE.ABANDONED:
       return <Cancel fontSize="small" />;
     default:
       return null;
@@ -208,18 +213,18 @@ function getAttemptStateIcon(state: QuizAttemptState): React.ReactNode {
 /**
  * Get the grading method display name
  */
-function getGradingMethodName(method: string): string {
+function getGradingMethodName(method: GradeMethod): string {
   switch (method) {
-    case 'highest':
+    case GradeMethod.HIGHEST:
       return 'Highest grade';
-    case 'average':
+    case GradeMethod.AVERAGE:
       return 'Average grade';
-    case 'first':
+    case GradeMethod.FIRST:
       return 'First attempt';
-    case 'last':
+    case GradeMethod.LAST:
       return 'Last attempt';
     default:
-      return method;
+      return String(method);
   }
 }
 
@@ -342,13 +347,10 @@ interface QuizHeaderProps {
 }
 
 function QuizHeader({ quiz }: QuizHeaderProps): React.ReactElement {
-  const theme = useTheme();
-
   return (
     <Card
       title={quiz.name}
-      subtitle={`Course: ${quiz.course?.fullname || 'Unknown Course'}`}
-      avatar={quiz.imageUrl ? <img src={quiz.imageUrl} alt="" style={{ width: 60, height: 60, objectFit: 'cover' }} /> : undefined}
+      subtitle={`Course ID: ${quiz.course}`}
     >
       {quiz.intro && (
         <Box sx={{ mt: 2 }}>
@@ -376,10 +378,10 @@ function QuizMetadata({ quiz, attempts }: QuizMetadataProps): React.ReactElement
     const items: QuizMetadataItem[] = [];
 
     // Time limit
-    if (quiz.timeLimit && quiz.timeLimit > 0) {
+    if (quiz.timelimit && quiz.timelimit > 0) {
       items.push({
         label: 'Time limit',
-        value: formatDuration(quiz.timeLimit),
+        value: formatDuration(quiz.timelimit),
         icon: <Timer fontSize="small" />,
       });
     }
@@ -387,40 +389,40 @@ function QuizMetadata({ quiz, attempts }: QuizMetadataProps): React.ReactElement
     // Attempts allowed
     items.push({
       label: 'Attempts allowed',
-      value: quiz.attemptsAllowed === 0 ? 'Unlimited' : String(quiz.attemptsAllowed),
+      value: quiz.attempts === 0 ? 'Unlimited' : String(quiz.attempts),
       icon: <Replay fontSize="small" />,
     });
 
     // Attempts used
-    const finishedAttempts = attempts.filter((a) => a.state === 'FINISHED').length;
+    const finishedAttempts = attempts.filter((a) => a.state === ATTEMPT_STATE.FINISHED).length;
     items.push({
       label: 'Attempts used',
-      value: `${finishedAttempts}${quiz.attemptsAllowed > 0 ? ` / ${quiz.attemptsAllowed}` : ''}`,
+      value: `${finishedAttempts}${quiz.attempts > 0 ? ` / ${quiz.attempts}` : ''}`,
     });
 
     // Grading method
-    if (quiz.gradeMethod) {
+    if (quiz.grademethod) {
       items.push({
         label: 'Grading method',
-        value: getGradingMethodName(quiz.gradeMethod),
+        value: getGradingMethodName(quiz.grademethod),
         icon: <Assessment fontSize="small" />,
       });
     }
 
     // Open date
-    if (quiz.timeOpen) {
+    if (quiz.timeopen) {
       items.push({
         label: 'Opens',
-        value: formatDateDisplay(quiz.timeOpen),
+        value: formatDateDisplay(quiz.timeopen),
         icon: <AccessTime fontSize="small" />,
       });
     }
 
     // Close date
-    if (quiz.timeClose) {
+    if (quiz.timeclose) {
       items.push({
         label: 'Closes',
-        value: formatDateDisplay(quiz.timeClose),
+        value: formatDateDisplay(quiz.timeclose),
         icon: <AccessTime fontSize="small" />,
       });
     }
@@ -453,27 +455,44 @@ function QuizMetadata({ quiz, attempts }: QuizMetadataProps): React.ReactElement
 
 /**
  * Access restrictions warnings component
+ * Shows warnings about password protection, subnet restrictions, etc.
  */
 interface AccessRestrictionsProps {
-  accessManager: AccessManager;
+  quiz: Quiz;
 }
 
-function AccessRestrictions({ accessManager }: AccessRestrictionsProps): React.ReactElement | null {
-  if (!accessManager.preventAccessReasons || accessManager.preventAccessReasons.length === 0) {
+function AccessRestrictions({ quiz }: AccessRestrictionsProps): React.ReactElement | null {
+  const restrictions: string[] = [];
+  
+  // Check for password protection
+  if (quiz.password) {
+    restrictions.push('This quiz requires a password to access.');
+  }
+  
+  // Check for subnet/IP restrictions
+  if (quiz.subnet) {
+    restrictions.push('This quiz can only be accessed from specific network locations.');
+  }
+  
+  // Check for browser security
+  if (quiz.browsersecurity && quiz.browsersecurity !== 'none') {
+    restrictions.push('This quiz requires specific browser security settings.');
+  }
+  
+  if (restrictions.length === 0) {
     return null;
   }
 
   return (
     <Box sx={{ mb: 3 }}>
-      {accessManager.preventAccessReasons.map((reason, index) => (
+      {restrictions.map((reason: string, index: number) => (
         <Alert
           key={index}
           severity="warning"
           title="Access Restriction"
+          message={reason}
           sx={{ mb: 1 }}
-        >
-          {reason}
-        </Alert>
+        />
       ))}
     </Box>
   );
@@ -506,23 +525,32 @@ function AttemptsTable({
 
   // Format attempts for display
   const formattedAttempts: FormattedAttemptRow[] = attempts.map((attempt, index) => {
+    // Convert undefined to null for sumgrades
+    const sumGrades = attempt.sumgrades ?? null;
+    
     const gradePercentage =
-      attempt.sumGrades !== null && quiz.sumGrades && quiz.sumGrades > 0
-        ? (attempt.sumGrades / quiz.sumGrades) * 100
+      sumGrades !== null && quiz.sumgrades && quiz.sumgrades > 0
+        ? (sumGrades / quiz.sumgrades) * 100
+        : null;
+
+    // Calculate grade from sumgrades
+    const calculatedGrade =
+      sumGrades !== null && quiz.sumgrades && quiz.sumgrades > 0
+        ? (sumGrades / quiz.sumgrades) * quiz.grade
         : null;
 
     return {
       id: attempt.id,
       attemptNumber: index + 1,
-      state: attempt.state,
-      stateLabel: getAttemptStateLabel(attempt.state),
-      timeStarted: formatDateDisplay(attempt.timeStart),
-      timeFinished: attempt.timeFinish ? formatDateDisplay(attempt.timeFinish) : null,
-      sumGrades: attempt.sumGrades,
-      grade: attempt.grade,
+      state: attempt.state as AttemptState,
+      stateLabel: getAttemptStateLabel(attempt.state as AttemptState),
+      timeStarted: formatDateDisplay(attempt.timestart),
+      timeFinished: attempt.timefinish ? formatDateDisplay(attempt.timefinish) : null,
+      sumGrades,
+      grade: calculatedGrade,
       gradePercentage,
-      isBestAttempt: attempt.id === bestAttemptId && quiz.gradeMethod === 'highest',
-      canReview: attempt.state === 'FINISHED',
+      isBestAttempt: attempt.id === bestAttemptId && quiz.grademethod === GradeMethod.HIGHEST,
+      canReview: attempt.state === ATTEMPT_STATE.FINISHED,
     };
   });
 
@@ -585,7 +613,7 @@ function AttemptsTable({
                 <TableCell align="right">
                   {row.sumGrades !== null ? (
                     <Typography variant="body2">
-                      {formatNumber(row.sumGrades, 2)} / {formatNumber(quiz.sumGrades || 0, 2)}
+                      {formatNumber(row.sumGrades, 2)} / {formatNumber(quiz.sumgrades || 0, 2)}
                     </Typography>
                   ) : (
                     '-'
@@ -601,7 +629,7 @@ function AttemptsTable({
                   )}
                 </TableCell>
                 <TableCell align="center">
-                  {row.state === 'IN_PROGRESS' ? (
+                  {row.state === ATTEMPT_STATE.IN_PROGRESS ? (
                     <Button
                       size="small"
                       variant="outlined"
@@ -637,7 +665,7 @@ function AttemptsTable({
 interface GradeSummaryProps {
   currentGrade: number | null;
   maxGrade: number;
-  gradeMethod: string;
+  gradeMethod: GradeMethod;
 }
 
 function GradeSummary({ currentGrade, maxGrade, gradeMethod }: GradeSummaryProps): React.ReactElement | null {
@@ -670,9 +698,7 @@ function GradeSummary({ currentGrade, maxGrade, gradeMethod }: GradeSummaryProps
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         Grade calculated using: {getGradingMethodName(gradeMethod)}
       </Typography>
-      <Alert severity={feedback.severity}>
-        {feedback.message}
-      </Alert>
+      <Alert severity={feedback.severity} message={feedback.message} />
     </Paper>
   );
 }
@@ -703,65 +729,65 @@ function QuizSettingsAccordion({ quiz }: QuizSettingsAccordionProps): React.Reac
               Question behavior
             </Typography>
             <Typography variant="body2">
-              {quiz.preferredBehavior || 'Deferred feedback'}
+              {quiz.preferredbehaviour || 'Deferred feedback'}
             </Typography>
           </Box>
 
-          {quiz.shuffleQuestions !== undefined && (
+          {quiz.shuffleanswers !== undefined && (
             <Box>
               <Typography variant="subtitle2" color="text.secondary">
-                Shuffle questions
+                Shuffle answers
               </Typography>
               <Typography variant="body2">
-                {quiz.shuffleQuestions ? 'Yes' : 'No'}
+                {quiz.shuffleanswers ? 'Yes' : 'No'}
               </Typography>
             </Box>
           )}
 
-          {quiz.questionsPerPage !== undefined && quiz.questionsPerPage > 0 && (
+          {quiz.questionsperpage !== undefined && quiz.questionsperpage > 0 && (
             <Box>
               <Typography variant="subtitle2" color="text.secondary">
                 Questions per page
               </Typography>
               <Typography variant="body2">
-                {quiz.questionsPerPage}
+                {quiz.questionsperpage}
               </Typography>
             </Box>
           )}
 
-          {quiz.navMethod && (
+          {quiz.navmethod && (
             <Box>
               <Typography variant="subtitle2" color="text.secondary">
                 Navigation method
               </Typography>
               <Typography variant="body2">
-                {quiz.navMethod === 'free' ? 'Free navigation' : 'Sequential'}
+                {quiz.navmethod === QuizNavMethod.FREE ? 'Free navigation' : 'Sequential'}
               </Typography>
             </Box>
           )}
 
-          {quiz.browserSecurityMode && quiz.browserSecurityMode !== 'none' && (
+          {quiz.browsersecurity && quiz.browsersecurity !== 'none' && (
             <Box>
               <Typography variant="subtitle2" color="text.secondary">
                 Browser security
               </Typography>
               <Typography variant="body2">
-                {quiz.browserSecurityMode === 'securewindow'
+                {quiz.browsersecurity === 'securewindow'
                   ? 'Full screen popup with some JavaScript security'
-                  : quiz.browserSecurityMode}
+                  : quiz.browsersecurity}
               </Typography>
             </Box>
           )}
 
-          {quiz.overdueHandling && (
+          {quiz.overduehandling && (
             <Box>
               <Typography variant="subtitle2" color="text.secondary">
                 Overdue handling
               </Typography>
               <Typography variant="body2">
-                {quiz.overdueHandling === 'autosubmit'
+                {quiz.overduehandling === 'autosubmit'
                   ? 'Auto-submit'
-                  : quiz.overdueHandling === 'graceperiod'
+                  : quiz.overduehandling === 'graceperiod'
                   ? 'Grace period'
                   : 'Auto-abandon'}
               </Typography>
@@ -799,14 +825,11 @@ function CountdownTimer({ targetTime, onExpire }: CountdownTimerProps): React.Re
   }, [targetTime, onExpire]);
 
   return (
-    <Alert severity="info" title="Quiz not yet available">
-      <Typography variant="body2">
-        This quiz will open in <strong>{timeRemaining}</strong>.
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-        Opens at: {formatDateDisplay(targetTime)}
-      </Typography>
-    </Alert>
+    <Alert 
+      severity="info" 
+      title="Quiz not yet available"
+      message={`This quiz will open in ${timeRemaining}. Opens at: ${formatDateDisplay(targetTime)}`}
+    />
   );
 }
 
@@ -829,29 +852,29 @@ export function QuizView({
   // Hooks and State
   // ============================================================================
 
-  const theme = useTheme();
   const navigate = useNavigate();
   const params = useParams<{ quizId: string }>();
-  const { hasCapability, isTeacher, isAdmin } = usePermissions();
+  const { hasCapability: _hasCapability, isTeacher, isAdmin } = usePermissions();
 
   // Determine quiz ID from props or URL params
   const quizId = propQuizId ?? (params.quizId ? parseInt(params.quizId, 10) : undefined);
 
-  // Fetch quiz data
+  // Fetch quiz data - pass 0 when undefined to satisfy hook's required parameter
   const {
     quiz,
     isLoading: quizLoading,
     error: quizError,
     refetch: refetchQuiz,
-  } = useQuiz(quizId);
+  } = useQuiz(quizId ?? 0);
 
-  // Quiz attempt management
+  // Quiz attempt management - pass options object with quizId
   const {
-    currentAttempt,
+    currentAttempt: _currentAttempt,
+    attempts,
     startAttempt,
-    loadAttempt,
     isSubmitting,
-  } = useQuizAttempt(quizId);
+    isLoading: _attemptsLoading, // Prefixed since we use quizLoading as main indicator
+  } = useQuizAttempt({ quizId: quizId ?? 0 });
 
   // Local state
   const [isStartingAttempt, setIsStartingAttempt] = useState(false);
@@ -860,63 +883,72 @@ export function QuizView({
   // Computed Values
   // ============================================================================
 
-  // Extract attempts from quiz data
-  const attempts = useMemo(() => {
-    return quiz?.attempts ?? [];
-  }, [quiz]);
-
   // Find in-progress attempt
   const inProgressAttempt = useMemo(() => {
-    return attempts.find((a) => a.state === 'IN_PROGRESS');
+    return attempts.find((a: QuizAttempt) => a.state === ATTEMPT_STATE.IN_PROGRESS);
   }, [attempts]);
+
+  // Helper function to get grade from attempt (calculate from sumgrades if needed)
+  const getAttemptGrade = useCallback((attempt: QuizAttempt): number | null => {
+    // Check for undefined or null sumgrades
+    if (attempt.sumgrades == null || !quiz?.sumgrades || quiz.sumgrades === 0) {
+      return null;
+    }
+    return (attempt.sumgrades / quiz.sumgrades) * quiz.grade;
+  }, [quiz]);
 
   // Find best attempt (highest grade)
   const bestAttemptId = useMemo(() => {
-    if (!quiz || quiz.gradeMethod !== 'highest' || attempts.length === 0) {
+    if (!quiz || quiz.grademethod !== GradeMethod.HIGHEST || attempts.length === 0) {
       return null;
     }
 
     const finishedAttempts = attempts.filter(
-      (a) => a.state === 'FINISHED' && a.grade !== null
+      (a: QuizAttempt) => a.state === ATTEMPT_STATE.FINISHED && a.sumgrades != null
     );
 
     if (finishedAttempts.length === 0) {
       return null;
     }
 
-    return finishedAttempts.reduce((best, current) =>
-      (current.grade ?? 0) > (best.grade ?? 0) ? current : best
-    ).id;
-  }, [quiz, attempts]);
+    return finishedAttempts.reduce((best: QuizAttempt, current: QuizAttempt) => {
+      const bestGrade = getAttemptGrade(best) ?? 0;
+      const currentGrade = getAttemptGrade(current) ?? 0;
+      return currentGrade > bestGrade ? current : best;
+    }).id;
+  }, [quiz, attempts, getAttemptGrade]);
 
-  // Calculate current grade
-  const currentGrade = useMemo(() => {
+  // Calculate current grade based on grading method
+  const currentGrade = useMemo((): number | null => {
     if (!quiz || attempts.length === 0) {
       return null;
     }
 
-    const finishedAttempts = attempts.filter(
-      (a) => a.state === 'FINISHED' && a.grade !== null
+    const finishedAttemptsForGrade = attempts.filter(
+      (a: QuizAttempt) => a.state === ATTEMPT_STATE.FINISHED && a.sumgrades != null
     );
 
-    if (finishedAttempts.length === 0) {
+    if (finishedAttemptsForGrade.length === 0) {
       return null;
     }
 
-    switch (quiz.gradeMethod) {
-      case 'highest':
-        return Math.max(...finishedAttempts.map((a) => a.grade ?? 0));
-      case 'average':
-        const sum = finishedAttempts.reduce((acc, a) => acc + (a.grade ?? 0), 0);
-        return sum / finishedAttempts.length;
-      case 'first':
-        return finishedAttempts[0]?.grade ?? null;
-      case 'last':
-        return finishedAttempts[finishedAttempts.length - 1]?.grade ?? null;
+    const grades = finishedAttemptsForGrade.map((a: QuizAttempt) => getAttemptGrade(a) ?? 0);
+
+    switch (quiz.grademethod) {
+      case GradeMethod.HIGHEST:
+        return Math.max(...grades);
+      case GradeMethod.AVERAGE: {
+        const sum = grades.reduce((acc: number, g: number) => acc + g, 0);
+        return sum / grades.length;
+      }
+      case GradeMethod.FIRST:
+        return grades[0] ?? null;
+      case GradeMethod.LAST:
+        return grades[grades.length - 1] ?? null;
       default:
         return null;
     }
-  }, [quiz, attempts]);
+  }, [quiz, attempts, getAttemptGrade]);
 
   // Check if user can start a new attempt
   const canStartAttempt = useMemo(() => {
@@ -926,21 +958,16 @@ export function QuizView({
 
     // Check if quiz is open
     const now = Date.now() / 1000;
-    if (quiz.timeOpen && now < quiz.timeOpen) {
+    if (quiz.timeopen && now < quiz.timeopen) {
       return false;
     }
-    if (quiz.timeClose && now > quiz.timeClose) {
-      return false;
-    }
-
-    // Check attempts limit
-    const finishedCount = attempts.filter((a) => a.state === 'FINISHED').length;
-    if (quiz.attemptsAllowed > 0 && finishedCount >= quiz.attemptsAllowed) {
+    if (quiz.timeclose && now > quiz.timeclose) {
       return false;
     }
 
-    // Check access manager
-    if (quiz.accessManager && !quiz.accessManager.canAttempt) {
+    // Check attempts limit (quiz.attempts is max allowed, 0 = unlimited)
+    const finishedCount = attempts.filter((a: QuizAttempt) => a.state === ATTEMPT_STATE.FINISHED).length;
+    if (quiz.attempts > 0 && finishedCount >= quiz.attempts) {
       return false;
     }
 
@@ -954,29 +981,26 @@ export function QuizView({
 
   // Check if quiz is not yet open
   const quizNotYetOpen = useMemo(() => {
-    if (!quiz?.timeOpen) {
+    if (!quiz?.timeopen) {
       return false;
     }
     const now = Date.now() / 1000;
-    return now < quiz.timeOpen;
+    return now < quiz.timeopen;
   }, [quiz]);
 
   // Check if quiz is closed
   const quizClosed = useMemo(() => {
-    if (!quiz?.timeClose) {
+    if (!quiz?.timeclose) {
       return false;
     }
     const now = Date.now() / 1000;
-    return now > quiz.timeClose;
+    return now > quiz.timeclose;
   }, [quiz]);
 
   // Check if user can preview (teacher/admin)
   const canPreview = useMemo(() => {
-    if (!quiz?.accessManager) {
-      return isTeacher || isAdmin;
-    }
-    return quiz.accessManager.canPreview || isTeacher || isAdmin;
-  }, [quiz, isTeacher, isAdmin]);
+    return isTeacher || isAdmin;
+  }, [isTeacher, isAdmin]);
 
   // ============================================================================
   // Event Handlers
@@ -1059,21 +1083,21 @@ export function QuizView({
 
   // Error state
   if (quizError || !quiz) {
+    const errorMessage = quizError instanceof Error
+      ? quizError.message
+      : 'Unable to load quiz information. Please try again.';
     return (
       <Box sx={{ maxWidth: 600, mx: 'auto', p: 3 }}>
         <Alert
           severity="error"
           title="Error loading quiz"
+          message={errorMessage}
           action={
             <Button onClick={() => refetchQuiz()} size="small">
               Retry
             </Button>
           }
-        >
-          {quizError instanceof Error
-            ? quizError.message
-            : 'Unable to load quiz information. Please try again.'}
-        </Alert>
+        />
       </Box>
     );
   }
@@ -1082,9 +1106,11 @@ export function QuizView({
   if (!quizId) {
     return (
       <Box sx={{ maxWidth: 600, mx: 'auto', p: 3 }}>
-        <Alert severity="error" title="Invalid quiz">
-          No quiz ID provided. Please navigate to this page from a valid quiz link.
-        </Alert>
+        <Alert 
+          severity="error" 
+          title="Invalid quiz"
+          message="No quiz ID provided. Please navigate to this page from a valid quiz link."
+        />
       </Box>
     );
   }
@@ -1101,49 +1127,48 @@ export function QuizView({
       </Box>
 
       {/* Quiz not yet open countdown */}
-      {quizNotYetOpen && quiz.timeOpen && (
+      {quizNotYetOpen && quiz.timeopen && (
         <Box sx={{ mb: 3 }}>
           <CountdownTimer
-            targetTime={quiz.timeOpen}
+            targetTime={quiz.timeopen}
             onExpire={handleCountdownExpire}
           />
         </Box>
       )}
 
       {/* Quiz closed warning */}
-      {quizClosed && (
+      {quizClosed && quiz.timeclose && (
         <Box sx={{ mb: 3 }}>
-          <Alert severity="error" title="Quiz closed">
-            This quiz closed on {formatDateDisplay(quiz.timeClose)}. No more attempts
-            can be made.
-          </Alert>
+          <Alert 
+            severity="error" 
+            title="Quiz closed"
+            message={`This quiz closed on ${formatDateDisplay(quiz.timeclose)}. No more attempts can be made.`}
+          />
         </Box>
       )}
 
       {/* Closing soon warning */}
-      {!quizClosed && quiz.timeClose && isClosingSoon(quiz.timeClose) && (
+      {!quizClosed && quiz.timeclose && isClosingSoon(quiz.timeclose) && (
         <Box sx={{ mb: 3 }}>
-          <Alert severity="warning" title="Quiz closing soon">
-            This quiz will close in {getTimeRemaining(quiz.timeClose)}.
-            Make sure to submit your attempt before the deadline.
-          </Alert>
+          <Alert 
+            severity="warning" 
+            title="Quiz closing soon"
+            message={`This quiz will close in ${getTimeRemaining(quiz.timeclose)}. Make sure to submit your attempt before the deadline.`}
+          />
         </Box>
       )}
 
       {/* Access restrictions */}
-      {quiz.accessManager && (
-        <AccessRestrictions accessManager={quiz.accessManager} />
-      )}
+      <AccessRestrictions quiz={quiz} />
 
       {/* Quiz instructions */}
-      {quiz.instructions && (
+      {quiz.intro && (
         <Box sx={{ mb: 3 }}>
-          <Alert severity="info" title="Instructions">
-            <Typography
-              variant="body2"
-              dangerouslySetInnerHTML={{ __html: quiz.instructions }}
-            />
-          </Alert>
+          <Alert 
+            severity="info" 
+            title="Instructions"
+            message={quiz.intro}
+          />
         </Box>
       )}
 
@@ -1154,11 +1179,11 @@ export function QuizView({
       <QuizSettingsAccordion quiz={quiz} />
 
       {/* Grade summary */}
-      {currentGrade !== null && quiz.sumGrades && (
+      {currentGrade !== null && quiz.sumgrades && (
         <GradeSummary
           currentGrade={currentGrade}
-          maxGrade={quiz.sumGrades}
-          gradeMethod={quiz.gradeMethod || 'highest'}
+          maxGrade={quiz.sumgrades}
+          gradeMethod={quiz.grademethod}
         />
       )}
 
@@ -1227,11 +1252,12 @@ export function QuizView({
         !inProgressAttempt &&
         !quizNotYetOpen &&
         !quizClosed &&
-        quiz.attemptsAllowed > 0 && (
+        quiz.attempts > 0 && (
           <Box sx={{ mt: 3, textAlign: 'center' }}>
-            <Alert severity="info">
-              You have used all {quiz.attemptsAllowed} allowed attempts for this quiz.
-            </Alert>
+            <Alert 
+              severity="info"
+              message={`You have used all ${quiz.attempts} allowed attempts for this quiz.`}
+            />
           </Box>
         )}
 
