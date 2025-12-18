@@ -366,12 +366,14 @@ const AssignmentPage: React.FC = () => {
   // ============================================================================
 
   // Determine if current user has grading permissions
+  // Uses both user object and isAuthenticated state from useAuth
   const canGrade = useMemo(() => {
-    if (!user || !user.roles) {
+    // Must be authenticated and have user data with roles
+    if (!isAuthenticated || !user || !user.roles) {
       return false;
     }
     return hasGradingPermission(user.roles);
-  }, [user]);
+  }, [user, isAuthenticated]);
 
   // Determine submission availability status
   const submissionStatus = useMemo((): SubmissionAvailability => {
@@ -382,8 +384,9 @@ const AssignmentPage: React.FC = () => {
   }, [assignment]);
 
   // Check if submissions are currently allowed
+  // Requires user to be authenticated and submission window to be open
   const canSubmit = useMemo(() => {
-    if (!assignment) {
+    if (!isAuthenticated || !assignment) {
       return false;
     }
     if (canGrade) {
@@ -391,7 +394,7 @@ const AssignmentPage: React.FC = () => {
       return false;
     }
     return submissionStatus === 'open';
-  }, [assignment, submissionStatus, canGrade]);
+  }, [assignment, submissionStatus, canGrade, isAuthenticated]);
 
   // Check if assignment has team submission enabled
   const isTeamSubmission = useMemo(() => {
