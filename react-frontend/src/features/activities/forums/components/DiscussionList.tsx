@@ -1,253 +1,289 @@
 /**
  * DiscussionList Component
- *
- * Displays a list of forum discussions with sorting, filtering, pagination,
- * search, and moderator actions.
- *
- * Features:
- * - Discussion rendering with titles, authors, reply counts, and unread indicators
- * - Pinned discussions appear at the top
- * - Locked discussion indicators
- * - Sorting: newest, oldest, most replies, recently updated
- * - Filtering: all, unread only, my discussions, pinned only
- * - Pagination with page size controls
- * - Debounced search functionality
- * - Bulk actions for moderators (select, delete, move)
- * - Optimistic UI updates for pin/lock actions
- * - Responsive layout for mobile and desktop
- * - Accessibility features (ARIA labels, keyboard navigation)
- *
+ * 
+ * Paginated discussion list component for forum views displaying discussion metadata
+ * (title, author, timestamps, post counts, pinned status), with sorting options
+ * (last post, creation date, replies), filtering capabilities (by group, unread),
+ * and WCAG 2.1 AA accessibility support including keyboard navigation, ARIA labels,
+ * and loading/error states.
+ * 
  * @module features/activities/forums/components/DiscussionList
  */
 
-import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { formatDistanceToNow } from 'date-fns';
+
+// Material-UI Components
 import {
   Box,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemText,
-  ListItemAvatar,
-  Avatar,
   Typography,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TableSortLabel,
+  Paper,
   Chip,
-  IconButton,
-  Checkbox,
-  Button,
+  Avatar,
+  Stack,
   TextField,
-  InputAdornment,
   Select,
   MenuItem,
   FormControl,
   InputLabel,
-  Pagination,
-  Skeleton,
-  Alert,
-  Badge,
+  InputAdornment,
+  IconButton,
+  Checkbox,
   Tooltip,
-  Stack,
-  Divider,
+  Badge,
+  Button,
   Menu,
   useTheme,
   useMediaQuery,
+  Skeleton,
+  SelectChangeEvent,
+  List,
+  ListItem,
+  ListItemAvatar,
+  ListItemText,
+  ListItemButton,
+  Divider,
 } from '@mui/material';
+
+// Material-UI Icons
 import {
+  ArrowUpward as ArrowUpwardIcon,
+  ArrowDownward as ArrowDownwardIcon,
   Search as SearchIcon,
   Clear as ClearIcon,
   PushPin as PinIcon,
   Lock as LockIcon,
-  Delete as DeleteIcon,
-  MoreVert as MoreVertIcon,
   Person as PersonIcon,
+  MoreVert as MoreVertIcon,
+  Delete as DeleteIcon,
+  Forum as ForumIcon,
+  Comment as CommentIcon,
+  Visibility as VisibilityIcon,
+  VisibilityOff as VisibilityOffIcon,
 } from '@mui/icons-material';
-import {
-  getDiscussions,
-  pinDiscussion,
-  unpinDiscussion,
-  lockDiscussion,
-  unlockDiscussion,
-  deleteDiscussion,
-  bulkDeleteDiscussions,
-  bulkMoveDiscussions,
-} from '../api/forumApi';
-import type { DiscussionEnriched } from '../types/forum.types';
+
+// Internal Dependencies (from depends_on_files)
+import { useForum } from '../hooks/useForum';
+import type { Forum, DiscussionEnriched } from '../types/forum.types';
+import { LoadingSpinner } from '../../../../components/feedback/LoadingSpinner';
+import { Alert } from '../../../../components/feedback/Alert';
+import { Pagination } from '../../../../components/data-display/Pagination';
+import { usePagination } from '../../../../hooks/usePagination';
+import { usePermissions } from '../../../../hooks/usePermissions';
 
 // ============================================================================
-// TYPES
+// TYPE DEFINITIONS
 // ============================================================================
 
 /**
- * Discussion data structure for the list
- */
-export interface DiscussionListItem {
-  /** Discussion ID */
-  id: number;
-  /** Discussion title */
-  title: string;
-  /** Discussion author */
-  author: {
-    id: number;
-    name: string;
-    avatarUrl: string | null;
-    isDeleted?: boolean;
-  };
-  /** Creation timestamp */
-  createdAt: string;
-  /** Number of replies */
-  replyCount: number;
-  /** Number of unread replies for current user */
-  unreadCount: number;
-  /** Whether discussion is pinned */
-  isPinned: boolean;
-  /** Whether discussion is locked */
-  isLocked: boolean;
-  /** Last post information */
-  lastPost: {
-    author: string;
-    timestamp: string;
-    preview: string;
-  } | null;
-}
-
-/**
- * User permissions for discussion actions
- */
-export interface DiscussionPermissions {
-  /** Can perform moderator actions */
-  canModerate: boolean;
-  /** Can pin/unpin discussions */
-  canPin: boolean;
-  /** Can lock/unlock discussions */
-  canLock: boolean;
-  /** Can delete discussions */
-  canDelete: boolean;
-}
-
-/**
- * Current user information
- */
-export interface CurrentUser {
-  /** User ID */
-  id: number;
-  /** User display name */
-  name: string;
-}
-
-/**
- * Props for DiscussionList component
+ * Props for the DiscussionList component
  */
 export interface DiscussionListProps {
   /** Course ID containing the forum */
   courseId: number;
-  /** Forum ID */
+  /** Forum ID to display discussions for */
   forumId: number;
-  /** Current user */
-  currentUser: CurrentUser;
-  /** User permissions */
-  permissions: DiscussionPermissions;
+  /** Optional group ID for group filtering */
+  groupId?: number;
+  /** Whether to show checkboxes for bulk selection (moderator view) */
+  showSelection?: boolean;
+  /** Callback when a discussion is selected */
+  onDiscussionSelect?: (discussionId: number) => void;
+  /** Callback when bulk action is triggered */
+  onBulkAction?: (discussionIds: number[], action: 'delete' | 'move' | 'pin' | 'lock') => void;
+  /** Optional CSS class name */
+  className?: string;
 }
 
 /**
- * Sort options for discussions
+ * Sort field options
  */
-type SortOption = 'newest' | 'oldest' | 'most-replies' | 'recently-updated';
+type SortField = 'lastPost' | 'created' | 'replies' | 'title';
 
 /**
- * Filter options for discussions
+ * Sort direction
  */
-type FilterOption = 'all' | 'unread' | 'my-discussions' | 'pinned';
+type SortDirection = 'asc' | 'desc';
+
+/**
+ * Filter options for discussion list
+ */
+type FilterOption = 'all' | 'unread' | 'pinned' | 'subscribed' | 'started';
+
+/**
+ * Column definition for the table
+ */
+interface ColumnDef {
+  id: string;
+  label: string;
+  sortable: boolean;
+  sortField?: SortField;
+  width?: string | number;
+  align?: 'left' | 'center' | 'right';
+  hideOnMobile?: boolean;
+}
+
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+
+/**
+ * Table column definitions
+ */
+const COLUMNS: ColumnDef[] = [
+  { id: 'title', label: 'Discussion', sortable: true, sortField: 'title', align: 'left' },
+  { id: 'author', label: 'Started by', sortable: false, align: 'left', hideOnMobile: true },
+  { id: 'replies', label: 'Replies', sortable: true, sortField: 'replies', width: 100, align: 'center', hideOnMobile: true },
+  { id: 'lastPost', label: 'Last post', sortable: true, sortField: 'lastPost', width: 180, align: 'left', hideOnMobile: true },
+];
+
+/**
+ * Filter labels for display
+ */
+const FILTER_LABELS: Record<FilterOption, string> = {
+  all: 'All discussions',
+  unread: 'Unread only',
+  pinned: 'Pinned only',
+  subscribed: 'Subscribed',
+  started: 'Started by me',
+};
 
 /**
  * Page size options
  */
-type PageSizeOption = 10 | 20 | 50;
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
 
 /**
- * Response from discussions query
+ * Formats a timestamp for display using relative time
+ * @param timestamp - Unix timestamp or ISO date string
+ * @returns Formatted relative time string
  */
-interface DiscussionsQueryResponse {
-  /** Array of discussions */
-  discussions: DiscussionListItem[];
-  /** Total count of discussions */
-  totalCount: number;
-}
-
-/**
- * Map component sort option to API sort parameters
- */
-function mapSortOptionToAPI(sortOption: SortOption): { sortBy: 'date' | 'replies' | 'author'; sortOrder: 'asc' | 'desc' } {
-  switch (sortOption) {
-    case 'newest':
-      return { sortBy: 'date', sortOrder: 'desc' };
-    case 'oldest':
-      return { sortBy: 'date', sortOrder: 'asc' };
-    case 'most-replies':
-      return { sortBy: 'replies', sortOrder: 'desc' };
-    case 'recently-updated':
-      return { sortBy: 'date', sortOrder: 'desc' }; // Use date as proxy for recently updated
-    default:
-      return { sortBy: 'date', sortOrder: 'desc' };
+function formatTimestamp(timestamp: number | string | undefined): string {
+  if (!timestamp) {
+    return 'Unknown';
   }
-}
-
-/**
- * Map component filter option to API filter parameter
- */
-function mapFilterOptionToAPI(filterOption: FilterOption): 'all' | 'unread' | 'pinned' | undefined {
-  switch (filterOption) {
-    case 'all':
-      return 'all';
-    case 'unread':
-      return 'unread';
-    case 'pinned':
-      return 'pinned';
-    case 'my-discussions':
-      // 'my-discussions' is not supported by the API directly
-      // This would need to be handled client-side or the API needs to be extended
-      return undefined;
-    default:
-      return 'all';
+  
+  const date = typeof timestamp === 'number' 
+    ? new Date(timestamp * 1000) 
+    : new Date(timestamp);
+  
+  if (isNaN(date.getTime())) {
+    return 'Unknown';
   }
+  
+  return formatDistanceToNow(date, { addSuffix: true });
 }
 
 /**
- * Context type for optimistic mutations
+ * Maps component sort field to API sort parameter
  */
-interface MutationContext {
-  previousData?: unknown;
+function mapSortFieldToApi(field: SortField): string {
+  const mapping: Record<SortField, string> = {
+    lastPost: 'date',
+    created: 'date',
+    replies: 'replies',
+    title: 'author', // API might not support title sorting, fall back
+  };
+  return mapping[field] || 'date';
 }
 
 // ============================================================================
 // COMPONENT
 // ============================================================================
 
+/**
+ * DiscussionList Component
+ * 
+ * Renders a paginated, sortable, filterable list of forum discussions.
+ * Supports WCAG 2.1 AA accessibility with keyboard navigation and ARIA labels.
+ * 
+ * @param props - Component props
+ * @returns JSX element
+ */
 export function DiscussionList({
   courseId,
   forumId,
-  currentUser,
-  permissions,
+  groupId,
+  showSelection = false,
+  onDiscussionSelect,
+  onBulkAction,
+  className,
 }: DiscussionListProps): React.JSX.Element {
+  // Theme and responsive design
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
 
-  // State management
-  const [sortBy, setSortBy] = useState<SortOption>('newest');
-  const [filterBy, setFilterBy] = useState<FilterOption>('all');
-  const [pageSize, setPageSize] = useState<PageSizeOption>(20);
-  const [currentPage, setCurrentPage] = useState(1);
+  // Permission checks using usePermissions hook with hasCapability
+  const { hasCapability } = usePermissions();
+  const canModerate = hasCapability('mod/forum:editanypost');
+  const canViewDiscussions = hasCapability('mod/forum:viewdiscussion');
+  const canStartDiscussion = hasCapability('mod/forum:startdiscussion');
+  const canPinDiscussions = hasCapability('mod/forum:pindiscussions');
+  const canLockDiscussions = hasCapability('mod/forum:lockmessage');
+  const canDeleteDiscussions = hasCapability('mod/forum:deleteanypost');
+
+  // Local state for sorting and filtering
+  const [sortField, setSortField] = useState<SortField>('lastPost');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [filterOption, setFilterOption] = useState<FilterOption>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [selectedDiscussions, setSelectedDiscussions] = useState<Set<number>>(new Set());
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [mobileMenuAnchor, setMobileMenuAnchor] = useState<HTMLElement | null>(null);
   const [activeDiscussionId, setActiveDiscussionId] = useState<number | null>(null);
 
-  // Refs
-  const searchTimeoutRef = useRef<NodeJS.Timeout>();
-  const isFirstRenderRef = useRef(true);
+  // Refs for debouncing and focus management
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const tableRef = useRef<HTMLTableElement>(null);
+
+  // Use the useForum hook for data fetching with sorting and filtering
+  const {
+    forum,
+    discussions,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    pagination,
+    sortBy,
+    setSortBy,
+    filterBy,
+    setFilterBy,
+    markAsRead,
+  } = useForum(forumId, {
+    initialPage: 1,
+    initialPageSize: 20,
+    initialSortBy: mapSortFieldToApi(sortField),
+    initialSortOrder: sortDirection,
+  });
+
+  // Use usePagination for additional pagination controls
+  const paginationState = usePagination({
+    totalItems: pagination.totalItems,
+    initialPage: pagination.currentPage,
+    initialPageSize: pagination.itemsPerPage,
+  });
+
+  // Sync pagination state with useForum
+  useEffect(() => {
+    if (paginationState.currentPage !== pagination.currentPage) {
+      pagination.goToPage(paginationState.currentPage);
+    }
+  }, [paginationState.currentPage, pagination]);
 
   // Debounced search effect
   useEffect(() => {
@@ -257,13 +293,6 @@ export function DiscussionList({
 
     searchTimeoutRef.current = setTimeout(() => {
       setDebouncedSearch(searchQuery);
-
-      // Only reset page if this is not the first render
-      if (!isFirstRenderRef.current) {
-        setCurrentPage(1); // Reset to first page on new search
-      } else {
-        isFirstRenderRef.current = false;
-      }
     }, 300);
 
     return () => {
@@ -273,329 +302,134 @@ export function DiscussionList({
     };
   }, [searchQuery]);
 
-  // Fetch discussions using React Query
-  const { data, isLoading, isError, error, refetch } = useQuery<DiscussionsQueryResponse>({
-    queryKey: ['discussions', forumId, sortBy, filterBy, currentPage, pageSize, debouncedSearch],
-    queryFn: async () => {
-      // Map component options to API parameters
-      const { sortBy: apiSortBy, sortOrder } = mapSortOptionToAPI(sortBy);
-      const apiFilter = mapFilterOptionToAPI(filterBy);
-
-      // Call the real API with proper parameters
-      // NOTE: The API does not currently support a 'search' parameter.
-      // We'll implement client-side search filtering below.
-      const response = await getDiscussions(forumId, {
-        page: currentPage,
-        perPage: pageSize,
-        sortBy: apiSortBy,
-        sortOrder,
-        filter: apiFilter,
-      });
-
-      // Transform the API response to the component's expected format
-      // The API returns DiscussionEnriched with additional metadata that we transform
-      // into the component's display format (DiscussionListItem)
-      let discussions: DiscussionListItem[] = response.data.items.map((discussion: DiscussionEnriched) => ({
-        id: discussion.id,
-        title: discussion.name,
-        author: {
-          id: discussion.userid,
-          name: discussion.userFullName ?? 'Unknown User',
-          avatarUrl: discussion.userPictureUrl ?? null,
-        },
-        createdAt: discussion.created 
-          ? new Date(discussion.created * 1000).toISOString()
-          : new Date().toISOString(),
-        replyCount: discussion.numReplies ?? 0,
-        unreadCount: discussion.numUnreadPosts ?? 0,
-        isPinned: discussion.pinned ?? false,
-        isLocked: discussion.locked ?? false,
-        lastPost: null, // TODO: Add lastPost data when available from API
-      }));
-
-      // Client-side search filtering (since API doesn't support it yet)
-      if (debouncedSearch && debouncedSearch.trim() !== '') {
-        const searchLower = debouncedSearch.toLowerCase();
-        discussions = discussions.filter(d => 
-          d.title.toLowerCase().includes(searchLower) ||
-          d.author.name.toLowerCase().includes(searchLower)
-        );
-      }
-
-      return {
-        discussions,
-        totalCount: debouncedSearch ? discussions.length : response.data.total,
-      };
-    },
-    staleTime: 30000, // 30 seconds
-  });
-
-  // Pin/Unpin mutation
-  const pinMutation = useMutation({
-    mutationFn: async (discussionId: number) => {
-      // Determine if discussion is currently pinned
-      const queryData = queryClient.getQueryData<DiscussionsQueryResponse>([
-        'discussions',
-        forumId,
-        sortBy,
-        filterBy,
-        currentPage,
-        pageSize,
-        debouncedSearch,
-      ]);
-      const discussion = queryData?.discussions.find((d) => d.id === discussionId);
-      const isPinned = discussion?.isPinned ?? false;
-
-      // Call appropriate API based on current state
-      if (isPinned) {
-        return await unpinDiscussion(discussionId);
-      }
-      return await pinDiscussion(discussionId);
-    },
-    onMutate: async (discussionId) => {
-      // Optimistic update
-      await queryClient.cancelQueries({ queryKey: ['discussions', forumId] });
-
-      const previousData = queryClient.getQueryData(['discussions', forumId]);
-
-      // Optimistically update the discussion
-      queryClient.setQueryData(
-        ['discussions', forumId, sortBy, filterBy, currentPage, pageSize, debouncedSearch],
-        (old: DiscussionsQueryResponse | undefined) => {
-          if (!old) {
-            return old;
-          }
-          return {
-            ...old,
-            discussions: old.discussions.map((d: DiscussionListItem) =>
-              d.id === discussionId ? { ...d, isPinned: !d.isPinned } : d
-            ),
-          };
-        }
-      );
-
-      return { previousData };
-    },
-    onError: (_err, _discussionId, context: MutationContext | undefined) => {
-      // Rollback on error
-      if (context?.previousData) {
-        queryClient.setQueryData(['discussions', forumId], context.previousData);
-      }
-    },
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: ['discussions', forumId] });
-    },
-  });
-
-  // Lock/Unlock mutation
-  const lockMutation = useMutation({
-    mutationFn: async (discussionId: number) => {
-      // Determine if discussion is currently locked
-      const queryData = queryClient.getQueryData<DiscussionsQueryResponse>([
-        'discussions',
-        forumId,
-        sortBy,
-        filterBy,
-        currentPage,
-        pageSize,
-        debouncedSearch,
-      ]);
-      const discussion = queryData?.discussions.find((d) => d.id === discussionId);
-      const isLocked = discussion?.isLocked ?? false;
-
-      // Call appropriate API based on current state
-      if (isLocked) {
-        return await unlockDiscussion(discussionId);
-      }
-      return await lockDiscussion(discussionId);
-    },
-    onMutate: async (discussionId) => {
-      // Optimistic update
-      await queryClient.cancelQueries({ queryKey: ['discussions', forumId] });
-
-      const previousData = queryClient.getQueryData(['discussions', forumId]);
-
-      queryClient.setQueryData(
-        ['discussions', forumId, sortBy, filterBy, currentPage, pageSize, debouncedSearch],
-        (old: DiscussionsQueryResponse | undefined) => {
-          if (!old) {
-            return old;
-          }
-          return {
-            ...old,
-            discussions: old.discussions.map((d: DiscussionListItem) =>
-              d.id === discussionId ? { ...d, isLocked: !d.isLocked } : d
-            ),
-          };
-        }
-      );
-
-      return { previousData };
-    },
-    onError: (_err, _discussionId, context: MutationContext | undefined) => {
-      // Rollback on error
-      if (context?.previousData) {
-        queryClient.setQueryData(['discussions', forumId], context.previousData);
-      }
-    },
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: ['discussions', forumId] });
-    },
-  });
-
-  // Delete mutation
-  const deleteMutation = useMutation({
-    mutationFn: async (discussionId: number) => {
-      return await deleteDiscussion(discussionId);
-    },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['discussions', forumId] });
-    },
-  });
-
-  // Bulk delete mutation
-  const bulkDeleteMutation = useMutation({
-    mutationFn: async (discussionIds: number[]) => {
-      return await bulkDeleteDiscussions(discussionIds);
-    },
-    onSuccess: () => {
-      setSelectedDiscussions(new Set());
-      void queryClient.invalidateQueries({ queryKey: ['discussions', forumId] });
-    },
-  });
-
-  // Bulk move mutation
-  const bulkMoveMutation = useMutation({
-    mutationFn: async ({
-      discussionIds,
-      targetForumId,
-    }: {
-      discussionIds: number[];
-      targetForumId: number;
-    }) => {
-      return await bulkMoveDiscussions(discussionIds, targetForumId);
-    },
-    onSuccess: () => {
-      setSelectedDiscussions(new Set());
-      void queryClient.invalidateQueries({ queryKey: ['discussions', forumId] });
-    },
-  });
-
-  // Sorted and filtered discussions
-  const discussions = useMemo(() => {
-    if (!data?.discussions) {
-      return [];
+  // Update API sort when local sort changes
+  useEffect(() => {
+    const apiSort = mapSortFieldToApi(sortField);
+    if (sortBy !== apiSort) {
+      setSortBy(apiSort);
     }
+  }, [sortField, sortBy, setSortBy]);
 
-    let result = [...data.discussions];
-
-    // Apply filter
-    switch (filterBy) {
-      case 'unread':
-        result = result.filter((d) => d.unreadCount > 0);
-        break;
-      case 'my-discussions':
-        result = result.filter((d) => d.author.id === currentUser.id);
-        break;
-      case 'pinned':
-        result = result.filter((d) => d.isPinned);
-        break;
-      case 'all':
-      default:
-        break;
+  // Update API filter when local filter changes
+  useEffect(() => {
+    const filterMap: Record<FilterOption, string> = {
+      all: 'all',
+      unread: 'unread',
+      pinned: 'pinned',
+      subscribed: 'all', // Not directly supported, will filter client-side
+      started: 'all', // Not directly supported, will filter client-side
+    };
+    const apiFilter = filterMap[filterOption];
+    if (filterBy !== apiFilter) {
+      setFilterBy(apiFilter);
     }
+  }, [filterOption, filterBy, setFilterBy]);
 
-    // Apply search
+  // Filter and sort discussions client-side for additional filtering
+  const filteredDiscussions = useMemo(() => {
+    if (!discussions) return [];
+
+    let result = [...discussions];
+
+    // Apply search filter
     if (debouncedSearch) {
       const searchLower = debouncedSearch.toLowerCase();
       result = result.filter(
         (d) =>
-          d.title.toLowerCase().includes(searchLower) ||
-          d.author.name.toLowerCase().includes(searchLower)
+          d.name.toLowerCase().includes(searchLower) ||
+          (d.userFullName && d.userFullName.toLowerCase().includes(searchLower))
       );
     }
 
-    // Apply sort
-    result.sort((a, b) => {
-      switch (sortBy) {
-        case 'oldest':
-          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-        case 'most-replies':
-          return b.replyCount - a.replyCount;
-        case 'recently-updated': {
-          const aTime = a.lastPost
-            ? new Date(a.lastPost.timestamp).getTime()
-            : new Date(a.createdAt).getTime();
-          const bTime = b.lastPost
-            ? new Date(b.lastPost.timestamp).getTime()
-            : new Date(b.createdAt).getTime();
-          return bTime - aTime;
-        }
-        case 'newest':
+    // Apply additional client-side filters not supported by API
+    switch (filterOption) {
+      case 'subscribed':
+        // This would need subscription data which may not be in DiscussionEnriched
+        break;
+      case 'started':
+        // Filter by current user - would need current user ID
+        break;
+      default:
+        break;
+    }
+
+    // Sort discussions - pinned always first
+    const pinned = result.filter((d) => d.pinned);
+    const unpinned = result.filter((d) => !d.pinned);
+
+    // Sort unpinned discussions
+    unpinned.sort((a, b) => {
+      let comparison = 0;
+      switch (sortField) {
+        case 'title':
+          comparison = a.name.localeCompare(b.name);
+          break;
+        case 'replies':
+          comparison = (a.numReplies || 0) - (b.numReplies || 0);
+          break;
+        case 'lastPost':
+        case 'created':
+          comparison = (a.created || 0) - (b.created || 0);
+          break;
         default:
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          comparison = 0;
       }
+      return sortDirection === 'asc' ? comparison : -comparison;
     });
 
-    // Pinned discussions always at top
-    const pinned = result.filter((d) => d.isPinned);
-    const unpinned = result.filter((d) => !d.isPinned);
-
     return [...pinned, ...unpinned];
-  }, [data?.discussions, filterBy, debouncedSearch, sortBy, currentUser.id]);
+  }, [discussions, debouncedSearch, filterOption, sortField, sortDirection]);
 
-  // Handlers
+  // Event Handlers
+  const handleSortChange = useCallback((field: SortField) => {
+    setSortField((prevField) => {
+      if (prevField === field) {
+        setSortDirection((prevDir) => (prevDir === 'asc' ? 'desc' : 'asc'));
+        return field;
+      }
+      setSortDirection('desc');
+      return field;
+    });
+  }, []);
+
+  const handleFilterChange = useCallback((event: SelectChangeEvent<FilterOption>) => {
+    setFilterOption(event.target.value as FilterOption);
+    pagination.goToPage(1); // Reset to first page on filter change
+  }, [pagination]);
+
+  const handleSearchChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(event.target.value);
+  }, []);
+
+  const handleSearchClear = useCallback(() => {
+    setSearchQuery('');
+    setDebouncedSearch('');
+  }, []);
+
   const handleDiscussionClick = useCallback(
     (discussionId: number) => {
-      navigate(`/courses/${courseId}/forums/${forumId}/discussions/${discussionId}`);
-    },
-    [navigate, courseId, forumId]
-  );
-
-  const handleAuthorClick = useCallback(
-    (e: React.MouseEvent, authorId: number) => {
-      e.stopPropagation();
-      navigate(`/users/${authorId}`);
-    },
-    [navigate]
-  );
-
-  const handlePinClick = useCallback(
-    (e: React.MouseEvent, discussionId: number) => {
-      e.stopPropagation();
-      pinMutation.mutate(discussionId);
-    },
-    [pinMutation]
-  );
-
-  const handleLockClick = useCallback(
-    (e: React.MouseEvent, discussionId: number) => {
-      e.stopPropagation();
-      lockMutation.mutate(discussionId);
-    },
-    [lockMutation]
-  );
-
-  const handleDeleteClick = useCallback(
-    (e: React.MouseEvent, discussionId: number) => {
-      e.stopPropagation();
-      if (window.confirm('Are you sure you want to delete this discussion?')) {
-        deleteMutation.mutate(discussionId);
+      // Mark as read when opening
+      markAsRead(discussionId).catch(console.error);
+      
+      if (onDiscussionSelect) {
+        onDiscussionSelect(discussionId);
+      } else {
+        navigate(`/courses/${courseId}/forums/${forumId}/discussions/${discussionId}`);
       }
     },
-    [deleteMutation]
+    [courseId, forumId, markAsRead, navigate, onDiscussionSelect]
   );
 
   const handleSelectAll = useCallback(() => {
-    if (selectedDiscussions.size === discussions.length) {
-      setSelectedDiscussions(new Set());
+    if (selectedIds.size === filteredDiscussions.length) {
+      setSelectedIds(new Set());
     } else {
-      setSelectedDiscussions(new Set(discussions.map((d) => d.id)));
+      setSelectedIds(new Set(filteredDiscussions.map((d) => d.id)));
     }
-  }, [discussions, selectedDiscussions.size]);
+  }, [filteredDiscussions, selectedIds.size]);
 
   const handleSelectDiscussion = useCallback((discussionId: number) => {
-    setSelectedDiscussions((prev) => {
+    setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(discussionId)) {
         next.delete(discussionId);
@@ -606,89 +440,97 @@ export function DiscussionList({
     });
   }, []);
 
-  const handleBulkDelete = useCallback(() => {
-    if (selectedDiscussions.size > 0) {
-      if (window.confirm(`Delete ${selectedDiscussions.size} discussion(s)?`)) {
-        bulkDeleteMutation.mutate(Array.from(selectedDiscussions));
-      }
-    }
-  }, [selectedDiscussions, bulkDeleteMutation]);
-
-  const handleBulkMove = useCallback(
-    (targetForumId: number) => {
-      if (selectedDiscussions.size > 0) {
-        bulkMoveMutation.mutate({
-          discussionIds: Array.from(selectedDiscussions),
-          targetForumId,
-        });
+  const handleBulkAction = useCallback(
+    (action: 'delete' | 'move' | 'pin' | 'lock') => {
+      if (selectedIds.size > 0 && onBulkAction) {
+        onBulkAction(Array.from(selectedIds), action);
+        setSelectedIds(new Set());
       }
     },
-    [selectedDiscussions, bulkMoveMutation]
+    [selectedIds, onBulkAction]
   );
 
-  const handleSearchClear = useCallback(() => {
-    setSearchQuery('');
-    setDebouncedSearch('');
-  }, []);
+  const handleMobileMenuOpen = useCallback(
+    (event: React.MouseEvent<HTMLElement>, discussionId: number) => {
+      event.stopPropagation();
+      setMobileMenuAnchor(event.currentTarget);
+      setActiveDiscussionId(discussionId);
+    },
+    []
+  );
 
-  const handleMenuOpen = useCallback((e: React.MouseEvent<HTMLElement>, discussionId: number) => {
-    e.stopPropagation();
-    setAnchorEl(e.currentTarget);
-    setActiveDiscussionId(discussionId);
-  }, []);
-
-  const handleMenuClose = useCallback(() => {
-    setAnchorEl(null);
+  const handleMobileMenuClose = useCallback(() => {
+    setMobileMenuAnchor(null);
     setActiveDiscussionId(null);
   }, []);
 
-  // Format date for display
-  const formatDate = useCallback((dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
+  const handlePageChange = useCallback(
+    (page: number) => {
+      pagination.goToPage(page);
+      paginationState.goToPage(page);
+      // Scroll to top of table
+      tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    },
+    [pagination, paginationState]
+  );
 
-    if (diffMins < 60) {
-      return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
-    } else if (diffHours < 24) {
-      return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
-    } else if (diffDays < 7) {
-      return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
-    }
-    return date.toLocaleDateString();
-  }, []);
+  const handlePageSizeChange = useCallback(
+    (pageSize: number) => {
+      pagination.setItemsPerPage(pageSize);
+      paginationState.setPageSize(pageSize);
+      pagination.goToPage(1);
+    },
+    [pagination, paginationState]
+  );
 
-  // Calculate total pages
-  const totalPages = data ? Math.ceil(data.totalCount / pageSize) : 1;
+  // Keyboard navigation handler
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent, discussionId: number) => {
+      switch (event.key) {
+        case 'Enter':
+        case ' ':
+          event.preventDefault();
+          handleDiscussionClick(discussionId);
+          break;
+        case 'ArrowDown': {
+          event.preventDefault();
+          const currentIndex = filteredDiscussions.findIndex((d) => d.id === discussionId);
+          if (currentIndex < filteredDiscussions.length - 1) {
+            const nextId = filteredDiscussions[currentIndex + 1].id;
+            const nextRow = document.querySelector(`[data-discussion-id="${nextId}"]`) as HTMLElement;
+            nextRow?.focus();
+          }
+          break;
+        }
+        case 'ArrowUp': {
+          event.preventDefault();
+          const currentIdx = filteredDiscussions.findIndex((d) => d.id === discussionId);
+          if (currentIdx > 0) {
+            const prevId = filteredDiscussions[currentIdx - 1].id;
+            const prevRow = document.querySelector(`[data-discussion-id="${prevId}"]`) as HTMLElement;
+            prevRow?.focus();
+          }
+          break;
+        }
+      }
+    },
+    [filteredDiscussions, handleDiscussionClick]
+  );
 
-  // Loading skeleton
+  // Loading state
   if (isLoading) {
     return (
-      <Box sx={{ width: '100%' }}>
-        {/* Search and controls skeleton */}
-        <Box sx={{ mb: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-          <Skeleton variant="rectangular" width={300} height={56} />
-          <Skeleton variant="rectangular" width={150} height={56} />
-          <Skeleton variant="rectangular" width={150} height={56} />
-        </Box>
-
-        {/* Discussion list skeleton */}
-        <List aria-label="Loading discussions">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <ListItem key={i} divider>
-              <ListItemAvatar>
-                <Skeleton variant="circular" width={40} height={40} />
-              </ListItemAvatar>
-              <ListItemText
-                primary={<Skeleton variant="text" width="60%" />}
-                secondary={<Skeleton variant="text" width="40%" />}
-              />
-            </ListItem>
-          ))}
-        </List>
+      <Box
+        className={className}
+        sx={{ width: '100%' }}
+        role="status"
+        aria-label="Loading discussions"
+      >
+        <LoadingSpinner
+          size="large"
+          message="Loading discussions..."
+          overlay={false}
+        />
       </Box>
     );
   }
@@ -696,42 +538,56 @@ export function DiscussionList({
   // Error state
   if (isError) {
     return (
-      <Alert
-        severity="error"
-        action={
-          <Button color="inherit" size="small" onClick={() => refetch()}>
-            Retry
-          </Button>
-        }
-      >
-        {error instanceof Error ? error.message : 'Failed to load discussions'}
-      </Alert>
+      <Box className={className} sx={{ width: '100%' }}>
+        <Alert
+          severity="error"
+          title="Failed to load discussions"
+          onClose={() => refetch()}
+          action={
+            <Button color="inherit" size="small" onClick={() => refetch()}>
+              Retry
+            </Button>
+          }
+        >
+          {error?.message || 'An unexpected error occurred while loading discussions.'}
+        </Alert>
+      </Box>
     );
   }
 
   // Empty state
-  if (!discussions || discussions.length === 0) {
+  if (!filteredDiscussions || filteredDiscussions.length === 0) {
     return (
-      <Box sx={{ textAlign: 'center', py: 8 }}>
+      <Box
+        className={className}
+        sx={{
+          width: '100%',
+          textAlign: 'center',
+          py: 8,
+        }}
+        role="status"
+        aria-label="No discussions found"
+      >
+        <ForumIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
         {debouncedSearch ? (
           <>
             <Typography variant="h6" gutterBottom>
               No discussions found
             </Typography>
             <Typography variant="body2" color="text.secondary" gutterBottom>
-              No discussions match your search query &quot;{debouncedSearch}&quot;
+              No discussions match your search &quot;{debouncedSearch}&quot;
             </Typography>
             <Button onClick={handleSearchClear} sx={{ mt: 2 }}>
               Clear Search
             </Button>
           </>
-        ) : filterBy !== 'all' ? (
+        ) : filterOption !== 'all' ? (
           <>
             <Typography variant="h6" gutterBottom>
               No discussions found
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              There are no discussions matching the selected filter
+              No discussions match the selected filter: {FILTER_LABELS[filterOption]}
             </Typography>
           </>
         ) : (
@@ -740,26 +596,40 @@ export function DiscussionList({
               No discussions yet
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Be the first to start a discussion!
+              Be the first to start a discussion in this forum!
             </Typography>
+            {canStartDiscussion && (
+              <Button
+                variant="contained"
+                sx={{ mt: 2 }}
+                onClick={() => navigate(`/courses/${courseId}/forums/${forumId}/new`)}
+              >
+                Start Discussion
+              </Button>
+            )}
           </>
         )}
       </Box>
     );
   }
 
-  return (
-    <Box sx={{ width: '100%' }} data-testid="discussion-list">
-      {/* Search and controls */}
-      <Stack spacing={2} sx={{ mb: 3 }}>
-        <Stack direction={isMobile ? 'column' : 'row'} spacing={2}>
-          {/* Search input */}
+  // Render mobile list view
+  if (isMobile) {
+    return (
+      <Box
+        className={className}
+        sx={{ width: '100%' }}
+        data-testid="discussion-list"
+      >
+        {/* Mobile search and filter controls */}
+        <Stack spacing={2} sx={{ mb: 2 }}>
           <TextField
-            fullWidth={isMobile}
+            fullWidth
+            size="small"
             placeholder="Search discussions..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            data-testid="forum-search"
+            onChange={handleSearchChange}
+            aria-label="Search discussions"
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -768,233 +638,89 @@ export function DiscussionList({
               ),
               endAdornment: searchQuery && (
                 <InputAdornment position="end">
-                  <IconButton size="small" onClick={handleSearchClear} aria-label="Clear search">
+                  <IconButton
+                    size="small"
+                    onClick={handleSearchClear}
+                    aria-label="Clear search"
+                  >
                     <ClearIcon />
                   </IconButton>
                 </InputAdornment>
               ),
             }}
-            sx={{ minWidth: isMobile ? 'auto' : 300 }}
           />
 
-          {/* Sort dropdown */}
-          <FormControl sx={{ minWidth: 180 }}>
-            <InputLabel id="sort-label">Sort by</InputLabel>
+          <FormControl size="small" fullWidth>
+            <InputLabel id="mobile-filter-label">Filter</InputLabel>
             <Select
-              labelId="sort-label"
-              value={sortBy}
-              label="Sort by"
-              onChange={(e) => setSortBy(e.target.value as SortOption)}
-            >
-              <MenuItem value="newest">Newest first</MenuItem>
-              <MenuItem value="oldest">Oldest first</MenuItem>
-              <MenuItem value="most-replies">Most replies</MenuItem>
-              <MenuItem value="recently-updated">Recently updated</MenuItem>
-            </Select>
-          </FormControl>
-
-          {/* Filter dropdown */}
-          <FormControl sx={{ minWidth: 180 }}>
-            <InputLabel id="filter-label">Filter</InputLabel>
-            <Select
-              labelId="filter-label"
-              value={filterBy}
+              labelId="mobile-filter-label"
+              value={filterOption}
               label="Filter"
-              onChange={(e) => setFilterBy(e.target.value as FilterOption)}
+              onChange={handleFilterChange}
             >
-              <MenuItem value="all">All discussions</MenuItem>
-              <MenuItem value="unread">Unread only</MenuItem>
-              <MenuItem value="my-discussions">My discussions</MenuItem>
-              <MenuItem value="pinned">Pinned only</MenuItem>
-            </Select>
-          </FormControl>
-
-          {/* Page size dropdown */}
-          <FormControl sx={{ minWidth: 120 }}>
-            <InputLabel id="pagesize-label">Per page</InputLabel>
-            <Select
-              labelId="pagesize-label"
-              value={pageSize}
-              label="Per page"
-              onChange={(e) => {
-                setPageSize(e.target.value as PageSizeOption);
-                setCurrentPage(1);
-              }}
-            >
-              <MenuItem value={10}>10</MenuItem>
-              <MenuItem value={20}>20</MenuItem>
-              <MenuItem value={50}>50</MenuItem>
+              {Object.entries(FILTER_LABELS).map(([value, label]) => (
+                <MenuItem key={value} value={value}>
+                  {label}
+                </MenuItem>
+              ))}
             </Select>
           </FormControl>
         </Stack>
 
-        {/* Bulk actions */}
-        {permissions.canModerate && (
-          <Stack direction="row" spacing={2} alignItems="center">
-            <Checkbox
-              checked={selectedDiscussions.size === discussions.length && discussions.length > 0}
-              indeterminate={
-                selectedDiscussions.size > 0 && selectedDiscussions.size < discussions.length
-              }
-              onChange={handleSelectAll}
-              inputProps={{ 'aria-label': 'Select all discussions' }}
-            />
-            <Typography variant="body2" color="text.secondary">
-              {selectedDiscussions.size > 0 ? `${selectedDiscussions.size} selected` : 'Select all'}
-            </Typography>
-            {selectedDiscussions.size > 0 && (
-              <>
-                <Button
-                  size="small"
-                  startIcon={<DeleteIcon />}
-                  onClick={handleBulkDelete}
-                  color="error"
-                >
-                  Bulk Delete
-                </Button>
-                <Button
-                  size="small"
-                  onClick={() => {
-                    // This would open a dialog to select target forum
-                    const targetId = prompt('Enter target forum ID:');
-                    if (targetId) {
-                      handleBulkMove(parseInt(targetId, 10));
-                    }
-                  }}
-                >
-                  Bulk Move
-                </Button>
-              </>
-            )}
-          </Stack>
-        )}
-      </Stack>
-
-      {/* Discussion list */}
-      <List
-        aria-label="Discussions"
-        sx={{
-          bgcolor: 'background.paper',
-          borderRadius: 1,
-          border: 1,
-          borderColor: 'divider',
-        }}
-      >
-        {discussions.map((discussion, index) => {
-          const isSelected = selectedDiscussions.has(discussion.id);
-          const { canPin } = permissions;
-          const { canLock } = permissions;
-          const canDelete = permissions.canDelete || discussion.author.id === currentUser.id;
-
-          return (
+        {/* Mobile list */}
+        <List
+          aria-label="Discussion list"
+          sx={{
+            bgcolor: 'background.paper',
+            borderRadius: 1,
+            border: 1,
+            borderColor: 'divider',
+          }}
+        >
+          {filteredDiscussions.map((discussion, index) => (
             <React.Fragment key={discussion.id}>
               <ListItem
                 data-discussion-id={discussion.id}
-                data-testid={`discussion-item-${discussion.id}`}
                 disablePadding
                 secondaryAction={
-                  !isMobile && (canPin || canLock || canDelete) ? (
-                    <Stack direction="row" spacing={1}>
-                      {canPin && (
-                        <Tooltip title={discussion.isPinned ? 'Unpin' : 'Pin'}>
-                          <IconButton
-                            edge="end"
-                            aria-label={discussion.isPinned ? 'Unpin discussion' : 'Pin discussion'}
-                            onClick={(e) => handlePinClick(e, discussion.id)}
-                            color={discussion.isPinned ? 'primary' : 'default'}
-                          >
-                            <PinIcon />
-                          </IconButton>
-                        </Tooltip>
-                      )}
-                      {canLock && (
-                        <Tooltip title={discussion.isLocked ? 'Unlock' : 'Lock'}>
-                          <IconButton
-                            edge="end"
-                            aria-label={
-                              discussion.isLocked ? 'Unlock discussion' : 'Lock discussion'
-                            }
-                            onClick={(e) => handleLockClick(e, discussion.id)}
-                            color={discussion.isLocked ? 'warning' : 'default'}
-                          >
-                            <LockIcon />
-                          </IconButton>
-                        </Tooltip>
-                      )}
-                      {canDelete && (
-                        <Tooltip title="Delete">
-                          <IconButton
-                            edge="end"
-                            aria-label="Delete discussion"
-                            onClick={(e) => handleDeleteClick(e, discussion.id)}
-                            color="error"
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </Tooltip>
-                      )}
-                    </Stack>
-                  ) : isMobile && (canPin || canLock || canDelete) ? (
+                  canModerate && (
                     <IconButton
                       edge="end"
-                      aria-label="More actions"
-                      onClick={(e) => handleMenuOpen(e, discussion.id)}
+                      aria-label={`More actions for ${discussion.name}`}
+                      onClick={(e) => handleMobileMenuOpen(e, discussion.id)}
                     >
                       <MoreVertIcon />
                     </IconButton>
-                  ) : null
+                  )
                 }
               >
                 <ListItemButton
                   onClick={() => handleDiscussionClick(discussion.id)}
-                  sx={{ pl: permissions.canModerate ? 1 : 2 }}
+                  onKeyDown={(e) => handleKeyDown(e, discussion.id)}
+                  tabIndex={0}
+                  aria-label={`${discussion.name}, ${discussion.numReplies || 0} replies, started ${formatTimestamp(discussion.created)}`}
                 >
-                  {permissions.canModerate && (
-                    <Checkbox
-                      edge="start"
-                      checked={isSelected}
-                      tabIndex={-1}
-                      disableRipple
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleSelectDiscussion(discussion.id);
-                      }}
-                      inputProps={{ 'aria-label': `Select ${discussion.title}` }}
-                      sx={{ mr: 1 }}
-                    />
-                  )}
-
                   <ListItemAvatar>
-                    <Tooltip title={discussion.author.name}>
-                      <Avatar
-                        src={discussion.author.avatarUrl ?? undefined}
-                        alt={discussion.author.name}
-                        onClick={(e) => handleAuthorClick(e, discussion.author.id)}
-                        sx={{ cursor: 'pointer' }}
-                      >
-                        {discussion.author.isDeleted ? (
-                          <PersonIcon />
-                        ) : (
-                          discussion.author.name.charAt(0).toUpperCase()
-                        )}
-                      </Avatar>
-                    </Tooltip>
+                    <Avatar
+                      src={discussion.userPictureUrl || undefined}
+                      alt={discussion.userFullName || 'Unknown user'}
+                    >
+                      {discussion.userFullName?.[0]?.toUpperCase() || <PersonIcon />}
+                    </Avatar>
                   </ListItemAvatar>
-
                   <ListItemText
                     primary={
                       <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
                         <Typography
-                          variant="subtitle1"
+                          variant="subtitle2"
                           component="span"
                           sx={{
-                            fontWeight: discussion.unreadCount > 0 ? 600 : 400,
+                            fontWeight: (discussion.numUnreadPosts || 0) > 0 ? 700 : 400,
                           }}
                         >
-                          {discussion.title}
+                          {discussion.name}
                         </Typography>
-
-                        {discussion.isPinned && (
+                        {discussion.pinned && (
                           <Chip
                             icon={<PinIcon />}
                             label="Pinned"
@@ -1003,138 +729,512 @@ export function DiscussionList({
                             variant="outlined"
                           />
                         )}
-
-                        {discussion.isLocked && (
+                        {discussion.locked && (
                           <Chip
                             icon={<LockIcon />}
                             label="Locked"
                             size="small"
                             color="warning"
                             variant="outlined"
-                            aria-label="Locked discussion"
                           />
                         )}
-
-                        {discussion.unreadCount > 0 && (
+                        {(discussion.numUnreadPosts || 0) > 0 && (
                           <Badge
-                            badgeContent={discussion.unreadCount}
+                            badgeContent={discussion.numUnreadPosts}
                             color="error"
-                            aria-label={`${discussion.unreadCount} unread ${discussion.unreadCount === 1 ? 'reply' : 'replies'}`}
+                            aria-label={`${discussion.numUnreadPosts} unread posts`}
                           />
                         )}
                       </Stack>
                     }
                     secondary={
-                      <Box component="span" sx={{ display: 'block' }}>
-                        <Typography component="span" variant="body2" color="text.secondary" sx={{ display: 'block', mb: 0.5, mt: 0.5 }}>
-                          Started by{' '}
-                          <Typography
-                            component="span"
-                            variant="body2"
-                            color="primary"
-                            sx={{
-                              cursor: 'pointer',
-                              '&:hover': { textDecoration: 'underline' },
-                            }}
-                            onClick={(e) => handleAuthorClick(e, discussion.author.id)}
-                          >
-                            {discussion.author.name}
-                          </Typography>
-                          {' · '}
-                          {formatDate(discussion.createdAt)}
-                          {!isMobile && (
-                            <>
-                              {' · '}
-                              {discussion.replyCount}{' '}
-                              {discussion.replyCount === 1 ? 'reply' : 'replies'}
-                            </>
-                          )}
-                        </Typography>
-
-                        {!isMobile && discussion.lastPost && (
-                          <Typography component="span" variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                            Last post by {discussion.lastPost.author}{' '}
-                            {formatDate(discussion.lastPost.timestamp)}
-                            {discussion.lastPost.preview && (
-                              <> · {discussion.lastPost.preview.substring(0, 100)}...</>
-                            )}
-                          </Typography>
-                        )}
-
-                        {isMobile && (
-                          <Typography component="span" variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                            {discussion.replyCount}{' '}
-                            {discussion.replyCount === 1 ? 'reply' : 'replies'}
-                          </Typography>
-                        )}
-                      </Box>
+                      <Typography variant="caption" color="text.secondary">
+                        By {discussion.userFullName || 'Unknown'} · {formatTimestamp(discussion.created)} · {discussion.numReplies || 0} replies
+                      </Typography>
                     }
                   />
                 </ListItemButton>
               </ListItem>
-
-              {index < discussions.length - 1 && <Divider component="li" />}
+              {index < filteredDiscussions.length - 1 && <Divider component="li" />}
             </React.Fragment>
-          );
-        })}
-      </List>
+          ))}
+        </List>
+
+        {/* Mobile pagination */}
+        {pagination.totalPages > 1 && (
+          <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
+            <Pagination
+              currentPage={pagination.currentPage}
+              totalPages={pagination.totalPages}
+              onPageChange={handlePageChange}
+              aria-label="Discussion list pagination"
+            />
+          </Box>
+        )}
+
+        {/* Mobile action menu */}
+        <Menu
+          anchorEl={mobileMenuAnchor}
+          open={Boolean(mobileMenuAnchor)}
+          onClose={handleMobileMenuClose}
+        >
+          {canPinDiscussions && (
+            <MenuItem onClick={() => { handleBulkAction('pin'); handleMobileMenuClose(); }}>
+              <PinIcon sx={{ mr: 1 }} />
+              {filteredDiscussions.find((d) => d.id === activeDiscussionId)?.pinned
+                ? 'Unpin'
+                : 'Pin'}
+            </MenuItem>
+          )}
+          {canLockDiscussions && (
+            <MenuItem onClick={() => { handleBulkAction('lock'); handleMobileMenuClose(); }}>
+              <LockIcon sx={{ mr: 1 }} />
+              {filteredDiscussions.find((d) => d.id === activeDiscussionId)?.locked
+                ? 'Unlock'
+                : 'Lock'}
+            </MenuItem>
+          )}
+          {canDeleteDiscussions && (
+            <MenuItem
+              onClick={() => { handleBulkAction('delete'); handleMobileMenuClose(); }}
+              sx={{ color: 'error.main' }}
+            >
+              <DeleteIcon sx={{ mr: 1 }} />
+              Delete
+            </MenuItem>
+          )}
+        </Menu>
+      </Box>
+    );
+  }
+
+  // Desktop table view
+  return (
+    <Box
+      className={className}
+      sx={{ width: '100%' }}
+      data-testid="discussion-list"
+    >
+      {/* Desktop search and controls */}
+      <Stack
+        direction="row"
+        spacing={2}
+        sx={{ mb: 3 }}
+        flexWrap="wrap"
+        alignItems="center"
+      >
+        <TextField
+          placeholder="Search discussions..."
+          value={searchQuery}
+          onChange={handleSearchChange}
+          size="small"
+          aria-label="Search discussions"
+          sx={{ minWidth: 250 }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            ),
+            endAdornment: searchQuery && (
+              <InputAdornment position="end">
+                <IconButton
+                  size="small"
+                  onClick={handleSearchClear}
+                  aria-label="Clear search"
+                >
+                  <ClearIcon />
+                </IconButton>
+              </InputAdornment>
+            ),
+          }}
+        />
+
+        <FormControl size="small" sx={{ minWidth: 180 }}>
+          <InputLabel id="filter-label">Filter</InputLabel>
+          <Select
+            labelId="filter-label"
+            value={filterOption}
+            label="Filter"
+            onChange={handleFilterChange}
+          >
+            {Object.entries(FILTER_LABELS).map(([value, label]) => (
+              <MenuItem key={value} value={value}>
+                {label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        {/* Bulk actions for moderators */}
+        {showSelection && canModerate && selectedIds.size > 0 && (
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Typography variant="body2" color="text.secondary">
+              {selectedIds.size} selected
+            </Typography>
+            {canPinDiscussions && (
+              <Button
+                size="small"
+                startIcon={<PinIcon />}
+                onClick={() => handleBulkAction('pin')}
+              >
+                Pin
+              </Button>
+            )}
+            {canLockDiscussions && (
+              <Button
+                size="small"
+                startIcon={<LockIcon />}
+                onClick={() => handleBulkAction('lock')}
+              >
+                Lock
+              </Button>
+            )}
+            {canDeleteDiscussions && (
+              <Button
+                size="small"
+                color="error"
+                startIcon={<DeleteIcon />}
+                onClick={() => handleBulkAction('delete')}
+              >
+                Delete
+              </Button>
+            )}
+          </Stack>
+        )}
+
+        <Box sx={{ flexGrow: 1 }} />
+
+        <Typography variant="body2" color="text.secondary">
+          {pagination.totalItems} discussion{pagination.totalItems !== 1 ? 's' : ''}
+        </Typography>
+      </Stack>
+
+      {/* Discussion table */}
+      <TableContainer
+        component={Paper}
+        sx={{ mb: 2 }}
+        role="region"
+        aria-label="Discussion list"
+      >
+        <Table
+          ref={tableRef}
+          aria-label="Discussions table"
+          size="medium"
+        >
+          <TableHead>
+            <TableRow>
+              {showSelection && canModerate && (
+                <TableCell padding="checkbox">
+                  <Checkbox
+                    indeterminate={
+                      selectedIds.size > 0 &&
+                      selectedIds.size < filteredDiscussions.length
+                    }
+                    checked={
+                      filteredDiscussions.length > 0 &&
+                      selectedIds.size === filteredDiscussions.length
+                    }
+                    onChange={handleSelectAll}
+                    inputProps={{ 'aria-label': 'Select all discussions' }}
+                  />
+                </TableCell>
+              )}
+              {COLUMNS.filter((col) => !col.hideOnMobile || !isSmallScreen).map(
+                (column) => (
+                  <TableCell
+                    key={column.id}
+                    align={column.align}
+                    width={column.width}
+                    sortDirection={
+                      column.sortField === sortField ? sortDirection : false
+                    }
+                  >
+                    {column.sortable && column.sortField ? (
+                      <TableSortLabel
+                        active={sortField === column.sortField}
+                        direction={
+                          sortField === column.sortField ? sortDirection : 'desc'
+                        }
+                        onClick={() => handleSortChange(column.sortField!)}
+                        IconComponent={
+                          sortDirection === 'asc' ? ArrowUpwardIcon : ArrowDownwardIcon
+                        }
+                      >
+                        {column.label}
+                      </TableSortLabel>
+                    ) : (
+                      column.label
+                    )}
+                  </TableCell>
+                )
+              )}
+              {canModerate && <TableCell width={120}>Actions</TableCell>}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {filteredDiscussions.map((discussion) => {
+              const isSelected = selectedIds.has(discussion.id);
+              const hasUnread = (discussion.numUnreadPosts || 0) > 0;
+
+              return (
+                <TableRow
+                  key={discussion.id}
+                  data-discussion-id={discussion.id}
+                  hover
+                  onClick={() => handleDiscussionClick(discussion.id)}
+                  onKeyDown={(e) => handleKeyDown(e, discussion.id)}
+                  tabIndex={0}
+                  role="row"
+                  aria-selected={isSelected}
+                  selected={isSelected}
+                  sx={{
+                    cursor: 'pointer',
+                    backgroundColor: discussion.pinned
+                      ? 'action.hover'
+                      : 'inherit',
+                    '&:focus': {
+                      outline: `2px solid ${theme.palette.primary.main}`,
+                      outlineOffset: -2,
+                    },
+                  }}
+                >
+                  {showSelection && canModerate && (
+                    <TableCell padding="checkbox">
+                      <Checkbox
+                        checked={isSelected}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSelectDiscussion(discussion.id);
+                        }}
+                        inputProps={{
+                          'aria-label': `Select discussion: ${discussion.name}`,
+                        }}
+                      />
+                    </TableCell>
+                  )}
+
+                  {/* Discussion title cell */}
+                  <TableCell component="th" scope="row">
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      {hasUnread && (
+                        <Badge
+                          variant="dot"
+                          color="primary"
+                          aria-label="Has unread posts"
+                        />
+                      )}
+                      <Box>
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          alignItems="center"
+                          flexWrap="wrap"
+                        >
+                          <Typography
+                            variant="body1"
+                            component="span"
+                            sx={{
+                              fontWeight: hasUnread ? 700 : 400,
+                            }}
+                          >
+                            {discussion.name}
+                          </Typography>
+                          {discussion.pinned && (
+                            <Tooltip title="Pinned discussion">
+                              <Chip
+                                icon={<PinIcon />}
+                                label="Pinned"
+                                size="small"
+                                color="primary"
+                                variant="outlined"
+                              />
+                            </Tooltip>
+                          )}
+                          {discussion.locked && (
+                            <Tooltip title="Locked - no new replies">
+                              <Chip
+                                icon={<LockIcon />}
+                                label="Locked"
+                                size="small"
+                                color="warning"
+                                variant="outlined"
+                              />
+                            </Tooltip>
+                          )}
+                        </Stack>
+                        {hasUnread && (
+                          <Typography
+                            variant="caption"
+                            color="primary"
+                            sx={{ display: 'block' }}
+                          >
+                            {discussion.numUnreadPosts} unread{' '}
+                            {discussion.numUnreadPosts === 1 ? 'post' : 'posts'}
+                          </Typography>
+                        )}
+                      </Box>
+                    </Stack>
+                  </TableCell>
+
+                  {/* Author cell */}
+                  {!isSmallScreen && (
+                    <TableCell>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Avatar
+                          src={discussion.userPictureUrl || undefined}
+                          alt={discussion.userFullName || 'Unknown'}
+                          sx={{ width: 32, height: 32 }}
+                        >
+                          {discussion.userFullName?.[0]?.toUpperCase() || (
+                            <PersonIcon />
+                          )}
+                        </Avatar>
+                        <Box>
+                          <Typography variant="body2">
+                            {discussion.userFullName || 'Unknown'}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {formatTimestamp(discussion.created)}
+                          </Typography>
+                        </Box>
+                      </Stack>
+                    </TableCell>
+                  )}
+
+                  {/* Replies cell */}
+                  {!isSmallScreen && (
+                    <TableCell align="center">
+                      <Stack direction="row" spacing={0.5} alignItems="center" justifyContent="center">
+                        <CommentIcon fontSize="small" color="action" />
+                        <Typography variant="body2">
+                          {discussion.numReplies || 0}
+                        </Typography>
+                      </Stack>
+                    </TableCell>
+                  )}
+
+                  {/* Last post cell */}
+                  {!isSmallScreen && (
+                    <TableCell>
+                      {discussion.lastPostAuthor ? (
+                        <Box>
+                          <Typography variant="body2">
+                            {discussion.lastPostAuthor}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {formatTimestamp(discussion.timeModified || discussion.created)}
+                          </Typography>
+                        </Box>
+                      ) : (
+                        <Typography variant="body2" color="text.secondary">
+                          No replies yet
+                        </Typography>
+                      )}
+                    </TableCell>
+                  )}
+
+                  {/* Actions cell */}
+                  {canModerate && (
+                    <TableCell>
+                      <Stack direction="row" spacing={0.5}>
+                        {canPinDiscussions && (
+                          <Tooltip
+                            title={discussion.pinned ? 'Unpin discussion' : 'Pin discussion'}
+                          >
+                            <IconButton
+                              size="small"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (onBulkAction) {
+                                  onBulkAction([discussion.id], 'pin');
+                                }
+                              }}
+                              aria-label={
+                                discussion.pinned
+                                  ? 'Unpin discussion'
+                                  : 'Pin discussion'
+                              }
+                              color={discussion.pinned ? 'primary' : 'default'}
+                            >
+                              <PinIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                        {canLockDiscussions && (
+                          <Tooltip
+                            title={discussion.locked ? 'Unlock discussion' : 'Lock discussion'}
+                          >
+                            <IconButton
+                              size="small"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (onBulkAction) {
+                                  onBulkAction([discussion.id], 'lock');
+                                }
+                              }}
+                              aria-label={
+                                discussion.locked
+                                  ? 'Unlock discussion'
+                                  : 'Lock discussion'
+                              }
+                              color={discussion.locked ? 'warning' : 'default'}
+                            >
+                              <LockIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                        {canDeleteDiscussions && (
+                          <Tooltip title="Delete discussion">
+                            <IconButton
+                              size="small"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (
+                                  window.confirm(
+                                    'Are you sure you want to delete this discussion?'
+                                  )
+                                ) {
+                                  if (onBulkAction) {
+                                    onBulkAction([discussion.id], 'delete');
+                                  }
+                                }
+                              }}
+                              aria-label="Delete discussion"
+                              color="error"
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                      </Stack>
+                    </TableCell>
+                  )}
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </TableContainer>
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
+      {pagination.totalPages > 1 && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
           <Pagination
-            count={totalPages}
-            page={currentPage}
-            onChange={(_, page) => {
-              setCurrentPage(page);
-            }}
-            color="primary"
-            showFirstButton
-            showLastButton
+            currentPage={pagination.currentPage}
+            totalPages={pagination.totalPages}
+            totalItems={pagination.totalItems}
+            itemsPerPage={pagination.itemsPerPage}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+            pageSizeOptions={PAGE_SIZE_OPTIONS}
+            showFirstLast
+            showPageSize
+            variant="table"
             aria-label="Discussion list pagination"
           />
         </Box>
       )}
-
-      {/* Mobile action menu */}
-      <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
-        {activeDiscussionId && permissions.canPin && (
-          <MenuItem
-            onClick={() => {
-              pinMutation.mutate(activeDiscussionId);
-              handleMenuClose();
-            }}
-          >
-            <PinIcon sx={{ mr: 1 }} />
-            {discussions.find((d) => d.id === activeDiscussionId)?.isPinned ? 'Unpin' : 'Pin'}
-          </MenuItem>
-        )}
-        {activeDiscussionId && permissions.canLock && (
-          <MenuItem
-            onClick={() => {
-              lockMutation.mutate(activeDiscussionId);
-              handleMenuClose();
-            }}
-          >
-            <LockIcon sx={{ mr: 1 }} />
-            {discussions.find((d) => d.id === activeDiscussionId)?.isLocked ? 'Unlock' : 'Lock'}
-          </MenuItem>
-        )}
-        {activeDiscussionId && permissions.canDelete && (
-          <MenuItem
-            onClick={() => {
-              if (window.confirm('Are you sure you want to delete this discussion?')) {
-                deleteMutation.mutate(activeDiscussionId);
-              }
-              handleMenuClose();
-            }}
-            sx={{ color: 'error.main' }}
-          >
-            <DeleteIcon sx={{ mr: 1 }} />
-            Delete
-          </MenuItem>
-        )}
-      </Menu>
     </Box>
   );
 }
