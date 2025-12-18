@@ -22,19 +22,17 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { renderHook, waitFor, cleanup } from '@testing-library/react';
+import { renderHook, waitFor, cleanup, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
-import React from 'react';
 import type { ReactNode } from 'react';
 
 // Internal imports from depends_on_files
 import { useWiki, getWikiQueryKey, getAllWikisQueryKey } from '@/features/activities/wiki/hooks/useWiki';
-import { fetchWiki } from '@/features/activities/wiki/api/wikiApi';
 import type { Wiki } from '@/features/activities/wiki/types/wiki.types';
-import { createTestQueryClient } from '@/tests/helpers/render';
-import { generateMockId } from '@/tests/helpers/mockData';
-import { server } from '@/tests/mocks/server';
+import { createTestQueryClient } from '@tests/helpers/render';
+import { generateMockId } from '@tests/helpers/mockData';
+import { server } from '@tests/mocks/server';
 
 // ============================================================================
 // MOCK DATA FACTORIES
@@ -724,12 +722,16 @@ describe('useWiki Hook', () => {
 
     it('should show isFetching state during refetch', async () => {
       let fetchCount = 0;
+      const fetchPromises: { resolve: () => void }[] = [];
 
       server.use(
         http.get(`*/api/v1/wiki/${testWikiId}`, async () => {
           fetchCount++;
+          // For all requests after the first, wait for test to release
           if (fetchCount > 1) {
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise<void>(resolve => {
+              fetchPromises.push({ resolve });
+            });
           }
           return HttpResponse.json({
             success: true,
@@ -738,26 +740,57 @@ describe('useWiki Hook', () => {
         })
       );
 
+      // Use a custom query client to prevent automatic refetching
+      const testClient = new QueryClient({
+        defaultOptions: {
+          queries: {
+            retry: false,
+            staleTime: Infinity, // Prevent auto-refetch
+            gcTime: 5 * 60 * 1000,
+            refetchOnWindowFocus: false,
+            refetchOnMount: false,
+            refetchOnReconnect: false,
+          },
+        },
+      });
+
       const { result } = renderHook(
         () => useWiki(testWikiId),
-        { wrapper: createWrapper(queryClient) }
+        { wrapper: createWrapper(testClient) }
       );
 
+      // Wait for initial fetch to complete
       await waitFor(() => {
         expect(result.current.isSuccess).toBe(true);
       });
+      expect(result.current.isFetching).toBe(false);
 
-      // Trigger refetch
-      const refetchPromise = result.current.refetch();
+      // Trigger refetch - the handler will now block
+      let refetchPromise: ReturnType<typeof result.current.refetch>;
+      act(() => {
+        refetchPromise = result.current.refetch();
+      });
 
-      // Should be fetching but not loading (has data)
+      // Wait for isFetching to become true (fetch is in progress)
       await waitFor(() => {
         expect(result.current.isFetching).toBe(true);
       });
+
+      // Verify loading is false (we have data) and data is still present
       expect(result.current.isLoading).toBe(false);
       expect(result.current.data).toBeDefined();
 
-      await refetchPromise;
+      // Release the blocked fetch to complete
+      fetchPromises.forEach(p => p.resolve());
+
+      // Wait for refetch to complete
+      await refetchPromise!;
+      await waitFor(() => {
+        expect(result.current.isFetching).toBe(false);
+      });
+
+      // Clean up
+      testClient.clear();
     });
   });
 
@@ -913,6 +946,20 @@ describe('useWiki Hook', () => {
 
   describe('Optimistic Updates', () => {
     it('should support optimistic updates for wiki metadata', async () => {
+      // Create a custom query client with staleTime: Infinity to prevent refetching during test
+      const testClient = new QueryClient({
+        defaultOptions: {
+          queries: {
+            retry: false,
+            staleTime: Infinity, // Never consider data stale to prevent auto-refetch
+            gcTime: 5 * 60 * 1000,
+            refetchOnWindowFocus: false,
+            refetchOnMount: false,
+            refetchOnReconnect: false,
+          },
+        },
+      });
+
       server.use(
         http.get(`*/api/v1/wiki/${testWikiId}`, () => {
           return HttpResponse.json({
@@ -924,22 +971,47 @@ describe('useWiki Hook', () => {
 
       const { result } = renderHook(
         () => useWiki(testWikiId),
-        { wrapper: createWrapper(queryClient) }
+        { wrapper: createWrapper(testClient) }
       );
 
       await waitFor(() => {
         expect(result.current.isSuccess).toBe(true);
       });
+
+      // Store original name for comparison
+      const originalName = result.current.data?.name;
+      expect(originalName).toBe(mockWiki.name);
 
       // Optimistically update the cache
       const updatedWiki = { ...mockWiki, name: 'Optimistically Updated' };
-      queryClient.setQueryData(['wikis', testWikiId], updatedWiki);
+      act(() => {
+        testClient.setQueryData(['wikis', testWikiId], updatedWiki);
+      });
 
-      // Verify the update is reflected
-      expect(result.current.data?.name).toBe('Optimistically Updated');
+      // Verify the update is reflected (wait for re-render)
+      await waitFor(() => {
+        expect(result.current.data?.name).toBe('Optimistically Updated');
+      });
+
+      // Clean up
+      testClient.clear();
     });
 
     it('should allow manual cache update with setQueryData', async () => {
+      // Create a custom query client with staleTime: Infinity to prevent refetching during test
+      const testClient = new QueryClient({
+        defaultOptions: {
+          queries: {
+            retry: false,
+            staleTime: Infinity, // Never consider data stale to prevent auto-refetch
+            gcTime: 5 * 60 * 1000,
+            refetchOnWindowFocus: false,
+            refetchOnMount: false,
+            refetchOnReconnect: false,
+          },
+        },
+      });
+
       server.use(
         http.get(`*/api/v1/wiki/${testWikiId}`, () => {
           return HttpResponse.json({
@@ -951,20 +1023,32 @@ describe('useWiki Hook', () => {
 
       const { result } = renderHook(
         () => useWiki(testWikiId),
-        { wrapper: createWrapper(queryClient) }
+        { wrapper: createWrapper(testClient) }
       );
 
       await waitFor(() => {
         expect(result.current.isSuccess).toBe(true);
       });
 
+      // Store original value for comparison
+      const originalCanCreate = result.current.data?.cancreatepages;
+      expect(originalCanCreate).toBe(true);
+
       // Update cache directly
-      queryClient.setQueryData(['wikis', testWikiId], (old: Wiki | undefined) => {
-        if (!old) return old;
-        return { ...old, cancreatepages: false };
+      act(() => {
+        testClient.setQueryData(['wikis', testWikiId], (old: Wiki | undefined) => {
+          if (!old) return old;
+          return { ...old, cancreatepages: false };
+        });
       });
 
-      expect(result.current.data?.cancreatepages).toBe(false);
+      // Verify the update is reflected (wait for re-render)
+      await waitFor(() => {
+        expect(result.current.data?.cancreatepages).toBe(false);
+      });
+
+      // Clean up
+      testClient.clear();
     });
   });
 
@@ -974,7 +1058,10 @@ describe('useWiki Hook', () => {
 
   describe('Parallel Queries', () => {
     it('should support fetching multiple wikis in parallel', async () => {
-      const wikiIds = [generateMockId(), generateMockId(), generateMockId()];
+      const wikiId1 = generateMockId();
+      const wikiId2 = generateMockId();
+      const wikiId3 = generateMockId();
+      const wikiIds = [wikiId1, wikiId2, wikiId3] as const;
       const mockWikis = wikiIds.map(id => createMockWiki({ id }));
 
       wikiIds.forEach((id, index) => {
@@ -990,17 +1077,17 @@ describe('useWiki Hook', () => {
 
       // Render hooks for all wikis
       const { result: result1 } = renderHook(
-        () => useWiki(wikiIds[0]),
+        () => useWiki(wikiId1),
         { wrapper: createWrapper(queryClient) }
       );
 
       const { result: result2 } = renderHook(
-        () => useWiki(wikiIds[1]),
+        () => useWiki(wikiId2),
         { wrapper: createWrapper(queryClient) }
       );
 
       const { result: result3 } = renderHook(
-        () => useWiki(wikiIds[2]),
+        () => useWiki(wikiId3),
         { wrapper: createWrapper(queryClient) }
       );
 
@@ -1010,9 +1097,9 @@ describe('useWiki Hook', () => {
         expect(result3.current.isSuccess).toBe(true);
       });
 
-      expect(result1.current.data?.id).toBe(wikiIds[0]);
-      expect(result2.current.data?.id).toBe(wikiIds[1]);
-      expect(result3.current.data?.id).toBe(wikiIds[2]);
+      expect(result1.current.data?.id).toBe(wikiId1);
+      expect(result2.current.data?.id).toBe(wikiId2);
+      expect(result3.current.data?.id).toBe(wikiId3);
     });
   });
 
@@ -1022,12 +1109,10 @@ describe('useWiki Hook', () => {
 
   describe('Query Cancellation', () => {
     it('should cancel pending queries on component unmount', async () => {
-      let requestCompleted = false;
-
       server.use(
         http.get(`*/api/v1/wiki/${testWikiId}`, async () => {
+          // Simulate a slow request that won't complete before unmount
           await new Promise(resolve => setTimeout(resolve, 500));
-          requestCompleted = true;
           return HttpResponse.json({
             success: true,
             data: mockWiki,
@@ -1046,7 +1131,7 @@ describe('useWiki Hook', () => {
       // Unmount before request completes
       unmount();
 
-      // Wait a bit and verify request didn't complete (was cancelled)
+      // Wait a bit and verify the hook's result state is still initial
       await new Promise(resolve => setTimeout(resolve, 100));
       
       // The request may or may not complete depending on React Query's internal handling
@@ -1458,16 +1543,22 @@ describe('useWiki Hook', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
+      // Ensure we captured states
+      expect(states.length).toBeGreaterThan(0);
+      
       // First state should be loading/pending
-      expect(states[0].isPending).toBe(true);
-      expect(states[0].isLoading).toBe(true);
-      expect(states[0].isFetching).toBe(true);
+      const firstState = states[0];
+      expect(firstState).toBeDefined();
+      expect(firstState!.isPending).toBe(true);
+      expect(firstState!.isLoading).toBe(true);
+      expect(firstState!.isFetching).toBe(true);
 
       // Final state should be success
       const lastState = states[states.length - 1];
-      expect(lastState.isSuccess).toBe(true);
-      expect(lastState.isLoading).toBe(false);
-      expect(lastState.isFetching).toBe(false);
+      expect(lastState).toBeDefined();
+      expect(lastState!.isSuccess).toBe(true);
+      expect(lastState!.isLoading).toBe(false);
+      expect(lastState!.isFetching).toBe(false);
     });
   });
 });
