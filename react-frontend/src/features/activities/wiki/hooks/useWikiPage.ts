@@ -63,11 +63,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type {
-  UseQueryResult,
-  UseMutationResult,
-  QueryClient,
-} from '@tanstack/react-query';
+import type { UseMutationResult } from '@tanstack/react-query';
 
 // Internal imports from wiki API module
 import {
@@ -585,7 +581,10 @@ export function useWikiPage(
   });
 
   // ========== Edit Page Mutation ==========
-  const editMutation = useMutation<SaveWikiPageResult, Error, EditWikiPageParams>({
+  // Context type for optimistic updates - stores previous page for rollback
+  type EditMutationContext = { previousPage: WikiPage | undefined };
+  
+  const editMutation = useMutation<SaveWikiPageResult, Error, EditWikiPageParams, EditMutationContext>({
     mutationFn: async (params: EditWikiPageParams) => {
       const saveRequest: WikiSaveRequest = {
         content: params.content,
