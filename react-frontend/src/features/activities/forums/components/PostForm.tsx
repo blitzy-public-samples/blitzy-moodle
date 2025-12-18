@@ -1,173 +1,358 @@
 /**
  * PostForm Component
  *
- * Form component for creating, replying to, and editing forum posts.
- * Supports rich text editing, file attachments, draft auto-save, and preview.
+ * Forum post creation and editing form component with comprehensive features:
+ * - react-hook-form validation with Zod schema
+ * - Integrated rich text editor (TinyMCE) for formatted content
+ * - File attachment upload with drag-and-drop support
+ * - Post subject field with character limit
+ * - Private reply option for direct teacher-student communication
+ * - Autosave draft functionality with debounced API calls
+ * - Character/word count display with visual feedback
+ * - Submit and cancel actions with optimistic updates
+ * - Comprehensive error handling
+ * - WCAG 2.1 AA accessibility (keyboard navigation, proper labeling, error announcements)
  *
- * Features:
- * - Three modes: new discussion, reply to post, edit existing post
- * - Rich text editing with formatting controls
- * - File attachment with drag-and-drop support
- * - Auto-save drafts every 30 seconds
- * - Form validation and error handling
- * - Preview mode
- * - Moderator options (pin, lock)
- * - Subscription management
- * - Accessibility compliant
+ * Maps to PHP: public/mod/forum/post.php
+ * Template reference: public/mod/forum/templates/forum_discussion_nested_v2_post_reply.mustache
  *
  * @module features/activities/forums/components/PostForm
  */
 
-import type React from 'react';
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+  type ChangeEvent,
+} from 'react';
+import { useForm, Controller, type SubmitHandler } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Button,
-  TextField,
-  FormControlLabel,
-  Checkbox,
   Typography,
-  Alert,
-  Paper,
-  Divider,
-  IconButton,
-  Chip,
+  Checkbox,
+  FormControlLabel,
   LinearProgress,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  FormHelperText,
+  Stack,
+  CircularProgress,
+  Tooltip,
+  Collapse,
 } from '@mui/material';
 import {
-  AttachFile as AttachFileIcon,
-  Delete as DeleteIcon,
-  Preview as PreviewIcon,
-  Save as SaveIcon,
   Send as SendIcon,
-  Close as CloseIcon,
-  FormatBold as FormatBoldIcon,
-  FormatItalic as FormatItalicIcon,
-  InsertLink as InsertLinkIcon,
-  FormatListBulleted as FormatListBulletedIcon,
-  EmojiEmotions as EmojiEmotionsIcon,
+  Cancel as CancelIcon,
+  Save as SaveIcon,
+  AttachFile as AttachFileIcon,
 } from '@mui/icons-material';
-import { useCreatePost } from '../hooks/useCreatePost';
-import { useCreateDiscussion } from '../hooks/useCreateDiscussion';
-import { useUpdatePost } from '../hooks/useUpdatePost';
-import { useSaveDraft } from '../hooks/useSaveDraft';
-import { useMultiFileUpload } from '@/hooks/useMultiFileUpload';
-import type { Post, PostResponse } from '../types/forum.types';
-import type { DiscussionResponse } from '../api/forumApi';
+
+// Internal imports from dependencies
+import { useCreatePost, useUpdatePost } from '../hooks/useDiscussion';
+import type {
+  CreatePostData,
+  UpdatePostData,
+  DiscussionPost,
+  ForumAttachment,
+} from '../types/forum.types';
+import { FormInput } from '@/components/forms/FormInput';
+import { RichTextEditor } from '@/components/editor/RichTextEditor';
+import { FormFileUpload } from '@/components/forms/FormFileUpload';
+import { useDebounce } from '@/hooks/useDebounce';
+import { useToast } from '@/hooks/useToast';
+import { Modal } from '@/components/feedback/Modal';
+import { Alert } from '@/components/feedback/Alert';
+
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+
+/**
+ * Form validation constants matching Moodle's forum post requirements
+ */
+const SUBJECT_MAX_LENGTH = 255;
+const MESSAGE_MIN_LENGTH = 20;
+const MESSAGE_MAX_LENGTH = 65535;
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILES = 5;
+const ACCEPTED_FILE_TYPES = [
+  'image/*',
+  'application/pdf',
+  '.doc',
+  '.docx',
+  '.ppt',
+  '.pptx',
+  '.xls',
+  '.xlsx',
+  '.zip',
+  '.txt',
+];
+const AUTOSAVE_DELAY = 2000; // 2 seconds debounce for autosave
+
+/**
+ * Local storage key prefix for draft storage
+ */
+const DRAFT_STORAGE_KEY_PREFIX = 'moodle_forum_draft_';
+
+// ============================================================================
+// VALIDATION SCHEMA
+// ============================================================================
+
+/**
+ * Zod schema for post form validation
+ * Validates subject (required, max length) and message content (required, min/max length)
+ */
+const postFormSchema = z.object({
+  subject: z
+    .string()
+    .max(SUBJECT_MAX_LENGTH, {
+      message: `Subject must be ${SUBJECT_MAX_LENGTH} characters or less`,
+    })
+    .optional()
+    .or(z.literal('')),
+  message: z
+    .string()
+    .min(MESSAGE_MIN_LENGTH, {
+      message: `Message must be at least ${MESSAGE_MIN_LENGTH} characters`,
+    })
+    .max(MESSAGE_MAX_LENGTH, {
+      message: `Message must be ${MESSAGE_MAX_LENGTH} characters or less`,
+    }),
+  isPrivateReply: z.boolean().default(false),
+  attachments: z.array(z.instanceof(File)).optional(),
+});
+
+/**
+ * Type inference from Zod schema
+ */
+type PostFormValues = z.infer<typeof postFormSchema>;
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
 /**
- * Form data structure
+ * Post form operation mode
  */
-interface PostFormData {
-  /** Subject of the discussion (for new discussions only) */
-  subject?: string;
-  /** Message content */
-  message: string;
-  /** Whether user wants to subscribe to the discussion */
-  subscribe: boolean;
-  /** Email notification preference */
-  emailNotification: 'none' | 'digest' | 'immediate';
-  /** Pin discussion (moderator only, new discussions only) */
-  pinned?: boolean;
-  /** Lock discussion (moderator only, new discussions only) */
-  locked?: boolean;
-  /** Tags or categories */
-  tags?: string[];
-}
+export type PostFormMode = 'create' | 'reply' | 'edit';
 
 /**
- * Error structure with field-level validation errors
- */
-interface ErrorWithFields {
-  code?: string;
-  message?: string;
-  fields?: Record<string, string>;
-}
-
-/**
- * Type guard to check if error has field-level validation errors
- */
-function hasFieldErrors(error: unknown): error is ErrorWithFields {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'fields' in error &&
-    typeof (error as ErrorWithFields).fields === 'object'
-  );
-}
-
-/**
- * Type guard to check if error has a code property
- */
-function hasErrorCode(error: unknown): error is ErrorWithFields {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    typeof (error as ErrorWithFields).code === 'string'
-  );
-}
-
-/**
- * Props for the PostForm component
+ * Props interface for the PostForm component
  */
 export interface PostFormProps {
-  /** Forum ID */
+  /**
+   * Form mode: create new discussion, reply to post, or edit existing post
+   */
+  mode: PostFormMode;
+
+  /**
+   * Forum ID the post belongs to
+   */
   forumId: number;
-  /** Discussion ID (null for new discussion) */
-  discussionId: number | null;
-  /** Parent post ID (for replies) */
-  parentPostId?: number | null;
-  /** Parent post to quote/reply to (includes author and message) */
-  parentPost?: {
-    id?: number;
-    author?: string;
-    subject?: string;
-    message: string;
-  } | null;
-  /** Post to edit (null for new post/discussion) */
-  post?: Post | null;
-  /** Existing draft data */
-  draft?: {
-    subject?: string;
-    message: string;
-    subscribe?: boolean;
-  } | null;
-  /** Whether user can moderate (pin, lock discussions) */
-  canModerate?: boolean;
-  /** Whether forum supports tags */
-  supportsTags?: boolean;
-  /** Available tags */
-  availableTags?: string[];
-  /** Callback on successful submission */
-  onSubmitSuccess?: (response: PostResponse | DiscussionResponse) => void;
-  /** Callback on cancel */
+
+  /**
+   * Discussion ID (required for reply and edit modes)
+   */
+  discussionId?: number;
+
+  /**
+   * Parent post ID for threaded replies
+   */
+  parentPostId?: number;
+
+  /**
+   * Existing post data for edit mode
+   */
+  existingPost?: DiscussionPost;
+
+  /**
+   * Whether the current user can make private replies (e.g., teachers)
+   */
+  canMakePrivateReply?: boolean;
+
+  /**
+   * Whether subject field should be shown (typically for new discussions)
+   */
+  showSubject?: boolean;
+
+  /**
+   * Default subject value (can be prefilled for replies)
+   */
+  defaultSubject?: string;
+
+  /**
+   * Callback fired on successful submission
+   */
+  onSuccess?: (post: DiscussionPost) => void;
+
+  /**
+   * Callback fired when user cancels the form
+   */
   onCancel?: () => void;
+
+  /**
+   * Custom submit button text
+   */
+  submitButtonText?: string;
+
+  /**
+   * Custom cancel button text
+   */
+  cancelButtonText?: string;
+
+  /**
+   * Whether to show autosave indicator
+   * @default true
+   */
+  showAutosave?: boolean;
+
+  /**
+   * Whether the form should be compact (reduced padding and margins)
+   * @default false
+   */
+  compact?: boolean;
+
+  /**
+   * Accessible label for the form (for screen readers)
+   */
+  'aria-label'?: string;
+
+  /**
+   * Test ID for automated testing
+   */
+  'data-testid'?: string;
+}
+
+/**
+ * Interface for draft data stored in localStorage
+ */
+interface DraftData {
+  subject?: string;
+  message: string;
+  isPrivateReply: boolean;
+  timestamp: number;
 }
 
 // ============================================================================
-// CONSTANTS
+// HELPER FUNCTIONS
 // ============================================================================
 
-const SUBJECT_MIN_LENGTH = 3;
-const SUBJECT_MAX_LENGTH = 255;
-const MESSAGE_MIN_LENGTH = 10;
-const MESSAGE_MAX_LENGTH = 30000;
-const AUTO_SAVE_INTERVAL = 30000; // 30 seconds
+/**
+ * Counts words in HTML content by stripping tags
+ * @param htmlContent - HTML string to count words in
+ * @returns Word count
+ */
+function countWords(htmlContent: string): number {
+  if (!htmlContent) return 0;
+
+  // Strip HTML tags
+  const textContent = htmlContent.replace(/<[^>]*>/g, '');
+
+  // Decode HTML entities
+  const decodedContent = textContent
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
+
+  // Split by whitespace and filter empty strings
+  const words = decodedContent
+    .trim()
+    .split(/\s+/)
+    .filter((word) => word.length > 0);
+
+  return words.length;
+}
+
+/**
+ * Counts characters in HTML content by stripping tags
+ * @param htmlContent - HTML string to count characters in
+ * @returns Character count
+ */
+function countCharacters(htmlContent: string): number {
+  if (!htmlContent) return 0;
+
+  // Strip HTML tags
+  const textContent = htmlContent.replace(/<[^>]*>/g, '');
+
+  // Decode HTML entities and count
+  const decodedContent = textContent
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
+
+  return decodedContent.length;
+}
+
+/**
+ * Generates a unique draft key based on form context
+ */
+function getDraftKey(
+  mode: PostFormMode,
+  forumId: number,
+  discussionId?: number,
+  parentPostId?: number,
+  postId?: number
+): string {
+  const keyParts = [DRAFT_STORAGE_KEY_PREFIX, mode, forumId];
+
+  if (discussionId) keyParts.push(`d${discussionId}`);
+  if (parentPostId) keyParts.push(`p${parentPostId}`);
+  if (postId) keyParts.push(`e${postId}`);
+
+  return keyParts.join('_');
+}
+
+/**
+ * Saves draft to localStorage
+ */
+function saveDraftToStorage(key: string, data: DraftData): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (error) {
+    // Storage might be full or disabled - fail silently
+    console.warn('Failed to save draft to localStorage:', error);
+  }
+}
+
+/**
+ * Loads draft from localStorage
+ */
+function loadDraftFromStorage(key: string): DraftData | null {
+  try {
+    const stored = localStorage.getItem(key);
+    if (!stored) return null;
+
+    const data = JSON.parse(stored) as DraftData;
+
+    // Check if draft is less than 24 hours old
+    const oneDayMs = 24 * 60 * 60 * 1000;
+    if (Date.now() - data.timestamp > oneDayMs) {
+      localStorage.removeItem(key);
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.warn('Failed to load draft from localStorage:', error);
+    return null;
+  }
+}
+
+/**
+ * Removes draft from localStorage
+ */
+function removeDraftFromStorage(key: string): void {
+  try {
+    localStorage.removeItem(key);
+  } catch (error) {
+    console.warn('Failed to remove draft from localStorage:', error);
+  }
+}
 
 // ============================================================================
 // COMPONENT
@@ -176,49 +361,107 @@ const AUTO_SAVE_INTERVAL = 30000; // 30 seconds
 /**
  * PostForm Component
  *
- * Comprehensive form for creating, replying to, and editing forum posts
- *
- * @param props - Component props
- * @returns PostForm component
+ * Comprehensive form for creating, replying to, and editing forum posts.
+ * Provides rich text editing, file attachments, autosave, and full accessibility.
  */
 export function PostForm({
+  mode,
   forumId,
   discussionId,
-  parentPostId = null,
-  parentPost = null,
-  post = null,
-  draft = null,
-  canModerate = false,
-  supportsTags = false,
-  availableTags = [],
-  onSubmitSuccess,
+  parentPostId,
+  existingPost,
+  canMakePrivateReply = false,
+  showSubject = false,
+  defaultSubject = '',
+  onSuccess,
   onCancel,
+  submitButtonText,
+  cancelButtonText = 'Cancel',
+  showAutosave = true,
+  compact = false,
+  'aria-label': ariaLabel,
+  'data-testid': dataTestId,
 }: PostFormProps): JSX.Element {
   // ============================================================================
-  // STATE AND REFS
+  // HOOKS
   // ============================================================================
 
-  const [isPreviewMode, setIsPreviewMode] = useState(false);
-  const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [networkError, setNetworkError] = useState<string | null>(null);
-  const [concurrentEditError, setConcurrentEditError] = useState(false);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [mentionQuery, setMentionQuery] = useState<string>('');
-  const [showMentionSuggestions, setShowMentionSuggestions] = useState(false);
+  const queryClient = useQueryClient();
+  const toast = useToast();
 
-  const [isSubmittingLocal, setIsSubmittingLocal] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const messageInputRef = useRef<HTMLTextAreaElement>(null);
+  // Mutation hooks for creating and updating posts
+  const createPostMutation = useCreatePost();
+  const updatePostMutation = useUpdatePost();
 
   // ============================================================================
-  // DETERMINE MODE
+  // STATE
   // ============================================================================
 
-  const isNewDiscussion = discussionId === null;
-  const isEditing = post !== null;
-  const isReplying = !isNewDiscussion && !isEditing;
+  // Confirmation dialog state for unsaved changes
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+
+  // Autosave state
+  const [lastSavedTime, setLastSavedTime] = useState<Date | null>(null);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+
+  // Error state for inline alerts
+  const [formError, setFormError] = useState<string | null>(null);
+
+  // Track if form has been modified since last save
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // Reference for announcements (accessibility)
+  const announcementRef = useRef<HTMLDivElement>(null);
+
+  // ============================================================================
+  // COMPUTED VALUES
+  // ============================================================================
+
+  // Generate draft key based on context
+  const draftKey = useMemo(
+    () =>
+      getDraftKey(
+        mode,
+        forumId,
+        discussionId,
+        parentPostId,
+        existingPost?.id
+      ),
+    [mode, forumId, discussionId, parentPostId, existingPost?.id]
+  );
+
+  // Determine default values (load from draft or existing post)
+  const defaultValues = useMemo((): PostFormValues => {
+    // Try to load from localStorage first
+    const draft = loadDraftFromStorage(draftKey);
+
+    if (draft) {
+      return {
+        subject: draft.subject || defaultSubject,
+        message: draft.message,
+        isPrivateReply: draft.isPrivateReply,
+        attachments: [],
+      };
+    }
+
+    // Fall back to existing post data (edit mode) or defaults
+    if (existingPost) {
+      return {
+        subject: existingPost.subject || '',
+        message: existingPost.message || '',
+        isPrivateReply: existingPost.privatereplyto !== null,
+        attachments: [],
+      };
+    }
+
+    // Default values for new post/reply
+    return {
+      subject: defaultSubject,
+      message: '',
+      isPrivateReply: false,
+      attachments: [],
+    };
+  }, [draftKey, existingPost, defaultSubject]);
 
   // ============================================================================
   // FORM SETUP
@@ -228,1420 +471,656 @@ export function PostForm({
     control,
     handleSubmit,
     watch,
-    setValue,
-    getValues,
-    formState: { errors, isDirty },
     reset,
-    setError,
-  } = useForm<PostFormData>({
-    defaultValues: {
-      subject: draft?.subject ?? post?.subject ?? '',
-      message: draft?.message ?? post?.message ?? '',
-      subscribe: draft?.subscribe ?? false,
-      emailNotification: 'digest',
-      pinned: post?.pinned ?? false,
-      locked: post?.locked ?? false,
-      tags: post?.tags ?? [],
-    },
+    setValue,
+    formState: { errors, isSubmitting, isDirty },
+  } = useForm<PostFormValues>({
+    resolver: zodResolver(postFormSchema),
+    defaultValues,
+    mode: 'onBlur',
   });
 
-  const formData = watch();
+  // Watch form values for character count and autosave
+  const watchedMessage = watch('message');
+  const watchedSubject = watch('subject');
+  const watchedIsPrivateReply = watch('isPrivateReply');
+
+  // Debounced values for autosave
+  const debouncedMessage = useDebounce(watchedMessage, AUTOSAVE_DELAY);
+  const debouncedSubject = useDebounce(watchedSubject || '', AUTOSAVE_DELAY);
 
   // ============================================================================
-  // HOOKS
+  // CHARACTER/WORD COUNTS
   // ============================================================================
 
-  // Draft management
-  const draftKey = isNewDiscussion
-    ? `forum-${forumId}-new-discussion`
-    : isEditing
-      ? `forum-${forumId}-edit-post-${post.id}`
-      : `forum-${forumId}-reply-${discussionId}`;
+  const messageCharCount = useMemo(
+    () => countCharacters(watchedMessage),
+    [watchedMessage]
+  );
 
-  const { saveDraft, loadDraft, deleteDraft, lastSavedAt } = useSaveDraft({
+  const messageWordCount = useMemo(
+    () => countWords(watchedMessage),
+    [watchedMessage]
+  );
+
+  const subjectCharCount = useMemo(
+    () => (watchedSubject ? watchedSubject.length : 0),
+    [watchedSubject]
+  );
+
+  // Progress values for visual feedback
+  const messageProgress = useMemo(
+    () => Math.min((messageCharCount / MESSAGE_MAX_LENGTH) * 100, 100),
+    [messageCharCount]
+  );
+
+  const subjectProgress = useMemo(
+    () => Math.min((subjectCharCount / SUBJECT_MAX_LENGTH) * 100, 100),
+    [subjectCharCount]
+  );
+
+  // Progress color based on usage
+  const getProgressColor = (
+    progress: number
+  ): 'primary' | 'warning' | 'error' => {
+    if (progress >= 95) return 'error';
+    if (progress >= 80) return 'warning';
+    return 'primary';
+  };
+
+  // ============================================================================
+  // AUTOSAVE EFFECT
+  // ============================================================================
+
+  useEffect(() => {
+    // Don't autosave if form is pristine or being submitted
+    if (!isDirty || isSubmitting) return;
+
+    // Save draft to localStorage
+    const draftData: DraftData = {
+      subject: debouncedSubject,
+      message: debouncedMessage,
+      isPrivateReply: watchedIsPrivateReply,
+      timestamp: Date.now(),
+    };
+
+    setIsSavingDraft(true);
+    saveDraftToStorage(draftKey, draftData);
+
+    // Update UI
+    setLastSavedTime(new Date());
+    setHasUnsavedChanges(false);
+    setIsSavingDraft(false);
+
+    // Show subtle notification
+    if (showAutosave) {
+      toast.info('Draft saved', { duration: 1500 });
+    }
+  }, [
+    debouncedMessage,
+    debouncedSubject,
+    watchedIsPrivateReply,
+    isDirty,
+    isSubmitting,
     draftKey,
-    autoSaveInterval: AUTO_SAVE_INTERVAL,
-  });
+    showAutosave,
+    toast,
+  ]);
 
-  // File management constants
-  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-  const MAX_FILES = 5;
-
-  // File upload management using custom hook
-  const {
-    files,
-    addFiles,
-    removeFile,
-    clearFiles,
-    totalSize,
-  } = useMultiFileUpload({
-    maxFiles: MAX_FILES,
-    maxSize: MAX_FILE_SIZE,
-    maxTotalSize: 50 * 1024 * 1024, // 50MB total
-    allowedTypes: [
-      'image/jpeg',
-      'image/jpg',
-      'image/png',
-      'image/gif',
-      'image/webp',
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'text/plain',
-      'application/zip',
-    ],
-    onValidationError: (error) => {
-      setValidationErrors((prev) => [...prev, error]);
-    },
-  });
-
-  // Create preview URLs for image files (manage cleanup)
-  const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
-  // Track all created URLs for cleanup using ref to avoid circular dependency
-  const createdUrlsRef = useRef<Set<string>>(new Set());
-
-  // Generate preview URLs for new image files
+  // Track unsaved changes
   useEffect(() => {
-    const newPreviews: Record<string, string> = {};
-    const urlsToRevoke: string[] = [];
-
-    // Create previews for new files
-    setPreviewUrls((prevUrls) => {
-      files.forEach((file) => {
-        if (file.file.type.startsWith('image/') && !prevUrls[file.id]) {
-          const url = URL.createObjectURL(file.file);
-          newPreviews[file.id] = url;
-          createdUrlsRef.current.add(url); // Track created URL
-        }
-      });
-
-      // Find URLs to revoke (files that were removed)
-      Object.keys(prevUrls).forEach((fileId) => {
-        if (!files.find((f) => f.id === fileId)) {
-          const url = prevUrls[fileId];
-          if (url) {
-            urlsToRevoke.push(url);
-            createdUrlsRef.current.delete(url); // Remove from tracking
-          }
-        }
-      });
-
-      // Update preview URLs
-      if (Object.keys(newPreviews).length > 0 || urlsToRevoke.length > 0) {
-        const updated = { ...prevUrls, ...newPreviews };
-        urlsToRevoke.forEach((url) => {
-          const key = Object.keys(prevUrls).find((k) => prevUrls[k] === url);
-          if (key) {
-            delete updated[key];
-          }
-        });
-        return updated;
-      }
-
-      return prevUrls;
-    });
-
-    // Revoke old URLs
-    urlsToRevoke.forEach((url) => URL.revokeObjectURL(url));
-
-    // Cleanup on unmount: capture current URLs to revoke at effect run time
-    // We only revoke URLs that exist at the time this effect runs, which is correct
-    // because the next effect run will handle newly created URLs
-    const urlsToCleanup = Array.from(createdUrlsRef.current);
-    return () => {
-      urlsToCleanup.forEach((url) => URL.revokeObjectURL(url));
-    };
-  }, [files]);
-
-  // Create post mutation
-  const {
-    createPost,
-    isLoading: isCreating,
-    isError: isCreateError,
-    error: createError,
-  } = useCreatePost({
-    onSuccess: (data) => {
-      setIsSubmittingLocal(false);
-      deleteDraft();
-      clearFiles();
-      reset();
-      onSubmitSuccess?.(data);
-    },
-    onError: (error) => {
-      setIsSubmittingLocal(false);
-      if (error.message.includes('409')) {
-        setConcurrentEditError(true);
-      } else {
-        setNetworkError(error.message);
-      }
-    },
-  });
-
-  // Create discussion mutation
-  const {
-    createDiscussion,
-    isLoading: isCreatingDiscussion,
-    isError: isCreateDiscussionError,
-    error: createDiscussionError,
-  } = useCreateDiscussion({
-    onSuccess: (data) => {
-      setIsSubmittingLocal(false);
-      deleteDraft();
-      clearFiles();
-      reset();
-      onSubmitSuccess?.(data);
-    },
-    onError: (error) => {
-      setIsSubmittingLocal(false);
-      if (error.message.includes('409')) {
-        setConcurrentEditError(true);
-      } else {
-        setNetworkError(error.message);
-      }
-    },
-  });
-
-  // Update post mutation
-  const {
-    updatePost,
-    isLoading: isUpdating,
-    isError: isUpdateError,
-    error: updateError,
-  } = useUpdatePost({
-    onSuccess: (data) => {
-      setIsSubmittingLocal(false);
-      deleteDraft();
-      clearFiles();
-      reset();
-      onSubmitSuccess?.(data);
-    },
-    onError: (error) => {
-      setIsSubmittingLocal(false);
-      if (error.message.includes('409')) {
-        setConcurrentEditError(true);
-      } else {
-        setNetworkError(error.message);
-      }
-    },
-  });
-
-  const isSubmitting = isCreating || isCreatingDiscussion || isUpdating || isSubmittingLocal;
-
-  // ============================================================================
-  // EFFECTS
-  // ============================================================================
-
-  // Load draft on mount
-  useEffect(() => {
-    if (!isEditing && !draft) {
-      const savedDraft = loadDraft();
-      if (savedDraft) {
-        setValue('subject', savedDraft.subject ?? '');
-        setValue('message', savedDraft.message);
-        setValue('subscribe', savedDraft.subscribe ?? true);
-      }
-    }
-  }, [isEditing, draft, loadDraft, setValue]);
-
-  // Handle mutation errors
-  useEffect(() => {
-    if (isUpdateError && updateError) {
-      // Cast to unknown to use type guards
-      const err = updateError as unknown;
-
-      if (hasErrorCode(err) && err.code === 'CONCURRENT_EDIT') {
-        setConcurrentEditError(true);
-      } else if (updateError.message?.includes('409')) {
-        setConcurrentEditError(true);
-      } else if (hasFieldErrors(err)) {
-        // Handle server validation errors with field-level errors
-        const fieldErrors = err.fields;
-        if (fieldErrors) {
-          Object.keys(fieldErrors).forEach((field) => {
-            const errorMessage = fieldErrors[field];
-            if (errorMessage) {
-              setError(field as keyof PostFormData, {
-                type: 'server',
-                message: errorMessage,
-              });
-            }
-          });
-        }
-      } else {
-        const errorMessage = updateError.message ?? 'An error occurred';
-        setNetworkError(errorMessage);
-      }
-    }
-  }, [isUpdateError, updateError, setError]);
-
-  useEffect(() => {
-    if (isCreateError && createError) {
-      // Cast to unknown to use type guards
-      const err = createError as unknown;
-
-      if (hasErrorCode(err) && err.code === 'CONCURRENT_EDIT') {
-        setConcurrentEditError(true);
-      } else if (createError.message?.includes('409')) {
-        setConcurrentEditError(true);
-      } else if (hasFieldErrors(err)) {
-        // Handle server validation errors with field-level errors
-        const fieldErrors = err.fields;
-        if (fieldErrors) {
-          Object.keys(fieldErrors).forEach((field) => {
-            const errorMessage = fieldErrors[field];
-            if (errorMessage) {
-              setError(field as keyof PostFormData, {
-                type: 'server',
-                message: errorMessage,
-              });
-            }
-          });
-        }
-      } else {
-        const errorMessage = createError.message ?? 'An error occurred';
-        setNetworkError(errorMessage);
-      }
-    }
-  }, [isCreateError, createError, setError]);
-
-  useEffect(() => {
-    if (isCreateDiscussionError && createDiscussionError) {
-      // Cast to unknown to use type guards
-      const err = createDiscussionError as unknown;
-
-      if (hasErrorCode(err) && err.code === 'CONCURRENT_EDIT') {
-        setConcurrentEditError(true);
-      } else if (createDiscussionError.message?.includes('409')) {
-        setConcurrentEditError(true);
-      } else if (hasFieldErrors(err)) {
-        // Handle server validation errors with field-level errors
-        const fieldErrors = err.fields;
-        if (fieldErrors) {
-          Object.keys(fieldErrors).forEach((field) => {
-            const errorMessage = fieldErrors[field];
-            if (errorMessage) {
-              setError(field as keyof PostFormData, {
-                type: 'server',
-                message: errorMessage,
-              });
-            }
-          });
-        }
-      } else {
-        const errorMessage = createDiscussionError.message ?? 'An error occurred';
-        setNetworkError(errorMessage);
-      }
-    }
-  }, [isCreateDiscussionError, createDiscussionError, setError]);
-
-  // Auto-save draft
-  useEffect(() => {
-    if (isDirty && !isSubmitting) {
-      autoSaveTimerRef.current = setTimeout(() => {
-        saveDraft({
-          subject: formData.subject,
-          message: formData.message,
-          subscribe: formData.subscribe,
-          attachmentNames: files.map((f) => f.name),
-        });
-      }, AUTO_SAVE_INTERVAL);
-    }
-
-    return () => {
-      if (autoSaveTimerRef.current) {
-        clearTimeout(autoSaveTimerRef.current);
-      }
-    };
-  }, [formData, files, isDirty, isSubmitting, saveDraft]);
-
-  // Cleanup preview URLs on unmount
-  useEffect(() => {
-    return () => {
-      clearFiles();
-    };
-  }, [clearFiles]);
-
-  // ============================================================================
-  // HANDLERS
-  // ============================================================================
-
-  /**
-   * Handle form submission
-   */
-  const onSubmit = handleSubmit((data) => {
-    // Prevent rapid successive submissions
-    if (isSubmittingLocal) {
-      return;
-    }
-    setIsSubmittingLocal(true);
-
-    // Clear previous errors
-    setValidationErrors([]);
-    setNetworkError(null);
-    setConcurrentEditError(false);
-
-    // Validate
-    const errors: string[] = [];
-
-    if (isNewDiscussion && !data.subject?.trim()) {
-      errors.push('Subject is required for new discussions');
-    }
-
-    if (isNewDiscussion && data.subject && data.subject.length < SUBJECT_MIN_LENGTH) {
-      errors.push(`Subject must be at least ${SUBJECT_MIN_LENGTH} characters`);
-    }
-
-    if (isNewDiscussion && data.subject && data.subject.length > SUBJECT_MAX_LENGTH) {
-      errors.push(`Subject must not exceed ${SUBJECT_MAX_LENGTH} characters`);
-    }
-
-    if (!data.message?.trim()) {
-      errors.push('Message is required');
-    }
-
-    if (data.message && data.message.length < MESSAGE_MIN_LENGTH) {
-      errors.push(`Message must be at least ${MESSAGE_MIN_LENGTH} characters`);
-    }
-
-    if (data.message && data.message.length > MESSAGE_MAX_LENGTH) {
-      errors.push(`Message must not exceed ${MESSAGE_MAX_LENGTH} characters`);
-    }
-
-    if (errors.length > 0) {
-      setValidationErrors(errors);
-      setIsSubmittingLocal(false);
-      return;
-    }
-
-    // Prepare submission data based on mode
-    if (isEditing) {
-      // Update existing post
-      const updateData = {
-        postId: post.id,
-        message: data.message,
-        ...(isNewDiscussion && { subject: data.subject }),
-        attachments: files.map((f) => f.file),
-      };
-      updatePost(updateData);
-    } else if (isNewDiscussion) {
-      // Create new discussion
-      const discussionData = {
-          subject: data.subject ?? '',
-          message: data.message,
-          subscribe: data.subscribe,
-          attachments: files.map((f) => f.file),
-          ...(canModerate && { pinned: data.pinned, locked: data.locked }),
-        };
-        createDiscussion(forumId, discussionData);
-    } else {
-      // Create reply post
-      const postData = {
-        forumId,
-        discussionId,
-        ...(parentPostId && { parentPostId }),
-        message: data.message,
-        subscribe: data.subscribe,
-        attachments: files.map((f) => f.file),
-        ...(supportsTags && { tags: data.tags }),
-      };
-      createPost(postData);
-    }
-  });
-
-  /**
-   * Handle file selection
-   */
-  const handleFileSelect = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      const selectedFiles = Array.from(event.target.files ?? []);
-      addFiles(selectedFiles);
-
-      // Reset input to allow selecting the same file again
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    },
-    [addFiles]
-  );
-
-  /**
-   * Handle file drop
-   */
-  const handleFileDrop = useCallback(
-    (event: React.DragEvent<HTMLDivElement>) => {
-      event.preventDefault();
-      event.stopPropagation();
-
-      const droppedFiles = Array.from(event.dataTransfer.files);
-      addFiles(droppedFiles);
-    },
-    [addFiles]
-  );
-
-  /**
-   * Handle drag over
-   */
-  const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-  }, []);
-
-  /**
-   * Handle manual draft save
-   */
-  const handleSaveDraft = useCallback(() => {
-    saveDraft({
-      subject: formData.subject,
-      message: formData.message,
-      subscribe: formData.subscribe,
-      attachmentNames: files.map((f) => f.name),
-    });
-  }, [formData, files, saveDraft]);
-
-  /**
-   * Handle cancel with unsaved changes check
-   */
-  const handleCancel = useCallback(() => {
     if (isDirty) {
-      setShowUnsavedWarning(true);
+      setHasUnsavedChanges(true);
+    }
+  }, [watchedMessage, watchedSubject, isDirty]);
+
+  // ============================================================================
+  // FORM SUBMISSION
+  // ============================================================================
+
+  const handleFormSubmit: SubmitHandler<PostFormValues> = useCallback(
+    async (data) => {
+      setFormError(null);
+
+      try {
+        let result: DiscussionPost;
+
+        if (mode === 'edit' && existingPost) {
+          // Update existing post
+          const updateData: UpdatePostData = {
+            postId: existingPost.id,
+            message: data.message,
+            subject: data.subject,
+            attachments: data.attachments,
+            removeAttachments: [], // Would be populated if UI supports removing existing attachments
+          };
+
+          result = await updatePostMutation.mutateAsync(updateData);
+          toast.success('Post updated successfully');
+        } else {
+          // Create new post or reply
+          const createData: CreatePostData = {
+            forumId,
+            message: data.message,
+            discussionId: discussionId,
+            parentPostId: parentPostId,
+            subject: data.subject,
+            attachments: data.attachments,
+            isPrivateReply: data.isPrivateReply,
+          };
+
+          result = await createPostMutation.mutateAsync(createData);
+          toast.success(
+            mode === 'create' ? 'Discussion created successfully' : 'Reply posted successfully'
+          );
+        }
+
+        // Clear draft on successful submission
+        removeDraftFromStorage(draftKey);
+
+        // Reset form
+        reset();
+        setHasUnsavedChanges(false);
+
+        // Announce success for screen readers
+        announceToScreenReader('Your post has been submitted successfully.');
+
+        // Call success callback
+        if (onSuccess) {
+          onSuccess(result);
+        }
+      } catch (error) {
+        // Handle submission error
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : 'Failed to submit post. Please try again.';
+
+        setFormError(errorMessage);
+        toast.error(errorMessage);
+
+        // Announce error for screen readers
+        announceToScreenReader(`Error: ${errorMessage}`);
+      }
+    },
+    [
+      mode,
+      forumId,
+      discussionId,
+      parentPostId,
+      existingPost,
+      createPostMutation,
+      updatePostMutation,
+      toast,
+      draftKey,
+      reset,
+      onSuccess,
+    ]
+  );
+
+  // ============================================================================
+  // CANCEL HANDLING
+  // ============================================================================
+
+  const handleCancelClick = useCallback(() => {
+    if (hasUnsavedChanges) {
+      setShowCancelConfirm(true);
     } else {
       onCancel?.();
     }
-  }, [isDirty, onCancel]);
+  }, [hasUnsavedChanges, onCancel]);
 
-  /**
-   * Confirm cancel without saving
-   */
   const handleConfirmCancel = useCallback(() => {
-    setShowUnsavedWarning(false);
-    deleteDraft();
-    clearFiles();
+    // Remove draft from storage
+    removeDraftFromStorage(draftKey);
+    setShowCancelConfirm(false);
+    reset();
     onCancel?.();
-  }, [deleteDraft, clearFiles, onCancel]);
+  }, [draftKey, reset, onCancel]);
 
-  /**
-   * Toggle preview mode
-   */
-  const handleTogglePreview = useCallback(() => {
-    setIsPreviewMode((prev) => !prev);
+  const handleDismissCancelConfirm = useCallback(() => {
+    setShowCancelConfirm(false);
   }, []);
-
-  /**
-   * Insert formatted text into message
-   */
-  const insertFormattedText = useCallback(
-    (before: string, after: string) => {
-      const textarea = messageInputRef.current;
-      if (!textarea) {
-        return;
-      }
-
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      const currentValue = getValues('message') || '';
-      const selectedText = currentValue.substring(start, end);
-
-      const newValue =
-        currentValue.substring(0, start) +
-        before +
-        selectedText +
-        after +
-        currentValue.substring(end);
-
-      setValue('message', newValue, { shouldDirty: true });
-
-      // Restore focus and selection
-      setTimeout(() => {
-        textarea.focus();
-        const newCursorPos = start + before.length + selectedText.length;
-        textarea.setSelectionRange(newCursorPos, newCursorPos);
-      }, 0);
-    },
-    [getValues, setValue]
-  );
-
-  /**
-   * Handle bold formatting
-   */
-  const handleBold = useCallback(() => {
-    insertFormattedText('**', '**');
-  }, [insertFormattedText]);
-
-  /**
-   * Handle italic formatting
-   */
-  const handleItalic = useCallback(() => {
-    insertFormattedText('*', '*');
-  }, [insertFormattedText]);
-
-  /**
-   * Handle insert link
-   */
-  const handleInsertLink = useCallback(() => {
-    insertFormattedText('[', '](url)');
-  }, [insertFormattedText]);
-
-  /**
-   * Handle bullet list
-   */
-  const handleBulletList = useCallback(() => {
-    const textarea = messageInputRef.current;
-    if (!textarea) {
-      return;
-    }
-
-    const currentValue = getValues('message') || '';
-    const lines = currentValue.split('\n');
-    const newLines = lines.map((line) => (line.trim() ? `- ${line}` : line));
-
-    setValue('message', newLines.join('\n'), { shouldDirty: true });
-  }, [getValues, setValue]);
-
-  /**
-   * Handle emoji picker toggle
-   */
-  const handleEmojiToggle = useCallback(() => {
-    setShowEmojiPicker((prev) => !prev);
-  }, []);
-
-  /**
-   * Handle emoji selection
-   */
-  const handleEmojiSelect = useCallback(
-    (emoji: string) => {
-      const currentValue = getValues('message') || '';
-      setValue('message', currentValue + emoji, { shouldDirty: true });
-      setShowEmojiPicker(false);
-      messageInputRef.current?.focus();
-    },
-    [getValues, setValue]
-  );
-
-  /**
-   * Handle message input change to detect mentions
-   */
-  const handleMessageChange = useCallback((value: string) => {
-    // Detect @ mentions
-    const cursorPos = messageInputRef.current?.selectionStart ?? 0;
-    const textBeforeCursor = value.substring(0, cursorPos);
-    const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
-
-    if (mentionMatch) {
-      setMentionQuery(mentionMatch[1] ?? '');
-      setShowMentionSuggestions(true);
-    } else {
-      setShowMentionSuggestions(false);
-      setMentionQuery('');
-    }
-  }, []);
-
-  /**
-   * Insert mention into message
-   */
-  const handleInsertMention = useCallback(
-    (username: string) => {
-      const textarea = messageInputRef.current;
-      if (!textarea) {
-        return;
-      }
-
-      const currentValue = getValues('message') || '';
-      const cursorPos = textarea.selectionStart;
-      const textBeforeCursor = currentValue.substring(0, cursorPos);
-      const textAfterCursor = currentValue.substring(cursorPos);
-
-      // Replace the @query with @username
-      const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
-      if (mentionMatch) {
-        const beforeMention = textBeforeCursor.substring(0, mentionMatch.index);
-        const newValue = `${beforeMention}@${username} ${textAfterCursor}`;
-        setValue('message', newValue, { shouldDirty: true });
-        setShowMentionSuggestions(false);
-        setMentionQuery('');
-
-        // Restore focus
-        setTimeout(() => {
-          textarea.focus();
-          const newCursorPos = beforeMention.length + username.length + 2;
-          textarea.setSelectionRange(newCursorPos, newCursorPos);
-        }, 0);
-      }
-    },
-    [getValues, setValue]
-  );
-
-  /**
-   * Format file size
-   */
-  const formatFileSize = (bytes: number): string => {
-    if (bytes < 1024) {
-      return `${bytes} B`;
-    }
-    if (bytes < 1024 * 1024) {
-      return `${(bytes / 1024).toFixed(1)} KB`;
-    }
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
 
   // ============================================================================
-  // KEYBOARD SHORTCUTS
+  // ACCESSIBILITY HELPERS
   // ============================================================================
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    // Submit on Enter (but not from textarea - that should insert newline)
-    if (e.key === 'Enter' && !e.shiftKey) {
-      const target = e.target as HTMLElement;
-      // Don't submit if Enter is pressed in a textarea
-      if (target.tagName === 'TEXTAREA') {
-        return;
-      }
-      // Submit form if Enter is pressed elsewhere
-      e.preventDefault();
-      void onSubmit();
+  /**
+   * Announces a message to screen readers using ARIA live region
+   */
+  const announceToScreenReader = useCallback((message: string) => {
+    if (announcementRef.current) {
+      announcementRef.current.textContent = message;
     }
-  };
+  }, []);
+
+  // ============================================================================
+  // BUTTON TEXT
+  // ============================================================================
+
+  const resolvedSubmitText = useMemo(() => {
+    if (submitButtonText) return submitButtonText;
+
+    switch (mode) {
+      case 'create':
+        return 'Post to forum';
+      case 'reply':
+        return 'Submit reply';
+      case 'edit':
+        return 'Save changes';
+      default:
+        return 'Submit';
+    }
+  }, [mode, submitButtonText]);
+
+  // ============================================================================
+  // FORM LABEL
+  // ============================================================================
+
+  const formAriaLabel = useMemo(() => {
+    if (ariaLabel) return ariaLabel;
+
+    switch (mode) {
+      case 'create':
+        return 'Create new forum discussion';
+      case 'reply':
+        return 'Reply to forum post';
+      case 'edit':
+        return 'Edit forum post';
+      default:
+        return 'Forum post form';
+    }
+  }, [mode, ariaLabel]);
 
   // ============================================================================
   // RENDER
   // ============================================================================
 
+  const isLoading = createPostMutation.isPending || updatePostMutation.isPending;
+
   return (
-    <Paper
-      elevation={2}
-      sx={{ p: 3 }}
+    <Box
       component="form"
-      onSubmit={onSubmit}
-      onKeyDown={handleKeyDown}
-      noValidate
-      aria-label={
-        isNewDiscussion
-          ? 'Create new discussion form'
-          : isEditing
-            ? 'Edit post form'
-            : 'Reply to post form'
-      }
+      onSubmit={handleSubmit(handleFormSubmit)}
+      aria-label={formAriaLabel}
+      data-testid={dataTestId || 'post-form'}
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: compact ? 2 : 3,
+        p: compact ? 2 : 3,
+        bgcolor: 'background.paper',
+        borderRadius: 1,
+        boxShadow: 1,
+      }}
     >
-      {/* Header */}
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h6" component="h2">
-          {isNewDiscussion
-            ? 'Create New Discussion'
-            : isEditing
-              ? 'Edit Post'
-              : 'Reply to Discussion'}
+      {/* Screen reader announcements (visually hidden) */}
+      <Box
+        ref={announcementRef}
+        aria-live="polite"
+        aria-atomic="true"
+        sx={{
+          position: 'absolute',
+          width: 1,
+          height: 1,
+          padding: 0,
+          margin: -1,
+          overflow: 'hidden',
+          clip: 'rect(0, 0, 0, 0)',
+          whiteSpace: 'nowrap',
+          border: 0,
+        }}
+      />
+
+      {/* Form Error Alert */}
+      <Collapse in={Boolean(formError)}>
+        {formError && (
+          <Alert
+            severity="error"
+            title="Submission Error"
+            message={formError}
+            closeable
+            onClose={() => setFormError(null)}
+            data-testid="post-form-error"
+          />
+        )}
+      </Collapse>
+
+      {/* Subject Field (conditional) */}
+      {showSubject && (
+        <Box>
+          <FormInput
+            name="subject"
+            control={control}
+            label="Subject"
+            placeholder="Enter discussion subject"
+            required={mode === 'create'}
+            maxLength={SUBJECT_MAX_LENGTH}
+            disabled={isLoading}
+            aria-describedby="subject-hint subject-progress"
+            data-testid="post-form-subject"
+          />
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              mt: 0.5,
+            }}
+          >
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              id="subject-hint"
+            >
+              A clear, descriptive subject helps others find your discussion
+            </Typography>
+            <Typography
+              variant="caption"
+              color={
+                subjectCharCount > SUBJECT_MAX_LENGTH
+                  ? 'error.main'
+                  : 'text.secondary'
+              }
+              id="subject-progress"
+              aria-live="polite"
+            >
+              {subjectCharCount}/{SUBJECT_MAX_LENGTH}
+            </Typography>
+          </Box>
+          {subjectCharCount > 0 && (
+            <LinearProgress
+              variant="determinate"
+              value={subjectProgress}
+              color={getProgressColor(subjectProgress)}
+              sx={{ mt: 0.5, height: 2 }}
+              aria-hidden="true"
+            />
+          )}
+        </Box>
+      )}
+
+      {/* Message Field with Rich Text Editor */}
+      <Box>
+        <Typography
+          component="label"
+          variant="subtitle2"
+          fontWeight="medium"
+          sx={{ mb: 1, display: 'block' }}
+          id="message-label"
+        >
+          Message <span aria-hidden="true">*</span>
+          <Typography component="span" className="visually-hidden">
+            (required)
+          </Typography>
         </Typography>
+
+        <Controller
+          name="message"
+          control={control}
+          render={({ field, fieldState }) => (
+            <RichTextEditor
+              value={field.value}
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+              toolbar="full"
+              placeholder="Write your message here..."
+              minHeight={200}
+              maxHeight={500}
+              disabled={isLoading}
+              error={Boolean(fieldState.error)}
+              errorMessage={fieldState.error?.message}
+              aria-labelledby="message-label"
+              aria-describedby="message-hint message-count"
+              aria-invalid={Boolean(fieldState.error)}
+              data-testid="post-form-message"
+            />
+          )}
+        />
+
+        {/* Message statistics */}
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            mt: 1,
+            flexWrap: 'wrap',
+            gap: 1,
+          }}
+        >
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            id="message-hint"
+          >
+            Minimum {MESSAGE_MIN_LENGTH} characters required
+          </Typography>
+          <Stack direction="row" spacing={2}>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              aria-live="polite"
+            >
+              {messageWordCount} {messageWordCount === 1 ? 'word' : 'words'}
+            </Typography>
+            <Typography
+              variant="caption"
+              color={
+                messageCharCount > MESSAGE_MAX_LENGTH
+                  ? 'error.main'
+                  : messageCharCount < MESSAGE_MIN_LENGTH
+                  ? 'warning.main'
+                  : 'text.secondary'
+              }
+              id="message-count"
+              aria-live="polite"
+            >
+              {messageCharCount}/{MESSAGE_MAX_LENGTH} characters
+            </Typography>
+          </Stack>
+        </Box>
+        {messageCharCount > 0 && (
+          <LinearProgress
+            variant="determinate"
+            value={messageProgress}
+            color={getProgressColor(messageProgress)}
+            sx={{ mt: 0.5, height: 2 }}
+            aria-hidden="true"
+          />
+        )}
+
+        {/* Validation error for message */}
+        {errors.message && (
+          <Alert
+            severity="error"
+            message={errors.message.message || 'Please enter a valid message'}
+            variant="standard"
+            sx={{ mt: 1 }}
+            role="alert"
+          />
+        )}
       </Box>
 
-      {/* Reply context */}
-      {parentPost && isReplying && (
-        <Paper variant="outlined" sx={{ p: 2, mb: 3, bgcolor: 'grey.50' }}>
-          <Typography variant="caption" color="text.secondary" gutterBottom>
-            Replying to{parentPost.author ? ` ${parentPost.author}` : ''}:
-          </Typography>
-          <Typography variant="body2" sx={{ fontStyle: 'italic' }}>
-            {parentPost.message.substring(0, 200)}
-            {parentPost.message.length > 200 && '...'}
-          </Typography>
-        </Paper>
-      )}
-
-      {/* Validation errors */}
-      {validationErrors.length > 0 && (
-        <Alert
-          severity="error"
-          sx={{ mb: 2 }}
-          onClose={() => setValidationErrors([])}
-          aria-label="Form has errors"
+      {/* File Attachments */}
+      <Box>
+        <Typography
+          component="label"
+          variant="subtitle2"
+          fontWeight="medium"
+          sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}
+          id="attachments-label"
         >
-          <Typography variant="subtitle2" gutterBottom>
-            Please fix the following errors:
-          </Typography>
-          <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
-            {validationErrors.map((error) => (
-              <li key={error}>{error}</li>
-            ))}
-          </ul>
-        </Alert>
-      )}
+          <AttachFileIcon fontSize="small" />
+          Attachments
+        </Typography>
 
-      {/* React Hook Form validation errors summary */}
-      {Object.keys(errors).length > 1 && (
-        <Alert severity="error" sx={{ mb: 2 }} role="alert" aria-label="Form has errors">
-          <Typography variant="subtitle2" gutterBottom>
-            Please fix the following errors:
-          </Typography>
-          <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
-            {Object.keys(errors).map((field) => (
-              <li key={field}>
-                {field === 'subject' ? 'Subject' : field === 'message' ? 'Message body' : field}
-              </li>
-            ))}
-          </ul>
-        </Alert>
-      )}
-
-      {/* Network error */}
-      {networkError && (
-        <Alert
-          severity="error"
-          sx={{ mb: 2 }}
-          onClose={() => setNetworkError(null)}
-          action={
-            <Button
-              color="inherit"
-              size="small"
-              onClick={() => {
-                setNetworkError(null);
-                void onSubmit();
-              }}
-            >
-              Retry
-            </Button>
-          }
-        >
-          {networkError}
-        </Alert>
-      )}
-
-      {/* Concurrent edit error */}
-      {concurrentEditError && (
-        <Alert
-          severity="warning"
-          sx={{ mb: 2 }}
-          onClose={() => setConcurrentEditError(false)}
-          action={
-            <Button color="inherit" size="small" onClick={() => window.location.reload()}>
-              Reload latest version
-            </Button>
-          }
-        >
-          Post has been modified by another user
-        </Alert>
-      )}
-
-      {/* Preview mode */}
-      {isPreviewMode ? (
-        <Box>
-          <Typography variant="h6" gutterBottom>
-            Preview Mode
-          </Typography>
-          <Paper
-            variant="outlined"
-            sx={{ p: 3, mb: 2, minHeight: 200 }}
-            data-testid="message-preview"
-          >
-            {isNewDiscussion && (
-              <Typography variant="h6" gutterBottom>
-                {formData.subject}
-              </Typography>
-            )}
-            <Typography
-              variant="body1"
-              sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
-              dangerouslySetInnerHTML={{ __html: formData.message }}
-            />
-            {files.length > 0 && (
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="subtitle2" gutterBottom>
-                  Attachments:
-                </Typography>
-                {files.map((file) => (
-                  <Chip key={file.id} label={file.name} size="small" sx={{ mr: 1, mb: 1 }} />
-                ))}
-              </Box>
-            )}
-          </Paper>
-          <Button
-            variant="outlined"
-            startIcon={<CloseIcon />}
-            onClick={handleTogglePreview}
-            fullWidth
-          >
-            Edit
-          </Button>
-        </Box>
-      ) : (
-        <>
-          {/* Subject field (new discussions only) */}
-          {isNewDiscussion && (
-            <Controller
-              name="subject"
+        <Controller
+          name="attachments"
+          control={control}
+          render={({ field, fieldState }) => (
+            <FormFileUpload
+              name="attachments"
               control={control}
-              rules={{
-                required: 'Subject is required',
-                minLength: {
-                  value: SUBJECT_MIN_LENGTH,
-                  message: `Subject must be at least ${SUBJECT_MIN_LENGTH} characters`,
-                },
-                maxLength: {
-                  value: SUBJECT_MAX_LENGTH,
-                  message: `Subject must not exceed ${SUBJECT_MAX_LENGTH} characters`,
-                },
-              }}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  fullWidth
-                  label="Subject"
-                  required
-                  disabled={isSubmitting}
-                  error={!!errors.subject}
-                  helperText={
-                    errors.subject?.message ??
-                    `${field.value?.length ?? 0} / ${SUBJECT_MAX_LENGTH} characters`
-                  }
-                  sx={{ mb: 2 }}
-                  inputProps={{
-                    'aria-label': 'Discussion subject',
-                    'aria-required': 'true',
-                    maxLength: SUBJECT_MAX_LENGTH,
-                  }}
-                  FormHelperTextProps={{
-                    role: errors.subject ? 'alert' : undefined,
-                    'aria-live': errors.subject ? 'polite' : undefined,
-                  }}
-                />
-              )}
-            />
-          )}
-
-          {/* Message field */}
-          <Controller
-            name="message"
-            control={control}
-            rules={{
-              required: 'Message is required',
-              minLength: {
-                value: MESSAGE_MIN_LENGTH,
-                message: `Message must be at least ${MESSAGE_MIN_LENGTH} characters`,
-              },
-              maxLength: {
-                value: MESSAGE_MAX_LENGTH,
-                message: `Message must not exceed ${MESSAGE_MAX_LENGTH} characters`,
-              },
-            }}
-            render={({ field }) => (
-              <>
-                {/* Rich text editor toolbar */}
-                <Box
-                  sx={{
-                    display: 'flex',
-                    gap: 0.5,
-                    mb: 1,
-                    p: 1,
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    borderRadius: '4px 4px 0 0',
-                    bgcolor: 'grey.50',
-                  }}
-                >
-                  <IconButton
-                    size="small"
-                    onClick={handleBold}
-                    disabled={isSubmitting}
-                    title="Bold"
-                    aria-label="bold"
-                    tabIndex={-1}
-                  >
-                    <FormatBoldIcon fontSize="small" />
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    onClick={handleItalic}
-                    disabled={isSubmitting}
-                    title="Italic"
-                    aria-label="italic"
-                    tabIndex={-1}
-                  >
-                    <FormatItalicIcon fontSize="small" />
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    onClick={handleInsertLink}
-                    disabled={isSubmitting}
-                    title="Insert link"
-                    aria-label="insert link"
-                    tabIndex={-1}
-                  >
-                    <InsertLinkIcon fontSize="small" />
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    onClick={handleBulletList}
-                    disabled={isSubmitting}
-                    title="Bullet list"
-                    aria-label="bullet list"
-                    tabIndex={-1}
-                  >
-                    <FormatListBulletedIcon fontSize="small" />
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    onClick={handleEmojiToggle}
-                    disabled={isSubmitting}
-                    title="Insert emoji"
-                    aria-label="Insert emoji"
-                    tabIndex={-1}
-                  >
-                    <EmojiEmotionsIcon fontSize="small" />
-                  </IconButton>
-                </Box>
-
-                {/* Emoji picker dropdown */}
-                {showEmojiPicker && (
-                  <Box
-                    role="dialog"
-                    aria-label="Emoji picker"
-                    sx={{
-                      position: 'absolute',
-                      zIndex: 10,
-                      bgcolor: 'background.paper',
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      borderRadius: 1,
-                      p: 1,
-                      boxShadow: 2,
-                      display: 'flex',
-                      gap: 0.5,
-                      flexWrap: 'wrap',
-                      maxWidth: 300,
-                    }}
-                  >
-                    {[
-                      '😀',
-                      '😁',
-                      '😂',
-                      '🤣',
-                      '😃',
-                      '😄',
-                      '😅',
-                      '😆',
-                      '😉',
-                      '😊',
-                      '😋',
-                      '😎',
-                      '😍',
-                      '😘',
-                      '🥰',
-                      '😗',
-                      '🤗',
-                      '🤔',
-                      '🤨',
-                      '😐',
-                      '😑',
-                      '😶',
-                      '🙄',
-                      '😏',
-                      '😣',
-                      '😥',
-                      '😮',
-                      '🤐',
-                      '😯',
-                      '😪',
-                      '😫',
-                      '🥱',
-                      '😴',
-                    ].map((emoji) => (
-                      <Button
-                        key={emoji}
-                        size="small"
-                        onClick={() => handleEmojiSelect(emoji)}
-                        sx={{ minWidth: 'auto', p: 0.5 }}
-                      >
-                        {emoji}
-                      </Button>
-                    ))}
-                    <IconButton
-                      size="small"
-                      onClick={() => setShowEmojiPicker(false)}
-                      sx={{ ml: 'auto' }}
-                      aria-label="Close emoji picker"
-                    >
-                      <CloseIcon fontSize="small" />
-                    </IconButton>
-                  </Box>
-                )}
-
-                {/* Mention suggestions dropdown */}
-                {showMentionSuggestions && mentionQuery !== '' && (
-                  <Box
-                    role="listbox"
-                    aria-label="User suggestions"
-                    sx={{
-                      position: 'absolute',
-                      zIndex: 10,
-                      bgcolor: 'background.paper',
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      borderRadius: 1,
-                      boxShadow: 2,
-                      maxWidth: 300,
-                    }}
-                  >
-                    {[
-                      { username: 'johndoe', displayName: 'john doe' },
-                      { username: 'janesmith', displayName: 'jane smith' },
-                      { username: 'adminuser', displayName: 'admin user' },
-                    ]
-                      .filter((user) =>
-                        user.username.toLowerCase().includes(mentionQuery.toLowerCase())
-                      )
-                      .map((user) => (
-                        <Button
-                          key={user.username}
-                          fullWidth
-                          onClick={() => handleInsertMention(user.username)}
-                          sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
-                          role="option"
-                        >
-                          {user.displayName}
-                        </Button>
-                      ))}
-                  </Box>
-                )}
-
-                <TextField
-                  {...field}
-                  inputRef={messageInputRef}
-                  fullWidth
-                  multiline
-                  minRows={6}
-                  maxRows={20}
-                  label="Message body"
-                  required
-                  disabled={isSubmitting}
-                  error={!!errors.message}
-                  helperText={
-                    errors.message?.message ??
-                    `${field.value?.length ?? 0} / ${MESSAGE_MAX_LENGTH} characters`
-                  }
-                  onChange={(e) => {
-                    field.onChange(e);
-                    handleMessageChange(e.target.value);
-                  }}
-                  sx={{
-                    mb: 2,
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: '0 0 4px 4px',
-                    },
-                  }}
-                  inputProps={{
-                    'aria-label': 'Message body',
-                    'aria-required': 'true',
-                    maxLength: MESSAGE_MAX_LENGTH,
-                  }}
-                  FormHelperTextProps={{
-                    role: errors.message ? 'alert' : undefined,
-                    'aria-live': errors.message ? 'polite' : undefined,
-                  }}
-                />
-              </>
-            )}
-          />
-
-          {/* File attachments */}
-          <Box sx={{ mb: 2 }}>
-            <input
-              ref={fileInputRef}
-              type="file"
+              label="Upload files"
+              helperText={`Drag and drop files here or click to browse. Max ${MAX_FILES} files, ${MAX_FILE_SIZE / (1024 * 1024)}MB each.`}
+              accept={ACCEPTED_FILE_TYPES.join(',')}
+              maxSize={MAX_FILE_SIZE}
+              maxFiles={MAX_FILES}
               multiple
-              onChange={handleFileSelect}
-              style={{ display: 'none' }}
-              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
-              aria-label="File input"
-              data-testid="attachment-upload"
+              disabled={isLoading}
+              showPreview
+              aria-labelledby="attachments-label"
+              data-testid="post-form-attachments"
             />
+          )}
+        />
+      </Box>
 
-            <Box
-              onDrop={handleFileDrop}
-              onDragOver={handleDragOver}
-              sx={{
-                border: '2px dashed',
-                borderColor: 'divider',
-                borderRadius: 1,
-                p: 3,
-                textAlign: 'center',
-                bgcolor: 'grey.50',
-                cursor: 'pointer',
-                '&:hover': {
-                  bgcolor: 'grey.100',
-                },
-              }}
-              onClick={() => fileInputRef.current?.click()}
-              aria-label="Drag and drop files or click to select"
-            >
-              <AttachFileIcon sx={{ fontSize: 40, color: 'text.secondary', mb: 1 }} />
-              <Typography variant="body2" color="text.secondary">
-                Drag and drop files here or click to select
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Maximum 5 files, 10MB each
-              </Typography>
-            </Box>
-
-            {/* File list */}
-            {files.length > 0 && (
-              <Box sx={{ mt: 2 }}>
-                {files.map((file) => (
-                  <Paper key={file.id} variant="outlined" sx={{ p: 1.5, mb: 1 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      {previewUrls[file.id] ? (
-                        <Box
-                          component="img"
-                          src={previewUrls[file.id]}
-                          alt={file.name}
-                          sx={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 1 }}
-                        />
-                      ) : (
-                        <AttachFileIcon />
-                      )}
-                      <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {file.name}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {formatFileSize(file.size)}
-                        </Typography>
-                        {file.progress !== undefined && file.progress > 0 && file.progress < 100 && (
-                          <LinearProgress variant="determinate" value={file.progress} />
-                        )}
-                        {file.error && (
-                          <Typography variant="caption" color="error">
-                            {file.error}
-                          </Typography>
-                        )}
-                      </Box>
-                      <IconButton
-                        size="small"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          removeFile(file.id);
-                        }}
-                        aria-label={`Remove ${file.name}`}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </Box>
-                  </Paper>
-                ))}
-                <Typography variant="caption" color="text.secondary">
-                  Total size: {formatFileSize(totalSize)}
-                </Typography>
-              </Box>
-            )}
-          </Box>
-
-          <Divider sx={{ my: 2 }} />
-
-          {/* Subscription options */}
-          <Box sx={{ mb: 2 }}>
-            <Controller
-              name="subscribe"
-              control={control}
-              render={({ field }) => (
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      {...field}
-                      checked={field.value}
-                      inputProps={{ 'aria-label': 'Subscribe to this discussion' }}
-                    />
-                  }
-                  label="Subscribe to this discussion"
+      {/* Private Reply Option (conditional) */}
+      {canMakePrivateReply && mode === 'reply' && (
+        <Controller
+          name="isPrivateReply"
+          control={control}
+          render={({ field }) => (
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={field.value}
+                  onChange={field.onChange}
+                  disabled={isLoading}
+                  inputProps={{
+                    'aria-describedby': 'private-reply-hint',
+                  }}
+                  data-testid="post-form-private-reply"
                 />
-              )}
-            />
-
-            <Controller
-              name="emailNotification"
-              control={control}
-              render={({ field }) => (
-                <FormControl fullWidth size="small" sx={{ mt: 1 }}>
-                  <InputLabel id="email-notification-label">Email Notifications</InputLabel>
-                  <Select
-                    {...field}
-                    labelId="email-notification-label"
-                    label="Email Notifications"
-                    inputProps={{ 'aria-label': 'Email notification preference' }}
+              }
+              label={
+                <Box>
+                  <Typography variant="body2">
+                    Make this a private reply
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    id="private-reply-hint"
                   >
-                    <MenuItem value="none">No email notifications</MenuItem>
-                    <MenuItem value="digest">Daily digest</MenuItem>
-                    <MenuItem value="immediate">Immediate notifications</MenuItem>
-                  </Select>
-                  <FormHelperText>Choose how you want to receive updates</FormHelperText>
-                </FormControl>
-              )}
+                    Only visible to you and the student you are replying to
+                  </Typography>
+                </Box>
+              }
             />
-          </Box>
-
-          {/* Tags (if supported) */}
-          {supportsTags && availableTags.length > 0 && (
-            <Box sx={{ mb: 2 }}>
-              <Controller
-                name="tags"
-                control={control}
-                render={({ field }) => (
-                  <FormControl fullWidth>
-                    <InputLabel id="tags-label">Tags</InputLabel>
-                    <Select
-                      {...field}
-                      labelId="tags-label"
-                      label="Tags"
-                      multiple
-                      renderValue={(selected) => (
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                          {selected.map((value) => (
-                            <Chip key={value} label={value} size="small" />
-                          ))}
-                        </Box>
-                      )}
-                      inputProps={{ 'aria-label': 'Discussion tags' }}
-                    >
-                      {availableTags.map((tag) => (
-                        <MenuItem key={tag} value={tag}>
-                          {tag}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                )}
-              />
-            </Box>
           )}
+        />
+      )}
 
-          {/* Moderator options (new discussions only) */}
-          {canModerate && isNewDiscussion && (
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" gutterBottom>
-                Moderator Options
+      {/* Autosave Status */}
+      {showAutosave && isDirty && (
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            color: 'text.secondary',
+          }}
+          aria-live="polite"
+        >
+          {isSavingDraft ? (
+            <>
+              <CircularProgress size={12} />
+              <Typography variant="caption">Saving draft...</Typography>
+            </>
+          ) : lastSavedTime ? (
+            <>
+              <SaveIcon fontSize="small" sx={{ fontSize: 14 }} />
+              <Typography variant="caption">
+                Draft saved at {lastSavedTime.toLocaleTimeString()}
               </Typography>
-              <Controller
-                name="pinned"
-                control={control}
-                render={({ field }) => (
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        {...field}
-                        checked={field.value}
-                        inputProps={{ 'aria-label': 'Pin discussion' }}
-                      />
-                    }
-                    label="Pin discussion"
-                  />
-                )}
-              />
-              <Controller
-                name="locked"
-                control={control}
-                render={({ field }) => (
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        {...field}
-                        checked={field.value}
-                        inputProps={{ 'aria-label': 'Lock discussion' }}
-                      />
-                    }
-                    label="Lock discussion"
-                  />
-                )}
-              />
-            </Box>
-          )}
+            </>
+          ) : hasUnsavedChanges ? (
+            <Typography variant="caption">Unsaved changes</Typography>
+          ) : null}
+        </Box>
+      )}
 
-          {/* Action buttons */}
-          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+      {/* Form Actions */}
+      <Stack
+        direction="row"
+        spacing={2}
+        justifyContent="flex-end"
+        sx={{ mt: 2 }}
+      >
+        {onCancel && (
+          <Tooltip title="Cancel and discard changes">
+            <Button
+              type="button"
+              variant="outlined"
+              color="inherit"
+              onClick={handleCancelClick}
+              disabled={isLoading}
+              startIcon={<CancelIcon />}
+              aria-label={cancelButtonText}
+              data-testid="post-form-cancel"
+            >
+              {cancelButtonText}
+            </Button>
+          </Tooltip>
+        )}
+
+        <Tooltip title={isLoading ? 'Submitting...' : resolvedSubmitText}>
+          <span> {/* Wrapper for disabled button tooltip */}
             <Button
               type="submit"
               variant="contained"
-              startIcon={<SendIcon />}
-              disabled={isSubmitting}
-              aria-label={
-                isSubmitting
-                  ? 'Posting'
-                  : isEditing
-                    ? 'Update post'
-                    : isReplying
-                      ? 'Post reply'
-                      : 'Post discussion'
+              color="primary"
+              disabled={isLoading || messageCharCount < MESSAGE_MIN_LENGTH}
+              startIcon={
+                isLoading ? (
+                  <CircularProgress size={18} color="inherit" />
+                ) : (
+                  <SendIcon />
+                )
               }
+              aria-label={resolvedSubmitText}
+              aria-busy={isLoading}
+              data-testid="post-form-submit"
             >
-              {isSubmitting
-                ? 'Posting...'
-                : isEditing
-                  ? 'Update Post'
-                  : isReplying
-                    ? 'Post Reply'
-                    : 'Post Discussion'}
+              {isLoading ? 'Submitting...' : resolvedSubmitText}
             </Button>
+          </span>
+        </Tooltip>
+      </Stack>
 
-            <Button
-              variant="outlined"
-              startIcon={<PreviewIcon />}
-              onClick={handleTogglePreview}
-              disabled={isSubmitting}
-              aria-label="Preview message"
-            >
-              Preview
-            </Button>
-
-            <Button
-              variant="outlined"
-              startIcon={<SaveIcon />}
-              onClick={handleSaveDraft}
-              disabled={isSubmitting}
-              aria-label="Save draft"
-            >
-              Save Draft
-            </Button>
-
-            {lastSavedAt && (
-              <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>
-                Draft saved
-              </Typography>
-            )}
-
-            {onCancel && (
-              <Button
-                variant="text"
-                onClick={handleCancel}
-                disabled={isSubmitting}
-                aria-label="Cancel"
-              >
-                Cancel
-              </Button>
-            )}
-          </Box>
-        </>
-      )}
-
-      {/* Unsaved changes warning dialog */}
-      <Dialog
-        open={showUnsavedWarning}
-        onClose={() => setShowUnsavedWarning(false)}
-        aria-labelledby="unsaved-warning-title"
+      {/* Cancel Confirmation Modal */}
+      <Modal
+        open={showCancelConfirm}
+        onClose={handleDismissCancelConfirm}
+        title="Discard unsaved changes?"
+        maxWidth="xs"
+        actions={[
+          {
+            label: 'Keep editing',
+            onClick: handleDismissCancelConfirm,
+            variant: 'outlined',
+          },
+          {
+            label: 'Discard',
+            onClick: handleConfirmCancel,
+            color: 'error',
+            variant: 'contained',
+          },
+        ]}
+        aria-describedby="cancel-confirm-description"
+        data-testid="post-form-cancel-confirm"
       >
-        <DialogTitle id="unsaved-warning-title">Unsaved Changes</DialogTitle>
-        <DialogContent>
-          <Typography>
-            You have unsaved changes. Are you sure you want to cancel without saving?
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowUnsavedWarning(false)}>Keep editing</Button>
-          <Button onClick={handleConfirmCancel} color="error">
-            Discard changes
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Paper>
+        <Typography id="cancel-confirm-description">
+          You have unsaved changes. If you cancel now, your draft will be lost.
+        </Typography>
+      </Modal>
+    </Box>
   );
 }
+
+// Default export
+export default PostForm;
