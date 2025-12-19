@@ -123,12 +123,41 @@ const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
 
 /**
- * Create a mock activity item with customizable properties
+ * Get a timestamp that's guaranteed to be "today" regardless of current time.
+ * Uses today at 10:00 AM local time, which is always categorized as "today"
+ * even when tests run near midnight.
+ * 
+ * @param hoursOffset - Optional offset in hours from 10:00 AM (negative = earlier, positive = later)
+ * @returns Unix timestamp in seconds
+ */
+function getTodayTimestamp(hoursOffset: number = 0): number {
+  const today = new Date();
+  // Set to today at 10:00 AM local time - this ensures it's always "today"
+  // regardless of what time the test runs (even at 00:01, 10:00 is still today)
+  today.setHours(10 + hoursOffset, 0, 0, 0);
+  return Math.floor(today.getTime() / 1000);
+}
+
+/**
+ * Get a timestamp that's guaranteed to be "yesterday" regardless of current time.
+ */
+function getYesterdayTimestamp(hoursOffset: number = 0): number {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  yesterday.setHours(14 + hoursOffset, 0, 0, 0); // Yesterday at 2 PM
+  return Math.floor(yesterday.getTime() / 1000);
+}
+
+/**
+ * Create a mock activity item with customizable properties.
+ * Default timestamp is set to today at 8:00 AM to avoid midnight crossing issues.
  */
 function createMockActivity(
   overrides: Partial<RecentActivityItem> = {}
 ): RecentActivityItem {
   const defaultId = Math.floor(Math.random() * 10000);
+  // Use a fixed time today (8:00 AM) to avoid midnight crossing issues
+  const defaultTimestamp = getTodayTimestamp(-2); // Today at 8:00 AM
   return {
     id: defaultId,
     type: ActivityType.FORUM_POST,
@@ -138,7 +167,7 @@ function createMockActivity(
     resourcename: 'Discussion Thread',
     coursename: 'Introduction to Programming',
     courseid: 101,
-    timestamp: NOW_SECONDS - 2 * HOUR, // 2 hours ago by default
+    timestamp: defaultTimestamp,
     description: 'A new message was posted in the forum',
     url: '/mod/forum/discuss.php?d=123',
     ...overrides,
@@ -146,18 +175,19 @@ function createMockActivity(
 }
 
 /**
- * Create a diverse set of mock activities for comprehensive testing
+ * Create a diverse set of mock activities for comprehensive testing.
+ * Uses fixed timestamps relative to calendar days to avoid midnight crossing issues.
  */
 function createMockActivities(): RecentActivityItem[] {
   return [
-    // Today - Various types (within last 12 hours)
+    // Today - Various types (using fixed times today to avoid midnight issues)
     createMockActivity({
       id: 1,
       type: ActivityType.FORUM_POST,
       username: 'Alice Johnson',
       action: 'Posted a new forum message',
       resourcename: 'Course Introduction Discussion',
-      timestamp: NOW_SECONDS - 30 * MINUTE, // 30 minutes ago
+      timestamp: getTodayTimestamp(2), // Today at 12:00 PM
     }),
     createMockActivity({
       id: 2,
@@ -165,7 +195,7 @@ function createMockActivities(): RecentActivityItem[] {
       username: 'Bob Smith',
       action: 'Submitted assignment',
       resourcename: 'Week 1 Assignment',
-      timestamp: NOW_SECONDS - 2 * HOUR, // 2 hours ago
+      timestamp: getTodayTimestamp(1), // Today at 11:00 AM
     }),
     createMockActivity({
       id: 3,
@@ -173,7 +203,7 @@ function createMockActivities(): RecentActivityItem[] {
       username: 'Carol Williams',
       action: 'Completed quiz attempt',
       resourcename: 'Module 1 Quiz',
-      timestamp: NOW_SECONDS - 4 * HOUR, // 4 hours ago
+      timestamp: getTodayTimestamp(0), // Today at 10:00 AM
     }),
     createMockActivity({
       id: 4,
@@ -181,7 +211,7 @@ function createMockActivities(): RecentActivityItem[] {
       username: 'Teacher Davis',
       action: 'Updated grade',
       resourcename: 'Midterm Exam',
-      timestamp: NOW_SECONDS - 6 * HOUR, // 6 hours ago
+      timestamp: getTodayTimestamp(-1), // Today at 9:00 AM
     }),
     createMockActivity({
       id: 5,
@@ -189,7 +219,7 @@ function createMockActivities(): RecentActivityItem[] {
       username: 'Eve Miller',
       action: 'Enrolled in course',
       resourcename: 'Introduction to Programming',
-      timestamp: NOW_SECONDS - 8 * HOUR, // 8 hours ago
+      timestamp: getTodayTimestamp(-2), // Today at 8:00 AM
     }),
     createMockActivity({
       id: 6,
@@ -197,16 +227,16 @@ function createMockActivities(): RecentActivityItem[] {
       username: 'Teacher Davis',
       action: 'Added new resource',
       resourcename: 'Lecture Notes - Week 2',
-      timestamp: NOW_SECONDS - 10 * HOUR, // 10 hours ago
+      timestamp: getTodayTimestamp(-3), // Today at 7:00 AM
     }),
-    // Yesterday (24-48 hours ago)
+    // Yesterday (using fixed times yesterday)
     createMockActivity({
       id: 7,
       type: ActivityType.CONTENT_UPDATED,
       username: 'Teacher Davis',
       action: 'Updated course material',
       resourcename: 'Course Syllabus',
-      timestamp: NOW_SECONDS - 26 * HOUR, // 26 hours ago (yesterday)
+      timestamp: getYesterdayTimestamp(2), // Yesterday at 4:00 PM
     }),
     createMockActivity({
       id: 8,
@@ -214,7 +244,7 @@ function createMockActivities(): RecentActivityItem[] {
       username: 'Frank Brown',
       action: 'Posted a reply',
       resourcename: 'Help with Assignment 1',
-      timestamp: NOW_SECONDS - 30 * HOUR, // 30 hours ago (yesterday)
+      timestamp: getYesterdayTimestamp(0), // Yesterday at 2:00 PM
     }),
     createMockActivity({
       id: 9,
@@ -222,9 +252,9 @@ function createMockActivities(): RecentActivityItem[] {
       username: 'Grace Lee',
       action: 'Submitted late assignment',
       resourcename: 'Week 1 Assignment',
-      timestamp: NOW_SECONDS - 36 * HOUR, // 36 hours ago (yesterday)
+      timestamp: getYesterdayTimestamp(-2), // Yesterday at 12:00 PM
     }),
-    // Older (3+ days ago)
+    // Older (3+ days ago - still use NOW_SECONDS as these are far enough from midnight)
     createMockActivity({
       id: 10,
       type: ActivityType.COURSE_MODULE_CREATED,
@@ -253,7 +283,8 @@ function createMockActivities(): RecentActivityItem[] {
 }
 
 /**
- * Create a large set of activities for pagination testing
+ * Create a large set of activities for pagination testing.
+ * Uses a base timestamp from today to avoid midnight crossing issues.
  */
 function createManyActivities(count: number): RecentActivityItem[] {
   const activities: RecentActivityItem[] = [];
@@ -269,6 +300,9 @@ function createManyActivities(count: number): RecentActivityItem[] {
     'Henry Wilson',
   ];
 
+  // Use a base timestamp from today at noon to avoid midnight crossing
+  const baseTimestamp = getTodayTimestamp(2); // Today at noon
+
   for (let i = 0; i < count; i++) {
     activities.push(
       createMockActivity({
@@ -277,7 +311,7 @@ function createManyActivities(count: number): RecentActivityItem[] {
         username: usernames[i % usernames.length],
         action: `Activity ${i + 1}`,
         resourcename: `Resource ${i + 1}`,
-        timestamp: NOW_SECONDS - i * HOUR, // Each activity 1 hour apart
+        timestamp: baseTimestamp - i * HOUR, // Each activity 1 hour apart from noon
       })
     );
   }
