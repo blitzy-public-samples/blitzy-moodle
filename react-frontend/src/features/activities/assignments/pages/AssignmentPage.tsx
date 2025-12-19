@@ -68,7 +68,7 @@ import {
   AttachFile as AttachFileIcon,
   Timer as TimerIcon,
 } from '@mui/icons-material';
-import { format, isPast, isFuture, isWithinInterval } from 'date-fns';
+import { format, isPast, isFuture } from 'date-fns';
 
 // Internal imports
 import { useAssignment, isValidAssignmentId, getAssignmentErrorMessage } from '../hooks/useAssignment';
@@ -82,7 +82,7 @@ import type { Assignment } from '../types/assignment.types';
 /**
  * URL parameters expected by this page
  */
-interface AssignmentPageParams {
+interface AssignmentPageParams extends Record<string, string | undefined> {
   /** Assignment ID from URL */
   assignmentId?: string;
 }
