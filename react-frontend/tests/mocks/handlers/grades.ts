@@ -16,6 +16,12 @@
 import { http, HttpResponse } from 'msw';
 import type { ApiResponse } from '@/types/api';
 import type { GradeItem } from '@/types/entities';
+import type { 
+  CourseGrades, 
+  UserCourseGrade, 
+  UserGrades, 
+  UserCourseGradeItem 
+} from '@/features/gradebook/api/gradebookApi';
 
 /**
  * Grade aggregation methods supported by Moodle
@@ -112,34 +118,7 @@ interface StudentGrade {
   coursetotalpercentage?: number;
 }
 
-/**
- * User grades across all enrolled courses
- */
-interface UserGradesResponse {
-  userid: number;
-  courses: Array<{
-    courseid: number;
-    coursename: string;
-    coursetotal?: number;
-    coursetotalpercentage?: number;
-    lettergrade?: string;
-    categories: Array<{
-      categoryid: number;
-      categoryname: string;
-      total?: number;
-      weight?: number;
-    }>;
-    items: GradeItemWithGrade[];
-    history?: Array<{
-      itemid: number;
-      oldgrade?: number;
-      newgrade?: number;
-      timemodified: number;
-      usermodified: number;
-      reason?: string;
-    }>;
-  }>;
-}
+// Note: UserGradesResponse interface removed - use UserGrades from grade.types.ts instead
 
 /**
  * Grade update request
@@ -1100,18 +1079,54 @@ const getCourseGradebookHandler = http.get('http://*/api/v1/gradebook/course/:id
       );
     }
 
+    // Transform the internal mock data to CourseGrades API format
+    // CourseGrades has a single 'item' metadata object and a 'grades' record by userId
+    const grades: Record<number, UserCourseGrade> = {};
+    
     // Filter hidden items if not authorized
     let { items } = gradebook;
     if (!includeHidden) {
       items = items.filter((item) => !item.hidden && !item.grade?.hidden);
     }
+    
+    // Extract grades from items and organize by user ID
+    for (const item of items) {
+      if (item.grade) {
+        const userId = item.grade.userid;
+        // Use first item's grade for each user as the representative grade
+        if (!grades[userId]) {
+          grades[userId] = {
+            finalgrade: item.grade.finalgrade ?? null, // Convert undefined to null
+            locked: item.grade.locked ?? false,
+            hidden: item.grade.hidden ?? false,
+            overridden: item.grade.overridden ?? false,
+            feedback: item.grade.feedback ?? null,
+            feedbackformat: item.grade.feedbackformat ?? 0,
+            dategraded: item.grade.timemodified ?? null,
+            datesubmitted: null,
+          };
+        }
+      }
+    }
 
-    const response: ApiResponse<CourseGradebook> = {
-      success: true,
-      data: {
-        ...gradebook,
-        items,
+    // Create the item metadata from the first item or course defaults
+    const firstItem = items[0];
+    const courseGradesData: CourseGrades = {
+      item: {
+        scaleid: firstItem?.itemtype === 'scale' ? firstItem.id : null,
+        name: gradebook.coursename || 'Course Total',
+        grademin: firstItem?.grademin ?? 0,
+        grademax: firstItem?.grademax ?? 100,
+        gradepass: firstItem?.gradepass ?? 50,
+        locked: Boolean(firstItem?.locked ?? 0), // Convert number to boolean (0=false, >0=true)
+        hidden: Boolean(firstItem?.hidden ?? 0), // Convert number to boolean (0=false, >0=true)
       },
+      grades,
+    };
+
+    const response: ApiResponse<CourseGrades> = {
+      success: true,
+      data: courseGradesData,
       meta: {
         timestamp: Date.now(),
       },
@@ -1158,41 +1173,44 @@ const getUserGradesHandler = http.get('http://*/api/v1/gradebook/user/:id', asyn
       );
     }
 
-    // Build user grades response
-    const userGrades: UserGradesResponse = {
-      userid: userId,
-      courses: Object.values(mockGradebooks).map((gradebook) => ({
-        courseid: gradebook.courseid,
-        coursename: gradebook.coursename,
-        coursetotal: gradebook.items.find((i) => i.itemtype === 'course')
-          ?.grade?.finalgrade,
-        coursetotalpercentage: gradebook.items.find((i) => i.itemtype === 'course')
-          ?.percentage,
-        lettergrade: gradebook.items.find((i) => i.itemtype === 'course')
-          ?.lettergrade,
-        categories: gradebook.categories.map((cat) => ({
-          categoryid: cat.id,
-          categoryname: cat.fullname,
-          total: undefined, // Would calculate from items
-          weight: cat.weight,
-        })),
-        items: gradebook.items.filter((item) => item.itemtype !== 'course'),
-        history: [
-          {
-            itemid: 101,
-            oldgrade: 82,
-            newgrade: 85,
-            timemodified: Date.now() - 86400000 * 8,
-            usermodified: 1,
-            reason: 'Grade adjustment after review',
-          },
-        ],
-      })),
+    // Build user grades response in UserGrades API format
+    // UserGrades = { userId: number, grades: UserCourseGradeItem[] }
+    const grades: UserCourseGradeItem[] = Object.values(mockGradebooks).map((gradebook) => {
+      const courseItem = gradebook.items.find((i) => i.itemtype === 'course');
+      const firstItem = gradebook.items[0];
+      const finalgrade = courseItem?.grade?.finalgrade ?? null;
+      const percentage = courseItem?.percentage ?? (finalgrade !== null ? finalgrade : 0);
+      
+      return {
+        courseId: gradebook.courseid,
+        courseName: gradebook.coursename,
+        grade: {
+          finalgrade,
+          str_grade: finalgrade !== null ? `${finalgrade.toFixed(2)}` : '-',
+          str_long_grade: finalgrade !== null ? `${finalgrade.toFixed(2)} / 100.00` : 'No grade',
+          rank: null,
+          percentage,
+        },
+        item: {
+          scaleid: firstItem?.itemtype === 'scale' ? firstItem.id : null,
+          name: gradebook.coursename || 'Course Total',
+          grademin: firstItem?.grademin ?? 0,
+          grademax: firstItem?.grademax ?? 100,
+          gradepass: firstItem?.gradepass ?? 50,
+          locked: firstItem?.locked ?? false,
+          hidden: firstItem?.hidden ?? false,
+        },
+      };
+    });
+
+    const userGradesData: UserGrades = {
+      userId,
+      grades,
     };
 
-    const response: ApiResponse<UserGradesResponse> = {
+    const response: ApiResponse<UserGrades> = {
       success: true,
-      data: userGrades,
+      data: userGradesData,
       meta: {
         timestamp: Date.now(),
       },
@@ -1436,7 +1454,8 @@ const listGradeCategoriesHandler = http.get('http://*/api/v1/gradebook/categorie
     await simulateLatency();
 
     const url = new URL(request.url);
-    const courseIdParam = url.searchParams.get('courseid');
+    // Support both camelCase and lowercase course ID param
+    const courseIdParam = url.searchParams.get('courseId') || url.searchParams.get('courseid');
 
     // Simulate authentication check
     const authHeader = request.headers.get('Authorization');
@@ -1653,15 +1672,18 @@ const exportGradebookHandler = http.get('http://*/api/v1/gradebook/export', asyn
 
 /**
  * GET /api/v1/gradebook/report
- * Generate gradebook report
+ * Generate gradebook report in GradeReport format
+ * GradeReport = { reportType, columns: GradeReportColumn[], rows: GradeReportRow[], summary?: GradeReportSummary }
  */
 const generateGradebookReportHandler = http.get('http://*/api/v1/gradebook/report', async ({ request }) => {
     await simulateLatency();
 
     const url = new URL(request.url);
-    const courseId = Number(url.searchParams.get('courseid'));
-    const userId = url.searchParams.get('userid');
-    const reportType = url.searchParams.get('reportType') ?? 'user';
+    // Support both camelCase and lowercase parameter names
+    const courseId = Number(url.searchParams.get('courseId') || url.searchParams.get('courseid'));
+    // Note: userId parameter supported for user-specific filtering, currently not used in mock
+    // const userId = url.searchParams.get('userId') || url.searchParams.get('userid');
+    const reportType = (url.searchParams.get('reportType') ?? 'user') as 'user' | 'grader' | 'overview';
 
     // Simulate authentication check
     const authHeader = request.headers.get('Authorization');
@@ -1692,39 +1714,47 @@ const generateGradebookReportHandler = http.get('http://*/api/v1/gradebook/repor
       );
     }
 
-    // Generate report based on type
+    // Build columns based on report type
+    const columns = [
+      { id: 'item', header: 'Item', field: 'itemName', type: 'text' as const, sortable: true },
+      { id: 'grade', header: 'Grade', field: 'grade', type: 'grade' as const, sortable: true },
+      { id: 'percentage', header: '%', field: 'percentage', type: 'percentage' as const, sortable: true },
+      { id: 'feedback', header: 'Feedback', field: 'feedback', type: 'text' as const, sortable: false },
+    ];
+
+    // Build rows from gradebook items
+    const rows = gradebook.items.map((item, index) => ({
+      id: item.id ?? index,
+      itemName: item.itemname ?? `Item ${index + 1}`,
+      grade: item.grade?.finalgrade ?? null,
+      percentage: item.percentage ?? null,
+      feedback: item.grade?.feedback ?? '',
+      weight: item.weight ?? 0,
+      category: item.categoryid,
+    }));
+
+    // Build summary statistics
+    const grades = gradebook.items
+      .filter((i) => i.grade?.finalgrade !== undefined && i.grade?.finalgrade !== null)
+      .map((i) => i.grade!.finalgrade!);
+    
+    const summary = {
+      totalStudents: gradebook.students?.length ?? 1,
+      averageGrade: grades.length > 0 ? grades.reduce((a, b) => a + b, 0) / grades.length : null,
+      highestGrade: grades.length > 0 ? Math.max(...grades) : null,
+      lowestGrade: grades.length > 0 ? Math.min(...grades) : null,
+      passingCount: grades.filter((g) => g >= 50).length,
+      failingCount: grades.filter((g) => g < 50).length,
+      courseTotal: gradebook.items.find((i) => i.itemtype === 'course')?.grade?.finalgrade ?? null,
+      courseName: gradebook.coursename,
+    };
+
+    // GradeReport structure
     const reportData = {
       reportType,
-      courseid: courseId,
-      coursename: gradebook.coursename,
-      generatedAt: Date.now(),
-      data:
-        reportType === 'user'
-          ? {
-              userid: userId ? Number(userId) : 42,
-              items: gradebook.items,
-              visualization: {
-                categoryBreakdown: gradebook.categories.map((cat) => ({
-                  category: cat.fullname,
-                  score: Math.random() * 100,
-                  weight: cat.weight,
-                })),
-                progressIndicators: {
-                  completed: 7,
-                  total: 7,
-                  percentage: 100,
-                },
-              },
-            }
-          : {
-              students: gradebook.students,
-              summary: {
-                averageGrade: 85.5,
-                medianGrade: 87.0,
-                highestGrade: 95.0,
-                lowestGrade: 75.0,
-              },
-            },
+      columns,
+      rows,
+      summary,
     };
 
     const response: ApiResponse<typeof reportData> = {
