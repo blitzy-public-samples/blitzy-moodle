@@ -864,8 +864,10 @@ export function GradeTable({
 
         {/* Grade Item Filter */}
         <FormControl size="small" sx={{ minWidth: 200 }}>
-          <InputLabel>Filter by grade item</InputLabel>
+          <InputLabel id="grade-item-filter-label">Filter by grade item</InputLabel>
           <Select
+            labelId="grade-item-filter-label"
+            id="grade-item-filter"
             value={gradeItemFilter}
             label="Filter by grade item"
             onChange={handleGradeItemFilterChange}
