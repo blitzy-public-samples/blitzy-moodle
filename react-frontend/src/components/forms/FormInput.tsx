@@ -17,7 +17,7 @@
  */
 
 import { useState } from 'react';
-import type { Control, FieldValues } from 'react-hook-form';
+import type { Control, FieldValues, Path } from 'react-hook-form';
 import { Controller } from 'react-hook-form';
 import type { TextFieldProps } from '@mui/material';
 import { TextField, InputAdornment, IconButton } from '@mui/material';
@@ -35,12 +35,13 @@ export type InputMode = 'text' | 'email' | 'tel' | 'url' | 'numeric' | 'decimal'
 
 /**
  * Props for the FormInput component
+ * @template T - The type of form values, defaults to FieldValues
  */
-export interface FormInputProps {
+export interface FormInputProps<T extends FieldValues = FieldValues> {
   /**
    * Name of the form field - used for form registration and identification
    */
-  name: string;
+  name: Path<T>;
 
   /**
    * Label text displayed above/inside the input field
@@ -114,7 +115,7 @@ export interface FormInputProps {
    * React Hook Form control object for field registration and management
    * Required for integration with form state and validation
    */
-  control: Control<FieldValues>;
+  control: Control<T>;
 
   /**
    * Variant of the TextField component
@@ -237,7 +238,7 @@ const getInputModeFromType = (type: FormInputType): InputMode => {
  *   helperText="Enter your age in years"
  * />
  */
-export function FormInput({
+export function FormInput<T extends FieldValues = FieldValues>({
   name,
   label,
   type = 'text',
@@ -261,7 +262,7 @@ export function FormInput({
   multiline = false,
   minRows,
   maxRows,
-}: FormInputProps): JSX.Element {
+}: FormInputProps<T>): JSX.Element {
   // State for password visibility toggle
   const [showPassword, setShowPassword] = useState(false);
 

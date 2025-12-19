@@ -1,5 +1,5 @@
 import { Controller, useFormContext } from 'react-hook-form';
-import type { Control, FieldValues } from 'react-hook-form';
+import type { Control, FieldValues, Path } from 'react-hook-form';
 import { TextField } from '@mui/material';
 import type { TextFieldProps } from '@mui/material';
 
@@ -7,9 +7,9 @@ import type { TextFieldProps } from '@mui/material';
  * Props for the FormTextarea component
  * Multi-line text input with React Hook Form integration
  */
-export interface FormTextareaProps {
+export interface FormTextareaProps<TFieldValues extends FieldValues = FieldValues> {
   /** Field name for form registration */
-  name: string;
+  name: Path<TFieldValues>;
 
   /** Label text displayed above the textarea */
   label?: string;
@@ -51,7 +51,7 @@ export interface FormTextareaProps {
   onBlur?: (event: React.FocusEvent<HTMLTextAreaElement>) => void;
 
   /** React Hook Form control object (optional, uses context if not provided) */
-  control?: Control<FieldValues>;
+  control?: Control<TFieldValues>;
 }
 
 /**
@@ -86,7 +86,7 @@ export interface FormTextareaProps {
  * @param props - FormTextarea component props
  * @returns Controlled multi-line text input component
  */
-export function FormTextarea({
+export function FormTextarea<TFieldValues extends FieldValues = FieldValues>({
   name,
   label,
   required = false,
@@ -102,12 +102,12 @@ export function FormTextarea({
   onFocus,
   onBlur,
   control: controlProp,
-}: FormTextareaProps): JSX.Element {
+}: FormTextareaProps<TFieldValues>): JSX.Element {
   // Always call useFormContext unconditionally to satisfy React Hooks rules
   // If a control prop is provided, it will take precedence over the context value
   // This component must be used within a FormProvider wrapper
-  const formContext = useFormContext();
-  const control = controlProp ?? formContext?.control;
+  const formContext = useFormContext<TFieldValues>();
+  const control = controlProp ?? formContext?.control as Control<TFieldValues> | undefined;
 
   if (!control) {
     throw new Error('FormTextarea must be used within a FormProvider or have control prop');

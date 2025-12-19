@@ -27,6 +27,16 @@ export enum UserAuthMethod {
   SHIBBOLETH = 'shibboleth',
   /** CAS (Central Authentication Service) */
   CAS = 'cas',
+  /** SAML 2.0 Single Sign-On */
+  SAML = 'saml',
+  /** Email-based authentication */
+  EMAIL = 'email',
+  /** No authentication method assigned */
+  NONE = 'none',
+  /** Account disabled for login */
+  NOLOGIN = 'nologin',
+  /** Multi-factor authentication */
+  MFA = 'mfa',
 }
 
 /**

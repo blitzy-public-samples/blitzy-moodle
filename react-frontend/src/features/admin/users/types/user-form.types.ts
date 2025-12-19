@@ -42,6 +42,15 @@ export interface UserFormData {
   /** Password for new users or password change (min 8 chars, required for create) */
   password?: string;
 
+  /** Password confirmation (must match password field) */
+  passwordConfirm?: string;
+
+  /** Force password change on next login (true/false) */
+  forcePasswordChange?: boolean;
+
+  /** Profile picture file for upload */
+  profilePicture?: File | null;
+
   // Location fields
   /** City of residence (max 120 chars) */
   city: string;
@@ -105,11 +114,11 @@ export interface UserFormData {
   trackforums?: number;
 
   // Account status fields
-  /** Account suspension status (0=active, 1=suspended) */
-  suspended?: number;
+  /** Account suspension status (false=active, true=suspended) */
+  suspended?: boolean;
 
-  /** Email confirmation status (0=unconfirmed, 1=confirmed) */
-  confirmed?: number;
+  /** Email confirmation status (false=unconfirmed, true=confirmed) */
+  confirmed?: boolean;
 
   // Name variants for internationalization
   /** Middle name (max 255 chars) */
@@ -334,22 +343,16 @@ export const userFormSchema = z.object({
 
   // Account status fields
   suspended: z
-    .number()
-    .int()
-    .min(0)
-    .max(1)
+    .boolean()
     .optional()
     .nullable()
-    .default(0),
+    .default(false),
 
   confirmed: z
-    .number()
-    .int()
-    .min(0)
-    .max(1)
+    .boolean()
     .optional()
     .nullable()
-    .default(1),
+    .default(true),
 
   // Name variants
   middlename: z
@@ -404,7 +407,7 @@ export interface UserCreateFormData {
   country: string;
 
   // Account status - new users are typically confirmed
-  confirmed: number;
+  confirmed: boolean;
 
   // Optional identity fields
   idnumber?: string;
@@ -489,7 +492,7 @@ export interface UserUpdateFormData {
   trackforums?: number;
 
   // Account status - suspension can be toggled on existing users
-  suspended?: number;
+  suspended?: boolean;
 
   // Name variants
   middlename?: string;
@@ -518,11 +521,8 @@ export const userCreateFormSchema = userFormSchema
         'Password must contain at least one uppercase letter, one lowercase letter, and one number'
       ),
     confirmed: z
-      .number()
-      .int()
-      .min(0)
-      .max(1)
-      .default(1),
+      .boolean()
+      .default(true),
   })
   .required({
     username: true,
@@ -558,10 +558,7 @@ export const userUpdateFormSchema = userFormSchema
       )
       .optional(),
     suspended: z
-      .number()
-      .int()
-      .min(0)
-      .max(1)
+      .boolean()
       .optional(),
   })
   .required({

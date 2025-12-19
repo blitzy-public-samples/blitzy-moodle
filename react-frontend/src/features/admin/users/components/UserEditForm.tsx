@@ -19,10 +19,9 @@
  * @module features/admin/users/components/UserEditForm
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { useBlocker, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -39,11 +38,11 @@ import { Save, Cancel, ArrowBack } from '@mui/icons-material';
 
 // Internal imports from depends_on_files
 import { useUserMutations } from '../hooks/useUserMutations';
-import type { User } from '../types/user.types';
+import type { User as AdminUser } from '../types/user.types';
+import type { User as EntityUser } from '@/types/entities';
 import { UserAuthMethod } from '../types/user.types';
 import type { UserFormData, UserCreateFormData, UserUpdateFormData } from '../types/user-form.types';
 import {
-  userFormSchema,
   userCreateFormSchema,
   userUpdateFormSchema,
 } from '../types/user-form.types';
@@ -74,12 +73,12 @@ export interface UserEditFormProps {
    * Existing user data to pre-populate form fields in edit mode.
    * Required when userId is provided.
    */
-  user?: User;
+  user?: AdminUser;
 
   /**
    * Callback when form is submitted successfully
    */
-  onSuccess?: (user: User) => void;
+  onSuccess?: (user: EntityUser) => void;
 
   /**
    * Callback when form submission is cancelled
@@ -214,7 +213,7 @@ const CAPABILITIES = {
  * @param user - The user entity to convert
  * @returns Form data object matching UserFormData interface
  */
-function userToFormData(user: User): Partial<UserFormData> {
+function userToFormData(user: AdminUser): Partial<UserFormData> {
   return {
     username: user.username,
     email: user.email,
@@ -225,8 +224,8 @@ function userToFormData(user: User): Partial<UserFormData> {
     country: user.country || '',
     timezone: user.timezone || '99',
     description: user.description || '',
-    suspended: user.suspended || false,
-    confirmed: user.confirmed ?? true,
+    suspended: user.suspended === 1,
+    confirmed: user.confirmed !== 0,
     forcePasswordChange: false,
     // Password fields are intentionally omitted - never pre-populate passwords
   };
@@ -315,7 +314,7 @@ export function UserEditForm({
     handleSubmit,
     watch,
     reset,
-    formState: { errors, isDirty, isValid },
+    formState: { isDirty, isValid },
     setValue,
   } = useForm<UserFormData>({
     resolver: zodResolver(validationSchema),
@@ -384,7 +383,7 @@ export function UserEditForm({
         if (isCreateMode) {
           // Create new user
           const createData = formData as UserCreateFormData;
-          const result = await createUser.mutateAsync(createData);
+          const result = await createUser.mutateAsync({ data: createData });
           
           success('User created successfully');
           
@@ -398,7 +397,7 @@ export function UserEditForm({
           // Update existing user
           const updateData = formData as UserUpdateFormData;
           const result = await updateUser.mutateAsync({
-            id: userId!,
+            userId: userId!,
             data: updateData,
           });
           
@@ -729,7 +728,7 @@ export function UserEditForm({
               label="Timezone"
               control={control}
               options={TIMEZONES}
-              groupBy={(option) => option.group}
+              groupBy={(option) => option.group ?? 'Other'}
               disabled={!hasPermission}
             />
           </Grid>
