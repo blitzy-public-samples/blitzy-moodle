@@ -30,12 +30,11 @@
  * @module features/admin/roles/components/RoleList
  */
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import {
   DataGrid,
   type GridColDef,
   type GridRenderCellParams,
-  type GridRowParams,
   type GridSortModel,
   type GridFilterModel,
 } from '@mui/x-data-grid';
@@ -415,6 +414,26 @@ function RoleList({
   const [filterModel, setFilterModel] = useState<GridFilterModel>({
     items: [],
   });
+
+  // Ref for auto-focus functionality
+  const dataGridContainerRef = useRef<HTMLDivElement>(null);
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
+
+  // Handle auto-focus when component mounts
+  useEffect(() => {
+    if (autoFocus && dataGridContainerRef.current) {
+      // Find the first focusable element within the DataGrid and focus it
+      const focusableElement = dataGridContainerRef.current.querySelector<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusableElement) {
+        focusableElement.focus();
+      }
+    }
+  }, [autoFocus]);
 
   // ============================================================================
   // Memoized Data
@@ -924,6 +943,7 @@ function RoleList({
     >
       {/* DataGrid Container */}
       <Paper
+        ref={dataGridContainerRef}
         elevation={0}
         sx={{
           width: '100%',
@@ -971,7 +991,6 @@ function RoleList({
             border: 'none',
           }}
           aria-label="Roles list"
-          tabIndex={autoFocus ? 0 : -1}
           slots={{
             noRowsOverlay: () => (
               <Box
