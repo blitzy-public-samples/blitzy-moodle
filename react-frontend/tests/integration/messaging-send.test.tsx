@@ -24,18 +24,15 @@ import {
   render,
   screen,
   waitFor,
-  fireEvent,
-  userEvent,
-} from '@/tests/helpers/render';
-import { server } from '@/tests/mocks/server';
+} from '@tests/helpers/render';
+import { server } from '@tests/mocks/server';
 import {
   createMockMessage,
   createMockUser,
-  createMockConversation,
   generateMockId,
-} from '@/tests/helpers/mockData';
+} from '@tests/helpers/mockData';
 import { MessageComposer } from '@/features/messaging/components/MessageComposer';
-import type { Message } from '@/features/messaging/types/message.types';
+import type { Message } from '@/types/entities';
 
 // ============================================================================
 // TEST CONSTANTS
@@ -47,9 +44,18 @@ import type { Message } from '@/features/messaging/types/message.types';
 const API_BASE_URL = '/api/v1';
 
 /**
- * Messages API endpoint
+ * Messages API base endpoint
+ * Note: The actual endpoint for sending messages is
+ * /api/v1/messages/conversations/:conversationId/messages
  */
-const MESSAGES_ENDPOINT = `${API_BASE_URL}/messages`;
+const MESSAGES_BASE = `${API_BASE_URL}/messages`;
+
+/**
+ * Conversation messages endpoint pattern
+ * Used by sendMessage() in messagingApi.ts
+ * Format: /api/v1/messages/conversations/:conversationId/messages
+ */
+const CONVERSATION_MESSAGES_ENDPOINT = `${MESSAGES_BASE}/conversations/:conversationId/messages`;
 
 /**
  * Users search API endpoint for recipient autocomplete
@@ -93,56 +99,9 @@ const mockRecipientUser = createMockUser({
 const mockConversationId = generateMockId();
 
 /**
- * Mock conversation
- */
-const mockConversation = createMockConversation({
-  id: mockConversationId,
-  type: 1, // Individual conversation
-  membercount: 2,
-  members: [
-    {
-      id: mockCurrentUser.id,
-      fullname: `${mockCurrentUser.firstname} ${mockCurrentUser.lastname}`,
-      profileurl: `/user/profile.php?id=${mockCurrentUser.id}`,
-      profileimageurl: '/theme/image.php/boost/core/user/f2',
-      profileimageurlsmall: '/theme/image.php/boost/core/user/f1',
-      isonline: true,
-      showonlinestatus: true,
-      iscontact: false,
-      isblocked: false,
-      isdeleted: false,
-      requirescontact: false,
-      canmessage: true,
-      contactrequests: [],
-    },
-    {
-      id: mockRecipientUser.id,
-      fullname: `${mockRecipientUser.firstname} ${mockRecipientUser.lastname}`,
-      profileurl: `/user/profile.php?id=${mockRecipientUser.id}`,
-      profileimageurl: '/theme/image.php/boost/core/user/f2',
-      profileimageurlsmall: '/theme/image.php/boost/core/user/f1',
-      isonline: false,
-      showonlinestatus: true,
-      iscontact: true,
-      isblocked: false,
-      isdeleted: false,
-      requirescontact: false,
-      canmessage: true,
-      contactrequests: [],
-    },
-  ],
-  messages: [],
-});
-
-/**
  * Sample message text for testing
  */
 const testMessageText = 'Hello! This is a test message from the integration tests.';
-
-/**
- * Sample search query for recipient autocomplete
- */
-const testSearchQuery = 'Jane';
 
 /**
  * Creates a mock sent message response
@@ -157,9 +116,8 @@ function createMockSentMessage(text: string): Message {
     smallmessage: text.substring(0, 100),
     timecreated: Math.floor(Date.now() / 1000),
     fullmessageformat: 1,
-    subject: null,
-    fullmessagetrust: 0,
-    customdata: null,
+    subject: '',
+    customdata: undefined,
   });
 }
 
@@ -168,10 +126,12 @@ function createMockSentMessage(text: string): Message {
 // ============================================================================
 
 /**
- * Creates a success handler for POST /api/v1/messages
+ * Creates a success handler for POST /api/v1/messages/conversations/:conversationId/messages
+ * The endpoint follows the pattern: /messages/conversations/:conversationId/messages
+ * as defined in messagingApi.ts sendMessage() function
  */
 function createSuccessMessageHandler(responseMessage?: Message) {
-  return http.post(MESSAGES_ENDPOINT, async ({ request }) => {
+  return http.post(CONVERSATION_MESSAGES_ENDPOINT, async ({ request }) => {
     const body = await request.json() as { text?: string };
     const sentMessage = responseMessage || createMockSentMessage(body.text || testMessageText);
 
@@ -183,14 +143,14 @@ function createSuccessMessageHandler(responseMessage?: Message) {
 }
 
 /**
- * Creates an error handler for POST /api/v1/messages
+ * Creates an error handler for POST /api/v1/messages/conversations/:conversationId/messages
  */
 function createErrorMessageHandler(
   statusCode: number,
   errorCode: string,
   errorMessage: string
 ) {
-  return http.post(MESSAGES_ENDPOINT, () => {
+  return http.post(CONVERSATION_MESSAGES_ENDPOINT, () => {
     return HttpResponse.json(
       {
         success: false,
@@ -276,10 +236,15 @@ describe('Messaging Send Workflow Integration Tests', () => {
    * - Reset MSW handlers to default state
    * - Create fresh mock callbacks
    * - Configure test-specific API mocks
+   * - Clear localStorage to prevent draft message pollution
    */
   beforeEach(() => {
     // Reset handlers to default state
     server.resetHandlers();
+
+    // Clear localStorage to prevent draft message pollution between tests
+    // The MessageComposer component stores drafts with key pattern: moodle_message_draft_{conversationId}
+    localStorage.clear();
 
     // Create fresh mock callback
     onMessageSentMock = vi.fn();
@@ -297,6 +262,8 @@ describe('Messaging Send Workflow Integration Tests', () => {
    */
   afterEach(() => {
     vi.clearAllMocks();
+    // Clear localStorage after each test to ensure test isolation
+    localStorage.clear();
   });
 
   // ==========================================================================
@@ -580,7 +547,7 @@ describe('Messaging Send Workflow Integration Tests', () => {
 
       // Set up handler to capture request body
       server.use(
-        http.post(MESSAGES_ENDPOINT, async ({ request }) => {
+        http.post(CONVERSATION_MESSAGES_ENDPOINT, async ({ request }) => {
           requestBody = await request.json();
           return HttpResponse.json({
             success: true,
@@ -610,9 +577,11 @@ describe('Messaging Send Workflow Integration Tests', () => {
       });
 
       // Verify request body contains expected data
+      // Note: conversationId is in the URL path, not the request body
+      // The API sends { text, textformat } in the body as per messagingApi.ts
       expect(requestBody).toMatchObject({
-        conversationId: mockConversationId,
         text: testMessageText,
+        textformat: 1,
       });
     });
 
@@ -620,7 +589,7 @@ describe('Messaging Send Workflow Integration Tests', () => {
       const expectedMessage = createMockSentMessage(testMessageText);
 
       server.use(
-        http.post(MESSAGES_ENDPOINT, () => {
+        http.post(CONVERSATION_MESSAGES_ENDPOINT, () => {
           return HttpResponse.json({
             success: true,
             data: expectedMessage,
@@ -685,7 +654,7 @@ describe('Messaging Send Workflow Integration Tests', () => {
     it('should disable send button while message is being sent', async () => {
       // Add artificial delay to API response
       server.use(
-        http.post(MESSAGES_ENDPOINT, async () => {
+        http.post(CONVERSATION_MESSAGES_ENDPOINT, async () => {
           await new Promise((resolve) => setTimeout(resolve, 100));
           return HttpResponse.json({
             success: true,
@@ -724,7 +693,7 @@ describe('Messaging Send Workflow Integration Tests', () => {
     it('should show loading indicator while message is being sent', async () => {
       // Add artificial delay to API response
       server.use(
-        http.post(MESSAGES_ENDPOINT, async () => {
+        http.post(CONVERSATION_MESSAGES_ENDPOINT, async () => {
           await new Promise((resolve) => setTimeout(resolve, 200));
           return HttpResponse.json({
             success: true,
@@ -924,7 +893,7 @@ describe('Messaging Send Workflow Integration Tests', () => {
 
       // First attempt fails, second succeeds
       server.use(
-        http.post(MESSAGES_ENDPOINT, () => {
+        http.post(CONVERSATION_MESSAGES_ENDPOINT, () => {
           attemptCount++;
           if (attemptCount === 1) {
             return HttpResponse.json(
@@ -1134,8 +1103,8 @@ describe('Messaging Send Workflow Integration Tests', () => {
       // Progress indicator should appear during upload
       await waitFor(() => {
         // The component uses LinearProgress for upload
-        const progressBar = screen.queryByRole('progressbar', { name: /file upload progress/i });
-        // This may or may not be visible depending on upload speed
+        // Progress bar query - may or may not be visible depending on upload speed
+        screen.queryByRole('progressbar', { name: /file upload progress/i });
         // Just verify the upload mechanism works
         expect(fileInput.files).toHaveLength(0); // Input cleared after selection
       });
@@ -1221,7 +1190,7 @@ describe('Messaging Send Workflow Integration Tests', () => {
     it('should call onMessageSent quickly with optimistic data', async () => {
       // Add delay to API response
       server.use(
-        http.post(MESSAGES_ENDPOINT, async () => {
+        http.post(CONVERSATION_MESSAGES_ENDPOINT, async () => {
           await new Promise((resolve) => setTimeout(resolve, 500));
           return HttpResponse.json({
             success: true,
@@ -1422,7 +1391,7 @@ describe('Messaging Send Workflow Integration Tests', () => {
 
   describe('Edge Cases', () => {
     it('should not send empty message', async () => {
-      const { user } = render(
+      render(
         <MessageComposer
           conversationId={mockConversationId}
           onMessageSent={onMessageSentMock}
@@ -1432,10 +1401,14 @@ describe('Messaging Send Workflow Integration Tests', () => {
 
       const sendButton = screen.getByRole('button', { name: /send message/i });
 
-      // Try to click send with empty message
-      await user.click(sendButton);
+      // The send button should be disabled when the message is empty
+      // Note: We don't try to click a disabled button because:
+      // 1. Disabled buttons have pointer-events: none
+      // 2. Testing library's user.click() will throw on pointer-events: none
+      // 3. The correct test is to verify the button IS disabled
+      expect(sendButton).toBeDisabled();
 
-      // onMessageSent should not be called
+      // onMessageSent should not be called because the button is disabled
       expect(onMessageSentMock).not.toHaveBeenCalled();
     });
 
@@ -1500,7 +1473,7 @@ describe('Messaging Send Workflow Integration Tests', () => {
       let capturedText = '';
 
       server.use(
-        http.post(MESSAGES_ENDPOINT, async ({ request }) => {
+        http.post(CONVERSATION_MESSAGES_ENDPOINT, async ({ request }) => {
           const body = await request.json() as { text?: string };
           capturedText = body.text || '';
           return HttpResponse.json({
@@ -1539,7 +1512,7 @@ describe('Messaging Send Workflow Integration Tests', () => {
 
       let capturedText = '';
       server.use(
-        http.post(MESSAGES_ENDPOINT, async ({ request }) => {
+        http.post(CONVERSATION_MESSAGES_ENDPOINT, async ({ request }) => {
           const body = await request.json() as { text?: string };
           capturedText = body.text || '';
           return HttpResponse.json({
@@ -1578,7 +1551,7 @@ describe('Messaging Send Workflow Integration Tests', () => {
 
       let capturedText = '';
       server.use(
-        http.post(MESSAGES_ENDPOINT, async ({ request }) => {
+        http.post(CONVERSATION_MESSAGES_ENDPOINT, async ({ request }) => {
           const body = await request.json() as { text?: string };
           capturedText = body.text || '';
           return HttpResponse.json({

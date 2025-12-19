@@ -41,9 +41,10 @@ export default defineConfig({
     environment: 'happy-dom',
     
     // Environment variables for tests
-    // Set absolute API base URL so MSW can intercept requests properly
+    // Use relative API base URL so MSW can intercept requests properly
+    // MSW v2 intercepts relative URLs when using setupServer in Node.js
     env: {
-      VITE_API_BASE_URL: 'http://localhost:8000/api/v1'
+      VITE_API_BASE_URL: '/api/v1'
     },
     
     // Setup file to run before each test file

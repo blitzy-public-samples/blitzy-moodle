@@ -666,6 +666,88 @@ const getConversationHandler = http.get(
 );
 
 /**
+ * POST /api/v1/messages/conversations/:conversationId/messages - Send message in conversation
+ */
+const sendConversationMessageHandler = http.post(
+  '/api/v1/messages/conversations/:conversationId/messages',
+  async ({ params, request }) => {
+    await delay(200);
+
+    const conversationId = parseInt(params.conversationId as string, 10);
+    const body = await request.json() as {
+      text: string;
+      textformat?: number;
+    };
+
+    // Validation
+    if (!body.text || body.text.trim().length === 0) {
+      return HttpResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Message text is required',
+            details: { field: 'text', constraint: 'required' },
+          },
+        },
+        { status: 422 }
+      );
+    }
+
+    if (body.text.length > 5000) {
+      return HttpResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Message text is too long (maximum 5000 characters)',
+            details: { field: 'text', constraint: 'maxLength', maxLength: 5000 },
+          },
+        },
+        { status: 422 }
+      );
+    }
+
+    // Assume current user is ID 1
+    const currentUserId = 1;
+    const now = Date.now() / 1000;
+
+    // Determine recipient from conversation ID (simple mapping)
+    let recipientId = 2;
+    if (conversationId === 2) {
+      recipientId = 3;
+    } else if (conversationId > 1000) {
+      // For dynamically generated conversation IDs, extract user ID
+      recipientId = conversationId % 1000;
+    }
+
+    // Create new message
+    const newMessage: Message = {
+      id: mockMessages.length + 1 + Math.floor(Math.random() * 1000),
+      useridfrom: currentUserId,
+      useridto: recipientId,
+      subject: '',
+      fullmessage: body.text,
+      fullmessageformat: body.textformat || 1,
+      fullmessagehtml: `<p>${body.text}</p>`,
+      smallmessage: body.text.substring(0, 100),
+      notification: false,
+      timecreated: now,
+      conversationid: conversationId,
+    };
+
+    mockMessages.push(newMessage);
+
+    const response = {
+      success: true,
+      data: formatMessageWithUsers(newMessage),
+    };
+
+    return HttpResponse.json(response, { status: 201 });
+  }
+);
+
+/**
  * PUT /api/v1/messages/:id/read - Mark message as read
  */
 const markMessageReadHandler = http.put(
@@ -1143,6 +1225,7 @@ const deleteNotificationHandler = http.delete(
 export const messagesHandlers = [
   listMessagesHandler,
   sendMessageHandler,
+  sendConversationMessageHandler,
   getConversationHandler,
   markMessageReadHandler,
   deleteMessageHandler,
