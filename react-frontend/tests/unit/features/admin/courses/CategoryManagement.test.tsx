@@ -16,7 +16,7 @@ import '@testing-library/jest-dom';
 
 import CategoryManagement from '@/features/admin/courses/components/CategoryManagement';
 import type { CourseCategory } from '@/features/courses/types/course.types';
-import { render, screen, waitFor, within, userEvent, fireEvent, act } from '@tests/helpers/render';
+import { render, screen, waitFor, within, userEvent, fireEvent } from '@tests/helpers/render';
 import { waitForLoadingToFinish } from '@tests/helpers/asyncUtils';
 import { server } from '@tests/mocks/server';
 import { mockCourseCategory } from '@tests/mocks/data';
@@ -807,7 +807,7 @@ describe('CategoryManagement', () => {
       await waitFor(
         () => {
           // Quantum Mechanics should show (text is split due to highlighting)
-          expect(screen.getByText((content, element) => {
+          expect(screen.getByText((_content, element) => {
             return element?.textContent === 'Quantum Mechanics';
           })).toBeInTheDocument();
           // Parent categories should also show to maintain context
@@ -901,7 +901,7 @@ describe('CategoryManagement', () => {
         () => {
           // The category exists if we can find text containing " Mechanics" (the non-highlighted part)
           // OR we can look for the highlighted "Quantum" span
-          expect(screen.getByText((content, element) => {
+          expect(screen.getByText((_content, element) => {
             // Check if this element or its parent contains the full text
             return element?.textContent === 'Quantum Mechanics';
           })).toBeInTheDocument();
@@ -1323,10 +1323,8 @@ describe('CategoryManagement', () => {
       fireEvent.drop(scienceItem!, { dataTransfer });
 
       await waitFor(() => {
-        // Look for error message or alert - component should handle the error gracefully
-        const errorMessage = screen.queryByText(/cannot move/i) ||
-                            screen.queryByText(/error/i) ||
-                            screen.queryByRole('alert');
+        // The category should still be visible (not removed) after failed move
+        // Component should handle the error gracefully - category stays in place
         expect(screen.getByText('Music')).toBeInTheDocument();
       });
     });

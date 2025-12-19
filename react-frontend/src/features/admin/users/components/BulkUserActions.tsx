@@ -418,7 +418,8 @@ export function BulkUserActions({
 
       // For actions requiring single capability
       if (action.capabilities.length === 1) {
-        return hasCapability(action.capabilities[0]);
+        const capability = action.capabilities[0];
+        return capability ? hasCapability(capability) : true;
       }
 
       // For multiple capabilities, check all are present
