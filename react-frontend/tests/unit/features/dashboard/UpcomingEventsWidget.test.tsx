@@ -43,15 +43,22 @@ const UPCOMING_EVENTS_ENDPOINT = `${API_BASE_URL}/blocks/upcoming`;
 
 /**
  * Create a mock calendar event with default values
+ * Default timestart is set to today at 22:00 to avoid midnight crossing issues
  */
 function createMockEvent(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
+  const now = Math.floor(Date.now() / 1000);
+  // Default to today at 22:00 (10 PM) to ensure it's always "today"
+  const defaultToday = new Date();
+  defaultToday.setHours(22, 0, 0, 0);
+  const defaultTimestart = Math.floor(defaultToday.getTime() / 1000);
+  
   return {
     id: Math.floor(Math.random() * 10000),
     name: 'Test Event',
     description: 'A test event description',
     eventtype: CalendarEventType.COURSE,
-    timestart: Math.floor(Date.now() / 1000) + 3600, // 1 hour from now
-    timemodified: Math.floor(Date.now() / 1000),
+    timestart: defaultTimestart,
+    timemodified: now,
     courseid: 101,
     modulename: 'Assignment',
     url: '/mod/assign/view.php?id=123',
@@ -61,28 +68,53 @@ function createMockEvent(overrides: Partial<CalendarEvent> = {}): CalendarEvent 
 }
 
 /**
+ * Get a timestamp that's guaranteed to be "today" regardless of current time
+ * Uses today at 23:00 (11 PM) which is always today even near midnight
+ */
+function getTodayTimestamp(): number {
+  const today = new Date();
+  // Set to today at 23:00 local time - this ensures it's always "today"
+  // regardless of what time the test runs
+  today.setHours(23, 0, 0, 0);
+  return Math.floor(today.getTime() / 1000);
+}
+
+/**
+ * Get a timestamp that's guaranteed to be "tomorrow" regardless of current time
+ */
+function getTomorrowTimestamp(): number {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(12, 0, 0, 0); // Tomorrow at noon
+  return Math.floor(tomorrow.getTime() / 1000);
+}
+
+/**
  * Create mock events at specific time distances
+ * Uses fixed times relative to today/tomorrow to avoid flakiness near midnight
  */
 function createMockEventsAtDifferentTimes(): CalendarEvent[] {
+  const todayTimestamp = getTodayTimestamp();
+  const tomorrowTimestamp = getTomorrowTimestamp();
   const now = Math.floor(Date.now() / 1000);
   const hour = 3600;
   const day = 86400;
 
   return [
-    // Today events
+    // Today events - use fixed "today at 23:00" timestamp
     createMockEvent({
       id: 1,
-      name: 'Quiz closes in 30 minutes',
+      name: 'Quiz closes later today',
       eventtype: CalendarEventType.COURSE,
-      timestart: now + 1800, // 30 minutes from now
+      timestart: todayTimestamp - 2 * hour, // Today at 21:00
       modulename: 'Quiz',
       url: '/mod/quiz/view.php?id=1',
     }),
     createMockEvent({
       id: 2,
-      name: 'Assignment due in 2 hours',
+      name: 'Assignment due today',
       eventtype: CalendarEventType.COURSE,
-      timestart: now + 2 * hour, // 2 hours from now
+      timestart: todayTimestamp - hour, // Today at 22:00
       modulename: 'Assignment',
       url: '/mod/assign/view.php?id=2',
     }),
@@ -90,16 +122,16 @@ function createMockEventsAtDifferentTimes(): CalendarEvent[] {
       id: 3,
       name: 'Forum deadline today',
       eventtype: CalendarEventType.COURSE,
-      timestart: now + 5 * hour, // 5 hours from now
+      timestart: todayTimestamp, // Today at 23:00
       modulename: 'Forum',
       url: '/mod/forum/view.php?id=3',
     }),
-    // Tomorrow events
+    // Tomorrow events - use fixed "tomorrow at noon" timestamp
     createMockEvent({
       id: 4,
       name: 'Tomorrow assignment deadline',
       eventtype: CalendarEventType.COURSE,
-      timestart: now + day + 2 * hour, // Tomorrow
+      timestart: tomorrowTimestamp, // Tomorrow at noon
       modulename: 'Assignment',
       url: '/mod/assign/view.php?id=4',
     }),
@@ -107,14 +139,14 @@ function createMockEventsAtDifferentTimes(): CalendarEvent[] {
       id: 5,
       name: 'User event tomorrow',
       eventtype: CalendarEventType.USER,
-      timestart: now + day + 4 * hour,
+      timestart: tomorrowTimestamp + 2 * hour, // Tomorrow at 14:00
       modulename: undefined,
       url: undefined,
     }),
-    // This week events
+    // This week events (3-6 days from now)
     createMockEvent({
       id: 6,
-      name: 'Quiz next week',
+      name: 'Quiz this week',
       eventtype: CalendarEventType.COURSE,
       timestart: now + 3 * day, // 3 days from now
       modulename: 'Quiz',
@@ -124,11 +156,11 @@ function createMockEventsAtDifferentTimes(): CalendarEvent[] {
       id: 7,
       name: 'Site event this week',
       eventtype: CalendarEventType.SITE,
-      timestart: now + 4 * day,
+      timestart: now + 4 * day, // 4 days from now
       modulename: undefined,
       url: '/calendar/view.php?view=day',
     }),
-    // Later events
+    // Later events (>7 days from now)
     createMockEvent({
       id: 8,
       name: 'Group project deadline',
@@ -457,21 +489,15 @@ describe('UpcomingEventsWidget', () => {
     });
 
     it('does not display empty groups', async () => {
-      // Create events that are definitely "today" - use start of today + offset
-      // to avoid midnight boundary issues when tests run late at night
-      const now = new Date();
-      const todayNoon = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0);
-      const todayNoonTimestamp = Math.floor(todayNoon.getTime() / 1000);
-      
-      // If current time is past noon, use times in the early afternoon
-      // Otherwise use times around noon. Both are guaranteed to be "today"
-      const baseTime = now.getHours() >= 14 
-        ? Math.floor(now.getTime() / 1000) + 60  // 1 minute from now (close enough if it's afternoon)
-        : todayNoonTimestamp;
+      // Create events that are definitively "today" - use fixed times that won't cross midnight
+      // Use today at 21:00 and 21:30 which is always "today" regardless of when test runs
+      const today = new Date();
+      today.setHours(21, 0, 0, 0); // Today at 9 PM
+      const todayAt21Timestamp = Math.floor(today.getTime() / 1000);
       
       const todayEvents = [
-        createMockEvent({ id: 1, name: 'Morning Meeting', timestart: baseTime + 300 }),  // +5 minutes
-        createMockEvent({ id: 2, name: 'Afternoon Task', timestart: baseTime + 600 }),   // +10 minutes
+        createMockEvent({ id: 1, name: 'Morning Meeting', timestart: todayAt21Timestamp }),  // Today at 21:00
+        createMockEvent({ id: 2, name: 'Afternoon Task', timestart: todayAt21Timestamp + 1800 }),   // Today at 21:30
       ];
 
       server.use(
@@ -494,10 +520,14 @@ describe('UpcomingEventsWidget', () => {
     });
 
     it('lists events within the same group together', async () => {
-      const now = Math.floor(Date.now() / 1000);
+      // Use fixed times that are always "today" - 21:00 and 22:00
+      const today = new Date();
+      today.setHours(21, 0, 0, 0);
+      const todayAt21 = Math.floor(today.getTime() / 1000);
+      
       const todayEvents = [
-        createMockEvent({ id: 1, name: 'First Today Event', timestart: now + 3600 }),
-        createMockEvent({ id: 2, name: 'Second Today Event', timestart: now + 7200 }),
+        createMockEvent({ id: 1, name: 'First Today Event', timestart: todayAt21 }),
+        createMockEvent({ id: 2, name: 'Second Today Event', timestart: todayAt21 + 3600 }),
       ];
 
       server.use(
