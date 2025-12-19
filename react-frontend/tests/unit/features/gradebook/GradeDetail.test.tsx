@@ -20,20 +20,21 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import React from 'react';
 import { describe, it, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
-import { run as axeRun, type AxeResults } from 'axe-core';
+import { axe, toHaveNoViolations } from 'jest-axe';
+
+// Extend expect with jest-axe matchers
+expect.extend(toHaveNoViolations);
 
 // Internal imports from test helpers
-import { render, screen, waitFor, within } from '../../../helpers/render';
-import { createMockUser, createMockStudent, createMockTeacher } from '../../../helpers/mockData';
+import { render, screen, waitFor } from '../../../helpers/render';
+import { createMockStudent, createMockTeacher } from '../../../helpers/mockData';
 
 // Component under test
 import GradeDetail, {
   type GradeDetailData,
-  type GradeDetailProps,
   type SubmissionStatus,
   type GradeModificationEntry,
   type GradeScale,
@@ -71,8 +72,10 @@ function createMockHistoryEntry(overrides: Partial<GradeModificationEntry> = {})
     id: overrides.id ?? Math.floor(Math.random() * 1000000) + 1,
     modifierName: overrides.modifierName ?? 'Teacher User',
     timestamp: overrides.timestamp ?? now - 86400, // 1 day ago
-    oldGrade: overrides.oldGrade ?? null,
-    newGrade: overrides.newGrade ?? 85,
+    // Use explicit check to allow null oldGrade since ?? treats null as nullish
+    oldGrade: 'oldGrade' in overrides ? overrides.oldGrade as number | null : null,
+    // Use explicit check to allow null newGrade since ?? treats null as nullish
+    newGrade: 'newGrade' in overrides ? overrides.newGrade as number | null : 85,
     reason: overrides.reason,
   };
 }
@@ -85,7 +88,8 @@ function createMockGradeDetail(overrides: Partial<GradeDetailData> = {}): GradeD
   return {
     id: overrides.id ?? 1,
     name: overrides.name ?? 'Assignment 1',
-    finalgrade: overrides.finalgrade ?? 85.5,
+    // Use explicit check to allow null finalgrade since ?? treats null as nullish
+    finalgrade: 'finalgrade' in overrides ? overrides.finalgrade as number | null : 85.5,
     grademax: overrides.grademax ?? 100,
     feedback: overrides.feedback ?? null,
     submissionStatus: overrides.submissionStatus ?? 'graded',
@@ -97,8 +101,10 @@ function createMockGradeDetail(overrides: Partial<GradeDetailData> = {}): GradeD
     locktime: overrides.locktime ?? 0,
     gradetype: overrides.gradetype ?? GradeType.VALUE,
     scale: overrides.scale,
-    scaleid: overrides.scaleid ?? null,
-    timemodified: overrides.timemodified ?? now,
+    // Use explicit check to allow null scaleid since ?? treats null as nullish
+    scaleid: 'scaleid' in overrides ? overrides.scaleid as number | null : null,
+    // Use explicit check to allow undefined timemodified since ?? treats undefined as nullish
+    timemodified: 'timemodified' in overrides ? overrides.timemodified : now,
   };
 }
 
@@ -310,11 +316,9 @@ describe('GradeDetail Component', () => {
       const gradeItem = createMockGradeDetail({ submissionStatus: 'missing' });
       render(<GradeDetail gradeItem={gradeItem} />);
 
-      // Warning icon should be present in the header
-      expect(screen.getByRole('img', { hidden: true }) || 
-             screen.getByTestId('WarningIcon') ||
-             document.querySelector('[data-testid="WarningIcon"]') ||
-             document.querySelector('svg')).toBeTruthy();
+      // Warning icon should be present in the header - MUI icons render as SVGs with data-testid
+      const warningIcon = document.querySelector('[data-testid="WarningIcon"]');
+      expect(warningIcon).toBeInTheDocument();
     });
   });
 
@@ -801,11 +805,15 @@ describe('GradeDetail Component', () => {
       const feedbackButton = screen.getByRole('button', { name: /Feedback/i });
       const historyButton = screen.getByRole('button', { name: /Modification History/i });
 
-      // Check initial state
+      // Check initial state for feedback accordion
       expect(feedbackButton).toHaveAttribute('aria-expanded', 'false');
       expect(feedbackButton).toHaveAttribute('aria-controls');
 
-      // Click to expand
+      // Check initial state for history accordion
+      expect(historyButton).toHaveAttribute('aria-expanded', 'false');
+      expect(historyButton).toHaveAttribute('aria-controls');
+
+      // Click to expand feedback
       await user.click(feedbackButton);
       expect(feedbackButton).toHaveAttribute('aria-expanded', 'true');
     });
@@ -836,37 +844,31 @@ describe('GradeDetail Component', () => {
       });
       const { container } = render(<GradeDetail gradeItem={gradeItem} />);
 
-      // Run axe accessibility check
-      const results: AxeResults = await axeRun(container);
+      // Run axe accessibility check using jest-axe
+      const results = await axe(container);
       
-      // Filter out minor issues that don't affect WCAG 2.1 AA compliance
-      const criticalViolations = results.violations.filter(
-        (violation) => violation.impact === 'critical' || violation.impact === 'serious'
-      );
-
-      expect(criticalViolations).toHaveLength(0);
+      // Expect no violations for WCAG 2.1 AA compliance
+      expect(results).toHaveNoViolations();
     });
 
     it('loading state is accessible', async () => {
       const { container } = render(<GradeDetail gradeItem={null} loading={true} />);
 
-      const results: AxeResults = await axeRun(container);
-      const criticalViolations = results.violations.filter(
-        (violation) => violation.impact === 'critical' || violation.impact === 'serious'
-      );
-
-      expect(criticalViolations).toHaveLength(0);
+      // Run axe accessibility check using jest-axe
+      const results = await axe(container);
+      
+      // Expect no violations for WCAG 2.1 AA compliance
+      expect(results).toHaveNoViolations();
     });
 
     it('empty state is accessible', async () => {
       const { container } = render(<GradeDetail gradeItem={null} />);
 
-      const results: AxeResults = await axeRun(container);
-      const criticalViolations = results.violations.filter(
-        (violation) => violation.impact === 'critical' || violation.impact === 'serious'
-      );
-
-      expect(criticalViolations).toHaveLength(0);
+      // Run axe accessibility check using jest-axe
+      const results = await axe(container);
+      
+      // Expect no violations for WCAG 2.1 AA compliance
+      expect(results).toHaveNoViolations();
     });
   });
 
@@ -954,7 +956,9 @@ describe('GradeDetail Component', () => {
 
       // Verify basic info
       expect(screen.getByTestId('grade-item-name')).toHaveTextContent('Complete Assignment');
-      expect(screen.getByText(/92\.50/)).toBeInTheDocument();
+      // Use getAllByText since grade value appears in main display and history
+      const gradeTexts = screen.getAllByText(/92\.50/);
+      expect(gradeTexts.length).toBeGreaterThanOrEqual(1);
       expect(screen.getByText('Graded')).toBeInTheDocument();
       expect(screen.getByText(/manually overridden/i)).toBeInTheDocument();
 

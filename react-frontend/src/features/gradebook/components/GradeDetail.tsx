@@ -207,6 +207,13 @@ function formatGradeValue(
   scale?: GradeScale,
   scaleid?: number | null
 ): string {
+  // Check for NONE grade type first - this should always return "No grade"
+  // regardless of whether finalgrade is null or has a value
+  if (gradetype === GradeType.NONE) {
+    return 'No grade';
+  }
+
+  // For other grade types, null means not yet graded
   if (grade === null) {
     return 'Not graded';
   }
@@ -230,8 +237,8 @@ function formatGradeValue(
       // Text grade - no numeric value
       return 'Text feedback only';
 
-    case GradeType.NONE:
     default:
+      // Fallback for any unknown grade types
       return 'No grade';
   }
 }
@@ -442,7 +449,7 @@ export default function GradeDetail({ gradeItem, loading = false }: GradeDetailP
             }}
           >
             <InfoIcon color="info" sx={{ fontSize: 64 }} />
-            <Typography variant="h6" color="text.secondary">
+            <Typography variant="h6" component="p" color="text.secondary">
               No grade data available
             </Typography>
             <Typography variant="body2" color="text.secondary" align="center">
@@ -483,7 +490,7 @@ export default function GradeDetail({ gradeItem, loading = false }: GradeDetailP
             <Typography variant="overline" color="text.secondary" gutterBottom>
               Grade
             </Typography>
-            <Typography variant="h5" color="primary" gutterBottom>
+            <Typography variant="h5" component="p" color="primary" gutterBottom>
               {gradeDisplay}
             </Typography>
 
@@ -509,7 +516,7 @@ export default function GradeDetail({ gradeItem, loading = false }: GradeDetailP
           <Divider />
 
           {/* Status Indicators Section */}
-          {(gradeItem.overridden || gradeItem.excluded || isHidden || isLocked) && (
+          {(gradeItem.overridden || gradeItem.excluded || isHidden || isLocked || gradeItem.locktime > 0) && (
             <>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                 {gradeItem.overridden && (
@@ -622,7 +629,7 @@ export default function GradeDetail({ gradeItem, loading = false }: GradeDetailP
                   aria-controls="grade-feedback-content"
                   id="grade-feedback-header"
                 >
-                  <Typography variant="subtitle1">Feedback</Typography>
+                  <Typography variant="subtitle1" component="span">Feedback</Typography>
                 </AccordionSummary>
                 <AccordionDetails>
                   <Box
@@ -649,7 +656,7 @@ export default function GradeDetail({ gradeItem, loading = false }: GradeDetailP
                 aria-controls="grade-history-content"
                 id="grade-history-header"
               >
-                <Typography variant="subtitle1">
+                <Typography variant="subtitle1" component="span">
                   Modification History ({gradeItem.modificationHistory.length})
                 </Typography>
               </AccordionSummary>
