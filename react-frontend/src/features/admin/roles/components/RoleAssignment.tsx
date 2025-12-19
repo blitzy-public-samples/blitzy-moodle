@@ -51,7 +51,6 @@ import {
   Avatar,
   Checkbox,
   Button,
-  IconButton,
   Divider,
   LinearProgress,
   Alert,
@@ -65,17 +64,12 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
-  KeyboardDoubleArrowLeft,
-  KeyboardDoubleArrowRight,
   PersonAdd,
-  PersonRemove,
   Person,
 } from '@mui/icons-material';
 
 // Internal imports from depends_on_files
 import { useRoles } from '@/features/admin/roles/hooks/useRoles';
-import type { Context } from '@/features/admin/roles/types/role.types';
-import type { User } from '@/types/entities';
 import { useToast } from '@/hooks/useToast';
 import useDebounce from '@/hooks/useDebounce';
 
