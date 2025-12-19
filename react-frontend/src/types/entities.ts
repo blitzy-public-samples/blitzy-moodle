@@ -1097,10 +1097,10 @@ export interface CourseCategory {
   sortorder: number;
   /** Number of courses in category */
   coursecount: number;
-  /** Whether category is visible */
-  visible: boolean;
-  /** Previous visibility state */
-  visibleold: boolean;
+  /** Whether category is visible: 1=visible, 0=hidden (matches Moodle schema) */
+  visible: number;
+  /** Previous visibility state: 1=visible, 0=hidden */
+  visibleold: number;
   /** Timestamp when category was last modified */
   timemodified: Timestamp;
   /** Depth in category hierarchy */

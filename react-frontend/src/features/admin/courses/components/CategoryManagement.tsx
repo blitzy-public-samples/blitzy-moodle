@@ -85,7 +85,7 @@ import {
 // Internal imports from depends_on_files
 import type { CourseCategory } from '@/features/courses/types/course.types';
 import { apiClient } from '@/services/api/client';
-import { useToast } from '@/hooks/useToast';
+
 import useDebounce from '@/hooks/useDebounce';
 import { moveCategory } from '@/features/admin/courses/api/adminCoursesApi';
 
@@ -654,6 +654,7 @@ const CategoryTreeItem = memo(function CategoryTreeItem({
                   onToggleVisibility(node);
                 }}
                 disabled={isProcessing}
+                data-testid={node.visible ? 'visibility-on' : 'visibility-off'}
               >
                 {node.visible ? (
                   <Visibility fontSize="small" />
@@ -817,7 +818,7 @@ function CategoryManagement({
   expandAll = false,
 }: CategoryManagementProps): React.ReactElement {
   const queryClient = useQueryClient();
-  const { success, error: showError, warning, info } = useToast();
+  // Note: Using local snackbar state instead of useToast for consistent UI feedback
 
   // ============================================================================
   // State Management
@@ -912,10 +913,18 @@ function CategoryManagement({
       void queryClient.invalidateQueries({ queryKey: CATEGORIES_QUERY_KEY });
       setCreateDialogOpen(false);
       setFormData(DEFAULT_FORM_DATA);
-      success(`Category "${response.data.name}" created successfully`);
+      setSnackbar({
+        open: true,
+        message: `Category "${response.data.name}" created successfully`,
+        severity: 'success',
+      });
     },
     onError: (err: Error) => {
-      showError(`Failed to create category: ${err.message}`);
+      setSnackbar({
+        open: true,
+        message: `Failed to create category: ${err.message}`,
+        severity: 'error',
+      });
     },
   });
 
@@ -943,10 +952,18 @@ function CategoryManagement({
       void queryClient.invalidateQueries({ queryKey: CATEGORIES_QUERY_KEY });
       setEditDialogOpen(false);
       setEditingCategory(null);
-      success(`Category "${response.data.name}" updated successfully`);
+      setSnackbar({
+        open: true,
+        message: `Category "${response.data.name}" updated successfully`,
+        severity: 'success',
+      });
     },
     onError: (err: Error) => {
-      showError(`Failed to update category: ${err.message}`);
+      setSnackbar({
+        open: true,
+        message: `Failed to update category: ${err.message}`,
+        severity: 'error',
+      });
     },
   });
 
@@ -972,10 +989,18 @@ function CategoryManagement({
       setDeletingCategory(null);
       setDeleteConfirmed(false);
       setMoveContentsTo(null);
-      success('Category deleted successfully');
+      setSnackbar({
+        open: true,
+        message: 'Category deleted successfully',
+        severity: 'success',
+      });
     },
     onError: (err: Error) => {
-      showError(`Failed to delete category: ${err.message}`);
+      setSnackbar({
+        open: true,
+        message: `Failed to delete category: ${err.message}`,
+        severity: 'error',
+      });
     },
   });
 
@@ -998,10 +1023,18 @@ function CategoryManagement({
       setMoveDialogOpen(false);
       setMovingCategory(null);
       setMoveTargetId(0);
-      success('Category moved successfully');
+      setSnackbar({
+        open: true,
+        message: 'Category moved successfully',
+        severity: 'success',
+      });
     },
     onError: (err: Error) => {
-      showError(`Failed to move category: ${err.message}`);
+      setSnackbar({
+        open: true,
+        message: `Failed to move category: ${err.message}`,
+        severity: 'error',
+      });
     },
     onSettled: (_, __, { categoryId }) => {
       setProcessingIds((prev) => {
@@ -1032,14 +1065,20 @@ function CategoryManagement({
     },
     onSuccess: (response) => {
       void queryClient.invalidateQueries({ queryKey: CATEGORIES_QUERY_KEY });
-      info(
-        `Category "${response.data.name}" is now ${
+      setSnackbar({
+        open: true,
+        message: `Category "${response.data.name}" is now ${
           response.data.visible ? 'visible' : 'hidden'
-        }`
-      );
+        }`,
+        severity: 'info',
+      });
     },
     onError: (err: Error) => {
-      showError(`Failed to update visibility: ${err.message}`);
+      setSnackbar({
+        open: true,
+        message: `Failed to update visibility: ${err.message}`,
+        severity: 'error',
+      });
     },
     onSettled: (_, __, { id }) => {
       setProcessingIds((prev) => {
@@ -1177,23 +1216,31 @@ function CategoryManagement({
   // Submit create form
   const handleCreateSubmit = useCallback(() => {
     if (!formData.name.trim()) {
-      warning('Category name is required');
+      setSnackbar({
+        open: true,
+        message: 'Category name is required',
+        severity: 'warning',
+      });
       return;
     }
     createMutation.mutate(formData);
-  }, [formData, createMutation, warning]);
+  }, [formData, createMutation]);
 
   // Submit edit form
   const handleEditSubmit = useCallback(() => {
     if (!editingCategory || !formData.name.trim()) {
-      warning('Category name is required');
+      setSnackbar({
+        open: true,
+        message: 'Category name is required',
+        severity: 'warning',
+      });
       return;
     }
     updateMutation.mutate({
       id: editingCategory.id,
       data: formData,
     });
-  }, [editingCategory, formData, updateMutation, warning]);
+  }, [editingCategory, formData, updateMutation]);
 
   // Submit delete
   const handleDeleteSubmit = useCallback(() => {
@@ -1207,7 +1254,11 @@ function CategoryManagement({
       );
 
     if (hasContents && !deleteConfirmed) {
-      warning('Please confirm deletion of category with contents');
+      setSnackbar({
+        open: true,
+        message: 'Please confirm deletion of category with contents',
+        severity: 'warning',
+      });
       return;
     }
 
@@ -1221,7 +1272,6 @@ function CategoryManagement({
     moveContentsTo,
     categoryTree,
     deleteMutation,
-    warning,
   ]);
 
   // Submit move
@@ -1231,7 +1281,11 @@ function CategoryManagement({
     // Validate move operation
     const descendantIds = getDescendantIds(movingCategory.id, categoryTree);
     if (descendantIds.includes(moveTargetId)) {
-      showError('Cannot move a category into its own descendants');
+      setSnackbar({
+        open: true,
+        message: 'Cannot move a category into its own descendants',
+        severity: 'error',
+      });
       return;
     }
 
@@ -1239,7 +1293,7 @@ function CategoryManagement({
       categoryId: movingCategory.id,
       newParentId: moveTargetId,
     });
-  }, [movingCategory, moveTargetId, categoryTree, moveMutation, showError]);
+  }, [movingCategory, moveTargetId, categoryTree, moveMutation]);
 
   // Drag and drop handlers
   const handleDragStart = useCallback((id: number) => {

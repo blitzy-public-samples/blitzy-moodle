@@ -6,11 +6,15 @@
  * defaults and support for partial overrides.
  * 
  * @module tests/mocks/data/courses
+ * @see react-frontend/src/features/courses/types/course.types.ts - Course type definitions
  * @see react-frontend/src/types/entities.ts - Entity type definitions
  * @see public/course/lib.php - Source course management functions
  */
 
-import type { Course, CourseModule, CourseCategory } from '@/types/entities';
+import type { Course, CourseModule } from '@/types/entities';
+// Import CourseCategory from course.types.ts as it has the correct visible: number definition
+// matching Moodle's database schema (0=hidden, 1=visible)
+import type { CourseCategory } from '@/features/courses/types/course.types';
 import type {
   CourseId,
   LanguageCode,
@@ -237,8 +241,8 @@ export function mockCourseCategory(overrides: DeepPartial<CourseCategory> = {}):
     parent: 0, // Top-level category
     sortorder: 0,
     coursecount: 5,
-    visible: true,
-    visibleold: true,
+    visible: 1, // 1=visible, 0=hidden (matches Moodle schema)
+    visibleold: 1,
     timemodified: currentTimestamp,
     depth: 1,
     path: '/1',

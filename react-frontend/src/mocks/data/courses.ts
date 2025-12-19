@@ -237,8 +237,8 @@ export function mockCourseCategory(overrides: DeepPartial<CourseCategory> = {}):
     parent: 0, // Top-level category
     sortorder: 0,
     coursecount: 5,
-    visible: true,
-    visibleold: true,
+    visible: 1, // 1=visible, 0=hidden (matches Moodle schema)
+    visibleold: 1,
     timemodified: currentTimestamp,
     depth: 1,
     path: '/1',
