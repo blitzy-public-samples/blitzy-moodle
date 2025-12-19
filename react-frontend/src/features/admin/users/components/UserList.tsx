@@ -30,13 +30,12 @@
  * @subpackage features/admin/users/components
  */
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   DataGrid,
   type GridColDef,
   type GridRowSelectionModel,
   type GridSortModel,
-  type GridFilterModel,
   type GridRenderCellParams,
   type GridPaginationModel,
 } from '@mui/x-data-grid';
@@ -76,11 +75,11 @@ import { format, fromUnixTime } from 'date-fns';
 import { useUserManagement } from '../hooks/useUserManagement';
 import { useUserMutations } from '../hooks/useUserMutations';
 import type { User } from '../types/user.types';
+import { UserFilterStatus } from '../types/user-list.types';
 import { usePermissions } from '@/hooks/usePermissions';
 import { LoadingSpinner } from '@/components/feedback/LoadingSpinner';
 import { Alert } from '@/components/feedback/Alert';
 import { Modal } from '@/components/feedback/Modal';
-import { useToast } from '@/hooks/useToast';
 
 // ============================================================================
 // Type Definitions
@@ -231,7 +230,6 @@ export function UserList({
 
   const navigate = useNavigate();
   const { hasCapability, isAdmin } = usePermissions();
-  const toast = useToast();
 
   // User management hook for fetching and filtering users
   const {
@@ -330,12 +328,14 @@ export function UserList({
       const value = event.target.value as UserStatusFilter;
       setStatusFilter(value);
 
-      // Map status filter to API parameters
-      if (value === 'all') {
-        setStatus(undefined);
-      } else {
-        setStatus(value);
-      }
+      // Map status filter to API parameters using enum
+      const statusMap: Record<UserStatusFilter, UserFilterStatus | undefined> = {
+        all: undefined,
+        active: UserFilterStatus.ACTIVE,
+        suspended: UserFilterStatus.SUSPENDED,
+        deleted: UserFilterStatus.DELETED,
+      };
+      setStatus(statusMap[value]);
     },
     [setStatus]
   );
@@ -367,10 +367,10 @@ export function UserList({
    */
   const handleSortModelChange = useCallback(
     (model: GridSortModel) => {
-      if (model.length > 0) {
-        const { field, sort } = model[0];
+      const firstItem = model[0];
+      if (firstItem) {
         // Map DataGrid field to API sort field
-        changeSortOrder(field as typeof sortBy);
+        changeSortOrder(firstItem.field as typeof sortBy);
       }
     },
     [changeSortOrder]
