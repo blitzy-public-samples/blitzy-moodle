@@ -5,23 +5,27 @@
  * for testing. Provides mockAssignment(), mockAssignmentSubmission(), and related
  * helper functions with sensible defaults and support for partial overrides.
  * 
- * All generated mock data matches the Assignment and AssignmentSubmission interface
+ * All generated mock data matches the Assignment and Submission interface
  * structures and includes realistic timestamps, submission settings, grade configurations,
  * and status values based on actual Moodle assignment data patterns.
  * 
  * @module tests/mocks/data/assignments
- * @see react-frontend/src/types/entities.ts - Assignment entity type definitions
+ * @see react-frontend/src/features/activities/assignments/types/assignment.types.ts - Assignment type definitions
  * @see public/mod/assign/lib.php - Moodle assignment module functions
  * @see public/mod/assign/locallib.php - Assignment local library reference
  */
 
-import type { Assignment, AssignmentSubmission } from '@/types/entities';
+import type { 
+  Assignment, 
+  Submission as AssignmentSubmission 
+} from '@/features/activities/assignments/types/assignment.types';
 import type {
-  AssignmentId,
-  CourseId,
   Id,
   Timestamp,
 } from '@/types/common';
+
+/** Type alias for Assignment ID */
+type AssignmentId = number;
 
 // ============================================================================
 // Type Utilities
@@ -151,30 +155,64 @@ export function mockAssignment(overrides: DeepPartial<Assignment> = {}): Assignm
   const currentTimestamp = generateTimestamp();
   const sevenDaysFromNow = generateTimestamp(7);
   const fourteenDaysFromNow = generateTimestamp(14);
+  const twentyOneDaysFromNow = generateTimestamp(21);
 
   const defaults: Assignment = {
+    // Core identification
     id: overrides.id ?? generateAssignmentId(),
+    cmid: overrides.cmid ?? (overrides.id ?? generateAssignmentId()) + 1000, // Course module ID
     course: 1,
     name: 'Test Assignment',
+    
+    // Description fields (optional)
     intro: 'This is a test assignment for unit testing',
     introformat: 1, // HTML format
-    alwaysshowdescription: true,
-    submissiondrafts: true,
-    sendnotifications: true,
-    sendlatenotifications: false,
+    
+    // Display settings
+    alwaysshowdescription: 1, // Always show (using number for Moodle compatibility)
+    
+    // Submission settings
+    nosubmissions: 0, // Submissions are allowed
+    submissiondrafts: 1, // Draft mode enabled
+    sendnotifications: 1, // Notify graders
+    sendlatenotifications: 0, // Don't notify for late submissions
+    sendstudentnotifications: 1, // Send student notifications when grading
+    
+    // Date fields
     duedate: sevenDaysFromNow,
-    cutoffdate: fourteenDaysFromNow,
     allowsubmissionsfromdate: currentTimestamp,
+    cutoffdate: fourteenDaysFromNow,
+    gradingduedate: twentyOneDaysFromNow,
+    
+    // Grade settings
     grade: 100, // Maximum points
+    gradepenalty: 0, // No late penalty
     timemodified: currentTimestamp,
-    requiresubmissionstatement: false,
-    completionsubmit: true,
-    teamsubmission: false,
-    requireallteammemberssubmit: false,
+    
+    // Submission statement
+    requiresubmissionstatement: 0, // Not required
+    
+    // Completion settings
+    completionsubmit: 1, // Complete on submission
+    
+    // Team submission settings
+    teamsubmission: 0, // Individual submissions
+    requireallteammemberssubmit: 0, // N/A for individual
+    teamsubmissiongroupingid: 0, // No grouping
+    
+    // Anonymity settings
+    blindmarking: 0, // Disabled
+    hidegrader: 0, // Show grader identity
+    revealidentities: 0, // Not revealed (N/A when blind marking disabled)
+    
+    // Attempt settings
     attemptreopenmethod: 'none',
     maxattempts: -1, // Unlimited attempts
-    markingworkflow: false,
-    markingallocation: false,
+    
+    // Marking workflow settings
+    markingworkflow: 0, // Disabled
+    markingallocation: 0, // Disabled
+    markinganonymous: 0, // Disabled
   };
 
   return {
@@ -239,9 +277,9 @@ export function mockAssignmentSubmission(
     timecreated: currentTimestamp,
     timemodified: currentTimestamp,
     status: 'submitted',
-    groupid: undefined,
+    groupid: 0, // 0 for individual submissions
     attemptnumber: 1,
-    latest: true,
+    latest: 1, // 1 = this is the latest attempt
   };
 
   return {
@@ -343,7 +381,7 @@ export function mockSubmittedSubmission(
  */
 export function mockAssignmentArray(
   count: number,
-  courseid: CourseId = 1,
+  courseid: number = 1,
   baseOverrides: DeepPartial<Assignment> = {}
 ): Assignment[] {
   const assignments: Assignment[] = [];
@@ -496,18 +534,14 @@ export function mockGradingScenario(assignmentid: AssignmentId): AssignmentSubmi
       assignment: assignmentid,
       userid: 4,
       grade: 85,
-      grader: 1,
       gradingstatus: 'graded',
-      feedback: 'Good work! Consider adding more examples.',
     }),
     mockSubmittedSubmission({
       id: generateSubmissionId(),
       assignment: assignmentid,
       userid: 5,
       grade: 92,
-      grader: 1,
       gradingstatus: 'graded',
-      feedback: 'Excellent submission with thorough analysis.',
     }),
     // Draft submission (not yet submitted)
     mockDraftSubmission({
@@ -577,8 +611,8 @@ export function mockTeamAssignment(
   overrides: DeepPartial<Assignment> = {}
 ): Assignment {
   return mockAssignment({
-    teamsubmission: true,
-    requireallteammemberssubmit: false,
+    teamsubmission: 1,
+    requireallteammemberssubmit: 0,
     ...overrides,
   });
 }
@@ -601,7 +635,6 @@ export function mockGradedSubmission(
     status: 'submitted',
     grade: 85,
     gradingstatus: 'graded',
-    grader: 1,
     ...overrides,
   });
 }

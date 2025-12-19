@@ -419,6 +419,25 @@ function onRequestError(error: AxiosError): Promise<never> {
 function onResponse(response: AxiosResponse): AxiosResponse {
   // Track response time in development (logging removed for production)
 
+  // Detect JSON parse failure: Content-Type is application/json but data is a raw string
+  // This happens when Axios receives invalid JSON - it falls back to returning raw text
+  // We should treat this as an error since the server promised JSON but didn't deliver
+  const contentType = response.headers?.['content-type'] || '';
+  const isJsonResponse = contentType.includes('application/json');
+  const dataIsString = typeof response.data === 'string';
+  
+  if (isJsonResponse && dataIsString && response.data !== '') {
+    // Server returned Content-Type: application/json but the body wasn't valid JSON
+    // Axios fell back to returning raw text - this is an error condition
+    const parseError = new Error(
+      `Invalid JSON response from server: expected JSON but received text. ` +
+      `Response started with: "${response.data.substring(0, 50)}..."`
+    );
+    // Add response info for debugging
+    (parseError as Error & { response?: AxiosResponse }).response = response;
+    throw parseError;
+  }
+
   // Check if response follows standard envelope format
   // Type guard to check if data is already in StandardApiResponse format
   const hasStandardFormat: boolean =

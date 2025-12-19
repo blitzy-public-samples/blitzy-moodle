@@ -2411,13 +2411,13 @@ describe('h5pApi', () => {
     });
 
     it('should handle malformed JSON gracefully', async () => {
-      // MSW sends text as-is even with JSON content-type, so axios accepts it.
-      // The response interceptor wraps non-standard responses, so text gets through.
-      // Instead of expecting a throw, verify that unexpected data is handled:
+      // When the server returns Content-Type: application/json but the body isn't valid JSON,
+      // the API client's response interceptor correctly detects this as an error condition.
+      // The interceptor throws an error rather than silently returning corrupted data.
       server.use(
         http.get(`${API_BASE_URL}/h5p/activity/:id`, () => {
-          // Return text that isn't valid JSON - axios will still process this
-          // as a successful response with the raw text as data
+          // Return text that isn't valid JSON with JSON content-type
+          // This should be treated as an error since the server promised JSON but didn't deliver
           return new HttpResponse('not valid json', {
             status: 200,
             headers: { 'Content-Type': 'application/json' },
@@ -2425,14 +2425,9 @@ describe('h5pApi', () => {
         })
       );
       
-      // The response won't be a valid H5PActivity object
-      // This tests that the application doesn't crash on unexpected data
-      const result = await getH5PActivity(1);
-      
-      // Result should be the raw text since JSON parsing didn't produce an object
-      // with expected structure
-      expect(typeof result).toBe('string');
-      expect(result).toBe('not valid json');
+      // The request should throw an error due to invalid JSON
+      // This is the correct behavior - we shouldn't silently accept corrupted data
+      await expect(getH5PActivity(1)).rejects.toThrow(/Invalid JSON response/);
     });
 
     it('should handle very large responses', async () => {
