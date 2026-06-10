@@ -6,23 +6,23 @@
 **I want** to configure the red and yellow risk thresholds for each Class Pulse block instance through its configuration form,
 **So that** the risk highlight reflects the engagement limits I set for my course.
 
-This story documents the per-instance threshold configuration form for the Class Pulse block. Each placed block instance carries its own thresholds through Moodle's block instance-configuration contract: the block declares an `edit_form.php` whose field names are prefixed `config_` (for example `config_redlastlogin` and `config_yellowoverdue`), Moodle persists those submitted values on the individual block instance, and the block reads them back at render time as `$this->config->redlastlogin`. Each threshold is a positive whole number of its engagement signal's unit (days for last login, a count for overdue assignments), so the form validates the input and rejects non-numeric entries, negative entries, and zero; a blank field falls back to the documented default value rather than storing an empty value. The configured thresholds are the input that the risk highlight color-coding (STORY-001-03-03) reads to decide which rows turn red or yellow. The block-configurability contract is grounded in the verified `block_accessreview` analog, whose `has_config()` returns `true` (Source: public/blocks/accessreview/block_accessreview.php); the analog exposes its settings globally, while the per-instance `edit_form.php` / `config_*` field pattern documented here is the general Moodle block instance-configuration contract.
+This story documents the per-instance threshold configuration form for the Class Pulse block. Each placed block instance carries its own thresholds through Moodle's block instance-configuration contract: the block declares an `edit_form.php` whose field names are prefixed `config_` (for example `config_redlastlogin` and `config_yellowoverdue`), Moodle persists those submitted values on the individual block instance, and the block reads them back at render time as `$this->config->redlastlogin`. Each threshold is a non-negative whole number (zero or greater) of its engagement signal's unit (days for last login, a count for overdue assignments), so the form validates the input and rejects non-numeric entries and negative entries; zero is accepted as a valid threshold (for example, an overdue-assignment threshold of 0 highlights any student with one or more overdue assignments). A blank field falls back to the documented default value for that field rather than storing an empty value. The configured thresholds are the input that the risk highlight color-coding (STORY-001-03-03) reads to decide which rows turn red or yellow. The block-configurability contract is grounded in the verified `block_accessreview` analog, whose `has_config()` returns `true` (Source: public/blocks/accessreview/block_accessreview.php); the analog exposes its settings globally, while the per-instance `edit_form.php` / `config_*` field pattern documented here is the general Moodle block instance-configuration contract.
 
-The threshold fields map to the engagement signals and the risk highlight color they drive:
+In v1 the risk thresholds are configured for the two numeric engagement signals the Class Pulse objective statement thresholds — days since last login and the count of overdue assignments in this course — each with a red and a yellow `config_*` field. Every field carries a documented default, so a teacher who saves the form without changing a field keeps a defined threshold rather than an empty value:
 
-| Threshold field (`config_*`) | Engagement signal | Risk highlight color |
-|------------------------------|-------------------|----------------------|
-| `config_redlastlogin` | Days since last login | Red |
-| `config_yellowlastlogin` | Days since last login | Yellow |
-| `config_redoverdue` | Overdue assignments in this course | Red |
-| `config_yellowoverdue` | Overdue assignments in this course | Yellow |
+| Threshold field (`config_*`) | Engagement signal | Risk highlight color | Documented v1 default |
+|------------------------------|-------------------|----------------------|-----------------------|
+| `config_redlastlogin` | Days since last login | Red | 3 days |
+| `config_yellowlastlogin` | Days since last login | Yellow | Unset — the yellow last-login tier stays inactive and adds no risk highlight until the teacher sets a value |
+| `config_redoverdue` | Overdue assignments in this course | Red | Unset — the red overdue tier stays inactive and adds no risk highlight until the teacher sets a value |
+| `config_yellowoverdue` | Overdue assignments in this course | Yellow | 2 |
 
-The same red and yellow `config_*` pairing extends to the quiz-score-trend and last-interaction engagement signals. The two threshold examples from the Class Pulse objective statement are reproduced verbatim:
+The two numeric defaults come from the two threshold examples in the Class Pulse objective statement, reproduced verbatim:
 
 - "highlight in red when last login exceeds 3 days"
 - "highlight in yellow when overdue assignments exceed 2"
 
-The documented default thresholds align with these examples — a red last-login default of 3 days and a yellow overdue-assignment default of 2 — so a teacher who saves the form without changing a field keeps a working threshold rather than an empty value.
+The remaining two engagement signals are out of the v1 threshold model: the quiz-score-trend signal is a directional value (up, flat, or down) rather than a numeric count, and the last-interaction signal is a timestamp, so neither is threshold-configurable in v1 — both are displayed in the engagement table but drive no red or yellow risk highlight. This matches the fixed-signal scope of FEATURE-001-03, where the four signal columns are fixed and the threshold form tunes only the red and yellow risk thresholds for the two numeric signals.
 
 ## Acceptance Criteria
 
@@ -46,11 +46,11 @@ Each scenario is authored in Given/When/Then form, mirrors the repository Gherki
 - **When** the configuration form is submitted,
 - **Then** the form is rejected with a validation message and no threshold value is saved.
 
-**Scenario 4 — Blank field falls back to the default (valid output)**
+**Scenario 4 — Blank field falls back to its documented default (valid output)**
 
 - **Given** the teacher leaves a threshold field blank,
 - **When** the configuration form is saved,
-- **Then** that threshold falls back to the documented default value rather than storing an empty value.
+- **Then** a field with a numeric documented default takes that value (the red last-login field becomes 3 days and the yellow overdue field becomes 2), and a field whose documented default is unset (the yellow last-login field or the red overdue field) stays inactive and adds no risk highlight.
 
 **Scenario 5 — Save failure retains the prior thresholds (error handling)**
 
@@ -64,18 +64,25 @@ Each scenario is authored in Given/When/Then form, mirrors the repository Gherki
 - **When** the teacher sets a different red last-login threshold in each instance,
 - **Then** each instance retains its own `config_redlastlogin` value independently of the other.
 
+**Scenario 7 — Zero is accepted as a valid non-negative threshold (edge/boundary)**
+
+- **Given** the teacher sets the yellow overdue-assignments threshold to 0,
+- **When** the configuration form is submitted,
+- **Then** the value 0 is stored on that block instance as `config_yellowoverdue` and the form reloads with the value 0, so any student with one or more overdue assignments crosses the threshold.
+
 ## Sub-Tasks
 
 - [ ] Define the block instance `edit_form.php` with `config_*` threshold fields (for example `config_redlastlogin`, `config_yellowoverdue`) @assignee
-- [ ] Validate threshold inputs: reject non-numeric, negative, and zero values @assignee
+- [ ] Validate threshold inputs: reject non-numeric and negative values; accept zero as a valid non-negative threshold @assignee
 - [ ] Apply the documented default values when a threshold field is left blank @assignee
 - [ ] Persist threshold values per block instance and expose them at render time as `$this->config->*` @assignee
 - [ ] Add language strings for the threshold form field labels @assignee
 
 ## Edge Cases
 
-- **Empty/Null Input** — a blank threshold field: the threshold falls back to the documented default value rather than storing an empty value.
-- **Invalid Input** — a zero or negative threshold value: a threshold is a positive whole number, so the value is rejected as invalid with a validation message and no value is saved.
+- **Empty/Null Input** — a blank threshold field: the field falls back to its documented default — a numeric default for the red last-login (3 days) and yellow overdue (2) fields, or an unset, inactive tier for the yellow last-login and red overdue fields — rather than storing an empty value.
+- **Boundary Values** — a zero threshold value: zero is accepted as a valid non-negative threshold and stored, so (for example) an overdue threshold of 0 highlights any student with one or more overdue assignments.
+- **Invalid Input** — a negative threshold value such as `-1`: the value is rejected as invalid with a validation message and no value is saved.
 - **Invalid Input** — a non-numeric threshold value such as `abc`: the value is rejected as invalid with a validation message and no value is saved.
 - **Concurrent/Conflicting Operations** — two Course Teachers edit the same block instance configuration at the same time: the last submitted form that saves successfully wins and its values are the thresholds persisted on the instance.
 
@@ -91,7 +98,7 @@ Each scenario is authored in Given/When/Then form, mirrors the repository Gherki
 | Dimension | Assessment | Rationale |
 |-----------|------------|-----------|
 | Effort | Medium | A single per-instance configuration form: the `config_*` threshold fields, numeric validation, default fallbacks, and the form field labels. |
-| Complexity | Medium | Follows the Moodle block per-instance configuration contract with per-instance persistence, input validation that rejects non-numeric, negative, and zero values, and documented default fallbacks. |
+| Complexity | Medium | Follows the Moodle block per-instance configuration contract with per-instance persistence, input validation that rejects non-numeric and negative values while accepting zero, and a documented default for every threshold field. |
 | Uncertainty | Low | The block-configurability contract is grounded in the verified `block_accessreview` analog (`has_config()`) and the standard `config_*` field convention. |
 
 **Effort Medium, Complexity Medium, Uncertainty Low → 3 points.**
@@ -100,14 +107,14 @@ Story point estimate: 3 (Fibonacci).
 
 ## Definition of Done
 
-- [ ] A per-instance `edit_form.php` with `config_*` threshold fields (for example `config_redlastlogin`, `config_yellowoverdue`) is documented.
-- [ ] Numeric validation rejects non-numeric, negative, and zero input, because a threshold is a positive whole number.
-- [ ] A blank threshold field falls back to the documented default value rather than storing an empty value.
+- [ ] A per-instance `edit_form.php` with `config_*` threshold fields (for example `config_redlastlogin`, `config_yellowoverdue`) is documented, with a documented default for every field (red last-login 3 days, yellow overdue 2, and the yellow last-login and red overdue tiers unset and inactive by default).
+- [ ] Numeric validation rejects non-numeric and negative input and accepts zero as a valid non-negative threshold.
+- [ ] A blank threshold field falls back to its documented default value rather than storing an empty value.
 - [ ] Threshold values persist per block instance and are exposed at render time as `$this->config->*`, independently for each placed instance.
 - [ ] The two threshold examples are reproduced verbatim: "highlight in red when last login exceeds 3 days" and "highlight in yellow when overdue assignments exceed 2".
 - [ ] The story satisfies the six INVEST principles (Independent, Negotiable, Valuable, Estimable, Small, Testable) and is demonstrable for Product Owner acceptance.
 - [ ] The story carries 4–8 acceptance criteria in Given/When/Then form covering one valid-output, one input-validation, one error-handling, and one edge/boundary scenario, each with a binary pass/fail outcome.
-- [ ] The story enumerates 3–5 edge cases spanning Empty/Null Input, Invalid Input, and Concurrent/Conflicting Operations.
+- [ ] The story enumerates 3–5 edge cases spanning Empty/Null Input, Boundary Values, Invalid Input, and Concurrent/Conflicting Operations.
 - [ ] Zero forbidden terms appear in any acceptance criterion.
 - [ ] Key Citations reference the grounding Moodle source paths.
 

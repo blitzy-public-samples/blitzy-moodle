@@ -12,7 +12,7 @@ The v1 scope boundaries that govern this feature are reaffirmed here:
 
 - **No notifications or emails** — the risk highlight is presented on the course-level screen only; this feature sends no notification and no email to the Course Teacher when a student crosses a threshold.
 - **No parent/guardian visibility** — the rendered engagement table and every risk highlight are visible only to roles authorized in the course; parent or guardian visibility is excluded from v1.
-- **Fixed signal set** — the four engagement signal columns are fixed in v1. The threshold configuration form tunes the red and yellow thresholds for those signals; it does not let the Course Teacher choose which signals appear, add a signal, remove a signal, or reorder the columns.
+- **Fixed signal set** — the four engagement signal columns are fixed in v1. The threshold configuration form tunes the red and yellow risk thresholds for the two numeric signals it governs (days since last login and the count of overdue assignments, as documented in STORY-001-03-02); it does not let the Course Teacher choose which signals appear, add a signal, remove a signal, or reorder the columns.
 
 ## User Stories Index
 

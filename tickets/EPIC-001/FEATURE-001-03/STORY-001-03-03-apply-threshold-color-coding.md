@@ -6,12 +6,14 @@
 **I want** each student's row or cells color-coded red or yellow when an engagement signal exceeds its configured threshold,
 **So that** I can spot at-risk students through the risk highlight at a glance.
 
-This story documents the risk highlight color-coding applied to the Class Pulse engagement table rendered in STORY-001-03-01. For each student row, the block compares every engagement signal value against the red and yellow thresholds configured for that signal in STORY-001-03-02 and derives one risk-highlight state per cell — red, yellow, or none — which is injected into the render context as a CSS class. This mirrors the verified `block_accessreview` analog, whose `status.mustache` renders `<div class="block_accessreview block_accessreview_view {{classList}}">` where the dynamic `{{classList}}` conveys the visual state (Source: public/blocks/accessreview/templates). The Class Pulse risk highlight honors the **"exceeds" semantics** exactly: a signal value **strictly greater than** its threshold triggers the risk highlight, and a value **equal to** the threshold does not. When a value exceeds both its yellow and red thresholds, the red risk highlight takes precedence over the yellow one. A missing (null) signal value carries no risk highlight.
+This story documents the risk highlight color-coding applied to the Class Pulse engagement table rendered in STORY-001-03-01. For each student row, the block compares the two threshold-configurable engagement signals defined in STORY-001-03-02 — days since last login and the count of overdue assignments in this course — against their configured red and yellow thresholds and derives one risk-highlight state per cell — red, yellow, or none — which is injected into the render context as a CSS class. The quiz-score-trend signal (a directional up, flat, or down value) and the last-interaction signal (a timestamp) are displayed in the table but are not threshold-configurable in v1, so neither carries a threshold-driven risk highlight. This mirrors the verified `block_accessreview` analog, whose `status.mustache` renders `<div class="block_accessreview block_accessreview_view {{classList}}">` where the dynamic `{{classList}}` conveys the visual state (Source: public/blocks/accessreview/templates). The Class Pulse risk highlight honors the **"exceeds" semantics** exactly: a signal value **strictly greater than** its threshold triggers the risk highlight, and a value **equal to** the threshold does not. When a value exceeds both its yellow and red thresholds, the red risk highlight takes precedence over the yellow one. A missing (null) signal value carries no risk highlight.
 
-When a block instance has no thresholds configured, the documented default thresholds drive the risk highlight — a red last-login default of 3 days and a yellow overdue-assignment default of 2 — aligned with the two threshold examples from the Class Pulse objective statement, reproduced verbatim:
+When a block instance has no thresholds configured, the documented default thresholds from STORY-001-03-02 drive the risk highlight. The two numeric defaults are a red last-login default of 3 days and a yellow overdue-assignment default of 2, aligned with the two threshold examples from the Class Pulse objective statement, reproduced verbatim:
 
 - "highlight in red when last login exceeds 3 days"
 - "highlight in yellow when overdue assignments exceed 2"
+
+The complementary tiers — the yellow last-login threshold and the red overdue threshold — are unset by default and add no risk highlight until the teacher configures them, and the quiz-score-trend and last-interaction signals carry no threshold-driven highlight. So by default a last-login value strictly greater than 3 days carries the red highlight and an overdue count strictly greater than 2 carries the yellow highlight.
 
 The risk-highlight state for each cell is derived by comparing the engagement signal value against its configured thresholds:
 
@@ -55,7 +57,7 @@ Each scenario is authored in Given/When/Then form, mirrors the repository Gherki
 
 - **Given** a Class Pulse block instance with no thresholds configured,
 - **When** the engagement table renders,
-- **Then** the documented default thresholds are applied to determine each risk highlight.
+- **Then** the documented v1 defaults are applied: a last-login value strictly greater than 3 days carries the red highlight, an overdue count strictly greater than 2 carries the yellow highlight, the unset yellow last-login and red overdue tiers add no highlight, and the quiz-score-trend and last-interaction cells carry no threshold-driven highlight.
 
 **Scenario 6 — A missing signal value carries no highlight and surfaces no error (error handling)**
 
@@ -80,7 +82,7 @@ Each scenario is authored in Given/When/Then form, mirrors the repository Gherki
 ## Edge Cases
 
 - **Boundary Values** — a signal value exactly equal to the threshold: the cell carries no risk highlight, because "exceeds" means strictly greater.
-- **Empty/Null Input (defaults)** — no thresholds configured on the block instance: the documented default thresholds drive the risk highlight.
+- **Empty/Null Input (defaults)** — no thresholds configured on the block instance: the documented v1 defaults drive the risk highlight (red last login at 3 days and yellow overdue at 2, with the yellow last-login and red overdue tiers unset and the quiz-score-trend and last-interaction signals carrying no threshold highlight).
 - **Empty/Null Input (signal)** — a null or missing signal value: the cell carries no risk highlight.
 - **Concurrent/Conflicting Operations** — a threshold value is changed while the table is rendering: the in-flight render uses one consistent threshold set captured at the start of the render, and the changed threshold takes effect on the next render.
 
