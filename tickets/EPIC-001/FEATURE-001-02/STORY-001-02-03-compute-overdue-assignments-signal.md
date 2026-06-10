@@ -23,7 +23,7 @@ Each criterion is authored in Given/When/Then form, mirrors the repository Gherk
 
 - [ ] Query overdue assignments for enrolled users @assignee
 - [ ] Exclude no-due-date and already-submitted items @assignee
-- [ ] Surface the count to the renderer @assignee
+- [ ] Surface count to the renderer @assignee
 
 ## Edge Cases
 

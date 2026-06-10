@@ -6,16 +6,16 @@
 **I want** to add the Class Pulse block to a course on an opt-in basis,
 **So that** the engagement roster appears only in the courses where I choose to place it.
 
-This story documents only the placement contract of the Class Pulse block — where the block may be added and the rule that it is added by deliberate choice rather than automatically. Placement is governed by the block's `applicable_formats()` method, which permits the course view (`course-view`) and excludes activity-module pages (`mod`) and the Dashboard (`my`); the four engagement signals are scoped to a single course, so the course context is the block's intended host. The block is never auto-added to any course: a Course Teacher with editing mode on adds it through the standard "Add a block" menu, mirroring the verified `block_accessreview` analog. Because `instance_allow_multiple()` returns `false`, at most one Class Pulse block exists on any one page. This story computes no engagement signal and renders no risk highlight; it defines placement only.
+This story documents only the placement contract of the Class Pulse block — where the block may be added and the rule that it is added by deliberate choice rather than automatically. Placement is governed by the block's `applicable_formats()` method, which permits the course view (`course-view`) and excludes the site front page (`site`), activity-module pages (`mod`), and the Dashboard (`my`); the four engagement signals are scoped to a single course, so the course context is the block's only host. The block is never auto-added to any course: a Course Teacher with editing mode on adds it through the standard "Add a block" menu, mirroring the verified `block_accessreview` analog. Because `instance_allow_multiple()` returns `false`, at most one Class Pulse block exists on any one page. This story computes no engagement signal and renders no risk highlight; it defines placement only.
 
 ### Placement contract
 
-The table below maps each Moodle page-type key handled by `applicable_formats()` to whether a Course Teacher may add the Class Pulse block there. The keys and their structural pattern are taken from the verified analog (Source: `public/blocks/accessreview/block_accessreview.php`).
+The table below maps each Moodle page-type key handled by `applicable_formats()` to whether a Course Teacher may add the Class Pulse block there. The page-type keys follow the verified analog's structural pattern (Source: `public/blocks/accessreview/block_accessreview.php`); Class Pulse keeps that structure but sets `site => false` because its engagement roster is scoped to a single course and the block is not offered on the site front page.
 
 | Page type (`applicable_formats` key) | Addable | Notes |
 |---------------------------------------|---------|-------|
 | `course-view` | Yes (`true`) | The intended host: a single course's pages, where the engagement roster is scoped. |
-| `site` | Per analog (`true`) | The analog permits the site front page; Class Pulse mirrors the analog structurally, while the course context is its intended host and it is never auto-added at site scope. |
+| `site` | No (`false`) | Excluded — Class Pulse is scoped to a single course and is not offered on the site front page; it sets `site => false`, deliberately departing from the analog's `site => true`. |
 | `mod` | No (`false`) | Excluded — the block is not offered on activity-module pages. |
 | `my` | No (`false`) | Excluded — the block is not offered on the Dashboard. |
 
@@ -33,7 +33,7 @@ Each scenario is authored in Given/When/Then form, mirrors the repository Gherki
 
 - **Given** the block's `applicable_formats()` return value,
 - **When** it is validated,
-- **Then** the `course-view` key is `true` while the `mod` and `my` keys are each `false`.
+- **Then** the `course-view` key is `true` while the `site`, `mod`, and `my` keys are each `false`.
 
 **Scenario 3 — Block is not auto-added to a new course (opt-in, valid output)**
 
@@ -43,7 +43,7 @@ Each scenario is authored in Given/When/Then form, mirrors the repository Gherki
 
 **Scenario 4 — Block is not offered on non-course pages (error handling)**
 
-- **Given** a Course Teacher viewing the Dashboard (`my`) or an activity-module page (`mod`),
+- **Given** a Course Teacher viewing the site front page (`site`), the Dashboard (`my`), or an activity-module page (`mod`),
 - **When** the teacher opens the "Add a block" menu,
 - **Then** "Class Pulse" is not offered for that page.
 
@@ -55,7 +55,7 @@ Each scenario is authored in Given/When/Then form, mirrors the repository Gherki
 
 ## Sub-Tasks
 
-- [ ] Implement `applicable_formats()` returning `course-view => true`, `mod => false`, and `my => false`, mirroring the analog structural pattern @assignee
+- [ ] Implement `applicable_formats()` returning `course-view => true`, `site => false`, `mod => false`, and `my => false` so the block is offered only in a course @assignee
 - [ ] Confirm the block is not auto-added to any course — placement is an opt-in action taken by a Course Teacher @assignee
 - [ ] Confirm `instance_allow_multiple()` returns `false` so a duplicate instance cannot be added to one page @assignee
 - [ ] Document that adding the block is gated by the `block/classpulse:addinstance` capability (defined in STORY-001-01-02) @assignee
@@ -63,7 +63,7 @@ Each scenario is authored in Given/When/Then form, mirrors the repository Gherki
 
 ## Edge Cases
 
-- **Invalid Input** — a teacher attempts to add the block on a non-course page (the Dashboard `my` or an activity-module `mod` page): "Class Pulse" is not offered there because `applicable_formats()` marks those keys `false`.
+- **Invalid Input** — a teacher attempts to add the block on a non-course page (the site front page `site`, the Dashboard `my`, or an activity-module `mod` page): "Class Pulse" is not offered there because `applicable_formats()` marks those keys `false`.
 - **Boundary / Conflicting** — a duplicate-instance attempt on a course page that already hosts one Class Pulse block: the second add is refused because `instance_allow_multiple()` returns `false`.
 - **Permission** — a teacher who lacks `block/classpulse:addinstance` opens the "Add a block" menu: "Class Pulse" is not offered to that role, so placement is denied.
 - **Concurrent/Conflicting Operations** — two editing teachers add the block to the same course page at the same time: one instance is created and the single-instance rule is upheld, leaving exactly one Class Pulse block on the page.
@@ -80,13 +80,13 @@ Each scenario is authored in Given/When/Then form, mirrors the repository Gherki
 |-----------|------------|-----------|
 | Effort | Low | A single declarative `applicable_formats()` array plus the `instance_allow_multiple()` flag, mirrored from a verified analog. |
 | Complexity | Low | Declarative placement contract with no business logic and no data model. |
-| Uncertainty | Low | The placement keys and single-instance rule are verified against the existing `block_accessreview` plugin in this repository. |
+| Uncertainty | Low | The `course-view`, `mod`, and `my` keys and the single-instance rule are verified against the existing `block_accessreview` plugin in this repository; `site => false` is a deliberate course-scoping choice for Class Pulse. |
 
 **Story point estimate: 2 (Fibonacci).**
 
 ## Definition of Done
 
-- [ ] `applicable_formats()` is documented with `course-view` set to `true` and `mod` and `my` each set to `false`, mirroring the analog structural pattern.
+- [ ] `applicable_formats()` is documented with `course-view` set to `true` and `site`, `mod`, and `my` each set to `false`, so Class Pulse is offered only in a course.
 - [ ] Opt-in placement is documented: the block is not auto-added to any course and is added only by a deliberate Course Teacher action through the "Add a block" menu.
 - [ ] Duplicate-instance prevention via `instance_allow_multiple()` returning `false` is documented (at most one Class Pulse block per page).
 - [ ] The placement-gating capability `block/classpulse:addinstance` (STORY-001-01-02) is referenced.
@@ -98,7 +98,7 @@ Each scenario is authored in Given/When/Then form, mirrors the repository Gherki
 
 ## Key Citations
 
-- Source: public/blocks/accessreview/block_accessreview.php — `applicable_formats()` (the `course-view` / `site` / `mod` / `my` placement keys) and `instance_allow_multiple()` returning `false`, the placement and single-instance contract that Class Pulse mirrors.
+- Source: public/blocks/accessreview/block_accessreview.php — `applicable_formats()` (the `course-view` / `site` / `mod` / `my` placement keys) and `instance_allow_multiple()` returning `false`, the structural placement and single-instance contract Class Pulse follows; Class Pulse keeps `course-view => true` and `instance_allow_multiple()` returning `false` but sets `site => false` because its engagement roster is scoped to a single course.
 - Source: public/blocks/accessreview/tests/behat/accessreview.feature — the canonical narrative for adding the block in a course with editing mode on ("When I add the ... block"), the placement flow Class Pulse follows.
 - Source: .gherkin-lintrc — the repository Gherkin convention that the acceptance criteria mirror.
 
