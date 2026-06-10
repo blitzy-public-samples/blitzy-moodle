@@ -78,7 +78,7 @@ Each scenario is authored in Given/When/Then form, mirrors the repository Gherki
 
 ## Dependencies
 
-- **Prerequisite — STORY-001-01-01 (scaffold).** Capabilities attach to the block plugin; the `block_classpulse` plugin and its `db/access.php` must exist before the two capabilities can be declared. See [STORY-001-01-01 — Scaffold block plugin skeleton](./STORY-001-01-01-scaffold-block-plugin-skeleton.md).
+- **Prerequisite — STORY-001-01-01 (scaffold).** Capabilities attach to the block plugin; the `block_classpulse` plugin and its `db/access.php` must exist before the two capabilities can be declared. See [STORY-001-01-01: Scaffold block plugin skeleton](./STORY-001-01-01-scaffold-block-plugin-skeleton.md).
 - **Downstream dependents within FEATURE-001-01.** STORY-001-01-04 (privacy provider) references the read access governed by `block/classpulse:view`.
 - **Downstream dependents across features.** Every engagement-signal story in FEATURE-001-02 and every render story in FEATURE-001-03 relies on the `block/classpulse:view` authorization gate defined here, so that no viewer is shown data the role is not authorized to see.
 

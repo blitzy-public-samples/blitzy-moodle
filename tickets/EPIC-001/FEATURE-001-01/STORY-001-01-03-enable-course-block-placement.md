@@ -70,8 +70,8 @@ Each scenario is authored in Given/When/Then form, mirrors the repository Gherki
 
 ## Dependencies
 
-- **Prerequisite — STORY-001-01-01 (scaffold).** Placement attaches to the block plugin; the `block_classpulse` class must exist and declare `applicable_formats()` and `instance_allow_multiple()` before placement is configured. See [STORY-001-01-01 — Scaffold block plugin skeleton](./STORY-001-01-01-scaffold-block-plugin-skeleton.md).
-- **Capability gate — STORY-001-01-02 (access capabilities).** Adding the block is gated by `block/classpulse:addinstance`, defined in [STORY-001-01-02 — Define access capabilities](./STORY-001-01-02-define-access-capabilities.md); a role without that capability is not offered the block.
+- **Prerequisite — STORY-001-01-01 (scaffold).** Placement attaches to the block plugin; the `block_classpulse` class must exist and declare `applicable_formats()` and `instance_allow_multiple()` before placement is configured. See [STORY-001-01-01: Scaffold block plugin skeleton](./STORY-001-01-01-scaffold-block-plugin-skeleton.md).
+- **Capability gate — STORY-001-01-02 (access capabilities).** Adding the block is gated by `block/classpulse:addinstance`, defined in [STORY-001-01-02: Define access capabilities](./STORY-001-01-02-define-access-capabilities.md); a role without that capability is not offered the block.
 - **External platform dependency — Moodle 5.2 core block API.** Placement relies on the core block `applicable_formats()` contract and the standard "Add a block" placement flow; no code outside the block plugin is changed.
 
 ## Estimation

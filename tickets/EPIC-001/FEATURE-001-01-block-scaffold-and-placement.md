@@ -20,10 +20,10 @@ This feature decomposes into four User Stories, each authored under the sibling 
 
 | Story | Description |
 |-------|-------------|
-| [STORY-001-01-01 — Scaffold block plugin skeleton](./FEATURE-001-01/STORY-001-01-01-scaffold-block-plugin-skeleton.md) | Create the `block_classpulse` class extending `block_base`, the `version.php` descriptor, the English language strings, and the `pix/` icon. |
-| [STORY-001-01-02 — Define access capabilities](./FEATURE-001-01/STORY-001-01-02-define-access-capabilities.md) | Declare `block/classpulse:addinstance` and `block/classpulse:view` at `CONTEXT_BLOCK`, with the authorization rule that the block shows only data the viewing role is authorized to see. |
-| [STORY-001-01-03 — Enable course block placement](./FEATURE-001-01/STORY-001-01-03-enable-course-block-placement.md) | Restrict placement to the course view through `applicable_formats()` so the block is opt-in per course and is not auto-added. |
-| [STORY-001-01-04 — Implement privacy provider](./FEATURE-001-01/STORY-001-01-04-implement-privacy-provider.md) | Provide a privacy provider that declares no new stored personal data and names the external Moodle sources the block reads. |
+| [STORY-001-01-01: Scaffold block plugin skeleton](./FEATURE-001-01/STORY-001-01-01-scaffold-block-plugin-skeleton.md) | Create the `block_classpulse` class extending `block_base`, the `version.php` descriptor, the English language strings, and the `pix/` icon. |
+| [STORY-001-01-02: Define access capabilities](./FEATURE-001-01/STORY-001-01-02-define-access-capabilities.md) | Declare `block/classpulse:addinstance` and `block/classpulse:view` at `CONTEXT_BLOCK`, with the authorization rule that the block shows only data the viewing role is authorized to see. |
+| [STORY-001-01-03: Enable course block placement](./FEATURE-001-01/STORY-001-01-03-enable-course-block-placement.md) | Restrict placement to the course view through `applicable_formats()` so the block is opt-in per course and is not auto-added. |
+| [STORY-001-01-04: Implement privacy provider](./FEATURE-001-01/STORY-001-01-04-implement-privacy-provider.md) | Provide a privacy provider that declares no new stored personal data and names the external Moodle sources the block reads. |
 
 ## Dependencies
 

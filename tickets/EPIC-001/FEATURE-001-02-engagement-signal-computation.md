@@ -21,11 +21,11 @@ This feature decomposes into five User Stories, each authored under the sibling 
 
 | Story | Description |
 |-------|-------------|
-| [STORY-001-02-01 — Build enrolled-student roster](./FEATURE-001-02/STORY-001-02-01-build-enrolled-student-roster.md) | List every student enrolled in the course, gated by the viewing role's capabilities, and carry the render-within-2-seconds budget for a course with up to 50 enrolled students. |
-| [STORY-001-02-02 — Compute last-login signal](./FEATURE-001-02/STORY-001-02-02-compute-last-login-signal.md) | Compute the number of days since each student's last site login from the `user.lastlogin` field, including the never-logged-in case where `lastlogin` is 0. |
-| [STORY-001-02-03 — Compute overdue-assignments signal](./FEATURE-001-02/STORY-001-02-03-compute-overdue-assignments-signal.md) | Count each student's currently overdue assignments in this course from assignment due dates and submission status, excluding assignments that have no due date. |
-| [STORY-001-02-04 — Compute quiz-score-trend signal](./FEATURE-001-02/STORY-001-02-04-compute-quiz-score-trend-signal.md) | Derive the up, flat, or down trend from each student's last three quiz attempt scores in this course, including the fewer-than-three-attempts case. |
-| [STORY-001-02-05 — Compute last-interaction signal](./FEATURE-001-02/STORY-001-02-05-compute-last-interaction-signal.md) | Read the timestamp of each student's last interaction with any activity in this course from the log store, including the no-interaction case. |
+| [STORY-001-02-01: Build enrolled-student roster](./FEATURE-001-02/STORY-001-02-01-build-enrolled-student-roster.md) | List every student enrolled in the course, gated by the viewing role's capabilities, and carry the render-within-2-seconds budget for a course with up to 50 enrolled students. |
+| [STORY-001-02-02: Compute last-login signal](./FEATURE-001-02/STORY-001-02-02-compute-last-login-signal.md) | Compute the number of days since each student's last site login from the `user.lastlogin` field, including the never-logged-in case where `lastlogin` is 0. |
+| [STORY-001-02-03: Compute overdue-assignments signal](./FEATURE-001-02/STORY-001-02-03-compute-overdue-assignments-signal.md) | Count each student's currently overdue assignments in this course from assignment due dates and submission status, excluding assignments that have no due date. |
+| [STORY-001-02-04: Compute quiz-score-trend signal](./FEATURE-001-02/STORY-001-02-04-compute-quiz-score-trend-signal.md) | Derive the up, flat, or down trend from each student's last three quiz attempt scores in this course, including the fewer-than-three-attempts case. |
+| [STORY-001-02-05: Compute last-interaction signal](./FEATURE-001-02/STORY-001-02-05-compute-last-interaction-signal.md) | Read the timestamp of each student's last interaction with any activity in this course from the log store, including the no-interaction case. |
 
 ## Dependencies
 

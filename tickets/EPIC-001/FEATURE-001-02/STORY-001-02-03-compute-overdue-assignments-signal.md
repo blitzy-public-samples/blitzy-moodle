@@ -27,10 +27,10 @@ Each criterion is authored in Given/When/Then form, mirrors the repository Gherk
 
 ## Edge Cases
 
-- **Empty:** no assignments in the course.
-- **Boundary:** an assignment due exactly now.
-- **Invalid:** a deleted assignment referenced.
-- **Concurrent:** a submission arrives during render.
+- **Empty:** no assignments
+- **Boundary:** due exactly now
+- **Invalid:** deleted assignment
+- **Concurrent:** submission during render
 
 ## Dependencies
 
@@ -47,7 +47,7 @@ Each criterion is authored in Given/When/Then form, mirrors the repository Gherk
 | Complexity | Medium | The count joins each enrolled student against the course's assignments and their submission status; it goes beyond a single-field read but uses no cross-subsystem aggregation. |
 | Uncertainty | Low | The `duedate` field and the submitted status are verified in this repository (`public/mod/assign/lib.php`), and the capability gate mirrors an existing analog block. |
 
-**Effort Medium, Complexity Medium, Uncertainty Low → 3 points.**
+Effort Medium, Complexity Medium, Uncertainty Low -> 3 points
 
 Story point estimate: 3 (Fibonacci).
 

@@ -29,9 +29,9 @@ The Class Pulse objective decomposes into three Features that together hold four
 
 | Feature | Description | Stories |
 |---------|-------------|---------|
-| [FEATURE-001-01 — Block Scaffold & Placement](./EPIC-001/FEATURE-001-01-block-scaffold-and-placement.md) | Foundational Moodle block contract: the `block_base` subclass, `version.php`, access capabilities, opt-in per-course placement, and the privacy provider. | 4 |
-| [FEATURE-001-02 — Engagement Signal Computation & Roster](./EPIC-001/FEATURE-001-02-engagement-signal-computation.md) | Read-only data layer: the enrolled-student roster plus the four engagement signals, each computed from existing Moodle tables with no new schema. | 5 |
-| [FEATURE-001-03 — Risk Visualization, Threshold Configuration & Interaction](./EPIC-001/FEATURE-001-03-risk-visualization-and-configuration.md) | Presentation and interaction layer: the Mustache engagement table, per-instance threshold configuration, threshold-driven risk highlighting, client-side sort and filter, and click-through to the student course profile. | 5 |
+| [FEATURE-001-01: Block Scaffold & Placement](./EPIC-001/FEATURE-001-01-block-scaffold-and-placement.md) | Foundational Moodle block contract: the `block_base` subclass, `version.php`, access capabilities, opt-in per-course placement, and the privacy provider. | 4 |
+| [FEATURE-001-02: Engagement Signal Computation & Roster](./EPIC-001/FEATURE-001-02-engagement-signal-computation.md) | Read-only data layer: the enrolled-student roster plus the four engagement signals, each computed from existing Moodle tables with no new schema. | 5 |
+| [FEATURE-001-03: Risk Visualization, Threshold Configuration & Interaction](./EPIC-001/FEATURE-001-03-risk-visualization-and-configuration.md) | Presentation and interaction layer: the Mustache engagement table, per-instance threshold configuration, threshold-driven risk highlighting, client-side sort and filter, and click-through to the student course profile. | 5 |
 
 **Total: 3 Features, 14 User Stories.**
 

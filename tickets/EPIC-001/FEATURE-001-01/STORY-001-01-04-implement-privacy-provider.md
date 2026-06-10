@@ -76,8 +76,8 @@ Each scenario is authored in Given/When/Then form, mirrors the repository Gherki
 
 ## Dependencies
 
-- **Prerequisite — STORY-001-01-01 (scaffold).** The privacy provider attaches to the `block_classpulse` plugin; the plugin and its `classes/` directory must exist before the provider class can be added. See [STORY-001-01-01 — Scaffold block plugin skeleton](./STORY-001-01-01-scaffold-block-plugin-skeleton.md).
-- **Related — STORY-001-01-02 (access capabilities).** The read access the block exercises is governed by `block/classpulse:view`; the privacy declaration describes data the block reads under that authorization. See [STORY-001-01-02 — Define access capabilities](./STORY-001-01-02-define-access-capabilities.md).
+- **Prerequisite — STORY-001-01-01 (scaffold).** The privacy provider attaches to the `block_classpulse` plugin; the plugin and its `classes/` directory must exist before the provider class can be added. See [STORY-001-01-01: Scaffold block plugin skeleton](./STORY-001-01-01-scaffold-block-plugin-skeleton.md).
+- **Related — STORY-001-01-02 (access capabilities).** The read access the block exercises is governed by `block/classpulse:view`; the privacy declaration describes data the block reads under that authorization. See [STORY-001-01-02: Define access capabilities](./STORY-001-01-02-define-access-capabilities.md).
 - **External platform dependency — Moodle privacy subsystem.** This story depends on the Moodle 5.2 core privacy API (`core_privacy\local\metadata\null_provider` or `core_privacy\local\metadata\provider`); no new database table is introduced.
 
 ## Estimation
