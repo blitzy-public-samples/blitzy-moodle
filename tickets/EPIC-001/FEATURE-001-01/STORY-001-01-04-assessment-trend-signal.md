@@ -32,7 +32,7 @@ The trend for one student is computed deterministically from that student's norm
 2. **Normalization.** Each grade point is normalized to a percentage of its own grade item maximum — `finalgrade` divided by the row's recorded `rawgrademax`, multiplied by 100 — so points from items with different maxima are comparable. History rows carry their own `rawgrademax`, so each point is normalized against the maximum recorded at the time that grade was stored.
 3. **Up / down / flat rule.** Let the change equal the latest in-window normalized value minus the earliest in-window normalized value, measured in percentage points. A change above the flat band is **up**; a change below the negative of the flat band is **down**.
 4. **Tie rule (flat band).** A change whose absolute value is at or within 2 percentage points is **flat/steady** — neither up nor down. The 2-percentage-point flat band is the assessment-trend sensitivity owned by [FEATURE-001-02: Configurable Risk Thresholds](../FEATURE-001-02-configurable-risk-thresholds.md); this story consumes that value and applies the 2-percentage-point default when no per-course value is set.
-5. **Insufficient-data rule.** A student with fewer than two normalized grade points inside the window yields the localized "Not enough data" state; this state is never rendered as a "down" trend.
+5. **Not-enough-data rule.** A student with fewer than two normalized grade points inside the window yields the localized "Not enough data" state; this state is never rendered as a "down" trend.
 
 ## Acceptance Criteria
 
@@ -67,7 +67,7 @@ The trend for one student is computed deterministically from that student's norm
 
 ## Definition of Done
 
-- [ ] The comparison window (trailing 30 days), the up / down / flat rule, the flat band (2 percentage points), and the insufficient-data rule (fewer than two in-window points) are all explicitly defined.
+- [ ] The comparison window (trailing 30 days), the up / down / flat rule, the flat band (2 percentage points), and the not-enough-data rule (fewer than two in-window points) are all explicitly defined.
 - [ ] Each grade point is normalized to a percentage of its grade item maximum before any comparison, so items with different maxima are comparable.
 - [ ] The "Not enough data" state is never rendered as a "down" trend.
 - [ ] Orphaned grade-item rows and NULL `finalgrade` rows are excluded from the classification.
