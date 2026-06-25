@@ -35,21 +35,21 @@ The overall risk level for one student is computed deterministically from that s
 3. **Missing-signal handling.** A signal in its labeled unavailable state ("Last access unknown" from STORY-001-01-02 or "Not enough data" from STORY-001-01-04) counts as not breaching and never on its own raises the level to high; the unavailable signal is labeled in the row.
 4. **All-missing handling.** A student whose three signals are all in an unavailable state yields a neutral overall state rendered with the `$info` token and the localized "Not enough data" label — never high.
 
-Each level resolves to a Boost status token (the documented color is the reference value from Technical Specification §7.5.2.1; the implementation resolves the named token rather than a hardcoded hex), a Font Awesome 6.7.2 icon, and a localized text label, rendered together through Mustache and `$OUTPUT`:
+Each level resolves to a Boost status token (the documented color is the value the named token compiles to in the Boost theme, defined in `public/theme/boost/scss/preset/default.scss`; the implementation resolves the named token rather than a hardcoded hex), a Font Awesome 6.7.2 icon, and a localized text label, rendered together through Mustache and `$OUTPUT`:
 
-| Level | Boost token | Documented color (§7.5.2.1) | Font Awesome icon | Text label |
+| Level | Boost token | Boost-compiled color (`preset/default.scss`) | Font Awesome icon | Text label |
 |-------|-------------|------------------------------|-------------------|------------|
-| High risk | `$danger` | `#d9534f` | warning triangle (`fa-triangle-exclamation`) | "High risk" |
+| High risk | `$danger` | `#ca3120` | warning triangle (`fa-triangle-exclamation`) | "High risk" |
 | Watch | `$warning` | `#f0ad4e` | attention eye (`fa-eye`) | "Watch" |
-| Engaged | `$success` | `#5cb85c` | check circle (`fa-circle-check`) | "Engaged" |
-| Not enough data | `$info` | `#5bc0de` | information circle (`fa-circle-info`) | "Not enough data" |
+| Engaged | `$success` | `#357a32` | check circle (`fa-circle-check`) | "Engaged" |
+| Not enough data | `$info` | `#008196` | information circle (`fa-circle-info`) | "Not enough data" |
 
 Color is never the only carrier of meaning: the Font Awesome icon and the text label accompany the color at every level.
 
 ## Acceptance Criteria
 
 1. *(Input-validation / aggregation)* **Given** a student's three computed signals and the course thresholds (the per-course configured values, or the [FEATURE-001-02: Configurable Risk Thresholds](../FEATURE-001-02-configurable-risk-thresholds.md) defaults when unset), **When** the overall flag computes, **Then** it derives one risk level from the breach count — high for two or more breaching signals, watch for exactly one breaching signal, and none for zero breaching signals. **Pass:** the level equals high, watch, or none according to the count of signals in their concerning band. **Fail:** the level does not match the breach count, or a raw signal value is read without comparison to its threshold.
-2. *(Expected-output / color + icon + text)* **Given** a student at the high-risk level, **When** the row renders, **Then** it shows the `$danger` token (documented `#d9534f` per §7.5.2.1), a Font Awesome warning-triangle icon, and the text label "High risk" together. **Pass:** color, icon, and text are all present and color is not the only indicator. **Fail:** the level is conveyed by color alone, or the icon or the text label is absent.
+2. *(Expected-output / color + icon + text)* **Given** a student at the high-risk level, **When** the row renders, **Then** it shows the `$danger` token (which resolves to `#ca3120` in the Boost theme, defined in `public/theme/boost/scss/preset/default.scss`), a Font Awesome warning-triangle icon, and the text label "High risk" together. **Pass:** color, icon, and text are all present and color is not the only indicator. **Fail:** the level is conveyed by color alone, or the icon or the text label is absent.
 3. *(Expected-output / prioritization)* **Given** a roster mixing high, watch, and engaged students, **When** the roster renders, **Then** rows are ordered high before watch before engaged, and a "needs attention" summary lists the high and watch students at the top. **Pass:** every high row precedes every watch row, every watch row precedes every engaged row, and the summary names each high and watch student. **Fail:** an engaged row precedes a high or watch row, or the summary omits a high or watch student.
 4. *(Error-handling / missing signal)* **Given** a student with one signal in an unavailable state ("Last access unknown" or "Not enough data") and the other two within their engaged bands, **When** the flag computes, **Then** it derives the level from the two available signals, labels the unavailable signal in the row, and holds the level at none rather than raising it to high because a signal is missing. **Pass:** the unavailable signal is labeled, it counts as non-breaching, and the level reflects only the available signals. **Fail:** the missing signal raises the level to high or watch, or the render raises a fatal error.
 5. *(Edge-case / all engaged)* **Given** every enrolled student sits within the engaged band on all three signals, **When** the roster renders, **Then** no high or watch flag is shown and a localized "All students are engaged" summary resolved through `get_string` is displayed. **Pass:** zero high or watch flags appear and the localized all-engaged summary is shown. **Fail:** a high or watch flag is shown, or the summary is missing or hardcoded.
@@ -81,7 +81,7 @@ Color is never the only carrier of meaning: the Font Awesome icon and the text l
 
 - [ ] The signal-to-risk-level aggregation rule (high for two or more breaching signals, watch for one, none for zero) is defined and is driven by the per-course thresholds with a FEATURE-001-02 default fallback.
 - [ ] Each level renders a color, a Font Awesome icon, and a text label together; color is never the only carrier of meaning.
-- [ ] Flag colors resolve to the Boost status tokens `$danger` (`#d9534f`), `$warning` (`#f0ad4e`), `$success` (`#5cb85c`), and `$info` (`#5bc0de`) rather than hardcoded hex values.
+- [ ] Flag colors resolve to the Boost status tokens `$danger` (`#ca3120`), `$warning` (`#f0ad4e`), `$success` (`#357a32`), and `$info` (`#008196`) rather than hardcoded hex values.
 - [ ] Concerning students are surfaced first: rows are ordered high to watch to engaged and a "needs attention" summary lists high and watch students at the top.
 - [ ] A missing signal counts as non-breaching and never raises the level to high; an all-missing student renders the neutral "Not enough data" state.
 - [ ] WCAG 2.1 AA is met: icon-only affordances carry an `aria-label` via `get_string`, the flag is keyboard reachable, and flag text meets a contrast ratio of at least 4.5:1.
